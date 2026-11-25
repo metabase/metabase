@@ -421,7 +421,7 @@
    :persist-data? {:annotation 'org.quartz.PersistJobDataAfterExecution, :when true}})
 
 (def ^:private job-option-keys
-  (into #{:saved-class} (keys job-option-annotations)))
+  (into #{:saved-class :worktree-scope} (keys job-option-annotations)))
 
 (defn- job-definition-error [macro-name type-name message data]
   (ex-info (format "Invalid (task/%s %s ...): %s" macro-name type-name message)
@@ -447,6 +447,11 @@
       (throw (error (format "unknown options %s. The options are %s."
                             (pr-str (vec unknown-keys)) (pr-str (vec (sort job-option-keys))))
                     {:unknown-keys unknown-keys}))
+
+      (not (contains? #{nil :main :each} (:worktree-scope options)))
+      (throw (error (format "its :worktree-scope is %s, but it can only be :main, the default, or :each."
+                            (pr-str (:worktree-scope options)))
+                    {:worktree-scope (:worktree-scope options)}))
 
       (not (contains? options :saved-class))
       (throw (error (format (str "it needs the class name that Quartz stores for the job. For a new job, add"
@@ -542,11 +547,14 @@
     (job-type-form type-name definition more)))
 
 (defn- job-body-form
-  "The `body` of a [[defjob]], inside its log context and its tracing span."
-  [type-name body]
+  "The `body` of a [[defjob]], inside its log context, its tracing span, and the remote sync worktrees of its
+  `worktree-scope`."
+  [type-name worktree-scope body]
   `(log/with-context {:quartz-job-type (quote ~type-name)}
      (tracing/with-span :tasks (str "task." (quote ~type-name)) {:task/name (str (quote ~type-name))}
-       ~@body)))
+       ~(case worktree-scope
+          (nil :main) `(mdb/with-worktree-scope {:type :main} ~@body)
+          :each       `(mdb/do-in-each-worktree (fn [] ~@body))))))
 
 (defmacro defjob
   "Defines a Quartz job class that runs `body` with a log context and an OpenTelemetry tracing span around it.
@@ -568,6 +576,8 @@
     A stored job whose class name no longer exists is deleted at startup, with its triggers.
   - `:concurrent?` (default `true`): `false` stops Quartz running two executions of the job at once, as
     `org.quartz.DisallowConcurrentExecution` does.
+  - `:worktree-scope` (default `:main`): `:each` runs `body` in the main app and then once in each remote sync
+    worktree, for a job that writes the rows of a worktree or repairs runs a worktree starts.
   - `:persist-data?` (default `false`): `true` saves the job's data map again after each execution, as
     `org.quartz.PersistJobDataAfterExecution` does.
 
@@ -583,7 +593,7 @@
                    definition
                    `[org.quartz.Job
                      (~'execute [~'_this ~@job-args]
-                                ~(job-body-form type-name body))])))
+                                ~(job-body-form type-name (:worktree-scope (:options definition)) body))])))
 
 (defn add-job-listener!
   "Add a [Quartz Joblistener](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-07.html). That will

@@ -212,8 +212,9 @@
 
 (task/defjob UpdateDependencies
   "Update the dependency table."
-  {:saved-class "metabase_enterprise.dependencies.task.backfill.BackfillDependencies"
-   :concurrent? false}
+  {:saved-class    "metabase_enterprise.dependencies.task.backfill.BackfillDependencies"
+   :concurrent?    false
+   :worktree-scope :each}
   [ctx]
   (let [ctx ^JobExecutionContext ctx]
     (log-job-start ctx)

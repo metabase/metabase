@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.app-db.core :as mdb]
    [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
@@ -21,7 +22,8 @@
 (task/defjob RunTrackingReaper
   "Reap orphaned (stale-heartbeat) runs for a registered run model."
   {:saved-class "metabase.run_tracking.task.RunTrackingReaper"
-   :concurrent? false}
+   :concurrent? false
+   :worktree-scope :each}
   [ctx]
   (let [job-key (.. ^JobExecutionContext ctx getJobDetail getKey getName)
         {:keys [reap-fn label]} (@reapers job-key)]
@@ -48,14 +50,16 @@
       (task/schedule-task! job trigger))))
 
 (defn start-heartbeat!
-  "Call `heartbeat-fn` now and then every `interval-minutes`, on a dedicated daemon (virtual) thread.
+  "Call `heartbeat-fn` now and then every `interval-minutes`, on a dedicated daemon (virtual) thread, seeing the rows
+  of every remote sync worktree, since it stamps this node's runs by id, whichever worktree started them.
   Returns a future; cancel it to stop the heartbeat. Call from a `task/init!` method."
   [heartbeat-fn interval-minutes]
   (u.jvm/in-virtual-thread*
    (try
      (loop []
        (try
-         (heartbeat-fn)
+         (mdb/with-worktree-scope {:type :all}
+           (heartbeat-fn))
          (catch InterruptedException e (throw e))
          (catch Throwable t
            (log/errorf "Error sending run-tracking heartbeat: %s" (ex-message t))))

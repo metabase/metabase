@@ -54,7 +54,8 @@
   [awake-until]
   (try
     (when (< (System/currentTimeMillis) @awake-until)
-      (number-entries!))
+      (when (seq (mdb/with-worktree-scope {:type :all} (change-log.db/unnumbered-ids 1)))
+        (mdb/do-in-each-worktree number-entries!)))
     (catch Throwable e
       (log/warn e "Could not number the change log entries."))))
 

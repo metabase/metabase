@@ -27,8 +27,9 @@
 
 (task/defjob UpdateResultMetadata
   "Re-derive the result metadata of the MBQL cards depending on changed entities."
-  {:saved-class "metabase_enterprise.dependencies.task.result_metadata.UpdateResultMetadata"
-   :concurrent? false}
+  {:saved-class    "metabase_enterprise.dependencies.task.result_metadata.UpdateResultMetadata"
+   :concurrent?    false
+   :worktree-scope :each}
   [ctx]
   (log/debug "Executing UpdateResultMetadata job...")
   (task.util/run-and-reschedule! (.getScheduler ^JobExecutionContext ctx) job))

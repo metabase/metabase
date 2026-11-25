@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.run-tracking.core :as rt]
    [metabase.task.core :as task]
@@ -181,7 +182,8 @@
 (task/defjob CancelOldTransformRuns
   "Cancel items that haven't been canceled in two minutes"
   {:saved-class "metabase.transforms.canceling.CancelOldTransformRuns"
-   :concurrent? false}
+   :concurrent? false
+   :worktree-scope :each}
   [ctx]
   (cancel-old-transform-runs! ctx))
 
@@ -225,16 +227,20 @@
   ;; does not use the Quartz scheduler
   (.scheduleAtFixedRate scheduler
                         #(try
-                           (run! (fn [cancelation]
-                                   (let [{id :run_id request-time :time} cancelation]
-                                     (try
-                                       ;; Skip silently if the run was deleted between cancelation insert and now
-                                       ;; — `chan-signal-cancel!` would be a no-op anyway in that case.
-                                       (when-let [run (transforms.db/run id)]
-                                         (cancel-run! run request-time))
-                                       (catch Throwable t
-                                         (log/error (str "Error canceling " id ": " (ex-message t)))))))
-                                 (wr.cancelation/reducible-canceled-local-runs))
+                           (when (seq (mdb/with-worktree-scope {:type :all}
+                                        (into [] (take 1) (wr.cancelation/reducible-canceled-local-runs))))
+                             (mdb/do-in-each-worktree
+                              (fn []
+                                (run! (fn [cancelation]
+                                        (let [{id :run_id request-time :time} cancelation]
+                                          (try
+                                            ;; Skip silently if the run was deleted between cancelation insert and now
+                                            ;; — `chan-signal-cancel!` would be a no-op anyway in that case.
+                                            (when-let [run (transforms.db/run id)]
+                                              (cancel-run! run request-time))
+                                            (catch Throwable t
+                                              (log/error (str "Error canceling " id ": " (ex-message t)))))))
+                                      (wr.cancelation/reducible-canceled-local-runs)))))
                            (catch Throwable t
                              (if (app-db-checkout-timeout? t)
                                (log/warnf "Could not check for transform runs to cancel: %s" (ex-message t))

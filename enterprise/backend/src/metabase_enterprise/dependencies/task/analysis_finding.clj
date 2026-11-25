@@ -27,8 +27,9 @@
 
 (task/defjob UpdateAnalysisFindings
   "Re-analyze the entities that changed or whose upstreams changed."
-  {:saved-class "metabase_enterprise.dependencies.task.entity_check.DependencyEntityCheck"
-   :concurrent? false}
+  {:saved-class    "metabase_enterprise.dependencies.task.entity_check.DependencyEntityCheck"
+   :concurrent?    false
+   :worktree-scope :each}
   [ctx]
   (log/debug "Executing UpdateAnalysisFindings job...")
   (task.util/run-and-reschedule! (.getScheduler ctx) job))

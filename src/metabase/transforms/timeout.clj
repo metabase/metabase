@@ -27,7 +27,8 @@
 (task/defjob TimeoutTransforms
   "Timeout long-running tasks that have been lost by a worker."
   {:saved-class "metabase.transforms.timeout.TimeoutTransforms"
-   :concurrent? false}
+   :concurrent? false
+   :worktree-scope :each}
   [ctx]
   (timeout-transform-runs! ctx))
 
