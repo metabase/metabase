@@ -283,7 +283,7 @@ const CONVERSION = defineClauses(
       type: "string",
       requiresFeature: "expressions/text",
       description: () =>
-        t`Converts a number or date to text. Useful for applying text filters or joining with other columns based on text comparisons.`,
+        t`Converts a number or date to text. Useful for applying text filters or joining with other columns based on text comparisons. For example, \`text([Created At])\` returns a string like \`"2024-03-17 16:55:15.373733-07"\`. The exact format depends on your database.`,
       args: () => [
         {
           name: t`value`,
@@ -298,7 +298,7 @@ const CONVERSION = defineClauses(
       type: "number",
       requiresFeature: "expressions/integer",
       description: () =>
-        t`Converts a string or float to an integer. Float values are rounded. Strings must contain a whole number, like \`"123"\` (not \`"123.45"\`).`,
+        t`Converts a string or float to an integer. Float values are rounded. Strings must contain a whole number, like \`"123"\` (not \`"123.45"\`). For example, \`integer(123.45)\` returns \`123\`.`,
       args: () => [
         {
           name: t`value`,
@@ -313,7 +313,7 @@ const CONVERSION = defineClauses(
       type: "datetime",
       requiresFeature: "expressions/date",
       description: () =>
-        t`Converts a datetime or an ISO 8601 datetime string to a date. Time part is truncated. Strings must be in ISO 8601 format, like \`"2025-03-25"\`, \`"2025-03-25T14:30:45"\`, or \`"2025-03-25T14:30:45+01:00"\`.`,
+        t`Converts a datetime or an ISO 8601 datetime string to a date. Time part is truncated. Strings must be in ISO 8601 format, like \`"2025-03-25"\`, \`"2025-03-25T14:30:45"\`, or \`"2025-03-25T14:30:45+01:00"\`. For example, \`date("2025-04-19T17:42:53+01:00")\` returns \`2025-04-19\`.`,
       args: () => [
         {
           name: t`value`,
@@ -407,7 +407,8 @@ const STRING = defineClauses(
           return t`Expected positive integer but found ${start}`;
         }
       },
-      description: () => t`Returns a portion of the supplied text.`,
+      description: () =>
+        t`Returns a portion of the supplied text, specified by a starting position and a length. For example, \`substring("Metabase", 1, 4)\` returns \`"Meta"\`.`,
       args: () => [
         {
           name: t`value`,
@@ -444,7 +445,7 @@ const STRING = defineClauses(
       },
       requiresFeature: "split-part",
       description: () =>
-        t`Splits a string on a specified delimiter and returns the nth substring.`,
+        t`Splits a string on a specified delimiter and returns the nth substring. For example, \`splitPart("2024-09-18 16:55:15", " ", 1)\` returns \`"2024-09-18"\`.`,
       args: () => [
         {
           name: t`text`,
@@ -492,7 +493,7 @@ const STRING = defineClauses(
       type: "string",
       requiresFeature: "regex",
       description: () =>
-        t`Extracts matching substrings according to a regular expression.`,
+        t`Extracts the first substring that matches a regular expression. For example, \`regexExtract("123 Main St", "[0-9]+")\` returns \`"123"\`.`,
       args: () => [
         {
           name: t`value`,
@@ -514,7 +515,7 @@ const STRING = defineClauses(
       type: "string",
       requiresFeature: "regex/lookaheads-and-lookbehinds",
       description: () =>
-        t`Extracts the pathname from a URL. E.g., \`${'path("https://www.example.com/path/to/page.html?key1=value)'}\` would return \`${"/path/to/page.html"}\`.`,
+        t`Extracts the pathname from a URL. For example, \`${'path("https://www.example.com/path/to/page.html?key1=value")'}\` returns \`${'"/path/to/page.html"'}\`.`,
       args: () => [
         {
           name: t`url`,
@@ -636,7 +637,7 @@ const STRING = defineClauses(
       type: "string",
       requiresFeature: "regex/lookaheads-and-lookbehinds",
       description: () =>
-        t`Extracts the domain name (eg. \`"metabase"\`) from a URL or email`,
+        t`Extracts the domain name from a URL or email. For example, \`domain("https://www.metabase.com")\` and \`domain("hello@metabase.com")\` both return \`"metabase"\`.`,
       args: () => [
         {
           name: t`urlOrEmail`,
@@ -666,7 +667,7 @@ const STRING = defineClauses(
       type: "string",
       requiresFeature: "regex/lookaheads-and-lookbehinds",
       description: () =>
-        t`Extracts the host (domain name and TLD, eg. \`"metabase.com"\` from \`"status.metabase.com"\`) from a URL or email`,
+        t`Extracts the host (domain name and TLD) from a URL or email. For example, \`host("https://status.metabase.com")\` and \`host("hello@metabase.com")\` both return \`"metabase.com"\`.`,
       args: () => [
         {
           name: t`urlOrEmail`,
@@ -682,7 +683,7 @@ const STRING = defineClauses(
       multiple: true,
       hasOptions: true,
       description: () =>
-        t`Returns \`true\` if \`$string1\` contains \`$string2\` within it (or \`$string3\`, etc. if specified).`,
+        t`Returns \`true\` if \`$string1\` contains \`$string2\` within it (or \`$string3\`, etc. if specified). Case-sensitive by default. For example, \`contains("Classified", "class")\` returns \`false\`, but \`contains("Classified", "class", "case-insensitive")\` returns \`true\`.`,
       args: () => [
         {
           name: t`string1`,
@@ -756,7 +757,7 @@ const STRING = defineClauses(
       multiple: true,
       hasOptions: true,
       description: () =>
-        t`Returns true if the beginning of the \`$string1\` matches the \`$string2\` (or \`$string3\`, etc. if specified).`,
+        t`Returns true if the beginning of the \`$string1\` matches the \`$string2\` (or \`$string3\`, etc. if specified). Case-sensitive by default. For example, \`startsWith("Computer science 201", "Computer Science")\` returns \`false\`, but \`startsWith("Computer science 201", "Computer Science", "case-insensitive")\` returns \`true\`.`,
       args: () => [
         {
           name: t`string1`,
@@ -891,7 +892,7 @@ const DATE = defineClauses(
       displayName: "dayName",
       type: "string",
       description: () =>
-        t`Returns the localized name of a day of the week, given the day's number.`,
+        t`Returns the localized name of a day of the week, given the day's number. For example, \`dayName(1)\` returns \`"Sunday"\`, unless you've changed the first day of the week in your localization settings.`,
       args: () => [
         {
           name: t`dayNumber`,
@@ -926,7 +927,7 @@ const DATE = defineClauses(
       type: "boolean",
       hasOptions: true,
       description: () =>
-        t`Checks a date column's values to see if they're within the relative range.`,
+        t`Checks a date column's values to see if they're within the relative range. The range covers complete units and doesn't include the current one. For example, \`interval([Created At], -3, "month")\` returns \`true\` for rows created in the three full months before the current month.`,
       args: () => [
         {
           name: t`column`,
@@ -952,7 +953,7 @@ const DATE = defineClauses(
       displayName: "intervalStartingFrom",
       type: "boolean",
       description: () =>
-        t`Returns true if a column's value falls within an interval, starting from an initial, offsetting interval.`,
+        t`Returns true if a column's value falls within an interval, starting from an initial, offsetting interval. For example, \`intervalStartingFrom([Created At], -3, "month", -1, "year")\` returns \`true\` for rows created in the three full months before the current month, one year ago.`,
       args: () => [
         {
           name: t`column`,
@@ -990,7 +991,7 @@ const DATE = defineClauses(
       displayName: "relativeDateTime",
       type: "expression",
       description: () =>
-        t`Gets a timestamp relative to the current time. The result is truncated to the specified unit.`,
+        t`Gets a timestamp relative to the current time. The result is truncated to the specified unit. For example, \`[Created At] < relativeDateTime(-30, "day")\` filters for rows created before the start of the day 30 days ago.`,
       args: () => [
         {
           name: t`number`,
@@ -1053,7 +1054,7 @@ const DATE = defineClauses(
       type: "number",
       hasOptions: true, // optional mode parameter
       description: () =>
-        t`Extracts the week of the year as an integer. Note that grouping by week of year in the query builder uses a different way of determining the first week.`,
+        t`Extracts the week of the year as an integer. Note that grouping by week of year in the query builder uses a different way of determining the first week. For example, \`week("2021-03-25")\` returns \`12\`.`,
       args: () => [
         {
           name: t`column`,
@@ -1097,7 +1098,7 @@ const DATE = defineClauses(
       type: "number",
       hasOptions: true, // optional mode parameter
       description: () =>
-        t`Takes a datetime and returns an integer (\`1\`-\`7\`) with the number of the day of the week. Which day is \`1\` is defined in your localization settings.`,
+        t`Takes a datetime and returns an integer (\`1\`-\`7\`) with the number of the day of the week. Which day is \`1\` is defined in your localization settings. For example, \`weekday("2021-03-25")\` (a Thursday) returns \`5\` if the week starts on Sunday, and \`weekday("2021-03-25", "iso")\` returns \`4\`.`,
       args: () => [
         {
           name: t`column`,
@@ -1161,7 +1162,7 @@ const DATE = defineClauses(
       type: "number",
       requiresFeature: "datetime-diff",
       description: () =>
-        t`Get the difference between two datetime values (\`$datetime2\` minus \`$datetime1\`) using the specified unit of time.`,
+        t`Get the difference between two datetime values (\`$datetime2\` minus \`$datetime1\`) using the specified unit of time. For example, \`datetimeDiff("2022-02-01", "2022-03-01", "month")\` returns \`1\`.`,
       args: () => [
         {
           name: t`datetime1`,
@@ -1270,7 +1271,7 @@ const DATE = defineClauses(
       hasOptions: true,
       requiresFeature: "convert-timezone",
       description: () => t`Convert timezone of a date or timestamp column.
-We support tz database time zone names.`,
+We support tz database time zone names. For example, \`convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")\` returns \`2022-12-28T09:00:00\`.`,
       args: () => [
         {
           name: t`column`,
@@ -1528,7 +1529,7 @@ const LOGICAL = defineClauses(
         return "boolean";
       },
       description: () =>
-        t`Alias for \`if()\`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
+        t`Alias for \`if()\`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met. For example, \`case([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")\` returns \`"Medium"\` for a \`Weight\` of \`175\`, and the default \`"Small"\` for \`100\`.`,
       args: () => [
         {
           name: t`condition`,
@@ -1567,7 +1568,7 @@ const LOGICAL = defineClauses(
         return "boolean";
       },
       description: () =>
-        t`Alias for \`case()\`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
+        t`Alias for \`case()\`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met. For example, \`if([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")\` returns \`"Medium"\` for a \`Weight\` of \`175\`, and the default \`"Small"\` for \`100\`.`,
       args: () => [
         {
           name: t`condition`,
