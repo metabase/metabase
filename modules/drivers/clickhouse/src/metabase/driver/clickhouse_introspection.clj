@@ -266,7 +266,8 @@
                                   (in-clause "c.database NOT" (sort (sql-jdbc.sync/excluded-schemas driver))))])]
     (into [(str "SELECT c.database AS `table-schema`, c.table AS `table-name`, c.name AS `name`,"
                 " c.type AS `database-type`, toInt32(c.position) - 1 AS `database-position`,"
-                " nullIf(c.comment, '') AS `field-comment`, t.primary_key AS `primary-key`"
+                " nullIf(c.comment, '') AS `field-comment`, nullIf(c.default_expression, '') AS `database-default`,"
+                " t.primary_key AS `primary-key`"
                 " FROM system.columns AS c"
                 " INNER JOIN system.tables AS t ON t.database = c.database AND t.name = c.table"
                 " WHERE NOT startsWith(c.type, 'AggregateFunction(') AND NOT startsWith(c.table, '.inner')"
