@@ -54,6 +54,7 @@ export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
     description:
       "On a metric's Dependencies tab, in the schema viewer's visual language: each term of the metric points to its measure, and each measure's aggregation, filters and time dimension point to the columns they read.",
     group: "Iteration 1",
+    draft: true,
     Component: MetricDependencyTreePrototype,
   },
 ];

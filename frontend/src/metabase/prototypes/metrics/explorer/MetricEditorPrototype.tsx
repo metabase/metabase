@@ -47,6 +47,8 @@ import {
 import type * as LibMetric from "metabase-lib/metric";
 import type { Card as CardType, MathOperator } from "metabase-types/api";
 
+import { MetricTabContent, isRealTab } from "../MetricTabContent";
+
 import { DefinitionEditor } from "./DefinitionEditor";
 import { EXAMPLE_PARAM_PREFIX, ExamplesBar } from "./ExamplesBar";
 import { MetricsList, useMetrics } from "./MetricExplorerPrototype";
@@ -246,6 +248,11 @@ export function MetricEditorPrototype() {
         ) : isNew || selected || example ? (
           <MetricEditorPage
             key={param}
+            cardId={
+              selected?.id ??
+              metrics.find((m) => m.name === example?.name)?.id ??
+              metrics[0]?.id
+            }
             collection={selected?.collection?.name ?? "Our analytics"}
             isNew={isNew && savedDraft == null}
             initial={
@@ -297,6 +304,7 @@ function MissingMeasures({ names }: { names: string[] }) {
 }
 
 function MetricEditorPage({
+  cardId,
   collection,
   isNew,
   initial,
@@ -306,6 +314,7 @@ function MetricEditorPage({
   onSave,
   onCancelNew,
 }: {
+  cardId: CardType["id"] | undefined;
   collection: string;
   isNew: boolean;
   initial: MetricDraft;
@@ -319,6 +328,7 @@ function MetricEditorPage({
   const [draft, setDraft] = useState(initial);
   // Remounts the name field and the bar on Cancel, so they show `base` again.
   const [revision, setRevision] = useState(0);
+  const [tab, setTab] = useState("Definition");
 
   const isDirty = isNew || signature(draft) !== signature(base);
   const problem =
@@ -373,8 +383,8 @@ function MetricEditorPage({
           <PillTabNavigation
             tabs={(isNew ? ["Definition"] : TABS).map((label) => ({
               label,
-              onClick: () => undefined,
-              isSelected: label === "Definition",
+              onClick: () => setTab(label),
+              isSelected: label === tab,
             }))}
           />
         }
@@ -400,7 +410,16 @@ function MetricEditorPage({
           />
         }
       />
-      <Card withBorder shadow="none" p={0} h={680}>
+      {isRealTab(tab) && !isNew && (
+        <MetricTabContent tab={tab} cardId={cardId} />
+      )}
+      <Card
+        withBorder
+        shadow="none"
+        p={0}
+        h={680}
+        display={tab === "Definition" || isNew ? undefined : "none"}
+      >
         <EmbeddedExplorer
           key={revision}
           draft={draft}

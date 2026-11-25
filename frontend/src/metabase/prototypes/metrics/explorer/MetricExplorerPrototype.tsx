@@ -32,6 +32,7 @@ import {
 import type { Card as CardType } from "metabase-types/api";
 
 import LoFi from "../LoFi.module.css";
+import { MetricTabContent, isRealTab } from "../MetricTabContent";
 import { DIMENSIONS, formatNumber } from "../data";
 
 import { DefinitionEditor } from "./DefinitionEditor";
@@ -223,6 +224,7 @@ function MetricPage({
   metric: CardType;
   onEdit: () => void;
 }) {
+  const [tab, setTab] = useState("Explorer");
   return (
     <PageContainer pt="md" h="auto">
       <PaneHeader
@@ -244,8 +246,8 @@ function MetricPage({
             <PillTabNavigation
               tabs={TABS.map((label) => ({
                 label,
-                onClick: () => undefined,
-                isSelected: label === "Explorer",
+                onClick: () => setTab(label),
+                isSelected: label === tab,
               }))}
             />
             <Tooltip label="Edit metric">
@@ -270,7 +272,14 @@ function MetricPage({
           </Group>
         }
       />
-      <Card withBorder shadow="none" p={0} h={640}>
+      {isRealTab(tab) && <MetricTabContent tab={tab} cardId={metric.id} />}
+      <Card
+        withBorder
+        shadow="none"
+        p={0}
+        h={640}
+        display={tab === "Explorer" ? undefined : "none"}
+      >
         <MetricsViewerPage />
       </Card>
     </PageContainer>
