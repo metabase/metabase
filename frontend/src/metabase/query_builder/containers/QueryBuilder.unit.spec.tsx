@@ -248,8 +248,12 @@ describe("QueryBuilder", () => {
           expect(
             await within(miniPicker).findByTestId("mini-picker-header"),
           ).toHaveTextContent("Sample Database");
-          expect(within(miniPicker).getByText("Orders")).toBeInTheDocument();
-          expect(within(miniPicker).getByText("Products")).toBeInTheDocument();
+          expect(
+            await within(miniPicker).findByText("Orders"),
+          ).toBeInTheDocument();
+          expect(
+            await within(miniPicker).findByText("Products"),
+          ).toBeInTheDocument();
         });
       });
 

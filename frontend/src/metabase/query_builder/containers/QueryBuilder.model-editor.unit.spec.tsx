@@ -698,8 +698,10 @@ describe("QueryBuilder - model editor", () => {
       expect(
         await within(miniPicker).findByTestId("mini-picker-header"),
       ).toHaveTextContent("Sample Database");
-      expect(within(miniPicker).getByText("Orders")).toBeInTheDocument();
-      expect(within(miniPicker).getByText("Products")).toBeInTheDocument();
+      expect(await within(miniPicker).findByText("Orders")).toBeInTheDocument();
+      expect(
+        await within(miniPicker).findByText("Products"),
+      ).toBeInTheDocument();
     });
 
     it("locks the display of a model to a table", async () => {

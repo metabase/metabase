@@ -242,8 +242,8 @@ describe("DataStep", () => {
     expect(
       await within(miniPicker).findByTestId("mini-picker-header"),
     ).toHaveTextContent("Sample Database");
-    expect(within(miniPicker).getByText("Reviews")).toBeInTheDocument();
-    expect(within(miniPicker).getByText("Orders")).toBeInTheDocument();
+    expect(await within(miniPicker).findByText("Reviews")).toBeInTheDocument();
+    expect(await within(miniPicker).findByText("Orders")).toBeInTheDocument();
 
     await userEvent.click(within(miniPicker).getByTestId("mini-picker-header"));
     await userEvent.click(await within(miniPicker).findByText("Browse all"));
@@ -324,8 +324,12 @@ describe("DataStep", () => {
     expect(
       await within(miniPicker).findByTestId("mini-picker-header"),
     ).toHaveTextContent("Second collection");
-    expect(within(miniPicker).getByText("GUI Model")).toBeInTheDocument();
-    expect(within(miniPicker).getByText("Other Model")).toBeInTheDocument();
+    expect(
+      await within(miniPicker).findByText("GUI Model"),
+    ).toBeInTheDocument();
+    expect(
+      await within(miniPicker).findByText("Other Model"),
+    ).toBeInTheDocument();
   });
 
   describe("multi-schema database (metabase#39807, metabase#11958)", () => {
@@ -390,8 +394,10 @@ describe("DataStep", () => {
       expect(
         await within(miniPicker).findByTestId("mini-picker-header"),
       ).toHaveTextContent("Wild");
-      expect(within(miniPicker).getByText("Animals")).toBeInTheDocument();
-      expect(within(miniPicker).getByText("Birds")).toBeInTheDocument();
+      expect(
+        await within(miniPicker).findByText("Animals"),
+      ).toBeInTheDocument();
+      expect(await within(miniPicker).findByText("Birds")).toBeInTheDocument();
 
       await userEvent.click(
         within(miniPicker).getByTestId("mini-picker-header"),
@@ -464,9 +470,9 @@ describe("DataStep", () => {
         expect(
           await within(miniPicker).findByTestId("mini-picker-header"),
         ).toHaveTextContent(schema);
-        listed.forEach((name) =>
-          expect(within(miniPicker).getByText(name)).toBeInTheDocument(),
-        );
+        for (const name of listed) {
+          expect(await within(miniPicker).findByText(name)).toBeInTheDocument();
+        }
         notListed.forEach((name) =>
           expect(within(miniPicker).queryByText(name)).not.toBeInTheDocument(),
         );
