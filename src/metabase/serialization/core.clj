@@ -36,6 +36,7 @@
    [metabase.serialization.transform :as serialization.transform]
    [metabase.serialization.util :as serialization.util]
    [metabase.serialization.visualization-settings :as serialization.viz]
+   [metabase.serialization.writes :as serialization.writes]
    [metabase.util.namespaces :as shared.ns]))
 
 (shared.ns/import-fns
@@ -74,6 +75,11 @@
   loaded-entities
   local-rows
   with-import-transaction]
+ [serialization.writes
+  delete!
+  insert!
+  insert-stub-users!
+  update!]
  [serialization.storage
   batch-storage-paths
   collection-namespace-folder
@@ -105,7 +111,17 @@
   target-not-found?
   visit-some]
  [protocol.app-db
-  rows-by-refs]
+  channel-rows-by-refs
+  database-rows-by-refs
+  dimension-rows-by-refs
+  field-rows-by-refs
+  field-user-settings-rows-by-refs
+  field-values-rows-by-refs
+  osi-ai-context-rows-by-refs
+  rows-by-refs
+  setting-rows-by-refs
+  table-rows-by-refs
+  table-user-settings-rows-by-refs]
  [serialization.parameters
   export-parameter-mappings
   export-parameters

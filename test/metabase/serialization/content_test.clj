@@ -57,6 +57,7 @@
                                 dash)))
             extract    #(into [] (serialization/export :model/Dashboard %))]
         (try
+          (extract (take 1 dashboards))
           (is (= (query-count #(extract (take 2 dashboards)))
                  (query-count #(extract dashboards))))
           (finally

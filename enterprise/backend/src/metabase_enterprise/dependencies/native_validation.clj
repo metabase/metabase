@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
@@ -338,3 +339,23 @@
                    :table   {:table (:table-id %)}
                    nil))
           (lib/all-template-tags query))))
+
+(defenterprise native-query-errors
+  "The errors of the fields and tables that the native `query` refers to, run by the driver of its database."
+  :feature :none
+  [query]
+  (validate-native-query (:engine (lib.metadata/database query)) query))
+
+(defenterprise native-query-returned-columns
+  "The columns that the native `query` returns, as the driver of its database computes them."
+  :feature :none
+  [query]
+  (native-result-metadata (:engine (lib.metadata/database query)) query))
+
+(defenterprise native-query-dependencies
+  "The dependencies of the native-only `query` as `{entity-type #{entity-id}}`, leaving out the tables it names that
+  resolve to none."
+  :feature :none
+  [query]
+  (let [driver (:engine (lib.metadata/database query))]
+    (u/group-by ffirst (comp second first) conj #{} (remove :unresolved-table (native-query-deps driver query)))))

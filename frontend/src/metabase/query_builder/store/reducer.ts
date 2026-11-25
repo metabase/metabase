@@ -479,8 +479,7 @@ const pendingMetabotCard = createReducer<PendingMetabotCard | null>(
   },
 );
 
-// Kept across RESET_QB and RESET_UI_CONTROLS, so Back and Forward return to
-// questions that still match.
+// Never cleared, so Back and Forward return to questions that still match.
 const metabotCardBaselines = createReducer<MetabotCardBaseline[]>(
   [],
   (builder) => {

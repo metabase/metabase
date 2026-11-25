@@ -31,8 +31,6 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     H.updateSetting("show-static-embed-terms", false);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-
-    H.mockEmbedJsToDevServer();
   });
 
   afterEach(() => {

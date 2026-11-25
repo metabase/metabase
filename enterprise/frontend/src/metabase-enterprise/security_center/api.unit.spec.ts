@@ -11,12 +11,17 @@ import {
   useSyncSecurityAdvisoriesMutation,
 } from "./api";
 
-const LIST_URL = "path:/api/ee/security-center";
+const LIST_URL = "path:/api/ee/security-center/advisories";
 const advisory = createAdvisory({ advisory_id: "SA-001" });
 
 function mockRefreshedAdvisories() {
   fetchMock.modifyRoute("advisories", {
-    response: { advisories: [], last_checked_at: "2026-09-10T00:00:00Z" },
+    response: {
+      advisories: [],
+      last_checked_at: "2026-09-10T00:00:00Z",
+      last_sync_attempted_at: "2026-09-10T00:00:00Z",
+      last_sync_error: null,
+    },
   });
 }
 
@@ -24,13 +29,21 @@ describe("security-center cache invalidation", () => {
   beforeEach(() => {
     fetchMock.get(
       LIST_URL,
-      { advisories: [advisory], last_checked_at: null },
+      {
+        advisories: [advisory],
+        last_checked_at: null,
+        last_sync_attempted_at: null,
+        last_sync_error: null,
+      },
       { name: "advisories" },
     );
   });
 
   it("should refresh the subscribed list after acknowledging an advisory", async () => {
-    fetchMock.post("path:/api/ee/security-center/SA-001/acknowledge", advisory);
+    fetchMock.post(
+      "path:/api/ee/security-center/advisories/SA-001/acknowledge",
+      advisory,
+    );
     const { result } = renderHookWithProviders(() => {
       const query = useListSecurityAdvisoriesQuery();
       const [acknowledge] = useAcknowledgeAdvisoryMutation();
@@ -53,7 +66,9 @@ describe("security-center cache invalidation", () => {
   });
 
   it("should refresh the subscribed list after acknowledging advisories in bulk", async () => {
-    fetchMock.post("path:/api/ee/security-center/acknowledge", [advisory]);
+    fetchMock.post("path:/api/ee/security-center/advisories/acknowledge", [
+      advisory,
+    ]);
     const { result } = renderHookWithProviders(() => {
       const query = useListSecurityAdvisoriesQuery();
       const [acknowledgeAll] = useAcknowledgeAdvisoriesMutation();
@@ -76,7 +91,7 @@ describe("security-center cache invalidation", () => {
   });
 
   it("should refresh the subscribed list after syncing advisories", async () => {
-    fetchMock.post("path:/api/ee/security-center/sync", 200);
+    fetchMock.post("path:/api/ee/security-center/advisories/sync", 200);
     const { result } = renderHookWithProviders(() => {
       const query = useListSecurityAdvisoriesQuery();
       const [sync] = useSyncSecurityAdvisoriesMutation();

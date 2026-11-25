@@ -66,7 +66,7 @@
   (comp json/decode codecs/bytes->str codec/base64-decode))
 
 (mr/def ::cell-query
-  "A base64-encoded JSON cell query (a filter clause) taken on the query string. The `:decode/api` step
+  "A base64-encoded JSON cell query (an MBQL 5 filter clause) taken on the query string. The `:decode/api` step
   base64-decodes and JSON-parses it, then it is validated against [[::ads/root.cell-query]] -- so a handler
   receives the ready-to-use filter clause and doesn't decode it a second time. Bad base64/JSON is left as-is
   and fails validation, surfacing as a clean 400."
@@ -76,20 +76,6 @@
                     (try (decode-base64-json s) (catch Exception _ s))
                     s))}
    [:ref ::ads/root.cell-query]])
-
-(mr/def ::base-64-encoded-json
-  "form-encoded base-64-encoded JSON"
-  [:fn
-   ;; TODO (Cam 10/7/25) -- you would expect `=` to get form-encoded here but apparently the FE is having trouble
-   ;; doing it... allow it for now I guess.
-   ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759892123044939?thread_ts=1759289751.539169&cid=C0645JP1W81
-   ;;
-   ;; TODO (Cam 10/7/25) -- not clear whether we expect `-` and `_` as per RFC 4648 here or if we expect form-encoded
-   ;; `+` and `/`... accept either for now I guess
-   {:api/regex #"(?:[A-Za-z0-9\-_]|(?:%2B)|(?:%2F))+(?:(?:%3D)|=){0,2}"
-    :error/fn    (fn [_ _] (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))
-    :json-schema {:type "string"}}
-   decode-base64-json])
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -509,7 +495,7 @@
            comparison-entity-id-or-query]} :- [:map {:closed true}
                                                [:entity                        Entity]
                                                [:entity-id-or-query            ::entity-id-or-query]
-                                               [:cell-query                    ::base-64-encoded-json]
+                                               [:cell-query                    ::cell-query]
                                                [:comparison-entity             ComparisonEntity]
                                                [:comparison-entity-id-or-query ::entity-id-or-query]]
    {:keys [show]} :- [:map {:closed true}
@@ -540,7 +526,7 @@
                                                [:entity-id-or-query            ::entity-id-or-query]
                                                [:prefix                        Prefix]
                                                [:dashboard-template            DashboardTemplate]
-                                               [:cell-query                    ::base-64-encoded-json]
+                                               [:cell-query                    ::cell-query]
                                                [:comparison-entity             ComparisonEntity]
                                                [:comparison-entity-id-or-query ::entity-id-or-query]]
    {:keys [show]} :- [:map {:closed true}

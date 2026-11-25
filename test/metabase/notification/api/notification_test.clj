@@ -193,7 +193,12 @@
                                                   :type "notification-subscription/cron"
                                                   :event_name nil
                                                   :cron_schedule "0 0 0 * * ?"}]
-                                 :handlers [{:recipients [{:id (mt/malli=? int?)
+                                 :handlers [{:id            (mt/malli=? int?)
+                                             :channel_type  "channel/email"
+                                             :channel_id    nil
+                                             :template_id   nil
+                                             :active        true
+                                             :recipients [{:id (mt/malli=? int?)
                                                            :type "notification-recipient/user"
                                                            :user_id (mt/user->id :rasta)
                                                            :permissions_group_id nil
@@ -787,7 +792,7 @@
                                             (t2/update! :notification :id (:id notification) {:creator_id user-id}))
               move-card-collection        (fn [user-id]
                                             (t2/update! :model/Card :id (-> notification :payload :card_id)
-                                                        {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id user-id)}))]
+                                                        {:collection_id (personal-collection-id user-id)}))]
           (mt/with-premium-features #{}
             (testing "admin can update"
               (update! :crowberto 200))

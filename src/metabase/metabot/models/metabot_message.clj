@@ -1,11 +1,17 @@
 (ns metabase.metabot.models.metabot-message
   (:require
+   [malli.util :as mut]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -69,3 +75,36 @@
 
     :else
     message))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-metabot-messages! :- [:sequential ::metabot.schema/metabot-message]
+  "Insert the MetabotMessage `rows` and return the inserted instances in the order of `rows`."
+  [rows :- [:sequential ::metabot.schema/metabot-message.create]]
+  (mdb/create-batched! :model/MetabotMessage rows {}))
+
+(mu/defn update-metabot-messages! :- :nil
+  "Apply the changes in each of `rows`, the id of a MetabotMessage and the columns to set, in one transaction."
+  [rows :- [:sequential ::metabot.schema/metabot-message.update]]
+  (mdb/update-batched! :model/MetabotMessage rows {}))
+
+(mu/defn soft-delete-metabot-messages! :- :int
+  "Soft-delete the MetabotMessages matching `conditions` on behalf of the User with `deleted-by-user-id`, returning the
+  number of rows updated."
+  [conditions         :- ::metabot.schema/metabot-message.soft-delete-conditions
+   deleted-by-user-id :- ::lib.schema.id/user]
+  (t2/with-transaction [_conn]
+    (let [{already true, others false} (group-by #(= deleted-by-user-id (:deleted_by_user_id %))
+                                                 (metabot.db/messages-matching conditions))]
+      (+ (if (seq already) (metabot.db/soft-delete-messages! (mapv :id already) nil) 0)
+         (if (seq others) (metabot.db/soft-delete-messages! (mapv :id others) deleted-by-user-id) 0)))))
+
+(mu/defn seed-metabot-message!
+  "Insert the MetabotMessage `row` as given, its timestamps included, which the testing API seeds."
+  [row :- (mut/dissoc ::metabot.schema/metabot-message :id)]
+  (metabot.db/insert-messages! [row]))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/MetabotMessage [_model]
+  {:skip? false})

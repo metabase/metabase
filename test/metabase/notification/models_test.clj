@@ -5,14 +5,26 @@
    [metabase.api.common :as api]
    [metabase.channel.rest.api.channel-test :as api.channel-test]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.interface :as mi]
    [metabase.notification.models :as models.notification]
    [metabase.notification.task.send :as task.notification]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.core :as perms]
+   [metabase.queries.models.card :as queries.card]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
+
+(def ^:private per-part-update-growth
+  "The statements the update of a Notification adds for the 4 handlers between 2 and 6 when each handler gets its own
+  template id: the before-update SELECT and UPDATE of a template and of its handler, 4 for each."
+  16)
 
 (set! *warn-on-reflection* true)
 
@@ -105,7 +117,7 @@
         (testing "sanity check"
           (is (t2/exists? :model/NotificationCard :id notification-card-id)))
         (testing "delete notification will delete notification card"
-          (t2/delete! :model/Notification :id (:id notification))
+          (models.notification/delete-notifications! [(:id notification)])
           (is (not (t2/exists? :model/NotificationCard :id notification-card-id))))))))
 
 (deftest delete-card-cleans-up-notifications-test
@@ -113,24 +125,22 @@
     (notification.tu/with-notification-cleanup!
       (mt/with-temp [:model/Card {card-id :id} {:name          "alert cleanup test card"
                                                 :dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
-        (let [active-notification   (models.notification/create-notification!
-                                     {:payload_type :notification/card
-                                      :payload      {:card_id card-id}
-                                      :creator_id   (mt/user->id :crowberto)}
-                                     []
-                                     [])
-              inactive-notification (models.notification/create-notification!
-                                     {:payload_type :notification/card
-                                      :payload      {:card_id card-id}
-                                      :active       false
-                                      :creator_id   (mt/user->id :crowberto)}
-                                     []
-                                     [])]
+        (let [[active-notification]   (models.notification/create-notifications! [{:payload_type :notification/card
+                                                                                   :payload      {:card_id card-id}
+                                                                                   :creator_id   (mt/user->id :crowberto)
+                                                                                   :subscriptions []
+                                                                                   :handlers []}])
+              inactive-notification (first (models.notification/create-notifications! [{:payload_type :notification/card
+                                                                                        :payload      {:card_id card-id}
+                                                                                        :active       false
+                                                                                        :creator_id   (mt/user->id :crowberto)
+                                                                                        :subscriptions []
+                                                                                        :handlers []}]))]
           (testing "sanity: both notifications and notification cards exist"
             (is (t2/exists? :model/Notification :id (:id active-notification)))
             (is (t2/exists? :model/Notification :id (:id inactive-notification)))
             (is (= 2 (t2/count :model/NotificationCard :card_id card-id))))
-          (t2/delete! :model/Card :id card-id)
+          (queries.card/delete-cards! [card-id])
           (testing "both notifications should be removed when the card is deleted"
             (is (not (t2/exists? :model/Notification :id (:id active-notification))))
             (is (not (t2/exists? :model/Notification :id (:id inactive-notification)))))
@@ -189,21 +199,18 @@
                    :model/PermissionsGroupMembership _ {:group_id (:id group)
                                                         :user_id (mt/user->id :lucky)}]
       (testing "create a notification with 2 subscriptions with 2 handlers that has 2 recipients"
-        (let [noti (models.notification/create-notification!
-                    default-system-event-notification
-                    [default-user-invited-subscription
-                     default-card-created-subscription]
-                    [{:channel_type (:type chn-1)
-                      :channel_id   (:id chn-1)
-                      :template_id  (:id tmpl)
-                      :recipients   [{:type     :notification-recipient/user
-                                      :user_id  (mt/user->id :rasta)}
-                                     {:type                 :notification-recipient/group
-                                      :permissions_group_id (:id group)}]}
-                     {:channel_type (:type chn-1)
-                      :channel_id   (:id chn-2)
-                      :recipients   [{:type     :notification-recipient/user
-                                      :user_id  (mt/user->id :crowberto)}]}])]
+        (let [[noti] (models.notification/create-notifications! [(assoc default-system-event-notification :subscriptions [default-user-invited-subscription
+                                                                                                                          default-card-created-subscription] :handlers [{:channel_type (:type chn-1)
+                                                                                                                                                                         :channel_id   (:id chn-1)
+                                                                                                                                                                         :template_id  (:id tmpl)
+                                                                                                                                                                         :recipients   [{:type     :notification-recipient/user
+                                                                                                                                                                                         :user_id  (mt/user->id :rasta)}
+                                                                                                                                                                                        {:type                 :notification-recipient/group
+                                                                                                                                                                                         :permissions_group_id (:id group)}]}
+                                                                                                                                                                        {:channel_type (:type chn-1)
+                                                                                                                                                                         :channel_id   (:id chn-2)
+                                                                                                                                                                         :recipients   [{:type     :notification-recipient/user
+                                                                                                                                                                                         :user_id  (mt/user->id :crowberto)}]}])])]
           (testing "hydrate subscriptions"
             (is (=? [default-user-invited-subscription
                      default-card-created-subscription]
@@ -245,14 +252,11 @@
     (mt/with-model-cleanup [:model/Notification]
       (mt/with-temp [:model/Channel         chn-1   (assoc api.channel-test/default-test-channel :name "Channel 1")
                      :model/ChannelTemplate tmpl-1 {:channel_type (:type chn-1)}]
-        (let [noti (models.notification/create-notification!
-                    default-system-event-notification
-                    [default-user-invited-subscription]
-                    [{:channel_type (:type chn-1)
-                      :channel_id   (:id chn-1)
-                      :template_id  (:id tmpl-1)
-                      :recipients   [{:type     :notification-recipient/user
-                                      :user_id  (mt/user->id :rasta)}]}])]
+        (let [[noti] (models.notification/create-notifications! [(assoc default-system-event-notification :subscriptions [default-user-invited-subscription] :handlers [{:channel_type (:type chn-1)
+                                                                                                                                                                         :channel_id   (:id chn-1)
+                                                                                                                                                                         :template_id  (:id tmpl-1)
+                                                                                                                                                                         :recipients   [{:type     :notification-recipient/user
+                                                                                                                                                                                         :user_id  (mt/user->id :rasta)}]}])])]
           (t2/delete! :model/ChannelTemplate :id (:id tmpl-1))
           (is (=? {:template_id nil} (t2/select-one :model/NotificationHandler :notification_id (:id noti)))))))))
 
@@ -262,18 +266,26 @@
                                                   :details {:channel "#general"}}
                    :model/ChannelTemplate tmpl-1 notification.tu/channel-template-email-with-handlebars-body]
       (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
-                            (t2/insert! :model/NotificationHandler {:channel_type :channel/slack
-                                                                    :channel_id   (:id chn-1)
-                                                                    :template_id  (:id tmpl-1)})))))
+                            (first (models.notification/create-notifications! [{:payload_type :notification/testing :active true
+                                                                                :subscriptions []
+                                                                                :handlers [{:channel_type :channel/slack
+                                                                                            :channel_id   (:id chn-1)
+                                                                                            :template_id  (:id tmpl-1)
+                                                                                            :recipients   []}]}]))))))
   (testing "can't update a handler with a template that has different channel type"
-    (mt/with-temp [:model/ChannelTemplate     email-tmpl notification.tu/channel-template-email-with-handlebars-body
-                   :model/ChannelTemplate     slack-tmpl {:channel_type :channel/slack}
+    (mt/with-temp [:model/ChannelTemplate     slack-tmpl {:channel_type :channel/slack}
                    :model/Notification        noti       {}
                    :model/NotificationHandler handler    {:channel_type    :channel/slack
                                                           :notification_id (:id noti)
                                                           :template_id     (:id slack-tmpl)}]
       (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
-                            (t2/update! :model/NotificationHandler :id (:id handler) {:template_id (:id email-tmpl)}))))))
+                            (let [existing (models.notification/hydrate-notification noti)]
+                              (models.notification/update-notification!
+                               (:id existing)
+                               (assoc existing :handlers [(-> (first (:handlers existing))
+                                                              (dissoc :channel)
+                                                              (assoc :id (:id handler)
+                                                                     :channel_type :channel/email))]))))))))
 
 (deftest notification-recipient-types-test
   (mt/with-temp [:model/Notification        {n-id :id}       {}
@@ -340,53 +352,62 @@
                                           :permissions_group_id 1
                                           :details              {:value "ngoc@metabase.com"}}))))))))
 
+(defn- set-subscriptions!
+  "Replace the subscriptions of the notification `noti-id` with `subscriptions` through its update."
+  [noti-id subscriptions]
+  (let [existing (models.notification/hydrate-notification (t2/select-one :model/Notification :id noti-id))]
+    (models.notification/update-notification! noti-id (assoc existing :subscriptions subscriptions) {:notifications [existing]})))
+
+(defn- create-cron-subscription!
+  "Add a cron subscription to the notification `noti-id` through its update and return its id."
+  [noti-id cron-schedule]
+  (let [existing (models.notification/hydrate-notification (t2/select-one :model/Notification :id noti-id))
+        known    (into #{} (map :id) (:subscriptions existing))]
+    (set-subscriptions! noti-id (conj (vec (:subscriptions existing))
+                                      {:type          :notification-subscription/cron
+                                       :cron_schedule cron-schedule}))
+    (first (remove known (t2/select-pks-vec :model/NotificationSubscription :notification_id noti-id)))))
+
 (deftest update-subscription-trigger-test
   (mt/with-temp-scheduler!
     (task/init! ::task.notification/SendNotifications)
     (mt/with-temp [:model/Notification {noti-id :id}]
       (testing "a trigger is created when create a notification subscription"
-        (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
-                                                                               :cron_schedule   "0 * * * * ? *"
-                                                                               :notification_id noti-id})]
+        (let [sub-id (create-cron-subscription! noti-id "0 * * * * ? *")]
           (is (= [(notification.tu/subscription->trigger-info
                    sub-id
                    "0 * * * * ? *")]
                  (notification.tu/send-notification-triggers sub-id)))
           (testing "update trigger when cron schedule is changed"
-            (t2/update! :model/NotificationSubscription :id sub-id {:cron_schedule "1 * * * * ? *"})
+            (set-subscriptions! noti-id [{:id sub-id :type :notification-subscription/cron :cron_schedule "1 * * * * ? *"}])
             (is (= [(notification.tu/subscription->trigger-info
                      sub-id
                      "1 * * * * ? *")]
                    (notification.tu/send-notification-triggers sub-id))))
           (testing "delete the trigger when type changes"
-            (t2/update! :model/NotificationSubscription :id sub-id {:type :notification-subscription/system-event
-                                                                    :cron_schedule nil
-                                                                    :event_name :event/card-create})
+            (set-subscriptions! noti-id [{:id            sub-id
+                                          :type          :notification-subscription/system-event
+                                          :cron_schedule nil
+                                          :event_name    :event/card-create}])
             (is (empty? (notification.tu/send-notification-triggers sub-id))))))
       (testing "delete the trigger when delete subscription"
-        (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
-                                                                               :cron_schedule   "0 * * * * ? *"
-                                                                               :notification_id noti-id})]
+        (let [sub-id (create-cron-subscription! noti-id "0 * * * * ? *")]
           (is (not-empty (notification.tu/send-notification-triggers sub-id)))
-          (t2/delete! :model/NotificationSubscription :id sub-id)
+          (set-subscriptions! noti-id [])
           (is (empty? (notification.tu/send-notification-triggers sub-id)))))
       (testing "delete notification will delete all subscription triggers"
-        (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
-                                                                               :cron_schedule   "0 * * * * ? *"
-                                                                               :notification_id noti-id})]
+        (let [sub-id (create-cron-subscription! noti-id "0 * * * * ? *")]
           (is (not-empty (notification.tu/send-notification-triggers sub-id)))
-          (t2/delete! :model/Notification :id noti-id)
+          (models.notification/delete-notifications! [noti-id])
           (is (empty? (notification.tu/send-notification-triggers sub-id))))))))
 
 (deftest subscription-trigger-timezone-is-report-timezone-test
-  (mt/with-temp-scheduler!
-    (task/init! ::task.notification/SendNotifications)
-    (mt/with-temporary-setting-values [report-timezone "Asia/Ho_Chi_Minh"]
+  (mt/with-temporary-setting-values [report-timezone "Asia/Ho_Chi_Minh"]
+    (mt/with-temp-scheduler!
+      (task/init! ::task.notification/SendNotifications)
       (mt/with-temp [:model/Notification {noti-id :id}]
         (testing "trigger timezone is report timezone"
-          (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
-                                                                                 :cron_schedule   "0 * * * * ? *"
-                                                                                 :notification_id noti-id})]
+          (let [sub-id (create-cron-subscription! noti-id "0 * * * * ? *")]
             (is (= [(notification.tu/subscription->trigger-info
                      sub-id
                      "0 * * * * ? *"
@@ -405,10 +426,10 @@
       (testing "sanity check that it has a trigger to begin with"
         (is (= 2 (count (notification.tu/notification-triggers id)))))
       (testing "disabled notification should remove triggers"
-        (t2/update! :model/Notification :id id {:active false})
+        (models.notification/update-notifications! [{:id id :active false}])
         (is (empty? (notification.tu/notification-triggers id))))
       (testing "activate notification should restore triggers"
-        (t2/update! :model/Notification :id id {:active true})
+        (models.notification/update-notifications! [{:id id :active true}])
         (is (= 2 (count (notification.tu/notification-triggers id))))))))
 
 (deftest v-alerts-schedule-type-test
@@ -430,3 +451,220 @@
                                    (:schedule_type (t2/select-one :v_alerts :entity_id (:id notification))))]
            (testing (str schedule-type " schedule with cron " cron-schedule "result" (t2/select-one :v_alerts :entity_id (:id notification)))
              (is (= schedule-type (get-schedule-type))))))))))
+
+(defn- notification-rows
+  "`n` Notification rows that differ in what they hold: a Card or a system event payload, a cron or a system event
+  subscription, an email handler with a template of its own and users and raw values as recipients, or a Slack handler
+  on a Channel."
+  [n card-id channel-id]
+  (mapv (fn [i]
+          (if (even? i)
+            {:payload_type  :notification/card
+             :active        true
+             :creator_id    (mt/user->id :crowberto)
+             :payload       {:card_id card-id :send_condition :has_result :send_once false}
+             :subscriptions [{:type          :notification-subscription/cron
+                              :cron_schedule "0 0 8 * * ? *"}]
+             :handlers      [{:channel_type :channel/email
+                              :template     (assoc notification.tu/channel-template-email-with-handlebars-body
+                                                   :name (mt/random-name))
+                              :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :rasta)}
+                                             {:type    :notification-recipient/raw-value
+                                              :details {:value "ngoc@metabase.com"}}]}]}
+            {:payload_type  :notification/system-event
+             :active        true
+             :subscriptions [default-user-invited-subscription default-card-created-subscription]
+             :handlers      [{:channel_type :channel/slack
+                              :channel_id   channel-id
+                              :recipients   [{:type    :notification-recipient/raw-value
+                                              :details {:value "#general"}}]}
+                             {:channel_type :channel/email
+                              :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :lucky)}]}]}))
+        (range n)))
+
+(defn- do-with-notification-rows!
+  "Call `f` with a function of `n` Notification rows, a Card and a Channel, in a scheduler and with the rows it creates
+  cleaned up."
+  [f]
+  (mt/with-temp-scheduler!
+    (task/init! ::task.notification/SendNotifications)
+    (mt/with-temp [:model/Card    {card-id :id}    {}
+                   :model/Channel {channel-id :id} notification.tu/default-can-connect-channel]
+      (mt/with-model-cleanup [:model/Notification :model/NotificationCard :model/NotificationSubscription
+                              :model/NotificationHandler :model/NotificationRecipient :model/ChannelTemplate]
+        (f (fn [n] (notification-rows n card-id channel-id)) card-id channel-id)))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (do-with-notification-rows!
+   (fn [rows _card-id _channel-id]
+     (testing "creating Notifications with parts of every kind"
+       (let [counted (fn [n] (events.tu/statement-count! #(models.notification/create-notifications! (rows n))))]
+         (counted 2)
+         (is (= (counted 2) (counted 6)))))
+     (testing "updating Notifications, some of them already inactive"
+       (let [counted (fn [n]
+                       (let [ids (mapv :id (models.notification/create-notifications! (rows n)))]
+                         (models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active false} :id row-id)) (vec (take-nth 2 ids))))
+                         (events.tu/statement-count! #(models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active false} :id row-id)) ids)))))]
+         (counted 2)
+         (is (= (counted 2) (counted 6)))))
+     (testing "reactivating Notifications, some of them already active"
+       (let [counted (fn [n]
+                       (let [ids (mapv :id (models.notification/create-notifications! (rows n)))]
+                         (models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active false} :id row-id)) ids))
+                         (models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active true} :id row-id)) (vec (take-nth 2 ids))))
+                         (events.tu/statement-count! #(models.notification/update-notifications! (mapv (fn [row-id] (assoc {:active true} :id row-id)) ids)))))]
+         (counted 2)
+         (is (= (counted 2) (counted 6)))))
+     (testing "deleting Notifications"
+       (let [counted (fn [n]
+                       (let [ids (mapv :id (models.notification/create-notifications! (rows n)))]
+                         (events.tu/statement-count! #(models.notification/delete-notifications! ids))))]
+         (counted 2)
+         (is (= (counted 2) (counted 6)))))
+     (testing "deleting NotificationRecipients"
+       (let [counted (fn [n]
+                       (let [ids (mapv :id (models.notification/create-notifications! (rows n)))
+                             recipient-ids (t2/select-pks-vec :model/NotificationRecipient
+                                                              :notification_handler_id [:in (t2/select-pks-vec :model/NotificationHandler
+                                                                                                               :notification_id [:in ids])])]
+                         (events.tu/statement-count! #(models.notification/delete-notification-recipients! recipient-ids))))]
+         (counted 2)
+         (is (= (counted 2) (counted 6)))))
+     (testing "deleting the NotificationRecipients of Users"
+       (let [counted (fn [n]
+                       (models.notification/create-notifications! (rows n))
+                       (events.tu/statement-count! #(models.notification/delete-notification-recipients-for-users!
+                                                     [(mt/user->id :rasta) (mt/user->id :lucky)])))]
+         (counted 2)
+         (is (= (counted 2) (counted 6))))))))
+
+(deftest update-notification-statement-counts-do-not-grow-with-parts-test
+  (do-with-notification-rows!
+   (fn [_rows card-id channel-id]
+     (let [slack-handler (fn [i]
+                           {:channel_type :channel/slack
+                            :channel_id   channel-id
+                            :recipients   [{:type    :notification-recipient/raw-value
+                                            :details {:value (str "#channel-" i)}}]})
+           email-handler (fn [_i]
+                           {:channel_type :channel/email
+                            :template     (assoc notification.tu/channel-template-email-with-handlebars-body
+                                                 :name (mt/random-name))
+                            :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :rasta)}]})
+           cron          (fn [expression] {:type :notification-subscription/cron :cron_schedule expression})
+           without-channels (fn [handlers] (mapv #(dissoc % :channel) handlers))
+           counted       (fn [handler change n]
+                           (let [[created] (models.notification/create-notifications!
+                                            [{:payload_type  :notification/card
+                                              :active        true
+                                              :creator_id    (mt/user->id :crowberto)
+                                              :payload       {:card_id card-id :send_condition :has_result :send_once false}
+                                              :subscriptions (vec (repeat n (cron "0 0 8 * * ? *")))
+                                              :handlers      (mapv handler (range n))}])
+                                 existing  (models.notification/hydrate-notification created)]
+                             (events.tu/statement-count! #(models.notification/update-notification! (:id existing) (change existing n) {:notifications [existing]}))))]
+       (doseq [[part-kind handler change]
+               [["removing subscriptions" slack-handler
+                 (fn [existing _n] (assoc existing :subscriptions []))]
+                ["adding subscriptions" slack-handler
+                 (fn [existing n] (update existing :subscriptions into (repeat n (cron "0 0 10 * * ? *"))))]
+                ["changing subscriptions" slack-handler
+                 (fn [existing _n] (update existing :subscriptions (fn [subscriptions] (mapv #(assoc % :cron_schedule "0 0 9 * * ? *") subscriptions))))]
+                ["adding handlers with recipients" slack-handler
+                 (fn [existing n] (update existing :handlers (fn [handlers] (into (without-channels handlers) (map slack-handler (range n n))))))]
+                ["changing handlers" slack-handler
+                 (fn [existing _n] (update existing :handlers (fn [handlers] (mapv #(assoc % :active false) (without-channels handlers)))))]
+                ["adding a recipient to each handler" slack-handler
+                 (fn [existing _n]
+                   (update existing :handlers
+                           (fn [handlers]
+                             (mapv (fn [handler i]
+                                     (update handler :recipients conj {:type    :notification-recipient/raw-value
+                                                                       :details {:value (str "#extra-" i)}}))
+                                   (without-channels handlers) (range)))))]
+                ["changing the recipient of each handler" slack-handler
+                 (fn [existing _n]
+                   (update existing :handlers
+                           (fn [handlers]
+                             (mapv (fn [handler]
+                                     (update handler :recipients (fn [recipients] (mapv #(assoc-in % [:details :value] "#changed") recipients))))
+                                   (without-channels handlers)))))]
+                ["changing the template of each handler" email-handler
+                 (fn [existing _n]
+                   (update existing :handlers
+                           (fn [handlers]
+                             (mapv (fn [handler] (assoc-in handler [:template :name] "Renamed template"))
+                                   (without-channels handlers)))))]
+                ["removing handlers" slack-handler
+                 (fn [existing _n] (assoc existing :handlers []))]]]
+         (testing part-kind
+           (counted handler change 1)
+           (if (#{"changing the template of each handler" "changing the recipient of each handler"} part-kind)
+             (is (<= (counted handler change 6) (+ (counted handler change 2) per-part-update-growth)))
+             (is (= (counted handler change 1) (counted handler change 3))))))))))
+
+(deftest create-notifications-reports-first-invalid-row-test
+  (do-with-notification-rows!
+   (fn [rows _card-id _channel-id]
+     (let [[first-row second-row] (rows 2)
+           bad-subscription (assoc first-row :subscriptions [{:type :notification-subscription/cron :cron_schedule "not a cron"}])
+           bad-template     (update-in second-row [:handlers 0] #(-> % (dissoc :template) (assoc :template_id Integer/MAX_VALUE)))
+           message-of       (fn [rows]
+                              (try (models.notification/create-notifications! rows)
+                                   nil
+                                   (catch clojure.lang.ExceptionInfo e (ex-message e))))
+           subscription-message (message-of [bad-subscription])
+           template-message     (message-of [bad-template])]
+       (is (string? subscription-message))
+       (is (string? template-message))
+       (is (not= subscription-message template-message))
+       (testing "the message is the one of the first invalid row, whatever the kind of its error"
+         (is (= subscription-message (message-of [bad-subscription bad-template])))
+         (is (= template-message (message-of [bad-template bad-subscription])))
+         (is (= template-message (message-of [second-row bad-template bad-subscription]))))
+       (testing "nothing is written"
+         (let [before (t2/count :model/Notification)]
+           (message-of [first-row bad-template bad-subscription])
+           (is (= before (t2/count :model/Notification)))))))))
+
+(defn- update-call-count
+  "The number of statements it takes to ask whether rasta may deactivate `notifications`, which must be allowed."
+  [notifications]
+  (mt/with-test-user :rasta
+    (t2/with-call-count [call-count]
+      (is (true? (mi/can-update-each? :model/Notification notifications {:active false})))
+      (call-count))))
+
+(deftest can-update-each-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (notification.tu/with-notification-cleanup!
+      (mt/with-model-cleanup [:model/Collection :model/Card]
+        (let [mp            (mt/metadata-provider)
+              coll-ids      (t2/insert-returning-pks! :model/Collection
+                                                      (repeatedly 41 #(t2.with-temp/with-temp-defaults :model/Collection)))
+              _             (doseq [coll-id (butlast coll-ids)]
+                              (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id))
+              card-ids      (t2/insert-returning-pks! :model/Card
+                                                      (for [coll-id coll-ids]
+                                                        (merge (t2.with-temp/with-temp-defaults :model/Card)
+                                                               {:collection_id coll-id
+                                                                :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))})))
+              notifications (models.notification/create-notifications!
+                             (for [card-id card-ids]
+                               {:payload_type :notification/card
+                                :creator_id   (mt/user->id :rasta)
+                                :active       true
+                                :payload      {:card_id card-id :send_condition :has_result}}))
+              notifications (vec (t2/hydrate (t2/select :model/Notification :id [:in (map :id notifications)]
+                                                        {:order-by [[:id :asc]]})
+                                             :payload))
+              readable      (vec (butlast notifications))]
+          (testing "a batch with one Notification of a Card rasta cannot read is refused"
+            (mt/with-test-user :rasta
+              (is (false? (mi/can-update-each? :model/Notification (conj (subvec readable 0 3) (last notifications))
+                                               {:active false})))))
+          (testing "the question takes as many statements for 40 Notifications of Cards in 40 Collections as for 10"
+            (update-call-count (subvec readable 0 2))
+            (is (= (update-call-count (subvec readable 0 10))
+                   (update-call-count readable)))))))))

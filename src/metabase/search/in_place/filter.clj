@@ -233,7 +233,7 @@
   (let [authoritative   [:= (search.config/column-with-model-alias model :data_authority) "authoritative"]
         published-final (when (premium-features/has-feature? :library)
                           [:and
-                           [:= (search.config/column-with-model-alias model :is_published) true]
+                           [:= :table_settings.is_published true]
                            [:= (search.config/column-with-model-alias model :data_layer) "final"]])]
     (sql.helpers/where query (cond-> [:or authoritative]
                                published-final (conj published-final)))))
@@ -245,9 +245,10 @@
     ;; A measure or segment is curated when its parent table is published into the Library.
     ;; This engine has no index row to read the table's root collection type from, so it only checks that the
     ;; parent table is published, and only with the :library feature, like the table filter above.
-    ;; The legacy query joins the parent table as `table`; see metabase.search.in-place.legacy/search-query-for-model.
+    ;; The legacy query joins the settings of the parent table as `table_settings`; see
+    ;; metabase.search.in-place.legacy/search-query-for-model.
     (sql.helpers/where query (if (premium-features/has-feature? :library)
-                               [:= :table.is_published true]
+                               [:= :table_settings.is_published true]
                                false-clause))))
 
 ;; Created at filters
@@ -367,16 +368,14 @@
                             [:like :collection.location (str "%" (collection/location-path collection-id) "%")]])))))
 
 (defmethod build-optional-filter-query [:collection "table"]
-  [_filter model query collection-id]
+  [_filter _model query collection-id]
   ;; Tables in collections are an EE feature (library)
   (if (premium-features/has-feature? :library)
-    (let [collection-col (search.config/column-with-model-alias model :collection_id)
-          published-col  (search.config/column-with-model-alias model :is_published)]
-      (sql.helpers/where query [:and
-                                [:= published-col true]
-                                [:or
-                                 [:= collection-col collection-id]
-                                 [:like :collection.location (str "%" (collection/location-path collection-id) "%")]]]))
+    (sql.helpers/where query [:and
+                              [:= :table_settings.is_published true]
+                              [:or
+                               [:= :table_settings.collection_id collection-id]
+                               [:like :collection.location (str "%" (collection/location-path collection-id) "%")]]])
     ;; OSS: tables don't belong to collections
     (sql.helpers/where query false-clause)))
 
@@ -433,7 +432,7 @@
         enabled-types (:enabled-transform-source-types search-context)
         feature->supported-models (feature->supported-models)
         hidden-by-visibility (into #{}
-                                   (remove #(search.filter/visible-to? search-context (search.spec/spec %)))
+                                   (remove #(search.filter/visible-to? search-context (search.spec/search-model-spec %)))
                                    models)]
     (cond-> models
       (seq hidden-by-visibility)   (set/difference hidden-by-visibility)

@@ -19,11 +19,11 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"require a human readable field id"
                             (lib/normalize ::warehouse-schema.schema/external-dimension bad {:throw? true}))))
     (testing "an external Dimension with its Field, or a body without one of the two columns, passes"
-      (is (= {:type :external, :human_readable_field_id 1}
+      (is (= {:id 1, :type :external, :human_readable_field_id 1}
              (lib/normalize ::warehouse-schema.schema/dimension.update
-                            {:type "external", :human_readable_field_id 1} {:throw? true})))
-      (is (= {:human_readable_field_id nil}
+                            {:id 1, :type "external", :human_readable_field_id 1} {:throw? true})))
+      (is (= {:id 1, :human_readable_field_id nil}
              (lib/normalize ::warehouse-schema.schema/dimension.update
-                            {:human_readable_field_id nil} {:throw? true})))
-      (is (= {:type :external}
-             (lib/normalize ::warehouse-schema.schema/dimension.update {:type "external"} {:throw? true}))))))
+                            {:id 1, :human_readable_field_id nil} {:throw? true})))
+      (is (= {:id 1, :type :external}
+             (lib/normalize ::warehouse-schema.schema/dimension.update {:id 1, :type "external"} {:throw? true}))))))

@@ -68,7 +68,9 @@ export const SegmentForm = ({
   // Treat a table that has not loaded as published, so the form stays
   // read-only until the answer is known.
   const isReadOnly =
-    isRemoteSyncReadOnly && tableId != null && (table?.is_published ?? true);
+    isRemoteSyncReadOnly &&
+    tableId != null &&
+    (table == null || table.collection != null);
 
   useEffect(() => {
     onIsDirtyChange(dirty);

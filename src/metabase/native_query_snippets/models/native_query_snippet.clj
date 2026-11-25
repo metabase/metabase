@@ -1,18 +1,29 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
+   [metabase.change-log.core :as change-log]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.native-query-snippets.collection-items :as native-query-snippets.collection-items]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
+   [metabase.native-query-snippets.dependencies :as native-query-snippets.dependencies]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
+   [metabase.native-query-snippets.serialization :as native-query-snippets.serialization]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -25,14 +36,7 @@
 (doto :model/NativeQuerySnippet
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive :hook/events))
-
-(defmethod events/spec :model/NativeQuerySnippet
-  [_model]
-  {:create :event/snippet-create
-   :update :event/snippet-update
-   :delete :event/snippet-delete})
+  (derive :hook/entity-id))
 
 ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
 (t2/deftransforms :model/NativeQuerySnippet
@@ -73,16 +77,13 @@
   [tag]
   (= (:type tag) :snippet))
 
-(defn- referenced-snippet-ids
-  "The ids of the snippets the content of `snippet` refers to as `{{snippet: <name>}}`, by name."
+(defn- referenced-snippet-names
+  "The names of the snippets the content of `snippet` refers to as `{{snippet: <name>}}`."
   [snippet]
-  (let [names (into #{}
-                    (comp (filter snippet-tag?)
-                          (map :snippet-name))
-                    (lib/recognize-template-tags (:content snippet)))]
-    (if (seq names)
-      (native-query-snippets.db/snippet-ids-by-names (vec names))
-      {})))
+  (into #{}
+        (comp (filter snippet-tag?)
+              (map :snippet-name))
+        (lib/recognize-template-tags (:content snippet))))
 
 (defn- snippet-template-tags
   "The template tags of `snippet` for its content, with a reference to a snippet named in `name->id` given that
@@ -107,21 +108,14 @@
                               (snippet-tag? tag)
                               (set-snippet-id))))))
 
-(t2/define-before-insert :model/NativeQuerySnippet
-  [snippet]
-  (collection/check-collection-for :model/NativeQuerySnippet snippet)
-  (assoc snippet :template_tags (snippet-template-tags snippet (referenced-snippet-ids snippet))))
-
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
   (let [changes (t2/changes snippet)]
-    (when (contains? changes :collection_id)
-      (collection/check-collection-for :model/NativeQuerySnippet snippet))
     (when (contains? changes :creator_id)
       (throw (ex-info (tru "You cannot change the creator of a snippet.") {:status-code 400})))
     (cond-> snippet
-      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly snippet #(collection/archived? (:collection_id snippet))))
-      (:content snippet)            (assoc :template_tags (snippet-template-tags snippet (referenced-snippet-ids snippet))))))
+      (and (contains? changes :archived) (not (contains? changes :archived_directly)))
+      (assoc :archived_directly (mi/archived-directly-clause :model/NativeQuerySnippet changes)))))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -187,114 +181,200 @@
   (and (can-update-apart-from-sandboxes? snippet changes)
        (sandboxes-allow-snippet-update? snippet changes)))
 
+(defn- snippet-perms-allow-update-all?
+  "Whether the snippet permissions let the current user apply `changes` to every one of `snippets`, as
+  `snippet.perms/can-update?` answers for one, with one question for them all: write access to each one's Collection,
+  and to the Collection `changes` move them to."
+  [snippets changes]
+  (let [permitted (snippet.perms/permitted-snippet-ids snippets :write)]
+    (and (every? #(contains? permitted (:id %)) snippets)
+         (or (not (contains? changes :collection_id))
+             (snippet.perms/can-create? :model/NativeQuerySnippet {:collection_id (:collection_id changes)})))))
+
 (defmethod mi/can-update-all? :model/NativeQuerySnippet
   [_model snippets changes]
-  (and (every? #(can-update-apart-from-sandboxes? % changes) snippets)
-       (sandboxes-allow-snippets-update? snippets changes)))
+  (or (empty? snippets)
+      (and (every? #(or (mi/can-write? %) (unsynced-change? % changes)) snippets)
+           (snippet-perms-allow-update-all? snippets changes)
+           (sandboxes-allow-snippets-update? snippets changes))))
 
 (defmethod mi/can-update-followers? :model/NativeQuerySnippet
   [_model snippets changes]
   (sandboxes-allow-snippets-update? snippets changes))
 
-;;; ---------------------------------------------------- Serialization ----------------------------------------------------
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
-(defn- walk-export-renames
-  "The renames of the card tags in `template-tags` whose `#<id>-slug` name embeds this instance's card id, with the
-  card entity ids `visit` resolves."
-  [visit template-tags]
-  (serialization/card-template-tag-renames
-   (partial serialization/card-template-tag-export-rename (partial serialization/card-entity-id visit))
-   (vals template-tags)))
+(defn- check-snippets
+  "Throw a 400 unless each of `rows`, holding the `:collection_id` and `:archived` state a Snippet is about to have,
+  satisfies these rules, checked for the first row that breaks one, with one read of the Collections:
 
-(defn- walk-import-template-tags
-  "The `template-tags` of a snippet imported with `visit`, and the renames of the card tags whose name embeds the
-  exporting instance's card id."
-  [visit template-tags]
-  (let [[visit' card-entity-id] (serialization/recording-card-entity-ids visit)]
-    (when-let [tags (some->> template-tags (serialization/walk-import visit'))]
-      (if (serialization/collecting? visit)
-        {:tags tags :renames {}}
-        (let [tags (lib/normalize :metabase.lib.schema.template-tag/template-tag-map tags)]
-          {:tags    tags
-           :renames (serialization/card-template-tag-renames
-                     (partial serialization/card-template-tag-import-rename card-entity-id)
-                     (vals tags))})))))
+  - its Collection is in the snippets namespace
+  - its Collection is not archived, unless the snippet is"
+  [rows]
+  (collection/check-collections-for-model :model/NativeQuerySnippet rows))
 
-(defn- rename-in-text [content renames]
-  (cond-> content
-    (and (string? content) (seq renames)) (lib/rename-template-tags-in-text renames)))
+(defn- name->id
+  "A map of the name of each snippet that the content of one of `snippets` refers to, to its id, read in one query."
+  [snippets]
+  (let [names (into #{} (comp (filter :content) (mapcat referenced-snippet-names)) snippets)]
+    (if (seq names)
+      (native-query-snippets.db/snippet-ids-by-names (vec names))
+      {})))
+
+(defn- check-new-snippets
+  "Throw a 400 unless every one of `rows`, new snippets, satisfies the rules of [[check-snippets]]."
+  [rows]
+  (check-snippets (map #(update % :archived boolean) rows)))
+
+(defn- prepare-new-snippets
+  "`rows`, new snippets, each with the template tags of its content, and with `:writer :import` in `opts` each renamed
+  with ` (copy)` suffixes until no other snippet holds its name."
+  [rows opts]
+  (let [rows (cond-> rows
+               (= :import (:writer opts)) (native-query-snippets.serialization/rename-to-free-names nil))
+        ids  (name->id rows)]
+    (mapv #(assoc % :template_tags (snippet-template-tags % ids)) rows)))
+
+(mu/defn create-snippets! :- [:sequential (ms/InstanceOf :model/NativeQuerySnippet)]
+  "Insert the NativeQuerySnippet `rows` and return the inserted instances, each with the template tags of its content,
+  in one transaction, publishing their create event, a snippet in a Collection that cannot hold it throwing a 400 and
+  an import, `:writer :import` in `opts`, renaming each with ` (copy)` suffixes until no other snippet holds its
+  name."
+  ([rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.create]]
+   (create-snippets! rows nil))
+  ([rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.create]
+    opts :- :metabase.events.schema/write-opts]
+   (app-db/create-batched! :model/NativeQuerySnippet rows
+                           {:before-create (fn [rows]
+                                             (check-new-snippets rows)
+                                             (prepare-new-snippets rows opts))
+                            :after-create  #(events/publish-event! :event/snippet-create (events/create-event % opts))})))
+
+(defn- assoc-template-tags
+  "`changes`, an update of the snippet `stored` that gives a `:content`, with the template tags of that content when they
+  differ from the stored ones, and without the template tags it was given, `name-ids` being the ids of the snippets that
+  the contents of the update name."
+  [changes stored name-ids]
+  (let [changes (dissoc changes :template_tags)]
+    (if (and (contains? changes :content) (:content (merge stored changes)))
+      (let [tags (snippet-template-tags (merge stored changes) name-ids)]
+        (cond-> changes
+          (not= tags (:template_tags stored)) (assoc :template_tags tags)))
+      changes)))
+
+(defn- check-snippet-updates
+  "Throw a 400 unless every one of `updates` that moves a snippet of `id->stored` satisfies these rules:
+
+  - its Collection is in the snippets namespace
+  - its Collection is not archived, unless the snippet is"
+  [updates id->stored]
+  (check-snippets (for [row   updates
+                        :when (and (contains? row :collection_id) (contains? id->stored (:id row)))]
+                    (update (merge (get id->stored (:id row)) row) :archived boolean))))
+
+(defn- prepare-snippet-updates
+  "`updates` of the snippets of `id->stored`, each with the template tags of its content, reading the snippets that
+  the contents name once, and with `:writer :import` in `opts` each renamed with ` (copy)` suffixes until no other
+  snippet, or earlier row, holds its name."
+  [updates id->stored opts]
+  (let [updates  (cond-> (filterv #(contains? id->stored (:id %)) updates)
+                   (= :import (:writer opts)) (native-query-snippets.serialization/rename-to-free-names id->stored))
+        name-ids (name->id updates)]
+    (mapv (fn [{:keys [id] :as row}]
+            (assoc (assoc-template-tags (dissoc row :id) (get id->stored id) name-ids) :id id))
+          updates)))
+
+(defn- publish-snippet-updates!
+  "Publish the update event of the snippets `updates`, written over the snippets `id->stored`, which are
+  `id->updated` after the write."
+  [updates id->stored id->updated opts]
+  (when (seq updates)
+    (events/publish-event! :event/snippet-update
+                           (events/update-event id->stored
+                                                (mi/derive-archived-directly updates id->updated)
+                                                (assoc opts :objects id->updated)))))
+
+(mu/defn update-snippets! :- :nil
+  "Applies `updates`, each the `:id` of a NativeQuerySnippet with the columns to give it, in one transaction, publishing
+  their update event with the `:context` of `opts`."
+  ([updates :- [:sequential ::native-query-snippets.schema/native-query-snippet.update]]
+   (update-snippets! updates nil))
+  ([updates :- [:sequential ::native-query-snippets.schema/native-query-snippet.update]
+    opts    :- :metabase.events.schema/write-opts]
+   (app-db/update-batched! :model/NativeQuerySnippet updates
+                           {:before-update (fn [updates id->stored]
+                                             (check-snippet-updates updates id->stored)
+                                             (prepare-snippet-updates updates id->stored opts))
+                            :reread?       true
+                            :after-update  #(publish-snippet-updates! %1 %2 %3 opts)})))
+
+(mu/defn delete-snippets! :- :nil
+  "Delete the NativeQuerySnippets with `ids` in one transaction, publishing their delete event right before the first
+  statement."
+  [ids :- [:sequential ::lib.schema.id/native-query-snippet]]
+  (app-db/delete-batched! :model/NativeQuerySnippet ids
+                          {:before-delete #(events/publish-event! :event/snippet-delete (events/delete-event %))}))
+
+(defmethod collection/archive-in-collections! :model/NativeQuerySnippet
+  [_model collection-ids opts]
+  (update-snippets! (mapv (fn [id] {:id id :archived true :archived_directly false}) (mapv :id (native-query-snippets.db/unarchived-snippets-in-collections (vec collection-ids)))) opts))
+
+(defmethod collection/restore-in-collections! :model/NativeQuerySnippet
+  [_model collection-ids opts]
+  (update-snippets! (mapv (fn [id] {:id id :archived false :archived_directly false}) (mapv :id (native-query-snippets.db/restorable-snippets-in-collections (vec collection-ids)))) opts))
+
+(defmethod collection/delete-in-collections! :model/NativeQuerySnippet
+  [_model collection-ids _opts]
+  (when (seq collection-ids)
+    (t2/with-transaction [_conn]
+      (events/publish-event! :event/snippet-delete
+                             (events/delete-event (native-query-snippets.db/snippets-in-collections (vec collection-ids))))
+      (native-query-snippets.db/delete-snippets-in-collections! (vec collection-ids)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/NativeQuerySnippet [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/NativeQuerySnippet [_model]
+  {:track [:name :description :content :creator_id :archived :collection_id :entity_id :template_tags
+           :archived_directly]
+   :skip  []})
 
 (defmethod serialization/spec :model/NativeQuerySnippet [_]
-  {:schema    ::native-query-snippets.schema/external-native-query-snippet
-   :copy      [:archived :archived_directly :description :entity_id :name]
-   :transform {:collection_id (serialization/fk-transform :model/Collection)
-               :creator_id    serialization/user-transform
-               :content       {:export (fn [store snippets _ _]
-                                         (serialization/export-in-bulk
-                                          store
-                                          snippets
-                                          (fn [visit {:keys [content template_tags]}]
-                                            (rename-in-text content (walk-export-renames visit template_tags)))))
-                               :import (fn [store entities _ opts]
-                                         (serialization/import-in-bulk
-                                          store
-                                          entities
-                                          opts
-                                          (fn [visit {:keys [content template_tags]}]
-                                            (rename-in-text content (:renames (walk-import-template-tags
-                                                                               visit template_tags))))))}
-               :template_tags {:export (fn [store _ tag-maps _]
-                                         (serialization/export-in-bulk
-                                          store
-                                          tag-maps
-                                          (fn [visit tags]
-                                            (serialization/walk-export
-                                             visit
-                                             (some-> tags
-                                                     (lib/rename-template-tags (walk-export-renames visit tags)))))))
-                               :import (fn [store _ tag-maps opts]
-                                         (serialization/import-in-bulk
-                                          store
-                                          tag-maps
-                                          opts
-                                          (fn [visit tags]
-                                            (let [{:keys [tags renames]} (walk-import-template-tags visit tags)]
-                                              (some-> tags (lib/rename-template-tags renames))))))}}
-   :defaults  {:archived false, :archived_directly false}})
-
-(defmethod serialization/storage-paths :model/NativeQuerySnippet [_ entities ctx]
-  (mapv (fn [snippet]
-          (serialization/storage-default-collection-path snippet ctx "snippets"))
-        entities))
-
-;;; ---------------------------------------------- SerDes dependencies -------------------------------------------------
-
-(defmethod serialization/import-dependencies :model/NativeQuerySnippet [_ entities]
-  (mapv (fn [{:keys [collection_id template_tags]}]
-          (set (concat (when collection_id [[:model/Collection collection_id]])
-                       (serialization/import-mbql-dependencies template_tags))))
-        entities))
-
-(defmethod serialization/export-dependencies :model/NativeQuerySnippet [_ snippets]
-  (mapv (fn [{:keys [collection_id template_tags]}]
-          (set (concat (when collection_id [[:model/Collection collection_id]])
-                       (serialization/export-mbql-dependencies template_tags))))
-        snippets))
-
-;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
-
-(defmethod serialization/before-load :model/NativeQuerySnippet [_ items]
-  (let [taken (when-let [names (seq (distinct (keep (comp :name :row) items)))]
-                (into {} (map (juxt :name :entity_id)) (native-query-snippets.db/snippet-names-and-entity-ids (vec names))))]
-    (first
-     (reduce (fn [[items taken] {{:keys [entity_id] snippet-name :name} :row :as item}]
-               (let [free? #(let [owner (get taken %)] (or (nil? owner) (= owner entity_id)))
-                     n     (first (filter free? (iterate #(str % " (copy)") snippet-name)))]
-                 [(conj items (assoc-in item [:row :name] n)) (assoc taken n entity_id)]))
-             [[] taken]
-             items))))
+  {:schema              ::native-query-snippets.schema/external-native-query-snippet
+   :copy                [:archived :archived_directly :description :entity_id :name]
+   :transform           {:collection_id (serialization/fk-transform :model/Collection)
+                         :creator_id    serialization/user-transform
+                         :content       native-query-snippets.serialization/content-transform
+                         :template_tags native-query-snippets.serialization/template-tags-transform}
+   :defaults            {:archived false, :archived_directly false}
+   :storage-paths       native-query-snippets.serialization/storage-paths
+   :import-dependencies native-query-snippets.serialization/import-dependencies
+   :export-dependencies native-query-snippets.serialization/export-dependencies
+   :insert!             #(create-snippets! % {:writer :import})
+   :update!             #(do (update-snippets! % {:writer :import}) %)
+   :delete!             delete-snippets!})
 
 (defmethod remote-sync/spec :model/NativeQuerySnippet
   [_model]
   {:synced-items         native-query-snippets.db/synced-snippet-items
    :synced-filter-clause native-query-snippets.db/synced-snippets-clause})
+
+(defmethod dependencies/spec :model/NativeQuerySnippet [_model]
+  {:type     :snippet
+   :inlined? true
+   :items    native-query-snippets.db/dependency-snippet-items
+
+   :dependencies native-query-snippets.dependencies/dependencies
+
+   :dependency-columns #{:content :template_tags}
+   :output-columns     #{:content :template_tags}})
+
+(defmethod collection-items/spec :model/NativeQuerySnippet [_model]
+  {"snippet" {:rank    6
+              :items   native-query-snippets.db/collection-snippet-items
+              :hydrate native-query-snippets.collection-items/hydrate}})
+
+(defmethod eid-translation/spec :model/NativeQuerySnippet [_model]
+  {:names [:snippet]})

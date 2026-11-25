@@ -109,14 +109,13 @@
            (assoc :nil_percent (get-in fingerprint [:global :nil%]))))))
 
 (mu/defn- collect-field-metadata :- [:sequential ::transforms-inspector.schema/field]
-  "Collect metadata for fields in a table."
-  [table-id :- ::lib.schema.id/table]
-  (let [fields (transforms-inspector.db/active-fields-for-table table-id)]
-    (mapv (fn [field]
-            (let [stats (get-field-stats (:fingerprint field))]
-              (cond-> (select-keys field [:id :name :display_name :base_type :semantic_type])
-                stats (assoc :stats stats))))
-          fields)))
+  "Collect metadata for the active `fields` of a table."
+  [fields :- [:sequential :map]]
+  (mapv (fn [field]
+          (let [stats (get-field-stats (:fingerprint field))]
+            (cond-> (select-keys field [:id :name :display_name :base_type :semantic_type])
+              stats (assoc :stats stats))))
+        fields))
 
 (def ^:private TableRef
   "A table reference: table, name, schema, and owning database, keyed for lookups."
@@ -127,9 +126,10 @@
    [:db-id ::lib.schema.id/database]])
 
 (mu/defn- build-table-info :- ::transforms-inspector.schema/table
-  "Build table info map with fields."
-  [{:keys [table-id table-name schema db-id]} :- TableRef]
-  (let [fields (collect-field-metadata table-id)]
+  "Build table info map with fields, read from `fields-by-table-id`."
+  [fields-by-table-id :- [:map-of ::lib.schema.id/table [:sequential :map]]
+   {:keys [table-id table-name schema db-id]} :- TableRef]
+  (let [fields (collect-field-metadata (get fields-by-table-id table-id []))]
     {:table_id     table-id
      :table_name   table-name
      :schema       schema
@@ -304,10 +304,16 @@
   "Build context for lens discovery and generation."
   [transform :- ::transforms.schema/transform]
   (let [source-type (transforms-base.u/transform-source-type (:source transform))
-        sources-info (mapv build-table-info (extract-sources transform))
+        sources (extract-sources transform)
         target-table (get-target-table transform)
+        fields-by-table-id (group-by :table_id
+                                     (transforms-inspector.db/active-fields-for-tables
+                                      (into [] (comp (keep identity) (distinct))
+                                            (cons (:id target-table) (map :table-id sources)))))
+        sources-info (mapv #(build-table-info fields-by-table-id %) sources)
         target-info (when target-table
-                      (build-table-info {:table-id   (:id target-table)
+                      (build-table-info fields-by-table-id
+                                        {:table-id   (:id target-table)
                                          :table-name (:name target-table)
                                          :schema     (:schema target-table)
                                          :db-id      (:db_id target-table)}))

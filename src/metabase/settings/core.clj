@@ -89,6 +89,7 @@
  [metabase.settings.models.setting
   admin-writable-site-wide-settings
   can-read-setting?
+  csv-string-entries
   current-user-readable-visibilities
   custom-disabled-reasons!
   db-stored-value
@@ -126,6 +127,7 @@
   validate-settings-formatting!
   validate-settable
   validate-settable-for-db
+  warn-about-ignored-csv-lines!
   writable-settings]
  [metabase.settings.models.setting.cache
   cache-update-check-interval-ms

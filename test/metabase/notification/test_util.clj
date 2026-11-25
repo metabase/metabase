@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.app-db.core :as mdb]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.render.js.svg :as js.svg]
@@ -53,6 +54,13 @@
   [& body]
   `(binding [notification.send/*default-options* {:notification/sync? true}]
      ~@body))
+
+(defn do-with-after-commit-now
+  "Calls `thunk` with the work that waits for a commit run at once, for notifications sent after a commit that a
+  test's transaction never makes."
+  [thunk]
+  (mt/with-dynamic-fn-redefs [mdb/do-after-commit (fn [after-commit] (after-commit))]
+    (thunk)))
 
 (defmacro with-javascript-visualization-stub
   "Rebind `metabase.channel.render.js.svg/*javascript-visualization*` to a stub function. Used to speed up tests that don't require the correct visualization for cards."
@@ -125,14 +133,11 @@
 (defn do-with-temp-notification
   "Create a temporary notification for testing."
   [{:keys [notification handlers subscriptions]} thunk]
-  (let [notification (models.notification/create-notification!
-                      notification
-                      subscriptions
-                      handlers)]
+  (let [[notification] (models.notification/create-notifications! [(assoc notification :subscriptions subscriptions :handlers handlers)])]
     (try
       (thunk (models.notification/hydrate-notification notification))
       (finally
-        (t2/delete! :model/Notification :id (:id notification))))))
+        (models.notification/delete-notifications! [(:id notification)])))))
 
 (defmacro with-temp-notification
   "Macro that sets up a temporary notification for testing.

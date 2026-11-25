@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.activity-feed.core :as activity-feed]
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
@@ -13,11 +12,15 @@
    [metabase.mcp.v2.tools.search :as tools.search]
    [metabase.metabot.tools.search :as metabot.search]
    [metabase.permissions.core :as perms]
+   [metabase.queries.models.card :as card]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.models.user :as user]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -487,50 +490,60 @@
             type: [\"table\"] finds a table whose data_source is metabase-transform"
     (binding [search.ingestion/*force-sync* true]
       (search.tu/with-appdb-search-if-available-otherwise-legacy
-        (mt/with-temp [:model/Table {table-id :id} {:db_id       (mt/id)
-                                                    :name        "McpTransformOutputTable"
-                                                    :active      true
-                                                    :data_source :metabase-transform}]
-          (mt/with-current-user (mt/user->id :crowberto)
-            (let [content (tools.search/search-tool {:term_queries ["McpTransformOutputTable"] :type ["table"]}
-                                                    {:token-scopes #{"agent:content:read"}})
-                  rows    (-> content :content first :text v2.tu/strip-data-boundary json/decode+kw :data)]
-              (is (not (:isError content)))
-              (is (some #(and (= "table" (:type %)) (= table-id (:id %))) rows)
-                  (str "the table is in the results: " (pr-str rows))))))))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{table-id :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id       (mt/id)
+                                                                                                                                      :name        "McpTransformOutputTable"
+                                                                                                                                      :active      true
+                                                                                                                                      :data_source :metabase-transform})])]
+            (mt/with-current-user (mt/user->id :crowberto)
+              (let [content (tools.search/search-tool {:term_queries ["McpTransformOutputTable"] :type ["table"]}
+                                                      {:token-scopes #{"agent:content:read"}})
+                    rows    (-> content :content first :text v2.tu/strip-data-boundary json/decode+kw :data)]
+                (is (not (:isError content)))
+                (is (some #(and (= "table" (:type %)) (= table-id (:id %))) rows)
+                    (str "the table is in the results: " (pr-str rows)))))))))))
 
 (deftest library-table-ranks-first-test
   (testing "search ranks a table in the Library above a final-layer table outside it"
     (search.tu/with-appdb-search-if-available-without-fallback
       (collections.tu/with-library [{data :data}]
         ;; The final layer puts the outside table first unless the Library boost applies.
-        (mt/with-temp [:model/Table {outside-id :id} {:db_id      (mt/id)
-                                                      :name       "mcpboost outside"
-                                                      :active     true
-                                                      :data_layer :final}
-                       :model/Table {inside-id :id}  {:db_id         (mt/id)
-                                                      :name          "mcpboost inside"
-                                                      :active        true
-                                                      :is_published  true
-                                                      :collection_id (:id data)}]
-          (mt/with-current-user (mt/user->id :crowberto)
-            (let [content (tools.search/search-tool {:term_queries ["mcpboost"] :type ["table"]}
-                                                    {:token-scopes #{"agent:content:read"}})]
-              (is (= [inside-id outside-id]
-                     (->> content :content first :text v2.tu/strip-data-boundary json/decode+kw :data (map :id)))))))))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{outside-id :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id      (mt/id)
+                                                                                                                                        :name       "mcpboost outside"
+                                                                                                                                        :active     true
+                                                                                                                                        :data_layer :final})])
+                [{inside-id :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id         (mt/id)
+                                                                                                                                       :name          "mcpboost inside"
+                                                                                                                                       :active        true})])]
+            (table-user-settings/create-table-user-settings! [{:table_id inside-id :is_published true :collection_id (:id data)}])
+            (mt/with-current-user (mt/user->id :crowberto)
+              (let [content (tools.search/search-tool {:term_queries ["mcpboost"] :type ["table"]}
+                                                      {:token-scopes #{"agent:content:read"}})]
+                (is (= [inside-id outside-id]
+                       (->> content :content first :text v2.tu/strip-data-boundary json/decode+kw :data (map :id))))))))))))
 
 (deftest metric-source-card-is-a-numeric-id-test
   (testing "a metric defined on a model names the model by its numeric id, which `fields` can pick"
     (binding [search.ingestion/*force-sync* true]
       (search.tu/with-appdb-search-if-available-otherwise-legacy
-        (let [mp (mt/metadata-provider)]
-          (mt/with-temp [:model/Card {model-id :id}  {:type          :model
-                                                      :name          "mcpcardmetric model"
-                                                      :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
-                         :model/Card {metric-id :id} {:type          :metric
-                                                      :name          "mcpcardmetric count"
-                                                      :dataset_query (-> (lib/query mp (lib.metadata/card mp model-id))
-                                                                         (lib/aggregate (lib/count)))}]
+        (mt/with-model-cleanup [:model/Card]
+          (let [mp                (mt/metadata-provider)
+                [{model-id :id}]  (card/create-cards! [{:name                   "mcpcardmetric model"
+                                                        :type                   :model
+                                                        :creator_id             (mt/user->id :rasta)
+                                                        :database_id            (mt/id)
+                                                        :display                :table
+                                                        :visualization_settings {}
+                                                        :dataset_query          (lib/query mp (lib.metadata/table mp (mt/id :venues)))}])
+                [{metric-id :id}] (card/create-cards! [{:name                   "mcpcardmetric count"
+                                                        :type                   :metric
+                                                        :creator_id             (mt/user->id :rasta)
+                                                        :database_id            (mt/id)
+                                                        :display                :table
+                                                        :visualization_settings {}
+                                                        :dataset_query          (-> (lib/query mp (lib.metadata/card mp model-id))
+                                                                                    (lib/aggregate (lib/count)))}])]
             (mt/with-current-user (mt/user->id :crowberto)
               (let [search (fn [args]
                              (->> (tools.search/search-tool (merge {:term_queries ["mcpcardmetric"] :type ["metric"]} args)
@@ -582,8 +595,8 @@
                    :model/Dashboard {dash-id :id} {:name "Recent Dashboard"}]
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-model-cleanup [:model/RecentViews]
-          (activity-feed/update-users-recent-views! (mt/user->id :crowberto) :model/Card card-id :view)
-          (activity-feed/update-users-recent-views! (mt/user->id :crowberto) :model/Dashboard dash-id :view)
+          (recent-views/update-users-recent-views! (mt/user->id :crowberto) :model/Card card-id :view)
+          (recent-views/update-users-recent-views! (mt/user->id :crowberto) :model/Dashboard dash-id :view)
           (let [{:keys [rows]} (recents-page {} :concise 50 0)
                 ids            (set (map :id rows))]
             (is (contains? ids card-id) "the card is listed with no type filter")
@@ -598,10 +611,10 @@
             for the analogous reason (the ranking-limit cap); the recents branch must match."
     ;; A fresh temp user, so no other test sharing the app db can have viewed anything as this user —
     ;; recents are per-user, so an isolated user makes the count deterministic under parallel CI.
-    (mt/with-temp [:model/User {uid :id} {}]
-      (mt/with-model-cleanup [:model/Card :model/RecentViews]
-        ;; One more card than the per-model cap, so the cap binds regardless of anything else.
-        (let [card-ids (mapv (fn [i]
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-model-cleanup [:model/Card :model/RecentViews :model/User]
+        (let [[{uid :id}] (user/create-users! [{:email (mt/random-email)}])
+              card-ids (mapv (fn [i]
                                (t2/insert-returning-pk!
                                 :model/Card {:name         (str "recents-floor-" i)
                                              :database_id  (mt/id)
@@ -614,7 +627,7 @@
               cap       @#'recent-views/*recent-views-stored-per-user-per-model*]
           (mt/with-current-user uid
             (doseq [id card-ids]
-              (activity-feed/update-users-recent-views! uid :model/Card id :view))
+              (recent-views/update-users-recent-views! uid :model/Card id :view))
             (testing "recents-page: total is capped at the per-model retention limit even though 21 were viewed"
               (is (= cap (:total (recents-page {} :concise 10 0)))
                   "total equals the retention cap, not the 21 actually viewed"))
@@ -633,9 +646,10 @@
             line the response reads \"total\":20,\"returned\":20 as an exact, exhausted count, when
             the user may have viewed far more than 20 and can never page past the cap. A prior fix
             covered this only at limit: 10, where the arithmetic truncation still fires normally."
-    (mt/with-temp [:model/User {uid :id} {}]
-      (mt/with-model-cleanup [:model/Card :model/RecentViews]
-        (let [card-ids (mapv (fn [i]
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-model-cleanup [:model/Card :model/RecentViews :model/User]
+        (let [[{uid :id}] (user/create-users! [{:email (mt/random-email)}])
+              card-ids (mapv (fn [i]
                                (t2/insert-returning-pk!
                                 :model/Card {:name         (str "recents-floor-default-" i)
                                              :database_id  (mt/id)
@@ -648,7 +662,7 @@
               cap       @#'recent-views/*recent-views-stored-per-user-per-model*]
           (mt/with-current-user uid
             (doseq [id card-ids]
-              (activity-feed/update-users-recent-views! uid :model/Card id :view))
+              (recent-views/update-users-recent-views! uid :model/Card id :view))
             ;; No :limit passed — exercises the tool's own default (20), matching the cap exactly.
             (let [content (tools.search/search-tool {:recent true} {:token-scopes #{"agent:content:read"}})
                   text    (-> content :content first :text v2.tu/strip-data-boundary)]

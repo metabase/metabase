@@ -4,12 +4,14 @@ import {
   AdminNavLink,
   AdminNavListItem,
 } from "metabase/nav/components/AdminNavbar/AdminNavLink";
-import { Box, Flex } from "metabase/ui";
+import { Flex } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
-import { useListSecurityAdvisoriesQuery } from "../../api";
-import { isAffected } from "../../utils";
+import { useSecurityCenterUrl } from "../../hooks/use-security-center-url";
 
-const PATH = "/admin/security-center";
+import { SecurityCenterBadge } from "./SecurityCenterBadge";
+
+const PATH = Urls.securityCenter();
 
 interface SecurityCenterNavItemProps {
   currentPath: string;
@@ -18,25 +20,14 @@ interface SecurityCenterNavItemProps {
 export function SecurityCenterNavItem({
   currentPath,
 }: SecurityCenterNavItemProps) {
-  const { data: advisoriesResponse } = useListSecurityAdvisoriesQuery();
-  const advisories = advisoriesResponse?.advisories ?? [];
-  const hasActive = advisories.some(isAffected);
+  const url = useSecurityCenterUrl();
 
   return (
     <AdminNavListItem path={PATH} currentPath={currentPath}>
-      <AdminNavLink to={PATH} isSelected={currentPath.startsWith(PATH)}>
+      <AdminNavLink to={url} isSelected={currentPath.startsWith(PATH)}>
         <Flex align="center" gap="0.375rem">
           {t`Security`}
-          {hasActive && (
-            <Box
-              w={8}
-              h={8}
-              miw={8}
-              bg="feedback-negative"
-              style={{ borderRadius: "50%", flexShrink: 0 }}
-              data-testid="security-center-badge"
-            />
-          )}
+          <SecurityCenterBadge />
         </Flex>
       </AdminNavLink>
     </AdminNavListItem>

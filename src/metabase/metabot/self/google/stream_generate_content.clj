@@ -432,5 +432,4 @@
                                            :errorText (str "Prompt blocked by Google: " block-reason)}))
              ;; An error envelope in the stream, e.g. a failure in the middle of the stream.
              (some? error)        (-> (close-blocks!)
-                                      (rf {:type      :error
-                                           :errorText (or (:message error) (pr-str error))})))))))))
+                                      (rf (core/error-chunk error (or (:message error) (pr-str error))))))))))))

@@ -19,37 +19,41 @@
 
       {:id 830, :table_name \"report_card\", :row_id 5, :action \"update\", :created_at ...}
 
-  While the feature is on, each write of a tracked model adds one query to its batch of events, and a delete reads
-  what it cascades to. While it is off, the consumer runs no query.
+  While the feature is on, each event of a tracked model adds one query, and a delete reads what it cascades to. While
+  it is off, the consumer runs no query.
 
-  To track a model, add it to `metabase.change-log.log/tracked-models` and derive `:hook/events` next to its other
-  hooks:
+  To track a model, give it a spec:
 
-      (doto :model/PermissionsGroup
-        (derive :metabase/model)
-        (derive :hook/entity-id)
-        (derive :hook/events))
+      (defmethod change-log/spec :model/PermissionsGroup [_model]
+        {:track [:name :entity_id :magic_group_type :is_tenant_group]
+         :skip  []})
 
-  `metabase.change-log.events` consumes the lifecycle events of the model: it logs each insert, update and delete, once
-  per row at the end of the batch of the write. A model whose delete cascades to a tracked table (`ON DELETE CASCADE`,
-  or `ON DELETE SET NULL`) also derives `:hook/events`, because the cascade is captured at the delete, before the
-  database runs it, and logged with it at any depth. A tracked model needs a primary key of one integer column and a
+  The [[spec]] lists every column of the table but `:id`, `:created_at` and `:updated_at`: under `:track` the columns
+  whose change is logged, and under `:skip` the ones whose change alone logs nothing. A new column fails
+  `spec-columns-test` until it is in one of them.
+
+  `metabase.change-log.events` consumes the lifecycle events that the write functions of the model publish: it logs
+  each insert, update and delete, once per row. A delete event is published right before its statement, so the consumer
+  reads what the database then removes or nulls in tracked tables (`ON DELETE CASCADE`, `ON DELETE SET NULL`) and logs
+  it with the delete, at any depth. The rows of a child that publishes no events of its own are logged by its plain
+  writes with [[log-changes!]]. A tracked model needs a primary key of one integer column and a
   namespace that loads at startup: `metabase.change-log.events-test` checks both. The consumer reads the key from the
   row the insert returns, so an insert that picks its returned columns must include the key: `[:model/User :id :email]`,
   not `[:model/User :email]`. Without the key, the insert throws in dev and test. In production it goes ahead, and
   Metabase logs a warning instead of an entry.
 
   Each model is tracked or not on purpose. A new model fails `tracked-models-test` until it is in `tracked-models` or
-  `untracked-models`, the two lists in `metabase.change-log.events-test`.
+  `untracked-models`, the two lists in `metabase.change-log.events-test`, the first being the models with a spec.
 
   A direct table write skips the model: raw SQL, `t2/query`, `t2/update!` on the table name. It logs its rows with
-  [[log-rows!]]. The `:metabase/change-log-raw-write` lint reports such a write when the call names the table. A write
+  [[log-rows!]], or, for a plain write of the parts of an entity that has the rows in hand, [[log-changes!]]. The
+  `:metabase/change-log-raw-write` lint reports such a write when the call names the table. A write
   that needs no entry opts out with an ignore of that lint and its reason.
 
   Not captured:
 
   - a model that is not tracked
-  - an update that sets only a model's [[ignored-columns]]: usage stats that reads update (view
+  - an update that sets only columns that the model's [[spec]] skips: usage stats that reads update (view
     counts, last viewed and last used times), and what sync works out for Metabase's own use, such as a field's
     fingerprint
   - an update that changes no row
@@ -76,11 +80,14 @@
   (:require
    [metabase.change-log.events]
    [metabase.change-log.log]
+   [metabase.change-log.spec]
    [potemkin :as p]))
 
 (comment metabase.change-log.events/keep-me)
 
 (p/import-vars
  [metabase.change-log.log
-  ignored-columns
-  log-rows!])
+  log-changes!
+  log-rows!]
+ [metabase.change-log.spec
+  spec])

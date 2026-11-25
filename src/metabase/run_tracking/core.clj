@@ -12,9 +12,10 @@
  [metabase.run-tracking.ops
   detection-latency-ms
   heartbeat-and-reconcile!
-  heartbeat-ids!
+  heartbeat-statement
   reap-orphaned!
   reap-rows!
+  terminal-statement
   unit->ms]
  [metabase.run-tracking.task
   schedule-reaper!

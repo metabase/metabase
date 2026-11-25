@@ -5,9 +5,11 @@
   (:require
    [metabase.api.common :as api]
    [metabase.embedding.validation :as embedding.validation]
+   [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
@@ -105,3 +107,15 @@
   (doseq [f [check-update-result-metadata-data-perms
              check-allowed-to-modify-query]]
     (f card-before-update card-updates)))
+
+(defn check-allowed-to-update-cards!
+  "Throws a 403 unless the current user may apply to each of `card-changes`, `[card changes]` pairs of Cards hydrated
+  with `:can_write`, its changes, with what the Cards depend on read together, publishing the failure for the first
+  Card that they may not."
+  [card-changes]
+  (when-not (queries.card/can-update-cards? card-changes)
+    (events/publish-event! :event/update-permission-failure
+                           {:user-id api/*current-user-id*
+                            :object  (first (or (queries.card/first-update-refused card-changes)
+                                                (first card-changes)))})
+    (api/check-403 false)))

@@ -1,16 +1,7 @@
 import { t } from "ttag";
 
-import {
-  ActionIcon,
-  Button,
-  CopyButton,
-  Icon,
-  Modal,
-  Stack,
-  Text,
-  TextInput,
-  Tooltip,
-} from "metabase/ui";
+import { CopyTextInput } from "metabase/common/components/CopyTextInput";
+import { Button, Modal, Stack, Text } from "metabase/ui";
 
 import S from "./SecretKeyModal.module.css";
 
@@ -30,28 +21,10 @@ export const SecretKeyModal = ({
   >
     <Stack gap="xl">
       <Text c="text-secondary">{t`Store this key somewhere safe. For security reasons, we can't show it to you again.`}</Text>
-      <TextInput
+      <CopyTextInput
         aria-label={t`The API key`}
         value={secretKey}
-        readOnly
         classNames={{ input: S.keyInput }}
-        rightSectionPointerEvents="all"
-        rightSection={
-          <CopyButton value={secretKey} timeout={2000}>
-            {({ copied, copy }) => (
-              <Tooltip label={t`Copied!`} opened={copied}>
-                <ActionIcon
-                  variant="subtle"
-                  size="sm"
-                  aria-label={t`Copy`}
-                  onClick={copy}
-                >
-                  <Icon name="copy" />
-                </ActionIcon>
-              </Tooltip>
-            )}
-          </CopyButton>
-        }
       />
     </Stack>
     <Modal.Footer>
