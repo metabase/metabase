@@ -473,7 +473,8 @@
   `standard_conforming_strings` on (`:reason` `\"rebuild-differs\"`, `:reason_detail` `\"multiple-statements\"`).
   With `\"rebuild-strict\"`, it must also regenerate to itself (`:reason` `\"rebuild-differs\"`), read as one
   statement with the setting off (`:reason` `\"backslash-quote\"`), and `sql` must hold no form that the regenerated
-  SQL gives another value (see [[value-changing-form]]). Port of `is_single_stmt_of_type`."
+  SQL gives another value (see [[value-changing-form]]), which is the reason even when `sql` does not parse. Port of
+  `is_single_stmt_of_type`."
   [dialect sql stmt-type check-rebuild]
   (let [read-only-type? (= stmt-type "read-only")
         ;; Filled in as it goes, so a failure part way keeps what was found before it.
@@ -527,7 +528,12 @@
         (vswap! result assoc :error "maximum recursion depth exceeded"))
       ;; An exception without a message (a port NullPointerException) is still an error, so it still gets a reason.
       (catch Exception e
-        (vswap! result assoc :error (or (ex-message e) (.getName (class e))))))
+        ;; sqlglot cannot parse some of these forms at all: it reads `0o17 AS n` as `0 AS o17 AS n`. The form is what
+        ;; the author must change, so it is the reason.
+        (if-let [[reason detail] (when (= check-rebuild "rebuild-strict")
+                                   (try (value-changing-form sql dialect) (catch Exception _ nil)))]
+          (vswap! result assoc :reason reason :reason_detail detail)
+          (vswap! result assoc :error (or (ex-message e) (.getName (class e)))))))
     (cond-> @result
       (and read-only-type? (:error @result)) (assoc :reason "unparseable"))))
 

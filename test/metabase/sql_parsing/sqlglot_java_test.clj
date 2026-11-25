@@ -126,6 +126,9 @@
                ["postgres" "read-only" "rebuild-strict" "SELECT 0b101 AS a"                                              "number-literal"]
                ["postgres" "read-only" "rebuild-strict" "SELECT 0o17"                                                    "number-literal"]
                ["postgres" "read-only" "rebuild-strict" "SELECT 1_000_000"                                               "number-literal"]
+               ;; Followed by an alias, these do not parse; the number is still the reason.
+               ["postgres" "read-only" "rebuild-strict" "SELECT 0o17 AS n"                                               "number-literal"]
+               ["postgres" "read-only" "rebuild-strict" "SELECT 1_000_000 AS n"                                          "number-literal"]
                ["postgres" "read-only" "rebuild-strict" "SELECT X'1F' AS a, '0x1F' AS b /* 1_000 */"                     nil]
                ["postgres" "read"      "rebuild"        "SELECT 0x1F AS a"                                               nil]
                ;; The MySQL DIV operator, whose rebuild rounds (VER-184).

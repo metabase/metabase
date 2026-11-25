@@ -2169,7 +2169,8 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     as `reason_detail`), and for "postgres", Postgres must read it as one statement with `standard_conforming_strings`
     on (reason "rebuild-differs", detail "multiple-statements"). With "rebuild-strict", it must also reconstruct to
     itself (reason "rebuild-differs"), read as one statement with the setting off (reason "backslash-quote"), and
-    `sql` must hold no form that the reconstruction gives another value (see `_value_changing_form`).
+    `sql` must hold no form that the reconstruction gives another value (see `_value_changing_form`), which is the
+    reason even when `sql` does not parse.
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
@@ -2222,7 +2223,18 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
                 result["allowed_stmt_type?"] = True
             result["sql"] = rebuilt
     except Exception as e:
-        result["error"] = str(e)
+        # SQLGlot cannot parse some of these forms at all: it reads `0o17 AS n` as `0 AS o17 AS n`. The form is what
+        # the author must change, so it is the reason.
+        changed = None
+        if check_rebuild == "rebuild-strict":
+            try:
+                changed = _value_changing_form(sql, dialect)
+            except Exception:
+                pass
+        if changed is None:
+            result["error"] = str(e)
+        else:
+            result["reason"], result["reason_detail"] = changed
     if stmt_type == "read-only" and "error" in result:
         result["reason"] = "unparseable"
     return json.dumps(result)

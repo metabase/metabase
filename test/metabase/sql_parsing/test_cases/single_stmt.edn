@@ -493,6 +493,13 @@
    :expected          {:verdict :allowed :single-stmt? true}
    :validate-expected {:verdict :disallowed :single-stmt? true :reason "number-literal"}}
 
+  {:name              "Postgres octal numbers and numbers with underscores followed by an alias do not parse, and are refused for the number to a caller that executes the rebuild"
+   :dialect           "postgres"
+   :sqls              ["SELECT 0o17 AS n" "SELECT 1_000_000 AS n"]
+   :stmt-type         "read-only"
+   :expected          {:verdict :unknown :reason "unparseable"}
+   :validate-expected {:verdict :disallowed :single-stmt? false :reason "number-literal"}}
+
   {:name       "Postgres bit strings, decimal numbers, and number forms inside strings and comments are allowed"
    :dialect    "postgres"
    :sqls       ["SELECT X'1F' AS a, B'101' AS b" "SELECT 1.5e3 AS a, 10 AS b, 1 AS c" "SELECT '0x1F' AS a /* 1_000 */"]
