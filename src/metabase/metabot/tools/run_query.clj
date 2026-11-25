@@ -555,7 +555,8 @@
 (defn do-with-run-errors
   "Call `thunk`, which runs a page of rows through [[query-execution]] and returns this tool's result, and return
    that result, or the output for a failure: `no-permission-message` for a permission failure, the database's error
-   for a failed query, and the refusal for an agent error. A failure inside Metabase is rethrown."
+   for a failed query, and the refusal for an agent error.
+   A failure inside Metabase is rethrown."
   [no-permission-message thunk]
   (try
     (thunk)
@@ -579,11 +580,11 @@
           (tools.u/handle-agent-or-api-error e))))))
 
 (defn rows-output
-  "`{:output :returned :truncated?}`: the text the model reads for `page`, a page of rows, the number of rows that
-   text shows, and whether the run has more rows than it shows.
-   `open-tag` is the `<query_results ...` start of the opening tag, which this closes with the counts, and `notes` are
-   lines that follow the rows. A truncated page gets advice to aggregate the query and run it again only with
-   `rerun-advice?`."
+  "A map `{:output :returned :truncated?}` of the text the model reads for `page`, a page of rows, the number of rows
+   that text shows, and whether the run has more rows than it shows.
+   The text opens with `open-tag`, the `<query_results ...` start of the opening tag, which this closes with the
+   counts, and the lines `notes` follow the rows.
+   A truncated page gets advice to aggregate the query and run it again only with `rerun-advice?`."
   [open-tag {:keys [cols rows truncated?]} notes rerun-advice?]
   (let [shown-cols            (vec (take max-columns cols))
         {:keys [table shown]} (rows-table shown-cols rows)

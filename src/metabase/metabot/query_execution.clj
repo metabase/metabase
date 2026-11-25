@@ -140,8 +140,8 @@
     (run-bounded! #(qp/process-query query) options)))
 
 (defn- page
-  "`{:cols :rows :returned :truncated?}` for a `result` run for `row-limit` rows and one more, which only shows that
-   more rows exist and is dropped."
+  "The page `{:cols :rows :returned :truncated?}` of a `result` run for `row-limit` rows and one more.
+   The extra row only shows that more rows exist, and is dropped."
   [result row-limit]
   (let [all-rows   (vec (get-in result [:data :rows]))
         truncated? (> (count all-rows) row-limit)

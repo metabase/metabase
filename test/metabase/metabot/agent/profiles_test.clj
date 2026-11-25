@@ -175,7 +175,7 @@
 
 (deftest internal-sql-profile-test
   (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))]
-    (testing "internal-sql is internal without the notebook builder, or the dashboard card runner, which runs non-SQL cards"
+    (testing "internal-sql is internal without the notebook builder or the dashboard card runner"
       (let [internal     (profiles/get-profile :internal)
             internal-sql (profiles/get-profile :internal-sql)]
         (is (= :internal-sql (:name internal-sql)))

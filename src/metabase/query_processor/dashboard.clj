@@ -170,7 +170,8 @@
 (mu/defn- resolve-params-for-query :- [:maybe [:sequential :map]]
   "Given a sequence of parameters included in a query-processing request to run the query for a Dashboard/Card, validate
   that those parameters exist and have allowed types, and merge in default values and other info from the parameter
-  mappings. Store the request's values as the current user's last-used values unless `save-last-used?` is false."
+  mappings.
+  Store the request's values as the current user's last-used values unless `save-last-used?` is false."
   [dashboard       :- ::dashboards.schema/dashboard
    dashcard        :- ::dashboards.schema/dashboard-card
    card-id         :- ::lib.schema.id/card
@@ -216,12 +217,13 @@
   [[metabase.server.streaming-response]]), but this may vary if you pass in a different `:make-run` function. Will throw an
   Exception if preconditions such as proper permissions are not met *before* returning the `StreamingResponse`.
 
-  `save-last-used-parameters?`, true by default, stores `parameters` as the current user's last-used filter values for
-  the dashboard. A run that isn't the user setting a filter, such as one an agent makes, passes false.
+  The option `save-last-used-parameters?`, true by default, stores `parameters` as the current user's last-used filter
+  values for the dashboard.
+  A run that isn't the user setting a filter, such as one an agent makes, passes false.
 
   See [[metabase.query-processor.card/process-query-for-card]] for more information about the various parameters."
-  {:arglists '([& {:keys [dashboard dashcard card export-format parameters ignore-cache constraints parameters middleware
-                          save-last-used-parameters?]}])}
+  {:arglists '([& {:keys [dashboard dashcard card export-format parameters ignore-cache constraints parameters
+                          middleware save-last-used-parameters?]}])}
   [& {:keys [dashboard card dashcard parameters export-format save-last-used-parameters?]
       :or   {export-format              :api
              save-last-used-parameters? true}

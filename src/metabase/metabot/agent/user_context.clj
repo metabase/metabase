@@ -247,8 +247,9 @@
 
 (defn- with-current-filter-values
   "The dashboard `details` with each filter's value on the user's screen as `:current_value`, from `filter-values`,
-  the `{:id :value}` maps the frontend sent. A filter the frontend sent no value for keeps no `:current_value`, so
-  its value is unknown, and a value for a filter the dashboard doesn't have is dropped."
+  the `{:id :value}` maps the frontend sent.
+  A filter the frontend sent no value for keeps no `:current_value`, so its value is unknown.
+  A value for a filter the dashboard doesn't have is dropped."
   [details filter-values]
   (let [id->value (into {} (map (juxt :id :value)) filter-values)]
     (update details :parameters (fn [parameters]

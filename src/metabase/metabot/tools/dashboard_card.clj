@@ -4,7 +4,8 @@
 
    The dashboard's own runner, [[metabase.query-processor.dashboard/process-query-for-dashcard]], applies the values
    through the card's filter mappings, so the rows are the ones the card shows, up to data that changed since the
-   user loaded it. The values come from the viewing context the frontend sent this turn, never from the model."
+   user loaded it.
+   The values come from the viewing context the frontend sent this turn, never from the model."
   (:require
    [clojure.string :as str]
    [metabase.metabot.curation :as curation]
@@ -38,8 +39,9 @@
 
 (defn- visible-card?
   "Whether the current user can see `card` on a dashboard, as the dashboard's items list it: it exists, is not
-   archived, and they can read it. When the session may only reach curated content, it also has to be curated, or a
-   metric whose definition passes [[curation/usable-metric-ids]]."
+   archived, and they can read it.
+   When the session may only reach curated content, it also has to be curated, or a metric whose definition passes
+   [[curation/usable-metric-ids]]."
   [{:keys [id archived] :as card}]
   (boolean (and card
                 (not archived)
@@ -48,8 +50,8 @@
                     (contains? (curation/usable-metric-ids #{id}) id)))))
 
 (defn- runnable-dashcard
-  "`{:dashboard :dashcard :card}` for `dashcard-id` on the dashboard with `dashboard-id`, refusing a dashcard the user
-   can't see, one with no question, and one whose question reads SQL that Metabot saved."
+  "The map `{:dashboard :dashcard :card}` for `dashcard-id` on the dashboard with `dashboard-id`.
+   Refuses a dashcard the user can't see, one with no question, and one whose question reads SQL that Metabot saved."
   [dashboard-id dashcard-id]
   (let [dashboard (metabot.db/dashboard dashboard-id)
         dashcard  (when (some-> dashboard mi/can-read?)
