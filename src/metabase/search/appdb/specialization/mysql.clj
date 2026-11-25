@@ -9,6 +9,7 @@
    [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.log :as log]
    [metabase.util.string :as u.str])
   (:import
    (com.google.common.base Utf8)))
@@ -76,10 +77,15 @@
   (mapv (fn [[suffix statement]] (format statement (index-name prefix suffix) table-name)) index-statements))
 
 ;; Each statement commits on its own, so a process killed while creating the table leaves it without some indexes.
-(defmethod specialization/table-complete? :mysql [table-name]
+;; Not every rebuild holds the cluster lock, so another node may still be creating a table that lacks indexes. Creating
+;; an empty table and its indexes takes seconds, so one this old is abandoned.
+(def ^:private abandoned-after-minutes 5)
+
+(defmethod specialization/table-abandoned? :mysql [table-name]
   (let [table-name (name table-name)
         existing   (into #{} (map u/lower-case-en) (search.db/mysql-index-names table-name))]
-    (every? #(contains? existing (u/lower-case-en (index-name table-name (first %)))) index-statements)))
+    (and (not-every? #(contains? existing (u/lower-case-en (index-name table-name (first %)))) index-statements)
+         (search.db/mysql-table-older-than? table-name abandoned-after-minutes))))
 
 (def ^:private max-allowed-packet
   (mdb/memoize-for-application-db #(search.db/mysql-max-allowed-packet)))
@@ -100,11 +106,23 @@
                                 entries)]
     (cond-> batches (seq batch) (conj batch))))
 
+(defn- packet-too-large? [e]
+  (boolean (some #(some->> (ex-message %) (re-find #"max_allowed_packet")) (take-while some? (iterate ex-cause e)))))
+
 (defmethod specialization/batch-upsert! :mysql [table entries]
   ;; The server rejects a statement larger than `max_allowed_packet`, 16 MiB by default on MariaDB, and the whole
   ;; batch fails with it. A quarter of the limit leaves room for escaping and the rest of the statement.
-  (doseq [batch (byte-batches (quot (max-allowed-packet) 4) entries)]
-    (search.db/mysql-batch-upsert! table batch)))
+  (when (seq entries)
+    (doseq [batch (byte-batches (quot (max-allowed-packet) 4) entries)]
+      (try
+        (search.db/mysql-batch-upsert! table batch)
+        (catch Exception e
+          ;; A document whose row alone is too large is left out, rather than the documents after it.
+          (if (and (= 1 (count batch)) (packet-too-large? e))
+            (let [{:keys [model model_id]} (first batch)]
+              (log/warnf "Skipping search document %s %s: its index row is larger than max_allowed_packet"
+                         model model_id))
+            (throw e)))))))
 
 (defn- normalize-text [text]
   (-> text u/lower-case-en (str/replace #"[_']" " ")))

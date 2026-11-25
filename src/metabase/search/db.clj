@@ -325,6 +325,19 @@
                                      [:= :table_schema :%database]
                                      [:= :table_name table-name]]})))
 
+(mu/defn mysql-table-older-than? :- :boolean
+  "Whether the table `table-name` in the current MySQL database was created more than `minutes` ago, by the server's
+  clock."
+  [table-name :- :string
+   minutes    :- pos-int?]
+  (boolean
+   (some-> (t2/query-one [(str "SELECT create_time < NOW() - INTERVAL ? MINUTE AS old FROM information_schema.tables "
+                               "WHERE table_schema = DATABASE() AND table_name = ?")
+                          minutes
+                          table-name])
+           :old
+           pos?)))
+
 (mu/defn orphan-index-table-names
   "The `:table_name`s of search index tables in the current schema with no SearchIndexMetadata."
   []

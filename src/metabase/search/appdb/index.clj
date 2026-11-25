@@ -217,15 +217,13 @@
   (t2/with-transaction [_ (mdb/app-db)]
     (specialization/with-table-creation-settings #(search.db/create-search-index-table! table-name))))
 
-(defn- discard-incomplete!
-  "The pending index `table-name`, or nil after dropping it and its metadata because it lacks indexes."
+(defn- discard-abandoned!
+  "The pending index `table-name`, or nil after dropping it and its metadata because its creation was abandoned."
   [table-name]
-  ;; Rebuilds hold the cluster lock, so an incomplete pending table is left over from a process that was killed while
-  ;; creating it, rather than one another node is still creating.
-  (if (specialization/table-complete? table-name)
+  (if-not (specialization/table-abandoned? table-name)
     table-name
     (do
-      (log/warnf "Pending index %s is missing indexes, dropping it to create it again" table-name)
+      (log/warnf "Pending index %s was left without some indexes, dropping it to create it again" table-name)
       (t2/with-connection [conn (mdb/app-db)]
         (search-index-metadata/delete-search-index-metadata-for-index! conn (name table-name)))
       (drop-table! table-name)
@@ -244,7 +242,7 @@
             (mc/swap! indexes-component assoc :pending table-name)
             table-name))
       ;; The database is the source of truth
-      (let [pending (some-> (:pending (sync-tracking-atoms!)) discard-incomplete!)]
+      (let [pending (some-> (:pending (sync-tracking-atoms!)) discard-abandoned!)]
         (or pending
             (let [table-name (gen-table-name)]
               (log/infof "Creating pending index %s for lang %s" table-name (i18n/site-locale-string))

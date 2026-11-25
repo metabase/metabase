@@ -911,9 +911,29 @@
           (is (< 1 @statements))
           (is (= 5 (t2/count (search.index/active-table)))))))))
 
-(deftest ^:synchronized incomplete-pending-index-is-recreated-test
+(deftest mysql-upsert-skips-only-a-row-larger-than-the-packet-test
   (when (= :mysql (mdb/db-type))
-    (testing "A pending index that an interrupted creation left without some indexes is dropped and created again"
+    (testing "A document whose row alone exceeds max_allowed_packet is skipped, and the documents after it still land"
+      (search.tu/with-temp-index-table
+        (let [upsert! (mt/original-fn #'search.db/mysql-batch-upsert!)]
+          (mt/with-dynamic-fn-redefs [search.db/mysql-max-allowed-packet (constantly 8000)
+                                      search.db/mysql-batch-upsert!      (fn [table entries]
+                                                                           (when (some #(= "2" (str (:model_id %))) entries)
+                                                                             (throw (ex-info "Packet for query is too large. Change the 'max_allowed_packet' variable." {})))
+                                                                           (upsert! table entries))]
+            (memoize/memo-clear! @#'search.mysql/max-allowed-packet)
+            (try
+              (#'specialization/batch-upsert! (search.index/active-table)
+                                              (map (comp #'search.index/document->entry #'search.ingestion/->document)
+                                                   (for [id (range 1 4)]
+                                                     {:model "card", :id id, :name (apply str "card" (repeat 1000 "x"))})))
+              (finally
+                (memoize/memo-clear! @#'search.mysql/max-allowed-packet))))
+          (is (= #{"1" "3"} (t2/select-fn-set :model_id (search.index/active-table)))))))))
+
+(deftest ^:synchronized abandoned-pending-index-is-recreated-test
+  (when (= :mysql (mdb/db-type))
+    (testing "A pending index left without some indexes is reused while young, and recreated once abandoned"
       (let [discard! (fn [table-name]
                        (search.db/drop-search-index-table-if-exists! table-name)
                        (t2/with-connection [conn (mdb/app-db)]
@@ -922,17 +942,21 @@
                     (fn []
                       (let [interrupted (search.index/maybe-create-pending!)]
                         (try
-                          ;; As if the process died before creating its full-text indexes.
+                          ;; As if the process creating it had not yet created its full-text indexes.
                           (t2/query [(format "DROP INDEX %1$s_text_idx ON %1$s" (name interrupted))])
                           (search.engine/reset-tracking! :search.engine/appdb)
-                          (let [recreated (search.index/maybe-create-pending!)]
+                          (is (= interrupted (search.index/maybe-create-pending!))
+                              "a young table may still be in creation on another node")
+                          (search.engine/reset-tracking! :search.engine/appdb)
+                          (let [recreated (mt/with-dynamic-fn-redefs [search.db/mysql-table-older-than? (constantly true)]
+                                            (search.index/maybe-create-pending!))]
                             (try
                               (is (= {:recreated?           true
                                       :interrupted-exists?  false
-                                      :recreated-complete?  true}
+                                      :recreated-abandoned? false}
                                      {:recreated?           (not= interrupted recreated)
                                       :interrupted-exists?  (search.index/exists? interrupted)
-                                      :recreated-complete?  (specialization/table-complete? recreated)}))
+                                      :recreated-abandoned? (specialization/table-abandoned? recreated)}))
                               (finally
                                 (discard! recreated))))
                           (finally
