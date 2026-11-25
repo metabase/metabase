@@ -144,7 +144,7 @@
            util
            warehouses
            workspaces}
-   :model-exports #{:model/Action}
+   :model-exports #{:model/Action :model/QueryAction}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -169,7 +169,12 @@
            permissions
            public-sharing
            util}
-   :model-imports #{:model/Action :model/Card :model/Database}}
+   :model-imports #{:model/Action
+                    :model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/QueryAction
+                    :model/Table}}
 
   activity-feed
   {:team "UX West"
@@ -932,10 +937,12 @@
            revisions
            util
            xrays}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/DashboardTab
                     :model/Field
                     :model/Query}}
 
@@ -1284,6 +1291,7 @@
            metabase.glossary.init
            metabase.glossary.schema}
    :uses #{api
+           api.eid-translation
            app-db
            audit-app
            events
@@ -2410,6 +2418,7 @@
                     :model/CardBookmark
                     :model/Collection
                     :model/Dashboard
+                    :model/DashboardTab
                     :model/Database
                     :model/StoredResult
                     :model/StoredResultUse
@@ -2770,6 +2779,7 @@
   {:team "UX West"
    :api  #{metabase.segments.rest.api}
    :uses #{api
+           api.eid-translation
            lib.be
            models
            segments
@@ -3213,7 +3223,7 @@
            serialization
            util}
    :model-exports #{:model/Timeline :model/TimelineEvent}
-   :model-imports #{:model/Collection}}
+   :model-imports #{:model/Card :model/Collection}}
 
   tracing
   {:team "Gadget"
@@ -3373,6 +3383,7 @@
            metabase.transforms-rest.api.transform-job
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
+           api.eid-translation
            events
            models
            request
@@ -3386,7 +3397,8 @@
                     :model/TransformJob
                     :model/TransformJobRun
                     :model/TransformRun
-                    :model/TransformTag}}
+                    :model/TransformTag
+                    :model/User}}
 
   transforms.schema
   {:team "Gadget"
@@ -4172,6 +4184,7 @@
           metabase-enterprise.data-testing.segment-api
           metabase-enterprise.data-testing.suite-api}
    :uses #{api
+           api.eid-translation
            app-db
            audit-app
            collections

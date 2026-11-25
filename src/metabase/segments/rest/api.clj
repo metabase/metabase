@@ -3,6 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
    [metabase.segments.db :as segments.db]
@@ -41,7 +42,7 @@
    _query-params
    body :- [:map {:closed true}
             [:name        ::segments.schema/segment.name]
-            [:definition  ::segments.schema/definition]
+            [:definition  (eid-translation/structure-schema :model/Segment :definition ::segments.schema/definition)]
             [:description {:optional true} [:maybe :string]]]]
   (create-segment! body))
 
@@ -54,10 +55,10 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
-  "Fetch `Segment` with ID."
+  "Fetch `Segment` with ID, a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (hydrated-segment id))
+                    [:id ms/IdOrEntityId]]]
+  (hydrated-segment (eid-translation/->id-or-404 :model/Segment id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -91,33 +92,36 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
-  "Update a `Segment` with ID."
+  "Update a `Segment` with ID, a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+                    [:id ms/IdOrEntityId]]
    _query-params
    body :- [:map {:closed true}
             [:name                    {:optional true} [:maybe ::segments.schema/segment.name]]
-            [:definition              {:optional true} [:maybe ::segments.schema/definition]]
+            [:definition              {:optional true} [:maybe (eid-translation/structure-schema :model/Segment :definition
+                                                                                                 ::segments.schema/definition)]]
             [:revision_message        ms/NonBlankString]
             [:archived                {:optional true} [:maybe :boolean]]
             [:caveats                 {:optional true} [:maybe :string]]
             [:description             {:optional true} [:maybe :string]]
             [:points_of_interest      {:optional true} [:maybe :string]]
             [:show_in_getting_started {:optional true} [:maybe :boolean]]]]
-  (write-check-and-update-segment! id body))
+  (write-check-and-update-segment! (eid-translation/->id-or-404 :model/Segment id) body))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
-  "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
+  "Archive a Segment, by a numeric id or an entity id. (DEPRECATED -- Just pass updated value of `:archived` to the
+  `PUT` endpoint instead.)"
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+                    [:id ms/IdOrEntityId]]
    {:keys [revision_message]} :- [:map {:closed true}
                                   [:revision_message ms/NonBlankString]]]
   (log/warn "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id.")
-  (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
+  (write-check-and-update-segment! (eid-translation/->id-or-404 :model/Segment id)
+                                   {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

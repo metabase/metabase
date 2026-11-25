@@ -2885,3 +2885,36 @@
             (testing "cards the user may create are saved by both endpoints"
               (is (some? (post! write-id (three (good) (good)) 200)))
               (is (some? (put! (three (good) (good)) 200))))))))))
+
+(deftest document-entity-id-test
+  (testing "GET, PUT and DELETE /api/document/:document-id accept an entity id"
+    (mt/with-temp [:model/Document {document-id :id entity-id :entity_id}
+                   {:name     "Entity id document"
+                    :document (documents.test-util/text->prose-mirror-ast "Initial Doc")}]
+      (testing "GET"
+        (is (=? {:id document-id :name "Entity id document"}
+                (mt/user-http-request :crowberto :get 200 (str "document/" entity-id)))))
+      (testing "PUT"
+        (is (=? {:id document-id :name "Renamed by entity id"}
+                (mt/user-http-request :crowberto :put 200 (str "document/" entity-id)
+                                      {:name "Renamed by entity id"}))))
+      (testing "an unknown entity id is a 404"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 "document/aaaaaaaaaaaaaaaaaaaaa"))))
+      (testing "DELETE"
+        (mt/user-http-request :crowberto :put 200 (str "document/" entity-id) {:archived true})
+        (mt/user-http-request :crowberto :delete 204 (str "document/" entity-id))
+        (is (not (t2/exists? :model/Document :id document-id)))))))
+
+(deftest document-body-entity-ids-test
+  (testing "POST and PUT /api/document take an entity id for the Collection"
+    (mt/with-model-cleanup [:model/Document]
+      (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id}   {}
+                     :model/Collection {other-id :id other-eid :entity_id} {}]
+        (let [{doc-id :id} (mt/user-http-request :crowberto :post 200 "document"
+                                                 {:name          "Document by entity id"
+                                                  :document      {:type "doc" :content []}
+                                                  :collection_id coll-eid})]
+          (is (= coll-id (t2/select-one-fn :collection_id :model/Document :id doc-id)))
+          (mt/user-http-request :crowberto :put 200 (str "document/" doc-id) {:collection_id other-eid})
+          (is (= other-id (t2/select-one-fn :collection_id :model/Document :id doc-id))))))))

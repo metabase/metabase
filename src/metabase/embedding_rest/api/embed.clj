@@ -39,15 +39,12 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ResourceId
-  "An id or entity_id identifying a Card or Dashboard in a JWT `:resource`."
-  [:or ms/PositiveInt ms/NanoIdString])
 (def ^:private Token
   "An embedding JWT payload naming its `:resource` and `:params`, whose other claims (`exp`, `iat`, ...) belong to the embedding application."
   [:map {:closed false, :description "embedding JWT claims"}
    [:resource [:map {:closed true}
-               [:question {:optional true} ResourceId]
-               [:dashboard {:optional true} ResourceId]]]
+               [:question {:optional true} ms/IdOrEntityId]
+               [:dashboard {:optional true} ms/IdOrEntityId]]]
    [:params api.embed.common/SlugValueMap]])
 
 (defn- conditional-update-in

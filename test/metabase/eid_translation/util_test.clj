@@ -17,24 +17,17 @@
 
 (def ^:private not-translated-models
   "The models with entity ids whose entity ids the API does not translate."
-  #{:model/CardTest
-    :model/DataApp
+  #{:model/DataApp
     :model/EmbeddingTheme
     :model/ExplorationPage
     :model/ExplorationQuery
     :model/ExplorationThread
-    :model/Glossary
     :model/Metabot
     :model/MetabotPrompt
     :model/OsiAiContext
     :model/PythonLibrary
-    :model/SegmentTest
-    :model/TestSuite
-    :model/TimelineEvent
     :model/TransformJob
     :model/TransformJobTransformTag
-    :model/TransformTag
-    :model/TransformTest
     :model/TransformTransformTag})
 
 (defn- all-models
@@ -62,9 +55,10 @@
     (let [api-names (mapcat (fn [[model method]] (:names (method model)))
                             (dissoc (methods eid-translation.spec/spec) :default))]
       (is (= (count api-names) (count (distinct api-names))))
-      (is (= #{:action :card :collection :dashboard :dashboard-card :dashboard-tab :dataset :dimension :document
-               :exploration :measure :metric :permissions-group :pulse :pulse-card :pulse-channel :segment :snippet
-               :timeline :transform :user}
+      (is (= (cond-> #{:action :card :collection :dashboard :dashboard-card :dashboard-tab :dataset :dimension
+                       :document :exploration :glossary :measure :metric :permissions-group :pulse :pulse-card
+                       :pulse-channel :segment :snippet :timeline :timeline-event :transform :transform-tag :user}
+               config/ee-available? (into #{:card-test :segment-test :test-suite :transform-test}))
              (set api-names))))))
 
 (deftest ->id-test
@@ -198,3 +192,15 @@
   (testing "->id-or-404 should preserve original error for invalid format"
     (is (thrown-with-msg? Exception #"problem looking up id from entity_id"
                           (eid-translation.util/->id-or-404 :card "invalid-format")))))
+
+(deftest ->id-or-404-reads-ex-data-test
+  (testing "->id marks its failed lookups in their ex-data, which ->id-or-404 reads instead of their message"
+    (is (=? {::eid-translation.util/lookup-failed? true :status :not-found}
+            (try (eid-translation.util/->id :card "abcdefghijklmnopqrstu")
+                 (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+    (testing "and an exception without the mark is not a 404, whatever its message"
+      (mt/with-dynamic-fn-redefs [eid-translation.util/->id (fn [_ _]
+                                                              (throw (ex-info "problem looking up id from entity_id"
+                                                                              {:status :not-found})))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"problem looking up id from entity_id"
+                              (eid-translation.util/->id-or-404 :card "abcdefghijklmnopqrstu")))))))

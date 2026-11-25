@@ -228,10 +228,10 @@
   instead, you can specify `?legacy-mbql=true`."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                    [:id ms/IdOrEntityId]]
    {legacy-mbql? :legacy-mbql
     :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)
+  (let [resolved-id (eid-translation/->id-or-404 :model/Card id)
         card (get-card resolved-id)]
     (cond-> card
       legacy-mbql?
@@ -476,24 +476,31 @@
   [:map {:closed true}
    [:name                   ::queries.schema/card.name]
    [:type                   {:optional true} [:maybe ::queries.schema/card.type]]
-   [:dataset_query          CardDatasetQuery]
+   [:dataset_query          (eid-translation/structure-schema :model/Card :dataset_query CardDatasetQuery)]
    ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
-   [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
-   [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
+   [:parameters             {:optional true} (eid-translation/structure-schema :model/Card :parameters [:maybe ::parameters.schema/parameters])]
+   [:parameter_mappings     {:optional true} (eid-translation/structure-schema :model/Card :parameter_mappings [:maybe ::parameters.schema/parameter-mappings])]
    [:description            {:optional true} [:maybe ms/NonBlankString]]
    [:display                CardDisplay]
-   [:visualization_settings CardVisualizationSettings]
-   [:collection_id          {:optional true} [:maybe [:or ms/PositiveInt ms/NanoIdString]]]
+   [:visualization_settings (eid-translation/structure-schema :model/Card :visualization_settings CardVisualizationSettings)]
+   [:collection_id          {:optional true} [:maybe ms/IdOrEntityId]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
-   [:result_metadata        {:optional true} [:maybe [:ref ::lib.schema.metadata/card.result-metadata]]]
+   [:result_metadata        {:optional true} (eid-translation/structure-schema :model/Card :result_metadata [:maybe [:ref ::lib.schema.metadata/card.result-metadata]])]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_tab_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_id           {:optional true} [:maybe ms/IdOrEntityId]]
+   [:dashboard_tab_id       {:optional true} [:maybe ms/IdOrEntityId]]
    [:size                   {:optional true} [:maybe [:map {:closed true}
                                                       [:size_x ms/PositiveInt]
                                                       [:size_y ms/PositiveInt]]]]
-   [:source_card_id         {:optional true} [:maybe ms/PositiveInt]]])
+   [:source_card_id         {:optional true} [:maybe ms/IdOrEntityId]]])
+
+(def ^:private card-body-references
+  "The model of the rows each column of a Card create or update body names, by id or entity id."
+  {:collection_id    :model/Collection
+   :dashboard_id     :model/Dashboard
+   :dashboard_tab_id :model/DashboardTab
+   :source_card_id   :model/Card})
 
 (defn- check-parameter-permissions
   [parameters query]
@@ -524,11 +531,10 @@
   Card the current user can read; the new Card is then treated as a copy of it for timeline-permission purposes."
   [_route-params
    _query-params
-   {card-type :type, collection-id :collection_id, source-card-id :source_card_id, :as card} :- CardCreateSchema]
-  (let [source-card (some->> source-card-id (api/read-check :model/Card))
-        card        (cond-> (dissoc card :source_card_id)
-                      (some? collection-id)
-                      (update :collection_id #(eid-translation/->id-or-404 :collection %)))
+   body :- CardCreateSchema]
+  (let [{card-type :type, source-card-id :source_card_id, :as card} (eid-translation/refs->ids body card-body-references)
+        source-card (some->> source-card-id (api/read-check :model/Card))
+        card        (dissoc card :source_card_id)
         query       (:dataset_query card)]
     ;; Parameter permissions run BEFORE the create stack: the parameter-specific 403 names neither
     ;; the table nor its ids, while the generic run-permissions error carries the query (and its
@@ -571,23 +577,23 @@
 (def ^:private CardUpdateSchema
   [:map {:closed true}
    [:name                   {:optional true} [:maybe ::queries.schema/card.name]]
-   [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
-   [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
-   [:dataset_query          {:optional true} [:maybe CardDatasetQuery]]
+   [:parameters             {:optional true} (eid-translation/structure-schema :model/Card :parameters [:maybe ::parameters.schema/parameters])]
+   [:parameter_mappings     {:optional true} (eid-translation/structure-schema :model/Card :parameter_mappings [:maybe ::parameters.schema/parameter-mappings])]
+   [:dataset_query          {:optional true} (eid-translation/structure-schema :model/Card :dataset_query [:maybe CardDatasetQuery])]
    [:type                   {:optional true} [:maybe ::queries.schema/card.type]]
    [:display                {:optional true} [:maybe CardDisplay]]
    [:description            {:optional true} [:maybe :string]]
-   [:visualization_settings {:optional true} [:maybe CardVisualizationSettings]]
+   [:visualization_settings {:optional true} (eid-translation/structure-schema :model/Card :visualization_settings [:maybe CardVisualizationSettings])]
    [:archived               {:optional true} [:maybe :boolean]]
    [:enable_embedding       {:optional true} [:maybe :boolean]]
    [:embedding_type         {:optional true} [:maybe :string]]
    [:embedding_params       {:optional true} [:maybe ms/EmbeddingParams]]
-   [:collection_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_id          {:optional true} [:maybe ms/IdOrEntityId]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
-   [:result_metadata        {:optional true} [:maybe [:ref ::lib.schema.metadata/card.result-metadata]]]
+   [:result_metadata        {:optional true} (eid-translation/structure-schema :model/Card :result_metadata [:maybe [:ref ::lib.schema.metadata/card.result-metadata]])]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_id           {:optional true} [:maybe ms/PositiveInt]]
-   [:dashboard_tab_id {:optional true} [:maybe ms/PositiveInt]]])
+   [:dashboard_id           {:optional true} [:maybe ms/IdOrEntityId]]
+   [:dashboard_tab_id       {:optional true} [:maybe ms/IdOrEntityId]]])
 
 (defn- maybe-populate-collection-id
   "`card-updates` may contain either or both of a `collection_id` and a `dashboard_id`.
@@ -659,13 +665,15 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
-  "Update a `Card`."
+  "Update a `Card`. `id` is a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+                    [:id ms/IdOrEntityId]]
    {delete-old-dashcards? :delete_old_dashcards} :- [:map {:closed true}
                                                      [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
    body :- CardUpdateSchema]
-  (update-card! id body (boolean delete-old-dashcards?)))
+  (update-card! (eid-translation/->id-or-404 :model/Card id)
+                (eid-translation/refs->ids body card-body-references)
+                (boolean delete-old-dashcards?)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -678,17 +686,18 @@
   "Get all of the required query metadata for a card."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)]
+                    [:id ms/IdOrEntityId]]]
+  (let [resolved-id (eid-translation/->id-or-404 :model/Card id)]
     (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
-  "Hard delete a Card. To soft delete, use `PUT /api/queries/:id`"
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (let [card (api/write-check :model/Card id)]
+  "Hard delete a Card, by a numeric id or an entity id. To soft delete, use `PUT /api/queries/:id`"
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id ms/IdOrEntityId]]]
+  (let [id   (eid-translation/->id-or-404 :model/Card id-or-entity-id)
+        card (api/write-check :model/Card id)]
     (api/check-403 (queries/can-delete? card))
     (queries.card/delete-cards! [id]))
   api/generic-204-no-content)
@@ -797,7 +806,7 @@
   and optionally re-sorts the rows via the `sort` body param."
   {:scope api-scope/data-app}
   [{:keys [card-id]} :- [:map {:closed true}
-                         [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
+                         [:card-id ms/IdOrEntityId]]
    _query-params
    {:keys [parameters ignore_cache dashboard_id stored_result_id sort]}
    :- [:map {:closed true}
@@ -808,7 +817,7 @@
        [:sort               {:optional true}
         [:maybe [:enum "value_asc" "value_desc" "label_asc" "label_desc"]]]]
    request]
-  (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)
+  (let [resolved-card-id (eid-translation/->id-or-404 :model/Card card-id)
         _                (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-card-id))
         card             (api/check-404 (queries-rest.db/card resolved-card-id))]
     (if stored_result_id

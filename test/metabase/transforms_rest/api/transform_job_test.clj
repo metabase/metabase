@@ -619,3 +619,20 @@
         (is (seq (:schedule job)) (str job-name " should carry a schedule"))
         (is (t2/exists? :model/TransformJobTransformTag :job_id (:id job) :tag_id (:id tag))
             (str job-name " should be linked to the " tag-name " tag"))))))
+
+(deftest job-body-entity-ids-test
+  (testing "a job create or update body names its tags by entity id"
+    (mt/with-model-cleanup [:model/TransformJob]
+      (mt/with-premium-features #{:advanced-permissions :transforms-basic}
+        (mt/with-temp [:model/TransformTag {tag1-id :id tag1-eid :entity_id} {:name (mt/random-name)}
+                       :model/TransformTag {tag2-id :id}                     {:name (mt/random-name)}]
+          (let [job (mt/user-http-request :crowberto :post 200 "transform-job"
+                                          {:name "Entity id job" :schedule "0 0 0 * * ?" :tag_ids [tag1-eid]})]
+            (is (= [tag1-id] (:tag_ids job)))
+            (is (= #{tag1-id tag2-id}
+                   (set (:tag_ids (mt/user-http-request :crowberto :put 200 (str "transform-job/" (:id job))
+                                                        {:tag_ids [tag1-eid tag2-id]})))))
+            (testing "a ref that names no tag is a 404"
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :put 404 (str "transform-job/" (:id job))
+                                           {:tag_ids ["aaaaaaaaaaaaaaaaaaaaa"]}))))))))))

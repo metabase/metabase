@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline :as timeline]
@@ -30,21 +31,26 @@
   [:map
    [:id pos-int?]])
 
+(def ^:private timeline-body-references
+  "The model of the rows each column of a Timeline create or update body names, by id or entity id."
+  {:collection_id :model/Collection})
+
 (api.macros/defendpoint :post "/" :- ::Timeline
   "Create a new [[Timeline]]."
   [_route-params
    _query-params
-   {collection-id :collection_id, :as body} :- [:map {:closed true}
-                                                [:name          ::timeline.schema/name]
-                                                [:default       {:optional true} [:maybe :boolean]]
-                                                [:description   {:optional true} [:maybe :string]]
-                                                [:icon          {:optional true} [:maybe ::timeline.schema/icon]]
-                                                [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-                                                [:archived      {:optional true} [:maybe :boolean]]]]
-  (api/create-check :model/Timeline {:collection_id collection-id})
-  (let [tl (cond-> (assoc body :creator_id api/*current-user-id*)
-             (nil? (:icon body)) (dissoc :icon))]
-    (first (timeline/create-timelines! [tl]))))
+   body :- [:map {:closed true}
+            [:name          ::timeline.schema/name]
+            [:default       {:optional true} [:maybe :boolean]]
+            [:description   {:optional true} [:maybe :string]]
+            [:icon          {:optional true} [:maybe ::timeline.schema/icon]]
+            [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]
+            [:archived      {:optional true} [:maybe :boolean]]]]
+  (let [body (eid-translation/refs->ids body timeline-body-references)]
+    (api/create-check :model/Timeline {:collection_id (:collection_id body)})
+    (let [tl (cond-> (assoc body :creator_id api/*current-user-id*)
+               (nil? (:icon body)) (dissoc :icon))]
+      (first (timeline/create-timelines! [tl])))))
 
 (mu/defn list-timelines :- [:sequential (ms/InstanceOf :model/Timeline)]
   "List timelines visible to the current user with no hydration."
@@ -71,17 +77,17 @@
       (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
 
 (api.macros/defendpoint :get "/:id" :- ::Timeline
-  "Fetch the `Timeline` with `id`. Include `include=events` to unarchived events included on the timeline. Add
-  `archived=true` to return all events on the timeline, both archived and unarchived."
+  "Fetch the `Timeline` with `id`, a numeric id or an entity id. Include `include=events` to unarchived events
+  included on the timeline. Add `archived=true` to return all events on the timeline, both archived and unarchived."
   [{:keys [id]}                         :- [:map {:closed true}
-                                            [:id ms/PositiveInt]]
+                                            [:id ms/IdOrEntityId]]
    {:keys [include archived start end]} :- [:map {:closed true}
                                             [:include  {:optional true}  ::include]
                                             [:archived {:default false}  ms/BooleanValue]
                                             [:start    {:optional true}  ms/TemporalString]
                                             [:end      {:optional true}  ms/TemporalString]]]
   (let [archived? archived
-        timeline (get-timeline id)]
+        timeline (get-timeline (eid-translation/->id-or-404 :model/Timeline id))]
     (cond-> (t2/hydrate timeline :creator [:collection :can_write] :is_remote_synced)
       ;; `collection_id` `nil` means we need to assoc 'root' collection
       ;; because hydrate `:collection` needs a proper `:id` to work.
@@ -99,19 +105,20 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
-  events in that timeline."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+  events in that timeline. `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id ms/IdOrEntityId]]
    _query-params
    timeline-updates :- [:map {:closed true}
                         [:name          {:optional true} [:maybe ::timeline.schema/name]]
                         [:default       {:optional true} [:maybe :boolean]]
                         [:description   {:optional true} [:maybe :string]]
                         [:icon          {:optional true} ::timeline.schema/icon]
-                        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                        [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]
                         [:archived      {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/check-404 (timeline.db/timeline id))
-        changes  (u/select-keys-when timeline-updates
+  (let [id       (eid-translation/->id-or-404 :model/Timeline id-or-entity-id)
+        existing (api/check-404 (timeline.db/timeline id))
+        changes  (u/select-keys-when (eid-translation/refs->ids timeline-updates timeline-body-references)
                                      :present #{:description :icon :collection_id :default :archived}
                                      :non-nil #{:name})]
     (api/update-check existing changes)
@@ -119,12 +126,13 @@
     (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced))))
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
-  "Delete a [[Timeline]]. Will cascade delete its events as well."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (api/write-check :model/Timeline id)
-  (timeline/delete-timelines! [id])
-  api/generic-204-no-content)
+  "Delete a [[Timeline]]. Will cascade delete its events as well. `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id ms/IdOrEntityId]]]
+  (let [id (eid-translation/->id-or-404 :model/Timeline id-or-entity-id)]
+    (api/write-check :model/Timeline id)
+    (timeline/delete-timelines! [id])
+    api/generic-204-no-content))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

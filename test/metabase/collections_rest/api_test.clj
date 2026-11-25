@@ -4396,3 +4396,29 @@
           (is (some? item))
           (is (= (mt/user->id :rasta)
                  (-> item :last-edit-info :id))))))))
+
+(deftest collection-write-entity-id-test
+  (testing "PUT and DELETE /api/collection/:id accept an entity id"
+    (mt/with-temp [:model/Collection {collection-id :id entity-id :entity_id} {:name "Entity id collection"}]
+      (testing "PUT"
+        (is (=? {:id collection-id :name "Renamed by entity id"}
+                (mt/user-http-request :crowberto :put 200 (str "collection/" entity-id)
+                                      {:name "Renamed by entity id"}))))
+      (testing "an unknown entity id is a 404"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :put 404 "collection/aaaaaaaaaaaaaaaaaaaaa" {:name "x"}))))
+      (testing "DELETE"
+        (mt/user-http-request :crowberto :put 200 (str "collection/" entity-id) {:archived true})
+        (mt/user-http-request :crowberto :delete 200 (str "collection/" entity-id))
+        (is (not (t2/exists? :model/Collection :id collection-id)))))))
+
+(deftest collection-body-entity-ids-test
+  (testing "POST and PUT /api/collection take an entity id for the parent"
+    (mt/with-model-cleanup [:model/Collection]
+      (mt/with-temp [:model/Collection {parent-id :id parent-eid :entity_id} {}
+                     :model/Collection {other-id :id other-eid :entity_id}   {}]
+        (let [{coll-id :id} (mt/user-http-request :crowberto :post 200 "collection"
+                                                  {:name "Collection by entity id" :parent_id parent-eid})]
+          (is (= (str "/" parent-id "/") (t2/select-one-fn :location :model/Collection :id coll-id)))
+          (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:parent_id other-eid})
+          (is (= (str "/" other-id "/") (t2/select-one-fn :location :model/Collection :id coll-id))))))))

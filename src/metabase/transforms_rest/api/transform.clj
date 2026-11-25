@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform-dag-run :as transforms.dag-run]
@@ -164,6 +165,12 @@
     [:database-id {:optional true} [:maybe ms/PositiveInt]]]]
   (map #(update % :last_run transforms-base.u/present-run) (transforms.core/get-transforms query-params)))
 
+(def ^:private transform-body-references
+  "The model of the rows each column of a Transform create or update body names, by id or entity id."
+  {:collection_id :model/Collection
+   :owner_user_id :model/User
+   :tag_ids       :model/TransformTag})
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -174,23 +181,25 @@
    body :- [:map {:closed true}
             [:name :string]
             [:description {:optional true} [:maybe :string]]
-            [:source ::transforms.schema/transform-source]
-            [:target ::transforms.schema/transform-target]
+            [:source (eid-translation/structure-schema :model/Transform :source ::transforms.schema/transform-source)]
+            [:target (eid-translation/structure-schema :model/Transform :target ::transforms.schema/transform-target)]
             [:run_trigger {:optional true} ::transforms.schema/run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-            [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
+            [:tag_ids {:optional true} [:sequential ms/IdOrEntityId]]
+            [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]
+            ;; a User by id or email
+            [:owner_user_id {:optional true} [:maybe [:or ms/PositiveInt ms/Email]]]
             [:owner_email {:optional true} [:maybe :string]]]]
-  (transforms.core/check-feature-enabled! (transforms.u/->definition body))
-  (api/create-check :model/Transform body)
-  (-> (transforms.core/create-transform! body)
-      transforms.u/add-source-readable))
+  (let [body (eid-translation/refs->ids body transform-body-references)]
+    (transforms.core/check-feature-enabled! (transforms.u/->definition body))
+    (api/create-check :model/Transform body)
+    (-> (transforms.core/create-transform! body)
+        transforms.u/add-source-readable)))
 
 (api.macros/defendpoint :get "/:id" :- TransformResponse
-  "Get a specific transform."
+  "Get a specific transform. `id` is a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (let [transform (transforms.core/get-transform id)]
+                    [:id ms/IdOrEntityId]]]
+  (let [transform (transforms.core/get-transform (eid-translation/->id-or-404 :model/Transform id))]
     (-> transform
         (u/update-some :last_run transforms-base.u/present-run)
         (assoc :requestable_indexes (transforms.core/requestable-indexes (transforms.u/->definition transform))))))
@@ -290,28 +299,30 @@
       transforms-base.u/present-run))
 
 (api.macros/defendpoint :put "/:id" :- TransformResponse
-  "Update a transform."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+  "Update a transform. `id` is a numeric id or an entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id ms/IdOrEntityId]]
    _query-params
    body :- [:map {:closed true}
             [:name {:optional true} :string]
             [:description {:optional true} [:maybe :string]]
-            [:source {:optional true} ::transforms.schema/transform-source]
-            [:target {:optional true} ::transforms.schema/transform-target]
+            [:source {:optional true} (eid-translation/structure-schema :model/Transform :source ::transforms.schema/transform-source)]
+            [:target {:optional true} (eid-translation/structure-schema :model/Transform :target ::transforms.schema/transform-target)]
             [:run_trigger {:optional true} ::transforms.schema/run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
-            [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-            [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
+            [:tag_ids {:optional true} [:sequential ms/IdOrEntityId]]
+            [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]
+            ;; a User by id or email
+            [:owner_user_id {:optional true} [:maybe [:or ms/PositiveInt ms/Email]]]
             [:owner_email {:optional true} [:maybe :string]]]]
-  (api/write-check :model/Transform id)
-  (transforms.core/update-transform! id body))
+  (let [id (eid-translation/->id-or-404 :model/Transform id-or-entity-id)]
+    (api/write-check :model/Transform id)
+    (transforms.core/update-transform! id (eid-translation/refs->ids body transform-body-references))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
-  "Delete a transform."
+  "Delete a transform. `id` is a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (transforms.core/delete-transform! (api/write-check :model/Transform id)))
+                    [:id ms/IdOrEntityId]]]
+  (transforms.core/delete-transform! (api/write-check :model/Transform (eid-translation/->id-or-404 :model/Transform id))))
 
 (api.macros/defendpoint :delete "/:id/table" :- :nil
   "Delete a transform's output table."

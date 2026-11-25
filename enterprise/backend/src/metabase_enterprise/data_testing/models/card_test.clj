@@ -13,6 +13,7 @@
    [metabase-enterprise.data-testing.util :as data-testing.util]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -191,6 +192,9 @@
   [_model]
   {:synced-items         data-testing.db/synced-card-test-items
    :synced-filter-clause data-testing.db/synced-card-tests-clause})
+
+(defmethod eid-translation/spec :model/CardTest [_model]
+  {:names [:card-test]})
 
 (defmethod revisions/spec :model/CardTest [_model]
   {:track         revision-columns

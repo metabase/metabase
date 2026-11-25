@@ -400,3 +400,20 @@
                (-> (mt/user-http-request :crowberto :get 200 (format "segment/%s/related" segment-id))
                    keys
                    set)))))))
+
+(deftest segment-entity-id-test
+  (testing "GET, PUT and DELETE /api/segment/:id accept an entity id"
+    (mt/with-temp [:model/Segment {segment-id :id entity-id :entity_id} {:name "Entity id segment"}]
+      (testing "GET"
+        (is (=? {:id segment-id :name "Entity id segment"}
+                (mt/user-http-request :crowberto :get 200 (str "segment/" entity-id)))))
+      (testing "PUT"
+        (is (=? {:id segment-id :name "Renamed by entity id"}
+                (mt/user-http-request :crowberto :put 200 (str "segment/" entity-id)
+                                      {:name "Renamed by entity id" :revision_message "rename"}))))
+      (testing "an unknown entity id is a 404"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 "segment/aaaaaaaaaaaaaaaaaaaaa"))))
+      (testing "DELETE"
+        (mt/user-http-request :crowberto :delete 204 (str "segment/" entity-id) :revision_message "delete")
+        (is (:archived (t2/select-one :model/Segment :id segment-id)))))))

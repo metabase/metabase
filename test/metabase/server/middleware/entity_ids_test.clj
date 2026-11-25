@@ -305,6 +305,154 @@
         (is (= (update before :card dissoc :last-edit-info)
                (fetch)))))))
 
+(defn- put-with-entity-ids
+  [user url body]
+  (mt/user-http-request user :put 200 url entity-ids body))
+
+(deftest write-back-to-restored-instance-test
+  (testing "a body read with entity ids from an instance writes the same rows of its restore, by entity id"
+    (mt/with-model-cleanup [:model/Collection :model/Card :model/Dashboard]
+      (let [price  (mt/id :venues :price)
+            coll   (t2/insert-returning-instance! :model/Collection {:name "eid write back"})
+            card   (mt/user-http-request :crowberto :post 200 "card"
+                                         {:name                   "eid write back card"
+                                          :collection_id          (:id coll)
+                                          :display                :table
+                                          :dataset_query          (venues-query)
+                                          :parameters             [{:id "p1" :slug "price" :name "Price" :type "category"
+                                                                    :target [:dimension [:field price nil]]}]
+                                          :visualization_settings {:column_settings {(str "[\"ref\",[\"field\"," price ",null]]")
+                                                                                     {:column_title "Cost"}}}})
+            series (mt/user-http-request :crowberto :post 200 "card"
+                                         {:name                   "eid write back series"
+                                          :collection_id          (:id coll)
+                                          :display                :line
+                                          :dataset_query          (venues-query)
+                                          :visualization_settings {}})
+            dash   (t2/insert-returning-instance! :model/Dashboard {:name          "eid write back dash"
+                                                                    :collection_id (:id coll)
+                                                                    :creator_id    (mt/user->id :crowberto)
+                                                                    :parameters    [{:id "p1" :slug "price" :name "Price"
+                                                                                     :type "category"}]})
+            tab    (t2/insert-returning-instance! :model/DashboardTab {:dashboard_id (:id dash) :name "Tab" :position 0})
+            dc     (t2/insert-returning-instance! :model/DashboardCard
+                                                  {:dashboard_id       (:id dash)
+                                                   :dashboard_tab_id   (:id tab)
+                                                   :card_id            (:id card)
+                                                   :row 0 :col 0 :size_x 4 :size_y 4
+                                                   :parameter_mappings [{:parameter_id "p1"
+                                                                         :card_id      (:id card)
+                                                                         :target       [:dimension [:field price nil]]}]})
+            _      (t2/insert! :model/DashboardCardSeries {:dashboardcard_id (:id dc) :card_id (:id series) :position 0})
+            fetch  (fn []
+                     (without-timestamps
+                      {:card      (dissoc (get-with-entity-ids :crowberto (str "card/" (:entity_id card))) :last-edit-info)
+                       :dashboard (dissoc (get-with-entity-ids :crowberto (str "dashboard/" (:entity_id dash))) :last-edit-info)}))
+            before (fetch)]
+        (restore! [[:model/Collection [coll]]
+                   [:model/Card (t2/select :model/Card :id [:in [(:id card) (:id series)]])]
+                   [:model/Dashboard [dash]]])
+        (is (not= (:id dc) (id-of :model/DashboardCard (:entity_id dc))))
+        (testing "a Card"
+          (put-with-entity-ids :crowberto (str "card/" (:entity_id card))
+                               (-> (:card before)
+                                   (select-keys [:name :collection_id :display :dataset_query :parameters
+                                                 :parameter_mappings :visualization_settings])
+                                   (assoc :name "eid written back card"))))
+        (testing "a Dashboard with its tabs, dashcards and their series"
+          (put-with-entity-ids :crowberto (str "dashboard/" (:entity_id dash))
+                               (-> (:dashboard before)
+                                   (select-keys [:name :collection_id :parameters :tabs :dashcards])
+                                   (assoc :name "eid written back dash"))))
+        (testing "the rows hold what the bodies said, with the restored rows' numeric ids"
+          (is (=? {:dashboard_tab_id   (id-of :model/DashboardTab (:entity_id tab))
+                   :card_id            (id-of :model/Card (:entity_id card))
+                   :parameter_mappings [{:card_id (id-of :model/Card (:entity_id card))
+                                         :target  [:dimension [:field price nil]]}]}
+                  (t2/select-one :model/DashboardCard :entity_id (:entity_id dc))))
+          (is (= [(id-of :model/Card (:entity_id series))]
+                 (t2/select-fn-vec :card_id :model/DashboardCardSeries
+                                   :dashboardcard_id (id-of :model/DashboardCard (:entity_id dc)))))
+          (is (= (-> before
+                     (assoc-in [:card :name] "eid written back card")
+                     (update-in [:dashboard :dashcards] (partial mapv #(assoc-in % [:card :name] "eid written back card")))
+                     (assoc-in [:dashboard :name] "eid written back dash"))
+                 (fetch))))))))
+
+(deftest structure-naming-a-missing-row-test
+  (testing "with the header, a structure that names a row the instance lacks is a 404"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)}]
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :put 404 (str "card/" card-id) entity-ids
+                                   {:dataset_query {:lib/type "mbql/query"
+                                                    :database "no such database"
+                                                    :stages   [{:lib/type     "mbql.stage/mbql"
+                                                                :source-table ["no such database" "PUBLIC" "VENUES"]}]}}))))))
+
+(deftest structures-without-the-header-test
+  (testing "without the header, a body with refs in place of a dashcard's ids is refused, as before"
+    (mt/with-temp [:model/Card          {card-eid :entity_id} {:dataset_query (venues-query)}
+                   :model/Dashboard     {dash-id :id}         {}]
+      (is (=? {:errors {:dashcards some?}}
+              (mt/user-http-request :crowberto :put 400 (str "dashboard/" dash-id)
+                                    {:dashcards [{:id -1 :card_id card-eid :row 0 :col 0 :size_x 4 :size_y 4}]}))))))
+
+(deftest other-structures-write-back-test
+  (testing "with the header, the structures of Segments, Measures and Documents read from an instance write the same
+            rows of its restore"
+    (mt/with-model-cleanup [:model/Collection :model/Card :model/Segment :model/Measure :model/Document]
+      (let [mp       (mt/metadata-provider)
+            price    (lib.metadata/field mp (mt/id :venues :price))
+            coll     (t2/insert-returning-instance! :model/Collection {:name "eid structures"})
+            card     (mt/user-http-request :crowberto :post 200 "card" {:name                   "eid structures card"
+                                                                        :collection_id          (:id coll)
+                                                                        :display                :table
+                                                                        :dataset_query          (venues-query)
+                                                                        :visualization_settings {}})
+            segment  (mt/user-http-request :crowberto :post 200 "segment"
+                                           {:name "eid structures segment" :definition (lib/filter (venues-query) (lib/= price 1))})
+            measure  (mt/user-http-request :crowberto :post 200 "measure"
+                                           {:name "eid structures measure" :definition (lib/aggregate (venues-query) (lib/sum price))})
+            ;; a link, as a write of the Document would embed a copy of an embedded Card that it does not own
+            document (mt/user-http-request :crowberto :post 200 "document"
+                                           {:name          "eid structures document"
+                                            :collection_id (:id coll)
+                                            :document      {:type    "doc"
+                                                            :content [{:type    "paragraph"
+                                                                       :content [{:type  "smartLink"
+                                                                                  :attrs {:entityId (:id card) :model "card"}}]}]}})
+            urls     {:segment  (str "segment/" (:entity_id segment))
+                      :measure  (str "measure/" (:entity_id measure))
+                      :document (str "document/" (:entity_id document))}
+            ;; a restore counts views anew
+            fetch    (fn []
+                       (update-vals urls #(without-timestamps
+                                           (dissoc (get-with-entity-ids :crowberto %) :last-edit-info :view_count))))
+            before   (fetch)]
+        (restore! [[:model/Collection [coll]]
+                   [:model/Card [(t2/select-one :model/Card :id (:id card))]]
+                   [:model/Segment [(t2/select-one :model/Segment :id (:id segment))]]
+                   [:model/Measure [(t2/select-one :model/Measure :id (:id measure))]]
+                   [:model/Document [(t2/select-one :model/Document :id (:id document))]]])
+        (is (not= (:id card) (id-of :model/Card (:entity_id card))))
+        (doseq [[k body] {:segment  (assoc (select-keys (:segment before) [:definition])
+                                           :name "eid written back segment" :revision_message "written back")
+                          :measure  (assoc (select-keys (:measure before) [:definition])
+                                           :name "eid written back measure" :revision_message "written back")
+                          :document (assoc (select-keys (:document before) [:document :collection_id])
+                                           :name "eid written back document")}]
+          (testing k
+            (put-with-entity-ids :crowberto (k urls) body)))
+        (testing "the Document links to the restored Card"
+          (is (= (id-of :model/Card (:entity_id card))
+                 (get-in (t2/select-one-fn :document :model/Document :entity_id (:entity_id document))
+                         [:content 0 :content 0 :attrs :entityId]))))
+        (is (= (-> before
+                   (assoc-in [:segment :name] "eid written back segment")
+                   (assoc-in [:measure :name] "eid written back measure")
+                   (assoc-in [:document :name] "eid written back document"))
+               (fetch)))))))
+
 (deftest snippet-content-test
   (testing "a snippet's content names the Card of a card tag by entity id, as its template tags do"
     (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {:dataset_query (venues-query)}]
@@ -317,6 +465,33 @@
                   (get-with-entity-ids :crowberto (str "native-query-snippet/" (:id snippet)))))
           (finally
             (t2/delete! :model/NativeQuerySnippet :id (:id snippet))))))))
+
+(deftest snippet-write-back-test
+  (testing "with the header, a snippet's content and template tags read from an instance write the same snippet of its
+            restore, its card tags naming the restored Card"
+    (mt/with-model-cleanup [:model/Card :model/NativeQuerySnippet]
+      (let [card    (mt/user-http-request :crowberto :post 200 "card" {:name                   "eid snippet card"
+                                                                       :display                :table
+                                                                       :dataset_query          (venues-query)
+                                                                       :visualization_settings {}})
+            snippet (mt/user-http-request :crowberto :post 200 "native-query-snippet"
+                                          {:name    "eid write back snippet"
+                                           :content (str "SELECT * FROM {{#" (:id card) "-venues}}")})
+            url     (str "native-query-snippet/" (:entity_id snippet))
+            fetch   #(without-timestamps (get-with-entity-ids :crowberto url))
+            before  (fetch)]
+        (restore! [[:model/Card [(t2/select-one :model/Card :id (:id card))]]
+                   [:model/NativeQuerySnippet [(t2/select-one :model/NativeQuerySnippet :id (:id snippet))]]])
+        (let [card-id (id-of :model/Card (:entity_id card))]
+          (is (not= (:id card) card-id))
+          (put-with-entity-ids :crowberto url (-> (select-keys before [:content :template_tags])
+                                                  (assoc :description "written back")))
+          (testing "the snippet names the restored Card"
+            (is (=? {:content       (str "SELECT * FROM {{#" card-id "-venues}}")
+                     :template_tags {(str "#" card-id "-venues") {:card-id card-id}}}
+                    (t2/select-one :model/NativeQuerySnippet :entity_id (:entity_id snippet)))))
+          (is (= (assoc before :description "written back")
+                 (fetch))))))))
 
 (defn- int-paths
   "The path to each int in `x`, with the int."
@@ -343,6 +518,39 @@
         (is (=? {:table_id (table-ref (mt/id :venues))}
                 (m/find-first #(= (:id price) (:dimension_id %)) (:dimension_mappings response))))
         (is (= [] (int-paths (select-keys response [:dimensions :dimension_mappings]))))))))
+
+(deftest action-write-back-test
+  (testing "with the header, an Action read from an instance writes the same Action of its restore, and creates one there"
+    (mt/with-actions-enabled
+      (mt/with-model-cleanup [:model/Card :model/Action]
+        (let [model  (mt/user-http-request :crowberto :post 200 "card" {:name                   "eid action model"
+                                                                        :type                   :model
+                                                                        :display                :table
+                                                                        :dataset_query          (venues-query)
+                                                                        :visualization_settings {}})
+              action (mt/user-http-request :crowberto :post 200 "action"
+                                           {:name                   "eid action"
+                                            :type                   "implicit"
+                                            :kind                   "row/create"
+                                            :model_id               (:id model)
+                                            :visualization_settings {:fields {"name" {:id "name" :hidden true}}}})
+              url    (str "action/" (:entity_id action))
+              fetch  #(without-timestamps (dissoc (get-with-entity-ids :crowberto url) :model))
+              before (fetch)
+              body   (select-keys before [:name :type :kind :model_id :parameters :parameter_mappings
+                                          :visualization_settings])]
+          (restore! [[:model/Card [(t2/select-one :model/Card :id (:id model))]]
+                     [:model/Action [(t2/select-one :model/Action :id (:id action))]]])
+          (let [model-id (id-of :model/Card (:entity_id model))]
+            (is (not= (:id model) model-id))
+            (put-with-entity-ids :crowberto url (assoc body :name "eid written back action"))
+            (is (= model-id (t2/select-one-fn :model_id :model/Action :entity_id (:entity_id action))))
+            (is (= (assoc before :name "eid written back action")
+                   (fetch)))
+            (testing "a create body by the model's entity id"
+              (let [created (mt/user-http-request :crowberto :post 200 "action" entity-ids
+                                                  (assoc body :name "eid created action"))]
+                (is (= model-id (t2/select-one-fn :model_id :model/Action :entity_id (:entity_id created))))))))))))
 
 (deftest query-action-test
   (testing "a query Action names its Database by name, and gives its query as serialization exports it"
@@ -377,6 +585,44 @@
           (is (=? {:table_id    (table-ref (mt/id :venues))
                    :database_id (:name (mt/db))}
                   (get-with-entity-ids :crowberto (str "action/" (:id action))))))))))
+
+(deftest query-action-write-back-test
+  (testing "with the header, a query Action read from an instance, its query naming its Database by name, writes the
+            same Action of its restore, and creates one there"
+    (mt/with-actions-enabled
+      (mt/with-model-cleanup [:model/Card :model/Action]
+        (let [model  (mt/user-http-request :crowberto :post 200 "card" {:name                   "eid query action model"
+                                                                        :type                   :model
+                                                                        :display                :table
+                                                                        :dataset_query          (venues-query)
+                                                                        :visualization_settings {}})
+              action (mt/user-http-request :crowberto :post 200 "action"
+                                           {:name          "eid query action"
+                                            :type          "query"
+                                            :model_id      (:id model)
+                                            :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                             "UPDATE venues SET name = {{name}}")
+                                            :parameters    [{:id "name" :slug "name" :type "string/="
+                                                             :target [:variable [:template-tag "name"]]}]})
+              url    (str "action/" (:entity_id action))
+              fetch  #(without-timestamps (dissoc (get-with-entity-ids :crowberto url) :model))
+              before (fetch)
+              body   (select-keys before [:name :type :model_id :dataset_query :parameters :parameter_mappings
+                                          :visualization_settings])]
+          (is (= (:name (mt/db)) (get-in before [:dataset_query :database])))
+          (restore! [[:model/Card [(t2/select-one :model/Card :id (:id model))]]
+                     [:model/Action [(t2/select-one :model/Action :id (:id action))]]])
+          (put-with-entity-ids :crowberto url (assoc body :name "eid written back query action"))
+          (is (= (mt/id) (t2/select-one-fn :database_id :model/QueryAction
+                                           :action_id (id-of :model/Action (:entity_id action)))))
+          (is (= (assoc before :name "eid written back query action")
+                 (fetch)))
+          (testing "a create body"
+            (let [created (mt/user-http-request :crowberto :post 200 "action" entity-ids
+                                                (assoc body :name "eid created query action"))]
+              (is (=? {:database_id   (:name (mt/db))
+                       :dataset_query (:dataset_query before)}
+                      created)))))))))
 
 (deftest link-card-collection-test
   (testing "a link card's entity names its Collection by entity id"
@@ -433,6 +679,21 @@
                                     {:join  [:permissions_group_membership [:= :permissions_group_membership.group_id :permissions_group.id]]
                                      :where [:= :permissions_group_membership.user_id (mt/user->id :crowberto)]}))
              (set (:group_ids response)))))))
+
+(deftest link-card-write-back-test
+  (testing "with the header, a link card's settings, naming its entity's Collection by entity id, write its id back"
+    (mt/with-temp [:model/Collection    {coll-id :id}                       {}
+                   :model/Card          {card-id :id}                       {:collection_id coll-id :dataset_query (venues-query)}
+                   :model/Dashboard     {dash-id :id}                       {}
+                   :model/DashboardCard {dashcard-id :id dashcard-eid :entity_id} {:dashboard_id           dash-id
+                                                                                   :card_id                nil
+                                                                                   :visualization_settings {:link         {:entity {:id card-id :model "card" :collection_id coll-id}}
+                                                                                                            :virtual_card {:display "link"}}}]
+      (let [before (get-with-entity-ids :crowberto (str "dashboard/" dash-id))]
+        (put-with-entity-ids :crowberto (str "dashboard/" dash-id) (select-keys before [:dashcards]))
+        (is (=? {:link {:entity {:id card-id :collection_id coll-id}}}
+                (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)))
+        (is (= dashcard-eid (t2/select-one-fn :entity_id :model/DashboardCard :id dashcard-id)))))))
 
 (deftest restored-measure-dimensions-test
   (testing "a Measure's dimensions and their mappings are the same on an instance and on its restore"

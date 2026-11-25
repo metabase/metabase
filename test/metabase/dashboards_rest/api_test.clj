@@ -7070,3 +7070,28 @@
                              (call-count))))]
           (replace! 1)
           (is (= (replace! 2) (replace! 6))))))))
+
+(deftest dashboard-write-entity-id-test
+  (testing "PUT and DELETE /api/dashboard/:id accept an entity id"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id entity-id :entity_id} {:name "Entity id dashboard"}]
+      (testing "PUT"
+        (is (=? {:id dashboard-id :name "Renamed by entity id"}
+                (mt/user-http-request :crowberto :put 200 (str "dashboard/" entity-id)
+                                      {:name "Renamed by entity id"}))))
+      (testing "an unknown entity id is a 404"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :delete 404 "dashboard/aaaaaaaaaaaaaaaaaaaaa"))))
+      (testing "DELETE"
+        (mt/user-http-request :crowberto :delete 204 (str "dashboard/" entity-id))
+        (is (not (t2/exists? :model/Dashboard :id dashboard-id)))))))
+
+(deftest dashboard-body-entity-ids-test
+  (testing "POST and PUT /api/dashboard take an entity id for the Collection"
+    (mt/with-model-cleanup [:model/Dashboard]
+      (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id}   {}
+                     :model/Collection {other-id :id other-eid :entity_id} {}]
+        (let [{dash-id :id} (mt/user-http-request :crowberto :post 200 "dashboard"
+                                                  {:name "Dashboard by entity id" :collection_id coll-eid})]
+          (is (= coll-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id)))
+          (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:collection_id other-eid})
+          (is (= other-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id))))))))

@@ -1,7 +1,8 @@
 (ns metabase.server.middleware.entity-ids
   "The `X-Metabase-Ids: entity` request header, which asks for a response that names rows by their entity ids and
-  natural keys instead of numeric ids (see [[metabase.eid-translation.core/->entity-ids]]). A client working across
-  instances, such as one and its git-sync restore, compares such responses as they are."
+  natural keys instead of numeric ids (see [[metabase.eid-translation.core/->entity-ids]]), and lets the request body
+  name them so too. A client working across instances, such as one and its git-sync restore, compares such responses
+  as they are, and writes one back to the other."
   (:require
    [metabase.api.common :as api]
    [metabase.eid-translation.core :as eid-translation]
@@ -34,15 +35,18 @@
   [handler]
   (fn [request respond raise]
     (if (entity-ids-requested? request)
-      (handler request
-               (fn [response]
-                 ;; rewrite first, so a failure of `respond` itself is not raised a second time
-                 (let [{:keys [rewritten error]} (try
-                                                   {:rewritten (rewrite-response response)}
-                                                   (catch Throwable e
-                                                     {:error e}))]
-                   (if error
-                     (raise error)
-                     (respond rewritten))))
-               raise)
+      ;; the request is in entity id form too: its body may name rows by refs (see
+      ;; [[eid-translation/do-with-entity-ids]]), which the handler decodes while this call runs
+      (eid-translation/do-with-entity-ids
+       #(handler request
+                 (fn [response]
+                   ;; rewrite first, so a failure of `respond` itself is not raised a second time
+                   (let [{:keys [rewritten error]} (try
+                                                     {:rewritten (rewrite-response response)}
+                                                     (catch Throwable e
+                                                       {:error e}))]
+                     (if error
+                       (raise error)
+                       (respond rewritten))))
+                 raise))
       (handler request respond raise))))

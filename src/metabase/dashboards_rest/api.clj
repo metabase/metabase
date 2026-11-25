@@ -126,6 +126,10 @@
         true (apply t2/hydrate dashboard)
         true remove-unreadable-actions))))
 
+(def ^:private dashboard-body-references
+  "The model of the rows each column of a Dashboard create or update body names, by id or entity id."
+  {:collection_id :model/Collection})
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -137,12 +141,13 @@
    dashboard
    :- [:map {:closed true}
        [:name                :metabase.dashboards.schema/dashboard.name]
-       [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
+       [:parameters          {:optional true} (eid-translation/structure-schema
+                                               :model/Dashboard :parameters [:maybe ::parameters.schema/parameters])]
        [:description         {:optional true} [:maybe :string]]
        [:cache_ttl           {:optional true} [:maybe ms/PositiveInt]]
-       [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+       [:collection_id       {:optional true} [:maybe ms/IdOrEntityId]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
-  (-> (dashboards.write/create-dashboard! dashboard)
+  (-> (dashboards.write/create-dashboard! (eid-translation/refs->ids dashboard dashboard-body-references))
       hydrate-dashboard-details
       collection.root/hydrate-root-collection
       (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*))))
@@ -429,12 +434,12 @@
 (api.macros/defendpoint :get "/:id"
   "Get Dashboard with ID."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                    [:id ms/IdOrEntityId]]
    {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
                                               [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]
    _body]
   (with-dashboard-load-id dashboard-load-id
-    (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
+    (let [resolved-id (eid-translation/->id-or-404 :model/Dashboard id)
           dashboard (get-dashboard resolved-id)]
       (u/prog1 (first (revisions/with-last-edit-info [dashboard] :dashboard))
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
@@ -495,24 +500,58 @@
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Hard delete a Dashboard. To soft delete, use `PUT /api/dashboard/:id`
 
-  This will remove also any questions/models/segments/metrics that use this database."
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (api/write-check :model/Dashboard id)
-  (dashboard/delete-dashboards! [id])
-  api/generic-204-no-content)
+  This will remove also any questions/models/segments/metrics that use this database. `id` is a numeric id or an
+  entity id."
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id ms/IdOrEntityId]]]
+  (let [id (eid-translation/->id-or-404 :model/Dashboard id-or-entity-id)]
+    (api/write-check :model/Dashboard id)
+    (dashboard/delete-dashboards! [id])
+    api/generic-204-no-content))
+
+(defn- with-refs
+  "`schema`, a map schema, with each of `columns`, a map from a column to the model of the rows it names, also taking
+  refs in a request in entity id form (see [[eid-translation/ref-schema]])."
+  [schema columns]
+  (reduce-kv (fn [schema column model]
+               (mut/update schema column #(eid-translation/ref-schema model %)))
+             schema
+             columns))
+
+(defn- with-structures
+  "`schema`, the map schema of a `model` row, with each of its structure `columns` also taking the form serialization
+  exports it in, in a request in entity id form (see [[eid-translation/structure-schema]])."
+  [schema model columns]
+  (reduce (fn [schema column]
+            (mut/update schema column #(eid-translation/structure-schema model column %)))
+          schema
+          columns))
 
 (def ^:private UpdatedDashboardCard
-  "Schema for one dashcard in a dashboard update request: [[dashboards.write/UpdatedDashboardCard]], closed."
-  (mut/closed-schema dashboards.write/UpdatedDashboardCard))
+  "Schema for one dashcard in a dashboard update request: [[dashboards.write/UpdatedDashboardCard]], closed. In entity
+  id form, the dashcard and the rows it names may be refs, and its structures may be as serialization exports them."
+  (-> (mut/closed-schema dashboards.write/UpdatedDashboardCard)
+      (with-refs {:id               :model/DashboardCard
+                  :card_id          :model/Card
+                  :action_id        :model/Action
+                  :dashboard_tab_id :model/DashboardTab})
+      (with-structures :model/DashboardCard [:parameter_mappings :visualization_settings])
+      (mut/update :series (constantly [:maybe [:sequential [:map {:closed true}
+                                                            [:id (eid-translation/ref-schema :model/Card ms/PositiveInt)]]]]))))
 
 (def ^:private UpdatedDashboardTab
-  "Schema for one tab in a dashboard update request: [[dashboards.write/UpdatedDashboardTab]], closed."
-  (mut/closed-schema dashboards.write/UpdatedDashboardTab))
+  "Schema for one tab in a dashboard update request: [[dashboards.write/UpdatedDashboardTab]], closed. In entity id
+  form, the tab may be a ref."
+  (-> (mut/closed-schema dashboards.write/UpdatedDashboardTab)
+      (with-refs {:id :model/DashboardTab})))
 
 (def ^:private DashUpdates
-  "Schema for Dashboard Updates: [[dashboards.write/DashUpdates]], closed."
-  (mut/closed-schema dashboards.write/DashUpdates))
+  "Schema for Dashboard Updates: [[dashboards.write/DashUpdates]], closed, with the dashcards and tabs above."
+  (-> (mut/closed-schema dashboards.write/DashUpdates)
+      (mut/update :collection_id (constantly [:maybe ms/IdOrEntityId]))
+      (with-structures :model/Dashboard [:parameters])
+      (mut/update :dashcards (constantly [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]))
+      (mut/update :tabs (constantly [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]))))
 
 (defn- update-dashboard!
   "Updates a Dashboard and returns it hydrated. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
@@ -529,12 +568,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
-  structure as the response from `GET /api/dashboard/:id`."
+  structure as the response from `GET /api/dashboard/:id`. `id` is a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+                    [:id ms/IdOrEntityId]]
    _query-params
    dash-updates :- DashUpdates]
-  (update-dashboard! id dash-updates))
+  (update-dashboard! (eid-translation/->id-or-404 :model/Dashboard id)
+                     (eid-translation/refs->ids dash-updates dashboard-body-references)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -578,12 +618,12 @@
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get all of the required query metadata for the cards on dashboard."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+                    [:id ms/IdOrEntityId]]
    {dashboard-load-id :dashboard_load_id} :- [:map {:closed true}
                                               [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]]
    _body]
   (with-dashboard-load-id dashboard-load-id
-    (let [resolved-id (eid-translation/->id-or-404 :dashboard id)
+    (let [resolved-id (eid-translation/->id-or-404 :model/Dashboard id)
           dashboard (get-dashboard resolved-id)]
       (queries/batch-fetch-dashboard-metadata [dashboard]))))
 
