@@ -10,8 +10,9 @@ const { H } = cy;
 type Resource = "dashboard" | "question";
 
 // The menu, popover, modal and embed flow UI, and the Snowplow events they
-// send, are covered by Jest tests. These tests check the real backend: the
-// writes, what it stores and what it sends back.
+// send, are covered by Jest tests. These tests check the real backend (the
+// writes, what it stores and what it sends back) and the real browser (the
+// embed preview iframe and CSS hit testing).
 
 describe("scenarios > sharing > public link", () => {
   beforeEach(() => {
@@ -112,24 +113,37 @@ describe("scenarios > sharing > public link", () => {
       cy.log("the backend stores the published embed");
       cy.get<CardId | DashboardId>("@resourceId").then((id) => {
         visitResource(resource, id);
-        H.openLegacyStaticEmbeddingModal({
-          resource,
-          resourceId: id,
-          activeTab: "parameters",
-          unpublishBeforeOpen: false,
-        });
+      });
+      // Reopen through the app only, so that nothing writes the embed again
+      H.openSharingMenu("Embed");
+      H.embedModalContent().within(() => {
+        H.legacyStaticEmbeddingButton().click();
       });
 
       H.modal().within(() => {
         cy.findByText(
           `This ${resource} is published and ready to be embedded.`,
         ).should("be.visible");
+        cy.findByRole("tab", { name: "Parameters" }).click();
         cy.findByLabelText("Price").should("have.value", "Editable");
       });
 
       H.unpublishChanges(apiPath, ({ request, response }: Interception) => {
         expect(request.body.embedding_type).to.equal(null);
         expect(response?.body.embedding_type).to.equal(null);
+      });
+
+      cy.log("the backend stores the unpublished embed");
+      cy.get<CardId | DashboardId>("@resourceId").then((id) => {
+        cy.request("GET", `/api/${apiPath}/${id}`).then(({ body }) => {
+          expect(body.enable_embedding).to.equal(false);
+          expect(body.embedding_type).to.equal(null);
+          expect(body.embedding_params).to.deep.equal({
+            created_at: "disabled",
+            price: "enabled",
+            category: "disabled",
+          });
+        });
       });
     });
   });
@@ -150,9 +164,19 @@ describe("scenarios > sharing > embed flow pre-selection", () => {
   });
 
   it("pre-selects dashboard in embed flow when opened from dashboard sharing modal", () => {
+    // Terms not accepted yet, so the option cards start out dimmed and not
+    // interactive (EMB-1884). Jest cannot check `pointer-events`.
+    H.updateSetting("show-modular-embed-terms", true);
+    H.updateSetting("enable-embedding-modular", false);
+
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.openSharingMenu("Embed");
+
+    getEmbedSidebar().findByLabelText("Guest").click();
+    optionCardsWrapper().should("have.css", "pointer-events", "none");
+
     H.embedModalEnableEmbedding();
+    optionCardsWrapper().should("have.css", "pointer-events", "all");
 
     H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
 
@@ -176,6 +200,12 @@ describe("scenarios > sharing > embed flow pre-selection", () => {
     });
   });
 });
+
+// The Behavior/Parameters/Appearance cards share a wrapper that is dimmed and
+// made non-interactive while the selected auth type isn't ready. The wrapper
+// always carries an inline `opacity` style, so it can be selected in either state.
+const optionCardsWrapper = () =>
+  getEmbedSidebar().findByText("Behavior").closest("[style*='opacity']");
 
 function assertValidPublicLink() {
   const publicLinkPattern =
