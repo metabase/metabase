@@ -425,6 +425,7 @@ jobs:
           fetch-depth: ${{ needs.gate.outputs.diff-base != '' && '0' || '2' }}
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+      # Run the launcher tests only when formatting inputs or CI tooling change, not on source-only PRs.
       - name: Test cljfmt CI launcher
         if: >-
           ${{ github.event_name == 'pull_request' && needs.gate.outputs.verdict == 'defer'
