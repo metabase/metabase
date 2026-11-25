@@ -225,7 +225,8 @@
 
 (methodical/defmethod events/publish-event! ::settings-changed-event
   [_topic event]
-  (when (and (= :site-locale (-> event :details :key)) (= :postgres (mdb/db-type)))
+  ;; The index metadata is keyed by locale, so MySQL needs the new locale's index too, though its words don't change.
+  (when (and (= :site-locale (-> event :details :key)) (contains? #{:mysql :postgres} (mdb/db-type)))
     (let [reindex! (fn []
                      (log/info "Reindexing appdb index because the site locale changed.")
                      (search.engine/reindex! :search.engine/appdb {}))]
