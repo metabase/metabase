@@ -81,11 +81,14 @@
 ;; an empty table and its indexes takes seconds, so one this old is abandoned.
 (def ^:private abandoned-after-minutes 5)
 
-(defmethod specialization/table-abandoned? :mysql [table-name]
+(defmethod specialization/table-complete? :mysql [table-name]
   (let [table-name (name table-name)
         existing   (into #{} (map u/lower-case-en) (search.db/mysql-index-names table-name))]
-    (and (not-every? #(contains? existing (u/lower-case-en (index-name table-name (first %)))) index-statements)
-         (search.db/mysql-table-older-than? table-name abandoned-after-minutes))))
+    (every? #(contains? existing (u/lower-case-en (index-name table-name (first %)))) index-statements)))
+
+(defmethod specialization/table-abandoned? :mysql [table-name]
+  (and (not (specialization/table-complete? table-name))
+       (search.db/mysql-table-older-than? (name table-name) abandoned-after-minutes)))
 
 (def ^:private max-allowed-packet
   (mdb/memoize-for-application-db #(search.db/mysql-max-allowed-packet)))

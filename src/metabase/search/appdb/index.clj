@@ -283,7 +283,13 @@
          (track-tables! {:pending nil, :active pending})
          true))
       ;; Ensure the metadata is updated and pruned.
-      (let [{:keys [pending]} (sync-tracking-atoms!)]
+      (let [{:keys [pending]} (sync-tracking-atoms!)
+            ;; A rebuild outside the cluster lock can populate a young pending table whose creator then died, so
+            ;; check its indexes here too. It stays pending until it counts as abandoned, and is then created again.
+            pending           (if (and pending (not (specialization/table-complete? pending)))
+                                (do (log/warnf "Not activating pending index %s: it is missing indexes" pending)
+                                    nil)
+                                pending)]
         (log/infof "Activating pending index %s" pending)
         (when pending
           (analyze-table! pending)

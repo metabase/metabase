@@ -961,3 +961,20 @@
                                 (discard! recreated))))
                           (finally
                             (discard! interrupted))))))))))
+
+(deftest ^:synchronized incomplete-pending-index-is-not-activated-test
+  (when (= :mysql (mdb/db-type))
+    (testing "A pending index without some of its indexes is not activated"
+      (mc/binding (search.index/indexes-handle) {:active nil, :pending nil}
+                  (fn []
+                    (let [pending (search.index/maybe-create-pending!)]
+                      (try
+                        (t2/query [(format "DROP INDEX %1$s_text_idx ON %1$s" (name pending))])
+                        (search.engine/reset-tracking! :search.engine/appdb)
+                        (is (= {:activated? false, :pending pending}
+                               {:activated? (search.index/activate-table!)
+                                :pending    (#'search.index/pending-table)}))
+                        (finally
+                          (search.db/drop-search-index-table-if-exists! pending)
+                          (t2/with-connection [conn (mdb/app-db)]
+                            (search-index-metadata/delete-search-index-metadata-for-index! conn (name pending)))))))))))
