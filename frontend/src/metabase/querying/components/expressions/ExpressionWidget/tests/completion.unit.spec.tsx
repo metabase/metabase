@@ -939,3 +939,72 @@ describe("ExpressionWidget > custom aggregations", () => {
     );
   });
 });
+
+describe("ExpressionWidget > offset", () => {
+  const DATABASE_WITH_OFFSET = createSampleDatabase({
+    features: [...COMMON_DATABASE_FEATURES, "window-functions/offset"],
+  });
+
+  it("should not suggest or accept offset() in a custom filter", async () => {
+    await setup({
+      query: createOrdersQuery(),
+      expressionMode: "filter",
+      withName: false,
+      database: DATABASE_WITH_OFFSET,
+    });
+
+    await typeText("Off");
+    expect(getCompletionLabels()).not.toContain("Offset");
+
+    await replaceSource("Offset([Total], -1) > 0");
+    await blurEditor();
+    expect(
+      await screen.findByText("OFFSET is not supported in custom filters"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+  });
+
+  it("should not suggest or accept offset() in a custom column", async () => {
+    await setup({
+      query: createOrdersQuery(),
+      expressionMode: "expression",
+      database: DATABASE_WITH_OFFSET,
+    });
+
+    await typeText("Off");
+    expect(getCompletionLabels()).not.toContain("Offset");
+
+    await replaceSource("Offset([Total], -1)");
+    await blurEditor();
+    await typeName("My expression");
+    expect(
+      await screen.findByText("OFFSET is not supported in custom columns"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+  });
+
+  it("should suggest and accept offset() in a custom aggregation once it has a name", async () => {
+    const { onChangeClause } = await setup({
+      query: createOrdersQuery(),
+      expressionMode: "aggregation",
+      database: DATABASE_WITH_OFFSET,
+    });
+
+    await typeText("Off");
+    expect(await waitForCompletions()).toContain("Offset");
+
+    await replaceSource("Offset(Sum([Total]), -1)");
+    await blurEditor();
+    await waitForValidationDebounce();
+    const doneButton = screen.getByRole("button", { name: "Done" });
+    expect(doneButton).toBeDisabled();
+
+    await typeName("My expression");
+    await waitFor(() => expect(doneButton).toBeEnabled());
+    await userEvent.click(doneButton);
+    expect(onChangeClause).toHaveBeenCalledWith(
+      "My expression",
+      expect.anything(),
+    );
+  });
+});

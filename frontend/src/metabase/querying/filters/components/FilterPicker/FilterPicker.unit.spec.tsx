@@ -494,6 +494,23 @@ describe("FilterPicker", () => {
       );
     });
 
+    it("should go back to the column list when cancelling the custom expression editor", async () => {
+      const { onSelect } = setup();
+
+      await userEvent.click(screen.getByText(/Custom expression/i));
+      expect(
+        await screen.findByTestId("custom-expression-query-editor"),
+      ).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(
+        screen.queryByTestId("custom-expression-query-editor"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText(/Custom expression/i)).toBeInTheDocument();
+      expect(screen.getByText("Total")).toBeInTheDocument();
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
     it("should reach the custom expression editor after going back from a column (metabase#29094)", async () => {
       setup();
 

@@ -1,6 +1,8 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock, { type CallLog } from "fetch-mock";
 
 import {
+  setupCardDataset,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
@@ -18,6 +20,7 @@ import {
 } from "__support__/ui";
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
 import { checkNotNull } from "metabase/utils/types";
+import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -26,15 +29,21 @@ import {
   createMockCard,
   createMockCollection,
   createMockCollectionItem,
+  createMockColumn,
+  createMockDatasetData,
   createMockRecentCollectionItem,
   createMockRecentTableItem,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
   ORDERS_ID,
+  createOrdersCreatedAtDatasetColumn,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { Notebook, type NotebookProps } from "./Notebook";
+
+registerVisualizations();
 
 type SetupOpts = Pick<NotebookProps, "question"> &
   Partial<
@@ -250,6 +259,80 @@ describe("Notebook", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should preview the summarize step of a query with an offset aggregation", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            {
+              name: "Offsetted sum of total",
+              value: {
+                type: "operator",
+                operator: "offset",
+                args: [
+                  {
+                    type: "operator",
+                    operator: "sum",
+                    args: [{ type: "column", name: "TOTAL" }],
+                  },
+                  { type: "literal", value: -1 },
+                ],
+              },
+            },
+          ],
+          breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+        },
+      ],
+    });
+    setup({
+      question: new Question(createMockCard(), SAMPLE_METADATA).setQuery(query),
+    });
+    setupCardDataset();
+    // Rows come back only for the offset aggregation of Sum of Total by month
+    fetchMock.modifyRoute("dataset-post", {
+      response: (call: CallLog) => {
+        const isOffsetOfSumOfTotal = isOffsetOfSumOfTotalQuery(
+          JSON.parse(String(call.options.body)),
+        );
+        return {
+          data: isOffsetOfSumOfTotal
+            ? createMockDatasetData({
+                cols: [
+                  createOrdersCreatedAtDatasetColumn({
+                    display_name: "Created At: Month",
+                    source: "breakout",
+                    unit: "month",
+                  }),
+                  createMockColumn({
+                    name: "Offsetted sum of total",
+                    display_name: "Offsetted sum of total",
+                    base_type: "type/Float",
+                    effective_type: "type/Float",
+                    source: "aggregation",
+                  }),
+                ],
+                rows: [
+                  ["2025-04-01T00:00:00Z", null],
+                  ["2025-05-01T00:00:00Z", 52.76],
+                ],
+              })
+            : createMockDatasetData({ cols: [], rows: [] }),
+        };
+      },
+    });
+
+    const step = screen.getByTestId("step-summarize-0-0");
+    expect(
+      within(step).getByText("Offsetted sum of total"),
+    ).toBeInTheDocument();
+    await userEvent.click(within(step).getByTestId("step-preview-button"));
+
+    expect(await screen.findByText("52.76")).toBeInTheDocument();
+    expect(screen.getByText("May 2025")).toBeInTheDocument();
+    expect(screen.getByText("April 2025")).toBeInTheDocument();
+  });
+
   describe("custom column action of the data step on a summarized stage (metabase#43226)", () => {
     async function openCustomColumnFromDataStep() {
       await userEvent.click(
@@ -380,3 +463,31 @@ const assertDataInPickerColumn = async ({
     });
   }
 };
+
+function toArray(value: unknown): unknown[] | null {
+  return Array.isArray(value) ? value : null;
+}
+
+/** `["offset", opts, ["sum", opts, ["field", opts, ORDERS.TOTAL]], -1]` */
+function isOffsetOfSumOfTotalQuery(body: unknown) {
+  if (typeof body !== "object" || body == null || !("stages" in body)) {
+    return false;
+  }
+  const [stage] = toArray(body.stages) ?? [];
+  const aggregations =
+    typeof stage === "object" && stage != null && "aggregation" in stage
+      ? toArray(stage.aggregation)
+      : null;
+  const [offset] = aggregations ?? [];
+  const [offsetOperator, , sum, offsetValue] = toArray(offset) ?? [];
+  const [sumOperator, , column] = toArray(sum) ?? [];
+  const [columnType, , fieldId] = toArray(column) ?? [];
+  return (
+    aggregations?.length === 1 &&
+    offsetOperator === "offset" &&
+    offsetValue === -1 &&
+    sumOperator === "sum" &&
+    columnType === "field" &&
+    fieldId === ORDERS.TOTAL
+  );
+}
