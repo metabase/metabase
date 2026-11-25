@@ -76,6 +76,10 @@ export function EditTableDataGridBodyCell({
   const { wrap, isTruncated = false, onExpand } = column.columnDef.meta ?? {};
   const isReadonly = Boolean(parameter?.readonly);
   const cellState = getCellState(column.id, row.index);
+  const editableCellClassName = cx(S.cell, {
+    [S.updatingCell]: cellState === EditDataGridCellState.Updating,
+    [S.errorCell]: cellState === EditDataGridCellState.Error,
+  });
 
   return (
     <BodyCell
@@ -88,13 +92,7 @@ export function EditTableDataGridBodyCell({
       backgroundColor={getDefaultCellBackgroundColor(theme, isStriped)}
       onExpand={onExpand}
       wrap={wrap}
-      className={cx({
-        [S.readonlyCell]: isReadonly,
-        [S.cell]: !isReadonly,
-        [S.updatingCell]:
-          !isReadonly && cellState === EditDataGridCellState.Updating,
-        [S.errorCell]: !isReadonly && cellState === EditDataGridCellState.Error,
-      })}
+      className={isReadonly ? S.readonlyCell : editableCellClassName}
     />
   );
 }

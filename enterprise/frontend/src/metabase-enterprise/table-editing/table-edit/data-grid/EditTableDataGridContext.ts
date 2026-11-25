@@ -17,6 +17,7 @@ export type EditTableDataGridContextValue = {
     rowIndex: number,
   ) => EditDataGridCellState | undefined;
   onColumnSort?: (column: DatasetColumn) => void;
+  onRowExpandClick: (rowIndex: number) => void;
   onCancelEditing: () => void;
   onValueUpdated: (value: string | null) => void;
 };

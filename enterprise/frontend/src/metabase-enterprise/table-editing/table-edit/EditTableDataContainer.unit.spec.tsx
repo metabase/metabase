@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock, { type CallLog } from "fetch-mock";
 
-import { setupDatabaseEndpoints } from "__support__/server-mocks";
+import {
+  setupAdhocQueryEndpoint,
+  setupDatabaseEndpoints,
+} from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -268,7 +271,7 @@ function setup({
 
   setupDatabaseEndpoints(database);
   fetchMock.get("path:/api/database", { data: [database], total: 1 });
-  fetchMock.post("path:/api/dataset", dataset, { name: "dataset" });
+  setupAdhocQueryEndpoint(dataset, { name: "dataset" });
   fetchMock.post("path:/api/ee/action-v2/execute-form", UPDATE_FORM, {
     body: { action: TableActionId.UpdateRow },
     matchPartialBody: true,

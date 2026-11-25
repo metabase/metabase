@@ -13,11 +13,11 @@ import {
   EditTableDataGridContextProvider,
   type EditTableDataGridContextValue,
 } from "./EditTableDataGridContext";
-import { useEditDataGridColumnOptions } from "./use-edit-datagrid-column-options";
 import {
   ROW_SELECT_COLUMN_ID,
-  useTableColumnRowSelect,
-} from "./use-table-column-row-select";
+  ROW_SELECT_COLUMN_OPTIONS,
+} from "./EditTableDataGridRowSelectColumn";
+import { useEditDataGridColumnOptions } from "./use-edit-datagrid-column-options";
 import { useTableEditingCell } from "./use-table-editing-cell";
 
 type EditTableDataGridProps = {
@@ -56,6 +56,22 @@ export const EditTableDataGrid = ({
 
   const columnsOptions = useEditDataGridColumnOptions(cols);
 
+  const columnsByName = useMemo(
+    () => new Map(cols.map((column) => [column.name, column])),
+    [cols],
+  );
+
+  const parametersByName = useMemo(
+    () =>
+      new Map(
+        updateFormDescription?.parameters.map((parameter) => [
+          parameter.id,
+          parameter,
+        ]),
+      ),
+    [updateFormDescription],
+  );
+
   const sortDirectionsByName = useMemo(
     () =>
       new Map(
@@ -66,27 +82,24 @@ export const EditTableDataGrid = ({
 
   const contextValue = useMemo<EditTableDataGridContextValue>(
     () => ({
-      columnsByName: new Map(cols.map((column) => [column.name, column])),
-      parametersByName: new Map(
-        updateFormDescription?.parameters.map((parameter) => [
-          parameter.id,
-          parameter,
-        ]),
-      ),
+      columnsByName,
+      parametersByName,
       sortDirectionsByName,
       editingCell,
       getCellState,
       onColumnSort,
+      onRowExpandClick,
       onCancelEditing: handleCancelEditing,
       onValueUpdated: handleUpdateEditingCell,
     }),
     [
-      cols,
-      updateFormDescription,
+      columnsByName,
+      parametersByName,
       sortDirectionsByName,
       editingCell,
       getCellState,
       onColumnSort,
+      onRowExpandClick,
       handleCancelEditing,
       handleUpdateEditingCell,
     ],
@@ -102,10 +115,6 @@ export const EditTableDataGrid = ({
     [contextValue],
   );
 
-  const columnRowSelectOptions = useTableColumnRowSelect({
-    onRowEditClick: onRowExpandClick,
-  });
-
   const handleBodyCellClick = useCallback(
     (
       _event: React.MouseEvent<HTMLDivElement>,
@@ -119,16 +128,13 @@ export const EditTableDataGrid = ({
         return;
       }
 
-      const parameter = updateFormDescription?.parameters.find(
-        ({ id }) => id === columnId,
-      );
-      if (parameter?.readonly) {
+      if (parametersByName.get(columnId)?.readonly) {
         return;
       }
 
       handleSelectEditingCell(rowIndex, columnId);
     },
-    [handleSelectEditingCell, editingCell, updateFormDescription],
+    [handleSelectEditingCell, editingCell, parametersByName],
   );
 
   const columnSizingMap = useMemo(() => {
@@ -150,7 +156,7 @@ export const EditTableDataGrid = ({
     enableRowSelection: true,
     rowSelection,
     onRowSelectionChange,
-    columnRowSelectOptions,
+    columnRowSelectOptions: ROW_SELECT_COLUMN_OPTIONS,
     measurementRenderWrapper,
   });
 
