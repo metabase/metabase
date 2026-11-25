@@ -5,6 +5,16 @@ const { H } = cy;
 const SOURCE_TABLE = "Animals";
 const TARGET_SCHEMA = "Schema A";
 
+const INDEX_TABLE_COLUMNS = [
+  "Name",
+  "Type",
+  "Columns",
+  "Source",
+  "Status",
+  "Last modified by",
+  "Last run",
+];
+
 describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
@@ -77,6 +87,15 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
       .and("contain", "Bobby Tables")
       .and("contain", "Never");
 
+    cy.log("all column headers are visible");
+    indexesTable().within(() => {
+      INDEX_TABLE_COLUMNS.forEach((header) => {
+        cy.findByRole("columnheader", { name: matchHeaderName(header) }).should(
+          "be.visible",
+        );
+      });
+    });
+
     cy.log("run the transform from the run tab");
     H.DataStudio.Transforms.runTab().click();
     cy.intercept("POST", "/api/transform/*/run").as("runTransform");
@@ -123,4 +142,8 @@ describe("data-studio > transforms > indexes", { tags: ["@external"] }, () => {
 
 function indexesTable() {
   return cy.findByRole("treegrid", { name: "Transform indexes" });
+}
+
+function matchHeaderName(label: string) {
+  return new RegExp(`^${label}`);
 }
