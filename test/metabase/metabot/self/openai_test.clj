@@ -360,7 +360,13 @@
              :output  "Table 7 was not found."}]
            (openai/parts->openai-input
             [{:type   :tool-output :id "call-1"
-              :result {:output "Table 7 was not found." :error {:class :recoverable :code :x}}}])))))
+              :result {:output "Table 7 was not found." :error {:class :recoverable :code :x}}}]))))
+  (testing "a failed call without :output sends the fallback text"
+    (is (= [{:type    "function_call_output"
+             :call_id "call-1"
+             :output  "Tool execution failed"}]
+           (openai/parts->openai-input
+            [{:type :tool-output :id "call-1" :result {:error {:class :recoverable :code :x}}}])))))
 
 (deftest ^:parallel parts->openai-input-tool-result-without-output-test
   (testing "a result without :output sends empty text and none of its other keys"

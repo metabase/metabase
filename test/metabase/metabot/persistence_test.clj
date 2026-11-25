@@ -1619,7 +1619,52 @@
                                 {:type   :tool-output :id "c1"
                                  :result {:output (str "This call failed with an unexpected error. Don't retry the "
                                                        "same call. Try another approach, or tell the user it failed.")
-                                          :error  {:class :unrecoverable :code :internal}}}]))))))))
+                                          :error  {:class :unrecoverable :code :internal}}}]))))
+        (testing (str "a failed call with no output replays the fallback text that the adapters send, "
+                      "not an empty string")
+          (is (= "Tool execution failed"
+                 (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                {:type :tool-output :id "c1" :result {:error {:class :recoverable :code :x}}}]))))
+        (testing (str "known gap: a keyword result changes in the JSON round trip, so the adapters send `\":ok\"` "
+                      "but history replays `\"ok\"`")
+          (is (= ":ok" (self.core/tool-result-text :ok)))
+          (is (= "ok"
+                 (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                {:type :tool-output :id "c1" :result :ok}]))))
+        (testing (str "each result shape that this test lists replays as the text that the adapters send for it, "
+                      "so the next turn's prefix holds for these shapes")
+          (doseq [result ["just a string"
+                          42
+                          nil
+                          {:output "rows"}
+                          {:rows [1 2]}
+                          {:output "Table 7 was not found." :error {:class :recoverable :code :x}}
+                          {:error {:class :recoverable :code :x}}
+                          {:output "" :error {:class :unrecoverable :code :x}}]]
+            (testing (pr-str result)
+              (is (= (self.core/tool-result-text result)
+                     (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                    {:type :tool-output :id "c1" :result result}]))))))))))
+
+(deftest ^:parallel history-replays-blank-error-text-as-fallback-test
+  (testing (str "a stored failure with a blank `errorText` replays the fallback text that the adapters "
+                "send, so history and the request hold one text")
+    (doseq [error-text ["" "  "]]
+      (testing (pr-str error-text)
+        (let [rows [{:id 1 :role :user :data [{:type "text" :text "look it up"}]}
+                    {:id       2
+                     :role     :assistant
+                     :finished true
+                     :data     [{:type       "tool-search"
+                                 :toolCallId "c1"
+                                 :state      "output-error"
+                                 :input      {:q "x"}
+                                 :errorText  error-text}]}]]
+          (is (= [{:role         :tool
+                   :tool_call_id "c1"
+                   :content      self.core/failed-tool-result-text
+                   :is_error     true}]
+                 (filter #(= :tool (:role %)) (metabot-persistence/history rows)))))))))
 
 (deftest history-hides-query-results-while-query-execution-is-off-test
   (testing "a stored run_query result is replayed only while query execution is on, and nothing stored changes"

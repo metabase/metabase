@@ -639,23 +639,31 @@
                           group))))
         parts))
 
+(def failed-tool-result-text
+  "The text of a failed tool call whose result text is missing, empty or only whitespace."
+  "Tool execution failed")
+
 (defn tool-result-text
   "The text that a provider adapter sends to the model for the `:result` of a `:tool-output` part.
 
-  The text is the result's `:output`. The other keys of the result, such as `:structured-output` and `:data-parts`,
-  do not go to the model.
+  History replays the same text (see [[metabase.metabot.persistence/history]]), so the next turn's request starts
+  with the bytes that this turn sent. [[metabase.metabot.persistence/tool-part->llm-messages]] names the cases that
+  replay other text.
 
-  `ToolResult` requires `:output`, but production does not check it: `mu/defn` validates its schemas only in dev and
-  test. So in production a map result without `:output` can get here, and it is sent as empty text. That is also what
-  [[metabase.metabot.persistence/history]] replays for it, so the next turn's request still starts with the bytes
-  that this turn sent."
+  The text is the `str` of the `:output` of a map result, and the `str` of any other result. So a successful map
+  without `:output` gets `\"\"`. The other keys of a map, such as `:structured-output` and `:data-parts`, do not go
+  to the model. `ToolResult` requires a map with a string `:output`, but `mu/defn` checks its schemas only in dev and
+  test.
+
+  A failed call whose text is blank (empty or only whitespace) gets [[failed-tool-result-text]]. The model must read
+  that the call failed, and whitespace does not tell it that. Also, the Anthropic API rejects a failed result with
+  empty content: it answers HTTP 400 \"content cannot be empty if `is_error` is true\". It accepts whitespace-only
+  content. No Anthropic doc page states this rule; we observed it on the live API on 2026-11-24."
   [result]
-  ;; A result that is not a map also gets empty text, but history replays its printed value. So the next turn's
-  ;; bytes are different. A failed result without `:output` also gets empty text. The Claude adapter then sends an
-  ;; empty `is_error` result, which Anthropic rejects. `metabase.metabot.tools.runtime/invoke` always sets `:output`,
-  ;; so production does not make these results. https://github.com/metabase/metabase/pull/87321 sends the printed
-  ;; value and adds a fallback text. When it is merged, remove this comment or update it.
-  (or (:output result) ""))
+  (let [text (str (if (map? result) (:output result) result))]
+    (if (and (str/blank? text) (:error result))
+      failed-tool-result-text
+      text)))
 
 (defn stamp-tool-titles-xf
   "Stamp a client-facing `:title` onto `:tool-input` parts via each tool's

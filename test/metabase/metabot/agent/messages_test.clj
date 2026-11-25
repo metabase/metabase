@@ -10,6 +10,7 @@
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.test :as mt]))
 
@@ -109,6 +110,35 @@
       (is (=? {:messages [{:role "assistant" :tool_calls [{:id "call-1" :function {:arguments string?}}]}
                           {:role "tool" :tool_call_id "call-1"}]}
               (chat-completions/request-body {:model "some/model" :input parts}))))))
+
+(deftest ^:parallel stored-failure-with-blank-text-replays-into-claude-test
+  (testing (str "an old stored failure with blank `errorText` replays to Claude as a failure with text, "
+                "because Anthropic rejects an `is_error` result with empty content")
+    (doseq [error-text ["" "  "]]
+      (testing (pr-str error-text)
+        (let [rows    [{:id 1 :role :user :data [{:type "text" :text "look it up"}]}
+                       {:id       2
+                        :role     :assistant
+                        :finished true
+                        :data     [{:type       "tool-search"
+                                    :toolCallId "c1"
+                                    :state      "output-error"
+                                    :input      {:q "x"}
+                                    :errorText  error-text}]}]
+              history (metabot.persistence/history rows)
+              parts   (messages/build-message-history
+                       {}
+                       (memory/initialize (conj history {:role :user :content "and now?"}) {}))]
+          (is (= [{:type        "tool_result"
+                   :tool_use_id "c1"
+                   :content     "Tool execution failed"
+                   :is_error    true}]
+                 (into []
+                       (comp (filter #(= "user" (:role %)))
+                             (filter (comp sequential? :content))
+                             (mapcat :content)
+                             (filter #(= "tool_result" (:type %))))
+                       (claude/parts->claude-messages parts)))))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; build-message-history
