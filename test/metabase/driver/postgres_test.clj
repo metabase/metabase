@@ -3039,3 +3039,78 @@
          (is (thrown-with-msg? Exception #"more parameters than we can handle"
                                (with-open [_stmt (sql-jdbc.execute/prepared-statement
                                                   :postgres conn "SELECT 1 -- ?" [1])]))))))))
+
+(defn- poll
+  "Call `f` every 200 ms until `(done? result)`, for up to 10 seconds, and return the last result. Postgres updates its
+  statistics a short time after a write."
+  [f done?]
+  (loop [tries 50]
+    (let [result (f)]
+      (if (or (done? result) (zero? tries))
+        result
+        (do (Thread/sleep 200)
+            (recur (dec tries)))))))
+
+(deftest table-change-tokens-test
+  (mt/test-driver :postgres
+    (let [db-name "change_tokens_test"
+          details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
+          spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+      (tx/drop-if-exists-and-create-db! driver/*driver* db-name)
+      (exec! spec ["CREATE TABLE t (id INTEGER);"
+                   "INSERT INTO t VALUES (1), (2), (3);"
+                   "CREATE TABLE p (v INTEGER) PARTITION BY RANGE (v);"
+                   "CREATE TABLE p0 PARTITION OF p FOR VALUES FROM (0) TO (10);"
+                   "CREATE MATERIALIZED VIEW mv AS SELECT * FROM t;"
+                   "CREATE VIEW v AS SELECT * FROM t;"])
+      (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname db-name)}]
+        (sync/sync-database! (:id database) {:scan :schema})
+        (let [db       (driver.u/lib-database (:id database))
+              tables   (t2/select :model/Table :db_id (:id database))
+              id       (into {} (map (juxt :name :id)) tables)
+              tokens   #(driver/table-change-tokens :postgres db tables)
+              token    #(get (tokens) (id %))
+              settled  (fn [table-name]
+                         (let [last-token (atom ::none)]
+                           (poll #(token table-name)
+                                 (fn [t] (let [same? (= t @last-token)] (reset! last-token t) same?)))))
+              after    (fn [table-name sql]
+                         (let [before (settled table-name)]
+                           (exec! spec [sql])
+                           [before (poll #(token table-name) #(not= before %))]))]
+          (testing "the driver supports the feature"
+            (is (true? (driver.u/supports? :postgres :table-change-tokens db))))
+          (testing "a table and a materialized view have a token; a partitioned parent and a view do not"
+            (is (string? (settled "t")))
+            (is (string? (settled "mv")))
+            (is (string? (settled "p0")))
+            (is (nil? (token "p")))
+            (is (nil? (token "v"))))
+          (testing "the token stays the same while the table does not change"
+            (let [t (settled "t")]
+              (is (= t (token "t")))))
+          (doseq [[what sql] [["an insert"  "INSERT INTO t VALUES (4);"]
+                              ["an update"  "UPDATE t SET id = id + 10 WHERE id = 1;"]
+                              ["a delete"   "DELETE FROM t WHERE id = 2;"]
+                              ["a truncate" "TRUNCATE t;"]]]
+            (testing (str what " changes the token")
+              (let [[before now] (after "t" sql)]
+                (is (some? now))
+                (is (not= before now)))))
+          (testing "a refresh of a materialized view changes its token"
+            (let [[before now] (after "mv" "REFRESH MATERIALIZED VIEW mv;")]
+              (is (not= before now)))))))))
+
+(deftest ^:parallel change-token-test
+  (testing "no token when the counters cannot be trusted"
+    (let [row {:filenode 1 :inserted 3 :updated 0 :deleted 0 :reltuples 3.0 :replica false :stats_reset "r"}]
+      (is (= "1:3:0:0:r" (#'postgres/change-token row)))
+      (testing "on a replica"
+        (is (nil? (#'postgres/change-token (assoc row :replica true)))))
+      (testing "with no statistics row"
+        (is (nil? (#'postgres/change-token (assoc row :inserted nil :updated nil :deleted nil)))))
+      (testing "with all counters zero while the row estimate is above zero"
+        (is (nil? (#'postgres/change-token (assoc row :inserted 0)))))
+      (testing "an empty table with no writes has a token"
+        (is (= "1:0:0:0:r" (#'postgres/change-token (assoc row :inserted 0 :reltuples 0.0))))
+        (is (= "1:0:0:0:r" (#'postgres/change-token (assoc row :inserted 0 :reltuples -1.0))))))))
