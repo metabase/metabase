@@ -249,11 +249,18 @@
   daily scan only finds out sooner that a list fell under the limit."
   (t/days 7))
 
+(def ^:private scan-time-margin
+  "A scan stamps its lists while it runs, so the scan one period later finds them a little less than one period old.
+  The period is counted with this margin, so that scan reads them, not the one after it."
+  (t/hours 6))
+
 (defn- too-large-scanned-recently?
-  "Whether `fv` was too large at its last scan, and that scan was within [[too-large-scan-period]]."
+  "Whether `fv` was too large at its last scan, and that scan was within [[too-large-scan-period]], less
+  [[scan-time-margin]]."
   [fv]
   (and (:has_more_values fv)
-       (some-> (:last_scanned_at fv) (t/after? (t/minus (t/offset-date-time) too-large-scan-period)))))
+       (some-> (:last_scanned_at fv)
+               (t/after? (t/plus (t/minus (t/offset-date-time) too-large-scan-period) scan-time-margin)))))
 
 (defn- change-tokens
   "The change token of each of `tables` by Table id from the driver of `database`, or nil when the driver gives none
@@ -269,9 +276,9 @@
 
 (defn- unchanged-tables
   "The ids of the `tables` whose token in `tokens` is the one at their last scan, and whose lists among `fvs` were all
-  read within `period`."
+  read within `period`, less [[scan-time-margin]]."
   [tables tokens fvs period]
-  (let [cutoff       (t/minus (t/offset-date-time) period)
+  (let [cutoff       (t/plus (t/minus (t/offset-date-time) period) scan-time-margin)
         table-id->fvs (group-by (comp :table_id :field) fvs)
         recent?      #(some-> (:last_scanned_at %) (t/after? cutoff))]
     (into #{}

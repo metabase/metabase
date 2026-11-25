@@ -330,6 +330,7 @@
                         :hash_key
                         :human_readable_values
                         :id
+                        :last_scanned_at
                         :type
                         :values}})
 

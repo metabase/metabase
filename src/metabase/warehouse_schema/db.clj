@@ -297,6 +297,8 @@
   updated. Goes by the table, not the model: the token is sync's own record, so `updated_at` and the update event stay
   for changes to the Table."
   [table-id->token :- [:map-of ::lib.schema.id/table [:maybe :string]]]
+  ;; By table name, so the change log does not see it: it leaves this column out on purpose (see the
+  ;; `change-log/spec` of `:model/Table`).
   (update-by-cases! (t2/table-name :model/Table) :id :value_scan_token table-id->token))
 
 (mu/defn update-table-nested-fields-searches!
