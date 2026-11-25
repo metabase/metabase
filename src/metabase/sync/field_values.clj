@@ -247,11 +247,18 @@
   daily scan only finds out sooner that a list fell under the limit."
   (t/days 7))
 
+(def ^:private scan-time-margin
+  "A scan stamps its lists while it runs, so the scan one period later finds them a little less than one period old.
+  The period is counted with this margin, so that scan reads them, not the one after it."
+  (t/hours 6))
+
 (defn- too-large-scanned-recently?
-  "Whether `fv` was too large at its last scan, and that scan was within [[too-large-scan-period]]."
+  "Whether `fv` was too large at its last scan, and that scan was within [[too-large-scan-period]], less
+  [[scan-time-margin]]."
   [fv]
   (and (:has_more_values fv)
-       (some-> (:last_scanned_at fv) (t/after? (t/minus (t/offset-date-time) too-large-scan-period)))))
+       (some-> (:last_scanned_at fv)
+               (t/after? (t/plus (t/minus (t/offset-date-time) too-large-scan-period) scan-time-margin)))))
 
 (mr/def ::scan-options
   [:map {:closed true}
