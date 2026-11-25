@@ -4,8 +4,6 @@
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
-   [metabase-enterprise.data-testing.validator :as data-testing.validator]
-   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -136,8 +134,8 @@
                 (testing "control: an expectation that the input's row violates fails"
                   (is (= :failed (status (str "SELECT * FROM " output " WHERE people_summary.id = 1")))))))))))))
 
-(deftest run-transform-test-input-the-check-rewrites-test
-  (testing "an input whose SQL the statement check rewrites fills its table with the rows that SQL returns"
+(deftest run-transform-test-input-sql-runs-as-written-test
+  (testing "an input written in lower case with a comment fills its table with the rows that SQL returns"
     (mt/test-drivers (data-testing.test-util/data-test-drivers)
       (with-people-transform
         (fn [schema table transform]
@@ -146,8 +144,6 @@
                          (:status (run-test! schema table transform input
                                              [{:type :empty :name "check"
                                                :sql  (str "SELECT * FROM " schema ".people_summary WHERE " where)}])))]
-            (testing "premise: the run executes the check's rewrite, which differs from the input"
-              (is (not= input (data-testing.validator/ensure-single-select driver/*driver* input nil))))
             (testing "the output holds the input's row"
               (is (= :passed (status "NOT (id = 1 AND name = 'abc')"))))
             (testing "control: an expectation that the input's row violates fails"

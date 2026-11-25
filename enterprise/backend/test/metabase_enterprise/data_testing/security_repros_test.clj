@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-testing.security-repros-test
-  "Data tests refuse impersonated users, send the warehouse input SQL only as a single SELECT that passes the statement
-  check, and send the query under test and expectation SQL as written apart from their table references.
+  "Data tests refuse impersonated users, and send the warehouse input SQL as written, and the query under test and
+  expectation SQL as written apart from their table references.
 
   No test opens a warehouse connection. Each runs against a Database row with the `:postgres` engine whose details
   point at a closed port, and replaces three driver methods with a recorder: `driver/do-with-test-connection` calls its
@@ -77,11 +77,6 @@
        :params @params
        :roles  @roles})))
 
-(defn- more-than-one-statement
-  "The statements of `sent` that hold more than one SQL statement."
-  [sent]
-  (filterv #(str/includes? % ";") sent))
-
 (defn- run-card-test!
   "Saves a native card of `sql`, [[card-sql]] by default, on the Database `db-id` and a test of it with one SQL input
   standing in for `public.orders` and one `empty` expectation, and runs the test as crowberto."
@@ -97,23 +92,6 @@
      (data-testing.test-util/run-as-admin! :card
                                            (t2/select-one :model/Card :id card-id)
                                            (t2/select-one :model/CardTest :id test-id)))))
-
-(deftest data-test-sends-only-single-statements-to-the-warehouse-test
-  (mt/with-premium-features #{:transforms-testing :transforms-basic}
-    (do-with-unreachable-postgres
-     (fn [db-id]
-       (testing "control: a test of single SELECTs runs, and the recorder sees each statement"
-         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id"
-                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))]
-           (is (= :passed (:status result)) (pr-str result))
-           (is (some #(re-find #"^CREATE TEMPORARY TABLE \S+ AS SELECT 1 AS id$" %) sent) (pr-str sent))
-           (is (= [] (more-than-one-statement sent)))))
-       (testing "input SQL of more than one statement is refused before anything is sent"
-         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id; COMMIT; DELETE FROM public.orders"
-                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))]
-           (is (re-find #"^The SQL check refuses the SQL of input public.orders: " (str (:thrown result)))
-               (pr-str result))
-           (is (= [] sent))))))))
 
 (def ^:private escape-sql
   "Native SQL that leaves the impersonated role, then reads."
@@ -202,8 +180,7 @@
                                                               "SELECT * FROM {{output}} WHERE 1 = 0"))]
                      (is (= "passed" (:status result)) (pr-str result))
                      (is (= [nil] roles))
-                     (is (seq sent))
-                     (is (= [] (more-than-one-statement sent)))))))
+                     (is (seq sent))))))
              (testing "an admin saves and runs a data test"
                (let [{:keys [result sent roles]}
                      (with-recorder! #(create-and-run-as! :crowberto card-id "SELECT 1 AS id"
@@ -216,54 +193,22 @@
                      (with-recorder! #(mt/user-http-request :crowberto :post 200 (str "ee/card-test/" test-id "/run")))]
                  (is (= "passed" (:status result)) (pr-str result)))))))))))
 
-(def ^:private hidden-setval-sql
-  "One SELECT that the parser reads as a string concatenation. SQLGlot rebuilds `E'\\\\'` as `e'\\'`, which Postgres
-  reads as ending one quote later, so in the rebuild `setval` runs and `--` comments out the rest."
-  "SELECT E'\\\\' || $q$' || (SELECT setval($z$orders_id_seq$z$, 4242))::text --$q$ AS id")
-
 (def ^:private string-with-a-call-sql
-  "An `empty` expectation of the same form as [[hidden-setval-sql]]. As written, Postgres reads `E'\\\\'` as one
-  backslash and the dollar-quoted text after it as a string, so `set_config` is text and never runs."
+  "An `empty` expectation that Postgres reads as a string concatenation: `E'\\\\'` is one backslash, and the
+  dollar-quoted text after it a string, so `set_config` is text and never runs. SQLGlot's rebuild writes the first
+  string as `e'\\'`, which ends one quote later, so in a rebuild the call would run."
   (str "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$postgres$z$, false) --$q$ AS id"
        " FROM {{output}} WHERE 1 = 0"))
 
-(deftest data-test-sends-the-checked-statement-test
+(deftest data-test-sends-sql-as-written-test
   (mt/with-premium-features #{:transforms-testing :transforms-basic}
     (do-with-unreachable-postgres
      (fn [db-id]
-       (testing "the run sends input SQL as the statement check rebuilt it"
-         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id -- one"
+       (testing "the run sends input SQL as written"
+         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "select 1 AS id -- one"
                                                                       "SELECT * FROM {{output}} WHERE 1 = 0"))]
            (is (= :passed (:status result)) (pr-str result))
-           (is (some #(re-find #"^CREATE TEMPORARY TABLE \S+ AS SELECT 1 AS id /\* one \*/$" %) sent) (pr-str sent))))
-       (testing "input SQL whose rebuild Postgres reads as more than one statement is refused before anything is sent"
-         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
-                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))]
-           (is (re-find #"^The SQL check refuses the SQL of input public.orders: " (str (:thrown result)))
-               (pr-str result))
-           (is (= [] sent))))
-       (testing "a trailing `;` is dropped from the statement sent"
-         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id;"
-                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))]
-           (is (= :passed (:status result)) (pr-str result))
-           (is (some #(re-find #"^CREATE TEMPORARY TABLE \S+ AS SELECT 1 AS id$" %) sent) (pr-str sent))))
-       (testing "input SQL calling `nextval`, whose effect survives the run's rollback, is refused before anything is sent"
-         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT nextval('orders_id_seq') AS id"
-                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))]
-           (is (re-find #"^The SQL check refuses the SQL of input public.orders: " (str (:thrown result)))
-               (pr-str result))
-           (is (= [] sent))))
-       (testing "input SQL whose CTE writes is refused before anything is sent"
-         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "WITH d AS (DELETE FROM public.orders RETURNING id) SELECT id FROM d"
-                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))]
-           (is (re-find #"^The SQL check refuses the SQL of " (str (:thrown result))) (pr-str result))
-           (is (= [] sent))))
-       (testing "input SQL whose rebuilt E'' string ends one quote later, running `setval`, is refused before anything is sent"
-         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id hidden-setval-sql
-                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))]
-           (is (re-find #"^The SQL check refuses the SQL of " (str (:thrown result))) (pr-str result))
-           (is (not (re-find #"\bnull\b" (str (:thrown result)))) (pr-str result))
-           (is (= [] sent))))
+           (is (some #(re-find #"^CREATE TEMPORARY TABLE \S+ AS select 1 AS id -- one$" %) sent) (pr-str sent))))
        (testing "`empty` expectation SQL is sent as written apart from its table, so its E'' string ends where its author ended it"
          (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id" string-with-a-call-sql))]
            (is (= :passed (:status result)) (pr-str result))
@@ -391,31 +336,6 @@
                (is (= :passed (:status (:result (with-recorder! #(data-testing.test-util/run-as-admin! :card card card-test))))))
                (finally
                  (t2/delete! :model/DataTestRun :test_id test-id))))))))))
-
-(deftest data-test-of-more-than-one-statement-is-refused-over-http-test
-  (mt/with-premium-features #{:transforms-testing :transforms-basic}
-    (do-with-unreachable-postgres
-     (fn [db-id]
-       (mt/with-temp [:model/Card     {card-id :id} {:dataset_query (lib/native-query
-                                                                     (lib-be/application-database-metadata-provider db-id)
-                                                                     card-sql)}
-                      :model/CardTest {test-id :id} {:card_id      card-id
-                                                     :inputs       [(assoc sql-input :sql "SELECT 1 AS id; DELETE FROM public.orders")]
-                                                     :expectations [output-expectation]}]
-         (testing "saving such a test is a 400 that names the refusal, sends nothing and saves no test"
-           (let [{:keys [result sent]}
-                 (with-recorder! #(mt/user-http-request :crowberto :post 400 "ee/card-test"
-                                                        (card-test-body card-id "SELECT 1 AS id; DELETE FROM public.orders"
-                                                                        "SELECT * FROM {{output}} WHERE 1 = 0")))]
-             (is (= "card-test.not-a-single-select" (:error-code result)) (pr-str result))
-             (is (= [] sent))
-             (is (= #{test-id} (t2/select-pks-set :model/CardTest :card_id card-id)))))
-         (testing "running such a saved test is a 400 that names the refusal, sends nothing and records no run"
-           (let [{:keys [result sent]}
-                 (with-recorder! #(mt/user-http-request :crowberto :post 400 (str "ee/card-test/" test-id "/run")))]
-             (is (= "card-test.not-a-single-select" (:error-code result)) (pr-str result))
-             (is (= [] sent))
-             (is (zero? (t2/count :model/DataTestRun :test_id test-id))))))))))
 
 (defn- strpos-bindings
   "The string and the substring that the sent statement `sql`, with `params`, passes to its `strpos` call, written

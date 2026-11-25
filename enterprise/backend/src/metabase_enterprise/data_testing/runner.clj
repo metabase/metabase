@@ -228,15 +228,6 @@
                 {}))
         (throw e)))))
 
-(mu/defn- input-query :- ::data-testing.compile/compiled-query
-  "The query that fills the temp table of `input`. For an input of format `:sql`, its `:query` is what
-  [[data-testing.validator/ensure-single-select]] returns."
-  [driver :- :keyword
-   input  :- ::data-testing.schema/input]
-  (cond-> (data-testing.compile/compile-input driver input)
-    (= :sql (:format input))
-    (update :query #(data-testing.validator/ensure-single-select driver % [:input (:table input)]))))
-
 (mu/defn- create-inputs! :- :nil
   "Materialize each input of `input->table` as its temp table on `conn`, filled by its query in `input->query`."
   [driver       :- :keyword
@@ -364,8 +355,8 @@
   message renders them as.
 
   Throws the run's typed refusals — a current user whose connection to the database is impersonated, an untestable
-  subject or driver, SQL that will not parse, a table reference that cannot be replaced in the SQL's text, SQL of an
-  input that is not one checkable SELECT or uses a form data tests do not support, a test the validator rejects — so a caller that only wants the answer to \"could this
+  subject or driver, SQL that will not parse, a table reference that cannot be replaced in the SQL's text, a test the
+  validator rejects — so a caller that only wants the answer to \"could this
   run?\" gets it by asking for the plan and discarding it."
   [subject-type                         :- ::data-testing.subject/subject-type
    subject                              :- ::data-testing.subject/subject
@@ -380,7 +371,7 @@
         default-schema (:default-schema database)
         replacements   (data-testing.compile/table-replacements output-tables input->table output-table default-schema)
         rewritten      (data-testing.compile/rewrite-query driver compiled replacements)
-        input->query   (into {} (map (fn [input] [input (input-query driver input)])) inputs)
+        input->query   (into {} (map (fn [input] [input (data-testing.compile/compile-input driver input)])) inputs)
         expectation->query
         (data-testing.validator/validate
          driver

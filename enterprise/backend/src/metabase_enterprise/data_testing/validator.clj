@@ -14,9 +14,9 @@
     could not match), and running it would hit the real table or error at execution. This covers the query under test
     and every expectation that carries the author's own SQL.
 
-  [[ensure-single-select]] checks the SQL of an input and returns the text the run executes for it. The query under
-  test and each expectation's SQL run as written apart from their table references, with no statement check: what
-  they may do is up to the database connection.
+  No guard reads what a statement does. An input's SQL runs as written, and the query under test and each
+  expectation's SQL run as written apart from their table references: what they may do is up to the database
+  connection.
 
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require
@@ -26,7 +26,6 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.sql-tools.core :as sql-tools]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -130,18 +129,14 @@
           inputs)))
 
 (mr/def ::sql-source
-  "Whose SQL a refusal names: nil for the query under test, `[:input table]` for the input standing in for `table`, or
-  `[:expectation name]`."
-  [:maybe [:or
-           [:tuple [:= :input] ::data-testing.schema/table]
-           [:tuple [:= :expectation] :string]]])
+  "Whose SQL a refusal names: nil for the query under test, or `[:expectation name]`."
+  [:maybe [:tuple [:= :expectation] :string]])
 
 (defn- sql-source-label
   "`source`, a [[::sql-source]], as a message names it."
   [[kind x :as source]]
   (case (when source kind)
     nil          (tru "the query under test")
-    :input       (tru "input {0}" (table-label x))
     :expectation (tru "expectation {0}" (pr-str x))))
 
 (mu/defn- check-rewrite
@@ -164,116 +159,6 @@
                    (str/join ", " surviving)))
             (cond-> {:references (vec surviving)}
               source (assoc :expectation (second source)))))))
-
-(defn- refusal-reason
-  "Why the statement check refused SQL, as `reason` and `detail` from the parser, in words its author can act on."
-  [reason detail]
-  (case reason
-    "multiple-statements"    (tru "it holds more than one statement")
-    "not-a-select"           (tru "it is not a SELECT")
-    "writes-or-locks"        (tru "it writes or locks, as a data-modifying CTE, SELECT ... INTO or FOR UPDATE does")
-    ;; A reason nested under "rebuild-differs" comes without its detail.
-    "session-function"       (if detail
-                               (tru "it calls {0}, which changes the session" detail)
-                               (tru "it calls a function that changes the session"))
-    "sql-executing-function" (if detail
-                               (tru "it calls {0}, which runs SQL text" detail)
-                               (tru "it calls a function that runs SQL text"))
-    "dynamic-function-call"  (tru "it calls a function by a name the check cannot read")
-    "external-table"         (tru "it reads a file or a URL as a table")
-    "statement-word"         (if detail
-                               (tru "it holds {0}, which the database can read as the start of another statement" detail)
-                               (tru "it holds a word that the database can read as the start of another statement"))
-    "executable-comment"     (tru "it holds a /*! comment, whose text the database runs as SQL")
-    "bare-dash-comment"      (tru "it holds -- with no space after it, which the database does not read as a comment")
-    "lone-carriage-return"   (tru "it holds a carriage return with no newline after it, where the check and the database end a comment differently")
-    "unicode-identifier"     (tru "it holds a U&\"...\" name, whose escapes the check cannot read")
-    "backslash-quote"        (tru "it, or the SQL that Metabase rewrites it into to run, holds a backslash before a quote, which some database settings read as an escaped quote; write the backslash another way, such as chr(92) on Postgres or CHAR(92) on MySQL")
-    "unparseable"            (tru "it does not parse")
-    "rebuild-differs"        (if detail
-                               (tru "the SQL that Metabase rewrites it into to run reads differently: {0}"
-                                    (refusal-reason detail nil))
-                               (tru "the SQL that Metabase rewrites it into to run does not read back as the same SQL, as when a -- comment opens the body of a CTE; write such a comment as /* ... */"))
-    (tru "it holds something the check refuses")))
-
-(defn- unsupported-form-refusal
-  "The `::data-testing.errors/unsupported-sql` refusal of the SQL of `source` for the parser's `reason` and `detail`,
-  or nil when `reason` names no form whose rebuild has another value."
-  [reason detail source]
-  (case reason
-    ;; Data tests do not support these forms yet: VER-183 (Postgres numbers), VER-184 (MySQL DIV, LOG10 and !).
-    "number-literal"
-    (data-testing.errors/ex
-     ::data-testing.errors/unsupported-sql
-     (tru "The SQL of {0} holds the number {1}. Data tests do not support numbers written in hexadecimal, binary or octal, or with underscores or letters among the digits, yet."
-          (sql-source-label source) detail)
-     {:reason reason :detail detail})
-
-    "div-operator"
-    (data-testing.errors/ex
-     ::data-testing.errors/unsupported-sql
-     (tru "The SQL of {0} uses the DIV operator, which Metabase rewrites, in the SQL it runs, as a division that rounds where DIV truncates. Data tests do not support DIV yet."
-          (sql-source-label source))
-     {:reason reason})
-
-    "log10-function"
-    (data-testing.errors/ex
-     ::data-testing.errors/unsupported-sql
-     (tru "The SQL of {0} calls LOG10, which Metabase rewrites, in the SQL it runs, as LOG(10, x), whose value can differ in the last digits. Data tests do not support LOG10 yet."
-          (sql-source-label source))
-     {:reason reason})
-
-    "exclamation-operator"
-    (data-testing.errors/ex
-     ::data-testing.errors/unsupported-sql
-     (tru "The SQL of {0} uses the ! operator, which Metabase rewrites, in the SQL it runs, as NOT, which binds less tightly. Data tests do not support the ! operator yet."
-          (sql-source-label source))
-     {:reason reason})
-
-    nil))
-
-(mu/defn ensure-single-select :- :string
-  "Returns the SQL a run executes for `sql`: SQLGlot's rebuild of `sql` in `driver`'s dialect. `sql` must be one
-  SELECT that passes the `\"read-only\"` check of [[sql-tools/validate-executable-stmt]], which refuses anything that
-  writes or locks (a data-modifying CTE, `SELECT ... INTO`, `FOR UPDATE`) and checks the rebuild too.
-
-  Throws `::data-testing.errors/not-a-single-select` when `sql` is not such a statement,
-  `::data-testing.errors/unsupported-sql` when it uses a form whose rebuild has another value,
-  `::data-testing.errors/unparseable-source` when it does not parse, and `::data-testing.errors/uncheckable-sql` when
-  it holds a list of values too long to parse whole, or `driver` has no SQLGlot dialect. Each refusal names `source`."
-  [driver :- :keyword
-   sql    :- :string
-   source :- ::sql-source]
-  (let [{:keys [verdict error reason detail] rebuilt :sql} (sql-tools/validate-executable-stmt driver sql "read-only")]
-    (case verdict
-      :allowed
-      rebuilt
-
-      :disallowed
-      (throw (or (unsupported-form-refusal reason detail source)
-                 (data-testing.errors/ex
-                  ::data-testing.errors/not-a-single-select
-                  (tru "The SQL check refuses the SQL of {0}: {1}. A data test runs only a single SELECT that writes nothing and does not change the session."
-                       (sql-source-label source) (refusal-reason reason detail))
-                  (cond-> {}
-                    reason (assoc :reason reason)
-                    detail (assoc :detail detail)))))
-
-      :unknown
-      (if error
-        (throw (data-testing.errors/ex
-                ::data-testing.errors/unparseable-source
-                (tru "The SQL of {0} could not be parsed: {1}"
-                     (sql-source-label source) (sql-parsing/parse-error-message (ex-info error {})))
-                {}))
-        (throw (data-testing.errors/ex
-                ::data-testing.errors/uncheckable-sql
-                (case reason
-                  "unknown-dialect" (tru "The SQL of {0} cannot be checked: the SQL check cannot read this database''s SQL."
-                                         (sql-source-label source))
-                  (tru "The SQL of {0} holds a list of values too long for the SQL check to parse."
-                       (sql-source-label source)))
-                {:reason reason}))))))
 
 (mu/defn- check-expectation-sql :- :string
   "The SQL the run executes for the expectation named `expectation-name`, whose SQL is `sql`: `sql` reading the temp

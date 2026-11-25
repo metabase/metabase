@@ -2,8 +2,6 @@
   "The checks of [[validator/validate]]: declared and unused inputs, leftover references after the rewrite, table labels
   and the required expectation. Pure — no warehouse."
   (:require
-   [clojure.java.io :as io]
-   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as errors]
@@ -234,146 +232,7 @@
                                        :columns-read #{{:schema "public" :name "Events" :column "id"}
                                                        {:schema "public" :name "events" :column "CreatedAt"}}))))))
 
-;;; ------------------------------------------------ Single SELECT ------------------------------------------------
-
-(defn- single-select
-  "What [[validator/ensure-single-select]] returns for `sql` on `driver`, or its refusal with `:reason` and `:detail`."
-  [driver sql source]
-  (driver/the-initialized-driver driver)
-  (try
-    (validator/ensure-single-select driver sql source)
-    (catch ExceptionInfo e
-      (data-testing.test-util/refusal #(throw e) :reason :detail))))
-
-(deftest ensure-single-select-test
-  (testing "a single SELECT comes back as SQLGlot rebuilt it, the string a run executes"
-    (is (= "SELECT 1 AS id /* one */"
-           (single-select :postgres "SELECT 1 AS id -- one" nil))))
-  (testing "a second statement is refused, naming the SQL's source and the reason"
-    (is (= {:error-type ::errors/not-a-single-select
-            :message    (str "The SQL check refuses the SQL of input public.orders: it holds more than one statement. "
-                             "A data test runs only a single SELECT that writes nothing and does not change the session.")
-            :reason     "multiple-statements"}
-           (single-select :postgres "SELECT 1 AS id; RESET ROLE" [:input {:schema "public" :name "orders"}]))))
-  (testing "a single statement that is not a SELECT is refused"
-    (is (=? {:error-type ::errors/not-a-single-select
-             :message    #"^The SQL check refuses the SQL of the query under test: it is not a SELECT\. A data test .*"}
-            (single-select :postgres "DELETE FROM orders" nil))))
-  (testing "a SELECT whose rebuild Postgres reads as two statements is refused"
-    (is (=? {:error-type ::errors/not-a-single-select
-             :message    #".*: the SQL that Metabase rewrites it into to run reads differently: it holds more than one statement\. .*"
-             :reason     "rebuild-differs"}
-            (single-select :postgres "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
-                           [:expectation "check"]))))
-  (testing "a SELECT with a backslash before a quote, which Postgres reads as two statements with standard_conforming_strings off, is refused"
-    (is (=? {:error-type ::errors/not-a-single-select
-             :message    #".*: it, or the SQL that Metabase rewrites it into to run, holds a backslash before a quote, .*"
-             :reason     "backslash-quote"}
-            (single-select :postgres "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files" nil))))
-  (testing "control: an E'' string with an escaped quote is rebuilt so that it reads the same"
-    (is (= "SELECT e'it''s' AS id"
-           (single-select :postgres "SELECT E'it\\'s' AS id" nil))))
-  (testing "a SELECT whose rebuilt E'' string ends one quote later, running `setval` that the parser read as text, is refused"
-    (is (=? {:error-type ::errors/not-a-single-select
-             :message    #".*: the SQL that Metabase rewrites it into to run reads differently: it writes or locks.*"
-             :reason     "rebuild-differs"
-             :detail     "writes-or-locks"}
-            (single-select :postgres
-                           "SELECT E'\\\\' || $q$' || (SELECT setval($z$s$z$, 4242))::text --$q$ AS id"
-                           [:input {:schema "public" :name "orders"}]))))
-  (testing "a SELECT whose CTE writes is refused"
-    (is (=? {:error-type ::errors/not-a-single-select
-             :reason     "writes-or-locks"}
-            (single-select :postgres "WITH d AS (DELETE FROM orders RETURNING id) SELECT id FROM d" nil))))
-  (testing "a SELECT calling a function that changes the session is refused"
-    (is (=? {:error-type ::errors/not-a-single-select
-             :message    #".*: it calls set_config, which changes the session\. .*"
-             :reason     "session-function"}
-            (single-select :postgres "SELECT set_config('role', 'postgres', false)" nil))))
-  (testing "SQL that does not parse is refused, naming its source"
-    (is (=? {:error-type ::errors/unparseable-source
-             :message    #"(?s)^The SQL of expectation \"check\" could not be parsed: .*"}
-            (single-select :postgres "SELECT (" [:expectation "check"]))))
-  (testing "SQL holding a list too long to parse whole is refused, not run unchecked"
-    (is (=? {:error-type ::errors/uncheckable-sql
-             :message    "The SQL of the query under test holds a list of values too long for the SQL check to parse."}
-            (single-select :postgres
-                           (str "SELECT 1 AS id WHERE 1 IN (" (str/join ", " (range 3000)) ")")
-                           nil)))))
-
-(defn- parser-reasons
-  "Every reason the Python statement check gives a refusal: the reasons its functions return, and \"unparseable\"."
-  []
-  (conj (into (sorted-set)
-              (map second)
-              (re-seq #"return \(\"([a-z][a-z-]+)\","
-                      (slurp (io/resource "python-sources/sql_tools.py"))))
-        "unparseable"))
-
-(deftest every-reason-the-check-gives-has-words-test
-  (testing "premise: the reasons are read from the parser"
-    (is (every? (parser-reasons) ["multiple-statements" "statement-word" "number-literal" "rebuild-differs"])))
-  (doseq [reason (parser-reasons)]
-    (testing reason
-      (is (or (#'validator/unsupported-form-refusal reason nil nil)
-              (not= (#'validator/refusal-reason "an-unknown-reason" nil)
-                    (#'validator/refusal-reason reason nil)))))))
-
-(deftest ensure-single-select-names-why-the-rebuild-is-refused-test
-  (testing "a SELECT whose rebuild calls a function that changes the session, which the parser does not name, is refused in words that name none"
-    (is (=? {:error-type ::errors/not-a-single-select
-             :message    #".*: the SQL that Metabase rewrites it into to run reads differently: it calls a function that changes the session\. .*"
-             :reason     "rebuild-differs"
-             :detail     "session-function"}
-            (single-select :postgres
-                           "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$none$z$, false) --$q$ AS a"
-                           nil))))
-  (testing "a SELECT whose rebuild does not rebuild to itself is refused, naming a cause the author can change"
-    (is (=? {:error-type ::errors/not-a-single-select
-             :message    #".*: the SQL that Metabase rewrites it into to run does not read back as the same SQL, as when a -- comment opens the body of a CTE; .*"
-             :reason     "rebuild-differs"}
-            (single-select :postgres "WITH c AS (\n  -- note\n  SELECT 1 AS id) SELECT * FROM c" nil)))))
-
-(deftest ensure-single-select-refuses-numbers-the-rewrite-changes-test
-  (testing "control: a Postgres SELECT of decimal numbers runs as its rewrite"
-    (is (= "SELECT 31 AS a, 1000000 AS b" (single-select :postgres "SELECT 31 AS a, 1000000 AS b" nil))))
-  (testing "a Postgres number whose rewrite has another value is refused, naming the number and the source"
-    (is (=? {:error-type ::errors/unsupported-sql
-             :message    (str "The SQL of input public.orders holds the number 0x1F. Data tests do not support numbers "
-                              "written in hexadecimal, binary or octal, or with underscores or letters among the digits, "
-                              "yet.")}
-            (single-select :postgres "SELECT 0x1F AS a" [:input {:schema "public" :name "orders"}])))
-    (is (=? {:error-type ::errors/unsupported-sql :message #".*holds the number 1_000_000\..*"}
-            (single-select :postgres "SELECT 1_000_000" nil)))))
-
-(deftest ensure-single-select-refuses-mysql-div-test
-  (testing "control: a MySQL division runs as its rewrite"
-    (is (= "SELECT a / 3 AS q FROM t" (single-select :mysql "SELECT a / 3 AS q FROM t" nil))))
-  (testing "the MySQL DIV operator, which the rewrite turns into a division that rounds, is refused, naming the source"
-    (is (=? {:error-type ::errors/unsupported-sql
-             :message    (str "The SQL of the query under test uses the DIV operator, which Metabase rewrites, in the "
-                              "SQL it runs, as a division that rounds where DIV truncates. Data tests do not support DIV "
-                              "yet.")}
-            (single-select :mysql "SELECT a DIV 3 AS q FROM t" nil)))))
-
-(deftest ensure-single-select-refuses-mysql-log10-and-exclamation-mark-test
-  (testing "control: MySQL LOG(10, x) and NOT run as their rewrite"
-    (is (= "SELECT LOG(10, a) AS l, NOT a AS n FROM t"
-           (single-select :mysql "SELECT LOG(10, a) AS l, NOT a AS n FROM t" nil))))
-  (testing "a call of MySQL LOG10, which the rewrite turns into LOG(10, x), is refused, naming the form and the source"
-    (is (=? {:error-type ::errors/unsupported-sql
-             :message    (str "The SQL of input public.orders calls LOG10, which Metabase rewrites, in the SQL it runs, "
-                              "as LOG(10, x), whose value can differ in the last digits. Data tests do not support "
-                              "LOG10 yet.")
-             :reason     "log10-function"}
-            (single-select :mysql "SELECT LOG10(a) AS l FROM t" [:input {:schema "public" :name "orders"}]))))
-  (testing "the MySQL ! operator, which the rewrite turns into NOT, is refused, naming the form and the source"
-    (is (=? {:error-type ::errors/unsupported-sql
-             :message    (str "The SQL of the query under test uses the ! operator, which Metabase rewrites, in the SQL "
-                              "it runs, as NOT, which binds less tightly. Data tests do not support the ! operator "
-                              "yet.")
-             :reason     "exclamation-operator"}
-            (single-select :mysql "SELECT !a + 1 AS n FROM t" nil)))))
+;;; ---------------------------------------------- Expectation SQL ----------------------------------------------
 
 (deftest validate-returns-expectation-sql-as-written-test
   (let [returned (fn [driver sql]
@@ -390,12 +249,6 @@
       (is (= "SELECT * FROM MB_T1 AS PEOPLE WHERE !ID + 1 = 1"
              (returned :mysql "SELECT * FROM PEOPLE WHERE !ID + 1 = 1"))))))
 
-(deftest ensure-single-select-without-a-dialect-test
-  (testing "a driver with no SQLGlot dialect is refused: the check cannot read its SQL"
-    (is (=? {:error-type ::errors/uncheckable-sql
-             :message    "The SQL of the query under test cannot be checked: the SQL check cannot read this database's SQL."}
-            (single-select :h2 "SELECT 1 AS id" nil)))))
-
 (defn- parser-internals
   "The parser's own workings in `message`: SQLGlot's class names and terminal escape codes."
   [message]
@@ -403,16 +256,12 @@
 
 (deftest unparseable-sql-refusal-reads-as-the-parser-diagnostic-test
   (let [sql "SELECT a FROM t WHERE ("]
-    (testing "control: an expectation that does not parse is refused with the diagnostic cleaned of the parser's internals"
+    (testing "an expectation that does not parse is refused with the diagnostic cleaned of the parser's internals"
       (driver/the-initialized-driver :postgres)
       (let [{:keys [error-type message]}
             (data-testing.test-util/refusal
              #(validator/validate :postgres (assoc complete-test
                                                    :expectations [{:type :empty :name "check" :sql sql}])))]
-        (is (= ::errors/unparseable-source error-type))
-        (is (nil? (parser-internals message)) (pr-str message))))
-    (testing "input SQL that does not parse is refused with the diagnostic cleaned of the parser's internals"
-      (let [{:keys [error-type message]} (single-select :postgres sql [:input {:schema "public" :name "orders"}])]
         (is (= ::errors/unparseable-source error-type))
         (is (nil? (parser-internals message)) (pr-str message))))))
 

@@ -43,9 +43,6 @@
    ::errors/unknown-placeholder        400
    ::errors/missing-input-columns      400
    ::errors/colliding-columns          400
-   ::errors/not-a-single-select        400
-   ::errors/uncheckable-sql            400
-   ::errors/unsupported-sql            400
    ::errors/impersonated-user          403
    ::errors/unsupported-transform      422
    ::errors/unsupported-driver         422
@@ -82,10 +79,7 @@
              ::errors/no-expectations
              ::errors/unknown-placeholder
              ::errors/missing-input-columns
-             ::errors/colliding-columns
-             ::errors/not-a-single-select
-             ::errors/uncheckable-sql
-             ::errors/unsupported-sql}
+             ::errors/colliding-columns}
            (types-with-status 400))))
   (testing "permission refusals — the current user may not save or run the test — are 403"
     (is (= #{::errors/impersonated-user}
@@ -131,9 +125,6 @@
    ::errors/unknown-placeholder        "transform-test.unknown-placeholder"
    ::errors/missing-input-columns      "transform-test.missing-input-columns"
    ::errors/colliding-columns          "transform-test.colliding-columns"
-   ::errors/not-a-single-select        "transform-test.not-a-single-select"
-   ::errors/uncheckable-sql            "transform-test.uncheckable-sql"
-   ::errors/unsupported-sql            "transform-test.unsupported-sql"
    ::errors/impersonated-user          "transform-test.impersonated-user"
    ::errors/unsupported-transform      "transform-test.unsupported-transform"
    ::errors/unsupported-driver         "transform-test.unsupported-driver"
