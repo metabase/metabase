@@ -414,11 +414,18 @@
                     {:topic :table-unpublish, :when warehouse-schema.audit/unpublished?
                      :details warehouse-schema.audit/moment-details}]})
 
+(defn- import-data-authorities
+  "A transform fn importing data authorities.
+  Older exports can hold the retired `authoritative`, which imports as not set by a user, so the Table keeps its own
+  value: `ingested` for an upload, `unconfigured` otherwise."
+  [_store _entities values _opts]
+  (mapv #(when-not (= "authoritative" (some-> % name)) %) values))
+
 (defmethod serialization/spec :model/TableUserSettings [_]
   {:schema              ::warehouse-schema.schema/external-table-user-settings
    :identity            [:table_id]
    :copy                [:display_name :description :entity_type :visibility_type :field_order :caveats
-                         :points_of_interest :show_in_getting_started :data_authority :data_source :data_layer
+                         :points_of_interest :show_in_getting_started :data_source :data_layer
                          :owner_email :is_published :description_set :visibility_type_set :data_layer_set
                          :data_source_set]
    :skip                [:caveats_set :points_of_interest_set]
@@ -426,9 +433,10 @@
                          :visibility_type_set false
                          :data_layer_set      false
                          :data_source_set     false}
-   :transform           {:collection_id (serialization/fk-transform :model/Collection)
-                         :owner_user_id serialization/user-transform
-                         :table_id      serialization/table-transform}
+   :transform           {:collection_id  (serialization/fk-transform :model/Collection)
+                         :owner_user_id  serialization/user-transform
+                         :table_id       serialization/table-transform
+                         :data_authority {:export serialization/export-unchanged :import import-data-authorities}}
    :storage-paths       warehouse-schema.serialization/table-user-settings-storage-paths
    :import-dependencies warehouse-schema.serialization/table-user-settings-import-dependencies
    :insert!             create-table-user-settings!

@@ -13,14 +13,8 @@ databaseChangeLog:
               UPDATE metabase_table
               SET data_authority = CASE WHEN is_upload = TRUE THEN 'ingested' ELSE 'unconfigured' END
               WHERE data_authority = 'authoritative'
-      # Every upload was authoritative before this ran, so the uploads can be restored. Other tables can't be told
-      # apart from ones that were already unconfigured.
+      # The changed rows can't be told apart from ones that already held these values.
       rollback:
-        - sql:
-            sql: >-
-              UPDATE metabase_table
-              SET data_authority = 'authoritative'
-              WHERE is_upload = TRUE AND data_authority = 'ingested'
 
   - changeSet:
       id: m6suhc
@@ -37,5 +31,5 @@ databaseChangeLog:
                     ELSE 'unconfigured'
                   END
               WHERE data_authority = 'authoritative'
-      # Only the API sets these values, and the changed ones can't be told apart from ones already unconfigured.
+      # The changed rows can't be told apart from ones that already held these values.
       rollback:

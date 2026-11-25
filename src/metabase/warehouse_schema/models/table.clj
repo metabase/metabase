@@ -640,6 +640,18 @@
         values
         (serialization/column-ids store :model/User (map #(when-not (int? %) %) values) opts)))
 
+(defn- import-data-authorities
+  "A transform fn importing data authorities.
+  Older exports can hold the retired `authoritative`, which becomes `ingested` for an upload and `unconfigured`
+  otherwise, as in the app DB migration that retired it."
+  [_store entities values _opts]
+  (mapv (fn [{:keys [is_upload]} v]
+          (if (= "authoritative" (some-> v name))
+            (if is_upload :ingested :unconfigured)
+            v))
+        entities
+        values))
+
 (defn- storage-paths
   "The storage path of each of the Table `entities`, in the directory of its Database and schema."
   [entities _ctx]
@@ -666,14 +678,14 @@
    :identity            [:db_id :schema :name]
    :copy                [:name :description :entity_type :active :display_name :visibility_type :schema
                          :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
-                         :database_require_filter :is_writable :data_authority :data_source :data_layer
-                         :owner_email]
+                         :database_require_filter :is_writable :data_source :data_layer :owner_email]
    :skip                [:estimated_row_count :initial_sync_status :view_count :transform_target
                          :is_defective_duplicate :unique_table_helper]
    :transform           {:archived_at    serialization/date-transform
                          :deactivated_at serialization/date-transform
                          :db_id          serialization/database-transform
-                         :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)}
+                         :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)
+                         :data_authority {:export serialization/export-unchanged :import import-data-authorities}}
    :defaults            {:is_upload               false
                          :show_in_getting_started false}
    :storage-paths       storage-paths

@@ -757,6 +757,18 @@
               (is (= (keyword expected)
                      (t2/select-one-fn :data_layer :model/Table :id table-id))))))))))
 
+(deftest retired-authoritative-data-authority-serdes-import-test
+  (testing "Importing an export holding the retired authoritative data_authority maps it as the app DB migration did
+            (BOT-2735)"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {upload :id}   {:db_id db-id :is_upload true}
+                   :model/Table    {regular :id}  {:db_id db-id}]
+      (doseq [table-id [upload regular]]
+        (let [extracted (first (serialization/export-batch :model/Table [(t2/select-one :model/Table :id table-id)]))]
+          (serialization/load :model/Table [(assoc extracted :data_authority "authoritative")])))
+      (is (= {upload :ingested regular :unconfigured}
+             (t2/select-pk->fn :data_authority :model/Table :id [:in [upload regular]]))))))
+
 (deftest curation-column-defaults-test
   (testing "a new table gets consistent non-null data_layer and data_authority defaults"
     (testing "via the model before-insert (the path sync uses)"

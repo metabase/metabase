@@ -18,6 +18,7 @@
    [metabase.search.embeddings.provider :as embeddings.provider]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.log.capture :as log.capture]
    [next.jdbc :as jdbc]
@@ -571,15 +572,27 @@
               (insert-index-row! pgvector kw-tbl {:model          [:inline model]
                                                   :model_id       [:inline model-id]
                                                   :data_authority [:inline authority]
-                                                  :curated        [:inline true]}))
+                                                  :curated        [:inline true]
+                                                  :legacy_input   [:cast [:inline (json/encode {:curated        true
+                                                                                                :data_authority authority})]
+                                                                   :jsonb]}))
             (jdbc/execute! pgvector (sql/format {:update meta-tbl :set {:index_version 6}}))
             (semantic.core/init! (semantic.tu/mock-documents) nil)
-            (is (= {(str pub) true "999999" false "999998" true "1" true}
-                   (->> (jdbc/execute! pgvector
-                                       (sql/format {:select [:model_id :curated] :from [kw-tbl]} :quoted true)
-                                       {:builder-fn jdbc.rs/as-unqualified-maps})
-                        (map (juxt :model_id :curated))
-                        (into {}))))
+            (testing "in the curated column and in legacy_input, which results are rebuilt from"
+              (is (= {(str pub) [true true]
+                      "999999"  [false false]
+                      "999998"  [true true]
+                      "1"       [true true]}
+                     (->> (jdbc/execute! pgvector
+                                         (sql/format {:select [:model_id :curated :legacy_input] :from [kw-tbl]}
+                                                     :quoted true)
+                                         {:builder-fn jdbc.rs/as-unqualified-maps})
+                          (map (fn [{:keys [model_id curated legacy_input]}]
+                                 [model_id [curated (:curated (json/decode+kw (str legacy_input)))]]))
+                          (into {})))))
+            (testing "and legacy_input no longer carries the retired authoritative"
+              (is (not-any? #(re-find #"authoritative" (str %))
+                            (jdbc/execute! pgvector (sql/format {:select [:legacy_input] :from [kw-tbl]} :quoted true)))))
             (is (not (contains? (columns) "data_authority")))))))))
 
 (deftest official-collection-dashboard-ids-test

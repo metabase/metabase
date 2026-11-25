@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
@@ -190,3 +191,15 @@
       (is (=? [{:display_name "Other Writer" :description "User Description" :description_set true}]
               (t2/select :model/TableUserSettings :table_id table-id)))
       (is (= "User Description" (:description (user-table table-id)))))))
+
+(deftest retired-authoritative-data-authority-serdes-import-test
+  (testing "Importing settings holding the retired authoritative data_authority imports it as not set by a user, so the
+            Table keeps its own value (BOT-2735)"
+    (mt/with-temp [:model/Table {table-id :id :as table} {:is_upload true :data_authority :ingested}]
+      (table-user-settings/upsert-table-user-settings! table {:data_authority :ingested})
+      (let [settings  (t2/select-one :model/TableUserSettings :table_id table-id)
+            extracted (first (serialization/export-batch :model/TableUserSettings [settings]))]
+        (serialization/load :model/TableUserSettings [(assoc extracted :data_authority "authoritative")])
+        (is (= {:settings nil :table :ingested}
+               {:settings (t2/select-one-fn :data_authority :model/TableUserSettings :table_id table-id)
+                :table    (t2/select-one-fn :data_authority :model/Table :id table-id)}))))))

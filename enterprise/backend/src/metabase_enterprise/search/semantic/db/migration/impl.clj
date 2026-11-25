@@ -390,21 +390,28 @@
   "Migration 7: stop counting authoritative tables as curated, and drop the `data_authority` column.
   An `authoritative` data authority used to make a table curated. The value is gone from the appdb, so table
   rows indexed as authoritative lose `curated` unless they are published-final.
+  Both the `curated` column (used for filtering) and `legacy_input` (from which results are reconstructed) change,
+  so results stop showing those tables as curated before their next reindex.
   Empty (freshly migrated, not-yet-populated) index tables skip the recompute, since ingestion populates them."
   [tx index-metadata]
   (let [;; resolved lazily so the appdb sweep only runs once a non-empty index table is found
-        tables (delay (curated-table-ids))]
+        tables          (delay (curated-table-ids))
+        with-curated    (fn [curated?]
+                          [:jsonb_set [:- :legacy_input ^:allow-raw-sql [:inline "data_authority"]]
+                           ^:allow-raw-sql [:inline "{curated}"]
+                           [:cast ^:allow-raw-sql [:inline (str curated?)] :jsonb]])]
     (alter-index-tables!
      tx index-metadata 7
      (fn [execute! table-name]
        (let [kw-tbl (keyword table-name)]
          (when-not (index-empty? execute! kw-tbl)
            (execute! {:update kw-tbl
-                      :set    {:curated false}
+                      :set    {:curated false :legacy_input (with-curated false)}
                       :where  [:and
                                [:= :model ^:allow-raw-sql [:inline "table"]]
                                [:= :data_authority ^:allow-raw-sql [:inline "authoritative"]]]})
-           (update-model-rows-in-batches! execute! kw-tbl "table" @tables {:curated true}))
+           (update-model-rows-in-batches! execute! kw-tbl "table" @tables
+                                          {:curated true :legacy_input (with-curated true)}))
          (jdbc/execute! tx [(format "ALTER TABLE %s DROP COLUMN IF EXISTS data_authority"
                                     (semantic.util/quote-table table-name))]))))))
 
