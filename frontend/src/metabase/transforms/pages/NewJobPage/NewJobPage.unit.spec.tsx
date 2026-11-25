@@ -1,23 +1,37 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock, { type CallLog } from "fetch-mock";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupDatabaseListEndpoint,
   setupListTransformJobTransformsEndpoint,
+  setupListTransformJobsEndpoint,
   setupListTransformTagsEndpoint,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
+import {
+  mockGetBoundingClientRect,
+  renderRoutes,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import * as Analytics from "metabase/analytics";
-import { Route } from "metabase/router";
+import { Route, toRouteObjects } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
 import {
   createMockDatabase,
+  createMockTokenFeatures,
   createMockTransformJob,
   createMockTransformTag,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
+import { getDataStudioTransformRoutes } from "../../routes";
 import { JobPage } from "../JobPage";
 
 import { NewJobPage } from "./NewJobPage";
@@ -91,6 +105,54 @@ function setup() {
   );
 
   return { router, trackSimpleEvent };
+}
+
+const BUILT_IN_JOB = createMockTransformJob({
+  id: 1,
+  name: "Hourly job",
+  schedule: "0 0 * * * ? *",
+  tag_ids: [1],
+});
+
+/**
+ * Renders the production transform routes, so the jobs list's "New" link and
+ * the `jobs/new` route are the real ones.
+ */
+function setupWithTransformRoutes() {
+  // the job list is a virtualized tree table that renders no rows without a size
+  mockGetBoundingClientRect({ width: 1000, height: 600 });
+  setupUserMetabotPermissionsEndpoint();
+  setupDatabaseListEndpoint([
+    createMockDatabase({ transforms_permissions: "write" }),
+  ]);
+  setupListTransformTagsEndpoint(DEFAULT_TAGS);
+  setupListTransformJobsEndpoint([BUILT_IN_JOB]);
+  setupListTransformJobTransformsEndpoint(NEW_JOB_ID, []);
+  setupJobsServer();
+  setupEnterprisePlugins();
+
+  const { router } = renderRoutes(
+    toRouteObjects(
+      <Route path="data-studio/transforms">
+        {getDataStudioTransformRoutes()}
+      </Route>,
+    ),
+    {
+      initialRoute: Urls.transformJobList(),
+      withUndos: true,
+      storeInitialState: createMockState({
+        settings: mockSettings({
+          "transforms-enabled": true,
+          "token-features": createMockTokenFeatures({
+            "transforms-basic": true,
+          }),
+        }),
+        currentUser: createMockUser({ is_superuser: true }),
+      }),
+    },
+  );
+
+  return { router };
 }
 
 async function getCreateRequestBodies() {
@@ -226,5 +288,39 @@ describe("NewJobPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("daily")).toBeInTheDocument();
     expect(screen.queryByText("hourly")).not.toBeInTheDocument();
+  });
+
+  it("creates a job from the job list's New link on the real transform routes", async () => {
+    const { router } = setupWithTransformRoutes();
+
+    expect(await screen.findByText("Hourly job")).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("link", { name: /New/ }));
+
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe(Urls.newTransformJob()),
+    );
+    const nameInput = await screen.findByPlaceholderText("Name");
+    expect(nameInput).toHaveValue("New job");
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, "Nightly job");
+    await userEvent.tab();
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(async () => {
+      expect(await getCreateRequestBodies()).toEqual([
+        {
+          name: "Nightly job",
+          description: null,
+          schedule: "0 0 0 * * ? *",
+          ui_display_type: "cron/builder",
+          tag_ids: [],
+        },
+      ]);
+    });
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe(Urls.transformJob(NEW_JOB_ID)),
+    );
+    await findSavedJobEditor();
+    expect(screen.getByPlaceholderText("Name")).toHaveValue("Nightly job");
   });
 });
