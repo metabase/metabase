@@ -1,274 +1,22 @@
 const { H } = cy;
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  ALL_USERS_GROUP_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_MODEL_ID,
-  SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type { StructuredQuestionDetails } from "e2e/support/helpers";
-import { checkNotNull } from "metabase/utils/types";
+import { METAKEY } from "metabase/utils/browser";
+import { DataPermissionValue } from "metabase-types/api/permissions";
 
-const { ORDERS_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > notebook > data source", () => {
-  describe("empty app db", () => {
-    beforeEach(() => {
-      H.restore("setup");
-      cy.signInAsAdmin();
-    });
-
-    it("should display databases by default", { tags: "@OSS" }, () => {
-      cy.visit("/");
-      cy.findByTestId("app-bar").findByText("New").click();
-      H.popover().findByTextEnsureVisible("Question").click();
-      cy.findByPlaceholderText("Search for tables and more...").should("exist");
-
-      H.miniPickerBrowseAll().click();
-      H.entityPickerModal().within(() => {
-        assertDataPickerEntitySelected(0, "Databases");
-        H.entityPickerModalLevel(1).findByText("Sample Database").click();
-        assertDataPickerEntityNotSelected(2, "Accounts");
-        assertDataPickerEntityNotSelected(2, "Analytic Events");
-        assertDataPickerEntityNotSelected(2, "Feedback");
-        assertDataPickerEntityNotSelected(2, "Invoices");
-        assertDataPickerEntityNotSelected(2, "Orders");
-        assertDataPickerEntityNotSelected(2, "People");
-        assertDataPickerEntityNotSelected(2, "Products");
-        assertDataPickerEntityNotSelected(2, "Reviews");
-      });
-    });
-  });
-
-  describe("table as a source", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-    });
-
-    it("should correctly display the source data for ad-hoc questions", () => {
-      H.openReviewsTable();
-      H.openNotebook();
-      cy.findByTestId("data-step-cell").should("have.text", "Reviews").click();
-      H.miniPickerHeader().should("contain", "Sample Database");
-      H.miniPicker().findByText("Reviews");
-
-      H.miniPickerHeader().click();
-      H.miniPickerBrowseAll().click();
-      assertDataPickerEntitySelected(2, "Reviews");
-    });
-
-    it("should correctly display the source data for a simple saved question", () => {
-      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      H.openNotebook();
-      cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
-      H.miniPickerHeader().should("contain", "Sample Database");
-      H.miniPicker().findByText("Orders");
-
-      H.miniPickerHeader().click();
-      H.miniPickerBrowseAll().click();
-      assertDataPickerEntitySelected(2, "Orders");
-    });
-
-    it("should correctly display a table as the model's source when editing simple model's query", () => {
-      cy.visit(`/model/${ORDERS_MODEL_ID}/query`);
-
-      cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
-      H.miniPicker().within(() => {
-        H.miniPickerHeader().should("contain", "Sample Database");
-        cy.findByText("Orders").should("exist");
-      });
-    });
-  });
-
-  describe("multi-schema table as a source", () => {
-    it(
-      "should correctly display a table from a multi-schema database (metabase#39807,metabase#11958)",
-      { tags: "@external" },
-      () => {
-        const dialect = "postgres";
-        const testTable1 = "multi_schema";
-        const testTable2 = "many_data_types";
-
-        const dbName = "Writable Postgres12";
-        const schemaName = "Wild";
-        const tableName = "Animals";
-
-        H.restore(`${dialect}-writable`);
-        H.resetTestTable({ type: dialect, table: testTable1 });
-        H.resetTestTable({ type: dialect, table: testTable2 });
-
-        cy.signInAsAdmin();
-
-        H.resyncDatabase({
-          dbId: WRITABLE_DB_ID,
-        });
-
-        H.startNewQuestion();
-        H.miniPicker().within(() => {
-          cy.findByText(dbName).click();
-          cy.findByText(schemaName).click();
-          cy.findByText(tableName).click();
-        });
-        H.visualize();
-        H.saveQuestionToCollection("Beasts");
-
-        H.openNotebook();
-        cy.findByTestId("data-step-cell").should("contain", tableName).click();
-        H.miniPickerHeader().should("contain", schemaName);
-        H.miniPicker().findByText(tableName).should("exist");
-
-        cy.realType("a"); // start typing to expose mini-picker "Browse all" option
-        H.miniPickerBrowseAll().click();
-        H.entityPickerModal().within(() => {
-          assertDataPickerEntitySelected(1, dbName);
-          assertDataPickerEntitySelected(2, schemaName);
-          assertDataPickerEntitySelected(3, tableName);
-          cy.findByText(tableName).click();
-        });
-
-        cy.log("select a table from the second schema");
-        H.join();
-        H.miniPicker().within(() => {
-          cy.findByText(dbName).click();
-          cy.findByText("public").click();
-          cy.findByText("Many Data Types").click();
-        });
-        H.popover().findByText("Name").click();
-        H.popover().findByText("Text").click();
-
-        cy.log("select a table from the third schema");
-        H.join();
-        H.miniPicker().within(() => {
-          cy.findByText(dbName).click();
-          cy.findByText("Domestic").click();
-          cy.findByText("Animals").should("be.visible");
-          cy.findByText("Birds").should("not.exist");
-          cy.findByText("Animals").click();
-        });
-        H.popover().findByText("Name").click();
-        H.popover().findByText("Name").click();
-
-        cy.log("select a table that only exists in the first schema");
-        H.join();
-        H.miniPicker().within(() => {
-          cy.findByText(dbName).click();
-          cy.findByText(schemaName).click();
-          cy.findByText("Animals").should("be.visible");
-          cy.findByText("Birds").click();
-        });
-        H.popover().findByText("Name").click();
-        H.popover().findByText("Name").click();
-        H.getNotebookStep("join", { stage: 0, index: 2 })
-          .findByLabelText("Right table")
-          .findByText("Birds")
-          .should("be.visible");
-      },
-    );
-  });
-
-  describe("library table as a source", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-      H.createLibrary();
-    });
-
-    it("should allow to pick a published table from the mini picker and the data picker", () => {
-      H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
-      H.startNewQuestion();
-
-      cy.log("mini picker: verify the picker when nothing is selected");
-      H.popover().findByText("Orders").click();
-      H.join();
-      H.popover().findByText("Products").click();
-      H.visualize();
-      H.tableHeaderColumn("User ID").should("be.visible");
-      H.tableHeaderColumn("Products → ID").should("be.visible");
-
-      cy.log("data picker: verify the picker when there is a selected item");
-      H.openNotebook();
-      H.getNotebookStep("data").findByText("Orders").click();
-      H.popover().within(() => {
-        cy.findByText("Data").click();
-        cy.findByText("Browse all").click();
-      });
-
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalItem(0, "Library").should(
-          "have.attr",
-          "data-active",
-          "true",
-        );
-        H.entityPickerModalItem(1, "Data").should(
-          "have.attr",
-          "data-active",
-          "true",
-        );
-        H.entityPickerModalItem(2, "Orders").should(
-          "have.attr",
-          "data-active",
-          "true",
-        );
-      });
-      H.entityPickerModal().button("Close").click();
-
-      cy.log("mini picker: verify the picker when there is a selected item");
-      H.getNotebookStep("data").findByText("Orders").click();
-      H.popover().findByText("Products").click();
-      H.getNotebookStep("data").findByText("Products").should("be.visible");
-
-      H.startNewQuestion();
-
-      cy.log("data picker: verify the picker when nothing is selected");
-      H.popover().findByText("Browse all").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalLevel(0).findByText("Library").click();
-        H.entityPickerModalLevel(1).findByText("Data").click();
-        cy.findByText("Orders").click();
-      });
-
-      H.join();
-      H.popover().findByText("Browse all").click();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalLevel(0).findByText("Library").click();
-        H.entityPickerModalLevel(1).findByText("Data").click();
-        cy.findByText("Products").click();
-      });
-
-      H.visualize();
-      H.tableHeaderColumn("User ID").should("be.visible");
-      H.tableHeaderColumn("Products → ID").should("be.visible");
-    });
-  });
-
   describe("saved entity as a source (aka the virtual table)", () => {
-    const modelDetails: StructuredQuestionDetails = {
-      name: "GUI Model",
-      query: { "source-table": REVIEWS_ID, limit: 1 },
-      display: "table",
-      type: "model",
-      collection_id: SECOND_COLLECTION_ID,
-    };
-
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-    });
-
-    it("data selector should properly show a model as the source (metabase#39699)", () => {
-      H.createQuestion(modelDetails, { visitQuestion: true });
-      H.openNotebook();
-      cy.findByTestId("data-step-cell")
-        .should("have.text", modelDetails.name)
-        .click();
-
-      H.miniPicker().within(() => {
-        cy.findByText(checkNotNull(modelDetails.name))
-          .should("exist")
-          .and("contain.text", checkNotNull(modelDetails.name));
-      });
     });
 
     it("moving the model to another collection should immediately be reflected in the data selector (metabase#39812-1)", () => {
@@ -359,6 +107,203 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, sourceQuestionName);
+      });
+    });
+  });
+});
+
+describe("scenarios > notebook > link to data source", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.on("window:before:load", (win) => {
+      // prevent Cypress opening in a new window/tab and spy on this method
+      cy.stub(win, "open").callsFake((url) => {
+        expect(win.open).to.be.calledOnce;
+        // replace the current page with the linked data source upon ctrl/meta click
+        win.location.assign(url);
+      });
+    });
+  });
+
+  it("smoke test", () => {
+    H.openReviewsTable({ mode: "notebook" });
+
+    cy.log("Normal click on the data source still opens the entity picker");
+    H.getNotebookStep("data").findByText("Reviews").click();
+    H.miniPicker().should("exist");
+    H.miniPicker().findByText("Reviews").click(); // close miniPicker
+
+    cy.log("Meta/Ctrl click on the fields picker behaves as a regular click");
+    H.getNotebookStep("data")
+      .findByTestId("fields-picker")
+      .click(H.holdMetaKey);
+    H.popover().within(() => {
+      cy.findByText("Select all").click();
+    });
+    // Regular click on the fields picker again to close the popover
+    H.getNotebookStep("data").findByTestId("fields-picker").click();
+    // Mid-test sanity-check assertion
+    H.visualize();
+    cy.findAllByTestId("header-cell")
+      .should("have.length", 1)
+      .and("have.text", "ID");
+
+    cy.log(
+      "Deselecting columns should have no effect on the linked data source in new tab/window",
+    );
+    H.openNotebook();
+
+    cy.log("Make sure tooltip is being shown on hover");
+    H.getNotebookStep("data")
+      .findByText("Reviews")
+      .should("be.visible")
+      .realHover();
+    cy.findByRole("tooltip").should(
+      "have.text",
+      `${METAKEY}+click to open in new tab`,
+    );
+
+    H.getNotebookStep("data").findByText("Reviews").click(H.holdMetaKey);
+    cy.wait("@dataset"); // already intercepted in `visualize()`
+
+    cy.log("Make sure Reviews table is rendered in a simple mode");
+    cy.findAllByTestId("header-cell").should("contain", "Reviewer");
+    H.tableInteractive().should("contain", "xavier");
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing 1,112 rows",
+    );
+
+    cy.findByTestId("qb-save-button").should("be.enabled");
+  });
+
+  context("permissions", () => {
+    it("shouldn't show the source question to users without write query permissions or if it lives in a collection that user can't see", () => {
+      H.createQuestion({
+        name: "Nested question based on a question",
+        query: { "source-table": `card__${ORDERS_COUNT_QUESTION_ID}` },
+      }).then(({ body: nestedQuestion }) => {
+        cy.log(
+          "A user with curate collection permissions but without write query permissions should not see the notebook icon",
+        );
+        cy.signIn("nodata");
+        H.visitQuestion(nestedQuestion.id);
+        cy.findByTestId("qb-header-action-panel").should("be.visible");
+        cy.findByTestId("qb-header-action-panel")
+          .icon("notebook")
+          .should("not.exist");
+
+        cy.signInAsAdmin();
+
+        cy.log("Move the source question to admin's personal collection");
+        cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+          collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+        });
+
+        cy.signInAsNormalUser();
+        H.visitQuestion(nestedQuestion.id);
+
+        cy.log("We should not even show the notebook icon");
+        cy.findByTestId("qb-header-action-panel")
+          .icon("notebook")
+          .should("not.exist");
+
+        cy.log(
+          "Even if user opens the notebook link directly, they should not see the source question. We open the entity picker instead",
+        );
+        cy.visit(`/question/${nestedQuestion.id}/notebook`);
+
+        H.getNotebookStep("data")
+          .findByPlaceholderText("Search for tables and more...")
+          .should("exist");
+        H.miniPicker().should("be.visible");
+
+        cy.log(
+          "The same should be true for a user that additionally doesn't have write query permissions",
+        );
+        cy.signIn("nodata");
+        H.visitQuestion(nestedQuestion.id);
+        cy.findByTestId("qb-header-action-panel")
+          .icon("notebook")
+          .should("not.exist");
+
+        cy.visit(`/question/${nestedQuestion.id}/notebook`);
+        cy.url().should("include", "/unauthorized");
+        H.main()
+          .findByText("Sorry, you don’t have permission to see that.")
+          .should("be.visible");
+      });
+    });
+
+    describe("sandboxing", () => {
+      beforeEach(() => {
+        H.activateToken("pro-self-hosted");
+
+        cy.updatePermissionsGraph({
+          [ALL_USERS_GROUP_ID]: {
+            [SAMPLE_DB_ID]: {
+              "view-data": DataPermissionValue.BLOCKED,
+            },
+          },
+        });
+
+        cy.sandboxTable({
+          table_id: ORDERS_ID,
+          attribute_remappings: {
+            attr_uid: [
+              "dimension",
+              ["field", ORDERS.USER_ID, { "base-type": "type/Integer" }],
+            ],
+          },
+        });
+
+        cy.signInAsSandboxedUser();
+      });
+
+      it("should work for sandboxed users when opening a table/question/model", () => {
+        H.visitModel(ORDERS_MODEL_ID);
+        cy.findByTestId("question-row-count").should(
+          "have.text",
+          "Showing 11 rows",
+        );
+        H.openNotebook();
+        H.getNotebookStep("data")
+          .findByText("Orders Model")
+          .click(H.holdMetaKey);
+        cy.findByTestId("question-row-count").should(
+          "have.text",
+          "Showing 11 rows",
+        );
+        H.assertDatasetReqIsSandboxed({
+          requestAlias: `@modelQuery${ORDERS_MODEL_ID}`,
+        });
+      });
+
+      it("should work for sandboxed users when joined table is sandboxed", () => {
+        cy.intercept("/api/dataset").as("dataset");
+
+        H.openProductsTable({ mode: "notebook" });
+        cy.findByTestId("action-buttons").button("Join data").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
+          cy.findByText("Orders").click();
+        });
+
+        H.getNotebookStep("join")
+          .findByLabelText("Right table")
+          .should("have.text", "Orders")
+          .click(H.holdMetaKey);
+
+        cy.findByTestId("question-row-count").should(
+          "have.text",
+          "Showing 11 rows",
+        );
+        H.assertDatasetReqIsSandboxed({
+          columnId: ORDERS.USER_ID,
+          columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
+        });
       });
     });
   });
@@ -554,8 +499,4 @@ function assertDataPickerEntitySelected(level: number, name: string) {
     "data-active",
     "true",
   );
-}
-
-function assertDataPickerEntityNotSelected(level: number, name: string) {
-  H.entityPickerModalItem(level, name).should("not.have.attr", "data-active");
 }
