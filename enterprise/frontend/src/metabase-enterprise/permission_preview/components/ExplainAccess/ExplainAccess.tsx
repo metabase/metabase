@@ -317,7 +317,9 @@ function ExplainedAccess({
 
   const error = read.error ?? query.error ?? download.error;
   const isLoading =
-    read.isFetching || (type !== "collection" && query.isFetching);
+    read.isFetching ||
+    (type !== "collection" && query.isFetching) ||
+    download.isFetching;
   const collection = read.currentData?.reasons.collection;
   const openDetail = (detail: ExplainDetail) =>
     onOpenView({ kind: "detail", detail });

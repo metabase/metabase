@@ -44,12 +44,11 @@ describe("getVerdict", () => {
     reasons: { collection: createCollection() },
   });
 
-  it("is an error when the person can't open the item", () => {
+  it("is an error with no reason when the person can't open the item", () => {
     expect(getVerdict("question", "Sandy Sales", { read: readDenied })).toEqual(
       {
         kind: "error",
         text: "Sandy Sales can't open this question.",
-        reason: "Sandy Sales has no access to its collection, Sales reports.",
       },
     );
   });

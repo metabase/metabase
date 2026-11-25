@@ -188,10 +188,18 @@ function TablesByStatus({
   target,
   onOpenDetail,
 }: TablesByStatusProps) {
-  return TABLE_STATUS_ORDER.map((status) => {
-    const ofStatus = tables.filter(
+  const groups = TABLE_STATUS_ORDER.map((status) => ({
+    status,
+    ofStatus: tables.filter(
       (table) => getTableStatus(table, reasons) === status,
-    );
+    ),
+  }));
+  const hasToggleRow = groups.some(
+    ({ status, ofStatus }) =>
+      ofStatus.length > 1 || (ofStatus.length === 1 && opensRules(status)),
+  );
+
+  return groups.map(({ status, ofStatus }) => {
     const rows = ofStatus.map((table) => (
       <TableRow
         key={table["table-id"]}
@@ -199,6 +207,7 @@ function TablesByStatus({
         status={status}
         reasons={reasons}
         target={target}
+        hasChevronSlot={ofStatus.length === 1 && hasToggleRow}
         onOpen={() =>
           onOpenDetail(
             {
@@ -219,6 +228,7 @@ function TablesByStatus({
           <ToggleRow
             name={t`${ofStatus.length} tables`}
             status={<FoldStatus label={getTableStatusLabel(status, "list")} />}
+            hasToggleRows={opensRules(status)}
           >
             {rows}
           </ToggleRow>
@@ -228,15 +238,29 @@ function TablesByStatus({
   });
 }
 
+/** A table with a rule, working or failing, opens to what the rule says. */
+function opensRules(status: TableStatus) {
+  return status === "filtered" || status === "cant-load";
+}
+
 interface TableRowProps {
   table: PermissionDebugTable;
   status: TableStatus;
   reasons: PermissionDebugReasons;
   target: PreviewTarget;
+  /** Beside a fold or a row that opens, in a row that doesn't */
+  hasChevronSlot: boolean;
   onOpen: () => void;
 }
 
-function TableRow({ table, status, reasons, target, onOpen }: TableRowProps) {
+function TableRow({
+  table,
+  status,
+  reasons,
+  target,
+  hasChevronSlot,
+  onOpen,
+}: TableRowProps) {
   const button = (
     <StatusButton
       status={getTableStatusDisplay(status, "list")}
@@ -244,7 +268,7 @@ function TableRow({ table, status, reasons, target, onOpen }: TableRowProps) {
       onClick={onOpen}
     />
   );
-  if (status === "filtered" || status === "cant-load") {
+  if (opensRules(status)) {
     return (
       <ToggleRow
         name={table.name}
@@ -257,7 +281,11 @@ function TableRow({ table, status, reasons, target, onOpen }: TableRowProps) {
     );
   }
   return (
-    <Row name={table.name} database={table["db-name"]}>
+    <Row
+      name={table.name}
+      database={table["db-name"]}
+      hasChevronSlot={hasChevronSlot}
+    >
       {button}
     </Row>
   );

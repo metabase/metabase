@@ -91,7 +91,7 @@ export function Row({
   children,
 }: RowProps) {
   return (
-    <Flex gap="sm" p="sm" align="flex-start" wrap="nowrap">
+    <Flex gap="sm" py="sm" align="flex-start" wrap="nowrap">
       {hasChevronSlot && <Box w="1rem" flex="none" />}
       <Box flex={1} miw={0}>
         <Flex
@@ -152,6 +152,8 @@ interface ToggleRowProps {
   /** Plain text at the right of a fold, or a status button of a row that opens */
   status: ReactNode;
   initiallyOpen?: boolean;
+  /** Its rows open too: their own chevrons take the indent, so their names stay in this row's column */
+  hasToggleRows?: boolean;
   children: ReactNode;
 }
 
@@ -161,6 +163,7 @@ export function ToggleRow({
   database,
   status,
   initiallyOpen = false,
+  hasToggleRows = false,
   children,
 }: ToggleRowProps) {
   const [isOpen, setIsOpen] = useState(initiallyOpen);
@@ -189,7 +192,7 @@ export function ToggleRow({
         </UnstyledButton>
         {status}
       </div>
-      {isOpen && <Box pl="xl">{children}</Box>}
+      {isOpen && <Box pl={hasToggleRows ? undefined : "xl"}>{children}</Box>}
     </>
   );
 }
@@ -233,7 +236,6 @@ export function VerdictView({ verdict }: { verdict: Verdict }) {
     return (
       <Alert color="error" icon={<Icon name="close" />}>
         <BodyText fw="bold">{verdict.text}</BodyText>
-        {verdict.reason && <BodyText>{verdict.reason}</BodyText>}
       </Alert>
     );
   }

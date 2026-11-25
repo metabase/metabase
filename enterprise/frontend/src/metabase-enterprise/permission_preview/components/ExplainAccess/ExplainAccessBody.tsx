@@ -4,6 +4,7 @@ import { Flex, Stack } from "metabase/ui";
 import type {
   PermissionDebugAnswer,
   PermissionDebugCollection,
+  PermissionDebugDecision,
   PermissionDebugImpersonation,
   PermissionDebugReasons,
   PermissionDebugTable,
@@ -16,6 +17,7 @@ import type { ExplainDetail } from "./ExplainAccessDetail";
 import {
   BodyText,
   FoldStatus,
+  PlainStatus,
   Row,
   SheetCard,
   SmallText,
@@ -68,9 +70,7 @@ export function ExplainAccessBody({
   const subject = getSubject(target);
   const verdict = getVerdict(itemType, subject, answers);
   const item = getItemNoun(itemType);
-  // A person who can't open the item has nothing else to explain
-  const canOpen = read.decision !== "denied";
-  const reasons = canOpen ? query?.reasons : undefined;
+  const reasons = query?.reasons;
   const tables = reasons?.tables ?? [];
 
   return (
@@ -109,7 +109,7 @@ export function ExplainAccessBody({
           }
         />
       )}
-      {query && tables.length > 0 && itemType === "question" && (
+      {download && (
         <DownloadCard
           tables={tables}
           download={download}
@@ -122,16 +122,7 @@ export function ExplainAccessBody({
           }
         />
       )}
-      {canOpen && itemType !== "collection" && collection && (
-        <SheetCard title={t`Editing this ${item}`}>
-          <Flex p="sm">
-            <BodyText>
-              {t`To edit this ${item}, they also need Curate access to its collection.`}
-            </BodyText>
-          </Flex>
-        </SheetCard>
-      )}
-      {canOpen && query && (
+      {query && (
         <AllPermissionsCard
           isQuestion={itemType === "question"}
           collection={collection}
@@ -282,7 +273,6 @@ function TableRows({ rows, hasChevronSlot, onOpen }: TableRowsProps) {
     <ToggleRow
       name={t`${rows.length} tables`}
       status={<FoldStatus label={label} />}
-      initiallyOpen
     >
       {items}
     </ToggleRow>
@@ -342,7 +332,7 @@ function ConnectionCard({ reasons }: { reasons: PermissionDebugReasons }) {
   }
   return (
     <SheetCard title={t`Connection`}>
-      <Stack gap="sm" p="sm">
+      <Stack gap="sm" py="sm">
         {routes.map((route) => (
           <BodyText key={`route-${route["db-id"]}`}>
             {getRouteSentence(route)}
@@ -385,7 +375,7 @@ function ExploringCard({ item, tables, onOpen }: ExploringCardProps) {
       title={t`Exploring this ${item}`}
       info={{
         label: t`About Create queries`,
-        text: t`Create queries on each table decides whether the person can explore the ${item}'s results or start a new question from those results. Editing the ${item} also needs Curate on the ${item}'s collection.`,
+        text: t`Create queries on each table decides whether the person can explore the ${item}'s results or start a new question from those results.`,
       }}
     >
       <Row
@@ -416,34 +406,46 @@ function ExploringCard({ item, tables, onOpen }: ExploringCardProps) {
 
 interface DownloadCardProps {
   tables: PermissionDebugTable[];
-  download?: PermissionDebugAnswer;
+  download: PermissionDebugAnswer;
   onOpen: (tableId: number) => void;
 }
 
 function DownloadCard({ tables, download, onOpen }: DownloadCardProps) {
   return (
-    <SheetCard title={t`Downloading`}>
-      {download && (
-        <Flex p="sm">
-          <BodyText>{getDownloadVerdict(download)}</BodyText>
-        </Flex>
-      )}
-      {tables.map((table) => (
-        <Row
-          key={table["table-id"]}
-          name={table.name}
-          database={table["db-name"]}
-        >
-          <StatusButton
-            status={getDownloadStatus(table["download-results"].value)}
-            rowName={table.name}
-            onClick={() => onOpen(table["table-id"])}
+    <SheetCard>
+      <ToggleRow
+        name={t`Download`}
+        status={
+          <PlainStatus
+            status={getDownloadStatus(DOWNLOAD_VALUES[download.decision])}
           />
-        </Row>
-      ))}
+        }
+      >
+        <BodyText py="sm">{getDownloadVerdict(download)}</BodyText>
+        {tables.map((table) => (
+          <Row
+            key={table["table-id"]}
+            name={table.name}
+            database={table["db-name"]}
+          >
+            <StatusButton
+              status={getDownloadStatus(table["download-results"].value)}
+              rowName={table.name}
+              onClick={() => onOpen(table["table-id"])}
+            />
+          </Row>
+        ))}
+      </ToggleRow>
     </SheetCard>
   );
 }
+
+/** The download level that says what the whole question's download comes to */
+const DOWNLOAD_VALUES: Record<PermissionDebugDecision, string> = {
+  allow: "one-million-rows",
+  limited: "ten-thousand-rows",
+  denied: "no",
+};
 
 function getDownloadVerdict(download: PermissionDebugAnswer) {
   if (download.decision === "denied") {

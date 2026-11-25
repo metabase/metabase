@@ -23,8 +23,6 @@ export type VerdictKind = "success" | "filtered" | "warning" | "error";
 export interface Verdict {
   kind: VerdictKind;
   text: string;
-  /** The reason under an error: why the person can't open the item */
-  reason?: string;
 }
 
 export interface ExplainAnswers {
@@ -114,14 +112,7 @@ export function getVerdict(
   const item = getItemNoun(itemType);
 
   if (read.decision === "denied") {
-    const collection = read.reasons.collection;
-    return {
-      kind: "error",
-      text: t`${who} can't open this ${item}.`,
-      reason: collection
-        ? t`${who} has no access to its collection, ${collection.name}.`
-        : undefined,
-    };
+    return { kind: "error", text: t`${who} can't open this ${item}.` };
   }
   if (!query) {
     return { kind: "success", text: t`${who} can open this ${item}.` };

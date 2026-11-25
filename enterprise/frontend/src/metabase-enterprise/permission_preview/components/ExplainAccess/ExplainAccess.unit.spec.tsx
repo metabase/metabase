@@ -2,7 +2,8 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { defer } from "metabase/utils/promise";
 import type {
   PermissionDebugAccess,
   PermissionDebugAction,
@@ -37,7 +38,12 @@ const SALES_GROUP: PreviewTarget = {
   group: { id: 9, name: "Sales", magic_group_type: null },
 };
 
-type Answers = Partial<Record<PermissionDebugAction, PermissionDebugAnswer>>;
+type Answers = Partial<
+  Record<
+    PermissionDebugAction,
+    PermissionDebugAnswer | Promise<PermissionDebugAnswer>
+  >
+>;
 
 interface SetupOpts {
   item?: string;
@@ -203,15 +209,30 @@ describe("ExplainAccess", () => {
       expect(names).toEqual(["Sales", "All Users"]);
     });
 
-    it("says what editing needs", async () => {
-      setup();
+    it("says nothing about editing, on the sheet or in the Exploring tooltip", async () => {
+      setup({
+        answers: {
+          "card/query": createAnswer({
+            reasons: {
+              collection: createCollection(),
+              tables: [createTable()],
+            },
+          }),
+        },
+      });
+
+      await userEvent.hover(
+        await screen.findByRole("button", { name: "About Create queries" }),
+      );
 
       expect(
-        await screen.findByText("Editing this question"),
+        await screen.findByText(
+          "Create queries on each table decides whether the person can explore the question's results or start a new question from those results.",
+        ),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/also need Curate access to its collection\./),
-      ).toBeInTheDocument();
+        screen.queryByText("Editing this question"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -226,33 +247,46 @@ describe("ExplainAccess", () => {
       reasons: { collection, tables: [createTable()] },
     });
 
-    it("says the person can't open the question and why, with the collection's status", async () => {
+    it("says only that the person can't open the question, and names the collection with No access", async () => {
       setup({ answers: { "card/read": denied, "card/query": denied } });
 
       expect(
         await screen.findByText("Sandy Sales can't open this question."),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(
-          "Sandy Sales has no access to its collection, Sales reports.",
-        ),
-      ).toBeInTheDocument();
+        screen.queryByText(/has no access to its collection/),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Opening this question")).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "Sales reports, No access" }),
       ).toBeInTheDocument();
     });
 
-    it("leaves out what the data would say about a question the person can't open", async () => {
-      setup({ answers: { "card/read": denied, "card/query": denied } });
+    it("keeps the other cards of a question the person can't open", async () => {
+      setup({
+        answers: {
+          "card/read": denied,
+          "card/query": denied,
+          "card/download-data": createAnswer({
+            decision: "denied",
+            outcome: "denied",
+            reasons: {},
+          }),
+        },
+      });
 
       await screen.findByText("Sandy Sales can't open this question.");
 
+      expect(screen.getByText("Data in this question")).toBeInTheDocument();
       expect(
-        screen.queryByText("Data in this question"),
-      ).not.toBeInTheDocument();
+        screen.getByRole("button", { name: "Orders, Full access" }),
+      ).toBeInTheDocument();
       expect(
-        screen.queryByText("Exploring this question"),
-      ).not.toBeInTheDocument();
+        screen.getByRole("button", { name: "Orders, Query builder only" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Download")).toBeInTheDocument();
+      expect(screen.getByText("No downloads")).toBeInTheDocument();
+      expect(screen.getByText("All permissions (4)")).toBeInTheDocument();
     });
 
     it("says the person can open the question but not see its results, and shows the blocked table", async () => {
@@ -459,62 +493,120 @@ describe("ExplainAccess", () => {
     });
   });
 
-  describe("limited", () => {
-    it("shows the download verdict and each table's level", async () => {
-      setup({
-        answers: {
-          "card/query": createAnswer({
-            reasons: {
-              collection: createCollection(),
-              tables: [
-                createTable({
-                  "download-results": {
-                    value: "ten-thousand-rows",
-                    groups: [
-                      createGroupValue("Sales", "ten-thousand-rows", true),
-                    ],
-                  },
-                }),
-              ],
-            },
-          }),
-          "card/download-data": createAnswer({
-            decision: "limited",
-            outcome: "limited",
-            reasons: {},
-          }),
-        },
-      });
-
-      expect(
-        await screen.findByText(
-          "Their downloads are capped below the full result.",
-        ),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Orders, Up to 10,000 rows" }),
-      ).toBeInTheDocument();
+  describe("download", () => {
+    const withTable = createAnswer({
+      reasons: { collection: createCollection(), tables: [createTable()] },
     });
 
-    it("says when the person can't download", async () => {
+    it("is one row after Exploring and before All permissions, closed at first", async () => {
+      setup({ answers: { "card/query": withTable } });
+
+      const download = await screen.findByText("Download");
+
+      expect(
+        screen
+          .getByText("Exploring this question")
+          .compareDocumentPosition(download),
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(
+        download.compareDocumentPosition(
+          screen.getByText("All permissions (4)"),
+        ),
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(screen.queryByText("Downloading")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Orders, Up to 1 million rows" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ["allow", "Up to 1 million rows", "They can download the full result."],
+      [
+        "limited",
+        "Up to 10,000 rows",
+        "Their downloads are capped below the full result.",
+      ],
+      ["denied", "No downloads", "They can't download these results."],
+    ] as const)(
+      "shows the outcome of a download decided %s, and its sentence once opened",
+      async (decision, outcome, sentence) => {
+        setup({
+          answers: {
+            "card/query": withTable,
+            "card/download-data": createAnswer({ decision, reasons: {} }),
+          },
+        });
+
+        const download = await screen.findByText("Download");
+        expect(screen.getByText(outcome)).toBeInTheDocument();
+        expect(screen.queryByText(sentence)).not.toBeInTheDocument();
+
+        await userEvent.click(download);
+
+        expect(screen.getByText(sentence)).toBeInTheDocument();
+      },
+    );
+
+    it("opens a table's download value to the groups that decide it", async () => {
+      setup({ answers: { "card/query": withTable } });
+      await userEvent.click(await screen.findByText("Download"));
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Orders, Up to 1 million rows" }),
+      );
+
+      expect(
+        screen.getByText(
+          "Sandy Sales has Download results set to Up to 1 million rows on Orders, from Sales.",
+        ),
+      ).toBeVisible();
+      expect(screen.getByText("Groups")).toBeVisible();
+    });
+
+    it("has no Download row on a dashboard", async () => {
       setup({
+        item: "dashboard/3",
         answers: {
-          "card/query": createAnswer({
+          "dashboard/query": createAnswer({
+            "model-type": "dashboard",
             reasons: {
               collection: createCollection(),
               tables: [createTable()],
             },
           }),
-          "card/download-data": createAnswer({
-            decision: "denied",
-            outcome: "denied",
-            reasons: {},
-          }),
         },
       });
 
       expect(
-        await screen.findByText("They can't download these results."),
+        await screen.findByText("Data in this dashboard"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Download")).not.toBeInTheDocument();
+    });
+
+    it("shows no verdict until the download answer has arrived", async () => {
+      const download = defer<PermissionDebugAnswer>();
+      setup({
+        answers: {
+          "card/query": withTable,
+          "card/download-data": download.promise,
+        },
+      });
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls("path:/api/ee/permission_debug"),
+        ).toHaveLength(3),
+      );
+
+      expect(screen.getByText("Loading...")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Sandy Sales can see this question."),
+      ).not.toBeInTheDocument();
+
+      download.resolve(createAnswer({ reasons: {} }));
+
+      expect(await screen.findByText("Download")).toBeInTheDocument();
+      expect(
+        screen.getByText("Sandy Sales can see this question."),
       ).toBeInTheDocument();
     });
   });
@@ -707,7 +799,7 @@ describe("ExplainAccess", () => {
       ).toBeInTheDocument();
     });
 
-    it("folds two tables with full access into one row that opens", async () => {
+    it("folds two tables with full access into one row, closed at first", async () => {
       setup({
         answers: {
           "card/query": createAnswer({
@@ -723,17 +815,17 @@ describe("ExplainAccess", () => {
       });
 
       const fold = await screen.findByRole("button", { name: /2 tables/ });
-      expect(fold).toBeInTheDocument();
-      expect(screen.getAllByText("Full access")).toHaveLength(3);
+      expect(screen.getAllByText("Full access")).toHaveLength(1);
       expect(
-        screen.getByRole("button", { name: "Orders, Full access" }),
-      ).toBeInTheDocument();
+        screen.queryByRole("button", { name: "Orders, Full access" }),
+      ).not.toBeInTheDocument();
 
       await userEvent.click(fold);
 
       expect(
-        screen.queryByRole("button", { name: "Orders, Full access" }),
-      ).not.toBeInTheDocument();
+        screen.getByRole("button", { name: "Orders, Full access" }),
+      ).toBeInTheDocument();
+      expect(screen.getAllByText("Full access")).toHaveLength(3);
     });
 
     it("says varies by table when the tables differ", async () => {
@@ -1114,11 +1206,9 @@ describe("ExplainAccess", () => {
       }),
     };
 
-    it("shows a collection's own answer after a question, with no download sentence", async () => {
+    it("shows a collection's own answer after a question, with no Download row", async () => {
       const { showItem } = setup({ answers: withTables });
-      expect(
-        await screen.findByText("They can download the full result."),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("Download")).toBeInTheDocument();
 
       showItem("collection/5");
 
@@ -1128,17 +1218,13 @@ describe("ExplainAccess", () => {
       expect(
         screen.queryByText("Sandy Sales can see this question."),
       ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText("They can download the full result."),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Download")).not.toBeInTheDocument();
       expect(screen.getByText("Sales reports")).toBeInTheDocument();
     });
 
-    it("gives a dashboard no download sentence after a question", async () => {
+    it("gives a dashboard no Download row after a question", async () => {
       const { showItem } = setup({ answers: withTables });
-      expect(
-        await screen.findByText("They can download the full result."),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("Download")).toBeInTheDocument();
 
       showItem("dashboard/3");
 
@@ -1146,9 +1232,7 @@ describe("ExplainAccess", () => {
       expect(
         await screen.findByText("Sandy Sales can see this dashboard."),
       ).toBeInTheDocument();
-      expect(
-        screen.queryByText("They can download the full result."),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Download")).not.toBeInTheDocument();
     });
 
     it("drops the previous question's name and answers for a question that is missing", async () => {
