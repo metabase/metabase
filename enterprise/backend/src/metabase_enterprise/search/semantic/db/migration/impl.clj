@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
+   [honey.sql.pg-ops :as sql.pg-ops]
    [metabase-enterprise.search.semantic.db :as semantic-search.db]
    [metabase-enterprise.search.semantic.index :as semantic.index]
    [metabase-enterprise.search.semantic.index-metadata :as semantic.index-metadata]
@@ -396,8 +397,12 @@
   [tx index-metadata]
   (let [;; resolved lazily so the appdb sweep only runs once a non-empty index table is found
         tables          (delay (curated-table-ids))
+        ;; some older rows hold legacy_input double-encoded, as a JSON string; deleting a key from one fails
+        legacy-object   [:case [:= [:jsonb_typeof :legacy_input] ^:allow-raw-sql [:inline "string"]]
+                         [:cast [sql.pg-ops/hash>> :legacy_input ^:allow-raw-sql [:inline "{}"]] :jsonb]
+                         :else :legacy_input]
         with-curated    (fn [curated?]
-                          [:jsonb_set [:- :legacy_input ^:allow-raw-sql [:inline "data_authority"]]
+                          [:jsonb_set [:- legacy-object ^:allow-raw-sql [:inline "data_authority"]]
                            ^:allow-raw-sql [:inline "{curated}"]
                            [:cast ^:allow-raw-sql [:inline (str curated?)] :jsonb]])]
     (alter-index-tables!

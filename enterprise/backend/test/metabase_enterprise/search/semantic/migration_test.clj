@@ -565,22 +565,26 @@
             ;; an index table from before migration 7 still has the column
             (jdbc/execute! pgvector [(format "ALTER TABLE %s ADD COLUMN data_authority text"
                                              (semantic.util/quote-table table-name))])
-            (doseq [[model model-id authority] [["table" (str pub) "authoritative"]
-                                                ["table" "999999" "authoritative"]
-                                                ["table" "999998" "ingested"]
-                                                ["card"  "1"      nil]]]
+            ;; the last flag stores legacy_input double-encoded, as a JSON string, which some older rows hold
+            (doseq [[model model-id authority double-encoded?] [["table" (str pub) "authoritative" false]
+                                                                ["table" "999999" "authoritative" false]
+                                                                ["table" "999997" "authoritative" true]
+                                                                ["table" "999998" "ingested"      false]
+                                                                ["card"  "1"      nil             false]]]
               (insert-index-row! pgvector kw-tbl {:model          [:inline model]
                                                   :model_id       [:inline model-id]
                                                   :data_authority [:inline authority]
                                                   :curated        [:inline true]
-                                                  :legacy_input   [:cast [:inline (json/encode {:curated        true
-                                                                                                :data_authority authority})]
+                                                  :legacy_input   [:cast [:inline (cond-> (json/encode {:curated        true
+                                                                                                        :data_authority authority})
+                                                                                    double-encoded? json/encode)]
                                                                    :jsonb]}))
             (jdbc/execute! pgvector (sql/format {:update meta-tbl :set {:index_version 6}}))
             (semantic.core/init! (semantic.tu/mock-documents) nil)
             (testing "in the curated column and in legacy_input, which results are rebuilt from"
               (is (= {(str pub) [true true]
                       "999999"  [false false]
+                      "999997"  [false false]
                       "999998"  [true true]
                       "1"       [true true]}
                      (->> (jdbc/execute! pgvector
