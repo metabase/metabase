@@ -211,7 +211,7 @@
 (defn combine-text-parts-xf
   "Transducer that merges each run of consecutive `:text` parts into one `:text` part.
 
-  Other parts pass through unchanged."
+  Other parts pass through unchanged. A `nil` part is dropped."
   []
   (fn [rf]
     (let [pending (volatile! nil)]
@@ -219,14 +219,23 @@
         ([] (rf))
         ([result]
          (let [p @pending]
-           (rf (if p (rf result p) result))))
+           (vreset! pending nil)
+           (rf (if p (unreduced (rf result p)) result))))
         ([result part]
          (let [prev @pending]
-           (if (and prev (= :text (:type prev) (:type part)))
+           (cond
+             (nil? part)
+             result
+
+             (and prev (= :text (:type prev) (:type part)))
              (do (vswap! pending update :text str (:text part))
                  result)
-             (do (vreset! pending part)
-                 (if prev (rf result prev) result)))))))))
+
+             :else
+             (let [ret (if prev (rf result prev) result)]
+               ;; after a reduced result no part goes downstream, so none waits for the completion
+               (vreset! pending (when-not (reduced? ret) part))
+               ret))))))))
 
 (defn post-process-xf
   "Composed transducer for post-processing agent output.
