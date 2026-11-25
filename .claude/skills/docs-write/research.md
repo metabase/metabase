@@ -60,18 +60,11 @@ Versions are mostly not in the code either. Many `define-premium-feature` forms 
 
 ## Link to a commit that's on GitHub
 
-A link to a commit that nobody pushed is a 404. Pick the commit first:
+A link to a commit that nobody pushed is a 404. If `git branch -r --contains HEAD` lists a branch, link to the commit from `git rev-parse HEAD`. If it lists nothing, link to the commit from `git merge-base HEAD origin/master`.
 
-```sh
-git branch -r --contains HEAD
-```
+Open the lines before you cite them, and never estimate a line number. If you use the merge base, or the file has uncommitted changes, get the line numbers from `git show COMMIT:PATH`. If the lines exist only in this checkout, give the path and the line numbers without a link, and write "Not pushed" in the Notes column.
 
-- **If the output lists a branch**, use the commit from `git rev-parse HEAD`.
-- **If the output is empty**, use the commit from `git merge-base HEAD origin/master`.
-
-Open the lines before you cite them, and never estimate a line number. If you picked HEAD, and the file has no uncommitted changes, the line numbers in this checkout are right. Otherwise, read the file with `git show COMMIT:PATH`. If the lines exist only in this checkout, give the path and the line numbers without a link, and write "Not pushed" in the Notes column.
-
-Link each fact to the lines that show it. Write every URL in full, with the full commit hash, however long the table gets. People paste single rows into a PR, so a base URL or a `...` breaks the link:
+Write every URL in full, with the full commit hash, since people paste single rows into a PR:
 
 ```text
 https://github.com/metabase/metabase/blob/COMMIT/PATH#LFIRST-LLAST

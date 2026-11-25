@@ -7,25 +7,19 @@ summary: Preview docs as you write them, check for broken links, and regenerate 
 
 ## Linting markdown links
 
-You can check for broken links in the [docs](../) directory by running:
+To check the links in the [docs](../) directory, in the nav, and in the source code, run:
 
-```
-bun run docs-lint-links
-```
-
-This command uses [Markdown link check](https://github.com/tcort/markdown-link-check) to vet links in all of the markdown files in the [docs](../) directory. We recommend writing the command's output to a file. E.g.,
-
-```
-touch ~/links-to-fix.txt && bun run docs-lint-links > ~/links-to-fix.txt
+```sh
+docs/util/check-links.sh
 ```
 
-Alternatively, if you just want to check the in-product links (the pages passed to `useDocsUrl` and `getDocsUrl`) to make sure they link to actual documents and headings:
+The script needs [lychee](https://lychee.cli.rs) and `jq`. To check only the in-product links (the pages passed to `useDocsUrl` and `getDocsUrl`), run:
 
-```
+```sh
 bun run lint-docs-links
 ```
 
-You can view both commands in the [package.json](https://github.com/metabase/metabase/blob/master/package.json) file under `scripts`.
+CI runs both checks.
 
 ## Preview docs as you write them
 
@@ -76,5 +70,3 @@ clojure -M:ee:doc api-documentation
 ## Style guide
 
 Follow the [Metabase writing style guide](https://github.com/metabase/metabase/blob/master/.claude/skills/_shared/metabase-style-guide.md), and the [`docs-write` skill](https://github.com/metabase/metabase/blob/master/.claude/skills/docs-write/SKILL.md) for the rules that only the docs need.
-
-Existing docs break the rules in places. When you find a break on a page you're working on, like a "user" that needs to be a "person," fix it. Leave breaks on other pages for later.

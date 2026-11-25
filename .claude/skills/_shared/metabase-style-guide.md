@@ -15,7 +15,9 @@ Prioritize clarity over style.
 
 Readers are smart and impatient. Explain only what readers need and don't already know. When an example makes the point, show the example and cut the explanation. Tailor length to complexity, elaborating only when a topic requires it.
 
-If readers wouldn't miss the content, cut it. Before you finish, reread once and delete every sentence the reader could have skipped.
+If readers wouldn't miss the content, cut it. But keep the sentence that defines a term, and the sentence that says why someone would care, unless another sentence already does that job.
+
+Before you finish, reread once as someone who hasn't seen your sources. Delete every sentence they could skip, and fix every sentence they couldn't follow.
 
 ## Put the reader's task first
 
@@ -35,7 +37,7 @@ Task headings are imperative: "Create a dashboard," not "Creating a dashboard." 
 
 **Cut filler.** It adds length and nothing else. Examples:
 
-- An opening that restates the title, or "In this section, we'll…"
+- An opening that restates the title without defining it, or "In this section, we'll…"
 - A closing summary
 - "Note that," "It's worth noting," "Keep in mind"
 
@@ -68,6 +70,16 @@ One exclamation point per page, email, or post is plenty. Be occasionally clever
 ## Prefer everyday words to database terms
 
 Prefer words people know from spreadsheet apps, like "summarize" and "filter," to database terms. Use jargon when it's the correct term and it clarifies.
+
+| Write                              | Not                          | Exception                                                                                               |
+| ---------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------- |
+| people, companies, the next person | users                        | The admin concept: user account, user group, the API. Always "user attributes" and "user provisioning." |
+| can't, don't                       | cannot, do not               | Quoted errors, code, config values.                                                                     |
+| use                                | utilize, leverage            |                                                                                                         |
+| summarize                          | aggregate                    | SQL and database terms, like "aggregation function."                                                    |
+| see, take a look at                | reference (as a verb)        |                                                                                                         |
+| and                                | &                            | Proper nouns.                                                                                           |
+| Metabase shows a warning           | Metabase will show a warning | Things that happen later: "your trial will end."                                                        |
 
 ## Use Metabase's names for things
 

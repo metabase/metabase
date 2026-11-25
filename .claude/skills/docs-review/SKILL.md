@@ -16,7 +16,7 @@ metadata:
 
 ## Read the rules, then read the change for intent
 
-If you haven't already, read [the style guide](../_shared/metabase-style-guide.md) and [the `docs-write` skill](../docs-write/SKILL.md) (relative to this skill's directory) before anything else. `docs-write` has the rules that only the docs need. Apply those rules, and skip its steps for writers, like running Prettier. Then read the diff once for intent before you flag anything. In a diff, flag only the changed lines, and anything those changes break elsewhere. When you review a file instead of a diff, every line is in scope. Skip the generated pages that `docs-write` lists.
+If you haven't already, read [the style guide](../_shared/metabase-style-guide.md) and [the `docs-write` skill](../docs-write/SKILL.md) (relative to this skill's directory) before anything else. `docs-write` has the rules that only the docs need. Apply those rules, and skip its steps for writers, like running Prettier. Then read the changed sections once, before you open any evidence or code. Note what you can't follow, and any statements that seem to disagree, since those problems are hard to see once you know how the code works. Read the diff for intent before you flag anything. In a diff, flag only the changed lines, and anything those changes break elsewhere. When you review a file instead of a diff, every line is in scope. Skip the generated pages that `docs-write` lists.
 
 If you wrote the change in this session, give the review to a new subagent, since it's hard to see the problems in a page you just wrote. Pass the path of this skill, the diff, and the evidence for each fact. Leave out your reasons for the change. If you can't start a subagent, review the change here, and say so in your reply.
 
@@ -39,7 +39,7 @@ Then act on the status of each fact:
 
 Existential questions come first, then broken things, then clarity, then style. One issue outranks any number of issues in a lower tier.
 
-**Tier 0: Existential.** The rules under the style guide's "Cut more than you think you should" heading, and the "Cut pages and sections nobody needs" heading in `docs-write`. Ask whether the page, section, or sentence needs to exist at all. Be ruthless. If the content really helps people solve problems in or with Metabase, recommend a section to merge it into, or a trim. If you don't think readers care about it, wince and recommend that the author cut it completely.
+**Tier 0: Existential.** The rules under the style guide's "Cut more than you think you should" heading, and the "Cut pages and sections nobody needs" heading in `docs-write`. Ask whether the page, section, or sentence needs to exist at all. If the content helps people solve problems in or with Metabase, recommend a section to merge it into, or a trim. If you don't think readers care about it, recommend that the author cut it. When you recommend a cut, say where readers still get the definition and the reason to care.
 
 **Tier 1: Broken.** A fact that the code contradicts is broken. So is:
 
@@ -50,23 +50,15 @@ Existential questions come first, then broken things, then clarity, then style. 
 In a diff, also check for:
 
 - A moved or renamed page with no `redirect_from` entry for its old path, or one that drops the old page's own `redirect_from` entries.
-- A link that still points at a moved page's old path, in `docs/`, in a frontend `useDocsUrl` call, or in backend code. Search for the old page name:
-
-  ```sh
-  grep -rn "old-page" docs/ frontend/src enterprise/frontend/src src enterprise/backend/src modules resources
-  ```
-
-- A changed heading whose old anchor is still linked. Search for the anchor, without the `#`:
-
-  ```sh
-  grep -rn "cache-configuration" docs/ frontend/src enterprise/frontend/src src enterprise/backend/src modules resources
-  ```
-
+- A link to a moved page's old path, or to a changed heading's old anchor. CI checks the links that are written out, so search only for links that the code builds from variables. `docs-write` has the searches.
 - A new page with no `title` or `summary` front matter.
 - A new page that's not in `docs/util/data/nav.yml`. Some pages stay out of the nav on purpose, so ask.
 
-**Tier 2: Clarity.** The rules under the style guide's "Write for four kinds of readers" and "Put the reader's task first" headings, and the "Match your edits to the page's Diátaxis type" and "Build each page around the reader's task" headings in `docs-write`, like:
+**Tier 2: Clarity.** The rules under the style guide's "Write for four kinds of readers" and "Put the reader's task first" headings, and the "Write for someone who hasn't seen the code," "Match your edits to the page's Diátaxis type," and "Build each page around the reader's task" headings in `docs-write`, like:
 
+- A paragraph you couldn't follow before you read the code
+- Two statements that seem to disagree
+- A page that never says what the feature is, or why someone would use it
 - Action buried under explanation
 - A heading naming a topic instead of a point, except on a reference page
 - Commands out of the order people run them

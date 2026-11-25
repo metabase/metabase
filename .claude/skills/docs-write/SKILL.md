@@ -14,21 +14,30 @@ Existing docs break the rules in places. When a page and a rule disagree, the ru
 
 Before you write a product fact, make sure the code backs it. A product fact is a setting, an environment variable, a default, a limit, a UI label, a permission, a plan, a version, an API endpoint, or a behavior:
 
-- **A change with new product facts**: Read [the research guide](./research.md), and check the facts in this session before you draft. Write only the facts you confirm. For a contradicted fact, write what the code does. If the issue says otherwise, point that out in your reply.
+- **A change with new product facts**: Read [the research guide](./research.md), and check the facts in this session before you draft. Write only the facts you confirm. For a contradicted fact, write what the code does.
 - **If you already have a fact table**, research only the facts that aren't in it.
 - **A change with no new product facts**, like a link fix or a rewrite for clarity, needs no research.
 
-State only the facts the issue asks for, and the facts readers need to do what it describes. List other confirmed facts in your reply. Report a likely bug in your reply too, not on the page.
-
-Leave facts the code didn't confirm out of the page, and list them in your reply. If the material doesn't say where the feature stops, say so in your reply instead of guessing.
+State only the facts the issue asks for, and the facts readers need to do what it describes. Leave out facts the code didn't confirm. If the material doesn't say where the feature stops, leave the limit out instead of guessing.
 
 Plans and versions are the exception, since most aren't in the code:
 
-- **If the code confirms that a feature is paid**, add the blockquote for a plan or an add-on from [Format for the docs site](#format-for-the-docs-site). In your reply, ask for a person to confirm the plans.
+- **If the code confirms that a feature is paid**, add the blockquote for a plan or an add-on from [Format for the docs site](#format-for-the-docs-site).
 - **In the text, take a plan or version only from the issue or the person who asked for the change.** Don't work it out yourself.
-- **List each plan and version in your reply**, with where you got it, so a person can check it.
 
-Give the evidence for each product fact you added or changed: the fact as the page states it, with its full link from the fact table, or its path and lines if the table has no link. Put the list in your reply, and in the PR body if you write one. Reviewers read those lines instead of researching the fact again.
+[Tell the writer](#list-what-a-writer-needs-to-check) what you confirmed and what you didn't.
+
+## Write for someone who hasn't seen the code
+
+**Open the page with what the feature is and why someone would use it.** "Segments are saved filters on tables. You can use segments to create official definitions that everyone on your team can refer to." From there, say what to do, then how. The site shows the `summary` front matter too, so don't repeat the summary. Between the summary and the opening, readers need to get both.
+
+**When a word has two meanings on a page, say which one you mean.** "Here, permissions are OAuth scopes, not Metabase permissions."
+
+**Name who acts, and keep the same name.** An admin, a group, and the person viewing a dashboard can do different things. Write "a group," not "people," when the group holds the permission.
+
+**Put the goal before the action.** "To select a range of cells, click and drag," not "Click and drag to select a range of cells."
+
+**When two rules interact, give one concrete example.** "A group can have permission to write SQL, but no access to the MCP tools for SQL. People in that group can run SQL in Metabase, but not through MCP."
 
 ## Cut pages and sections nobody needs
 
@@ -41,8 +50,6 @@ Pages about building Metabase go in `docs/developers-guide/`.
 When you edit a page, identify its Diátaxis type (tutorial, how-to guide, explanation, or reference), and tailor your edits to that type.
 
 ## Build each page around the reader's task
-
-**Open the page with what the feature does.** From there, say what to do, then how, then why.
 
 **On troubleshooting and reference pages, use the words people look up as headings.** On a troubleshooting page, make the heading the reader's symptom, in the words they'd type into search: "No access to Metabase login page." The heading can end in a question mark. On a reference page, make the heading the name people look up, like a setting or a connection field: "Host."
 
@@ -114,11 +121,11 @@ To check whether a feature is an add-on, look in `docs/data-modeling/transforms/
 
 ## Give a new page front matter and a nav entry, then format it
 
-Every page has `title` and `summary` front matter, and an entry in `docs/util/data/nav.yml`. Some pages stay out of the nav on purpose. If the page doesn't belong in the nav, say why in your reply. When you're done, run `bunx prettier --write` on the page.
+Every page has `title` and `summary` front matter, and an entry in `docs/util/data/nav.yml`. Some pages stay out of the nav on purpose. When you're done, run `bunx prettier --write` on the page.
 
-## Change only the sections you were asked to change
+## Change only what you were asked to change
 
-- **Fix anything in those sections that breaks the style guide or this skill's rules.** Mention problems elsewhere on the page instead of fixing them.
+- **Fix style only in the sentences you change.** Leave the rest of the section and the page as they are, and list the problems you see.
 - **Reformat only the lines you change.** When you edit part of a paragraph, leave the line breaks in the rest of it as they are.
 - **Check the formatting before you edit.** Run `bunx prettier --check` on the file. If the check passes, run `bunx prettier --write` on the file when you're done. If the check fails, skip `bunx prettier --write`, or Prettier rewrites lines you didn't touch.
 - **If you rewrite a heading, fix the links to it.** Product code links to docs anchors too. Before you change `## Cache configuration`, search for the anchor it generates, without the `#`:
@@ -153,11 +160,11 @@ docs/util/check-links.sh
 bun run lint-docs-links
 ```
 
-The first command checks links in `docs/`, in the nav, and in the source code. It needs [lychee](https://lychee.cli.rs) and `jq`. The second command checks `useDocsUrl` and `getDocsUrl` calls in the frontend, and installs the frontend dependencies first. If you can't run one of them, say so in your reply.
+The first command checks links in `docs/`, in the nav, and in the source code. It needs [lychee](https://lychee.cli.rs) and `jq`. The second command checks `useDocsUrl` and `getDocsUrl` calls in the frontend, and installs the frontend dependencies first. CI runs both checks too.
 
 ## Check that code examples work
 
-Run each code example you add or change. If you can't run it, check each name in it (commands, flags, settings, props, columns) against the code, and say in your reply that you didn't run it.
+Run each code example you add or change. If you can't run it, check each name in it (commands, flags, settings, props, columns) against the code.
 
 ## Change generated pages at their source
 
@@ -169,7 +176,11 @@ Scripts generate the following pages from source, most of them every weeknight. 
 - `docs/ai/providers.md` and `docs/ai/mcp-tools.md`
 - `docs/usage-and-performance-tools/usage-analytics-reference.md`
 - `docs/questions/visualizations/country-codes.md`
+- `docs/databases/feature-support.md`
+- `docs/exploration-and-organization/keyboard-shortcuts.md`
 - `docs/embedding/sdk/api/` and `docs/embedding/eajs/snippets/`
+
+A script also updates the Docker tags in `docs/installation-and-operation/running-metabase-on-docker.md` and `upgrading-metabase.md`. Leave those tags alone.
 
 People write the code in `docs/embedding/snippets/` and `docs/embedding/sdk/snippets/`, which pages pull in with `include_file`. Edit and review those files like any other code example.
 
@@ -183,4 +194,16 @@ Keep the jokes and clever lines you find on a page. Writing new ones, or cutting
 
 ## Reread before you finish
 
-Writers review your PRs, so save them the extra work. Do the reread that the style guide asks for, with its "Cut filler" list as the checklist.
+Do the reread that the style guide asks for. Your sources are the code and the issue, so check that each paragraph makes sense from the page alone, and that no two sentences seem to disagree.
+
+## List what a writer needs to check
+
+End your reply with the items that apply, and leave out the rest:
+
+- **Evidence**: Each product fact you added or changed, as the page states it, with its full link from the fact table, or its path and lines if the table has no link. If you write the PR body, put the evidence there too, in the form that the caller asks for. Reviewers read those lines instead of researching the fact again.
+- **Plans and versions**: Each one on the page, with where you got it. If the code confirms that a feature is paid, ask a person to confirm the plans.
+- **Open facts**: Facts the code contradicted or didn't confirm, and limits the material doesn't give.
+- **Left out**: Confirmed facts that you didn't put on the page.
+- **Likely bugs**: Problems in the product. Keep them off the page.
+- **Not run**: Checks and code examples you couldn't run.
+- **Not fixed**: Problems elsewhere on the page, and a new page you kept out of the nav, with the reason.
