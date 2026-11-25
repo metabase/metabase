@@ -270,7 +270,7 @@
     (when (driver.u/supports? engine :table-change-tokens database)
       (let [tokens (sync-util/with-error-handling (format "Error reading the change tokens of the tables of %s"
                                                           (sync-util/name-for-logging database))
-                     (driver/table-change-tokens engine database tables))]
+                     (driver/table-change-tokens engine (driver.u/ensure-lib-database database) tables))]
         (when (map? tokens)
           tokens)))))
 
