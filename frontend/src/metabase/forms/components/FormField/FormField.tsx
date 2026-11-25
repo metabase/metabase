@@ -34,7 +34,7 @@ export const FormField = forwardRef(function FormField(
   const hasDescription = Boolean(description);
   const hasError = Boolean(error);
   const hasInput = Boolean(children);
-  const labelGap = hasDescription ? "xxs" : "xs";
+  const labelGap = hasDescription ? "xxxs" : "xs";
 
   return (
     <Flex {...props} ref={ref} direction="column">
