@@ -72,7 +72,7 @@ export function LineChart({
       <path
         d={path}
         fill="none"
-        stroke="var(--mb-color-brand)"
+        stroke="var(--mb-color-core-brand)"
         strokeWidth={showAxes ? 2 : 1.5}
       />
       {showAxes &&
@@ -82,7 +82,7 @@ export function LineChart({
             cx={x(i)}
             cy={y(v)}
             r={3}
-            fill="var(--mb-color-brand)"
+            fill="var(--mb-color-core-brand)"
           />
         ))}
     </svg>

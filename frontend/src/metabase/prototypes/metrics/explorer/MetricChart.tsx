@@ -5,8 +5,8 @@ import { formatNumber } from "../data";
 
 const CATEGORIES: Record<string, string[]> = {
   Category: ["Widget", "Gadget", "Gizmo", "Doohickey"],
-  Channel: ["Online", "Retail", "Partner"],
-  Region: ["EMEA", "NA", "APAC", "LATAM"],
+  Source: ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
+  Plan: ["Basic", "Business", "Premium"],
 };
 
 /** A line over time, or bars across a category. Mock numbers. */

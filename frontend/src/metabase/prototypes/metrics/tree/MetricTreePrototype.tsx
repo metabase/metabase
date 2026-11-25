@@ -15,70 +15,97 @@ import S from "../LoFi.module.css";
 import { LineChart } from "../Sparkline";
 import { formatNumber, getMeasure } from "../data";
 
-type Operator = "+" | "−" | "×" | "÷";
+export type Operator = "+" | "−" | "×" | "÷";
 
-type MetricDef = {
+export type MetricDef = {
   kind: "metric";
   id: string;
   name: string;
   operator: Operator;
   /** Ids of metrics or measures (prefixed `measure:`). */
   inputs: string[];
+  /** Per-term operators when they're mixed; the first entry is unused. */
+  ops?: Operator[];
 };
 
-const METRICS: Record<string, MetricDef> = {
-  margin: {
-    kind: "metric",
-    id: "margin",
-    name: "Gross margin %",
-    operator: "÷",
-    inputs: ["profit", "measure:revenue"],
-  },
-  profit: {
-    kind: "metric",
-    id: "profit",
-    name: "Gross profit",
-    operator: "−",
-    inputs: ["net", "measure:cogs"],
-  },
-  net: {
-    kind: "metric",
-    id: "net",
-    name: "Net revenue",
-    operator: "−",
-    inputs: ["measure:revenue", "measure:discount"],
-  },
-  aov: {
-    kind: "metric",
-    id: "aov",
-    name: "Avg order value",
-    operator: "÷",
-    inputs: ["net", "measure:orders"],
-  },
-  rph: {
-    kind: "metric",
-    id: "rph",
-    name: "Revenue per billable hour",
-    operator: "÷",
-    inputs: ["net", "measure:hours"],
-  },
-};
+/** The operator in front of a metric's input `i` (none for the first). */
+export const opOf = (def: MetricDef, i: number): Operator =>
+  def.ops?.[i] ?? def.operator;
 
-const ROOTS = ["margin", "aov", "rph"];
+const metric = (
+  id: string,
+  name: string,
+  operator: Operator,
+  inputs: string[],
+  ops?: Operator[],
+): MetricDef => ({ kind: "metric", id, name, operator, inputs, ops });
+
+/**
+ * The editor's examples (explorer/examples.ts), with the same ids. A filtered
+ * measure is `measure:<id>|<filter>`.
+ */
+export const METRICS: Record<string, MetricDef> = Object.fromEntries(
+  [
+    metric("net-revenue", "Net revenue", "−", [
+      "measure:revenue",
+      "measure:discounts",
+      "measure:tax",
+    ]),
+    metric(
+      "gross-billings",
+      "Gross billings",
+      "+",
+      ["measure:revenue", "measure:tax", "measure:discounts"],
+      ["+", "+", "−"],
+    ),
+    metric("average-order-value", "Average order value", "÷", [
+      "measure:revenue",
+      "measure:orders",
+    ]),
+    metric("discounted-order-share", "Share of orders with a discount", "÷", [
+      "measure:orders|Discount is not empty",
+      "measure:orders",
+    ]),
+    metric("trial-conversion-rate", "Trial conversion rate", "÷", [
+      "measure:new-accounts|Trial converted = true",
+      "measure:new-accounts",
+    ]),
+    metric("gizmo-average-order-value", "Gizmo average order value", "÷", [
+      "measure:revenue|Product category = Gizmo",
+      "measure:orders|Product category = Gizmo",
+    ]),
+    metric("revenue-per-new-customer", "Revenue per new customer", "÷", [
+      "measure:revenue",
+      "measure:new-customers",
+    ]),
+  ].map((def) => [def.id, def]),
+);
+
+export const ROOTS = Object.keys(METRICS);
+
+const PERCENT_METRICS = ["discounted-order-share", "trial-conversion-rate"];
+
+const parseMeasure = (id: string) => {
+  const [measureId, filter] = id.slice("measure:".length).split("|");
+  return { measure: getMeasure(measureId), filter };
+};
 
 const apply = (a: number, op: Operator, b: number) =>
   op === "+" ? a + b : op === "−" ? a - b : op === "×" ? a * b : a / b;
 
-function seriesOf(id: string): number[] {
+export function seriesOf(id: string): number[] {
   if (id.startsWith("measure:")) {
-    return getMeasure(id.slice(8)).series;
+    const { measure, filter } = parseMeasure(id);
+    return filter
+      ? measure.series.map((value) => Math.round(value * 0.35))
+      : measure.series;
   }
-  const metric = METRICS[id];
-  const inputs = metric.inputs.map(seriesOf);
+  const def = METRICS[id];
+  const inputs = def.inputs.map(seriesOf);
   return inputs[0].map((first, i) =>
     inputs
       .slice(1)
-      .reduce((acc, s) => apply(acc, metric.operator, s[i]), first),
+      .reduce((acc, s, j) => apply(acc, opOf(def, j + 1), s[i]), first),
   );
 }
 
@@ -88,27 +115,33 @@ type NodeInfo = {
   detail: string;
 };
 
-function describe(id: string): NodeInfo {
+export function describe(id: string): NodeInfo {
   if (id.startsWith("measure:")) {
-    const measure = getMeasure(id.slice(8));
+    const { measure, filter } = parseMeasure(id);
     return {
-      name: measure.name,
+      name: filter ? `${measure.name} | ${filter}` : measure.name,
       kind: "measure" as const,
       detail: `${measure.table} · ${measure.aggregation}`,
     };
   }
-  const metric = METRICS[id];
+  const def = METRICS[id];
   return {
-    name: metric.name,
+    name: def.name,
     kind: "metric" as const,
-    detail: metric.inputs
-      .map((input) => describe(input).name)
-      .join(` ${metric.operator} `),
+    detail: def.inputs
+      .map((input, i) =>
+        i === 0
+          ? describe(input).name
+          : `${opOf(def, i)} ${describe(input).name}`,
+      )
+      .join(" "),
   };
 }
 
-const formatValue = (id: string, value: number) =>
-  id === "margin" ? `${(value * 100).toFixed(1)}%` : formatNumber(value);
+export const formatValue = (id: string, value: number) =>
+  PERCENT_METRICS.includes(id)
+    ? `${(value * 100).toFixed(1)}%`
+    : formatNumber(value);
 
 /* ---------- layout: leaves get slots, parents center over children ---------- */
 
@@ -301,7 +334,7 @@ function TreeNode({
       p="sm"
       className={S.box}
       style={{
-        borderColor: isSelected ? "var(--mb-color-brand)" : undefined,
+        borderColor: isSelected ? "var(--mb-color-core-brand)" : undefined,
         borderWidth: isSelected ? 2 : 1,
         borderStyle: info.kind === "measure" ? "dashed" : "solid",
       }}
@@ -310,7 +343,10 @@ function TreeNode({
         <Text size="xs" c="text-secondary">
           {info.kind === "metric" ? "▲ METRIC" : "◆ MEASURE"}
         </Text>
-        <Text size="xs" c={change >= 0 ? "success" : "error"}>
+        <Text
+          size="xs"
+          c={change >= 0 ? "feedback-positive" : "feedback-negative"}
+        >
           {change >= 0 ? "+" : ""}
           {(change * 100).toFixed(1)}%
         </Text>
@@ -380,15 +416,15 @@ function DetailPanel({
       </Group>
       {info.kind === "metric" ? (
         <Group gap="xs" mt="sm">
-          <Button size="xs" variant="filled" onClick={() => onOpen(id)}>
+          <Button size="compact-sm" variant="filled" onClick={() => onOpen(id)}>
             Show its tree
           </Button>
-          <Button size="xs" variant="default">
+          <Button size="compact-sm" variant="default">
             Open metric
           </Button>
         </Group>
       ) : (
-        <Button size="xs" variant="default" mt="sm" w="fit-content">
+        <Button size="compact-sm" variant="default" mt="sm" w="fit-content">
           Open measure
         </Button>
       )}

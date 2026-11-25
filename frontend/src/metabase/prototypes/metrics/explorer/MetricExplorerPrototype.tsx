@@ -36,55 +36,14 @@ import { DIMENSIONS, formatNumber } from "../data";
 
 import { DefinitionEditor } from "./DefinitionEditor";
 import { MetricChart } from "./MetricChart";
-import {
-  type FormulaToken,
-  type MetricDraft,
-  evaluate,
-  findProblem,
-  isComplete,
-  newKey,
-} from "./formula";
+import { EXAMPLES, exampleDraft } from "./examples";
+import { type MetricDraft, evaluate, findProblem, isComplete } from "./formula";
 
-const term = (measureId: string, filters: string[] = []): FormulaToken => ({
-  key: newKey(),
-  kind: "term",
-  measureId,
-  filters,
-});
-const op = (value: "+" | "−" | "×" | "÷"): FormulaToken => ({
-  key: newKey(),
-  kind: "op",
-  op: value,
-});
-const paren = (side: "(" | ")"): FormulaToken => ({
-  key: newKey(),
-  kind: "paren",
-  side,
-});
-
-/** Made-up definitions for the modal; the instance's metrics don't have measure math yet. */
-const EXAMPLE_FORMULAS: (() => Pick<MetricDraft, "formula" | "where">)[] = [
-  () => ({
-    formula: [term("revenue", ["Status = closed"]), op("−"), term("cogs")],
-    where: [],
-  }),
-  () => ({
-    formula: [
-      paren("("),
-      term("revenue"),
-      op("−"),
-      term("cogs"),
-      paren(")"),
-      op("÷"),
-      term("revenue"),
-    ],
-    where: [],
-  }),
-  () => ({
-    formula: [term("revenue"), op("÷"), term("orders")],
-    where: [{ key: newKey(), filter: "Channel = Online" }],
-  }),
-];
+/** The editor's examples, on the mock measures (same names, slugged ids). */
+const EXAMPLE_FORMULAS = EXAMPLES.map(
+  (example) => () =>
+    exampleDraft(example, (name) => name.toLowerCase().replace(/ /g, "-")),
+);
 
 const TABS = ["About", "Overview", "Explorer", "Dimensions", "Dependencies"];
 
@@ -130,12 +89,7 @@ export function MetricExplorerPrototype() {
     modal?.mode === "edit" ? metrics.indexOf(modal.card) : -1;
   const initialDraft: MetricDraft =
     modal?.mode === "edit"
-      ? {
-          name: modal.card.name,
-          ...EXAMPLE_FORMULAS[
-            Math.max(editingIndex, 0) % EXAMPLE_FORMULAS.length
-          ](),
-        }
+      ? EXAMPLE_FORMULAS[Math.max(editingIndex, 0) % EXAMPLE_FORMULAS.length]()
       : { name: "", formula: [], where: [] };
 
   return (
@@ -143,7 +97,8 @@ export function MetricExplorerPrototype() {
       <Group justify="space-between">
         <Text size="sm" c="text-secondary">
           Today’s app around the idea. The Explorer tab is the real Metric
-          Explorer on this instance’s metrics. The modal uses made-up measures.
+          Explorer on this instance’s metrics. The modal uses the editor’s
+          example metrics, with mock numbers.
         </Text>
         <SegmentedControl
           value={view}

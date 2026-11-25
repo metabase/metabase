@@ -34,7 +34,6 @@ import {
   ActionIcon,
   Box,
   Breadcrumbs,
-  Button,
   Card,
   Center,
   Flex,
@@ -44,12 +43,12 @@ import {
   SegmentedControl,
   Stack,
   Text,
-  Tooltip,
 } from "metabase/ui";
 import type * as LibMetric from "metabase-lib/metric";
 import type { Card as CardType, MathOperator } from "metabase-types/api";
 
 import { DefinitionEditor } from "./DefinitionEditor";
+import { EXAMPLE_PARAM_PREFIX, ExamplesBar } from "./ExamplesBar";
 import { MetricsList, useMetrics } from "./MetricExplorerPrototype";
 import type { BarItem } from "./TokenBar";
 import {
@@ -70,7 +69,7 @@ import {
 
 const TABS = ["About", "Overview", "Definition", "Dimensions", "Dependencies"];
 const NEW = "new";
-const EXAMPLE = "example-";
+const EXAMPLE = EXAMPLE_PARAM_PREFIX;
 
 const OP_TO_MATH: Record<Op, MathOperator> = {
   "+": "+",
@@ -201,28 +200,10 @@ export function MetricEditorPrototype() {
   return (
     <Stack gap="sm">
       <Group justify="space-between" wrap="nowrap" align="flex-start">
-        <Group gap="sm">
-          <Text fw="bold" c="text-secondary">
-            Examples
-          </Text>
-          {EXAMPLES.map((candidate) => (
-            <Tooltip
-              key={candidate.id}
-              label={candidate.hint}
-              maw="24rem"
-              multiline
-              openDelay={300}
-            >
-              <Button
-                size="sm"
-                variant={candidate === example ? "filled" : "default"}
-                onClick={() => open(`${EXAMPLE}${candidate.id}`)}
-              >
-                {candidate.name}
-              </Button>
-            </Tooltip>
-          ))}
-        </Group>
+        <ExamplesBar
+          activeId={example?.id}
+          onSelect={(id) => open(`${EXAMPLE}${id}`)}
+        />
         <SegmentedControl
           value={view}
           onChange={(value) => setView(value === "list" ? "list" : "metric")}

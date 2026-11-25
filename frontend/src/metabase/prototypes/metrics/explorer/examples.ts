@@ -232,6 +232,13 @@ export const EXAMPLES: MetricExample[] = [
     where: [],
   },
   {
+    id: "gross-billings",
+    name: "Gross billings",
+    hint: "Mixed operators: adds one measure, subtracts another.",
+    formula: ["Revenue", "+", "Tax", "−", "Discounts"],
+    where: [],
+  },
+  {
     id: "average-order-value",
     name: "Average order value",
     hint: "A ratio of two measures.",

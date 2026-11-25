@@ -553,7 +553,7 @@ export function DefinitionEditor({
                 <ActionIcon
                   mt="sm"
                   variant="subtle"
-                  color="filter"
+                  c="text-filter"
                   aria-label="Filter the whole metric"
                   onClick={() => setIsWhereOpen(true)}
                 >

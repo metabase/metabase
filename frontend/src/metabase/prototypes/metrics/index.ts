@@ -3,6 +3,8 @@ import type { PrototypeDefinition } from "../types";
 import { BaselinePrototype } from "./baseline/BaselinePrototype";
 import { MetricEditorPrototype } from "./explorer/MetricEditorPrototype";
 import { MetricExplorerPrototype } from "./explorer/MetricExplorerPrototype";
+import { MetricDependencyTreePrototype } from "./tree/MetricDependencyTreePrototype";
+import { MetricTreeHiFiPrototype } from "./tree/MetricTreeHiFiPrototype";
 import { MetricTreePrototype } from "./tree/MetricTreePrototype";
 
 export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
@@ -31,10 +33,27 @@ export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
   },
   {
     id: "metric-tree",
-    name: "Metric Tree",
+    name: "Metric Tree (lo-fi)",
     description:
       "How a metric breaks down into metrics and measures, with live values, to verify it and navigate to what drives it.",
     group: "Iteration 1",
+    draft: true,
     Component: MetricTreePrototype,
+  },
+  {
+    id: "metric-tree-hifi",
+    name: "Metric Tree",
+    description:
+      "On a metric's Dependencies tab: how it breaks down into measures, with values and trends, in the schema viewer's visual language. Click a card for details.",
+    group: "Iteration 1",
+    Component: MetricTreeHiFiPrototype,
+  },
+  {
+    id: "metric-dependency-tree",
+    name: "Metric Tree (to columns)",
+    description:
+      "On a metric's Dependencies tab, in the schema viewer's visual language: each term of the metric points to its measure, and each measure's aggregation, filters and time dimension point to the columns they read.",
+    group: "Iteration 1",
+    Component: MetricDependencyTreePrototype,
   },
 ];

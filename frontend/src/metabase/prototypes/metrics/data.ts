@@ -29,6 +29,7 @@ const ramp = (start: number, step: number, wobble: number) =>
     Math.round(start + step * i + wobble * Math.sin(i * 1.3)),
   );
 
+/** The editor's Sample Database measures (see explorer/examples.ts), with mock numbers. */
 export const MEASURES: Measure[] = [
   {
     id: "revenue",
@@ -38,51 +39,86 @@ export const MEASURES: Measure[] = [
     series: ramp(42000, 2100, 3500),
   },
   {
-    id: "discount",
+    id: "discounts",
     name: "Discounts",
     table: "Orders",
     aggregation: "Sum of Discount",
     series: ramp(3100, 120, 400),
   },
   {
+    id: "tax",
+    name: "Tax",
+    table: "Orders",
+    aggregation: "Sum of Tax",
+    series: ramp(2600, 110, 250),
+  },
+  {
     id: "orders",
-    name: "Order count",
+    name: "Orders",
     table: "Orders",
     aggregation: "Count",
     series: ramp(820, 35, 60),
   },
   {
-    id: "cogs",
-    name: "Cost of goods",
-    table: "Products",
-    aggregation: "Sum of Cost",
-    series: ramp(23000, 900, 1800),
+    id: "units-sold",
+    name: "Units sold",
+    table: "Orders",
+    aggregation: "Sum of Quantity",
+    series: ramp(3100, 140, 220),
   },
   {
-    id: "hours",
-    name: "Billable hours",
-    table: "Timesheets",
-    aggregation: "Sum of Hours",
-    series: ramp(1400, 20, 90),
+    id: "new-customers",
+    name: "New customers",
+    table: "People",
+    aggregation: "Count",
+    series: ramp(210, 9, 25),
   },
   {
-    id: "deals",
-    name: "Deals",
-    table: "Deals",
+    id: "new-accounts",
+    name: "New accounts",
+    table: "Accounts",
     aggregation: "Count",
     series: ramp(140, 6, 18),
   },
+  {
+    id: "seats",
+    name: "Seats",
+    table: "Accounts",
+    aggregation: "Sum of Seats",
+    series: ramp(1900, 70, 120),
+  },
+  {
+    id: "payments",
+    name: "Payments",
+    table: "Invoices",
+    aggregation: "Sum of Payment",
+    series: ramp(18000, 600, 1400),
+  },
+  {
+    id: "reviews",
+    name: "Reviews",
+    table: "Reviews",
+    aggregation: "Count",
+    series: ramp(95, 3, 12),
+  },
 ];
 
+/** The editor's filters on the Sample Database. */
 export const FILTERS = [
-  "Status = closed",
-  "Status = finalized",
-  "Channel = Online",
-  "Segment: Enterprise",
-  "Created At: last 12 months",
+  "Product category = Gizmo",
+  "Product category = Widget",
+  "Discount is not empty",
+  "Quantity ≥ 5",
+  "Source = Affiliate",
+  "Source = Google",
+  "Trial converted = true",
+  "Active subscription = true",
+  "Plan = Business",
+  "Plan = Premium",
+  "Rating ≥ 4",
 ];
 
-export const DIMENSIONS = ["Created At", "Category", "Channel", "Region"];
+export const DIMENSIONS = ["Created At", "Category", "Source", "Plan"];
 
 export const getMeasure = (id: string) =>
   MEASURES.find((measure) => measure.id === id) ?? MEASURES[0];
