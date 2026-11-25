@@ -3,13 +3,65 @@
    [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.schema :as models.schema]
+   [metabase.types.core :as types]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema]))
+
+(mr/def ::table-role
+  "A Table's `table_role`: a role in [[types/table-role-hierarchy]]."
+  [:and
+   ::lib.schema.common/keyword
+   [:fn {:error/message "valid table role"}
+    #(isa? types/table-role-hierarchy % :role/*)]])
+
+(mr/def ::period-granularity
+  "A Table's `period_granularity`."
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] types/table-period-granularities))
+
+(mr/def ::mutability
+  "A Table's `mutability`."
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] types/table-mutabilities))
+
+(mr/def ::load-strategy
+  "A Table's `load_strategy`."
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] types/table-load-strategies))
+
+(mr/def ::scd-type
+  "A Table's `scd_type`, the slowly changing dimension type of its rows."
+  [:int {:min 0 :max 7}])
+
+(mr/def ::attribute-scd-type
+  "A Field's `attribute_scd_type`, how a slowly changing dimension tracks changes to it."
+  [:ref ::lib.schema.metadata/column.attribute-scd-type])
+
+(mr/def ::history-definition
+  "A Table's `history_definition`: the Fields that version its rows."
+  [:map {:closed true}
+   [:durable_key  {:optional true} [:maybe ::lib.schema.id/field]]
+   [:valid_from   {:optional true} [:maybe ::lib.schema.id/field]]
+   [:valid_to     {:optional true} [:maybe ::lib.schema.id/field]]
+   [:current_flag {:optional true} [:maybe ::lib.schema.id/field]]
+   [:version      {:optional true} [:maybe ::lib.schema.id/field]]])
+
+(mr/def ::eav-definition
+  "A Table's `eav_definition`: the Fields, and the Table of definitions, of an entity-attribute-value table."
+  [:map {:closed true}
+   [:entity_key       {:optional true} [:maybe ::lib.schema.id/field]]
+   [:property_name    {:optional true} [:maybe ::lib.schema.id/field]]
+   [:property_value   {:optional true} [:maybe ::lib.schema.id/field]]
+   [:definition_table {:optional true} [:maybe ::lib.schema.id/table]]
+   [:label            {:optional true} [:maybe ::lib.schema.id/field]]
+   [:type             {:optional true} [:maybe ::lib.schema.id/field]]])
+
+(mr/def ::facets
+  "A Field's `facets`: the roles it plays besides its semantic type."
+  [:ref ::lib.schema.metadata/column.facets])
 
 (mr/def ::dimension.type
   [:enum {:decode/normalize lib.schema.common/normalize-keyword} :internal :external])
@@ -116,10 +168,9 @@
    [:database_default           {:optional true} [:maybe :string]]
    [:dimension_interestingness  {:optional true} [:maybe number?]]
    [:data_sensitivity           {:optional true} [:maybe ::lib.schema.common/keyword]]
-   ;; structural metadata, as stored: `facets` is the raw JSON string
    [:is_grain                   {:optional true} [:maybe :boolean]]
-   [:attribute_scd_type         {:optional true} [:maybe :int]]
-   [:facets                     {:optional true} [:maybe :string]]])
+   [:attribute_scd_type         {:optional true} [:maybe ::attribute-scd-type]]
+   [:facets                     {:optional true} [:maybe ::facets]]])
 
 (mr/def ::field.create
   "What a caller gives to create a Field: the columns of an update without the `:id`, and its Table and name."
@@ -167,13 +218,10 @@
    [:description_set        {:optional true} :boolean]
    [:semantic_type_set      {:optional true} :boolean]
    [:fk_target_field_id_set {:optional true} :boolean]
-   ;; structural metadata, as stored: `facets` is the raw JSON string
    [:is_grain               {:optional true} [:maybe :boolean]]
-   [:attribute_scd_type     {:optional true} [:maybe :int]]
-   [:facets                 {:optional true} [:maybe :string]]
-   [:is_grain_set           {:optional true} :boolean]
-   [:attribute_scd_type_set {:optional true} :boolean]
-   [:facets_set             {:optional true} :boolean]])
+   [:attribute_scd_type     {:optional true} [:maybe ::attribute-scd-type]]
+   [:facets                 {:optional true} [:maybe ::facets]]
+   [:attribute_scd_type_set {:optional true} :boolean]])
 
 (mr/def ::field-user-settings.create
   "What a caller gives to create a FieldUserSettings: the columns of an update without the `:id`, and its Field."
@@ -277,16 +325,15 @@
    [:points_of_interest_set  {:optional true} :boolean]
    [:data_layer_set          {:optional true} :boolean]
    [:data_source_set         {:optional true} :boolean]
-   ;; structural metadata, as stored: the JSON columns are raw JSON strings
-   [:table_role              {:optional true} [:maybe :string]]
-   [:grain                   {:optional true} [:maybe :string]]
+   [:table_role              {:optional true} [:maybe ::table-role]]
+   [:grain                   {:optional true} [:maybe [:string {:max 254}]]]
    [:grain_description       {:optional true} [:maybe :string]]
-   [:period_granularity      {:optional true} [:maybe :string]]
-   [:mutability              {:optional true} [:maybe :string]]
-   [:load_strategy           {:optional true} [:maybe :string]]
-   [:scd_type                {:optional true} [:maybe :int]]
-   [:history_definition      {:optional true} [:maybe :string]]
-   [:eav_definition          {:optional true} [:maybe :string]]
+   [:period_granularity      {:optional true} [:maybe ::period-granularity]]
+   [:mutability              {:optional true} [:maybe ::mutability]]
+   [:load_strategy           {:optional true} [:maybe ::load-strategy]]
+   [:scd_type                {:optional true} [:maybe ::scd-type]]
+   [:history_definition      {:optional true} [:maybe ::history-definition]]
+   [:eav_definition          {:optional true} [:maybe ::eav-definition]]
    [:history_definition_set  {:optional true} :boolean]
    [:eav_definition_set      {:optional true} :boolean]
    [:period_granularity_set  {:optional true} :boolean]
@@ -359,16 +406,15 @@
    [:is_published            {:optional true} [:maybe :boolean]]
    [:transform_id            {:optional true} [:maybe ::lib.schema.id/transform]]
    [:transform_target        {:optional true} [:maybe :boolean]]
-   ;; structural metadata, as stored: the JSON columns are raw JSON strings
-   [:table_role              {:optional true} [:maybe :string]]
-   [:grain                   {:optional true} [:maybe :string]]
+   [:table_role              {:optional true} [:maybe ::table-role]]
+   [:grain                   {:optional true} [:maybe [:string {:max 254}]]]
    [:grain_description       {:optional true} [:maybe :string]]
-   [:period_granularity      {:optional true} [:maybe :string]]
-   [:mutability              {:optional true} [:maybe :string]]
-   [:load_strategy           {:optional true} [:maybe :string]]
-   [:scd_type                {:optional true} [:maybe :int]]
-   [:history_definition      {:optional true} [:maybe :string]]
-   [:eav_definition          {:optional true} [:maybe :string]]])
+   [:period_granularity      {:optional true} [:maybe ::period-granularity]]
+   [:mutability              {:optional true} [:maybe ::mutability]]
+   [:load_strategy           {:optional true} [:maybe ::load-strategy]]
+   [:scd_type                {:optional true} [:maybe ::scd-type]]
+   [:history_definition      {:optional true} [:maybe ::history-definition]]
+   [:eav_definition          {:optional true} [:maybe ::eav-definition]]])
 
 (mr/def ::table.create
   "What a caller gives to create a Table: the columns of an update without the `:id`, and its Database and name."

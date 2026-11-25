@@ -195,6 +195,39 @@
       (is (not (isa? types/table-role-hierarchy :role/ArrayChild :role/Fact)))
       (is (not (isa? types/table-role-hierarchy :role/HistoryDimension :role/Fact))))))
 
+(deftest ^:parallel table-period-granularities-test
+  (is (= [:day :week :month :quarter :year] types/table-period-granularities)))
+
+(deftest ^:parallel table-mutabilities-test
+  (is (= [:append_only :mutable :versioned :rebuilt_each_load] types/table-mutabilities)))
+
+(deftest ^:parallel table-load-strategies-test
+  (is (= [:full :incremental :merge :insert_only :cdc :snapshot] types/table-load-strategies)))
+
+(deftest ^:parallel field-facet-keys-test
+  (is (= [:time :key :structure :lifecycle] types/field-facet-keys)))
+
+(deftest ^:parallel field-facet-types-test
+  (testing "every facet key lists its types"
+    (is (= (set types/field-facet-keys) (set (keys types/field-facet-types)))))
+  (testing "every listed type is a semantic type"
+    (doseq [[facet-key ts] types/field-facet-types
+            t              ts]
+      (testing (pr-str facet-key t)
+        (is (isa? t :Semantic/*)))))
+  (testing "no type is listed under two facet keys"
+    (let [ts (mapcat val types/field-facet-types)]
+      (is (= (count ts) (count (set ts)))))))
+
+(deftest ^:parallel field-facet-type->key-test
+  (is (= :time (types/field-facet-type->key :type/ValidFrom)))
+  (is (= :structure (types/field-facet-type->key :type/CustomProperty)))
+  (is (nil? (types/field-facet-type->key :type/PK)))
+  (testing "every listed type maps back to the kind that lists it"
+    (doseq [[facet-key ts] types/field-facet-types
+            t              ts]
+      (is (= facet-key (types/field-facet-type->key t))))))
+
 (deftest ^:parallel semantic-layer-types-test
   (testing "semantic-layer types derive from the type consumers check with isa?"
     (are [t parent] (isa? t parent)

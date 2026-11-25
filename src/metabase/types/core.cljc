@@ -143,6 +143,37 @@
       (derive :role/Tie :role/*)
       (derive :role/Knot :role/*)))
 
+;;; Structural metadata values
+
+(def table-period-granularities
+  "Valid values for a Table's `period_granularity`."
+  [:day :week :month :quarter :year])
+
+(def table-mutabilities
+  "Valid values for a Table's `mutability`."
+  [:append_only :mutable :versioned :rebuilt_each_load])
+
+(def table-load-strategies
+  "Valid values for a Table's `load_strategy`."
+  [:full :incremental :merge :insert_only :cdc :snapshot])
+
+(def field-facet-keys
+  "The kinds of facet types, each naming a role a Field plays besides its semantic type."
+  [:time :key :structure :lifecycle])
+
+(def field-facet-types
+  "The types a Field's `facets` list may hold, by kind. Only the listed types: not their descendants."
+  {:time      [:type/EventTimestamp :type/MilestoneTimestamp :type/StartTimestamp :type/EndTimestamp
+               :type/ValidFrom :type/ValidTo :type/PeriodKey :type/LoadTimestamp :type/LastActivityTimestamp]
+   :key       [:type/SurrogateKey :type/NaturalKey :type/DurableKey :type/ExternalID :type/TenantKey
+               :type/ParentKey :type/PolymorphicKey :type/RoleKey]
+   :structure [:type/SystemColumn :type/CustomProperty :type/SortOrder :type/HierarchyLevel :type/HierarchyPath]
+   :lifecycle [:type/SoftDeleteFlag :type/CurrentRowFlag :type/TestDataFlag]})
+
+(def field-facet-type->key
+  "The kind in [[field-facet-types]] of each facet type."
+  (into {} (for [[k ts] field-facet-types, t ts] [t k])))
+
 ;;; Modifier Types
 
 ;; `:type/field-values-unsupported` enables driver developers to opt out of field values calculation for specific

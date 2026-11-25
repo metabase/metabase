@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema.models.table-user-settings-test
   (:require
    [clojure.test :refer :all]
+   [metabase.sync.updates :as sync.updates]
    [metabase.test :as mt]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
@@ -132,6 +133,94 @@
       (is (=? {:visibility_type :cruft :data_layer :hidden :visibility_type_set true :data_layer_set true}
               (t2/select-one :model/TableUserSettings :table_id table-id))))))
 
+(def ^:private structural-metadata
+  {:table_role         :role/Fact
+   :grain              "order line"
+   :grain_description  "One row for each line of an order"
+   :period_granularity :day
+   :mutability         :append_only
+   :load_strategy      :incremental
+   :scd_type           0
+   :history_definition {:valid_from 15}
+   :eav_definition     {:entity_key 31, :definition_table 9}})
+
+(deftest structural-metadata-round-trip-test
+  (mt/with-temp [:model/Table               {table-id :id} {}
+                 :model/TableUserSettings   _              (assoc structural-metadata
+                                                                  :table_id table-id
+                                                                  :display_name "User Name")]
+    (is (= structural-metadata
+           (select-keys (t2/select-one :model/TableUserSettings :table_id table-id) (keys structural-metadata))))))
+
+(deftest invalid-structural-metadata-test
+  (mt/with-temp [:model/Table {table-id :id} {}]
+    (doseq [[column value] [[:table_role :role/NotARole]
+                            [:period_granularity :fortnight]
+                            [:mutability :append-only]
+                            [:load_strategy :upsert]]]
+      (testing (pr-str column value)
+        (is (=? {:status-code 400, :errors {column some?}}
+                (try
+                  (t2/insert! :model/TableUserSettings {:table_id table-id, :display_name "User Name", column value})
+                  nil
+                  (catch clojure.lang.ExceptionInfo e
+                    (ex-data e)))))))))
+
+(deftest bad-stored-structural-metadata-reads-as-nil-test
+  (mt/with-temp [:model/Table             {table-id :id} {}
+                 :model/TableUserSettings _              {:table_id table-id, :display_name "User Name"}]
+    (t2/update! :metabase_table_user_settings :table_id table-id {:table_role         "role/NotARole"
+                                                                  :mutability         "append-only"
+                                                                  :history_definition "{\"surrogate_key\":12}"})
+    (is (=? {:table_role nil, :mutability nil, :history_definition nil}
+            (t2/select-one :model/TableUserSettings :table_id table-id)))))
+
+(def ^:private synced-structural-metadata
+  {:table_role         :role/Dimension
+   :grain              "synced grain"
+   :grain_description  "synced description"
+   :period_granularity :week
+   :mutability         :mutable
+   :load_strategy      :full
+   :scd_type           1
+   :history_definition {:durable_key 1}
+   :eav_definition     {:entity_key 2}})
+
+(def ^:private structural-metadata-flags
+  {:table_role_set true, :grain_set true, :grain_description_set true, :period_granularity_set true
+   :mutability_set true, :load_strategy_set true, :scd_type_set true, :history_definition_set true
+   :eav_definition_set true})
+
+(deftest user-structural-metadata-sets-flags-test
+  (mt/with-temp [:model/Table {table-id :id :as table} {}]
+    (table-user-settings/upsert-table-user-settings! table structural-metadata)
+    (is (=? structural-metadata (user-table table-id)))
+    (is (=? (merge structural-metadata structural-metadata-flags)
+            (t2/select-one :model/TableUserSettings :table_id table-id)))))
+
+(deftest sync-skips-user-structural-metadata-test
+  (mt/with-temp [:model/Table {table-id :id :as table} {}]
+    (table-user-settings/upsert-table-user-settings! table structural-metadata)
+    (sync.updates/update-table-unless-user-set! table-id synced-structural-metadata)
+    (is (=? structural-metadata (user-table table-id)))))
+
+(deftest user-null-structural-metadata-is-kept-test
+  (let [nulls (update-vals structural-metadata (constantly nil))]
+    (mt/with-temp [:model/Table {table-id :id :as table} synced-structural-metadata]
+      (table-user-settings/upsert-table-user-settings! table nulls)
+      (is (=? (merge nulls structural-metadata-flags) (t2/select-one :model/TableUserSettings :table_id table-id)))
+      (sync.updates/update-table-unless-user-set! table-id synced-structural-metadata)
+      (is (= nulls (select-keys (user-table table-id) (keys nulls)))))))
+
+(deftest unset-structural-metadata-clears-flags-test
+  (mt/with-temp [:model/Table {table-id :id :as table} {}]
+    (table-user-settings/upsert-table-user-settings! table (assoc structural-metadata :display_name "User Name"))
+    (table-user-settings/unset-table-user-settings! table (vec (keys structural-metadata)))
+    (is (=? (merge (update-vals structural-metadata (constantly nil))
+                   (update-vals structural-metadata-flags (constantly false)))
+            (t2/select-one :model/TableUserSettings :table_id table-id)))
+    (sync.updates/update-table-unless-user-set! table-id synced-structural-metadata)
+    (is (=? synced-structural-metadata (user-table table-id)))))
 (deftest upsert-after-concurrent-insert-updates-stored-row-test
   (testing "settings another writer inserts between the read and the insert are updated, not duplicated"
     (mt/with-temp [:model/Table {table-id :id :as table} {}]

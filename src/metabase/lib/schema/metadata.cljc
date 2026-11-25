@@ -14,6 +14,7 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
+   [metabase.types.core :as types]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [empty? get-in]]))
 
@@ -326,8 +327,17 @@
    :BIZ_CONF      ; Confidential Business Data
    :PUBLIC])      ; Non-Sensitive / Public Information
 
+(mr/def ::column.attribute-scd-type
+  "A Field's `attribute_scd_type`, how a slowly changing dimension tracks changes to it."
+  [:int {:min 0 :max 3}])
+
 (mr/def ::column.data-sensitivity
   (into [:enum {:decode/normalize keyword}] column-data-sensitivity-types))
+
+(mr/def ::column.facets
+  "A Field's `facets`: the roles it plays besides its semantic type, each one of the types
+  [[types/field-facet-types]] lists."
+  [:sequential (into [:enum {:decode/normalize keyword}] (mapcat types/field-facet-types) types/field-facet-keys)])
 
 (mr/def ::column.legacy-source
   "Possible values for `column.source` -- this is added by [[metabase.lib.metadata.result-metadata]] for historical
@@ -576,10 +586,9 @@
    [:created-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
    [:updated-at                 {:optional true} [:maybe [:ref ::column.timestamp]]]
    [:last-analyzed              {:optional true} [:maybe [:ref ::column.timestamp]]]
-   ;; structural metadata, as stored: `facets` is the raw JSON string
    [:is-grain                   {:optional true} [:maybe :boolean]]
-   [:attribute-scd-type         {:optional true} [:maybe :int]]
-   [:facets                     {:optional true} [:maybe :string]]
+   [:attribute-scd-type         {:optional true} [:maybe [:ref ::column.attribute-scd-type]]]
+   [:facets                     {:optional true} [:maybe [:ref ::column.facets]]]
    ;; the Field a foreign key points at, and the Field that names this table's rows: hydrated onto a Field by the
    ;; application database metadata provider, but only an id reference in the metadata the frontend hands over
    [:target                     {:optional true} [:maybe [:or ::lib.schema.id/field [:ref ::column]]]]

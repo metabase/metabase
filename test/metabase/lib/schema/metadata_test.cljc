@@ -206,3 +206,12 @@
                          "name"                  "ID"
                          "values"                [1 2]
                          "human_readable_values" ["One" "Two"]}))))
+
+(deftest ^:parallel column-attribute-scd-type-test
+  (let [column {:lib/type :metadata/column, :name "X", :base-type :type/Integer}]
+    (doseq [n (range 4)]
+      (is (mr/validate ::lib.schema.metadata/column (assoc column :attribute-scd-type n))))
+    (is (mr/validate ::lib.schema.metadata/column (assoc column :attribute-scd-type nil)))
+    (doseq [bad [-1 4 "1"]]
+      (testing (pr-str bad)
+        (is (not (mr/validate ::lib.schema.metadata/column (assoc column :attribute-scd-type bad))))))))

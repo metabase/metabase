@@ -5590,7 +5590,7 @@
                              :scd_type :history_definition :eav_definition]
               field-columns [:is_grain :attribute_scd_type :facets]
               table-flags   (map #(keyword (str (name %) "_set")) table-columns)
-              field-flags   (map #(keyword (str (name %) "_set")) field-columns)
+              field-flags   [:attribute_scd_type_set]
               nils          #(zipmap % (repeat nil))
               unset         #(zipmap % (repeat false))]
           (is (= (nils table-columns)
@@ -5600,9 +5600,11 @@
           (is (= (merge (nils table-columns) (unset table-flags))
                  (select-keys (t2/select-one :metabase_table_user_settings :table_id table-id)
                               (concat table-columns table-flags))))
-          (is (= (merge (nils field-columns) (unset field-flags))
-                 (select-keys (t2/select-one :metabase_field_user_settings :field_id field-id)
-                              (concat field-columns field-flags))))
+          (let [field-settings (t2/select-one :metabase_field_user_settings :field_id field-id)]
+            (is (= (merge (nils field-columns) (unset field-flags))
+                   (select-keys field-settings (concat field-columns field-flags))))
+            (testing "is_grain and facets have no flag"
+              (is (not-any? #(contains? field-settings %) [:is_grain_set :facets_set]))))
           (testing "user settings rows inserted after the migration default their flags to false"
             (let [new-table-id (t2/insert-returning-pk! :metabase_table {:active       true
                                                                          :db_id        db-id

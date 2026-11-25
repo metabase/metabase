@@ -3,12 +3,15 @@
   (:require
    [clojure.test :refer :all]
    [metabase.events.test-util :as events.tu]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.sync.updates :as sync.updates]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
@@ -463,6 +466,43 @@
       (sync.updates/update-field-unless-user-set! field-id {:semantic_type :type/Score})
       (is (t2/exists? :model/Dimension :field_id field-id :type "internal")))))
 
+(def ^:private structural-metadata
+  {:is_grain           true
+   :attribute_scd_type 2
+   :facets             [:type/EventTimestamp :type/DurableKey :type/CustomProperty :type/SoftDeleteFlag]})
+
+(deftest structural-metadata-round-trip-test
+  (mt/with-temp [:model/Field {field-id :id} structural-metadata]
+    (is (= structural-metadata
+           (select-keys (t2/select-one :model/Field :id field-id) (keys structural-metadata))))))
+
+(deftest structural-metadata-update-round-trip-test
+  (mt/with-temp [:model/Field {field-id :id} {}]
+    (t2/update! :model/Field :id field-id structural-metadata)
+    (is (= structural-metadata
+           (select-keys (t2/select-one :model/Field :id field-id) (keys structural-metadata))))))
+
+(deftest facets-string-values-test
+  (mt/with-temp [:model/Field {field-id :id} {:facets ["type/EventTimestamp"]}]
+    (is (= [:type/EventTimestamp] (t2/select-one-fn :facets :model/Field :id field-id)))))
+
+(deftest structural-metadata-is-valid-lib-column-metadata-test
+  (mt/with-temp [:model/Field {field-id :id} structural-metadata]
+    (is (nil? (mr/explain ::lib.schema.metadata/column
+                          (lib-be/instance->metadata (t2/select-one :model/Field :id field-id) :metadata/column))))))
+
+(deftest bad-stored-facet-is-dropped-test
+  (mt/with-temp [:model/Field {field-id :id} {}]
+    (t2/update! :metabase_field :id field-id
+                {:facets "[\"type/EventTimestamp\",\"type/NotAType\",\"type/Category\"]"})
+    (is (= [:type/EventTimestamp] (t2/select-one-fn :facets :model/Field :id field-id)))))
+
+(deftest bad-stored-facets-read-as-nil-test
+  (mt/with-temp [:model/Field {field-id :id} {}]
+    (doseq [stored ["not json" "{\"time\":\"type/EventTimestamp\"}"]]
+      (testing stored
+        (t2/update! :metabase_field :id field-id {:facets stored})
+        (is (nil? (t2/select-one-fn :facets :model/Field :id field-id)))))))
 (deftest upsert-after-concurrent-insert-updates-stored-row-test
   (testing "settings another writer inserts between the read and the insert are updated, not duplicated"
     (mt/with-temp [:model/Field {field-id :id :as field} {}]
