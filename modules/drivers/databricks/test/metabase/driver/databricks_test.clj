@@ -943,7 +943,7 @@
       (is (true? (driver/database-supports? :databricks :table-change-tokens (mt/db)))))
     (testing "there is an entry for each table, each a token or nil, the same on a second read"
       (let [tables (t2/select :model/Table :db_id (mt/id) :active true)
-            tokens #(driver/table-change-tokens :databricks (mt/db) tables)
+            tokens #(driver/table-change-tokens :databricks (lib.metadata/database (mt/metadata-provider)) tables)
             before (tokens)]
         (is (seq tables))
         (is (= (set (map :id tables)) (set (keys before))))
