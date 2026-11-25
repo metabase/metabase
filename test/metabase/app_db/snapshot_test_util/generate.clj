@@ -69,6 +69,12 @@
        (str/join (str ";\n" snapshot/statement-separator "\n") statements)
        ";\n"))
 
+(defn- boundary-content [through statements]
+  (str "-- Migration boundary: " through "\n"
+       snapshot/statement-separator "\n"
+       (str/join (str ";\n" snapshot/statement-separator "\n") statements)
+       ";\n"))
+
 (defn- stamp-changelog!
   "Set `dateexecuted` to `executed-at` and `deployment_id` to [[metabase.app-db.snapshot-test-util/deployment-id]] on
   every DATABASECHANGELOG row, and commit.
@@ -84,10 +90,7 @@
   (when-not (.getAutoCommit conn)
     (.commit conn)))
 
-(defn- migrate-and-dump!
-  "Migrate the empty DB `server` is running through the snapshot boundary and dump it.
-  Returns `{:flavor ..., :content ...}`. With a nil `server` it uses a fresh in-memory H2 DB."
-  [flavor version server]
+(defn- with-server-connection! [flavor server f]
   (let [[db-type spec] (if server
                          [(:db-type server)
                           (sql-jdbc.conn/connection-details->spec (:db-type server) (:details server))]
@@ -97,7 +100,6 @@
                            ;; no DB_CLOSE_DELAY: `conn` stays open through the migration and the dump, and closing it
                            ;; should free the DB rather than leave a migrated copy in the heap
                            :subname     (format "mem:app_db_snapshot_%05d" (rand-int 100000))}])
-        through        (snapshot/through-changeset-id version)
         data-source    (mdb.test-util/->ClojureJDBCSpecDataSource spec)]
     (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
       ;; the image was chosen for a flavor, but only the running server can confirm it is that flavor -- MariaDB is
@@ -106,21 +108,45 @@
         (when-not (= detected flavor)
           (throw (ex-info "The server started for this flavor reports a different one"
                           {:flavor flavor, :detected detected}))))
-      (log/info (u/format-color 'blue "Migrating empty %s app db through %s..." flavor through))
-      ;; migration tests' bindings, and no sample content, as for every test app DB
-      (impl/do-with-app-db-bindings
-       db-type data-source
-       (fn []
-         (binding [custom-migrations/*create-sample-content* false]
-           ;; without version tracking: the snapshot then looks like an install from before
-           ;; `databasechangelog_version` existed, and whatever loads it backfills its version from the `vNN.` ids, the
-           ;; way such an install is upgraded. Migration tests split it into per-major deployments as they would a full
-           ;; replay.
-           (impl/run-migrations-in-range! conn ["v00.00-000" through] {:track-versions? false}))))
-      (stamp-changelog! conn (snapshot/executed-at version))
-      {:flavor  flavor
-       :content (file-content version flavor
-                              (dump/dump-statements (flavor->dumper flavor) server conn))})))
+      (impl/do-with-app-db-bindings db-type data-source #(f conn server)))))
+
+(defn do-with-empty-db!
+  "Call `f` with a fresh connection and dump server for `flavor`, then close both. H2 needs no server."
+  [flavor f]
+  (if (= flavor :h2)
+    (with-server-connection! flavor nil f)
+    (server/do-with-server! flavor #(with-server-connection! flavor % f))))
+
+(defn- migrate-and-dump! [flavor version through-id]
+  (do-with-empty-db!
+   flavor
+   (fn [^java.sql.Connection conn server]
+     (let [through (or through-id (snapshot/through-changeset-id version))]
+       (log/info (u/format-color 'blue "Migrating empty %s app db through %s..." flavor through))
+       (binding [custom-migrations/*create-sample-content* false]
+         (impl/run-migrations-in-range! conn ["v00.00-000" through]
+                                        {:track-versions?         (some? through-id)
+                                         :record-current-version? (some? through-id)}))
+       (when-not through-id
+         (stamp-changelog! conn (snapshot/executed-at version)))
+       (.commit conn)
+       (let [statements (dump/dump-statements (flavor->dumper flavor) server conn)]
+         {:flavor               flavor
+          :through-changeset-id through
+          :content              (if through-id
+                                  (boundary-content through statements)
+                                  (file-content version flavor statements))})))))
+
+(defn dump-boundary!
+  "Return snapshot SQL for `flavor` through the inclusive changeset ID, with version records. Requires no encryption."
+  [flavor through-id]
+  (when-not (snapshot/flavors flavor)
+    (throw (ex-info "Unsupported snapshot flavor" {:flavor flavor})))
+  (when-not (and (string? through-id) (not (str/blank? through-id)))
+    (throw (ex-info "A migration boundary changeset ID is required" {:through-changeset-id through-id})))
+  (when-not (snapshot/matches-environment?)
+    (throw (ex-info "Snapshot generation requires encryption to be disabled" {})))
+  (migrate-and-dump! flavor nil through-id))
 
 (defn dump-snapshot!
   "Migrate an empty app DB of `flavor` through [[metabase.app-db.snapshot-test-util/through-changeset-id]] and dump it.
@@ -131,10 +157,7 @@
   [[metabase.app-db.snapshot-test-util.server]] pins for it.
   All it needs is a working `docker`, with no `MB_<DB>_TEST_*` settings and no server already running."
   [flavor]
-  (let [version snapshot/snapshot-version]
-    (if (= flavor :h2)
-      (migrate-and-dump! flavor version nil)
-      (server/do-with-server! flavor #(migrate-and-dump! flavor version %)))))
+  (migrate-and-dump! flavor snapshot/snapshot-version nil))
 
 (defn generate!
   "Regenerate the checked-in snapshot for `flavor` and return the file written.

@@ -221,19 +221,13 @@
   (doseq [sql after]
     (.execute stmt sql)))
 
-(defn load-snapshot!
-  "Load the checked-in snapshot into the empty DB behind `conn`, picking the dialect from [[flavor]], and commit.
-  Throws when no snapshot is checked in for that dialect, or when a statement fails, rolling back what it can."
-  [^java.sql.Connection conn db-type]
-  (let [version          snapshot-version
-        flavor           (flavor conn db-type)
-        resource         (or (snapshot-resource version flavor)
-                             (throw (ex-info "No app DB snapshot for this dialect"
-                                             {:version version, :db-type db-type, :flavor flavor})))
-        stmts            (statements (slurp resource))
+(defn load-sql!
+  "Load snapshot SQL into the empty database behind `conn` and commit. Roll back on failure where supported."
+  [^java.sql.Connection conn flavor sql]
+  (let [stmts            (statements sql)
         [before after]   (session-guards flavor)
         [guarded views]  (load-order flavor stmts)]
-    (log/debugf "Loading %s app db snapshot %s (%d statements)..." flavor version (count stmts))
+    (log/debugf "Loading %s app db snapshot (%d statements)..." flavor (count stmts))
     (with-open [stmt (.createStatement conn)]
       (letfn [(execute! [sqls]
                 (doseq [sql sqls]
@@ -241,7 +235,7 @@
                     (.execute stmt sql)
                     (catch Throwable e
                       (throw (ex-info "Error loading app DB snapshot statement"
-                                      {:version version, :flavor flavor, :statement sql}
+                                      {:flavor flavor, :statement sql}
                                       e))))))]
         ;; The whole load goes in one transaction. A snapshot is thousands of statements, and left in autocommit each
         ;; one is a transaction of its own: on Postgres that made loading the snapshot cost more than replaying the
@@ -282,6 +276,16 @@
           (when autocommit?
             (.setAutoCommit conn true)))))
     :done))
+
+(defn load-snapshot!
+  "Load the checked-in snapshot into the empty DB behind `conn`, picking the dialect from [[flavor]], and commit.
+  Throws when no snapshot is checked in for that dialect, or when a statement fails, rolling back what it can."
+  [^java.sql.Connection conn db-type]
+  (let [flavor   (flavor conn db-type)
+        resource (or (snapshot-resource snapshot-version flavor)
+                     (throw (ex-info "No app DB snapshot for this dialect"
+                                     {:version snapshot-version, :db-type db-type, :flavor flavor})))]
+    (load-sql! conn flavor (slurp resource))))
 
 (defn changesets
   "The `[id author filename]` of every changeset in the current changelog, in the order Liquibase will run them."

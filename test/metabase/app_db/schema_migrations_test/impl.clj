@@ -129,7 +129,8 @@
     Without it every changeset in the range runs, so set it for a DB that already holds some of the range, such as one
     a snapshot was loaded into.
   - `:track-versions?` (default true) set to false skips the version bookkeeping on both sides of the update.
-    That leaves the DB looking like an install from before `databasechangelog_version` existed."
+    That leaves the DB looking like an install from before `databasechangelog_version` existed.
+  - `:record-current-version?` (default false) also records the running version when version tracking is enabled."
   {:added "0.41.0", :arglists '([conn [start-id end-id]]
                                 [conn [start-id end-id] {:keys [inclusive-start? inclusive-end?
                                                                 skip-ran? track-versions?]
@@ -148,7 +149,7 @@
           resolve-id       (fn [id]
                              (or (id->index id)
                                  (throw (ex-info (format "Migration ID not found in changelog: %s" id) {:id id}))))
-          {:keys [inclusive-start? inclusive-end? skip-ran? track-versions?]
+          {:keys [inclusive-start? inclusive-end? skip-ran? track-versions? record-current-version?]
            :or   {inclusive-start? true inclusive-end? true skip-ran? false track-versions? true}} range-options
           start-idx        (resolve-id start-id)
           end-idx          (when end-id (resolve-id end-id))
@@ -174,8 +175,10 @@
         (liquibase/update-with-change-log
          liquibase
          ;; read once the changelog tables exist: the filter takes its list of ran changesets when it is built
-         {:change-set-filters (cond-> change-set-filters
-                                skip-ran? (conj (ShouldRunChangeSetFilter. database)))}))
+         (cond-> {:change-set-filters (cond-> change-set-filters
+                                        skip-ran? (conj (ShouldRunChangeSetFilter. database)))}
+           (and track-versions? record-current-version?)
+           (assoc :exec-listener (versions/recording-exec-listener database)))))
       (when track-versions?
         (mdb.test-util/split-legacy-majors-into-deployments! conn changelog-table)))))
 
