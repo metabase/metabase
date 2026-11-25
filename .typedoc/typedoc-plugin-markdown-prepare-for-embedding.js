@@ -12,22 +12,12 @@ const convertSectionNameToSnippetName = (sectionName) =>
   sectionName.trim().toLowerCase().replace(/\s+/g, "-");
 
 const anchorIdRegExp = /<a id="([^"]+)"><\/a>/g;
-const internalLinkRegExp =
-  /\]\(((?:\/docs\/latest\/embedding\/sdk\/api\/|\.\/)?([A-Za-z0-9_]+)\.md)?#([^)\s]+)\)/g;
-
-const getAnchorPrefix = (pageName) => pageName.toLowerCase();
 
 const prefixAnchors = (contents, pageName) =>
-  contents
-    .replace(
-      anchorIdRegExp,
-      (_, id) => `<a id="${getAnchorPrefix(pageName)}-${id}"></a>`,
-    )
-    .replace(
-      internalLinkRegExp,
-      (_, path = "", linkedPage = pageName, id) =>
-        `](${path}#${getAnchorPrefix(linkedPage)}-${id})`,
-    );
+  contents.replace(
+    anchorIdRegExp,
+    (_, id) => `<a id="${pageName.toLowerCase()}-${id}"></a>`,
+  );
 
 /**
  * A typedoc plugin that prepares `.md` files for embedding
@@ -35,7 +25,8 @@ const prefixAnchors = (contents, pageName) =>
  *   includes a snippet. It's done here rather than with `publicPath`, because typedoc-plugin-markdown
  *   counts the link urls when deciding to break a union over several lines.
  * - it prefixes property anchors with the page name (`metabaseconfig-instanceurl`), so they stay
- *   unique when a docs page includes snippets from several types.
+ *   unique when a docs page includes snippets from several types. Links to `X.md#prop` keep the
+ *   plain anchor, because the site serves them from the HTML reference.
  * - it wraps content of all sections into `jekyll_include_plugin` snippet comments,
  *   so such snippets can be included into other `.md` files.
  *   See: https://github.com/flant/jekyll_include_plugin/tree/master

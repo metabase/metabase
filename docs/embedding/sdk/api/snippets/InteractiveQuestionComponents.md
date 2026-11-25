@@ -17,7 +17,7 @@ BackButton: (props: InteractiveQuestionBackButtonProps) =>
 **`Function`**
 
 A navigation button that returns to the previous view.
-Only visible when rendered within the [InteractiveDashboardProps.renderDrillThroughQuestion](/docs/latest/embedding/sdk/api/EditableDashboardProps.md#editabledashboardprops-renderdrillthroughquestion) prop.
+Only visible when rendered within the [InteractiveDashboardProps.renderDrillThroughQuestion](/docs/latest/embedding/sdk/api/EditableDashboardProps.md#renderdrillthroughquestion) prop.
 
 <!-- [<endsnippet ~~backbutton()~~>] -->
 
@@ -310,7 +310,7 @@ EditorButton: (props: InteractiveQuestionEditorButtonProps) =>
 **`Function`**
 
 Toggle button for showing/hiding the Editor interface.
-In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorButtonProps.onClick](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorButtonProps.md#interactivequestioneditorbuttonprops-onclick)` handler or the button won't do anything when clicked.
+In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorButtonProps.onClick](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorButtonProps.md#onclick)` handler or the button won't do anything when clicked.
 
 <!-- [<endsnippet editorbutton()>] -->
 
@@ -466,7 +466,7 @@ NotebookButton: (props: InteractiveQuestionEditorButtonProps) =>
 **`Function`**
 
 Toggle button for showing/hiding the Editor interface.
-In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorButtonProps.onClick](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorButtonProps.md#interactivequestioneditorbuttonprops-onclick)` handler or the button won't do anything when clicked.
+In custom layouts, the `EditorButton` _must_ have an [InteractiveQuestionEditorButtonProps.onClick](/docs/latest/embedding/sdk/api/InteractiveQuestionEditorButtonProps.md#onclick)` handler or the button won't do anything when clicked.
 
 <!-- [<endsnippet ~~notebookbutton()~~>] -->
 
@@ -739,9 +739,9 @@ SaveQuestionForm: (props: InteractiveQuestionSaveQuestionFormProps) =>
 
 Form for saving a question, including title and description. When saved:
 
-- For existing questions: Calls [SdkQuestionProps.onSave](/docs/latest/embedding/sdk/api/SdkQuestionProps.md#sdkquestionprops-onsave)
+- For existing questions: Calls [SdkQuestionProps.onSave](/docs/latest/embedding/sdk/api/SdkQuestionProps.md#onsave)
 - Both callbacks receive the updated question object
-- Form can be cancelled via the [InteractiveQuestionSaveQuestionFormProps.onCancel](/docs/latest/embedding/sdk/api/InteractiveQuestionSaveQuestionFormProps.md#interactivequestionsavequestionformprops-oncancel)
+- Form can be cancelled via the [InteractiveQuestionSaveQuestionFormProps.onCancel](/docs/latest/embedding/sdk/api/InteractiveQuestionSaveQuestionFormProps.md#oncancel)
 
 <!-- [<endsnippet savequestionform()>] -->
 
