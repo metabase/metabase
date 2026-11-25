@@ -593,8 +593,8 @@
                 (is (not-any? #(= "authoritative" (or (:data_authority %) (get-in % [:legacy_input :data_authority])))
                               (vals by-id))))
               (testing "but rows that weren't authoritative are left as they were"
-                (is (= ["unconfigured" "unconfigured"]
-                       ((juxt :data_authority (comp :data_authority :legacy_input)) (get by-id (str pub-plain)))))))))))))
+                (is (=? {:data_authority "unconfigured" :legacy_input {:data_authority "unconfigured"}}
+                        (get by-id (str pub-plain))))))))))))
 
 (deftest official-collection-dashboard-ids-test
   (testing "Migration 5 backfills official-only dashboards (official_collection is new on the spec, so
