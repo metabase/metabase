@@ -758,3 +758,15 @@
       (with-redefs [driver/table-change-tokens (fn [& _] (throw (ex-info "not supported" {})))]
         (is (=? {:errors 0 :tables-unchanged 0}
                 (sync.field-values/update-field-values-for-table! (t2/select-one :model/Table :id (mt/id :venues)))))))))
+
+(deftest ^:synchronized tokens-only-for-tables-with-lists-test
+  (testing "the scan asks the driver for the tokens of the tables that have lists to read, and no others"
+    (mt/with-temp [:model/Table table {:db_id (mt/id) :name "no_lists" :active true}]
+      (let [asked (atom [])]
+        (do-with-change-tokens! (constantly "t")
+                                (fn []
+                                  (with-redefs [driver/table-change-tokens (fn [_driver _database tables]
+                                                                             (swap! asked into (map :id) tables)
+                                                                             {})]
+                                    (sync.field-values/update-field-values-for-table! table))))
+        (is (= [] @asked))))))
