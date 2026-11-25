@@ -486,6 +486,9 @@
             (is (str/includes? output "<filter id=\"date\" name=\"Date\" type=\"date/all-options\" cleared=\"true\"/>"))
             (testing "a filter the frontend sent no value for says nothing about its value"
               (is (str/includes? output "<filter id=\"state\" name=\"State\" type=\"string/=\"/>")))
+            (testing "a filter sent without a value says nothing about its value, rather than that it is cleared"
+              (is (str/includes? (viewing {:parameters [{:id "state"}]})
+                                 "<filter id=\"state\" name=\"State\" type=\"string/=\"/>")))
             (testing "a value for a filter the dashboard doesn't have is dropped"
               (is (not (str/includes? output "nope"))))))
         (testing "without values from the frontend, the values on screen are unknown"
