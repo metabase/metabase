@@ -268,7 +268,8 @@
                        :model/Card {card-id :id}      {:dataset_query (table-query :products)}]
           (deps.test/synchronously-run-dependency-job!)
           (card/update-cards! [{:id                     card-id
-                                :visualization_settings {:graph.goal_value {:id goal-card-id :type "card" :column "count"}}}])
+                                :visualization_settings {:graph.goal_value
+                                                         {:id goal-card-id :type "card" :column "count"}}}])
           (deps.test/synchronously-run-dependency-job!)
           (is (t2/exists? :model/Dependency
                           :from_entity_type :card :from_entity_id card-id

@@ -965,6 +965,20 @@
                 create-resp))
         (t2/delete! :model/Card :id (:id create-resp))))))
 
+(deftest question-goal-reference-test
+  (testing "A goal reading a missing card is refused when a question is created or updated with it"
+    (mt/with-model-cleanup [:model/Card]
+      (let [query (:query (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                {:query (orders-query :limit 10)}))
+            viz   {:gauge.segments [{:min {:type "card" :id Integer/MAX_VALUE :column "count"} :max 100 :color "red"}]}]
+        (mt/user-http-request :rasta :post 404 "agent/v1/question"
+                              {:name "Agent goal question" :query query :display "gauge" :visualization_settings viz})
+        (is (not (t2/exists? :model/Card :name "Agent goal question")))
+        (let [{card-id :id} (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                                  {:name "Agent question without a goal" :query query})]
+          (mt/user-http-request :rasta :put 404 (str "agent/v1/question/" card-id) {:visualization_settings viz})
+          (is (= {} (t2/select-one-fn :visualization_settings :model/Card :id card-id))))))))
+
 (deftest create-question-without-run-permissions-test
   (testing "Returns 403 when caller cannot run the proposed query"
     ;; Mirrors retro's data-perms-bypass repro: collection write does not imply the right

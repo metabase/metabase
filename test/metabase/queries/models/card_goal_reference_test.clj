@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.documents.test-util :as documents.test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -59,10 +60,11 @@
       (:status-code (ex-data e)))))
 
 (defn- save-card-status!
-  "The status of the checks `POST /api/card` runs on a new question with `card-props`, as the current user."
+  "The status of the create checks of a new question with `card-props`, as the current user."
   [card-props]
-  (status-of #(queries/check-allowed-to-create-card! (merge {:dataset_query (venues-count-measure) :display :table} card-props)
-                                                     :question)))
+  (status-of #(queries/check-allowed-to-create-card!
+               (merge {:dataset_query (venues-count-measure) :display :table} card-props)
+               :question)))
 
 (defn- copy-card-status
   "The status of the create check that a copy of `source` with `card-props` runs, as the current user."
@@ -71,7 +73,7 @@
                 (api/create-check :model/Card card-props))))
 
 (defn- update-card-status!
-  "The status of the checks `PUT /api/card/:id` runs on the Card with `card-id` for `changes`, as the current user."
+  "The status of the update checks of the Card with `card-id` for `changes`, as the current user."
   [card-id changes]
   (status-of #(queries/check-allowed-to-update-card! (t2/select-one :model/Card :id card-id) changes)))
 
@@ -99,7 +101,7 @@
          (testing "a keyword type is checked like the string it is saved as"
            (is (= 403 (save-card-status! {:visualization_settings
                                           (gauge-viz (assoc (card-goal goal-id) :type :card))}))))
-         (testing "a goal reading a readable card saves"
+         (testing "a goal reading a readable card passes"
            (is (= :no-error (save-card-status! {:visualization_settings (gauge-viz (card-goal readable-id))}))))
          (testing "a goal of a type nothing resolves is left alone"
            (is (= :no-error (save-card-status! {:visualization_settings
@@ -108,11 +110,10 @@
 (deftest updated-card-goal-reference-permissions-test
   (do-with-unreadable-card!
    (fn [goal-id]
-     (testing "adding a goal the user can't read is refused and nothing is saved"
+     (testing "adding a goal the user can't read is refused"
        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (count-query)}]
          (mt/with-test-user :rasta
-           (is (= 403 (update-card-status! card-id {:visualization_settings (gauge-viz (card-goal goal-id))}))))
-         (is (= {} (t2/select-one-fn :visualization_settings :model/Card :id card-id)))))
+           (is (= 403 (update-card-status! card-id {:visualization_settings (gauge-viz (card-goal goal-id))}))))))
      (testing "a goal already saved doesn't block unrelated edits by a user who can't read it"
        (mt/with-temp [:model/Card {card-id :id} {:dataset_query          (count-query)
                                                  :visualization_settings (gauge-viz (card-goal goal-id))}]
@@ -123,14 +124,15 @@
        (mt/with-temp [:model/Card {card-id :id} {:dataset_query          (count-query)
                                                  :visualization_settings (gauge-viz (card-goal goal-id))}]
          (mt/with-test-user :rasta
-           (is (= 403 (update-card-status! card-id {:visualization_settings (gauge-viz (card-goal goal-id "sum"))})))))))))
+           (is (= 403 (update-card-status! card-id
+                                           {:visualization_settings (gauge-viz (card-goal goal-id "sum"))})))))))))
 
 (deftest measure-goal-reference-permissions-test
   (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue count"
                                                   :table_id   (mt/id :venues)
                                                   :definition (venues-count-measure)}]
     (let [card-props {:visualization_settings (gauge-viz {:id measure-id :type "measure" :column "count"})}]
-      (testing "a measure on a table the user can query saves"
+      (testing "a measure on a table the user can query passes"
         (mt/with-test-user :rasta
           (is (= :no-error (save-card-status! card-props)))))
       (testing "metadata access to the measure's table isn't enough: its value is the table's data"
@@ -203,7 +205,7 @@
                (is (= 2 (copied-card-count {} 200)))))))))))
 
 (deftest internal-write-goal-reference-test
-  (testing "writes with no user bound (serdes, migrations, tasks) aren't checked"
+  (testing "the check does nothing with no user bound"
     (do-with-unreadable-card!
      (fn [goal-id]
        (is (= :no-error (status-of #(card/check-new-card-goal-references
@@ -309,14 +311,25 @@
                                (status-of #(do (api/update-check (t2/select-one :model/Card :id card-id) serialized)
                                                (revision/revert-to-revision! :model/Card card-id
                                                                              (mt/user->id :rasta) serialized)))))]
-         ;; writes with no user bound aren't checked, so these set up revisions the user couldn't save
+         ;; a plain update runs no goal check, so these set up revisions the user couldn't save
          (t2/update! :model/Card :id card-id {:visualization_settings (gauge-viz (card-goal goal-id))})
          (let [serialized (snapshot)]
            (testing "restoring a goal the card still carries succeeds, since it isn't new"
              (is (= :no-error (revert-status serialized))))
            (testing "restoring a goal the user can't read, which the card no longer carries, is refused"
              (t2/update! :model/Card :id card-id {:visualization_settings {}})
-             (is (= 403 (revert-status serialized))))))))))
+             (is (= 403 (revert-status serialized)))))))))
+  (testing "restoring a goal whose source has since become a model is refused"
+    (mt/with-temp [:model/Card {source-id :id} {:dataset_query (count-query)}
+                   :model/Card {card-id :id}   {:dataset_query          (count-query)
+                                                :visualization_settings (gauge-viz (card-goal source-id))}]
+      (let [serialized (revisions/snapshot :model/Card (t2/select-one :model/Card :id card-id))]
+        (t2/update! :model/Card :id card-id {:visualization_settings {}})
+        (t2/update! :model/Card :id source-id {:type :model})
+        (is (= 400 (mt/with-test-user :rasta
+                     (status-of #(revision/revert-to-revision! :model/Card card-id (mt/user->id :rasta)
+                                                               serialized)))))
+        (is (= {} (t2/select-one-fn :visualization_settings :model/Card :id card-id)))))))
 
 (deftest document-card-goal-reference-permissions-test
   (do-with-unreadable-card!
@@ -336,8 +349,36 @@
            (testing "saving a document card whose goal reads a card the user can't read is refused"
              (save-document 403 (card-goal goal-id))
              (is (not (t2/exists? :model/Document :name "Document with a dynamic goal"))))
+           (testing "saving a document card whose goal reads a missing card is refused"
+             (save-document 404 (card-goal Integer/MAX_VALUE))
+             (is (not (t2/exists? :model/Document :name "Document with a dynamic goal"))))
            (testing "a goal reading a readable card saves"
              (save-document 200 (card-goal readable-id)))))))))
+
+(deftest transient-dashboard-card-goal-reference-test
+  (testing "saving a transient dashboard whose new card has a goal reading a missing card is refused"
+    (mt/with-model-cleanup [:model/Dashboard :model/Card]
+      (mt/user-http-request :rasta :post 404 "dashboard/save"
+                            {:name      "Transient dashboard with a dynamic goal"
+                             :dashcards [{:row 0 :col 0 :size_x 4 :size_y 4
+                                          :card {:name                   "Transient gauge"
+                                                 :display                "gauge"
+                                                 :dataset_query          (count-query)
+                                                 :visualization_settings (gauge-viz (card-goal Integer/MAX_VALUE))}}]})
+      (is (not (t2/exists? :model/Card :name "Transient gauge")))
+      (is (not (t2/exists? :model/Dashboard :name "Transient dashboard with a dynamic goal"))))))
+
+(deftest created-dashboard-goal-reference-test
+  (testing "creating a dashboard whose dashcard has a goal reading a missing card is refused"
+    (mt/with-model-cleanup [:model/Dashboard]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (count-query)}]
+        (is (= 404 (mt/with-test-user :rasta
+                     (status-of #(dashboards.write/create-dashboard!
+                                  {:name      "Dashboard with a dynamic goal"
+                                   :dashcards [(merge layout {:card_id                card-id
+                                                              :visualization_settings (gauge-viz
+                                                                                       (card-goal Integer/MAX_VALUE))})]})))))
+        (is (not (t2/exists? :model/Dashboard :name "Dashboard with a dynamic goal")))))))
 
 (deftest public-card-goal-reference-save-test
   (testing "an editor can't make a public card return a card they can't read"
@@ -413,7 +454,7 @@
                                                  {:dashboard_id           dash-id
                                                   :card_id                card-id
                                                   :visualization_settings (gauge-viz (card-goal source-id))})])))))
-      (testing "a goal on a card without variables saves"
+      (testing "a goal on a card without variables passes"
         (is (= :no-error (save-card-status! {:visualization_settings (gauge-viz (card-goal plain-id))})))))
     (testing "the API says why"
       (is (= (str "This question uses variables, directly or through a question it's built on, "

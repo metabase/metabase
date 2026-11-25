@@ -1014,19 +1014,25 @@
 (defn- entries-goal-references
   "The new goal references of `entries`, `[viz-settings previous-viz-settings]` pairs, in the order of `entries`."
   [entries]
-  (into [] (comp (mapcat (fn [[viz-settings previous]] (new-goal-references viz-settings previous))) (distinct)) entries))
+  (into [] (comp (mapcat (fn [[viz-settings previous]] (new-goal-references viz-settings previous))) (distinct))
+        entries))
+
+(defn- new-goal-entry
+  "The `[viz-settings previous-viz-settings]` entry of `card` with no previous settings, so that every goal reference
+  it has counts as new."
+  [card]
+  [(:visualization_settings card) nil])
 
 (defn- goal-sources
-  "The entities that `refs`, `[entity-type id]` pairs, name, as `{entity-type {id entity}}`, hydrated with `:can_read`,
-  from one read per entity type, with the ids of the Tables of the Measures that the current user can query under
-  `::queryable-table-ids`."
+  "The entities that `refs`, `[entity-type id]` pairs, name, as `{entity-type {id entity}}` hydrated with `:can_read`,
+  read once per entity type. `::queryable-table-ids` holds the Tables of those Measures that the current user can
+  query."
   [refs]
   (let [ids      (fn [entity-type]
                    (into #{} (keep (fn [[t id]] (when (and (= entity-type t) (pos-int? id)) id))) refs))
-        card-ids (ids "card")
         measures (when-let [measure-ids (not-empty (ids "measure"))]
                    (t2/hydrate (queries.db/measures measure-ids) :can_read))]
-    {"card"                (when (seq card-ids)
+    {"card"                (when-let [card-ids (not-empty (ids "card"))]
                              (u/index-by :id (t2/hydrate (queries.db/cards card-ids) :can_read)))
      "measure"             (u/index-by :id measures)
      ::queryable-table-ids (when (seq measures)
@@ -1040,62 +1046,82 @@
                                                      measures)
                                                :can_query)))}))
 
+(defn- unqueryable-measure?
+  "Whether `entity`, of goal entity type `entity-type`, is a Measure on a Table the current user can't query, given
+  `sources`, as [[goal-sources]] returns them."
+  [sources entity-type entity]
+  ;; a measure's value is its table's data, while reading a Table only takes metadata access
+  (and (= "measure" entity-type)
+       (not (contains? (::queryable-table-ids sources) (:table_id entity)))))
+
+(defn- goal-access-problem
+  "What keeps the current user from using `entity`, of goal entity type `entity-type`, as a goal source, given
+  `sources`, as [[goal-sources]] returns them: `:unreadable` or `:unqueryable-measure`, or nil."
+  [sources entity-type entity]
+  (cond
+    (not (mi/can-read? entity))                       :unreadable
+    (unqueryable-measure? sources entity-type entity) :unqueryable-measure))
+
 (defn- goal-reference-problem
   "What is wrong with the goal reference `[entity-type id]` given its `sources`, as [[goal-sources]] returns them:
-  `:malformed`, `:missing`, `:unreadable`, `:model`, `:unqueryable-measure` or `:reads-parameters`, or nil."
+  `:malformed`, `:missing`, `:unreadable`, `:unqueryable-measure`, `:model` or `:reads-parameters`, or nil."
   [sources [entity-type id]]
   (let [entity (get-in sources [entity-type id])]
     (cond
       (not (pos-int? id))                              :malformed
       (nil? entity)                                    :missing
-      (not (mi/can-read? entity))                      :unreadable
-      (dynamic-goals/model-source? entity-type entity) :model
-      ;; a measure's value is its table's data, while reading a Table only takes metadata access
-      (and (= "measure" entity-type)
-           (not (contains? (::queryable-table-ids sources) (:table_id entity))))
-      :unqueryable-measure
-      ;; a goal runs its source with no parameter values, so it'd get each one's default or none
-      (and (= "card" entity-type) (card-reads-parameters? entity))
-      :reads-parameters)))
+      :else
+      (or (goal-access-problem sources entity-type entity)
+          (cond
+            (dynamic-goals/model-source? entity-type entity) :model
+            ;; a goal runs its source with no parameter values, so it'd get each one's default or none
+            (and (= "card" entity-type) (card-reads-parameters? entity))
+            :reads-parameters)))))
 
 (defn- goal-references-readable?
-  "Whether the current user reads every entity that the new goal references of `entries`, `[viz-settings
-  previous-viz-settings]` pairs, name, and can query the Table of each Measure among them, from one read per entity
-  type. A malformed or missing reference counts as readable: [[check-new-goal-references]] refuses it."
+  "Whether the current user can read every entity that the new goal references of `entries` name, and query the Table
+  of each Measure among them. True when no user is bound. A malformed or missing reference passes here:
+  [[check-new-goal-references]] refuses it."
   [entries]
   (let [refs (entries-goal-references entries)]
     (or (empty? refs)
         (not api/*current-user-id*)
         (let [sources (goal-sources refs)]
-          (not-any? #(#{:unreadable :unqueryable-measure} (goal-reference-problem sources %)) refs)))))
+          (not-any? (fn [[entity-type id]]
+                      (some->> (get-in sources [entity-type id]) (goal-access-problem sources entity-type)))
+                    refs)))))
 
 (defn check-new-goal-references
-  "Throws for the first new goal reference of `entries`, `[viz-settings previous-viz-settings]` pairs, that is
-  malformed (400), names a missing entity (404) or one the current user can't read (403), names a model (400), a
-  Measure on a Table the user can't query (403) or a card whose query reads parameters (400), from one read per entity
-  type. Does nothing when no user is bound."
+  "Throws for the first new goal reference of `entries`, `[viz-settings previous-viz-settings]` pairs, that the current
+  user may not save:
+  - a malformed id (400) or a missing entity (404);
+  - an entity they can't read, or a Measure on a Table they can't query (403);
+  - a model, or a card whose query reads parameters (400).
+  Does nothing when no user is bound."
   [entries]
   ;; Public and embedded pages resolve goals as admin, so this is their only check. A missing entity is refused
-  ;; because a not-yet-issued id would point at whatever gets created next. No bound user means an internal write
-  ;; (serdes import, migrations, tasks) rather than a request.
+  ;; because a not-yet-issued id would point at whatever gets created next.
   (when-let [refs (and api/*current-user-id* (not-empty (entries-goal-references entries)))]
     (let [sources (goal-sources refs)]
-      (when-let [[[entity-type id :as ref] problem] (some (fn [ref] (some->> (goal-reference-problem sources ref) (vector ref)))
+      (when-let [[[entity-type id :as ref] problem] (some (fn [ref]
+                                                            (when-let [problem (goal-reference-problem sources ref)]
+                                                              [ref problem]))
                                                           refs)]
         (case problem
           :malformed           (api/check-400 false (tru "A goal must reference an entity by its integer ID."))
           (:missing :unreadable) (api/read-check (get-in sources [entity-type id]))
           :model               (api/check-400 false (tru "A model can''t be a goal."))
-          :unqueryable-measure (api/check false [403 (tru "You must have data permissions to use this measure as a goal.")])
+          :unqueryable-measure (api/check false
+                                          [403 (tru "You must have data permissions to use this measure as a goal.")])
           :reads-parameters    (api/check-400
                                 false
                                 (tru "This question uses variables, directly or through a question it''s built on, so it can''t be a goal."))
           (throw (ex-info "Unknown goal reference problem" {:ref ref :problem problem})))))))
 
 (defn copied-goal-entries
-  "The `[viz-settings previous-viz-settings]` entry of each of `pairs`, `[card copy-source]` pairs of a Card about to be
-  created and the Card it copies, nil when it copies none: a copy reuses its source's goal references, unless it goes
-  into a public Document, which shows its goals to anyone. The Documents are read once, and only for copies with goals."
+  "The `[viz-settings previous-viz-settings]` entry of each of `pairs`, `[card copy-source]` pairs where `copy-source`
+  is nil for a Card that copies none. A copy counts only the goal references its source lacks as new, unless it goes
+  into a public Document, which shows its goals to anyone."
   [pairs]
   (let [document-ids (into #{}
                            (keep (fn [[card copy-source]]
@@ -1116,7 +1142,7 @@
   embedded, so the current user needs to be able to read what those goals reference."
   [dashboard cards]
   (when (shared-dashboard? dashboard)
-    (check-new-goal-references (mapv (fn [card] [(:visualization_settings card) nil]) cards))))
+    (check-new-goal-references (mapv new-goal-entry cards))))
 
 (defn- dashcard-card-ids
   "The card and series cards `dashcard` runs. Series are maps or bare ids, depending on the caller."
@@ -1135,26 +1161,26 @@
       (check-shared-dashboard-goal-permissions! dashboard (queries.db/cards new-card-ids)))))
 
 (defn check-new-dashboard-questions-goal-permissions
-  "[[check-shared-dashboard-goal-permissions!]] for `rows`, the Cards about to be created, that put dashboard questions
-  on a publicly shared or embedded Dashboard, from one read of the Dashboards and one per goal entity type."
+  "[[check-shared-dashboard-goal-permissions!]] for those of `rows`, Cards about to be created, that are dashboard
+  questions of a publicly shared or embedded Dashboard."
   [rows]
   (when-let [rows (not-empty (filterv :dashboard_id rows))]
     (let [dashboards (u/index-by :id (queries.db/dashboards (into #{} (map :dashboard_id) rows)))]
       (check-new-goal-references
        (into [] (keep (fn [row]
                         (when (shared-dashboard? (get dashboards (:dashboard_id row)))
-                          [(:visualization_settings row) nil])))
+                          (new-goal-entry row))))
              rows)))))
 
 (defn- shared-dashboards-goals-readable?
-  "Whether the current user reads what the goals of the cards that the public or embedded Dashboards of
-  `dashboard-cards`, `[dashboard cards]` pairs, show to anyone reference, with the entities read together."
+  "[[goal-references-readable?]] for the goals of the cards in `dashboard-cards`, `[dashboard cards]` pairs, that go
+  on a public or embedded Dashboard."
   [dashboard-cards]
   (goal-references-readable?
    (into []
          (comp (filter (comp shared-dashboard? first))
                (mapcat second)
-               (map (fn [card] [(:visualization_settings card) nil])))
+               (map new-goal-entry))
          dashboard-cards)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
@@ -1171,19 +1197,29 @@
   [source-card & body]
   `(binding [*copy-source-card* ~source-card] ~@body))
 
+(defn check-new-cards-goal-references
+  "[[check-new-goal-references]] for the Cards about to be created in `pairs`, `[card copy-source]` pairs as
+  [[can-create-all?]] takes them."
+  [pairs]
+  (check-new-goal-references (copied-goal-entries pairs)))
+
 (defn check-new-card-goal-references
-  "[[check-new-goal-references]] for the goals of `card`, a Card about to be created, which reuses the goal references
-  of the Card bound to [[*copy-source-card*]] when it is a copy."
+  "[[check-new-cards-goal-references]] for `card`, a Card about to be created, which copies the Card bound to
+  [[*copy-source-card*]], if any."
   [card]
-  (check-new-goal-references (copied-goal-entries [[card *copy-source-card*]])))
+  (check-new-cards-goal-references [[card *copy-source-card*]]))
+
+(defn- updated-goal-entries
+  "The `[viz-settings previous-viz-settings]` entry of each of `card-changes`, `[card changes]` pairs."
+  [card-changes]
+  (mapv (fn [[card changes]]
+          [(:visualization_settings (merge card changes)) [(:visualization_settings card)]])
+        card-changes))
 
 (defn check-updated-goal-references
   "[[check-new-goal-references]] for the goals that the changes of `card-changes`, `[card changes]` pairs, add."
   [card-changes]
-  (check-new-goal-references
-   (mapv (fn [[card changes]]
-           [(:visualization_settings (merge card changes)) [(:visualization_settings card)]])
-         card-changes)))
+  (check-new-goal-references (updated-goal-entries card-changes)))
 
 (defenterprise sandboxes-allow-card-update?
   "Whether sandboxing lets the current user apply `changes`, the guarded columns of a Card that really change, to
@@ -1312,13 +1348,9 @@
                       (shared-dashboards-goals-readable? dashboard-cards))))))))
 
 (defn- updated-goals-readable?
-  "Whether the current user reads what the goals that the changes of `card-changes`, `[card changes]` pairs, newly
-  add reference, with the entities read together."
+  "[[goal-references-readable?]] for the goals that the changes of `card-changes`, `[card changes]` pairs, add."
   [card-changes]
-  (goal-references-readable?
-   (mapv (fn [[card changes]]
-           [(:visualization_settings (merge card changes)) [(:visualization_settings card)]])
-         card-changes)))
+  (goal-references-readable? (updated-goal-entries card-changes)))
 
 (defn- summary-owner-writable
   "A function from one of the cards of `card-changes`, `[card changes]` pairs, to whether the current user writes the
@@ -2899,6 +2931,7 @@
   "The `snapshot` of a Card revision to write to the card `card-id`, after the permission check that a revert needs."
   [card-id _user-id snapshot]
   (parameter-card/check-new-parameter-source-card-permissions "card" card-id (:parameters snapshot))
+  (check-updated-goal-references [[(first (queries.db/cards #{card-id})) snapshot]])
   snapshot)
 
 (defmethod public-sharing/shown-card-ids :model/Card

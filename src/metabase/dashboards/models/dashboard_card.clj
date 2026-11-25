@@ -23,6 +23,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -79,7 +80,7 @@
   stored self; a new one with every existing dashcard, whose goals were checked when saved, so that an editor
   duplicate needs no fresh check."
   [existing-dashcards new-dashcards]
-  (let [id->existing (into {} (keep (fn [dashcard] (when-let [id (:id dashcard)] [id dashcard]))) existing-dashcards)
+  (let [id->existing (u/index-by :id (filter :id existing-dashcards))
         existing-viz (mapv :visualization_settings existing-dashcards)]
     (card/check-new-goal-references
      (mapv (fn [{:keys [id visualization_settings]}]

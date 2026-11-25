@@ -223,6 +223,7 @@
                                        :dashboard_id :dashboard_tab_id])
                     (update :display keyword)
                     (update :visualization_settings #(or % {})))
+        _       (queries.card/check-new-card-goal-references row)
         _       (queries.card/check-new-dashboard-questions-timeline-permissions [row])
         created (t2/with-transaction [_conn]
                   (let [[created] (queries.card/create-cards!

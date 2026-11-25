@@ -1750,6 +1750,45 @@
   {:display                "bar"
    :visualization_settings {:graph.dimensions ["x"] :graph.metrics ["y"]}})
 
+(deftest exploration-append-goal-reference-test
+  (testing "Appending a chart whose goal reads a missing card is refused and adds no card"
+    (mt/with-model-cleanup [:model/User]
+      (let [[u] (user/create-users! [{:email "append-goal@example.com"}])]
+        (mt/with-temp [:model/Card metric (valid-metric-card (:id u))]
+          (let [resp (create-exploration! u
+                                          {:name       "append-goal"
+                                           :metrics    [{:card_id            (:id metric)
+                                                         :dimension_mappings [{:dimension_id (duid "d1")
+                                                                               :table_id     (mt/id :venues)
+                                                                               :target       ["field" (mt/id :venues :price) nil]}]}]
+                                           :dimensions [{:dimension_id   (duid "d1")
+                                                         :display_name   "Price"
+                                                         :effective_type "type/Number"}]})
+                eid  (:id resp)
+                qid  (-> resp :threads first :queries first :id)
+                doc  (t2/select-one :model/Document :exploration_id eid)]
+            (store-fake-result! qid {:status    :completed
+                                     :data      {:cols [{:name "x" :source :breakout}
+                                                        {:name "y" :source :aggregation}]
+                                                 :rows [["a" 3] ["b" 1]]}
+                                     :row_count 2})
+            (mark-done! qid)
+            (t2/update! :model/ExplorationQuery :id qid {:dataset_query (:dataset_query metric)})
+            (mt/user-http-request u :post 404
+                                  (format "exploration/%d/summary/append" eid)
+                                  {:exploration_query_ids  [qid]
+                                   :display                "gauge"
+                                   :visualization_settings {:gauge.segments [{:min   {:type   "card"
+                                                                                      :id     Integer/MAX_VALUE
+                                                                                      :column "count"}
+                                                                              :max   100
+                                                                              :color "red"}]}})
+            (is (not (t2/exists? :model/Card :document_id (:id doc))))
+            (testing "the same chart without the goal appends"
+              (mt/user-http-request u :post 200
+                                    (format "exploration/%d/summary/append" eid)
+                                    (assoc append-display+viz :exploration_query_ids [qid])))))))))
+
 (deftest exploration-append-records-stored-result-use-test
   (testing "Appending a static cardEmbed records a stored_result_use row tying the snapshot to the new Card"
     (mt/with-model-cleanup [:model/User]

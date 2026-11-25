@@ -40,6 +40,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.visualization-settings.dynamic-goals :as viz.dynamic-goals]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -295,10 +296,15 @@
             (card/with-copy-source-card (some->> source-card-id (api/read-check :model/Card))
               (check-new-card data)))
           entries))
-  (let [sources (queries.card/readable-cards-by-id (into #{} (keep :source-card-id) entries))]
-    (queries.card/check-new-goal-references
-     (queries.card/copied-goal-entries (mapv (fn [{:keys [data source-card-id]}] [data (get sources source-card-id)])
-                                             entries)))))
+  ;; only a copy with goals needs its source, so a write that copies no goals reads no Card here
+  (let [sources (queries.card/readable-cards-by-id
+                 (into #{}
+                       (keep (fn [{:keys [data source-card-id]}]
+                               (when (seq (viz.dynamic-goals/goal-references (:visualization_settings data)))
+                                 source-card-id)))
+                       entries))]
+    (queries.card/check-new-cards-goal-references
+     (mapv (fn [{:keys [data source-card-id]}] [data (get sources source-card-id)]) entries))))
 
 (defn check-clone-cards
   "Throws, for the first of `cards`, Cards that are copied into a Document in order, what its read check, then
@@ -338,7 +344,9 @@
   (when (seq new-cards)
     (check-new-cards (mapv (fn [[_ card-data]]
                              {:source-card-id (:source_card_id card-data)
-                              :data           (cond-> (assoc (dissoc card-data :source_card_id) :document_id document-id)
+                              :data           (cond-> (-> card-data
+                                                          (dissoc :source_card_id)
+                                                          (assoc :document_id document-id))
                                                 (nil? (:collection_id card-data)) (assoc :collection_id new-collection-id))})
                            new-cards))))
 

@@ -224,7 +224,9 @@
            (mt/with-temp [:model/Card {source-id :id} {:database_id   db-id
                                                        :dataset_query {:database db-id
                                                                        :type     :native
-                                                                       :native   {:query "SELECT COUNT(*) AS \"count\" FROM \"my_database_name\""}}}
+                                                                       :native
+                                                                       {:query (str "SELECT COUNT(*) AS \"count\" "
+                                                                                    "FROM \"my_database_name\"")}}}
                           :model/Card {card-id :id uuid :public_uuid}
                           {:enable_embedding       true
                            :public_uuid            (str (random-uuid))

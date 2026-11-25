@@ -563,7 +563,8 @@
         new-name  (trs "Copy of {0}" (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
     (queries/with-copy-source-card orig-card
-      (api/create-check :model/Card new-card))
+      (api/create-check :model/Card new-card)
+      (queries/check-new-card-goal-references new-card))
     (queries/check-new-dashboard-questions-timeline-permissions [new-card])
     (queries/check-new-dashboard-questions-goal-permissions [new-card])
     (-> (create-card! new-card)

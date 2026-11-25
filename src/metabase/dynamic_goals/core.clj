@@ -142,7 +142,8 @@
   (into {}
         (mapcat (fn [[source-type same]]
                   (map (fn [entity] [[source-type (:id entity)] entity])
-                       (t2/hydrate (dynamic-goals.db/entities (:model (source-models source-type)) (into #{} (map :id) same))
+                       (t2/hydrate (dynamic-goals.db/entities (:model (source-models source-type))
+                                                              (into #{} (map :id) same))
                                    :can_read))))
         (group-by :type sources)))
 
@@ -244,8 +245,8 @@
 
 (defn goal-values
   "Results of `sources` as `{type-string {id-string result}}`, one source at a time under the caller's bindings, each
-  read-checked, all of them read together. Past [[max-sources]] a source fails with `too-many-sources`; once the caller is canceled the rest get no
-  entry.
+  read-checked, all of them read together. Past [[max-sources]] a source fails with `too-many-sources`; once the caller
+  is canceled the rest get no entry.
 
   `:check-sources` returns `{[type id] message}` for the deduped sources that may not run (data-app refusals),
   `:dashboard-id` picks card cache strategies and is recorded with each run, `:ignore-cache?` skips cached results."
