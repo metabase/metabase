@@ -14,6 +14,7 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import {
+  type TestRouter,
   act,
   renderHook,
   screen,
@@ -447,7 +448,11 @@ describe("QueryBuilder", () => {
       expect(await screen.findByDisplayValue("Custom")).toBeInTheDocument();
     });
 
-    it("should not show the 'add to a dashboard' modal again after it was canceled and the user navigated away", async () => {
+    /**
+     * Saves a new question to "Our analytics" and opens the "add to a
+     * dashboard" modal from the toast, with a dashboard picked in it.
+     */
+    const saveAndPickDashboard = async () => {
       const rootCollection = createMockCollection({
         id: "root",
         name: "Our analytics",
@@ -540,15 +545,11 @@ describe("QueryBuilder", () => {
       await userEvent.click(
         await within(dashboardPicker).findByText("Orders in a dashboard"),
       );
-      await userEvent.click(
-        within(dashboardPicker).getByRole("button", { name: "Cancel" }),
-      );
-      await waitFor(() =>
-        expect(
-          screen.queryByTestId("entity-picker-modal"),
-        ).not.toBeInTheDocument(),
-      );
+      return { router, dashboardPicker };
+    };
 
+    /** Leaves the query builder, then opens the Orders table in it again */
+    const navigateAwayAndBack = async (router: TestRouter) => {
       act(() => router.navigate("/redirect"));
       await waitFor(() =>
         expect(
@@ -565,6 +566,30 @@ describe("QueryBuilder", () => {
       ).toBeInTheDocument();
       // a new question, not the saved one
       expect(screen.getByTestId("qb-save-button")).toBeInTheDocument();
+    };
+
+    it("should not show the 'add to a dashboard' modal again after it was canceled and the user navigated away", async () => {
+      const { router, dashboardPicker } = await saveAndPickDashboard();
+      await userEvent.click(
+        within(dashboardPicker).getByRole("button", { name: "Cancel" }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("entity-picker-modal"),
+        ).not.toBeInTheDocument(),
+      );
+
+      await navigateAwayAndBack(router);
+      expect(
+        screen.queryByTestId("entity-picker-modal"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("should close the 'add to a dashboard' modal when the user navigates away while it is open", async () => {
+      const { router } = await saveAndPickDashboard();
+
+      await navigateAwayAndBack(router);
       expect(
         screen.queryByTestId("entity-picker-modal"),
       ).not.toBeInTheDocument();
