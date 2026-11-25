@@ -181,10 +181,22 @@
   (and (can-update-apart-from-sandboxes? snippet changes)
        (sandboxes-allow-snippet-update? snippet changes)))
 
+(defn- snippet-perms-allow-update-all?
+  "Whether the snippet permissions let the current user apply `changes` to every one of `snippets`, as
+  `snippet.perms/can-update?` answers for one, with one question for them all: write access to each one's Collection,
+  and to the Collection `changes` move them to."
+  [snippets changes]
+  (let [permitted (snippet.perms/permitted-snippet-ids snippets :write)]
+    (and (every? #(contains? permitted (:id %)) snippets)
+         (or (not (contains? changes :collection_id))
+             (snippet.perms/can-create? :model/NativeQuerySnippet {:collection_id (:collection_id changes)})))))
+
 (defmethod mi/can-update-all? :model/NativeQuerySnippet
   [_model snippets changes]
-  (and (every? #(can-update-apart-from-sandboxes? % changes) snippets)
-       (sandboxes-allow-snippets-update? snippets changes)))
+  (or (empty? snippets)
+      (and (every? #(or (mi/can-write? %) (unsynced-change? % changes)) snippets)
+           (snippet-perms-allow-update-all? snippets changes)
+           (sandboxes-allow-snippets-update? snippets changes))))
 
 (defmethod mi/can-update-followers? :model/NativeQuerySnippet
   [_model snippets changes]

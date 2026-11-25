@@ -1,0 +1,69 @@
+## Drop metabase_table.transform_id: transform.target_table_id is the one link between a Transform and its target Table
+
+databaseChangeLog:
+  - changeSet:
+      id: nqeyec
+      author: ranquild
+      comment: Fill transform.target_table_id from metabase_table.transform_id where it is not set
+      changes:
+        - sql:
+            sql: >-
+              UPDATE transform
+              SET target_table_id = (SELECT MAX(t.id) FROM metabase_table t WHERE t.transform_id = transform.id)
+              WHERE target_table_id IS NULL
+      rollback:
+
+  - changeSet:
+      id: w4kz7d
+      author: ranquild
+      comment: Drop the foreign key on metabase_table.transform_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabase_table
+            constraintName: fk_metabase_table_transform_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table
+            baseColumnNames: transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            constraintName: fk_metabase_table_transform_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: h9m2xq
+      author: ranquild
+      comment: Drop the index on metabase_table.transform_id
+      changes:
+        - dropIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_transform_id
+      rollback:
+        - createIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_transform_id
+            columns:
+              - column:
+                  name: transform_id
+
+  - changeSet:
+      id: p7c3vn
+      author: ranquild
+      comment: Drop metabase_table.transform_id, replaced by transform.target_table_id
+      changes:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: transform_id
+      rollback:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: transform_id
+                  type: int
+                  remarks: Foreign key to the transform that created this table
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET transform_id = (SELECT MAX(tr.id) FROM transform tr WHERE tr.target_table_id = metabase_table.id)
+              WHERE EXISTS (SELECT 1 FROM transform tr WHERE tr.target_table_id = metabase_table.id)

@@ -242,6 +242,12 @@
                {:visibility-type :details-only
                 :preview-display false})))))))
 
+(defn- table-database
+  "The Database of `table`: its hydrated `:db` when it carries one, else read from the app DB."
+  [table]
+  (or (:db table)
+      (driver-api/table->database table)))
+
 (defn describe-table-fields-xf
   "Returns a transducer for computing metadata about the fields in a table"
   [driver table]
@@ -249,7 +255,7 @@
                           (when (:schema table)
                             {:table-schema (:schema table)}))]
     (comp
-     (describe-fields-xf driver (driver-api/table->database table) table-info)
+     (describe-fields-xf driver (table-database table) table-info)
      (map-indexed (fn [i col] (dissoc (assoc col :database-position i) :table-schema))))))
 
 (defmulti describe-table-fields
@@ -341,7 +347,7 @@
    db
    nil
    (fn [^Connection conn]
-     (describe-table* driver conn table))))
+     (describe-table* driver conn (assoc table :db db)))))
 
 (defmulti describe-fields-sql
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fields]],

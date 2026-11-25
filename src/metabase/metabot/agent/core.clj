@@ -725,9 +725,13 @@
                  :result (rf result (final-state-part @(:memory-atom agent))))))))
 
 (defn- error-part [^Exception e]
-  {:type :error, :error (or (self/context-overflow-error e)
-                            (self/provider-error e)
-                            {:message (.getMessage e), :type (str (type e)), :data (ex-data e)})})
+  (m/assoc-some {:type :error, :error (or (self/context-overflow-error e)
+                                          (self/provider-error e)
+                                          ;; An exception can have no message, such as a `NullPointerException`.
+                                          {:message (or (not-empty (.getMessage e)) (tru "Something went wrong."))
+                                           :type    (str (type e))
+                                           :data    (ex-data e)})}
+                :provider-failure (self/call-failure e)))
 
 (defn- usage-model
   "The model that token usage is keyed by: `provider-and-model` without its `metabase/` routing prefix."

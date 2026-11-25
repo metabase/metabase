@@ -143,6 +143,14 @@
   :args ::define-hydration-method
   :ret  any?)
 
+(methodical/defmethod t2.hydrate/hydrate-with-strategy :around ::t2.hydrate/automagic-batched
+  "Hydrate the instances in partitions of at most [[mdb/select-partition-size]], as each partition reads the rows it
+  points to with one `IN` list."
+  [model strategy dest-key instances]
+  (into []
+        (mapcat #(next-method model strategy dest-key %))
+        (mdb/select-partitions instances)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan 2 Extensions                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -763,6 +771,21 @@
   [instances]
   (filterv can-write? (t2/hydrate instances :can_write)))
 
+(defn assoc-each
+  "Each of `instances` with `v` under `k`, nil ones left nil, for a hydration that answers once for all of them."
+  [instances k v]
+  (for [instance instances]
+    (when instance
+      (assoc instance k v))))
+
+(defn vary-meta-each
+  "Each of `instances` with `v` under `k` in its metadata, where `:can_read` hydrations keep their answer, nil ones left
+  nil."
+  [instances k v]
+  (for [instance instances]
+    (when instance
+      (vary-meta instance assoc k v))))
+
 (methodical/defmethod t2.hydrate/needs-hydration? [:default :can_read]
   "Whether `instance` lacks the answer `:can_read` hydration keeps in its metadata, since `:can_read` is not a key of
   the row."
@@ -859,11 +882,13 @@
   (can-update-each? model rows changes))
 
 (defn archive-followers-updatable?
-  "Whether the current user may apply `changes` to the `model` rows that archiving or restoring `row` takes along, which
-  `followers` selects given whether `changes` archive."
-  [row changes model followers]
-  (or (not (changes-archived? row changes))
-      (can-update-followers? model (followers (boolean (:archived changes))) changes)))
+  "Whether the current user may apply `changes` to the `model` rows that archiving or restoring any of `rows` takes
+  along, which `followers` selects, all at once, given the ids of the rows `changes` archive or restore and whether
+  they archive."
+  [rows changes model followers]
+  (let [ids (into [] (comp (filter #(changes-archived? % changes)) (map :id)) rows)]
+    (or (empty? ids)
+        (can-update-followers? model (followers ids (boolean (:archived changes))) changes))))
 
 (defn superuser?
   "Is [[metabase.api.common/*current-user*]] is a superuser? Ignores args. Intended for use as an implementation

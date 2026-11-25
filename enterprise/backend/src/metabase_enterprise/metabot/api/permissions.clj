@@ -45,8 +45,10 @@
                                                           [:perm_value ::metabot-ee.schema/metabot-permissions.perm-value]]]]]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
-    (doseq [{:keys [group_id perm_type perm_value]} permissions]
-      (metabot-perms/set-metabot-permission! group_id (keyword perm_type) (keyword perm_value))))
+    (metabot-perms/set-metabot-permissions! (for [{:keys [group_id perm_type perm_value]} permissions]
+                                              {:group_id   group_id
+                                               :perm_type  (keyword perm_type)
+                                               :perm_value (keyword perm_value)})))
   (permissions-response))
 
 (defn- switch-mode!

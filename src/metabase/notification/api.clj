@@ -13,7 +13,7 @@
   create-notification!
   list-notifications
   get-notification
-  publish-notification-update!
+  publish-notification-updates!
   unsubscribe-user!
   update-notification!])
 

@@ -15,6 +15,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.replacement.spec :as replacement]
    [metabase.revisions.core :as revisions]
@@ -77,6 +78,12 @@
   together."
   [_model _k segments]
   (collection/hydrate-table-content-can-read segments))
+
+(methodical/defmethod t2/batched-hydrate [:model/Segment :can_query]
+  "Whether the current user may run the definition of each of `segments`: they read it, and the query permission check
+  allows its `definition`."
+  [_model k segments]
+  (query-perms/assoc-can-query segments k :definition))
 
 (methodical/defmethod t2/batched-hydrate [:model/Segment :can_write]
   "Whether the current user can write each of `segments`, which they can when they write Segments of its Table."
@@ -258,25 +265,26 @@
             :created-at false
             :updated-at true
             ;; A segment on a Library table inherits the table's library ranking boost and curated status.
-            :root-collection-type {:fn collection/table-root-collection-type}}
+            :root-collection-type {:batch-fn collection/table-root-collection-types}}
     :search-terms [:name :description]
     :render-terms {:table-id                  :table_id
                    :table_description         :table.description
                    :table_name                :table.name
                    :table_display_name        :table.display_name
                    :table_schema              :table.schema
-                   ;; The parent table's collection, for [[collection/table-root-collection-type]].
+                   ;; The parent table's collection, for [[collection/table-root-collection-types]].
                    ;; Listing these terms also reindexes a segment when its table moves into or out of the Library.
-                   :table-collection-id       :table.collection_id
-                   :table-is-published        :table.is_published
+                   :table-collection-id       :table_settings.collection_id
+                   :table-is-published        :table_settings.is_published
                    :table-collection-location :collection.location
                    :table-collection-type     :collection.type}
     ;; Only published tables count as library content, matching the table spec's own collection join.
-    :joins {:table      [:model/Table [:= :table.id :this.table_id]]
-            :collection [:model/Collection
-                         [:and
-                          [:= :table.is_published true]
-                          [:= :collection.id :table.collection_id]]]}}})
+    :joins {:table          [:model/Table [:= :table.id :this.table_id]]
+            :table_settings [:model/TableUserSettings [:= :table_settings.table_id :this.table_id]]
+            :collection     [:model/Collection
+                             [:and
+                              [:= :table_settings.is_published true]
+                              [:= :collection.id :table_settings.collection_id]]]}}})
 
 (defmethod dependencies/spec :model/Segment [_model]
   {:type  :segment

@@ -28,14 +28,21 @@
    [:tables  [:sequential :map]]
    [:metrics [:sequential :map]]])
 
+(def Selection
+  "The ids that narrow the Library's published tables and its metrics; a nil or empty set keeps them all."
+  [:map {:closed true}
+   [:table-ids  {:optional true} [:maybe [:set :int]]]
+   [:metric-ids {:optional true} [:maybe [:set :int]]]])
+
 (defn fetch-items
-  "Fetches Library metrics, and published tables and the tables metrics are backed by."
-  ([]
-   (fetch-items schemas.source/app-db-source))
-  ([source]
+  "Fetches the Library's metrics and published tables, narrowed by a [[Selection]], and the tables the metrics are
+  backed by."
+  ([selection]
+   (fetch-items schemas.source/app-db-source selection))
+  ([source {:keys [table-ids metric-ids]}]
    (let [{:keys [data-collection-ids metric-collection-ids]} (schemas.source/library-scope source)
-         metrics   (schemas.source/metrics source metric-collection-ids)
-         table-ids (set/union (into #{} (map :id) (schemas.source/library-tables source data-collection-ids))
+         metrics   (schemas.source/metrics source metric-collection-ids metric-ids)
+         table-ids (set/union (into #{} (map :id) (schemas.source/library-tables source data-collection-ids table-ids))
                               (into #{} (mapcat :mappedTableIds) metrics))]
      {:tables  (vec (schemas.source/tables source table-ids))
       :metrics (vec metrics)})))
@@ -61,7 +68,7 @@
       schemas.javascript/render-js))
 
 (defn generate
-  "The `src/metabase.schema.ts` file of a data app, at its path in the app's directory."
-  []
+  "The `src/metabase.schema.ts` file of a data app, at its path in the app's directory, for a [[Selection]]."
+  [selection]
   [{:path     "src/metabase.schema.ts"
-    :contents (-> (fetch-items) create-schema render-typescript)}])
+    :contents (-> (fetch-items selection) create-schema render-typescript)}])

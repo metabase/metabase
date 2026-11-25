@@ -14,28 +14,29 @@
 (mu/defn database-names-by-id
   "A map of id to name for the Databases with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :name :model/Database :id [:in ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :name :model/Database :id [:in %]) ids))
 
 (mu/defn card-names-by-id
   "A map of id to name for the Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :name :model/Card :id [:in ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :name :model/Card :id [:in %]) ids))
 
 (mu/defn dashboard-names-by-id
   "A map of id to name for the Dashboards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :name :model/Dashboard :id [:in ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :name :model/Dashboard :id [:in %]) ids))
 
 (mu/defn task-counts-for-runs
   "The total, successful, and failed TaskHistory counts of the TaskRuns with `run-ids`, grouped by run."
   [run-ids :- [:sequential ms/PositiveInt]]
-  (t2/query {:select   [:run_id
-                        [[:count :id] :task_count]
-                        [[:sum [:case [:= :status (h2x/literal "success")] [:inline 1] :else [:inline 0]]] :success_count]
-                        [[:sum [:case [:= :status (h2x/literal "failed")] [:inline 1] :else [:inline 0]]] :failed_count]]
-             :from     :task_history
-             :where    [:in :run_id run-ids]
-             :group-by [:run_id]}))
+  (mdb/select-batched #(t2/query {:select   [:run_id
+                                             [[:count :id] :task_count]
+                                             [[:sum [:case [:= :status (h2x/literal "success")] [:inline 1] :else [:inline 0]]] :success_count]
+                                             [[:sum [:case [:= :status (h2x/literal "failed")] [:inline 1] :else [:inline 0]]] :failed_count]]
+                                  :from     :task_history
+                                  :where    [:in :run_id %]
+                                  :group-by [:run_id]})
+                      run-ids))
 
 (defn- run-where
   ;; columns are qualified because the entity_name/task_count sorts add joins whose tables may share column names
@@ -255,9 +256,9 @@
   "Set the started TaskHistory rows of the TaskRuns with `run-ids` to unknown, ended at the app DB's now, returning
   the number updated."
   [run-ids :- [:set ms/PositiveInt]]
-  (t2/update! :model/TaskHistory
-              {:status :started, :run_id [:in run-ids]}
-              {:status :unknown, :ended_at :%now}))
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/TaskHistory
+                                                          {:status :started, :run_id [:in %]}
+                                                          {:status :unknown, :ended_at :%now}) run-ids))
 
 (mu/defn set-started-task-runs-terminal!
   "Apply the `terminal` column values to the started TaskRuns with `run-ids`, returning the number updated."
@@ -268,4 +269,4 @@
                 [:ended_at  {:optional true} [:maybe [:or :string :keyword]]]
                 [:is_active {:optional true} [:maybe :boolean]]
                 [:message   {:optional true} [:maybe :string]]]]
-  (t2/query (rt/terminal-statement :model/TaskRun [:status "started"] run-ids terminal)))
+  [(mdb/sum-batched mdb/update-partition-size #(first (t2/query (rt/terminal-statement :model/TaskRun [:status "started"] % terminal))) run-ids)])

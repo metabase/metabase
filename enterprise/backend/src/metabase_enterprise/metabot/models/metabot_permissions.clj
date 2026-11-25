@@ -64,27 +64,48 @@
   (boolean (setting/get-value-of-type :boolean :metabot-advanced-permissions)))
 
 (defn- check-visible-group
-  "Throws a 400 unless the stored permission mode shows the group with `group-id`, since a row written for a hidden
-  group would take effect unseen on the next mode switch."
-  [group-id]
-  (when-not (usage-controls/visible-group? group-id (stored-advanced-mode?))
+  "Throws a 400 unless the permission mode selected by `advanced?` shows the group with `group-id`, since a row written
+  for a hidden group would take effect unseen on the next mode switch."
+  [group-id advanced?]
+  (when-not (usage-controls/visible-group? group-id advanced?)
     (throw (ex-info (tru "Group {0} has no AI permissions in the current permission mode." (str group-id)) {:status-code 400}))))
 
-(mu/defn set-metabot-permission!
-  "Set the permission of `perm-type` of the group with `group-id` to `perm-value`, creating its row when it has none,
-  and refuse with a 400 a change for a group the stored permission mode hides."
-  [group-id   :- ms/PositiveInt
-   perm-type  :- ::metabot-ee.schema/metabot-permissions.perm-type
-   perm-value :- ::metabot-ee.schema/metabot-permissions.perm-value]
-  (if-let [stored (metabot.db/permission group-id perm-type)]
-    (when (not= perm-value (:perm_value stored))
-      (check-visible-group group-id)
-      (metabot.db/update-permission-value! group-id perm-type perm-value))
-    (do
-      (check-visible-group group-id)
-      (metabot.db/insert-permission! {:group_id   group-id
-                                      :perm_type  perm-type
-                                      :perm_value perm-value}))))
+(defn- permission-changes
+  "The value of each `[group-id perm-type]` pair after applying `permissions` in order to the `stored` rows by pair,
+  and the pairs each permission changed, in order."
+  [stored permissions]
+  (reduce (fn [acc {:keys [group_id perm_type perm_value]}]
+            (let [k [group_id perm_type]]
+              (if (= perm_value (get-in acc [:values k]))
+                acc
+                (-> acc
+                    (assoc-in [:values k] perm_value)
+                    (update :changed conj k)))))
+          {:values (update-vals stored :perm_value) :changed []}
+          permissions))
+
+(mu/defn set-metabot-permissions!
+  "Set the `:perm_value` of each of `permissions` for its `:group_id` and `:perm_type`, in order, creating the rows
+  groups lack, and refuse with a 400, before writing anything, a change for a group the stored permission mode hides."
+  [permissions :- [:sequential [:map {:closed true}
+                                [:group_id   ms/PositiveInt]
+                                [:perm_type  ::metabot-ee.schema/metabot-permissions.perm-type]
+                                [:perm_value ::metabot-ee.schema/metabot-permissions.perm-value]]]]
+  (when (seq permissions)
+    (let [stored                   (u/index-by (juxt :group_id :perm_type)
+                                               (metabot.db/permissions-of-groups (vec (distinct (map :group_id permissions)))))
+          {:keys [values changed]} (permission-changes stored permissions)
+          advanced?                (stored-advanced-mode?)
+          changed                  (distinct changed)]
+      (run! (fn [[group-id]] (check-visible-group group-id advanced?)) changed)
+      (when-let [rows (seq (for [[group-id perm-type :as k] changed
+                                 :when (not (stored k))]
+                             {:group_id group-id :perm_type perm-type :perm_value (values k)}))]
+        (metabot.db/insert-permissions! rows))
+      (metabot.db/update-permission-values! (for [k     changed
+                                                  :let  [row (stored k)]
+                                                  :when (and row (not= (values k) (:perm_value row)))]
+                                              {:id (:id row) :perm_value (values k)})))))
 
 (mu/defn delete-hidden-metabot-permissions!
   "Delete the MetabotPermissions rows of the groups the mode selected by `advanced?` hides."

@@ -6,6 +6,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -31,12 +32,16 @@
   "The Sandboxes of the groups with `group-ids` on the Table with `table-id`."
   [group-ids :- [:set ms/PositiveInt]
    table-id  :- ::lib.schema.id/table]
-  (t2/select :model/Sandbox :group_id [:in group-ids] :table_id table-id))
+  (mdb/select-batched #(t2/select :model/Sandbox :group_id [:in %] :table_id table-id) group-ids))
 
-(mu/defn sandboxes-using-card
-  "The `:id` and `:table_id` of the Sandboxes built on the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select [:model/Sandbox :id :table_id] :card_id card-id))
+(mu/defn sandboxes-using-cards
+  "A map of Card id to the `:id` and `:table_id` of the Sandboxes built on it, for the Cards with `card-ids` that have
+  some."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (group-by :card_id (mdb/select-batched #(t2/select [:model/Sandbox :id :table_id :card_id] :card_id [:in [:auto/param %]])
+                                           card-ids))
+    {}))
 
 (mu/defn user-sandboxes-with-group-ids
   "The Sandboxes of the groups of the User with `user-id`, each with the `:group_id` of the membership."
@@ -56,44 +61,52 @@
    group-ids      :- [:maybe [:sequential ms/PositiveInt]]
    db-id          :- [:maybe ::lib.schema.id/database]
    excluded-db-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select :model/Sandbox
-             {:select [:s.group_id :s.table_id :t.db_id :t.schema]
-              :from   [[:sandboxes :s]]
-              :join   [[(t2/table-name :model/Table) :t]
-                       [:= :s.table_id :t.id]]
-              :where  [:and
-                       (when group-id [:= :s.group_id group-id])
-                       (when group-ids [:in :s.group_id group-ids])
-                       (when db-id [:= :t.db_id db-id])
-                       (when excluded-db-id [:not [:= :t.db_id excluded-db-id]])]}))
+  (letfn [(select-sandboxes [group-ids]
+            (t2/select :model/Sandbox
+                       {:select [:s.group_id :s.table_id :t.db_id :t.schema]
+                        :from   [[:sandboxes :s]]
+                        :join   [[(t2/table-name :model/Table) :t]
+                                 [:= :s.table_id :t.id]]
+                        :where  [:and
+                                 (when group-id [:= :s.group_id group-id])
+                                 (when group-ids [:in :s.group_id group-ids])
+                                 (when db-id [:= :t.db_id db-id])
+                                 (when excluded-db-id [:not [:= :t.db_id excluded-db-id]])]}))]
+    (if (seq group-ids)
+      (mdb/select-batched select-sandboxes group-ids)
+      (select-sandboxes group-ids))))
 
 (mu/defn candidate-sandboxes-for-groups-and-databases
   "The `:id`, `:group_id`, `:table_id`, `:db_id`, and `:schema` of the Sandboxes of the groups with `group-ids` on
   Tables of the Databases with `db-ids`."
   [group-ids :- [:set ms/PositiveInt]
    db-ids    :- [:set ::lib.schema.id/database]]
-  (mdb/query
-   {:select    [[:sandboxes.id :id]
-                [:sandboxes.group_id :group_id]
-                [:sandboxes.table_id :table_id]
-                [:table.db_id :db_id]
-                [:table.schema :schema]]
-    :from      [[:sandboxes]]
-    :left-join [[(t2/table-name :model/Table) :table]
-                [:= :sandboxes.table_id :table.id]]
-    :where     [:and
-                [:in :sandboxes.group_id group-ids]
-                [:in :table.db_id db-ids]]}))
+  (mdb/select-batched
+   (fn [ids]
+     (mdb/query
+      {:select    [[:sandboxes.id :id]
+                   [:sandboxes.group_id :group_id]
+                   [:sandboxes.table_id :table_id]
+                   [:table.db_id :db_id]
+                   [:table.schema :schema]]
+       :from      [[:sandboxes]]
+       :left-join [[(t2/table-name :model/Table) :table]
+                   [:= :sandboxes.table_id :table.id]]
+       :where     [:and
+                   [:in :sandboxes.group_id group-ids]
+                   [:in :table.db_id ids]]}))
+   db-ids))
 
 (mu/defn sandboxes-by-ids :- [:map-of ::lib.schema.id/sandbox ::sandbox.schema/sandbox]
   "The map from id to Sandbox of the Sandboxes with `sandbox-ids`."
   [sandbox-ids :- [:sequential {:min 1} ::lib.schema.id/sandbox]]
-  (t2/select-pk->fn identity :model/Sandbox :id [:in [:auto/param (vec (distinct sandbox-ids))]]))
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Sandbox :id [:in [:auto/param %]])
+                          sandbox-ids))
 
 (mu/defn impersonations-for-groups
   "The ConnectionImpersonations of the groups with `group-ids`."
   [group-ids :- [:set ms/PositiveInt]]
-  (t2/select :model/ConnectionImpersonation :group_id [:in group-ids]))
+  (mdb/select-batched #(t2/select :model/ConnectionImpersonation :group_id [:in %]) group-ids))
 
 (mu/defn user-group-ids
   "The IDs of the groups of the User with `user-id`."
@@ -136,6 +149,11 @@
                       (when schema-only?
                         [:= :schema schema])]}))
 
+(mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
+  "The Database id of each Table with an id among `table-ids`, by Table id."
+  [table-ids :- [:sequential {:min 1} ::lib.schema.id/table]]
+  (mdb/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in [:auto/param %]]) table-ids))
+
 (mu/defn database-of-table
   "The Database of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
@@ -148,22 +166,18 @@
   "The `:id` and `:name` of the Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:set :string]]
-  (t2/select [:model/Field :id :name] :table_id table-id :name [:in field-names]))
+  (mdb/select-batched #(t2/select [:model/Field :id :name] :table_id table-id :name [:in %]) field-names))
 
 (mu/defn cards-by-id
   "A map of Card ID to the query-related columns of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (u/index-by :id (queries/cards-queries-info card-ids)))
 
-(mu/defn cards-result-metadata
-  "The query-related columns of the Cards with `card-ids`."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (queries/cards-queries-info card-ids))
-
-(mu/defn card-result-metadata
-  "The result metadata of the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :result_metadata :model/Card :id card-id))
+(mu/defn cards-result-metadata :- [:map-of ::lib.schema.id/card [:maybe ::queries.schema/card.result-metadata]]
+  "The result metadata of each Card with an id among `card-ids`, by Card id."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (mdb/select-batched-map #(t2/select-pk->fn :result_metadata :model/Card :id [:in [:auto/param %]])
+                          card-ids))
 
 (mu/defn sandboxing-cards
   "The `:id`, `:dataset_query`, and `:database_id` of the Cards Sandboxes are built on."

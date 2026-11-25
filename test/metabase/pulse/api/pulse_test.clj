@@ -14,6 +14,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.notification.send :as notification.send]
@@ -1253,6 +1254,77 @@
                      :model/Pulse     {pulse-id :id} {:dashboard_id dashboard-id}]
         (is (= [] (-> (mt/user-http-request :rasta :get 200 "pulse")
                       (filter-pulse-results :id #{pulse-id}))))))))
+
+(defn- insert-subscriptions!
+  "Insert `n` subscriptions of the Dashboard `dashboard-id` created by `creator-id`, each with a Card and a channel
+  that has `recipient-id` as a recipient when given, and return their ids."
+  [n creator-id dashboard-id card-id & [recipient-id]]
+  (let [ids (t2/insert-returning-pks! :model/Pulse
+                                      (for [_ (range n)]
+                                        (merge (mt/with-temp-defaults :model/Pulse)
+                                               {:creator_id   creator-id
+                                                :dashboard_id dashboard-id})))]
+    (t2/insert! :model/PulseCard (map-indexed (fn [i id] (merge (mt/with-temp-defaults :model/PulseCard)
+                                                                {:pulse_id id :card_id card-id :position i}))
+                                              ids))
+    (let [channel-ids (t2/insert-returning-pks! :model/PulseChannel
+                                                (map #(merge (mt/with-temp-defaults :model/PulseChannel) {:pulse_id %}) ids))]
+      (when recipient-id
+        (t2/insert! :model/PulseChannelRecipient (map (fn [channel-id] {:pulse_channel_id channel-id :user_id recipient-id})
+                                                      channel-ids))))
+    ids))
+
+(deftest list-statement-count-test
+  (testing "GET /api/pulse runs as many statements for 10 subscriptions as for 40, and lists what the user can write"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Pulse]
+        (mt/with-temp [:model/Collection {collection-id :id} {}
+                       :model/Dashboard  {dashboard-id :id} {:collection_id collection-id}
+                       :model/Card       {card-id :id} {:collection_id collection-id}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+          (let [others   (insert-subscriptions! 3 (mt/user->id :crowberto) dashboard-id card-id)
+                list-ids #(set (map :id (mt/user-http-request :rasta :get 200 "pulse")))
+                count-of (fn [n]
+                           (let [own (insert-subscriptions! n (mt/user->id :rasta) dashboard-id card-id)]
+                             (list-ids)
+                             {:own   own
+                              :count (events.tu/real-statement-count! list-ids)}))
+                small    (count-of 10)
+                large    (count-of 40)]
+            (is (= (:count small) (:count large)))
+            (let [listed (list-ids)]
+              (is (every? listed (concat (:own small) (:own large))))
+              (is (not-any? listed others)))))))))
+
+(deftest list-as-recipient-statement-count-test
+  (testing "GET /api/pulse?creator_or_recipient=true runs as many statements for 10 subscriptions as for 40, and strips
+            the cards and recipients of those in a Collection the user cannot read"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Pulse]
+        (mt/with-temp [:model/Collection {readable-id :id} {}
+                       :model/Collection {hidden-id :id} {}
+                       :model/Dashboard  {readable-dashboard-id :id} {:collection_id readable-id}
+                       :model/Dashboard  {hidden-dashboard-id :id} {:collection_id hidden-id}
+                       :model/Card       {card-id :id} {:collection_id readable-id}]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) readable-id)
+          (let [rasta-id (mt/user->id :rasta)
+                list!    #(mt/user-http-request :rasta :get 200 "pulse?creator_or_recipient=true")
+                count-of (fn [n]
+                           (let [readable (insert-subscriptions! n (mt/user->id :crowberto) readable-dashboard-id card-id rasta-id)
+                                 hidden   (insert-subscriptions! n (mt/user->id :crowberto) hidden-dashboard-id card-id rasta-id)]
+                             (list!)
+                             {:readable readable
+                              :hidden   hidden
+                              :count    (events.tu/real-statement-count! list!)}))
+                small    (count-of 10)
+                large    (count-of 40)
+                by-id    (m/index-by :id (list!))]
+            (is (= (:count small) (:count large)))
+            (doseq [id (concat (:readable small) (:readable large))]
+              (is (seq (get-in by-id [id :cards]))))
+            (doseq [id (concat (:hidden small) (:hidden large))]
+              (is (= [] (get-in by-id [id :cards])))
+              (is (nil? (get-in by-id [id :channels 0 :recipients]))))))))))
 
 (deftest get-pulse-test
   (testing "GET /api/pulse/:id"

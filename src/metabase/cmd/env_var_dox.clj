@@ -107,12 +107,19 @@
   (when (:feature env-var)
     paid-message))
 
+(defn config-file-name
+  "The name of a setting in a configuration file and in a serialization export. Both use the real setting name, with
+  a trailing `?` if it has one: the config file loader looks the setting up by exact name, and serialization exports
+  `(name k)`. Only the environment variable uses the munged name, because a shell variable can't contain `?`."
+  [env-var]
+  (name (:name env-var)))
+
 (defn- format-export
   "Whether the variable is exported in serialization settings."
   [env-var]
   (when (true? (:export? env-var))
     (str (md/link "Exported as" "../installation-and-operation/serialization.md")
-         ": " (md/code (:munged-name env-var)) ".")))
+         ": " (md/code (config-file-name env-var)) ".")))
 
 (defn- format-doc
   "Includes additional documentation for an environment variable, if it exists.
@@ -141,7 +148,7 @@
 
     ;; an internal setting has no config-file name to give, and nothing else to say either
     (not= (:visibility env-var) :internal)
-    (str (md/link "Configuration file name" "./config-file.md") ": " (md/code (:munged-name env-var)))))
+    (str (md/link "Configuration file name" "./config-file.md") ": " (md/code (config-file-name env-var)))))
 
 (defn- format-env-var-entry
   "Preps a doc entry for an environment variable as a Markdown section."

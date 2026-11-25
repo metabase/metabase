@@ -6,15 +6,20 @@
    [metabase.channel.rest.api.channel-test :as api.channel-test]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.interface :as mi]
    [metabase.notification.models :as models.notification]
    [metabase.notification.task.send :as task.notification]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.core :as perms]
    [metabase.queries.models.card :as queries.card]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (def ^:private per-part-update-growth
   "The statements the update of a Notification adds for the 4 handlers between 2 and 6 when each handler gets its own
@@ -622,3 +627,44 @@
          (let [before (t2/count :model/Notification)]
            (message-of [first-row bad-template bad-subscription])
            (is (= before (t2/count :model/Notification)))))))))
+
+(defn- update-call-count
+  "The number of statements it takes to ask whether rasta may deactivate `notifications`, which must be allowed."
+  [notifications]
+  (mt/with-test-user :rasta
+    (t2/with-call-count [call-count]
+      (is (true? (mi/can-update-each? :model/Notification notifications {:active false})))
+      (call-count))))
+
+(deftest can-update-each-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (notification.tu/with-notification-cleanup!
+      (mt/with-model-cleanup [:model/Collection :model/Card]
+        (let [mp            (mt/metadata-provider)
+              coll-ids      (t2/insert-returning-pks! :model/Collection
+                                                      (repeatedly 41 #(t2.with-temp/with-temp-defaults :model/Collection)))
+              _             (doseq [coll-id (butlast coll-ids)]
+                              (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id))
+              card-ids      (t2/insert-returning-pks! :model/Card
+                                                      (for [coll-id coll-ids]
+                                                        (merge (t2.with-temp/with-temp-defaults :model/Card)
+                                                               {:collection_id coll-id
+                                                                :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))})))
+              notifications (models.notification/create-notifications!
+                             (for [card-id card-ids]
+                               {:payload_type :notification/card
+                                :creator_id   (mt/user->id :rasta)
+                                :active       true
+                                :payload      {:card_id card-id :send_condition :has_result}}))
+              notifications (vec (t2/hydrate (t2/select :model/Notification :id [:in (map :id notifications)]
+                                                        {:order-by [[:id :asc]]})
+                                             :payload))
+              readable      (vec (butlast notifications))]
+          (testing "a batch with one Notification of a Card rasta cannot read is refused"
+            (mt/with-test-user :rasta
+              (is (false? (mi/can-update-each? :model/Notification (conj (subvec readable 0 3) (last notifications))
+                                               {:active false})))))
+          (testing "the question takes as many statements for 40 Notifications of Cards in 40 Collections as for 10"
+            (update-call-count (subvec readable 0 2))
+            (is (= (update-call-count (subvec readable 0 10))
+                   (update-call-count readable)))))))))
