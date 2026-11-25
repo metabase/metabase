@@ -1497,7 +1497,7 @@
                          (assoc (driver/table-random-sample :mysql table fields (constantly conj) opts)
                                 :sqls @sqls))))]
         (is (driver.u/supports? :mysql :table-random-sample (mt/db)))
-        (testing "key blocks: short runs over the primary key, read in one statement"
+        (testing "key blocks: short runs over the primary key, read in two statements, the keys and then the rows"
           (let [{:keys [method runs fraction result sqls]} (sample table {:rows 20 :runs 4 :row-count 100 :seed 1})
                 ids (set (map first result))]
             (is (= :block method))
@@ -1510,7 +1510,7 @@
             (testing "with no row twice, and only rows of the table"
               (is (= 20 (count ids)))
               (is (every? #(<= 1 % 100) ids)))
-            (is (= 1 (count (filter #(str/includes? % "UNION ALL") sqls))))))
+            (is (= 2 (count (filter #(str/includes? % "UNION ALL") sqls))))))
         (testing "the same seed reads the same rows"
           (is (= (:result (sample table {:rows 20 :runs 4 :row-count 100 :seed 1}))
                  (:result (sample table {:rows 20 :runs 4 :row-count 100 :seed 1})))))
@@ -1525,14 +1525,17 @@
                 (jdbc/execute! spec ["DROP VIEW IF EXISTS key_block_view"])))))
         (testing "each run is a range read of the primary key, so the sample query has no limit of its own"
           (let [{:keys [sqls]} (sample table {:rows 20 :runs 4 :row-count 100 :seed 1})
-                runs-sql       (first (filter #(str/includes? % "UNION ALL") sqls))
+                runs-sql       (last (filter #(str/includes? % "UNION ALL") sqls))
                 spec           (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                 plan           (jdbc/query spec [(str "EXPLAIN " runs-sql) 1 26 51 100])
                 venue-rows     (filter #(= "venues" (:table %)) plan)]
             (is (not (str/includes? runs-sql "1048575")))
             (is (= 4 (count venue-rows)))
             (is (every? #(= "PRIMARY" (:key %)) venue-rows))
-            (is (every? #(= "range" (:type %)) venue-rows))))))))
+            (is (every? #(= "range" (:type %)) venue-rows))
+            (testing "with the derived table merged, and no sort"
+              (is (not-any? #(str/starts-with? (str (:table %)) "<derived") plan))
+              (is (not-any? #(str/includes? (str (:Extra %)) "filesort") venue-rows)))))))))
 
 (deftest table-random-sample-with-gaps-test
   (mt/test-driver :mysql
@@ -1562,7 +1565,7 @@
               (is (= :block method))
               (testing "the runs in the sparse part of the key keep few rows, so dense rows are most of the sample"
                 (is (< (get kinds "sparse" 0) (get kinds "dense" 0))))
-              (testing "the weights dropped many rows, so the runs were read once more, longer"
+              (testing "the dense runs read longer, so all the runs together still read most of the sample size"
                 (is (= 2 (count (filter #(str/includes? % "UNION ALL") @sqls))))
                 (is (<= 10 (count result))))))
           (finally
@@ -1597,7 +1600,8 @@
                                                                        {:rows 20 :runs 4 :row-count 100 :seed 1})
                    keys (map first result)]
                (is (= :block method))
-               (is (= 20 (count (distinct keys))))
+               (is (<= 15 (count (distinct keys))))
+               (is (= (count keys) (count (distinct keys))))
                (testing "with the true first and last rows"
                  (is (some #{start} (map #(t/local-date-time %) keys)))
                  (is (some #{(t/plus start (t/hours 99))} (map #(t/local-date-time %) keys))))))))))))
@@ -1613,3 +1617,22 @@
            (is (= {:method :first-rows}
                   (driver/table-random-sample :mysql table [k kind] (constantly conj)
                                               {:rows 20 :runs 4 :row-count 131 :seed 1})))))))))
+
+(deftest table-random-sample-declines-for-a-key-of-several-columns-test
+  (mt/test-driver :mysql
+    (mt/with-test-user :crowberto
+      (testing "a primary key of several columns gives no density, since a run can stay inside one value of its first"
+        (let [spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
+          (jdbc/execute! spec ["DROP TABLE IF EXISTS key_block_composite"])
+          (jdbc/execute! spec [(str "CREATE TABLE key_block_composite (tenant INT, seq INT, PRIMARY KEY (tenant, seq))"
+                                    " ENGINE=InnoDB")])
+          (try
+            (jdbc/insert-multi! spec :key_block_composite [:tenant :seq] (for [t (range 50) n (range 10)] [t n]))
+            (mt/with-temp [:model/Table table  {:db_id (mt/id) :name "key_block_composite" :schema nil}
+                           :model/Field tenant {:table_id (:id table) :name "tenant" :base_type :type/Integer}
+                           :model/Field n      {:table_id (:id table) :name "seq" :base_type :type/Integer}]
+              (is (= {:method :first-rows}
+                     (driver/table-random-sample :mysql table [tenant n] (constantly conj)
+                                                 {:rows 20 :runs 4 :row-count 500 :seed 1}))))
+            (finally
+              (jdbc/execute! spec ["DROP TABLE IF EXISTS key_block_composite"]))))))))

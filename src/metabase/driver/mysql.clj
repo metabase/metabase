@@ -870,18 +870,21 @@
   15)
 
 (defn- key-block-key-name
-  "The name of the first column of the primary key of `table`, when it is an InnoDB table, or nil. InnoDB stores a table
-  in the order of its primary key, so a run of rows from a start point on that column is a short read of the index.
-  For a key of several columns, only the first one is used: a row comparison does not use the full index. The query
-  names the table in both catalog tables, so that MariaDB does not read the catalog of every database."
+  "The name of the column of the primary key of `table`, when it is an InnoDB table with a primary key of one column,
+  or nil. InnoDB stores a table in the order of its primary key, so a run of rows from a start point on that column is
+  a short read of the index. A key of several columns is not used: a run of its first column can stay inside one value,
+  which gives the run no density. The query names the table in each catalog table, so that MariaDB does not read the
+  catalog of every database."
   [table]
   (-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:db_id table)))
                   [(str "SELECT COLUMN_NAME AS column_name FROM information_schema.STATISTICS"
                         " WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?"
                         " AND INDEX_NAME = 'PRIMARY' AND SEQ_IN_INDEX = 1"
                         " AND (SELECT ENGINE FROM information_schema.TABLES"
-                        "      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?) = 'InnoDB'")
-                   (:name table) (:name table)]
+                        "      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?) = 'InnoDB'"
+                        " AND (SELECT COUNT(*) FROM information_schema.STATISTICS"
+                        "      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = 'PRIMARY') = 1")
+                   (:name table) (:name table) (:name table)]
                   {:timeout key-block-key-timeout-seconds})
       first
       :column_name))
@@ -891,7 +894,7 @@
   [driver _feature _db]
   (= driver :mysql))
 
-;; Key blocks on the first column of the primary key of an InnoDB table. Other tables, such as views and tables of other
+;; Key blocks on the primary key of an InnoDB table, when it has one column. Other tables, such as views and tables of other
 ;; storage engines, keep the first rows.
 (defmethod driver/table-random-sample :mysql
   [driver table fields rff opts]

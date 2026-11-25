@@ -39,24 +39,31 @@
   (testing "a run with no rows has no density"
     (is (= 0.0 (#'key-blocks/run-density {:start 10.0 :end 50.0 :keys []} 5 1.0)))))
 
-(deftest ^:parallel weighted-keep-test
-  (testing "the densest run keeps all of its rows, the others in proportion to their density"
-    (is (= [50 25 1 0]
-           (#'key-blocks/weighted-keep [1.0 0.5 0.001 0.0] [50 50 50 0])))))
+(defn- run [start end ks]
+  {:start start :end end :keys (mapv double ks)})
 
-(deftest ^:parallel weights-correct-a-gap-test
-  (testing "Rows in a part of the key range with few rows count as much as their share of the table"
-    ;; 2 dense parts of 50 rows each per 50 keys, 2 sparse parts of 50 rows each per 500 keys: the dense rows are 10
-    ;; times as many in the table, so of the kept rows about 10 in 11 must be dense
-    (let [runs   [{:start 0.0   :end 1000.0 :keys (mapv double (range 0 50))}
-                  {:start 1000.0 :end 2000.0 :keys (mapv double (range 1000 1050))}
-                  {:start 2000.0 :end 3000.0 :keys (mapv double (range 2000 2500 10))}
-                  {:start 3000.0 :end 4000.0 :keys (mapv double (range 3000 3500 10))}]
-          kept   (#'key-blocks/weighted-keep (mapv #(#'key-blocks/run-density % 50 1.0) runs) (mapv (comp count :keys) runs))
-          dense  (+ (kept 0) (kept 1))
-          sparse (+ (kept 2) (kept 3))]
-      (is (= [50 50 5 5] kept))
-      (is (< 0.85 (/ dense (double (+ dense sparse))) 0.95)))))
+(deftest ^:parallel arm-limits-test
+  (testing "runs of the same density read the same number of rows, about the sample size in all"
+    (is (= [50 50 50 50]
+           (#'key-blocks/arm-limits (mapv #(run (* 1000.0 %) (* 1000.0 (inc %)) (range (* 1000 %) (+ 50 (* 1000 %))))
+                                          (range 4))
+                                    50 1.0 200))))
+  (testing "rows in a part of the key range with few rows read as much as their share of the table"
+    ;; 2 dense runs of 50 rows in 50 keys, 2 sparse runs of 50 rows in 500 keys: the dense rows are 10 times as many
+    (let [limits (#'key-blocks/arm-limits [(run 0.0 1000.0 (range 0 50))
+                                           (run 1000.0 2000.0 (range 1000 1050))
+                                           (run 2000.0 3000.0 (range 2000 2500 10))
+                                           (run 3000.0 4000.0 (range 3000 3500 10))]
+                                          50 1.0 200)]
+      (is (= [91 91 9 9] limits))))
+  (testing "a run that stopped at the end of its part reads at most the rows the part has"
+    (is (= 3 (first (#'key-blocks/arm-limits [(run 0.0 3.0 [0 1 2]) (run 3.0 1000.0 (range 3 53))] 50 1.0 100)))))
+  (testing "the densest runs read at most 4 times the first read, so an uneven key reads less than the sample size"
+    (is (= 200 (first (#'key-blocks/arm-limits (into [(run 0.0 1000.0 (range 0 50))]
+                                                     (map #(run (* 1000.0 %) (* 1000.0 (inc %))
+                                                                (range (* 1000 %) (+ 500 (* 1000 %)) 10))
+                                                          (range 1 10)))
+                                               50 1.0 10000))))))
 
 (deftest ^:parallel run-plan-test
   (testing "the first run starts at the true lowest key, the others at a key of the same type"
