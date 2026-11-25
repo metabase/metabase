@@ -119,8 +119,7 @@
                      ((:fn (get entries "run_dashboard_card")) {:dashcard_id dashcard-id}))))))))))
 
 (deftest metabot-sql-card-refused-test
-  (testing "a question holding SQL that Metabot saved doesn't run with filter values, which could enable SQL nothing
-            checked"
+  (testing "a question holding SQL that Metabot saved doesn't run with filter values"
     (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}
                    :model/Card                {card-id :id}         {:dataset_query           (mt/native-query {:query "SELECT 1"})
                                                                      :metabot_conversation_id conversation-id}

@@ -474,7 +474,8 @@
                                               {:id "nope", :value "x"}]})]
             (is (str/includes? output "`current_value` is the value applied to the cards on the user's screen"))
             (is (str/includes? output (str "<filter id=\"cat\" name=\"Category\" type=\"string/=\""
-                                           " default=\"[&quot;Gizmo&quot;]\" current_value=\"[&quot;Widget&quot;]\"/>")))
+                                           " default=\"[&quot;Gizmo&quot;]\""
+                                           " current_value=\"[&quot;Widget&quot;]\"/>")))
             (is (str/includes? output "<filter id=\"date\" name=\"Date\" type=\"date/all-options\" cleared=\"true\"/>"))
             (testing "a filter the frontend sent no value for says nothing about its value"
               (is (str/includes? output "<filter id=\"state\" name=\"State\" type=\"string/=\"/>")))

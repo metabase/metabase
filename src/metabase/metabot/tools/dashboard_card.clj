@@ -4,7 +4,8 @@
 
    The dashboard's own runner, [[metabase.query-processor.dashboard/process-query-for-dashcard]], applies the values
    through the card's filter mappings, so the rows are the ones the card shows, up to data that changed since the
-   user loaded it. The values come from the viewing context the frontend sent this turn, never from the model."
+   user loaded it.
+   The values come from the viewing context the frontend sent this turn, never from the model."
   (:require
    [clojure.string :as str]
    [metabase.metabot.db :as metabot.db]
@@ -47,8 +48,8 @@
    :recovery []})
 
 (tools/defrecoverable metabot-sql-card!
-  "The dashcard's question holds SQL that Metabot saved, or reads such a question.
-   Filter values can enable SQL that the read-only check never read, so these don't run here."
+  "The dashcard's question holds SQL that Metabot saved, or reads such a question."
+  ;; Filter values can enable SQL that the read-only check never read, so these don't run here.
   {:payload [:map {:closed true} [:dashcard-id :int]]}
   [{:keys [dashcard-id]}]
   {:message  (str "Dashcard " dashcard-id " runs SQL that you wrote, and SQL you wrote doesn't run with dashboard"
@@ -77,8 +78,8 @@
                      (some-> (:dataset_query card) not-empty run-query/saved-questions-read)))))
 
 (defn- runnable-dashcard
-  "`{:dashboard :dashcard :card}` for `dashcard-id` on the dashboard with `dashboard-id`, refusing a dashcard the user
-   can't see, one with no question, and one whose question reads SQL that Metabot saved."
+  "The map `{:dashboard :dashcard :card}` for `dashcard-id` on the dashboard with `dashboard-id`.
+   Refuses a dashcard the user can't see, one with no question, and one whose question reads SQL that Metabot saved."
   [dashboard-id dashcard-id]
   (let [dashboard (metabot.db/dashboard dashboard-id)
         ;; `mi/can-read?` reads the answer hydrated as `:can_read`

@@ -716,11 +716,11 @@
      :shown shown}))
 
 (defn rows-output
-  "`{:output :returned :truncated?}`: the text the model reads for `page`, a page of rows, the number of rows that
-   text shows, and whether the run has more rows than it shows.
-   `open-tag` is the `<query_results ...` start of the opening tag, which this closes with the counts, and `notes` are
-   lines that follow the rows. A truncated page gets advice to aggregate the query and run it again only with
-   `rerun-advice?`."
+  "A map `{:output :returned :truncated?}` of the text the model reads for `page`, a page of rows, the number of rows
+   that text shows, and whether the run has more rows than it shows.
+   The text opens with `open-tag`, the `<query_results ...` start of the opening tag, which this closes with the
+   counts, and the lines `notes` follow the rows.
+   A truncated page gets advice to aggregate the query and run it again only with `rerun-advice?`."
   [open-tag {:keys [cols rows truncated?]} notes rerun-advice?]
   (let [shown-cols            (vec (take max-columns cols))
         {:keys [table shown]} (rows-table shown-cols rows)
@@ -767,7 +767,8 @@
                                     " screen are not applied. Link to it as `metabase://%s/%d`, not as a query.")
                                (name type) id (name type) id)
                        " If the user is viewing it, run its query ID to read the query on the user's screen."))]
-               ;; A viewed saved question or model is a client ID too, through the chart that seeding stores under its ID
+               ;; A viewed saved question or model is a client ID too, through the chart that seeding stores under its
+               ;; ID
                (not (contains? (shared/current-client-ids) query-id))))
 
 (defn- run-query

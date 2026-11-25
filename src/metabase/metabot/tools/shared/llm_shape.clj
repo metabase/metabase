@@ -769,7 +769,8 @@
          (when (pos-int? more) (str " (+" more " more)")))))
 
 (defn dashboard-filter-cleared?
-  "Whether the dashboard filter value `value` applies no filter, as the QP reads it: nil, or a list of nothing but nils."
+  "Whether the dashboard filter value `value` applies no filter, as the QP reads it.
+  That is nil, or a list of nothing but nils."
   [value]
   (or (nil? value) (and (sequential? value) (every? nil? value))))
 
