@@ -14,6 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.task-history.core :as task-history]
@@ -582,6 +583,8 @@
    [:tables-classified      {:optional true} :int]
    [:throwable              {:optional true} [:maybe (ms/InstanceOfClass Throwable)]]
    [:timezone-id            {:optional true} [:maybe :string]]
+   [:too-large              {:optional true} :int]
+   [:too-large-updated      {:optional true} :int]
    [:total-failed           {:optional true} :int]
    [:total-fields           {:optional true} :int]
    [:total-fks              {:optional true} :int]
@@ -592,7 +595,14 @@
    [:updated-fingerprints   {:optional true} :int]
    [:updated-fks            {:optional true} :int]
    [:updated-tables         {:optional true} :int]
-   [:version                {:optional true} :string]])
+   [:version                {:optional true} :string]
+   ;; added by [[do-with-call-stats]]: the calls the step made to the warehouse. See [[add-call-stats!]].
+   [:catalog-call-ms        {:optional true} :int]
+   [:nested-field-call-ms   {:optional true} :int]
+   [:nested-field-tables    {:optional true} :int]
+   [:query-call-ms          {:optional true} :int]
+   [:query-calls            {:optional true} :int]
+   [:query-rows             {:optional true} :int]])
 
 (mr/def ::StepRunMetadata
   [:merge
@@ -651,6 +661,110 @@
                       (comp str log-summary-fn))
     :essential? (boolean essential?)}))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic ^:private *call-stats*
+  "An atom with the call counters of the sync step that is running, or nil outside a sync step."
+  nil)
+
+(defn add-call-stats!
+  "Add the numbers of `stats`, a map of counter to number, to the counters of the sync step that is running. Does
+  nothing outside a sync step. The counters end up in the stats of the step, and so in its task history:
+
+  - `:query-calls`, `:query-rows`, `:query-call-ms`: queries through the query processor, the rows they returned, and
+    their time. These are the reads of sample rows and of distinct values.
+  - `:catalog-call-ms`: time in the driver's catalog reads (`describe-database`, `describe-fields` and so on).
+  - `:nested-field-call-ms`, `:nested-field-tables`: time to look for nested field columns, and in how many tables.
+    For each table this reads its columns from the catalog, and sample rows when it has a JSON column.
+
+  A time is the time of the call as Metabase sees it: to get a connection, the round trips, and the work of the
+  warehouse. It is not the time the warehouse worked. The time of a step that none of these covers is work in
+  Metabase and its application database."
+  [stats]
+  (when-let [counters *call-stats*]
+    (swap! counters #(merge-with + % stats)))
+  nil)
+
+(defn do-with-call-time
+  "Impl for [[with-call-time]]."
+  [k thunk]
+  (if-not *call-stats*
+    (thunk)
+    (let [timer (u/start-timer)]
+      (try
+        (thunk)
+        (finally
+          (add-call-stats! {k (u/since-ms timer)}))))))
+
+(defmacro with-call-time
+  "Run `body` and add its time, in milliseconds, to counter `k` of the sync step that is running. See
+  [[add-call-stats!]]."
+  {:style/indent 1}
+  [k & body]
+  `(do-with-call-time ~k (fn [] ~@body)))
+
+(defn- timing-xform
+  "A transducer that passes each row on and, when the reduction ends, adds to counter `k` of `counters` the time the
+  source took to make the rows: the time of the reduction less the time of the reducing function it wraps. The time
+  of a reduction that throws is lost."
+  [k counters]
+  (fn [rf]
+    (let [timer      (u/start-timer)
+          downstream (volatile! 0.0)]
+      (fn
+        ([] (rf))
+        ([acc]
+         (swap! counters #(merge-with + % {k (max 0.0 (- (u/since-ms timer) @downstream))}))
+         (rf acc))
+        ([acc row]
+         (let [row-timer (u/start-timer)
+               result    (rf acc row)]
+           (vswap! downstream + (u/since-ms row-timer))
+           result))))))
+
+(defn timed-reducible
+  "`reducible`, with the time it takes to make its rows added to counter `k` of the sync step that is running. The
+  time that the reducing function takes for a row does not count: a sync step writes to the application database
+  there. See [[add-call-stats!]].
+
+  A collection that is already in memory (a vector, a set, a seq) has no such time, and comes back as it is. So does
+  anything outside a sync step. Only a reducible that makes its rows when it is reduced is wrapped, in an `eduction`,
+  so it can still be reduced, stopped early, and read as a sequence where the source allows it."
+  [k reducible]
+  (let [counters *call-stats*]
+    (if (or (nil? counters) (coll? reducible))
+      reducible
+      (eduction (timing-xform k counters) reducible))))
+
+(defn- counting-execute
+  "Wrap `execute`, a [[qp.pipeline/*execute*]], so that each warehouse query it runs adds itself to the counters of the
+  sync step: one query, the rows the warehouse returned, and the time from the start of the query to the end of the
+  reduction of its rows."
+  [execute]
+  (fn [driver query respond]
+    (let [timer (u/start-timer)
+          rows  (volatile! 0)]
+      (try
+        (execute driver query
+                 (fn [metadata reducible-rows]
+                   (respond metadata (eduction (map (fn [row] (vswap! rows inc) row)) reducible-rows))))
+        (finally
+          (add-call-stats! {:query-calls  1
+                            :query-rows     @rows
+                            :query-call-ms (u/since-ms timer)}))))))
+
+(defn- do-with-call-stats
+  "Call `thunk`, the body of a sync step, and add to the stats it returns the counters of its calls to the warehouse,
+  as whole numbers. See [[add-call-stats!]] for the counters. A step that used none of them gets no keys."
+  [thunk]
+  (let [counters (atom {})
+        result   (binding [*call-stats*      counters
+                           qp.pipeline/*execute* (counting-execute qp.pipeline/*execute*)]
+                   (thunk))]
+    (cond-> result
+      (and (seq @counters)
+           (or (nil? result) (map? result)))
+      (merge (update-vals @counters #(long (Math/round (double %))))))))
+
 (mu/defn- run-step-with-metadata :- StepNameWithMetadata
   "Runs `step` on `database` returning metadata from the run"
   [database :- i/DatabaseInstance
@@ -670,7 +784,7 @@
                                                 (if (instance? Throwable result)
                                                   (throw result)
                                                   (assoc update-map :task_details (dissoc result :start-time :end-time :log-summary-fn))))}
-                            (apply sync-fn database args))))))
+                            (do-with-call-stats #(apply sync-fn database args)))))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results
                       :start-time start-time

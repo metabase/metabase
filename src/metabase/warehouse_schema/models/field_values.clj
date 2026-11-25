@@ -471,7 +471,8 @@
   "What persisting `raw-values`, the raw distinct values of one Field from the warehouse, changes against
   `existing-fv`, its full FieldValues or nil: `{:result r}` with `r` one of `::fv-skipped`, `::fv-updated`,
   `::fv-created` or `::fv-deleted`, and the `:delete` Field id, `:create` row or `:update` row that
-  [[save-field-values-changes!]] writes."
+  [[save-field-values-changes!]] writes. A change that keeps a list also says with `:too-large?` whether the Field
+  has more values than the list holds."
   [field existing-fv raw-values]
   (let [field-name      (or (:name field) (:id field))
         row-cap-hit?    (>= (count raw-values) *distinct-limit*)
@@ -486,7 +487,8 @@
       (nil? existing-fv)
       (do
         (log/debugf "Storing FieldValues for Field %s..." field-name)
-        {:result ::fv-created
+        {:result     ::fv-created
+         :too-large? has-more-values
          :create {:field_id              (u/the-id field)
                   :type                  :full
                   :has_more_values       has-more-values
@@ -497,12 +499,13 @@
            (= (:has_more_values existing-fv) has-more-values))
       (do
         (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
-        {:result ::fv-skipped})
+        {:result ::fv-skipped, :too-large? has-more-values})
 
       :else
       (do
         (log/debugf "Storing updated FieldValues for Field %s..." field-name)
-        {:result ::fv-updated
+        {:result     ::fv-updated
+         :too-large? has-more-values
          :update (assoc (m/remove-vals nil?
                                        {:has_more_values       has-more-values
                                         :values                values

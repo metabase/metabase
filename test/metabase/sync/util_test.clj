@@ -8,6 +8,9 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
@@ -97,9 +100,13 @@
 
 (defn only-step-keys
   "This function removes the generic keys for the step metadata, returning only the step specific keypairs to make
-  validating the results for the given step easier."
+  validating the results for the given step easier. The generic keys are the times of the step and the counters of
+  what it cost the warehouse, which any step can have. Works on the `:task_details` of a step too."
   [step-info]
-  (dissoc step-info :start-time :end-time :log-summary-fn))
+  (dissoc step-info
+          :start-time :end-time :log-summary-fn
+          :catalog-call-ms :nested-field-call-ms :nested-field-tables
+          :query-calls :query-call-ms :query-rows))
 
 (defn- validate-times [{:keys [start-time end-time]}]
   (every? (partial instance? java.time.temporal.Temporal) [start-time end-time]))
@@ -139,6 +146,84 @@
     (testing "step 2 history"
       (is (=? (merge default-task-history {:task step-2-name, :task_details nil})
               (fetch-task-history-row step-2-name))))))
+
+(deftest query-call-stats-test
+  (testing "a step records the warehouse queries it runs through the query processor"
+    (let [process-name (mt/random-name)
+          query-step   (mt/random-name)
+          quiet-step   (mt/random-name)
+          database     (driver.u/lib-database (mt/id))
+          mp           (mt/metadata-provider)
+          venues       (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+          sync-steps   [(sync-util/create-sync-step query-step
+                                                    (fn [_]
+                                                      (qp/process-query (lib/limit venues 3))
+                                                      (qp/process-query (lib/limit venues 2))
+                                                      {:total-tables 1}))
+                        (sync-util/create-sync-step quiet-step (fn [_] {:total-tables 2}))]
+          results      (sync-util/run-sync-operation process-name database sync-steps)
+          step-info    (into {} (:steps results))
+          expected     {:total-tables 1, :query-calls 2, :query-rows 5, :query-call-ms nat-int?}]
+      (testing "in the step result"
+        (is (=? expected
+                (get step-info query-step))))
+      (testing "in task history"
+        (is (=? {:task_details expected}
+                (t2/select-one :model/TaskHistory :task query-step))))
+      (testing "a step that runs no query gets no counters"
+        (is (= {:total-tables 2}
+               (only-step-keys (get step-info quiet-step))))))))
+
+(deftest call-time-stats-test
+  (testing "a step records the time it spends in the reads that sync wraps"
+    (let [step-name  (mt/random-name)
+          database   (driver.u/lib-database (mt/id))
+          sync-steps [(sync-util/create-sync-step
+                       step-name
+                       (fn [_]
+                         ;; 30 ms in a plain call
+                         (sync-util/with-call-time :catalog-call-ms
+                           (Thread/sleep 30))
+                         ;; 3 x 10 ms where the rows are made, and 3 x 30 ms in the consumer of the rows
+                         (reduce (fn [n _row] (Thread/sleep 30) (inc n))
+                                 0
+                                 (sync-util/timed-reducible :catalog-call-ms
+                                                            (eduction (map (fn [row] (Thread/sleep 10) row)) (range 3))))
+                         (sync-util/add-call-stats! {:nested-field-tables 2})
+                         {:total-tables 1}))]
+          results    (sync-util/run-sync-operation (mt/random-name) database sync-steps)
+          step-info  (get (into {} (:steps results)) step-name)]
+      (testing "the time of the call and of the producer of the rows counts, the time of the consumer does not"
+        ;; 60 ms wanted. With the consumer it would be 150 ms or more.
+        (is (<= 55 (:catalog-call-ms step-info) 130)))
+      (testing "a plain counter"
+        (is (= 2 (:nested-field-tables step-info))))
+      (testing "in task history"
+        (is (=? {:task_details {:catalog-call-ms pos-int?, :nested-field-tables 2}}
+                (t2/select-one :model/TaskHistory :task step-name))))))
+  (testing "timed-reducible keeps what its argument can do"
+    (let [results (atom nil)
+          rows    (eduction (map inc) (range 3))
+          step    (sync-util/create-sync-step
+                   (mt/random-name)
+                   (fn [_]
+                     (reset! results {:vector   (let [v [1 2 3]] (identical? v (sync-util/timed-reducible :catalog-call-ms v)))
+                                      :set      (let [s #{1 2 3}] (identical? s (sync-util/timed-reducible :catalog-call-ms s)))
+                                      :lazy-seq (let [l (map inc (range 3))] (identical? l (sync-util/timed-reducible :catalog-call-ms l)))
+                                      :first    (first (sync-util/timed-reducible :catalog-call-ms rows))
+                                      :seq      (seq (sync-util/timed-reducible :catalog-call-ms rows))
+                                      :into     (into [] (sync-util/timed-reducible :catalog-call-ms rows))
+                                      :reduced  (reduce (fn [_ row] (reduced row)) nil (sync-util/timed-reducible :catalog-call-ms rows))})
+                     {:total-tables 1}))]
+      (sync-util/run-sync-operation (mt/random-name) (driver.u/lib-database (mt/id)) [step])
+      (testing "a collection that is already in memory comes back as it is: there is nothing to time"
+        (is (=? {:vector true, :set true, :lazy-seq true} @results)))
+      (testing "a reducible that makes its rows when it is reduced can still be read as a sequence, and stopped early"
+        (is (=? {:first 1, :seq [1 2 3], :into [1 2 3], :reduced 1} @results)))))
+  (testing "outside a sync step the helpers do nothing and pass the value through"
+    (is (= :value (sync-util/with-call-time :catalog-call-ms :value)))
+    (is (= [0 1 2] (into [] (sync-util/timed-reducible :catalog-call-ms (range 3)))))
+    (is (nil? (sync-util/add-call-stats! {:nested-field-tables 1})))))
 
 (deftest run-sync-operation-record-failed-task-history-test
   (let [process-name (mt/random-name)

@@ -27,6 +27,15 @@
     (= ::field-values/fv-updated result) {:updated 1}
     (= ::field-values/fv-deleted result) {:deleted 1}))
 
+(defn- too-large-delta
+  "The counts for `change`, what [[field-values/field-values-change]] returned for a Field, with `result`, its outcome
+  or the Throwable writing it threw, when the Field has more values than its list holds."
+  [change result]
+  (when (and (:too-large? change)
+             (not (instance? Throwable result)))
+    (cond-> {:too-large 1}
+      (= ::field-values/fv-updated result) (assoc :too-large-updated 1))))
+
 (defn- fields-to-scan
   "Up to `limit` active, normal-visibility Fields of each of `tables`, by Table id, ordered by id so that the
   selection is stable across syncs and a wide Table loads a bounded number of Fields."
@@ -63,8 +72,11 @@
   "Initial counter map for a sync run.
   - `:probed`  fields we attempted to fetch distinct values for (active list-eligible fields)
   - `:queries` warehouse queries actually issued (1 per UNION batch on SQL, 1 per field on non-SQL)
-  - `:created`/`:updated`/`:deleted`/`:errors` per-field outcomes (`::fv-skipped` is not counted)"
-  {:errors 0, :created 0, :updated 0, :deleted 0, :probed 0, :queries 0})
+  - `:created`/`:updated`/`:deleted`/`:errors` per-field outcomes (`::fv-skipped` is not counted)
+  - `:too-large` fields with more values than their list holds, whatever the outcome
+  - `:too-large-updated` the `:updated` outcomes among those. Which values the warehouse returns for such a field is
+    arbitrary, so this update can be a rewrite with no change in the data"
+  {:errors 0, :created 0, :updated 0, :deleted 0, :probed 0, :queries 0, :too-large 0, :too-large-updated 0})
 
 (defn- fetch-distinct-for-table
   "Run all UNION batches for `fields` from `table` of a Database of `driver`. Returns
@@ -155,7 +167,9 @@
                                                           (sync-util/name-for-logging field))
                                                    (sync.updates/save-field-values-changes! [(:id field)] [change])
                                                    (:result change))))]
-    (transduce (map (comp result->delta outcome))
+    (transduce (map (fn [[_field change :as pair]]
+                      (let [result (outcome pair)]
+                        (merge (result->delta result) (too-large-delta change result)))))
                (partial merge-with +)
                (assoc empty-counts :probed (count pairs))
                pairs)))
@@ -265,9 +279,9 @@
                                       (inc (sync.settings/scan-max-fields-per-table)))]
       (transduce (map (partial update-field-values-for-tables! database)) (partial merge-with +) groups))))
 
-(defn- update-field-values-summary [{:keys [created updated deleted errors probed queries]}]
-  (format "Updated %d field value sets, created %d, deleted %d with %d errors (probed %d fields in %d queries)"
-          updated created deleted errors probed queries))
+(defn- update-field-values-summary [{:keys [created updated deleted errors probed queries too-large]}]
+  (format "Updated %d field value sets, created %d, deleted %d with %d errors (probed %d fields in %d queries, %d too large)"
+          updated created deleted errors probed queries (or too-large 0)))
 
 (defn- delete-expired-advanced-field-values-summary [{:keys [deleted]}]
   (format "Deleted %d expired advanced fieldvalues" deleted))

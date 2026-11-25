@@ -72,7 +72,10 @@
   (sync-util/with-error-handling "Error syncing Indexes"
     (let [indexes (fetch-metadata/log-if-error
                    "index-metadata"
-                    (driver/describe-indexes (driver.u/database->driver database) database))
+                    (sync-util/timed-reducible
+                     :catalog-call-ms
+                     (sync-util/with-call-time :catalog-call-ms
+                       (driver/describe-indexes (driver.u/database->driver database) database))))
           database-id (:id database)
           indexed-field-ids (all-indexes->field-ids database-id indexes)
           existing-indexed-field-ids (sync.db/indexed-top-level-field-ids-for-database database-id)
