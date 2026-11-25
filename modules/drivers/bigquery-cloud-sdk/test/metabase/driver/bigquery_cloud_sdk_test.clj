@@ -14,6 +14,7 @@
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1925,3 +1926,31 @@
   (testing "a SQL-injection payload in a clustering column is backtick-escaped, so it can only ever be an identifier"
     (is (= "CLUSTER BY `c\\`; DROP TABLE x; --`"
            (#'bigquery/clustering-clause [{:kind :clustering :columns [{:name "c`; DROP TABLE x; --"}]}])))))
+
+(deftest ^:parallel change-token-test
+  (testing "a table with data has a token of its last write time, rows and logical bytes"
+    (is (= "2026-01-01T00:00Z:10:2048"
+           (#'bigquery/change-token {:storage_last_modified_time "2026-01-01T00:00Z" :total_rows 10 :total_logical_bytes 2048}))))
+  (testing "a table with no data has no token"
+    (is (nil? (#'bigquery/change-token {:storage_last_modified_time nil :total_rows 0 :total_logical_bytes 0})))))
+
+(deftest ^:parallel table-storage-honeysql-test
+  (testing "the view is region-qualified, with the region of the dataset in lower case"
+    (is (= [(str "SELECT `table_schema`, `table_name`, `storage_last_modified_time`, `total_rows`, `total_logical_bytes`"
+                 " FROM `my-project`.`region-us`.`INFORMATION_SCHEMA`.`TABLE_STORAGE`"
+                 " WHERE (`deleted` = FALSE) AND (`table_type` = ?) AND (`table_schema` IN (?, ?))")
+            "BASE TABLE" "a" "b"]
+           (sql.qp/format-honeysql :bigquery-cloud-sdk (#'bigquery/table-storage-honeysql "my-project" "US" ["a" "b"]))))))
+
+(deftest ^:synchronized table-change-tokens-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "the driver supports change tokens"
+      (is (true? (driver/database-supports? :bigquery-cloud-sdk :table-change-tokens (mt/db)))))
+    (testing "there is an entry for each table, each a token or nil, the same on a second read"
+      (let [tables (t2/select :model/Table :db_id (mt/id) :active true)
+            tokens #(driver/table-change-tokens :bigquery-cloud-sdk (mt/db) tables)
+            before (tokens)]
+        (is (seq tables))
+        (is (= (set (map :id tables)) (set (keys before))))
+        (is (every? #(or (nil? %) (string? %)) (vals before)))
+        (is (= before (tokens)))))))
