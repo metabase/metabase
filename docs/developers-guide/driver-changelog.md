@@ -7,7 +7,7 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
-- `metabase.driver.sql-jdbc.sync/sample-json-row-honey-sql` `[driver table-identifier json-field-identifiers
+- `metabase.driver.sql-jdbc.sync/sample-json-row-honeysql` `[driver table-identifier json-field-identifiers
   pk-identifiers]` -- new multimethod that returns the query sync uses to sample rows of JSON columns, to find their
   nested field columns. Each JSON value must come back as JSON text. Override it if the driver reads JSON values as
   something other than text, or if the default query (a join on the first and last PKs) is slow for the database.

@@ -406,13 +406,19 @@
             batch query uses only the field name, which is not a column"
     (let [calls-to-fetch-distinct-for-table (atom [])
           calls-to-fetch-distinct-per-field (atom [])]
-      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
-                     :model/Table {tbl-id :id :as table} {:db_id db-id, :name "t"
-                                                          :database_require_filter false}
-                     :model/Field json-field {:table_id tbl-id, :name "payload → paid", :nfc_path ["payload" "paid"]
-                                              :base_type :type/Text, :has_field_values :list}
-                     :model/Field plain {:table_id tbl-id, :name "plain"
-                                         :base_type :type/Text, :has_field_values :list}]
+      (mt/with-temp [:model/Database {db-id :id}          {:engine :h2}
+                     :model/Table    {tbl-id :id :as table} {:db_id                   db-id
+                                                             :name                    "t"
+                                                             :database_require_filter false}
+                     :model/Field    json-field             {:table_id         tbl-id
+                                                             :name             "payload → paid"
+                                                             :nfc_path         ["payload" "paid"]
+                                                             :base_type        :type/Text
+                                                             :has_field_values :list}
+                     :model/Field    plain                  {:table_id         tbl-id
+                                                             :name             "plain"
+                                                             :base_type        :type/Text
+                                                             :has_field_values :list}]
         (mt/with-dynamic-fn-redefs [sync.field-values/fetch-distinct-for-table
                                     (fn [_driver _table fields]
                                       (swap! calls-to-fetch-distinct-for-table conj (set (map :id fields)))

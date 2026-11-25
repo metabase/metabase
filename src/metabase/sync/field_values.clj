@@ -121,7 +121,7 @@
   [database table fields fvs-map]
   (if (empty? fields)
     {:queries 0 :changes []}
-    (let [{nested true plain false}    (group-by #(boolean (or (:parent_id %) (:nfc_path %))) fields)
+    (let [{nested true plain false}    (group-by (comp boolean (some-fn :parent_id :nfc_path)) fields)
           batch?                       (can-batch-distinct? database table)
           batch-fields                 (when batch? plain)
           per-field-fields             (concat nested (when-not batch? plain))

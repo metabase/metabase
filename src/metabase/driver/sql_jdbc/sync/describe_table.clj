@@ -796,7 +796,7 @@
            (describe-table-fields-xf driver table))
           (table-fields-for-json-unfolding driver conn database table))))
 
-(defmulti sample-json-row-honey-sql
+(defmulti sample-json-row-honeysql
   "Return a HoneySQL query that selects a sample of rows of `table-identifier`, to find the nested field columns of
   the JSON fields `json-field-identifiers`. Each JSON value must come back as JSON text. `pk-identifiers` are the
   identifiers of the table's PKs, or nil if it has none.
@@ -807,7 +807,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod sample-json-row-honey-sql :sql-jdbc
+(defmethod sample-json-row-honeysql :sql-jdbc
   [driver table-identifier json-field-identifiers pk-identifiers]
   (let [pks-expr         (mapv vector pk-identifiers)
         table-expr       [table-identifier]
@@ -854,7 +854,7 @@
                            (mapv #(apply h2x/identifier :field (into table-identifier-info [%])) pks))
         sql-args         (sql.qp/format-honeysql
                           driver
-                          (sample-json-row-honey-sql driver table-identifier json-field-identifiers pk-identifiers))]
+                          (sample-json-row-honeysql driver table-identifier json-field-identifiers pk-identifiers))]
     (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity})))
 
 (defn- describe-json-fields

@@ -74,32 +74,32 @@
            (is (= [["free" 1 0.0 41.0]
                    ["pro" 2 42.5 27.5]
                    ["team" 1 99.9 nil]]
-                  (mt/rows
-                   (qp/process-query
-                    (-> query
-                        (lib/breakout (field "payload → user → plan"))
-                        (lib/aggregate (lib/count))
-                        (lib/aggregate (lib/sum (field "payload → price")))
-                        (lib/aggregate (lib/avg (field "payload → user → age")))
-                        (lib/order-by (field "payload → user → plan"))))))))
+                  (-> query
+                      (lib/breakout (field "payload → user → plan"))
+                      (lib/aggregate (lib/count))
+                      (lib/aggregate (lib/sum (field "payload → price")))
+                      (lib/aggregate (lib/avg (field "payload → user → age")))
+                      (lib/order-by (field "payload → user → plan"))
+                      qp/process-query
+                      mt/rows))))
          (testing "filter on JSON paths"
            (is (= [[1 "ann"] [3 "cat"]]
-                  (mt/rows
-                   (qp/process-query
-                    (-> query
-                        (lib/filter (lib/= (field "payload → paid") true))
-                        (lib/filter (lib/< (field "payload → price") 50))
-                        (lib/with-fields [(field "id") (field "payload → user → name")])
-                        (lib/order-by (field "id"))))))))
+                  (-> query
+                      (lib/filter (lib/= (field "payload → paid") true))
+                      (lib/filter (lib/< (field "payload → price") 50))
+                      (lib/with-fields [(field "id") (field "payload → user → name")])
+                      (lib/order-by (field "id"))
+                      qp/process-query
+                      mt/rows))))
          (testing "group by day on a JSON path"
            (is (= [["2024-01-02T00:00:00Z" 2]
                    ["2024-01-03T00:00:00Z" 1]
                    ["2024-01-05T00:00:00Z" 1]]
-                  (mt/rows
-                   (qp/process-query
-                    (-> query
-                        (lib/breakout (lib/with-temporal-bucket (field "payload → created") :day))
-                        (lib/aggregate (lib/count))))))))
+                  (-> query
+                      (lib/breakout (lib/with-temporal-bucket (field "payload → created") :day))
+                      (lib/aggregate (lib/count))
+                      qp/process-query
+                      mt/rows))))
          (testing "a JSON path compiles to a cast of the subcolumn"
            (is (=? [::h2x/typed
                     [::h2x/typed
@@ -127,7 +127,7 @@
                   ["payload" "user" "age"] ["payload" "user" "name"] ["payload" "user" "plan"]}
                 (t2/select-fn-set :nfc_path :model/Field :table_id (:id table) :nfc_path [:not= nil]))))))))
 
-(deftest ^:synchronized sample-json-row-honey-sql-test
+(deftest ^:synchronized sample-json-row-honeysql-test
   (testing "with PKs, the sample query reads the first and last rows, with each JSON value as JSON text"
     (mt/test-driver :clickhouse
       (do-with-json-table!
@@ -135,7 +135,7 @@
          (let [field   #(h2x/identifier :field "json_unfolding_test" "events" %)
                [sql]   (sql.qp/format-honeysql
                         :clickhouse
-                        (sql-jdbc.sync/sample-json-row-honey-sql
+                        (sql-jdbc.sync/sample-json-row-honeysql
                          :clickhouse
                          (h2x/identifier :table "json_unfolding_test" "events")
                          [(field "payload")]
@@ -145,7 +145,7 @@
                         (map #(get-in (json/decode (first %)) ["user" "name"]))
                         (mt/rows (qp/process-query (mt/native-query {:query sql}))))))))))))
 
-(deftest ^:synchronized sample-json-row-honey-sql-non-unique-pk-test
+(deftest ^:synchronized sample-json-row-honeysql-non-unique-pk-test
   (testing "the sample has a limited number of rows when many rows have the same PK: ClickHouse PKs are not unique"
     (mt/test-driver :clickhouse
       (mt/dataset json_unfolding_test
@@ -154,17 +154,17 @@
               field   #(h2x/identifier :field "json_unfolding_test" "same_pk" %)
               [sql]   (sql.qp/format-honeysql
                        :clickhouse
-                       (sql-jdbc.sync/sample-json-row-honey-sql
+                       (sql-jdbc.sync/sample-json-row-honeysql
                         :clickhouse
                         (h2x/identifier :table "json_unfolding_test" "same_pk")
                         [(field "payload")]
                         [(field "tenant")]))]
-          (exec! ["DROP TABLE IF EXISTS json_unfolding_test.same_pk"
-                  (str "CREATE TABLE json_unfolding_test.same_pk (tenant UInt32, payload JSON) "
-                       "ENGINE = MergeTree ORDER BY tenant")
-                  (str "INSERT INTO json_unfolding_test.same_pk "
-                       "SELECT 1, concat('{\"a\": ', toString(number), '}') FROM numbers(1500)")])
           (try
+            (exec! ["DROP TABLE IF EXISTS json_unfolding_test.same_pk"
+                    (str "CREATE TABLE json_unfolding_test.same_pk (tenant UInt32, payload JSON) "
+                         "ENGINE = MergeTree ORDER BY tenant")
+                    (str "INSERT INTO json_unfolding_test.same_pk "
+                         "SELECT 1, concat('{\"a\": ', toString(number), '}') FROM numbers(1500)")])
             (is (= 500
                    (count (mt/rows (qp/process-query (mt/native-query {:query sql}))))))
             (finally

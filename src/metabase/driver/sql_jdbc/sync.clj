@@ -45,7 +45,7 @@
   pattern-based-database-type->base-type
   reducible-fks-for-tables-matching-options
   reducible-table-fks-from-jdbc-metadata
-  sample-json-row-honey-sql]
+  sample-json-row-honeysql]
  [sql-jdbc.describe-database
   describe-database
   fast-active-tables
