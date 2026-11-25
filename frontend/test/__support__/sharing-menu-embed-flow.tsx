@@ -16,7 +16,10 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { expectNoBadSchemaEvents } from "__support__/snowplow";
+import {
+  expectNoBadSchemaEvents,
+  expectValidSchemaEvent,
+} from "__support__/snowplow";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { waitForRequestsToSettle } from "__support__/utils";
@@ -403,6 +406,11 @@ export function describeEmbedFlowFromSharingMenu(
         event: "embed_wizard_options_completed",
         event_detail: "settings=default",
       });
+      jest
+        .mocked(trackSimpleEvent)
+        .mock.calls.forEach(([event]) =>
+          expectValidSchemaEvent("simple_event", "1-0-0", event),
+        );
     });
 
     it("shows the legacy static embedding alert for a null embedding type but not for a guest embed", async () => {

@@ -1,22 +1,141 @@
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import type { Interception } from "cypress/types/net-stubbing";
+
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import type { CardId, DashboardId, Parameter } from "metabase-types/api";
 
 import { getEmbedSidebar } from "../embedding/sdk-iframe-embedding-setup/helpers";
 
 const { H } = cy;
 
-const suiteTitle = "scenarios > sharing > embed flow pre-selection";
+type Resource = "dashboard" | "question";
 
-// The Behavior/Parameters/Appearance cards share a wrapper that is dimmed and
-// made non-interactive (`pointer-events: none`) while the selected auth type
-// isn't ready. The wrapper always carries an inline `opacity` style, so it can
-// be selected in either state.
-const optionCardsWrapper = () =>
-  getEmbedSidebar().findByText("Behavior").closest("[style*='opacity']");
+// The menu, popover, modal and embed flow UI, and the Snowplow events they
+// send, are covered by Jest tests. These tests check the real backend: the
+// writes, what it stores and what it sends back.
 
-describe(suiteTitle, () => {
+describe("scenarios > sharing > public link", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.updateSetting("enable-public-sharing", true);
+  });
+
+  it("should save a new question, then create and remove its public link (metabase#39152)", () => {
+    H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
+    H.pickEntity({ path: ["Databases", "Sample Database", "People"] });
+    H.visualize();
+
+    H.openSharingMenu();
+
+    H.modal().within(() => {
+      cy.findByText("First, save your question").should("be.visible");
+      cy.findByText("Save").click();
+    });
+
+    H.openSharingMenu("Create a public link");
+    assertValidPublicLink().as("publicLink");
+
+    cy.log("the backend stores the public link");
+    cy.reload();
+    H.openSharingMenu("Public link");
+    cy.get<string>("@publicLink").then((publicLink) => {
+      assertValidPublicLink().should("eq", publicLink);
+    });
+
+    cy.intercept("DELETE", "/api/card/*/public_link").as("removePublicLink");
+    H.popover().button("Remove public link").click();
+    cy.wait("@removePublicLink");
+
+    cy.log("the backend removes the public link");
+    cy.reload();
+    H.openSharingMenu();
+    H.sharingMenu().within(() => {
+      cy.findByText("Create a public link").should("be.visible");
+      cy.findByText("Public link").should("not.exist");
+    });
+  });
+});
+
+[
+  { resource: "dashboard" as const, apiPath: "dashboard" as const },
+  { resource: "question" as const, apiPath: "card" as const },
+].forEach(({ resource, apiPath }) => {
+  describe(`scenarios > sharing > static embedding of a ${resource}`, () => {
+    beforeEach(() => {
+      H.restore();
+      H.resetSnowplow();
+      cy.signInAsAdmin();
+      H.enableTracking();
+
+      createResource(resource).then((id) => {
+        cy.wrap(id).as("resourceId");
+      });
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should publish and unpublish a static embed", () => {
+      cy.get<CardId | DashboardId>("@resourceId").then((id) => {
+        visitResource(resource, id);
+        H.openLegacyStaticEmbeddingModal({
+          resource,
+          resourceId: id,
+          activeTab: "parameters",
+        });
+      });
+
+      H.modal().findByLabelText("Price").click();
+      H.selectDropdown().findByText("Editable").click();
+
+      H.publishChanges(apiPath, ({ request, response }: Interception) => {
+        expect(request.body.embedding_type).to.equal("static-legacy");
+        expect(response?.body.embedding_type).to.equal("static-legacy");
+        expect(response?.body.embedding_params).to.deep.equal({
+          created_at: "disabled",
+          price: "enabled",
+          category: "disabled",
+        });
+      });
+
+      // `new_embed` comes from the `initially_published_at` that the backend
+      // set when the modal helper published the embed first.
+      H.expectUnstructuredSnowplowEvent({
+        event: "static_embed_published",
+        artifact: resource,
+        new_embed: false,
+        params: { disabled: 2, locked: 0, enabled: 1 },
+      });
+
+      cy.log("the backend stores the published embed");
+      cy.get<CardId | DashboardId>("@resourceId").then((id) => {
+        visitResource(resource, id);
+        H.openLegacyStaticEmbeddingModal({
+          resource,
+          resourceId: id,
+          activeTab: "parameters",
+          unpublishBeforeOpen: false,
+        });
+      });
+
+      H.modal().within(() => {
+        cy.findByText(
+          `This ${resource} is published and ready to be embedded.`,
+        ).should("be.visible");
+        cy.findByLabelText("Price").should("have.value", "Editable");
+      });
+
+      H.unpublishChanges(apiPath, ({ request, response }: Interception) => {
+        expect(request.body.embedding_type).to.equal(null);
+        expect(response?.body.embedding_type).to.equal(null);
+      });
+    });
+  });
+});
+
+describe("scenarios > sharing > embed flow pre-selection", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -56,66 +175,78 @@ describe(suiteTitle, () => {
       event_detail: "settings=default",
     });
   });
-
-  it("lets Guest embedding proceed after accepting only the Guest terms, without requiring the SSO terms (EMB-1884)", () => {
-    // Reproduce a fresh Pro instance where neither auth type's terms have
-    // been accepted yet, so the option cards start dimmed.
-    H.updateSetting("show-modular-embed-terms", true);
-    H.updateSetting("show-static-embed-terms", true);
-    H.updateSetting("enable-embedding-modular", false);
-
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.openSharingMenu("Embed");
-
-    cy.log("switch to Guest authentication");
-    getEmbedSidebar().findByLabelText("Guest").click();
-
-    cy.log(
-      "the Behavior options aren't interactive until the Guest terms are accepted",
-    );
-    optionCardsWrapper().should("have.css", "pointer-events", "none");
-
-    cy.log("accept the Guest terms only — never the SSO terms");
-    H.embedModalEnableEmbedding();
-
-    cy.log(
-      "the Behavior options become interactive without accepting the SSO terms",
-    );
-    optionCardsWrapper().should("have.css", "pointer-events", "all");
-    getEmbedSidebar()
-      .findByLabelText("Allow downloads")
-      .click()
-      .should("be.checked");
-
-    getEmbedSidebar().findByText("Get code").click();
-    getEmbedSidebar().findByText("publish this dashboard").click();
-    H.codeMirrorValue().should("contain", 'with-downloads="true"');
-  });
-
-  it("pre-selects question in embed flow when opened from question sharing modal", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    H.openSharingMenu("Embed");
-    H.embedModalEnableEmbedding();
-
-    H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
-
-    getEmbedSidebar().within(() => {
-      cy.findByText("Behavior").should("be.visible");
-      cy.findByText("Appearance").should("be.visible");
-    });
-
-    H.waitForSimpleEmbedIframesToLoad();
-
-    H.getSimpleEmbedIframeContent()
-      .findByText("Orders", { timeout: 10_000 })
-      .should("be.visible");
-
-    getEmbedSidebar().findByText("Back").should("not.exist");
-    getEmbedSidebar().findByText("Get code").click();
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_options_completed",
-      event_detail: "settings=default",
-    });
-  });
 });
+
+function assertValidPublicLink() {
+  const publicLinkPattern =
+    /^https?:\/\/[^/]+\/public\/question\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  cy.findByTestId("public-link-popover-content").within(() => {
+    cy.findByText("Public link").should("be.visible");
+    cy.findByText("Remove public link").should("be.visible");
+  });
+
+  return cy
+    .findByTestId("public-link-input")
+    .should("be.visible")
+    .invoke("val")
+    .should("match", publicLinkPattern);
+}
+
+const PARAMETERS: Parameter[] = [
+  { id: "1", name: "Created At", slug: "created_at", type: "date/month-year" },
+  { id: "2", name: "Price", slug: "price", type: "number/=" },
+  { id: "3", name: "Category", slug: "category", type: "string/contains" },
+];
+
+function createResource(
+  resource: Resource,
+): Cypress.Chainable<CardId | DashboardId> {
+  if (resource === "question") {
+    return H.createNativeQuestion({
+      name: "Question",
+      native: {
+        query: `
+          SELECT *
+          FROM PRODUCTS
+          WHERE true
+            [[AND created_at > {{created_at}}]]
+            [[AND price > {{price}}]]
+            [[AND category = {{category}}]]`,
+        "template-tags": {
+          date: {
+            type: "date",
+            name: "created_at",
+            id: "b2517f32-d2e2-4f42-ab79-c91e07e820a0",
+            "display-name": "Created At",
+          },
+          price: {
+            type: "number",
+            name: "price",
+            id: "879d1597-e673-414c-a96f-ff5887359834",
+            "display-name": "Price",
+          },
+          category: {
+            type: "text",
+            name: "category",
+            id: "1f741a9a-a95e-4ac6-b584-5101e7cf77e1",
+            "display-name": "Category",
+          },
+        },
+      },
+    }).then(({ body }): CardId | DashboardId => body.id);
+  }
+
+  return H.createDashboard({
+    name: "Dashboard",
+    parameters: PARAMETERS,
+  }).then(({ body }): CardId | DashboardId => body.id);
+}
+
+function visitResource(resource: Resource, id: CardId | DashboardId) {
+  if (resource === "question") {
+    H.visitQuestion(id);
+  } else {
+    H.visitDashboard(id);
+  }
+}
