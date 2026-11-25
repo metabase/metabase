@@ -64,8 +64,10 @@
   "Initial counter map for a sync run.
   - `:probed`  fields we attempted to fetch distinct values for (active list-eligible fields)
   - `:queries` warehouse queries actually issued (1 per UNION batch on SQL, 1 per field on non-SQL)
-  - `:created`/`:updated`/`:deleted`/`:errors` per-field outcomes (`::fv-skipped` is not counted)"
-  {:errors 0, :created 0, :updated 0, :deleted 0, :probed 0, :queries 0})
+  - `:created`/`:updated`/`:deleted`/`:errors` per-field outcomes (`::fv-skipped` is not counted)
+  - `:tables-changed` Tables whose change token is known and not the one at their last scan
+  - `:tables-unchanged` Tables not read because their change token is the one at their last scan"
+  {:errors 0, :created 0, :updated 0, :deleted 0, :probed 0, :queries 0, :tables-changed 0, :tables-unchanged 0})
 
 (defn- fetch-distinct-for-table
   "Run all UNION batches for `fields` from `table` of a Database of `driver`. Returns
@@ -253,6 +255,54 @@
   (and (:has_more_values fv)
        (some-> (:last_scanned_at fv) (t/after? (t/minus (t/offset-date-time) too-large-scan-period)))))
 
+(defn- change-tokens
+  "The change token of each of `tables` by Table id from the driver of `database`, or nil when the driver gives none
+  or reading them fails."
+  [database tables]
+  (let [engine (:engine database)]
+    (when (driver.u/supports? engine :table-change-tokens database)
+      (let [tokens (sync-util/with-error-handling (format "Error reading the change tokens of the tables of %s"
+                                                          (sync-util/name-for-logging database))
+                     (driver/table-change-tokens engine database tables))]
+        (when (map? tokens)
+          tokens)))))
+
+(defn- full-scan-period
+  "How often the scheduled scan reads each Table of `database`, whatever its change token."
+  [database]
+  (t/days (or (get-in database [:settings :field-values-full-scan-days])
+              (sync.settings/field-values-full-scan-days))))
+
+(defn- unchanged-tables
+  "The ids of the `tables` whose token in `tokens` is the one at their last scan, and whose lists among `fvs` were all
+  read within `period`."
+  [tables tokens fvs period]
+  (let [cutoff       (t/minus (t/offset-date-time) period)
+        table-id->fvs (group-by (comp :table_id :field) fvs)
+        recent?      #(some-> (:last_scanned_at %) (t/after? cutoff))]
+    (into #{}
+          (comp (filter (fn [{:keys [id value_scan_token]}]
+                          (let [token (get tokens id)]
+                            (and (some? token)
+                                 (= token value_scan_token)
+                                 (every? (comp recent? :fv) (table-id->fvs id))))))
+                (map :id))
+          tables)))
+
+(defn- record-value-scan-tokens!
+  "Record the token in `tokens` of each of `tables` that the scan read, when it differs from the stored one. Nothing is
+  recorded after a scan with errors, so the next scan reads the Tables again."
+  [tables tokens read-ids counts]
+  (when (and tokens (zero? (:errors counts)))
+    (let [changes (into {}
+                        (keep (fn [{:keys [id value_scan_token]}]
+                                (let [token (get tokens id)]
+                                  (when (and (contains? read-ids id) (not= token value_scan_token))
+                                    [id token]))))
+                        tables)]
+      (sync-util/with-error-handling "Error recording the change tokens of the tables"
+        (sync.updates/record-value-scan-tokens! changes)))))
+
 (mr/def ::scan-options
   [:map {:closed true}
    [:rescan? :boolean]])
@@ -260,8 +310,9 @@
 (mu/defn- update-field-values-for-tables!
   "Update the FieldValues of the Fields of `tables` that need it, reading their Fields and FieldValues together, with
   one UNION ALL query per Table on SQL drivers and one DISTINCT query per Field elsewhere. The scheduled scan reads a
-  list that was too large at its last scan only once in [[too-large-scan-period]]. A manual rescan (`:rescan?`) reads
-  every list, and also stores again the lists that are still too large."
+  list that was too large at its last scan only once in [[too-large-scan-period]], and does not read the lists of a
+  Table whose change token is the one at its last scan, unless one was read longer ago than [[full-scan-period]]. A
+  manual rescan (`:rescan?`) reads every list, and also stores again the lists that are still too large."
   [database :- i/DatabaseInstance
    tables   :- [:sequential i/TableInstance]
    opts     :- ::scan-options]
@@ -284,8 +335,24 @@
                             (let [fv (get fvs-map (u/the-id field))]
                               (and (syncable? last-used-at field fv)
                                    (or (:rescan? opts) (not (too-large-scanned-recently? fv))))))
-        table-id->to-sync (group-by :table_id (filter due? to-sync))]
-    (merge-with + clear-counts (sync-fields-of-tables! tables (constantly database) table-id->to-sync fvs-map opts))))
+        tokens            (change-tokens database tables)
+        unchanged         (if (:rescan? opts)
+                            #{}
+                            (unchanged-tables tables tokens
+                                              (for [field to-sync
+                                                    :let  [fv (get fvs-map (u/the-id field))]
+                                                    :when fv]
+                                                {:field field :fv fv})
+                                              (full-scan-period database)))
+        table-id->to-sync (group-by :table_id (filter #(and (not (unchanged (:table_id %))) (due? %)) to-sync))
+        scan-counts       (sync-fields-of-tables! tables (constantly database) table-id->to-sync fvs-map opts)]
+    (record-value-scan-tokens! tables tokens (into #{} (comp (map :id) (remove unchanged)) tables) scan-counts)
+    (merge-with + clear-counts scan-counts
+                {:tables-changed   (count (filter (fn [{:keys [id value_scan_token]}]
+                                                    (let [token (get tokens id)]
+                                                      (and (some? token) (not= token value_scan_token))))
+                                                  tables))
+                 :tables-unchanged (count unchanged)})))
 
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`.
@@ -313,9 +380,10 @@
                                       (inc (sync.settings/scan-max-fields-per-table)))]
       (transduce (map #(update-field-values-for-tables! database % opts)) (partial merge-with +) groups))))
 
-(defn- update-field-values-summary [{:keys [created updated deleted errors probed queries]}]
-  (format "Updated %d field value sets, created %d, deleted %d with %d errors (probed %d fields in %d queries)"
-          updated created deleted errors probed queries))
+(defn- update-field-values-summary [{:keys [created updated deleted errors probed queries tables-unchanged]}]
+  (format (str "Updated %d field value sets, created %d, deleted %d with %d errors (probed %d fields in %d queries, "
+               "skipped %d unchanged tables)")
+          updated created deleted errors probed queries (or tables-unchanged 0)))
 
 (defn- delete-expired-advanced-field-values-summary [{:keys [deleted]}]
   (format "Deleted %d expired advanced fieldvalues" deleted))

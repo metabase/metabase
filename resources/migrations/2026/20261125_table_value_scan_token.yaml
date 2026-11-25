@@ -1,0 +1,18 @@
+## The change token of a Table that its driver gave at the last value-list scan, so that the scan can skip a Table
+## that did not change.
+
+databaseChangeLog:
+  - changeSet:
+      id: dabd8u
+      author: nvoxland
+      comment: Add metabase_table.value_scan_token
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: value_scan_token
+                  type: varchar(255)
+                  remarks: The change token the driver gave for the table at its last value-list scan; null when unknown
+                  constraints:
+                    nullable: true

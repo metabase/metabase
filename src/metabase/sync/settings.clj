@@ -80,3 +80,15 @@
   :export?    false
   :doc        "Scans run with the scheduled analyze pass and with Sync database schema now on a database's admin
   page. Fields that already carry a label, including PUBLIC, are not rescanned.")
+
+(defsetting field-values-full-scan-days
+  (deferred-tru
+   (str "The scheduled scan of filter values reads every table at least once in this many days, also a table whose "
+        "database says it did not change."))
+  :visibility     :admin
+  :export?        true
+  :type           :integer
+  :default        7
+  :database-local :allowed
+  :audit          :getter
+  :encryption     :no)

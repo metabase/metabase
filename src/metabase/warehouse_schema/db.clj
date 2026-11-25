@@ -292,6 +292,13 @@
                                                      (t2/update! model key-column [:in (mapv key part)]
                                                                  {column (into [:case] (mapcat (fn [[k v]] [[:= key-column k] v])) part)})) key->value))
 
+(mu/defn update-table-value-scan-tokens!
+  "Set the `value_scan_token` of each ::warehouse-schema.schema/table in `table-id->token`, returning the number
+  updated. Goes by the table, not the model: the token is sync's own record, so `updated_at` and the update event stay
+  for changes to the Table."
+  [table-id->token :- [:map-of ::lib.schema.id/table [:maybe :string]]]
+  (update-by-cases! (t2/table-name :model/Table) :id :value_scan_token table-id->token))
+
 (mu/defn update-field-custom-positions!
   "Set the `custom_position` of each ::warehouse-schema.schema/field in `field-id->position`, returning the number
   updated."
