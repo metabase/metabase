@@ -48,7 +48,6 @@
       (match/replace-all
         #'map? (-> &match
                    (dissoc :id :created_at :updated_at :entity_id :pulse_id)
-                   (cond-> (nil? (:parameters &match)) (assoc :parameters []))
                    (update-vals (fn [v] (if (keyword? v)
                                           (u/qualified-name v)
                                           v)))))

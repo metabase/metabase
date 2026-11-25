@@ -557,36 +557,24 @@
                       (assoc+ v idx el'))))
                 coll coll))))
 
+(defn- kv-reduce
+  "Like `reduce-kv`, but reduces a record over its entries, since a record may implement its own reduce."
+  [f init m]
+  ;; Records may implement their own reduce (e.g. toucan2's IdentityQuery reduces over its rows), so walk their
+  ;; entries through `seq` instead of `reduce-kv`.
+  (if (record? m)
+    (reduce (fn [acc e] (f acc (key e) (val e))) init (seq m))
+    (reduce-kv f init m)))
+
 (defn walk
   "Drop-in replacement for `clojure.walk/walk`. Optimized for efficiency and has the following behavior differences:
   - Doesn't walk over map entries. When descending into a map, walks keys and values separately.
   - Uses transients and reduce where possible and tries to return the same input `form` if no changes were made."
   [inner outer form]
   (cond
-    ;; Records may implement their own reduce (e.g. toucan2's IdentityQuery reduces over its rows), so walk their
-    ;; entries through `seq` instead of `reduce-kv`.
-    (record? form)
-    (let [new-keys (volatile! (transient #{}))]
-      (-> (reduce (fn [r e]
-                    (let [k  (key e)
-                          v  (val e)
-                          k' (inner k)
-                          v' (inner v)]
-                      (if (identical? k' k)
-                        (if (identical? v' v)
-                          r
-                          (assoc r k v'))
-                        (do (vswap! new-keys conj! k')
-                            (if (contains? @new-keys k)
-                              (assoc r k' v')
-                              (-> r (dissoc k) (assoc k' v')))))))
-                  form (seq form))
-          (add-original-meta form)
-          outer))
-
     (map? form)
     (let [new-keys (volatile! (transient #{}))]
-      (-> (reduce-kv (fn [m k v]
+      (-> (kv-reduce (fn [m k v]
                        (let [k' (inner k)
                              v' (inner v)]
                          (if (identical? k' k)

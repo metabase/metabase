@@ -352,6 +352,8 @@
 (defn- match-many* [value clauses all?]
   (when (odd? (count clauses))
     (throw (ex-info "match-many requires even number of clauses" {})))
+  (when (and all? (contains-symbol? clauses '&recur))
+    (throw (ex-info "match-all does not support &recur" {})))
   (let [pairs (partition 2 clauses)
         has-default? (= (first (last pairs)) '_)
         [pairs default] (if has-default?
@@ -429,10 +431,10 @@
   (matches?* value clause))
 
 (defmacro match-all
-  "Like [[match-many]], keeps looking recursively inside the matched values too. Returns a vector of all non-nil return
-  values, outer matches before inner ones, or `nil` if nothing matched. See [[match-one]] for pattern and return
-  expression syntax. Like the rest match macros, looks into map values and sequential collections, but not into map
-  keys or sets.
+  "Like [[match-many]], but keeps looking recursively inside the matched values too. Returns a vector of all non-nil
+  return values, outer matches before inner ones, or `nil` if nothing matched. See [[match-one]] for pattern and
+  return expression syntax. Like the rest match macros, looks into map values and sequential collections, but not into
+  map keys or sets.
 
   Differences from [[match-many]]:
 
@@ -442,7 +444,8 @@
       [:field id & _] id)
     ;; -> [1 2]
 
-  2. Returning `nil` only leaves that value out of the results, the search inside it still continues."
+  2. Returning `nil` only leaves that value out of the results, the search inside it still continues.
+  3. Doesn't support `&recur`."
   {:style/indent :defn}
   [value & clauses]
   (match-many* value clauses true))
