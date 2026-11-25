@@ -865,20 +865,24 @@
 
 ;;; ------------------------------------------------ Table samples -------------------------------------------------
 
+(def ^:private key-block-key-timeout-seconds
+  "The time limit of the catalog query for the key of a table."
+  15)
+
 (defn- key-block-key-name
   "The name of the first column of the primary key of `table`, when it is an InnoDB table, or nil. InnoDB stores a table
   in the order of its primary key, so a run of rows from a start point on that column is a short read of the index.
-  For a key of several columns, only the first one is used: a row comparison does not use the full index."
+  For a key of several columns, only the first one is used: a row comparison does not use the full index. The query
+  names the table in both catalog tables, so that MariaDB does not read the catalog of every database."
   [table]
   (-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:db_id table)))
-                  [(str "SELECT s.COLUMN_NAME AS column_name"
-                        " FROM information_schema.TABLES t"
-                        " JOIN information_schema.STATISTICS s"
-                        " ON s.TABLE_SCHEMA = t.TABLE_SCHEMA AND s.TABLE_NAME = t.TABLE_NAME"
-                        " WHERE t.TABLE_SCHEMA = DATABASE() AND t.TABLE_NAME = ? AND t.ENGINE = 'InnoDB'"
-                        " AND s.INDEX_NAME = 'PRIMARY' AND s.SEQ_IN_INDEX = 1")
-                   (:name table)]
-                  {:timeout 15})
+                  [(str "SELECT COLUMN_NAME AS column_name FROM information_schema.STATISTICS"
+                        " WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?"
+                        " AND INDEX_NAME = 'PRIMARY' AND SEQ_IN_INDEX = 1"
+                        " AND (SELECT ENGINE FROM information_schema.TABLES"
+                        "      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?) = 'InnoDB'")
+                   (:name table) (:name table)]
+                  {:timeout key-block-key-timeout-seconds})
       first
       :column_name))
 
@@ -891,7 +895,7 @@
 ;; storage engines, keep the first rows.
 (defmethod driver/table-random-sample :mysql
   [driver table fields rff opts]
-  (if-let [key-name (key-block-key-name table)]
+  (if-let [key-name (and (:row-count opts) (key-block-key-name table))]
     (key-blocks/sample driver table fields key-name rff opts)
     {:method :first-rows}))
 

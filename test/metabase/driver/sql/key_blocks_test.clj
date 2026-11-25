@@ -11,11 +11,11 @@
 (deftest ^:parallel part-bounds-test
   (testing "equal parts from the lowest to the highest key"
     (is (= [0.0 25.0 50.0 75.0 100.0]
-           (key-blocks/part-bounds 0.0 100.0 4)))))
+           (#'key-blocks/part-bounds 0.0 100.0 4)))))
 
 (deftest ^:parallel run-starts-test
-  (let [bounds (key-blocks/part-bounds 0.0 100.0 4)
-        starts (key-blocks/run-starts bounds (Random. 1))]
+  (let [bounds (#'key-blocks/part-bounds 0.0 100.0 4)
+        starts (#'key-blocks/run-starts bounds (Random. 1))]
     (testing "one start for each part but the last, which is read down from the highest key"
       (is (= 3 (count starts))))
     (testing "the first run starts at the lowest key, so the sample has the first rows"
@@ -24,25 +24,25 @@
       (is (every? true? (map (fn [i start] (and (<= (nth bounds i) start) (< start (nth bounds (inc i)))))
                              (range 1 3) (rest starts)))))
     (testing "the same seed gives the same starts"
-      (is (= starts (key-blocks/run-starts bounds (Random. 1)))))))
+      (is (= starts (#'key-blocks/run-starts bounds (Random. 1)))))))
 
 (deftest ^:parallel run-density-test
   (testing "a full run covers the key range from its requested start to its last key"
-    (is (= 0.5 (key-blocks/run-density {:start 10.0 :end 50.0 :keys [11.0 13.0 15.0 17.0 19.0]} 5 1.0))))
+    (is (= 0.5 (#'key-blocks/run-density {:start 10.0 :end 50.0 :keys [11.0 13.0 15.0 17.0 19.0]} 5 1.0))))
   (testing "measured from the requested start, not from the first row, so that a hole before it counts"
-    (is (= (/ 5 31.0) (key-blocks/run-density {:start 10.0 :end 50.0 :keys [36.0 37.0 38.0 39.0 40.0]} 5 1.0))))
+    (is (= (/ 5 31.0) (#'key-blocks/run-density {:start 10.0 :end 50.0 :keys [36.0 37.0 38.0 39.0 40.0]} 5 1.0))))
   (testing "a run that stopped at the end of its part covers the rest of the part"
-    (is (= (/ 2 41.0) (key-blocks/run-density {:start 10.0 :end 50.0 :keys [20.0 30.0]} 5 1.0))))
+    (is (= (/ 2 41.0) (#'key-blocks/run-density {:start 10.0 :end 50.0 :keys [20.0 30.0]} 5 1.0))))
   (testing "the descending last run covers the range from the highest key down"
-    (is (= 0.5 (key-blocks/run-density {:start 100.0 :end 75.0 :descending? true :keys [99.0 97.0 95.0 93.0 91.0]}
-                                       5 1.0))))
+    (is (= 0.5 (#'key-blocks/run-density {:start 100.0 :end 75.0 :descending? true :keys [99.0 97.0 95.0 93.0 91.0]}
+                                         5 1.0))))
   (testing "a run with no rows has no density"
-    (is (= 0.0 (key-blocks/run-density {:start 10.0 :end 50.0 :keys []} 5 1.0)))))
+    (is (= 0.0 (#'key-blocks/run-density {:start 10.0 :end 50.0 :keys []} 5 1.0)))))
 
 (deftest ^:parallel weighted-keep-test
   (testing "the densest run keeps all of its rows, the others in proportion to their density"
     (is (= [50 25 1 0]
-           (key-blocks/weighted-keep [1.0 0.5 0.001 0.0] [50 50 50 0])))))
+           (#'key-blocks/weighted-keep [1.0 0.5 0.001 0.0] [50 50 50 0])))))
 
 (deftest ^:parallel weights-correct-a-gap-test
   (testing "Rows in a part of the key range with few rows count as much as their share of the table"
@@ -52,11 +52,22 @@
                   {:start 1000.0 :end 2000.0 :keys (mapv double (range 1000 1050))}
                   {:start 2000.0 :end 3000.0 :keys (mapv double (range 2000 2500 10))}
                   {:start 3000.0 :end 4000.0 :keys (mapv double (range 3000 3500 10))}]
-          kept   (key-blocks/weighted-keep (mapv #(key-blocks/run-density % 50 1.0) runs) (mapv (comp count :keys) runs))
+          kept   (#'key-blocks/weighted-keep (mapv #(#'key-blocks/run-density % 50 1.0) runs) (mapv (comp count :keys) runs))
           dense  (+ (kept 0) (kept 1))
           sparse (+ (kept 2) (kept 3))]
       (is (= [50 50 5 5] kept))
       (is (< 0.85 (/ dense (double (+ dense sparse))) 0.95)))))
+
+(deftest ^:parallel run-plan-test
+  (testing "the first run starts at the true lowest key, the others at a key of the same type"
+    (let [{:keys [params]} (#'key-blocks/run-plan 1 1000 4 1)]
+      (is (= 1 (first params)))
+      (is (every? int? params))))
+  (testing "no runs for a key of whole numbers with fewer than 2 values for each run"
+    (is (nil? (#'key-blocks/run-plan 1 7 4 1))))
+  (testing "no runs for a key with no range"
+    (is (nil? (#'key-blocks/run-plan 5 5 4 1)))
+    (is (nil? (#'key-blocks/run-plan "a" "b" 4 1)))))
 
 (deftest ^:parallel key-values-test
   (testing "a start point becomes a key of the type of the lowest key, rounded up to a whole step"
