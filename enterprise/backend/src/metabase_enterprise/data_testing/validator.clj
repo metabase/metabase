@@ -171,21 +171,28 @@
     "multiple-statements"    (tru "it holds more than one statement")
     "not-a-select"           (tru "it is not a SELECT")
     "writes-or-locks"        (tru "it writes or locks, as a data-modifying CTE, SELECT ... INTO or FOR UPDATE does")
-    "session-function"       (tru "it calls {0}, which changes the session" detail)
-    "sql-executing-function" (tru "it calls {0}, which runs SQL text" detail)
+    ;; A reason nested under "rebuild-differs" comes without its detail.
+    "session-function"       (if detail
+                               (tru "it calls {0}, which changes the session" detail)
+                               (tru "it calls a function that changes the session"))
+    "sql-executing-function" (if detail
+                               (tru "it calls {0}, which runs SQL text" detail)
+                               (tru "it calls a function that runs SQL text"))
     "dynamic-function-call"  (tru "it calls a function by a name the check cannot read")
     "external-table"         (tru "it reads a file or a URL as a table")
-    "statement-word"         (tru "it holds {0}, which the database can read as the start of another statement" detail)
+    "statement-word"         (if detail
+                               (tru "it holds {0}, which the database can read as the start of another statement" detail)
+                               (tru "it holds a word that the database can read as the start of another statement"))
     "executable-comment"     (tru "it holds a /*! comment, whose text the database runs as SQL")
     "bare-dash-comment"      (tru "it holds -- with no space after it, which the database does not read as a comment")
     "lone-carriage-return"   (tru "it holds a carriage return with no newline after it, where the check and the database end a comment differently")
     "unicode-identifier"     (tru "it holds a U&\"...\" name, whose escapes the check cannot read")
-    "backslash-quote"        (tru "it, or its rewrite, holds a backslash before a quote, where the database can end a string elsewhere than the check does")
+    "backslash-quote"        (tru "it, or the SQL that Metabase rewrites it into to run, holds a backslash before a quote, which some database settings read as an escaped quote; write the backslash another way, such as chr(92) on Postgres or CHAR(92) on MySQL")
     "unparseable"            (tru "it does not parse")
     "rebuild-differs"        (if detail
-                               (tru "the rewrite of it that a run executes reads differently: {0}"
+                               (tru "the SQL that Metabase rewrites it into to run reads differently: {0}"
                                     (refusal-reason detail nil))
-                               (tru "the rewrite of it that a run executes changes when it is rewritten again"))
+                               (tru "the SQL that Metabase rewrites it into to run does not read back as the same SQL, as when a -- comment opens the body of a CTE; write such a comment as /* ... */"))
     (tru "it holds something the check refuses")))
 
 (defn- unsupported-form-refusal
@@ -197,14 +204,14 @@
     "number-literal"
     (data-testing.errors/ex
      ::data-testing.errors/unsupported-sql
-     (tru "The SQL of {0} holds the number {1}. Data tests do not support numbers written in hexadecimal, binary or octal, or with underscores, yet."
+     (tru "The SQL of {0} holds the number {1}. Data tests do not support numbers written in hexadecimal, binary or octal, or with underscores or letters among the digits, yet."
           (sql-source-label source) detail)
      {:reason reason :detail detail})
 
     "div-operator"
     (data-testing.errors/ex
      ::data-testing.errors/unsupported-sql
-     (tru "The SQL of {0} uses the DIV operator, which the SQL check rewrites as a division that rounds where DIV truncates. Data tests do not support DIV yet."
+     (tru "The SQL of {0} uses the DIV operator, which Metabase rewrites, in the SQL it runs, as a division that rounds where DIV truncates. Data tests do not support DIV yet."
           (sql-source-label source))
      {:reason reason})
 
@@ -245,7 +252,7 @@
       (throw (or (unsupported-form-refusal reason detail source)
                  (data-testing.errors/ex
                   ::data-testing.errors/not-a-single-select
-                  (tru "The SQL of {0} must be one SELECT statement, and the SQL check refuses it: {1}."
+                  (tru "The SQL check refuses the SQL of {0}: {1}. A data test runs only a single SELECT that writes nothing and does not change the session."
                        (sql-source-label source) (refusal-reason reason detail))
                   (cond-> {}
                     reason (assoc :reason reason)

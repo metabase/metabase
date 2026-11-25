@@ -42,7 +42,7 @@
    ::unsupported-h2             422  ; The database is H2, which data tests do not support yet.
    ::uncompilable-subject       422  ; The subject's query does not compile to SQL.
    ::query-failed               422  ; The query under test would not run.
-   ::parameters-not-kept        422  ; The rewrite of the query under test does not keep each parameter's placeholder once.
+   ::parameters-not-kept        422  ; The query under test's placeholders are not one per value, or its rewrite does not keep each once.
    ::duplicate-output-columns   422  ; The output of the query under test has two columns of one name.
    ::setup-failed               422  ; A test input could not be materialized.
    ::expectation-failed         422  ; An expectation's own query failed to execute.

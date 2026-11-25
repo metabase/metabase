@@ -110,14 +110,14 @@
        (testing "input SQL of more than one statement is refused before anything is sent"
          (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id; COMMIT; DELETE FROM public.orders"
                                                                       "SELECT * FROM {{output}} WHERE 1 = 0"))]
-           (is (re-find #"^The SQL of input public.orders must be one SELECT statement" (str (:thrown result)))
+           (is (re-find #"^The SQL check refuses the SQL of input public.orders: " (str (:thrown result)))
                (pr-str result))
            (is (= [] sent))))
        (testing "`empty` expectation SQL of more than one statement is refused before anything is sent"
          (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id"
                                                                       (str "SELECT * FROM {{output}} WHERE 1 = 0; COMMIT; "
                                                                            "DO $$ BEGIN EXECUTE 'DELETE FROM public.orders'; END $$")))]
-           (is (re-find #"^The SQL of expectation \"check\" must be one SELECT statement" (str (:thrown result)))
+           (is (re-find #"^The SQL check refuses the SQL of expectation \"check\": " (str (:thrown result)))
                (pr-str result))
            (is (= [] sent))))))))
 
@@ -246,7 +246,7 @@
        (testing "input SQL whose rebuild Postgres reads as more than one statement is refused before anything is sent"
          (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
                                                                       "SELECT * FROM {{output}} WHERE 1 = 0"))]
-           (is (re-find #"^The SQL of input public.orders must be one SELECT statement" (str (:thrown result)))
+           (is (re-find #"^The SQL check refuses the SQL of input public.orders: " (str (:thrown result)))
                (pr-str result))
            (is (= [] sent))))
        (testing "a trailing `;` is dropped from the statement sent"
@@ -257,27 +257,29 @@
        (testing "input SQL calling `nextval`, whose effect survives the run's rollback, is refused before anything is sent"
          (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT nextval('orders_id_seq') AS id"
                                                                       "SELECT * FROM {{output}} WHERE 1 = 0"))]
-           (is (re-find #"^The SQL of input public.orders must be one SELECT statement" (str (:thrown result)))
+           (is (re-find #"^The SQL check refuses the SQL of input public.orders: " (str (:thrown result)))
                (pr-str result))
            (is (= [] sent))))
        (testing "input SQL whose CTE writes is refused before anything is sent"
          (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "WITH d AS (DELETE FROM public.orders RETURNING id) SELECT id FROM d"
                                                                       "SELECT * FROM {{output}} WHERE 1 = 0"))]
-           (is (re-find #"must be one SELECT statement" (str (:thrown result))) (pr-str result))
+           (is (re-find #"^The SQL check refuses the SQL of " (str (:thrown result))) (pr-str result))
            (is (= [] sent))))
        (testing "input SQL whose rebuilt E'' string ends one quote later, running `setval`, is refused before anything is sent"
          (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id hidden-setval-sql
                                                                       "SELECT * FROM {{output}} WHERE 1 = 0"))]
-           (is (re-find #"must be one SELECT statement" (str (:thrown result))) (pr-str result))
+           (is (re-find #"^The SQL check refuses the SQL of " (str (:thrown result))) (pr-str result))
+           (is (not (re-find #"\bnull\b" (str (:thrown result)))) (pr-str result))
            (is (= [] sent))))
        (testing "`empty` expectation SQL whose rebuilt E'' string ends one quote later, running `set_config`, is refused before anything is sent"
          (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id" hidden-set-config-sql))]
-           (is (re-find #"must be one SELECT statement" (str (:thrown result))) (pr-str result))
+           (is (re-find #"^The SQL check refuses the SQL of " (str (:thrown result))) (pr-str result))
+           (is (not (re-find #"\bnull\b" (str (:thrown result)))) (pr-str result))
            (is (= [] sent))))
        (testing "the card's own SQL of more than one statement is refused before anything is sent"
          (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT id FROM public.orders; COMMIT; SELECT 1"
                                                                       "SELECT 1 AS id" "SELECT * FROM {{output}} WHERE 1 = 0"))]
-           (is (re-find #"^The SQL of the query under test must be one SELECT statement" (str (:thrown result)))
+           (is (re-find #"^The SQL check refuses the SQL of the query under test: " (str (:thrown result)))
                (pr-str result))
            (is (= [] sent))))))))
 

@@ -250,23 +250,23 @@
            (single-select :postgres "SELECT 1 AS id -- one" nil))))
   (testing "a second statement is refused, naming the SQL's source and the reason"
     (is (= {:error-type ::errors/not-a-single-select
-            :message    (str "The SQL of input public.orders must be one SELECT statement, and the SQL check refuses it: "
-                             "it holds more than one statement.")
+            :message    (str "The SQL check refuses the SQL of input public.orders: it holds more than one statement. "
+                             "A data test runs only a single SELECT that writes nothing and does not change the session.")
             :reason     "multiple-statements"}
            (single-select :postgres "SELECT 1 AS id; RESET ROLE" [:input {:schema "public" :name "orders"}]))))
   (testing "a single statement that is not a SELECT is refused"
     (is (=? {:error-type ::errors/not-a-single-select
-             :message    #"^The SQL of the query under test must be one SELECT statement.*: it is not a SELECT\.$"}
+             :message    #"^The SQL check refuses the SQL of the query under test: it is not a SELECT\. A data test .*"}
             (single-select :postgres "DELETE FROM orders" nil))))
   (testing "a SELECT whose rebuild Postgres reads as two statements is refused"
     (is (=? {:error-type ::errors/not-a-single-select
-             :message    #".*: the rewrite of it that a run executes reads differently: it holds more than one statement\.$"
+             :message    #".*: the SQL that Metabase rewrites it into to run reads differently: it holds more than one statement\. .*"
              :reason     "rebuild-differs"}
             (single-select :postgres "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
                            [:expectation "check"]))))
   (testing "a SELECT with a backslash before a quote, which Postgres reads as two statements with standard_conforming_strings off, is refused"
     (is (=? {:error-type ::errors/not-a-single-select
-             :message    #".*: it, or its rewrite, holds a backslash before a quote, .*"
+             :message    #".*: it, or the SQL that Metabase rewrites it into to run, holds a backslash before a quote, .*"
              :reason     "backslash-quote"}
             (single-select :postgres "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files" nil))))
   (testing "control: an E'' string with an escaped quote is rebuilt so that it reads the same"
@@ -274,19 +274,32 @@
            (single-select :postgres "SELECT E'it\\'s' AS id" nil))))
   (testing "a SELECT whose rebuilt E'' string ends one quote later, running `setval` that the parser read as text, is refused"
     (is (=? {:error-type ::errors/not-a-single-select
-             :message    #".*: the rewrite of it that a run executes reads differently: it writes or locks.*"
+             :message    #".*: the SQL that Metabase rewrites it into to run reads differently: it writes or locks.*"
              :reason     "rebuild-differs"
              :detail     "writes-or-locks"}
             (single-select :postgres
                            "SELECT E'\\\\' || $q$' || (SELECT setval($z$s$z$, 4242))::text --$q$ AS id"
                            [:input {:schema "public" :name "orders"}]))))
+  (testing "a SELECT whose rebuild calls a function that changes the session, which the parser does not name, is refused in words that name none"
+    (is (=? {:error-type ::errors/not-a-single-select
+             :message    #".*: the SQL that Metabase rewrites it into to run reads differently: it calls a function that changes the session\. .*"
+             :reason     "rebuild-differs"
+             :detail     "session-function"}
+            (single-select :postgres
+                           "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$none$z$, false) --$q$ AS a"
+                           nil))))
+  (testing "a SELECT whose rebuild does not rebuild to itself is refused, naming a cause the author can change"
+    (is (=? {:error-type ::errors/not-a-single-select
+             :message    #".*: the SQL that Metabase rewrites it into to run does not read back as the same SQL, as when a -- comment opens the body of a CTE; .*"
+             :reason     "rebuild-differs"}
+            (single-select :postgres "WITH c AS (\n  -- note\n  SELECT 1 AS id) SELECT * FROM c" nil))))
   (testing "a SELECT whose CTE writes is refused"
     (is (=? {:error-type ::errors/not-a-single-select
              :reason     "writes-or-locks"}
             (single-select :postgres "WITH d AS (DELETE FROM orders RETURNING id) SELECT id FROM d" nil))))
   (testing "a SELECT calling a function that changes the session is refused"
     (is (=? {:error-type ::errors/not-a-single-select
-             :message    #".*: it calls set_config, which changes the session\.$"
+             :message    #".*: it calls set_config, which changes the session\. .*"
              :reason     "session-function"}
             (single-select :postgres "SELECT set_config('role', 'postgres', false)" nil))))
   (testing "SQL that does not parse is refused, naming its source"
@@ -306,7 +319,8 @@
   (testing "a Postgres number whose rewrite has another value is refused, naming the number and the source"
     (is (=? {:error-type ::errors/unsupported-sql
              :message    (str "The SQL of input public.orders holds the number 0x1F. Data tests do not support numbers "
-                              "written in hexadecimal, binary or octal, or with underscores, yet.")}
+                              "written in hexadecimal, binary or octal, or with underscores or letters among the digits, "
+                              "yet.")}
             (single-select :postgres "SELECT 0x1F AS a" [:input {:schema "public" :name "orders"}])))
     (is (=? {:error-type ::errors/unsupported-sql :message #".*holds the number 1_000_000\..*"}
             (single-select :postgres "SELECT 1_000_000" nil)))))
@@ -316,8 +330,9 @@
     (is (= "SELECT a / 3 AS q FROM t" (single-select :mysql "SELECT a / 3 AS q FROM t" nil))))
   (testing "the MySQL DIV operator, which the rewrite turns into a division that rounds, is refused, naming the source"
     (is (=? {:error-type ::errors/unsupported-sql
-             :message    (str "The SQL of the query under test uses the DIV operator, which the SQL check rewrites as a "
-                              "division that rounds where DIV truncates. Data tests do not support DIV yet.")}
+             :message    (str "The SQL of the query under test uses the DIV operator, which Metabase rewrites, in the "
+                              "SQL it runs, as a division that rounds where DIV truncates. Data tests do not support DIV "
+                              "yet.")}
             (single-select :mysql "SELECT a DIV 3 AS q FROM t" nil)))))
 
 (deftest validate-refuses-forms-the-rewrite-changes-in-expectation-sql-test

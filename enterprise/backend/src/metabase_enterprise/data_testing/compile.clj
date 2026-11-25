@@ -160,7 +160,7 @@
     (when-not (= (sort order) (range (count params)))
       (throw (data-testing.errors/ex
               ::data-testing.errors/parameters-not-kept
-              (tru "The query under test has parameters, and its rewrite to read the test''s tables does not keep each of them exactly once, so the test cannot bind their values.")
+              (tru "The query under test cannot be tested as it is: Metabase could not keep each parameter value bound to its placeholder while rewriting the query to read the test''s tables.")
               {})))
     {:query  (str/replace sql pattern "?")
      :params (mapv params order)}))
@@ -185,7 +185,7 @@
         (when (not= named-count (count params))
           (throw (data-testing.errors/ex
                   ::data-testing.errors/parameters-not-kept
-                  (tru "The query under test has {0} parameter value(s), and the SQL check reads {1} placeholder(s) in it, so the test cannot bind them."
+                  (tru "The query under test cannot be tested as it is: it has {0} parameter value(s), and Metabase finds {1} placeholder(s) in its SQL."
                        (count params) named-count)
                   {})))
         (bind-in-order (check (replace-tables driver named replacements)) nonce (vec params))))))
