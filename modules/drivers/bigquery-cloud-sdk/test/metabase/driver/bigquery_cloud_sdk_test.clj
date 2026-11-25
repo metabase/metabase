@@ -1948,7 +1948,7 @@
       (is (true? (driver/database-supports? :bigquery-cloud-sdk :table-change-tokens (mt/db)))))
     (testing "there is an entry for each table, each a token or nil, the same on a second read"
       (let [tables (t2/select :model/Table :db_id (mt/id) :active true)
-            tokens #(driver/table-change-tokens :bigquery-cloud-sdk (mt/db) tables)
+            tokens #(driver/table-change-tokens :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)) tables)
             before (tokens)]
         (is (seq tables))
         (is (= (set (map :id tables)) (set (keys before))))
