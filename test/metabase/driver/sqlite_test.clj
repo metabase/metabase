@@ -464,6 +464,27 @@
                  :filter   [:between $date "2014-03-04" "2014-03-07"]
                  :order-by [[:asc $date]]})))))))
 
+(deftest ^:parallel datetime-add-clamps-to-end-of-month-test
+  (testing "Adding months, quarters or years clamps to the last day of the target month, as on Postgres (#87842)"
+    (mt/test-driver :sqlite
+      (let [mp (mt/metadata-provider)]
+        (doseq [[date amount unit expected] [["2025-05-31T12:58:08"  1 :month   "2025-06-30 12:58:08"]
+                                             ["2025-05-31T12:58:08" -1 :month   "2025-04-30 12:58:08"]
+                                             ["2025-07-31T12:58:08" -1 :month   "2025-06-30 12:58:08"]
+                                             ["2025-08-31T12:58:08"  1 :month   "2025-09-30 12:58:08"]
+                                             ["2025-08-31T12:58:08"  1 :quarter "2025-11-30 12:58:08"]
+                                             ["2024-02-29T12:58:08"  1 :year    "2025-02-28 12:58:08"]
+                                             ["2025-07-31T12:58:08"  1 :month   "2025-08-31 12:58:08"]
+                                             ["2025-05-31T12:58:08"  1 :quarter "2025-08-31 12:58:08"]]]
+          (testing (pr-str [date amount unit])
+            (is (= [[expected]]
+                   (mt/rows
+                    (qp/process-query
+                     (as-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) q
+                       (lib/expression q "shifted" (lib/datetime-add date amount unit))
+                       (lib/with-fields q [(lib/expression-ref q "shifted")])
+                       (lib/limit q 1))))))))))))
+
 (defn- table-fingerprint
   [{:keys [fields name]}]
   {:name   name

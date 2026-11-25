@@ -475,7 +475,9 @@
                                    :month   [1 "months"]
                                    :quarter [3 "months"]
                                    :year    [1 "years"])]
-    (->datetime hsql-form (h2x/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
+    (apply ->datetime hsql-form (h2x/literal (format "%+d %s" (* amount multiplier) sqlite-unit))
+           ;; 'floor' clamps May 31 + 1 month to Jun 30 instead of rolling over to Jul 1
+           (when (#{"months" "years"} sqlite-unit) [(h2x/literal "floor")]))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:sqlite :seconds]
   [_driver _precision expr]
