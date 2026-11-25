@@ -82,14 +82,17 @@
                        (h2x/identifier :table name))))
 
 (defn- cast-to-text-honeysql
-  "Driver-correct HoneySQL fragment for `CAST(col AS <driver's text type>)`."
-  [driver col-name]
-  (sql.qp/->honeysql driver [::sql.qp/cast-to-text {} (h2x/identifier :field col-name)]))
+  "Driver-correct HoneySQL fragment for `CAST(col AS <driver's text type>)`. The clause's options carry the
+  field's database type, so a driver can cast a type whose plain text form does not work, such as MySQL's `BIT`."
+  [driver field]
+  (sql.qp/->honeysql driver [::sql.qp/cast-to-text
+                             {:database-type (:database_type field)}
+                             (h2x/identifier :field (:name field))]))
 
 (defn- build-arm
   "HoneySQL for one UNION arm. `idx` is the field's position in the batch and becomes the arm's tag."
   [driver table field idx]
-  (let [cast-expr (cast-to-text-honeysql driver (:name field))
+  (let [cast-expr (cast-to-text-honeysql driver field)
         inner     {:select   [[[:inline idx] :field_idx]
                               [cast-expr :value_out]]
                    ;; `:from` wraps the identifier expression in an extra vector — `[[expr]]` so HoneySQL

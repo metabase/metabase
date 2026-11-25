@@ -487,9 +487,16 @@
 
 ;; MySQL/MariaDB `CAST` does not accept `TEXT` as a target type — the string cast target is
 ;; `CHAR`.
+;;
+;; A `BIT` value cast to `CHAR` is its raw byte, and the collation compares the bytes 0x00 and 0x01 as equal,
+;; so `GROUP BY CAST(bit_col AS CHAR)` puts true and false into one group. Adding 0 makes the value a number
+;; first, which casts to "0" or "1". The caller gives the column's type in `:database-type`.
 (defmethod sql.qp/->honeysql [:mysql ::sql.qp/cast-to-text]
-  [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "char"]))
+  [driver [_ {:keys [database-type]} expr]]
+  (let [expr (sql.qp/->honeysql driver expr)]
+    (h2x/maybe-cast "char" (if (= "bit" (some-> database-type u/lower-case-en))
+                             [:+ expr [:inline 0]]
+                             expr))))
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ _opts arg pattern]]
