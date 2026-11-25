@@ -120,7 +120,7 @@ jobs:
                 name: 'EE App DB Tests (Part 1)', // migrations shard
                 'build-static-viz': true,
                 'snapshot-drift': snapshotDrift ? 'true' : 'false',
-                'test-args': `:only '"test"' :only-tags '[:mb/app-db-migrations-test]' :exclude-tags '[${commonExcludes}]'`,
+                'test-args': `:only '["test/metabase/app_db" metabase.permissions.data-permissions-test]' :only-tags '[:mb/app-db-migrations-test]' :exclude-tags '[${commonExcludes}]'`,
               },
               {
                 name: 'EE App DB Tests (Part 2)',
