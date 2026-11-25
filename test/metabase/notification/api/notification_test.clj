@@ -792,7 +792,7 @@
                                             (t2/update! :notification :id (:id notification) {:creator_id user-id}))
               move-card-collection        (fn [user-id]
                                             (t2/update! :model/Card :id (-> notification :payload :card_id)
-                                                        {:collection_id (t2/select-one-pk :model/Collection :personal_owner_id user-id)}))]
+                                                        {:collection_id (personal-collection-id user-id)}))]
           (mt/with-premium-features #{}
             (testing "admin can update"
               (update! :crowberto 200))

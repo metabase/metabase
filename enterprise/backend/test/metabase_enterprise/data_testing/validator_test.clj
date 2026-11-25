@@ -1,15 +1,13 @@
 (ns metabase-enterprise.data-testing.validator-test
   "The checks of [[validator/validate]]: declared and unused inputs, leftover references after the rewrite, table labels
-  and the required expectation; and the write check, [[validator/ensure-single-write]]. Pure — no warehouse."
+  and the required expectation. Pure — no warehouse."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as errors]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.data-testing.validator :as validator]
-   [metabase.driver :as driver]
-   [metabase.sql-tools.core :as sql-tools]
-   [metabase.test :as mt])
+   [metabase.driver :as driver])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -93,11 +91,11 @@
            (#'validator/missing-inputs [(sql-input "PUBLIC" "PEOPLE")] #{{:schema "PUBLIC" :name "ORDERS"}} "PUBLIC")))))
 
 (defn- refusal
-  "The `:error-type` that [[validator/validate]] throws for `args` on H2, or nil when it accepts them."
+  "The `:error-type` that [[validator/validate]] throws for `args` on Postgres, or nil when it accepts them."
   [args]
-  (driver/the-initialized-driver :h2)
+  (driver/the-initialized-driver :postgres)
   (try
-    (validator/validate :h2 args)
+    (validator/validate :postgres args)
     nil
     (catch ExceptionInfo e
       (:error-type (ex-data e)))))
@@ -140,11 +138,11 @@
         with-sql  (fn [args sql] (assoc args :expectations [{:type :empty :name "check" :sql sql}]))
         refused   (fn [args]
                     (try
-                      (validator/validate :h2 args)
+                      (validator/validate :postgres args)
                       nil
                       (catch ExceptionInfo e
                         {:error-type (:error-type (ex-data e)) :message (ex-message e)})))]
-    (driver/the-initialized-driver :h2)
+    (driver/the-initialized-driver :postgres)
     (testing "control: the output token, with or without spaces inside its braces, is accepted"
       (is (nil? (refused (with-sql card-test "SELECT * FROM {{output}} JOIN {{ output }} o2 ON 1 = 1")))))
     (testing "any other placeholder is refused, naming it and the expectation"
@@ -154,60 +152,6 @@
              (refused (with-sql card-test "SELECT * FROM {{OUTPUT}} WHERE x = '{{ other }}'")))))
     (testing "a transform test has no placeholders: braces in a string literal are its SQL's own"
       (is (nil? (refused (with-sql complete-test "SELECT '{{x}}' AS a FROM PEOPLE")))))))
-
-(defn- write-refusal
-  "The `:error-type`, `:reason` and `:detail` of the refusal [[validator/ensure-single-write]] throws for the Postgres
-  `sql`, or the SQL it returns when it throws none."
-  [sql]
-  (try
-    (validator/ensure-single-write :postgres sql)
-    (catch ExceptionInfo e
-      (select-keys (ex-data e) [:error-type :reason :detail]))))
-
-(deftest refused-write-says-why-test
-  (testing "a write that calls a function that waits is refused, and the refusal's data names the function"
-    (is (= {:error-type ::errors/not-a-single-write :reason "session-function" :detail "pg_sleep"}
-           (write-refusal "UPDATE t SET name = pg_sleep(1)::text WHERE id = 1"))))
-  (testing "a write whose rebuild reads differently is refused for its rebuild, not for what the author wrote"
-    ;; No input known to the parser's SQLGlot version reaches this refusal, so the verdict is stubbed.
-    (mt/with-dynamic-fn-redefs [sql-tools/validate-executable-stmt (constantly {:verdict      :disallowed
-                                                                                :single-stmt? true
-                                                                                :reason       "rebuild-differs"})]
-      (is (= {:error-type ::errors/not-a-single-write
-              :message    (str "The test cannot run this SQL: the parser rebuilds it as SQL that reads differently. "
-                               "Write the statement another way.")
-              :reason     "rebuild-differs"}
-             (data-testing.test-util/refusal #(validator/ensure-single-write :postgres "UPDATE t SET name = 'x'")
-                                             :reason))))))
-
-(deftest write-calling-a-known-writing-function-is-refused-test
-  (testing "control: a plain UPDATE comes back as the SQL to run"
-    (is (= "UPDATE t SET name = 'x' WHERE id = 1"
-           (write-refusal "UPDATE t SET name = 'x' WHERE id = 1"))))
-  (testing "a write that sets a sequence with `setval` is refused, naming the function"
-    (is (= {:error-type ::errors/not-a-single-write :reason "write-function" :detail "setval"}
-           (write-refusal "UPDATE t SET name = (SELECT setval('s', 1))::text"))))
-  (testing "a write that advances a sequence with `nextval` is refused, naming the function"
-    (is (= {:error-type ::errors/not-a-single-write :reason "write-function" :detail "nextval"}
-           (write-refusal "INSERT INTO t (id) VALUES (nextval('s'))"))))
-  (testing "a write that deletes a large object is refused, naming the function"
-    (is (= {:error-type ::errors/not-a-single-write :reason "write-function" :detail "lo_unlink"}
-           (write-refusal "DELETE FROM t WHERE lo_unlink(id) = 1"))))
-  (testing "a write that reads a table named in a string is refused, naming the function"
-    (is (= {:error-type ::errors/not-a-single-write :reason "unconfined-function" :detail "table_to_xml"}
-           (write-refusal "UPDATE t SET name = table_to_xml('secrets', true, false, '')::text WHERE id = 1")))))
-
-(deftest write-with-an-e-string-runs-as-written-test
-  (testing "an E'' string with an escaped quote is rebuilt as written"
-    (is (= "UPDATE t SET name = e'it\\'s' WHERE id = 1"
-           (write-refusal "UPDATE t SET name = E'it\\'s' WHERE id = 1"))))
-  (testing "control: an E'' string ending in a doubled backslash is rebuilt as written, keeping both backslashes"
-    (is (= "UPDATE t SET name = e'a\\\\' WHERE id = 1"
-           (write-refusal "UPDATE t SET name = E'a\\\\' WHERE id = 1"))))
-  (testing "the text after such a string stays a string though it holds `setval`, so the write passes and calls nothing"
-    (is (= "UPDATE t SET name = e'\\\\' || ''' || (SELECT setval($z$s$z$, 1))::text --' WHERE id = 1"
-           (write-refusal (str "UPDATE t SET name = E'\\\\' || $q$' || (SELECT setval($z$s$z$, 1))::text --$q$"
-                               " WHERE id = 1"))))))
 
 ;;; ------------------------------------------------ Missing input columns ------------------------------------------------
 
@@ -220,12 +164,15 @@
          :ignore-case? false))
 
 (defn- validation-refusal
-  "The refusal of `validator/validate` on H2 with `args`, with its `:columns`, or nil."
+  "The refusal of `validator/validate` on Postgres with `args`, with its `:columns`, or nil."
   [args]
-  (driver/the-initialized-driver :h2)
-  (data-testing.test-util/refusal #(validator/validate :h2 args) :columns))
+  (driver/the-initialized-driver :postgres)
+  (data-testing.test-util/refusal #(validator/validate :postgres args) :columns))
 
-(def ^:private people-rows-input data-testing.test-util/people-rows-input)
+(defn- people-rows-input
+  "A rows input standing in for `PUBLIC.PEOPLE`, the table `people-test` reads, declaring `column-names`."
+  [& column-names]
+  (assoc (apply data-testing.test-util/people-rows-input column-names) :table {:schema "PUBLIC" :name "PEOPLE"}))
 
 (deftest missing-input-columns-test
   (testing "control: a rows input declaring every column the query reads is accepted"
@@ -284,3 +231,48 @@
                                        :inputs       [(assoc (events-input "id") :table {:schema "public" :name "Events"})]
                                        :columns-read #{{:schema "public" :name "Events" :column "id"}
                                                        {:schema "public" :name "events" :column "CreatedAt"}}))))))
+
+;;; ---------------------------------------------- Expectation SQL ----------------------------------------------
+
+(deftest validate-returns-expectation-sql-as-written-test
+  (let [returned (fn [driver sql]
+                   (driver/the-initialized-driver driver)
+                   (get (validator/validate driver (assoc complete-test :expectations [{:type :empty :name "check" :sql sql}]))
+                        "check"))]
+    (testing "a form that SQLGlot would rebuild with another value comes back as its author wrote it"
+      (is (= "SELECT * FROM MB_T1 AS PEOPLE WHERE ID > 0x1F"
+             (returned :postgres "SELECT * FROM PEOPLE WHERE ID > 0x1F")))
+      (is (= "SELECT * FROM MB_T1 AS PEOPLE WHERE ID DIV 2 = 1"
+             (returned :mysql "SELECT * FROM PEOPLE WHERE ID DIV 2 = 1")))
+      (is (= "SELECT * FROM MB_T1 AS PEOPLE WHERE LOG10(ID) = 1"
+             (returned :mysql "SELECT * FROM PEOPLE WHERE LOG10(ID) = 1")))
+      (is (= "SELECT * FROM MB_T1 AS PEOPLE WHERE !ID + 1 = 1"
+             (returned :mysql "SELECT * FROM PEOPLE WHERE !ID + 1 = 1"))))))
+
+(defn- parser-internals
+  "The parser's own workings in `message`: SQLGlot's class names and terminal escape codes."
+  [message]
+  (re-seq #"<class 'sqlglot|\u001b" message))
+
+(deftest unparseable-sql-refusal-reads-as-the-parser-diagnostic-test
+  (let [sql "SELECT a FROM t WHERE ("]
+    (testing "an expectation that does not parse is refused with the diagnostic cleaned of the parser's internals"
+      (driver/the-initialized-driver :postgres)
+      (let [{:keys [error-type message]}
+            (data-testing.test-util/refusal
+             #(validator/validate :postgres (assoc complete-test
+                                                   :expectations [{:type :empty :name "check" :sql sql}])))]
+        (is (= ::errors/unparseable-source error-type))
+        (is (nil? (parser-internals message)) (pr-str message))))))
+
+(deftest validate-returns-the-sql-a-run-executes-for-each-expectation-test
+  (testing "validate returns, by expectation name, each SQL expectation as written but for its tables, which a run executes"
+    (driver/the-initialized-driver :postgres)
+    (is (= {"later ids"  "SELECT * FROM MB_T1 AS PEOPLE WHERE ID > 1 -- c"
+            "rows match" "SELECT ID FROM MB_T1 AS PEOPLE"}
+           (validator/validate :postgres
+                               (assoc complete-test
+                                      :expectations [{:type :empty :name "later ids" :sql "SELECT * FROM PEOPLE WHERE ID > 1 -- c"}
+                                                     {:type :equals :name "rows match" :format :sql :sql "SELECT ID FROM PEOPLE"}
+                                                     {:type    :equals :name "written rows" :format :rows
+                                                      :columns [{:name "ID" :cast_type "integer"}] :rows [{"ID" 1}]}]))))))

@@ -112,6 +112,20 @@
                    (name subject-type) (str/join ", " names))
               {:parameters names})))))
 
+(mu/defn check-not-archived :- :nil
+  "Throws `::data-testing.errors/archived-subject` when `subject`, a `subject-type`, is archived."
+  [subject-type :- ::subject-type
+   subject      :- [:maybe [:map [:archived {:optional true} [:maybe :boolean]]]]]
+  ;; Transforms have no archived state.
+  (when (:archived subject)
+    (throw (data-testing.errors/ex ::data-testing.errors/archived-subject
+                                   (case subject-type
+                                     :card    (tru "The card is archived. Restore it to test it.")
+                                     :segment (tru "The segment is archived. Restore it to test it.")
+                                     :action  (tru "The action is archived. Restore it to test it.")
+                                     (tru "The subject of this test is archived. Restore it to test it."))
+                                   {}))))
+
 (def output-token
   "The token that expectation SQL writes for the output of a subject that has no table of its own."
   "{{output}}")
@@ -162,7 +176,8 @@
    :output-label  label})
 
 (mu/defn testable-database :- ::lib.schema.metadata/database
-  "The Database with `database-id`, if its driver can run a test. 404 when there is no such Database."
+  "The Database with `database-id`, if its driver can run a test. 404 when there is no such Database. Throws
+  `::data-testing.errors/unsupported-driver` when its driver cannot, and for an H2 database."
   [database-id :- [:maybe ::lib.schema.id/database]]
   (api/check-404 (some-> database-id data-testing.db/database-exists?))
   (let [database (driver.u/lib-database database-id)
@@ -171,5 +186,12 @@
       (throw (data-testing.errors/ex
               ::data-testing.errors/unsupported-driver
               (tru "This database ({0}) does not support tests." (name driver))
+              {:driver driver})))
+    ;; H2 has no SQLGlot dialect, so the statement check cannot vouch for its SQL, and a data test runs outside the
+    ;; H2 driver's own checks of native SQL. Enabling data tests on H2 is VER-182.
+    (when (= :h2 driver)
+      (throw (data-testing.errors/ex
+              ::data-testing.errors/unsupported-driver
+              (tru "Data tests do not support H2 databases yet.")
               {:driver driver})))
     database))

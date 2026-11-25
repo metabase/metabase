@@ -14,6 +14,7 @@
   "Every `:error-type` a test run can throw, and the HTTP status it carries.
 
   400 — the test is wrong, and its author can fix it.
+  403 — the current user may not create or run this test, or change what it tests.
   422 — the test is fine; the subject or its database prevents a run here.
   501 — the test asks for something not built yet."
   {;; 400 — authoring
@@ -24,25 +25,27 @@
    ::duplicate-input-table      400  ; Two inputs stand in for the same table.
    ::unparseable-source         400  ; The SQL of the query under test could not be parsed to find what it reads.
    ::unremapped-reference       400  ; A real table survived the rewrite into the test's SQL.
+   ::unreplaceable-reference    400  ; A table reference could not be replaced in the text of the test's SQL.
    ::no-expectations            400  ; The test checks nothing.
    ::unknown-placeholder        400  ; Expectation SQL writes a `{{...}}` that is not the output token.
    ::missing-input-columns      400  ; A rows input lacks a column the query under test reads.
    ::colliding-columns          400  ; An expectation compares one output column twice, or one the comparison names itself.
-   ::not-a-single-write         400  ; A subject that writes holds SQL other than one INSERT, UPDATE or DELETE, calls a function the write check refuses, assigns a user variable, or rebuilds as other SQL.
    ::no-output                  400  ; An expectation compares the output of a subject that writes and has none.
    ::invalid-parameters         400  ; The test's parameter values do not fit the action: a hidden or unknown parameter.
    ::parameters-not-taken       400  ; A test sets parameter values for a subject type that takes none.
-   ::write-returns-rows         400  ; A subject that writes has a RETURNING or OUTPUT clause, so it returns rows.
+
+   ;; 403 — the current user
+   ::impersonated-user          403  ; The user's connection to the subject's database is impersonated.
 
    ;; 422 — the subject or its environment
    ::unsupported-transform      422  ; Not a query transform (Python, say).
-   ::unsupported-driver         422  ; The database does not support testing.
+   ::unsupported-driver         422  ; The database does not support testing, or is H2, which data tests do not support yet.
    ::uncompilable-subject       422  ; The subject's query does not compile to SQL.
+   ::archived-subject           422  ; The subject is archived.
    ::query-failed               422  ; The query under test would not run.
    ::duplicate-output-columns   422  ; The output of the query under test has two columns of one name.
    ::setup-failed               422  ; A test input could not be materialized.
    ::expectation-failed         422  ; An expectation's own query failed to execute.
-   ::uncheckable-write          422  ; The write of a subject cannot be checked: its database has no SQL dialect, or its SQL holds a list too long to parse.
    ::unsupported-action         422  ; Not a query action (an implicit action, say).
    ::actions-disabled           422  ; The action's database does not support actions, or has them turned off.
 

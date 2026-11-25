@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.audit-app.spec :as audit.spec]
    [metabase.config.core :as config]
-   [metabase.events.core :as events]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.spec-test-util :as spec-test-util]
    [metabase.test.fixtures :as fixtures]
@@ -38,14 +37,12 @@
 
 (deftest parent-test
   (doseq [model (audited-models!)
-          :let  [{parent-model :model, parent-key :key, topics :topics, details :details} (audit.spec/parent model)]
+          :let  [{parent-model :model, parent-key :key} (audit.spec/parent model)]
           :when parent-model]
     (testing (str model)
       (testing "belongs to a model with a spec, through a column of its table"
         (is (some? (audit.spec/spec parent-model)))
-        (is (contains? (spec-test-util/table-columns model) parent-key)))
-      (testing "has the details of its rows under the parent if it records them there with topics"
-        (is (= (some? topics) (some? details)))))))
+        (is (contains? (spec-test-util/table-columns model) parent-key))))))
 
 (def ^:private function-topics
   "The topics that the functions in the `:topics` of the specs return, which cannot be enumerated from the specs."
@@ -56,17 +53,31 @@
     :api-key-update :api-key-regenerate
     :pulse-create :subscription-create})
 
+(def ^:private published-topics
+  "The topics that the write functions of the models publish for a row the audit log stores under the same name."
+  #{:dashboard-add-cards :dashboard-remove-cards
+    :glossary-create :glossary-update :glossary-delete
+    :group-create :group-update :group-delete
+    :segment-create :segment-update :segment-delete
+    :measure-create :measure-update :measure-delete
+    :database-create :database-update :database-delete})
+
+(def ^:private ee-published-topics
+  "The topics among those that the write functions of the models of the enterprise edition publish."
+  #{:custom-viz-plugin-create :custom-viz-plugin-update :custom-viz-plugin-delete
+    :transform-test-create :transform-test-update :transform-test-delete
+    :card-test-create :card-test-update :card-test-delete
+    :segment-test-create :segment-test-update :segment-test-delete
+    :test-suite-create :test-suite-update :test-suite-delete})
+
 (defn- data-topics
   "The topics that the specs of `models` store by data: the names of the events of the models that have no `:topics`,
-  and the keywords in `:topics`, the `:topics` of `:parent` and `:moments`."
+  and the keywords in `:topics` and `:moments`."
   [models]
   (into #{}
         (mapcat (fn [model]
-                  (let [{:keys [topics parent moments]} (audit.spec/spec model)]
-                    (concat (when (and (nil? topics) (nil? parent))
-                              (map (comp keyword name) (vals (events/spec model))))
-                            (filter keyword? (vals topics))
-                            (vals (:topics parent))
+                  (let [{:keys [topics moments]} (audit.spec/spec model)]
+                    (concat (filter keyword? (vals topics))
                             (map :topic moments)))))
         models))
 
@@ -98,9 +109,11 @@
     :custom-viz-plugin-create :custom-viz-plugin-delete :custom-viz-plugin-update
     :segment-test-create :segment-test-delete :segment-test-update
     :tenant-create :tenant-update
+    :test-suite-create :test-suite-delete :test-suite-update
     :transform-test-create :transform-test-delete :transform-test-update})
 
 (deftest stored-topics-test
   (is (= (cond-> oss-topics
            config/ee-available? (into ee-topics))
-         (set/union (data-topics (audited-models!)) function-topics))))
+         (cond-> (set/union (data-topics (audited-models!)) function-topics published-topics)
+           config/ee-available? (into ee-published-topics)))))

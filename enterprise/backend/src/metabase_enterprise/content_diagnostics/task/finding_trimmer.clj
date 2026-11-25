@@ -28,7 +28,7 @@
   []
   (let [cutoff  (t/minus (t/offset-date-time)
                          (t/days (long (cd.settings/content-diagnostics-finding-retention-days))))
-        deleted (finding/delete-invalidated-before! cutoff)]
+        deleted (finding/delete-findings-for-cleanup! cutoff)]
     (log/infof "Trimmed %d Content Diagnostics finding(s) invalidated before %s" deleted cutoff)))
 
 (defn- trim-with-history!

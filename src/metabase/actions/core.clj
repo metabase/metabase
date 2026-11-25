@@ -61,11 +61,9 @@
   check-implicit-action-table-pk
   check-implicit-actions-supported
   dashcard->action
-  insert!
   select-action
   select-actions
-  select-actions-for-ids
-  update!]
+  select-actions-for-ids]
  [metabase.actions.events
   publish-action-success!]
  [metabase.actions.scope

@@ -1191,11 +1191,13 @@
 
 (deftest dataset-source-card-count-test
   (testing "POST /api/metric/dataset with metric based on a model (source-card)"
-    (mt/with-temp [:model/Card model  {:name          "Orders Model"
-                                       :type          :model
-                                       :dataset_query (mt/mbql-query orders)}
+    (mt/with-temp [:model/Card model  (mt/card-with-metadata {:name          "Orders Model"
+                                                              :type          :model
+                                                              :table_id      (mt/id :orders)
+                                                              :dataset_query (mt/mbql-query orders)})
                    :model/Card metric {:name          "Model Count Metric"
                                        :type          :metric
+                                       :table_id      (mt/id :orders)
                                        :dataset_query {:database (mt/id)
                                                        :type     :query
                                                        :query    {:source-table (str "card__" (:id model))
@@ -1208,11 +1210,13 @@
 
 (deftest dataset-source-card-with-filter-test
   (testing "POST /api/metric/dataset with source-card metric and dimension filter"
-    (mt/with-temp [:model/Card model  {:name          "Orders Model"
-                                       :type          :model
-                                       :dataset_query (mt/mbql-query orders)}
+    (mt/with-temp [:model/Card model  (mt/card-with-metadata {:name          "Orders Model"
+                                                              :type          :model
+                                                              :table_id      (mt/id :orders)
+                                                              :dataset_query (mt/mbql-query orders)})
                    :model/Card metric {:name          "Model Count Metric"
                                        :type          :metric
+                                       :table_id      (mt/id :orders)
                                        :dataset_query {:database (mt/id)
                                                        :type     :query
                                                        :query    {:source-table (str "card__" (:id model))
@@ -1228,11 +1232,13 @@
 
 (deftest dataset-source-card-with-projection-test
   (testing "POST /api/metric/dataset with source-card metric and dimension breakout"
-    (mt/with-temp [:model/Card model  {:name          "Orders Model"
-                                       :type          :model
-                                       :dataset_query (mt/mbql-query orders)}
+    (mt/with-temp [:model/Card model  (mt/card-with-metadata {:name          "Orders Model"
+                                                              :type          :model
+                                                              :table_id      (mt/id :orders)
+                                                              :dataset_query (mt/mbql-query orders)})
                    :model/Card metric {:name          "Model Count Metric"
                                        :type          :metric
+                                       :table_id      (mt/id :orders)
                                        :dataset_query {:database (mt/id)
                                                        :type     :query
                                                        :query    {:source-table (str "card__" (:id model))
@@ -1249,13 +1255,15 @@
 
 (deftest dataset-source-card-expression-dimension-projection-test
   (testing "POST /api/metric/dataset with source-card metric, projecting on a custom column dimension"
-    (mt/with-temp [:model/Card model  {:name          "Orders Model with Expression"
-                                       :type          :model
-                                       :dataset_query (mt/mbql-query orders
-                                                        {:expressions {"Discount Plus One"
-                                                                       [:+ $discount 1]}})}
+    (mt/with-temp [:model/Card model  (mt/card-with-metadata {:name          "Orders Model with Expression"
+                                                              :type          :model
+                                                              :table_id      (mt/id :orders)
+                                                              :dataset_query (mt/mbql-query orders
+                                                                               {:expressions {"Discount Plus One"
+                                                                                              [:+ $discount 1]}})})
                    :model/Card metric {:name          "Model Count Metric"
                                        :type          :metric
+                                       :table_id      (mt/id :orders)
                                        :dataset_query {:database (mt/id)
                                                        :type     :query
                                                        :query    {:source-table (str "card__" (:id model))

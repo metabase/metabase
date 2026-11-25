@@ -1,6 +1,6 @@
 (ns metabase.sql-parsing.sqlglot-java.statements
-  "What kind of statement a query is: `is_single_stmt_of_type`, with the read-only checks behind `read-only-select?`
-  and the confined-write checks behind data-test writes, and `simple_query`."
+  "What kind of statement a query is: `is_single_stmt_of_type`, with the read-only checks behind `read-only-select?`,
+  and `simple_query`."
   (:require
    [clojure.string :as str]
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
@@ -8,32 +8,40 @@
   (:import
    (com.metabase.sqlglot.ast Expressions$Anonymous Expressions$Column Expressions$Delete Expressions$Dot
                              Expressions$DynamicIdentifier Expressions$Func
-                             Expressions$Insert Expressions$NextValueFor Expressions$Parameter Expressions$PropertyEQ
-                             Expressions$Query Expressions$Select Expressions$SetOperation Expressions$Subquery
+                             Expressions$Insert Expressions$Parameter Expressions$PropertyEQ Expressions$Query
+                             Expressions$Select Expressions$SetOperation Expressions$Subquery
                              Expressions$Table Expressions$TableAlias Expressions$Update
                              Expressions$WithTableHint)
-   (com.metabase.sqlglot.reference ParseError)
-   (java.util.regex Pattern)))
+   (com.metabase.sqlglot.reference ParseError)))
 
 (set! *warn-on-reflection* true)
 
-(defn- split-placeholder-casts
+(defn placeholder-cast-offsets
+  "The offsets in `sql`, ascending, at which [[split-placeholder-casts]] puts a space: after the `?` of each `?::`
+  token. Empty for Databricks, which reads `?::` itself, and for `sql` that does not tokenize.
+  Port of `_placeholder_cast_offsets`."
+  [^String sql dialect]
+  (if (or (= dialect "databricks") (not (str/includes? sql "?::")))
+    []
+    (try
+      (into []
+            (keep (fn [[token-type _text start]]
+                    (when (= token-type "QDCOLON")
+                      (inc (long start)))))
+            (ast/tokenize sql dialect))
+      (catch Exception _
+        []))))
+
+(defn split-placeholder-casts
   "`sql` with `?::` written `? ::` outside Databricks. sqlglot's tokenizer reads `?::` as one token that only the
   Databricks parser consumes, so `select ?::text` fails to parse anywhere else (#81373).
   Port of `_split_placeholder_casts`."
   [^String sql dialect]
-  (if (or (= dialect "databricks") (not (str/includes? sql "?::")))
-    sql
-    (try
-      ;; Insert right to left so the earlier offsets stay valid.
-      (reduce (fn [^String sql [token-type _text start]]
-                (if (= token-type "QDCOLON")
-                  (str (subs sql 0 (inc start)) " " (subs sql (inc start)))
-                  sql))
-              sql
-              (rseq (ast/tokenize sql dialect)))
-      (catch Exception _
-        sql))))
+  ;; Insert right to left so the earlier offsets stay valid.
+  (reduce (fn [^String sql at]
+            (str (subs sql 0 at) " " (subs sql at)))
+          sql
+          (rseq (placeholder-cast-offsets sql dialect))))
 
 ;; Nodes that write, lock, or run something other than a query. A SELECT can hold some of these: `SELECT ... INTO`
 ;; creates a table, `FOR UPDATE`/`FOR SHARE` take row locks, and Postgres lets a CTE body be a DELETE ... RETURNING.
@@ -142,15 +150,10 @@
     (instance? Expressions$Func node)      (ast/lower (ast/sql-name node))))
 
 (defn- first-function-in
-  "The name of the first function in `stmt` that is in `names`, or nil. Port of `_first_function_in`."
+  "The name of the first function in `stmt` that is in `names`, or nil.
+  Port of `_session_effect_function`, with the names passed in."
   [names stmt]
   (some #(names (function-name %)) (ast/walk stmt)))
-
-(defn- session-effect-function
-  "The name of the first function in `stmt` that is one of [[session-effect-functions]], or of the
-  [[dialect-session-effect-functions]] for `dialect`, or nil. Port of `_session_effect_function`."
-  [stmt dialect]
-  (first-function-in (into session-effect-functions (dialect-session-effect-functions dialect)) stmt))
 
 (defn- sql-executing-function
   "The name of the first function in `stmt` that runs SQL passed to it as text, or nil.
@@ -193,41 +196,27 @@
   [node]
   (contains? locking-table-hints (u/upper-case-en (ast/node-name node))))
 
-(defn- write-function-name
-  "The name of the function `node` calls when it is one of [[write-functions]], or advances a sequence in another
-  spelling (`NEXT VALUE FOR s`, `s.nextval`), else nil. Port of `_write_function_name`."
-  [node]
-  (cond
-    (instance? Expressions$NextValueFor node)
-    "next value for"
-
-    (and (instance? Expressions$Column node)
-         (seq (ast/text node "table"))
-         (= "nextval" (ast/lower (ast/node-name node))))
-    "nextval"
-
-    :else
-    (write-functions (function-name node))))
-
-(defn- user-variable-assignment?
-  "Whether `node` assigns a MySQL user variable, `@x := ...`, whose value outlives the query on its connection.
-  Port of `_user_variable_assignment`."
-  [node]
-  ;; A bare name on the left is a named argument instead, as in DuckDB and Postgres, and changes nothing. The variable
-  ;; is searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
-  (and (instance? Expressions$PropertyEQ node)
-       (let [target (ast/this node)]
-         (and (ast/ast-node? target)
-              (boolean (some #(instance? Expressions$Parameter %) (ast/walk target)))))))
-
 (defn- writes-or-locks?
   "Whether the node `node` writes data, changes the session, or locks a table. Port of `_writes_or_locks`."
   [node]
   (cond
-    (or (ast/instance-of-any? not-read-only-classes node)
-        (some? (write-function-name node))
-        (user-variable-assignment? node))
+    (ast/instance-of-any? not-read-only-classes node)
     true
+
+    (instance? Expressions$Anonymous node)
+    (contains? write-functions (ast/lower (ast/node-name node)))
+
+    ;; MySQL assigns a user variable inside a SELECT with `@x := ...`, and the value outlives the query on a pooled
+    ;; connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres. The variable is
+    ;; searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
+    (instance? Expressions$PropertyEQ node)
+    (let [target (ast/this node)]
+      (and (ast/ast-node? target)
+           (boolean (some #(instance? Expressions$Parameter %) (ast/walk target)))))
+
+    (instance? Expressions$Column node)
+    (and (seq (ast/text node "table"))
+         (= "nextval" (ast/lower (ast/node-name node))))
 
     (instance? Expressions$WithTableHint node)
     (boolean (some locking-hint? (ast/expressions node)))
@@ -254,42 +243,6 @@
   "Whether no node in the statement `stmt` writes, changes the session, or locks a table. Port of `_read_only`."
   [stmt]
   (not-any? writes-or-locks? (ast/walk stmt)))
-
-;; Built-in functions a data-test write must not call, though the other modes admit them: each reads a table named in
-;; a string, which the table check never sees, reads or writes the database server's files, reads or changes
-;; replication slots and origins, or changes state that the run's rollback leaves changed (the random seed, the
-;; statistics).
-(def ^:private unconfined-functions
-  #{;; Postgres: a table, a schema or the database as XML, read by the name passed in
-    "table_to_xml" "table_to_xmlschema" "table_to_xml_and_xmlschema" "schema_to_xml" "schema_to_xmlschema"
-    "schema_to_xml_and_xmlschema" "database_to_xml" "database_to_xmlschema" "database_to_xml_and_xmlschema"
-    ;; Postgres: the server's files and directories, and the adminpack extension's file functions
-    "pg_read_file" "pg_read_binary_file" "pg_stat_file" "pg_ls_dir" "pg_ls_logdir" "pg_ls_waldir"
-    "pg_ls_logicalmapdir" "pg_ls_logicalsnapdir" "pg_ls_replslotdir" "pg_ls_archive_statusdir" "pg_ls_tmpdir"
-    "pg_ls_summariesdir" "pg_current_logfile" "pg_file_write" "pg_file_rename" "pg_file_unlink"
-    "pg_file_sync" "pg_logdir_ls"
-    ;; Postgres: the session's random seed
-    "setseed"
-    ;; Postgres: statistics resets, and the planner statistics a function can set or clear
-    "pg_stat_reset" "pg_stat_reset_shared" "pg_stat_reset_single_table_counters"
-    "pg_stat_reset_single_function_counters" "pg_stat_reset_slru" "pg_stat_reset_replication_slot"
-    "pg_stat_reset_subscription_stats" "pg_stat_reset_backend_stats" "pg_stat_statements_reset"
-    "pg_restore_relation_stats" "pg_restore_attribute_stats" "pg_clear_relation_stats"
-    "pg_clear_attribute_stats"
-    ;; Postgres: replication slots and origins
-    "pg_copy_physical_replication_slot" "pg_copy_logical_replication_slot" "pg_replication_slot_advance"
-    "pg_logical_slot_get_changes" "pg_logical_slot_peek_changes" "pg_logical_slot_get_binary_changes"
-    "pg_logical_slot_peek_binary_changes" "pg_sync_replication_slots" "pg_log_standby_snapshot"
-    "pg_replication_origin_create" "pg_replication_origin_drop" "pg_replication_origin_oid"
-    "pg_replication_origin_session_setup" "pg_replication_origin_session_reset"
-    "pg_replication_origin_session_is_setup" "pg_replication_origin_session_progress"
-    "pg_replication_origin_xact_setup" "pg_replication_origin_xact_reset" "pg_replication_origin_advance"
-    "pg_replication_origin_progress"})
-
-(defn- write-function
-  "The [[write-function-name]] of the first node in `stmt` that has one, or nil. Port of `_write_function`."
-  [stmt]
-  (some write-function-name (ast/walk stmt)))
 
 (defn- hidden-sql
   "`[reason detail]` when `sql` holds text its database would run and sqlglot would not parse as a statement of its
@@ -332,45 +285,81 @@
 (def ^:private pg-word #"[A-Za-z_\x{80}-\x{10FFFF}][A-Za-z_0-9$\x{80}-\x{10FFFF}]*")
 (def ^:private pg-dollar-quote #"\$(?:[A-Za-z_\x{80}-\x{10FFFF}][A-Za-z_0-9\x{80}-\x{10FFFF}]*)?\$")
 
-(defn- match-at
-  "The text `pattern` matches in `sql` starting at `i`, else nil (Python's `pattern.match(sql, i)`)."
-  ^String [^Pattern pattern ^String sql ^long i]
-  (let [m (.region (.matcher pattern sql) i (.length sql))]
+(defn- looking-at
+  "The text `pattern` matches starting at index `i` of `sql`, as `[text end]`, or nil."
+  [pattern ^String sql i]
+  (let [m (doto (re-matcher pattern sql) (.region (int i) (count sql)))]
     (when (.lookingAt m)
-      (.group m))))
+      [(.group m) (.end m)])))
 
-(defn- python-space?
-  "Whether `c` is whitespace to Python's `str.isspace`, which also counts the no-break spaces and U+0085."
-  [c]
-  (let [c (char c)]
-    (or (Character/isWhitespace c) (Character/isSpaceChar c) (= c \u0085))))
+;; The characters Postgres reads as whitespace, and `\v`, which it refuses outside a literal or a comment. It reads any
+;; other character from U+0080 up as part of a name.
+(def ^:private pg-space #{\space \tab \newline \return \formfeed (char 11)})
 
-(defn- pg-literal-end
-  "The index after the quote that ends the literal whose text starts at `i`, or nil when it does not end.
-  Port of `_pg_literal_end`."
-  [^String sql ^long i backslash-escapes?]
-  (let [n (.length sql)]
+(defn- index-after
+  "The index after the first `s` in `sql` at or after `from`, or nil."
+  [^String sql ^String s from]
+  (let [i (.indexOf sql s (int from))]
+    (when-not (neg? i)
+      (+ i (count s)))))
+
+(defn- pg-quoted-end
+  "The index after the `quote` that ends the literal or quoted name whose text starts at `i`, a doubled `quote`
+  standing for one, or nil when it does not end. Port of `_pg_quoted_end`."
+  [^String sql i quote backslash-escapes?]
+  (let [n       (count sql)
+        doubled (str quote quote)]
     (loop [i i]
       (when (< i n)
         (let [c (.charAt sql i)]
           (cond
             (and (= c \\) backslash-escapes?) (recur (+ i 2))
-            (= c \')                          (if (.startsWith sql "''" i) (recur (+ i 2)) (inc i))
+            (= c quote)                       (if (.startsWith sql doubled i) (recur (+ i 2)) (inc i))
             :else                             (recur (inc i))))))))
 
-(defn- line-end
-  "The index after the first newline or carriage return in `sql` at or after `i`, or the length of `sql`."
-  ^long [^String sql ^long i]
-  (let [ends (remove neg? [(.indexOf sql "\n" i) (.indexOf sql "\r" i)])]
-    (if (seq ends)
-      (inc (long (apply min ends)))
-      (.length sql))))
+(defn- pg-token-end
+  "The index at which to resume scanning after index `i` of `sql`: the end of the word, literal, quoted name or dollar
+  quote that starts at `i`, else `i + 1`. The character at `i` is not whitespace, `;` or the start of a comment. Nil
+  when a literal, quoted name or dollar quote starting at `i` does not end."
+  [^String sql i standard-conforming-strings?]
+  (let [c (.charAt sql i)]
+    (if-let [[word word-end] (looking-at pg-word sql i)]
+      (let [prefix (u/lower-case-en word)]
+        (cond
+          (not (or (.startsWith sql "'" (int word-end))
+                   (and (= prefix "u") (.startsWith sql "&'" (int word-end)))))
+          word-end
+          ;; E'' reads backslash escapes whatever the setting; B'', X'' and U&'' read none. N'' is an ordinary
+          ;; literal after its prefix.
+          (= prefix "e")         (pg-quoted-end sql (inc word-end) \' true)
+          (#{"b" "x"} prefix)    (pg-quoted-end sql (inc word-end) \' false)
+          (= prefix "u")         (pg-quoted-end sql (+ word-end 2) \' false)
+          :else                  (pg-quoted-end sql (inc word-end) \' (not standard-conforming-strings?))))
+      (cond
+        (= c \')
+        (pg-quoted-end sql (inc i) \' (not standard-conforming-strings?))
+
+        (= c \")
+        (pg-quoted-end sql (inc i) \" false)
+
+        :else
+        (if-let [[dollar dollar-end] (looking-at pg-dollar-quote sql i)]
+          (index-after sql dollar dollar-end)
+          ;; A number runs into a following letter: `1e'...'` is a number and then an E'' literal.
+          (inc i))))))
+
+(defn- line-comment-end
+  "The index after the line end that ends the `--` comment at `i` of `sql`, or the length of `sql`."
+  ^long [^String sql i]
+  (let [m (re-matcher #"[\n\r]" sql)]
+    (if (.find m (int i)) (.end m) (count sql))))
 
 (defn- block-comment-end
-  "The index after the end of the nested block comment whose text starts at `i`, or the length of `sql`."
-  ^long [^String sql ^long i]
-  (let [n (.length sql)]
-    (loop [depth 1, i i]
+  "The index after the `*/` that ends the `/*` comment at `i` of `sql`, comments nesting as Postgres nests them, or the
+  length of `sql`."
+  ^long [^String sql i]
+  (let [n (count sql)]
+    (loop [depth 1, i (+ i 2)]
       (cond
         (or (>= i n) (zero? depth)) i
         (.startsWith sql "/*" i)    (recur (inc depth) (+ i 2))
@@ -379,67 +368,22 @@
 
 (defn- postgres-statement-count
   "The number of statements Postgres reads in `sql` with `standard_conforming_strings` set as given, counting a piece
-  between semicolons only when it holds more than whitespace and comments. Nothing after a literal, quoted name or
-  comment that does not end is read. Port of `_postgres_statement_count`."
+  between semicolons only when it holds more than whitespace and comments. A literal, quoted name or comment that does
+  not end ends the count, with the piece it started counted. Port of `_postgres_statement_count`."
   [^String sql standard-conforming-strings?]
-  (let [n      (.length sql)
-        counts (fn [statements content?] (cond-> statements content? inc))]
-    (loop [i 0, statements 0, content? false]
+  (let [n (count sql)]
+    (loop [i 0, stmt-count 0, content? false]
       (if (>= i n)
-        (counts statements content?)
+        (cond-> stmt-count content? inc)
         (let [c (.charAt sql i)]
           (cond
-            (= c \;)                 (recur (inc i) (long (counts statements content?)) false)
-            (python-space? c)        (recur (inc i) statements content?)
-            (.startsWith sql "--" i) (recur (line-end sql i) statements content?)
-            (.startsWith sql "/*" i) (recur (block-comment-end sql (+ i 2)) statements content?)
-            :else
-            (let [word   (match-at pg-word sql i)
-                  dollar (match-at pg-dollar-quote sql i)
-                  [i end] (cond
-                            word
-                            (let [prefix (u/lower-case-en word)
-                                  i      (+ i (count word))]
-                              (cond
-                                (not (or (.startsWith sql "'" i)
-                                         (and (= prefix "u") (.startsWith sql "&'" i))))
-                                [i ::not-a-literal]
-                                ;; E'' reads backslash escapes whatever the setting; B'', X'' and U&'' read none. N''
-                                ;; is an ordinary literal after its prefix.
-                                (= prefix "e")         [i (pg-literal-end sql (inc i) true)]
-                                (#{"b" "x"} prefix)    [i (pg-literal-end sql (inc i) false)]
-                                (= prefix "u")         [i (pg-literal-end sql (+ i 2) false)]
-                                :else                  [i (pg-literal-end sql (inc i) (not standard-conforming-strings?))]))
-
-                            (= c \')
-                            [i (pg-literal-end sql (inc i) (not standard-conforming-strings?))]
-
-                            (= c \")
-                            (let [close (loop [close (.indexOf sql "\"" (int (inc i)))]
-                                          (if (and (not= close -1) (.startsWith sql "\"\"" close))
-                                            (recur (.indexOf sql "\"" (int (+ close 2))))
-                                            close))]
-                              [i (when-not (= close -1) (inc close))])
-
-                            dollar
-                            (let [close (.indexOf sql ^String dollar (int (+ i (count dollar))))]
-                              [i (when-not (= close -1) (+ close (count dollar)))])
-
-                            ;; A number runs into a following letter: `1e'...'` is a number and then an E'' literal.
-                            :else
-                            [(inc i) ::not-a-literal])]
-              (cond
-                (= end ::not-a-literal) (recur (long i) statements true)
-                (nil? end)              (counts statements true)
-                :else                   (recur (long end) statements true)))))))))
-
-(defn- hidden-by-string-setting?
-  "Whether Postgres reads `sql` as more than one statement with `standard_conforming_strings` on or off. sqlglot reads
-  it as one, lexing as the setting's default (on) does. With the setting off, a backslash before a quote moves the end
-  of a standard literal, whether the author wrote the literal or the rebuild made it from a dollar-quoted string.
-  Port of `_hidden_by_string_setting`."
-  [sql]
-  (boolean (some #(> (postgres-statement-count sql %) 1) [true false])))
+            (= c \;)                 (recur (inc i) (cond-> stmt-count content? inc) false)
+            (pg-space c)             (recur (inc i) stmt-count content?)
+            (.startsWith sql "--" i) (recur (line-comment-end sql i) stmt-count content?)
+            (.startsWith sql "/*" i) (recur (block-comment-end sql i) stmt-count content?)
+            :else                    (if-let [end (pg-token-end sql i standard-conforming-strings?)]
+                                       (recur (long end) stmt-count true)
+                                       (inc stmt-count))))))))
 
 (defn- unbracketed
   "`stmt` without the brackets around the whole query: `(SELECT 1)` parses as a subquery with no alias.
@@ -456,7 +400,8 @@
   "`[reason detail]` for why `stmt`, parsed from `sql`, fails the checks every statement type shares, else nil.
   Port of `_statement_reason`."
   [stmt sql dialect]
-  (or (when-let [function (session-effect-function stmt dialect)]
+  (or (when-let [function (first-function-in (into session-effect-functions (dialect-session-effect-functions dialect))
+                                             stmt)]
         ["session-function" function])
       (when (external-table? stmt dialect)
         ["external-table" nil])
@@ -477,6 +422,25 @@
     (not (read-only? (first stmts)))                                   ["writes-or-locks" nil]
     :else                                                              (statement-reason (first stmts) sql dialect)))
 
+(declare single-stmt-of-type)
+
+(defn- rebuild-problem
+  "`[reason detail]` for why `rebuilt`, sqlglot's regenerated SQL of the statement `sql` of `stmt-type`, fails the
+  checks of a rebuild, else nil. Port of `_rebuild_problem`."
+  [dialect ^String sql ^String rebuilt stmt-type]
+  ;; The checks of `sql` read `sql`, and the caller runs `rebuilt`. sqlglot's generator does not always produce text
+  ;; that reads back as the tree it wrote: an E'' string holding `\\` comes back with one backslash, so its quote
+  ;; moves, and a dollar-quoted alias comes back bare.
+  (or ;; A rebuild equal to `sql` reads as `sql` did, so it is not parsed again.
+   (when (not= rebuilt sql)
+     (let [again (single-stmt-of-type dialect rebuilt stmt-type nil)]
+       (when-not (:allowed_stmt_type? again)
+         ["rebuild-differs" (:reason again)])))
+   (when (and (= dialect "postgres") (> (postgres-statement-count rebuilt true) 1))
+     ["rebuild-differs" "multiple-statements"])
+   (when (and (= dialect "postgres") (> (postgres-statement-count rebuilt false) 1))
+     ["backslash-quote" nil])))
+
 (defn single-stmt-of-type
   "Whether `sql` is a single read statement (`\"read\"`, a SELECT), a single read-only SELECT (`\"read-only\"`), or a
   single write statement (anything else: INSERT, UPDATE, DELETE), with the statement as regenerated SQL.
@@ -485,68 +449,46 @@
   a statement holding only a comment after the last semicolon. Every mode applies the checks the statement types
   share. `:reason` (and `:reason_detail`) say why a query is refused for what it holds.
 
-  `\"confined-write\"` is stricter than `\"write\"`: the statement must also call none of [[write-functions]], which
-  write outside the table the statement names (a sequence, a large object), and none of [[unconfined-functions]]
-  (reason `\"unconfined-function\"`), must assign no MySQL user variable (reason `\"user-variable\"`), must return no
-  rows (no RETURNING or OUTPUT clause), and its regenerated SQL must pass the same checks and regenerate to itself
-  (reason `\"rebuild-differs\"`; `recheck?` false skips this). For `\"postgres\"` it also refuses, as
-  `\"backslash-quote\"`, a statement whose regenerated SQL Postgres would read as more than one statement with
-  `standard_conforming_strings` on or off. Port of `is_single_stmt_of_type`."
-  ([dialect sql stmt-type]
-   (single-stmt-of-type dialect sql stmt-type true))
-  ([dialect sql stmt-type recheck?]
-   (let [read-only-type? (= stmt-type "read-only")
-         confined?       (= stmt-type "confined-write")
-         ;; Filled in as it goes, so a failure part way keeps what was found before it.
-         result          (volatile! {:is_single_stmt? false, :allowed_stmt_type? false})]
-     (try
-       (let [stmts   (cond->> (vec (ast/parse (split-placeholder-casts sql dialect) dialect))
-                       read-only-type? ast/nonempty-statements)
-             allowed (if (#{"read" "read-only"} stmt-type) read-classes write-classes)
-             [stmt]  stmts
-             problem (cond
-                       read-only-type?
-                       (not-read-only-reason stmts sql dialect)
-
-                       (= 1 (count stmts))
-                       (or (statement-reason stmt sql dialect)
-                           (when confined?
-                             (let [function   (write-function stmt)
-                                   unconfined (first-function-in unconfined-functions stmt)]
-                               (cond
-                                 function                                        ["write-function" function]
-                                 unconfined                                      ["unconfined-function" unconfined]
-                                 (some user-variable-assignment? (ast/walk stmt)) ["user-variable" nil]
-                                 (some? (ast/arg stmt "returning"))              ["returning" nil])))))
-             rebuilt (when (= 1 (count stmts))
+  `check-rebuild` is nil or `\"rebuild\"`. With `\"rebuild\"`, the regenerated SQL of a statement of the allowed
+  type must also pass the same checks (`:reason` `\"rebuild-differs\"`, with the regenerated SQL's own reason as
+  `:reason_detail`), and for `\"postgres\"`, Postgres must read it as one statement with
+  `standard_conforming_strings` on (`:reason` `\"rebuild-differs\"`, `:reason_detail` `\"multiple-statements\"`)
+  and with it off (`:reason` `\"backslash-quote\"`). Port of `is_single_stmt_of_type`."
+  [dialect sql stmt-type check-rebuild]
+  (let [read-only-type? (= stmt-type "read-only")
+        ;; Filled in as it goes, so a failure part way keeps what was found before it.
+        result          (volatile! {:is_single_stmt? false, :allowed_stmt_type? false})]
+    (try
+      (let [stmts   (cond->> (vec (ast/parse (split-placeholder-casts sql dialect) dialect))
+                      read-only-type? ast/nonempty-statements)
+            allowed (if (#{"read" "read-only"} stmt-type) read-classes write-classes)
+            [stmt]  stmts
+            problem (cond
+                      read-only-type?        (not-read-only-reason stmts sql dialect)
+                      (= 1 (count stmts))    (statement-reason stmt sql dialect))
+            rebuilt  (when (= 1 (count stmts))
                        (when-not stmt
                          (throw (ex-info "'NoneType' object has no attribute 'sql'" {})))
                        (ast/sql stmt dialect))
-             problem (or problem
-                         (when (and rebuilt confined? (= dialect "postgres") (hidden-by-string-setting? rebuilt))
-                           ["backslash-quote" nil])
-                         ;; The checks above, except the backslash check, read `sql`, and the caller runs `rebuilt`.
-                         ;; sqlglot's writer does not always produce text that reads back as the tree it wrote, so the
-                         ;; rebuild must pass the same checks and rebuild to itself.
-                         (when (and rebuilt confined? recheck? (ast/instance-of-any? allowed (unbracketed stmt)))
-                           (let [again (single-stmt-of-type dialect rebuilt stmt-type false)]
-                             (when (or (not (:allowed_stmt_type? again)) (not= (:sql again) rebuilt))
-                               ["rebuild-differs" (:reason again)]))))]
-         (when problem
-           (vswap! result assoc :reason (first problem) :reason_detail (second problem)))
-         (when rebuilt
-           (vswap! result assoc :is_single_stmt? true)
-           (when (and (ast/instance-of-any? allowed (unbracketed stmt)) (nil? problem))
-             (vswap! result assoc :allowed_stmt_type? true))
-           (vswap! result assoc :sql rebuilt)))
-       ;; Python's `except Exception` also catches the RecursionError of SQL nested too deeply.
-       (catch StackOverflowError _
-         (vswap! result assoc :error "maximum recursion depth exceeded"))
-       ;; An exception without a message (a port NullPointerException) is still an error, so it still gets a reason.
-       (catch Exception e
-         (vswap! result assoc :error (or (ex-message e) (.getName (class e))))))
-     (cond-> @result
-       (and read-only-type? (:error @result)) (assoc :reason "unparseable")))))
+            allowed? (and rebuilt (ast/instance-of-any? allowed (unbracketed stmt)))
+            problem  (if (and (nil? problem) check-rebuild allowed?)
+                       (rebuild-problem dialect sql rebuilt stmt-type)
+                       problem)]
+        (when problem
+          (vswap! result assoc :reason (first problem) :reason_detail (second problem)))
+        (when rebuilt
+          (vswap! result assoc :is_single_stmt? true)
+          (when (and allowed? (nil? problem))
+            (vswap! result assoc :allowed_stmt_type? true))
+          (vswap! result assoc :sql rebuilt)))
+      ;; Python's `except Exception` also catches the RecursionError of SQL nested too deeply.
+      (catch StackOverflowError _
+        (vswap! result assoc :error "maximum recursion depth exceeded"))
+      ;; An exception without a message (a port NullPointerException) is still an error, so it still gets a reason.
+      (catch Exception e
+        (vswap! result assoc :error (or (ex-message e) (.getName (class e))))))
+    (cond-> @result
+      (and read-only-type? (:error @result)) (assoc :reason "unparseable"))))
 
 (defn simple-query
   "Whether `sql` is a simple SELECT, with no LIMIT, OFFSET or CTE, and the `:reason` when it is not.

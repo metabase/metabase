@@ -27,7 +27,7 @@
     (not (:no-data-model opts))        (into serdes.models/data-model)
     (not (:no-settings opts))          (conj :model/Setting)
     (not (:no-transforms opts))        (conj :model/Transform :model/TransformTag :model/TransformJob :model/TransformTest
-                                             :model/PythonLibrary)
+                                             :model/PythonLibrary :model/TestSuite)
     (not (:no-embedding-themes opts))  (conj :model/EmbeddingTheme)
     (not (:no-custom-viz-plugins opts)) (conj :model/CustomVizPlugin)
     (not (:no-data-apps opts))         (conj :model/DataApp)))
@@ -41,10 +41,8 @@
   "The ids of the Collections an untargeted export takes for the User with `user-id`: every non-personal one, and the
   personal ones of that User, without the analytics Collections. Nil stands for the root collection."
   [user-id]
-  (let [roots (serialization.db/root-collections-for-user user-id)]
-    (-> #{nil}
-        (into (map :id) roots)
-        (into (mapcat collection/descendant-ids) roots))))
+  (conj (serialization.db/collection-subtree-ids (mapv :id (serialization.db/root-collections-for-user user-id)) false)
+        nil))
 
 (defn- missing-target-error
   "Bad-input error for a target that matches no row. `id-kind` names the flavour of id for the message."
@@ -54,18 +52,29 @@
             :model       (name model)
             :id          id}))
 
-(defn- parse-target
-  "The `[model id]` of a target, `model` a model keyword or name and `id` its primary key or entity id, checking that it
-  exists."
-  [[model id]]
-  (let [model (keyword "model" (name model))]
-    (if (string? id)
-      (if-let [pk (serialization.db/entity-pk model id)]
-        [model pk]
-        (throw (missing-target-error model "entity ID" id)))
-      (do (when-not (serialization.db/instance-exists? model id)
-            (throw (missing-target-error model "ID" id)))
-          [model id]))))
+(defn- parse-targets
+  "The `[model id]` of each of `targets`, `model` a model keyword or name and `id` its primary key or entity id,
+  refusing the first target in order that matches no row."
+  [targets]
+  (let [targets (mapv (fn [[model id]] [(keyword "model" (name model)) id]) targets)
+        found   (into {}
+                      (map (fn [[[model entity-id?] ids]]
+                             [[model entity-id?]
+                              (if entity-id?
+                                (serialization.db/entity-id->pk model (vec (distinct ids)))
+                                (serialization.db/existing-pks model (vec (distinct ids))))]))
+                      (u/group-by (fn [[model id]] [model (string? id)])
+                                  second
+                                  (remove (comp nil? second) targets)))]
+    (mapv (fn [[model id]]
+            (if (string? id)
+              (if-let [pk (get-in found [[model true] id])]
+                [model pk]
+                (throw (missing-target-error model "entity ID" id)))
+              (if (contains? (get found [model false]) id)
+                [model id]
+                (throw (missing-target-error model "ID" id)))))
+          targets)))
 
 (defn- analytics-collection-ids
   "The ids of the analytics Collections, which an export leaves out."
@@ -91,7 +100,7 @@
   ones only with `:skip-archived`, and the rows of other models it targets."
   [{:keys [targets user-id skip-archived]}]
   (if (seq targets)
-    (let [by-model (u/group-by first second (map parse-target targets))
+    (let [by-model (u/group-by first second (parse-targets targets))
           roots    (into (vec (remove nil? (get by-model :model/Collection)))
                          (serialization.db/data-app-collection-ids (vec (get by-model :model/DataApp))))]
       {:collection-set (cond-> (serialization.db/collection-subtree-ids roots (boolean skip-archived))

@@ -55,6 +55,7 @@
            :model/OsiAiContext
            :model/PythonLibrary
            :model/Setting
+           :model/TestSuite
            :model/Transform
            :model/TransformJob
            :model/TransformTag
@@ -70,6 +71,7 @@
    :model/DashboardCardSeries
    :model/MetabotPrompt
    :model/TableIndex
+   :model/TestSuiteMember
    :model/TimelineEvent
    :model/TransformJobTransformTag
    :model/TransformTransformTag])
@@ -189,6 +191,7 @@
    :model/TransformRun
    :model/TransformRunCancelation
    :model/DataTestRun
+   :model/TestSuiteRun
    :model/Undo
    :model/User
    :model/UserKeyValue

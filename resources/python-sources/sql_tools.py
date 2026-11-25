@@ -12,12 +12,8 @@ import sqlglot.optimizer as optimizer
 from sqlglot import exp
 from sqlglot.dialects.clickhouse import ClickHouse
 from sqlglot.dialects.dialect import Dialect
-from sqlglot.dialects.postgres import Postgres
 from sqlglot.errors import ParseError
-from sqlglot.generators.postgres import PostgresGenerator
 from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
-from sqlglot.parsers.postgres import PostgresParser
-from sqlglot.tokens import TokenType
 
 # sqlglot (as of 28.6.0) renders every placeholder in ClickHouse's named-parameter
 # syntax `{name: Type}`, so a positional JDBC placeholder `?` (a nameless Placeholder)
@@ -35,40 +31,6 @@ def _placeholder_sql_keep_positional(self, expression: exp.Placeholder) -> str:
 
 
 ClickHouse.Generator.placeholder_sql = _placeholder_sql_keep_positional
-
-
-# sqlglot (as of 30.20.0) reads a Postgres E'' string into its value only in part: `\\` becomes one backslash and
-# `\n` a newline, while `\x41` and `\101` stay as written. It writes that value back without doubling a backslash, so
-# `E'a\\nb'` comes back as `e'a\nb'`, a newline, and `E'\\'` as `e'\'`, which Postgres ends one quote later. The
-# value cannot give back the text: `E'\\x41'` and `E'\x41'` both give `\x41`. So the parser keeps the text between
-# the quotes as written, and the Postgres generator writes that text back while the node still holds the value it was
-# parsed with.
-_E_STRING_AS_WRITTEN = "metabase_e_string_as_written"
-
-
-def _parse_e_string(self, token):
-    node = self.expression(
-        exp.ByteString(this=token.text, is_bytes=self.dialect.BYTE_STRING_IS_BYTES_TYPE or None), token
-    )
-    if type(self.dialect) is Postgres:
-        # The token spans the `E'` or `e'` prefix and the closing quote.
-        node.meta[_E_STRING_AS_WRITTEN] = (token.text, self.sql[token.start + 2 : token.end])
-    return node
-
-
-PostgresParser.NUMERIC_PARSERS = {**PostgresParser.NUMERIC_PARSERS, TokenType.BYTE_STRING: _parse_e_string}
-PostgresParser.PRIMARY_PARSERS = {**PostgresParser.PRIMARY_PARSERS, TokenType.BYTE_STRING: _parse_e_string}
-_postgres_bytestring_sql = PostgresGenerator.bytestring_sql
-
-
-def _bytestring_sql_as_written(self, expression: exp.ByteString) -> str:
-    written = expression.meta.get(_E_STRING_AS_WRITTEN)
-    if type(self.dialect) is Postgres and written is not None and written[0] == expression.this:
-        return f"e'{written[1]}'"
-    return _postgres_bytestring_sql(self, expression)
-
-
-PostgresGenerator.bytestring_sql = _bytestring_sql_as_written
 
 
 def is_quoted_identifier(name: str, dialect: str = None) -> bool:
@@ -397,9 +359,12 @@ def simple_query(sql: str, dialect: str = None) -> str:
     except Exception as e:
         return json.dumps({"is_simple": False, "reason": f"Unexpected error: {str(e)}"})
 
-def _wrap_base_table(table, alias):
-    """Build a self-UNION subquery, aliased `alias`, that scans `table` once but strips any IDENTITY
-    property inherited from it (see `add_into_clause`)."""
+def _wrap_base_table(table):
+    """Build a self-UNION subquery that scans `table` once but strips any IDENTITY property inherited from it (see
+    `add_into_clause`). Its alias is the identifier `table` is known by, quoted as it was, so a reserved word such as
+    `[order]` keeps its brackets."""
+    alias = table.args.get("alias")
+    alias = (alias.this if alias is not None and alias.this is not None else table.this).copy()
     bare_table = table.copy()
     bare_table.set("alias", None)
     self_union = exp.union(
@@ -478,7 +443,7 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
             for column in scope.source_columns(alias):
                 column.set("db", None)
                 column.set("catalog", None)
-            table.replace(_wrap_base_table(table, alias))
+            table.replace(_wrap_base_table(table))
 
     # Create the Into expression with the table identifier
     # The table_name is pre-formatted, so parse it to preserve quotes
@@ -536,6 +501,83 @@ def fold_lookup(folded, key):
     return folded.get(tuple(part.lower() if isinstance(part, str) else part for part in key))
 
 
+def _table_map(replacements):
+    """The `tables` of a replacements map as (db, schema, table) -> replacement. `db` is the catalog (BigQuery project,
+    ClickHouse database, etc), None when the key doesn't name one."""
+    return {(key.get("db"), key.get("schema"), key["table"]): new_name
+            for key, new_name in replacements.get("tables") or []}
+
+
+def _part_matches(key_part, ref_part, quoted):
+    """Whether one part of a replacement key names the same thing as the reference's."""
+    if key_part is None or ref_part is None:
+        return key_part is None and ref_part is None
+    # A quoted reference is case-significant to the engine — Postgres `"Orders"` is not `orders` — so that part
+    # matches only as written. An unquoted one matches whatever its case.
+    return key_part == ref_part if quoted else key_part.lower() == ref_part.lower()
+
+
+def _find_table_replacement(table_map, db, schema, table, quoted):
+    """The replacement in `table_map` for the reference `db.schema.table`, whose parts were `quoted` as given, or
+    None."""
+    # Most specific key first: (db, schema, table), then (None, schema, table), then (None, None, table).
+    # A key without a db matches a reference in any catalog; a key with one only matches that catalog.
+    # Each shape is tried as written before it is tried part by part, so an exact key always wins, and keys that
+    # differ only in the case of an unquoted part answer nothing rather than one of them arbitrarily.
+    shapes = ((db, schema, table), (None, schema, table), (None, None, table))
+    for key in shapes:
+        replacement = table_map.get(key)
+        if replacement:
+            return replacement
+    for key in shapes:
+        matched = [table_map[map_key]
+                   for map_key in table_map
+                   if all(_part_matches(map_part, ref_part, was_quoted)
+                          for map_part, ref_part, was_quoted in zip(map_key, key, quoted))]
+        if matched:
+            # Keys that differ only in the case of an unquoted part are ambiguous unless they all name the same
+            # replacement, and an ambiguous reference is left alone rather than pointed at one of them.
+            first = matched[0]
+            return first if all(other == first for other in matched) else None
+    return None
+
+
+def _quoted_parts(node, table_arg):
+    """Which parts of a table reference the query quoted, in replacement-key order."""
+    def quoted(arg):
+        value = node.args.get(arg)
+        return isinstance(value, exp.Identifier) and value.quoted
+
+    return (quoted("catalog"), quoted("db"), quoted(table_arg))
+
+
+def _set_identifier(node, arg, name, dialect):
+    # Sets `arg` of `node` to the identifier `name`, quoted if the identifier it replaces was, if `name` comes
+    # quoted, or if `name` needs quoting. A name that is not one identifier is quoted whole, so it reads back as
+    # that one name. Some nodes hold non-Identifier children (e.g. Anonymous), which count as unquoted.
+    original = node.args.get(arg)
+    original_quoted = isinstance(original, exp.Identifier) and original.quoted
+    parsed = parse_identifier(name, dialect)
+    was_quoted = parsed is not None and parsed.quoted
+    raw_name = parsed.this if was_quoted else name
+    quoted = original_quoted or parsed is None or was_quoted or needs_quoting(raw_name, dialect)
+    node.set(arg, exp.Identifier(this=raw_name, quoted=quoted))
+
+
+def _replace_table(node, replacement, catalog_arg, schema_arg, table_arg, dialect):
+    # Applies a table replacement to the name parts `node` keeps under the given args: a Table node keeps them in
+    # catalog/db/this, a Column node keeps its qualifier in catalog/db/table. A string replacement renames the
+    # table. A {db?, schema?, table?} replacement sets each part it names, and a nil db or schema clears that
+    # qualifier, so {:schema nil :table "x"} turns `public.orders` into `x` (matching Macaw).
+    if isinstance(replacement, str):
+        replacement = {"table": replacement}
+    for key, arg in (("db", catalog_arg), ("schema", schema_arg), ("table", table_arg)):
+        if replacement.get(key):
+            _set_identifier(node, arg, replacement[key], dialect)
+        elif key != "table" and key in replacement and replacement[key] is None:
+            node.set(arg, None)
+
+
 def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     """
     Replace schema, table, and column names in a SQL query.
@@ -565,10 +607,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
     """
     replacements = json.loads(replacements_json)
     schemas = replacements.get("schemas") or {}
-    # Tables: (db, schema, table) -> replacement. `db` is the catalog (BigQuery project, ClickHouse database, etc),
-    # None when the key doesn't name one.
-    table_map = {(key.get("db"), key.get("schema"), key["table"]): new_name
-                 for key, new_name in replacements.get("tables") or []}
+    table_map = _table_map(replacements)
     # Columns: (schema, table, column) -> new name. `table` is None for a key that matches any table.
     column_map = {(key.get("schema"), key.get("table"), key["column"]): new_name
                   for key, new_name in replacements.get("columns") or []}
@@ -581,69 +620,6 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
         # because a reference matches a name whatever its case.
         aliases = {node.alias.lower() for node in ast.find_all(exp.Table, exp.Subquery, exp.CTE) if node.alias}
 
-        def part_matches(key_part, ref_part, quoted):
-            """Whether one part of a replacement key names the same thing as the reference's."""
-            if key_part is None or ref_part is None:
-                return key_part is None and ref_part is None
-            # A quoted reference is case-significant to the engine — Postgres `"Orders"` is not `orders` — so that part
-            # matches only as written. An unquoted one matches whatever its case.
-            return key_part == ref_part if quoted else key_part.lower() == ref_part.lower()
-
-        def find_table_replacement(db, schema, table, quoted):
-            # Most specific key first: (db, schema, table), then (None, schema, table), then (None, None, table).
-            # A key without a db matches a reference in any catalog; a key with one only matches that catalog.
-            # Each shape is tried as written before it is tried part by part, so an exact key always wins, and keys that
-            # differ only in the case of an unquoted part answer nothing rather than one of them arbitrarily.
-            shapes = ((db, schema, table), (None, schema, table), (None, None, table))
-            for key in shapes:
-                replacement = table_map.get(key)
-                if replacement:
-                    return replacement
-            for key in shapes:
-                matched = [table_map[map_key]
-                           for map_key in table_map
-                           if all(part_matches(map_part, ref_part, was_quoted)
-                                  for map_part, ref_part, was_quoted in zip(map_key, key, quoted))]
-                if matched:
-                    # Keys that differ only in the case of an unquoted part are ambiguous unless they all name the same
-                    # replacement, and an ambiguous reference is left alone rather than pointed at one of them.
-                    first = matched[0]
-                    return first if all(other == first for other in matched) else None
-            return None
-
-        def quoted_parts(node, table_arg):
-            """Which parts of a table reference the query quoted, in replacement-key order."""
-            def quoted(arg):
-                value = node.args.get(arg)
-                return isinstance(value, exp.Identifier) and value.quoted
-
-            return (quoted("catalog"), quoted("db"), quoted(table_arg))
-
-        def set_identifier(node, arg, name):
-            # Sets `arg` of `node` to the identifier `name`, quoted if the identifier it replaces was, if `name` comes
-            # quoted, or if `name` needs quoting. A name that is not one identifier is quoted whole, so it reads back as
-            # that one name. Some nodes hold non-Identifier children (e.g. Anonymous), which count as unquoted.
-            original = node.args.get(arg)
-            original_quoted = isinstance(original, exp.Identifier) and original.quoted
-            parsed = parse_identifier(name, dialect)
-            was_quoted = parsed is not None and parsed.quoted
-            raw_name = parsed.this if was_quoted else name
-            quoted = original_quoted or parsed is None or was_quoted or needs_quoting(raw_name, dialect)
-            node.set(arg, exp.Identifier(this=raw_name, quoted=quoted))
-
-        def replace_table(node, replacement, catalog_arg, schema_arg, table_arg):
-            # Applies a table replacement to the name parts `node` keeps under the given args: a Table node keeps them in
-            # catalog/db/this, a Column node keeps its qualifier in catalog/db/table. A string replacement renames the
-            # table. A {db?, schema?, table?} replacement sets each part it names, and a nil db or schema clears that
-            # qualifier, so {:schema nil :table "x"} turns `public.orders` into `x` (matching Macaw).
-            if isinstance(replacement, str):
-                replacement = {"table": replacement}
-            for key, arg in (("db", catalog_arg), ("schema", schema_arg), ("table", table_arg)):
-                if replacement.get(key):
-                    set_identifier(node, arg, replacement[key])
-                elif key != "table" and key in replacement and replacement[key] is None:
-                    node.set(arg, None)
-
         def rename_fn(node):
             if isinstance(node, exp.Table):
                 # SQLGlot stores a 3-part name as catalog.db.this: catalog is the BigQuery project or ClickHouse database,
@@ -651,15 +627,15 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                 db, schema, table = node.catalog or None, node.db, node.name
                 new_schema = schemas.get(schema) or fold_lookup(folded_schemas, (schema,)) if schema else None
                 if new_schema:
-                    set_identifier(node, "db", new_schema)
+                    _set_identifier(node, "db", new_schema, dialect)
                 # A CTE name shadows a real table of the same name, so an unqualified reference to one declared in an
                 # enclosing query names the CTE and must be left alone — renaming it would point the query at the
                 # replacement table and silently skip the CTE.
                 if not db and not schema and resolved_name(node, dialect) in shadowing_cte_names(node, dialect):
                     return node
-                replacement = find_table_replacement(db, schema, table, quoted_parts(node, "this"))
+                replacement = _find_table_replacement(table_map, db, schema, table, _quoted_parts(node, "this"))
                 if replacement:
-                    replace_table(node, replacement, "catalog", "db", "this")
+                    _replace_table(node, replacement, "catalog", "db", "this", dialect)
 
             elif isinstance(node, exp.Column):
                 # SQLGlot uses "" (not None) for a missing qualifier part.
@@ -667,11 +643,11 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                 # A qualifier naming a replaced table (e.g. `public.orders.id`) follows the table. A qualifier without a
                 # schema may name an alias instead, which is left alone.
                 if table and (node.db or table.lower() not in aliases):
-                    replacement = find_table_replacement(
-                        node.catalog or None, node.db, table, quoted_parts(node, "table")
+                    replacement = _find_table_replacement(
+                        table_map, node.catalog or None, node.db, table, _quoted_parts(node, "table")
                     )
                     if replacement:
-                        replace_table(node, replacement, "catalog", "db", "table")
+                        _replace_table(node, replacement, "catalog", "db", "table", dialect)
                 # A column key matches a column qualified by the key's table, or an unqualified column with any table
                 # (the common case: "SELECT id FROM orders" with key {:table "orders" :column "id"}).
                 def column_matches(key_table, key_column):
@@ -683,7 +659,7 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
                                    if column_matches(key_table, key_column)),
                                   None)
                 if new_column:
-                    set_identifier(node, "this", new_column)
+                    _set_identifier(node, "this", new_column, dialect)
 
             return node
 
@@ -698,6 +674,191 @@ def replace_names(sql: str, replacements_json: str, dialect: str = None) -> str:
 
     rewritten = [rewrite(ast) for ast in statements(sql, dialect)]
     return "; ".join(rewritten) if rewritten else sql
+
+
+class _NotLocated(Exception):
+    """A name `swap_tables` cannot find exactly in the text it was given."""
+
+
+def _original_offset(split_offset, inserts):
+    """The offset in SQL of the character at `split_offset` of the same SQL after `_split_placeholder_casts` put a
+    space at each offset of `inserts`, which are ascending."""
+    return split_offset - sum(1 for k, at in enumerate(inserts) if at + k < split_offset)
+
+
+def _located(identifier, sql, tokens_by_start, inserts):
+    """`(start, end)` of the text of `identifier` in `sql`, `end` exclusive. Raises `_NotLocated` unless the parser
+    recorded where it read `identifier` and `sql` holds one token there with the identifier's name."""
+    meta = identifier.meta if isinstance(identifier, exp.Identifier) else {}
+    if "start" not in meta or "end" not in meta:
+        raise _NotLocated()
+    start = _original_offset(meta["start"], inserts)
+    end = _original_offset(meta["end"], inserts)
+    token = tokens_by_start.get(start)
+    if token is None or token.end != end or token.text != identifier.this:
+        raise _NotLocated()
+    return (start, end + 1)
+
+
+_DOT_BETWEEN_NAME_PARTS = re.compile(r"\s*\.\s*")
+
+
+def _located_parts(node, args, sql, tokens_by_start, inserts):
+    """`(start, end)` of each name part that `node` holds under `args`, in the order of `args`. Raises `_NotLocated`
+    unless each is located (see `_located`), they follow one another in `sql`, and only a dot and whitespace stand
+    between two of them."""
+    spans = [_located(node.args[arg], sql, tokens_by_start, inserts) for arg in args if node.args.get(arg) is not None]
+    for (_, previous_end), (next_start, _) in zip(spans, spans[1:]):
+        if next_start < previous_end or not _DOT_BETWEEN_NAME_PARTS.fullmatch(sql, previous_end, next_start):
+            raise _NotLocated()
+    return spans
+
+
+def _query_source(table):
+    """Whether the Table node `table` stands where a query reads rows from: in FROM or a JOIN, where every dialect
+    takes a table alias. The target of an INSERT, UPDATE, DELETE or MERGE does not."""
+    parent = table.parent
+    # ClickHouse's `FROM t FINAL` parses as a Final node around the table.
+    if isinstance(parent, exp.Final):
+        parent = parent.parent
+    return isinstance(parent, (exp.From, exp.Join))
+
+
+def _swapped_name(node, table_arg, replacement, dialect):
+    """The name that `node`, a table reference or a column whose qualifier names a table, takes under `replacement`,
+    as SQL in `dialect`. `node` keeps the table's name under `table_arg`."""
+    swapped = exp.Table(
+        **{to: exp.Identifier(this=part.this, quoted=part.quoted)
+           for arg, to in (("catalog", "catalog"), ("db", "db"), (table_arg, "this"))
+           for part in [node.args.get(arg)]
+           if isinstance(part, exp.Identifier)}
+    )
+    _replace_table(swapped, replacement, "catalog", "db", "this", dialect)
+    return swapped.sql(dialect=dialect)
+
+
+def _swap_refusal(reason, detail):
+    return json.dumps({"reason": reason, "reason_detail": detail})
+
+
+def swap_tables(sql: str, replacements_json: str, dialect: str = None) -> str:
+    """
+    `sql` with each table reference that the `tables` of `replacements_json` replace (as `replace_names` reads
+    them, and for the same references) written as its replacement, and every other character as given.
+
+    Returns JSON: `{"sql": ...}`, or `{"reason": ..., "reason_detail": ...}` when a reference cannot be replaced in
+    the text. Nothing in `sql` is reconstructed from the parsed tree: the tree only says where each name is.
+
+    What changes in the text:
+      - The whole name of a replaced reference, `orders`, `public.orders` or `"s"."Orders"`, becomes the name
+        `replace_names` would give it, written by the dialect's generator.
+      - A replaced reference in FROM or a JOIN that has no alias takes its own table name, as written, as its alias:
+        `FROM public.orders` becomes `FROM mb_tmp AS orders`. Column qualifiers that name the table, `orders.id`,
+        then resolve as they did, and are not changed. A qualifier that names the table with its schema,
+        `public.orders.id`, loses the schema, since an alias has none.
+      - A replaced reference that has no alias and stands where it can take none, as the table an INSERT, UPDATE or
+        DELETE writes does, makes its table name a renamed one in its statement. No reference without an alias to
+        a replaced table of that name takes an alias there, and each column qualifier that names such a table,
+        `orders.id` or `public.orders.id`, becomes the replacement's name: `UPDATE orders SET n = 0 WHERE
+        orders.id = 1` becomes `UPDATE mb_tmp SET n = 0 WHERE mb_tmp.id = 1`.
+
+    Reasons:
+      - "reference-not-located", detail the table: the parser recorded no position for one of the reference's
+        name parts, the text at that position is not that name, something other than a dot stands between two
+        parts (a comment), or the reference is a T-SQL `#` temp table.
+      - "ambiguous-table-name", detail the table name: two references without an alias have the same table name and
+        different replacements, and one alias cannot stand for both, or a column qualifier without a schema names
+        both.
+      - "unaliased-name-reused", detail the table name: a column qualifier without a schema has a renamed name
+        that the statement also gives to an alias, a CTE or a table that is not replaced.
+
+    Raises ValueError when `replacements_json` holds `schemas` or `columns`.
+    """
+    replacements = json.loads(replacements_json)
+    if replacements.get("schemas") or replacements.get("columns"):
+        raise ValueError("swap_tables replaces tables only")
+    table_map = _table_map(replacements)
+    inserts = _placeholder_cast_offsets(sql, dialect)
+    tokens_by_start = {token.start: token for token in sqlglot.tokenize(sql, read=dialect)}
+    edits = []
+    # The replacements of the references that take their table name as alias, by that name folded.
+    alias_replacements = {}
+    for ast in statements(_split_placeholder_casts(sql, dialect), dialect):
+        replaced = []
+        for table in table_references(ast, dialect):
+            replacement = _find_table_replacement(
+                table_map, table.catalog or None, table.db, table.name, _quoted_parts(table, "this")
+            )
+            if replacement:
+                replaced.append((table, replacement))
+        unaliased = [(table, replacement) for table, replacement in replaced if table.args.get("alias") is None]
+        # The table names, folded, of the references that can take no alias. An alias on another reference of that
+        # name would take over the qualifiers that name this one.
+        renamed = {table.name.lower() for table, _ in unaliased if not _query_source(table)}
+        for table, replacement in replaced:
+            label = ".".join(part for part in table_parts(table) if part)
+            try:
+                if temp_table_prefix(table):
+                    raise _NotLocated()
+                spans = _located_parts(table, ("catalog", "db", "this"), sql, tokens_by_start, inserts)
+            except _NotLocated:
+                return _swap_refusal("reference-not-located", label)
+            text = _swapped_name(table, "this", replacement, dialect)
+            if table.args.get("alias") is None and table.name.lower() not in renamed:
+                name_start, name_end = spans[-1]
+                # Oracle takes no AS before a table alias.
+                text += (" " if dialect == "oracle" else " AS ") + sql[name_start:name_end]
+                alias_replacements.setdefault(table.name.lower(), set()).add(json.dumps(replacement, sort_keys=True))
+            edits.append((spans[0][0], spans[-1][1], text))
+        # What else a qualifier with a renamed name could name: an alias, a CTE, or a table that is not replaced.
+        replaced_ids = {id(table) for table, _ in replaced}
+        other_names = {alias.name.lower() for alias in ast.find_all(exp.TableAlias)} | {
+            table.name.lower()
+            for table in ast.find_all(exp.Table)
+            if table.args.get("alias") is None and id(table) not in replaced_ids
+        }
+        for column in ast.find_all(exp.Column):
+            if not column.table:
+                continue
+            name = column.table.lower()
+            if column.db:
+                replacement = _find_table_replacement(
+                    table_map, column.catalog or None, column.db, column.table, _quoted_parts(column, "table")
+                )
+                if not replacement:
+                    continue
+            elif name in renamed:
+                if name in other_names:
+                    return _swap_refusal("unaliased-name-reused", name)
+                candidates = {json.dumps(r, sort_keys=True) for table, r in unaliased if table.name.lower() == name}
+                if len(candidates) > 1:
+                    return _swap_refusal("ambiguous-table-name", name)
+                replacement = json.loads(candidates.pop())
+            else:
+                # A qualifier without a schema names the table as the reference's alias does, and stays as written.
+                continue
+            try:
+                spans = _located_parts(column, ("catalog", "db", "table"), sql, tokens_by_start, inserts)
+            except _NotLocated:
+                label = ".".join(part for part in (column.catalog, column.db, column.table) if part)
+                return _swap_refusal("reference-not-located", label)
+            if name in renamed:
+                edits.append((spans[0][0], spans[-1][1], _swapped_name(column, "table", replacement, dialect)))
+            else:
+                # The reference took the table's name as its alias, and an alias has no schema.
+                edits.append((spans[0][0], spans[-1][0], ""))
+    for name, replaced_by in sorted(alias_replacements.items()):
+        if len(replaced_by) > 1:
+            return _swap_refusal("ambiguous-table-name", name)
+    edits.sort()
+    parts, last = [], 0
+    for start, end, text in edits:
+        if start < last:
+            return _swap_refusal("reference-not-located", None)
+        parts.extend((sql[last:start], text))
+        last = end
+    parts.append(sql[last:])
+    return json.dumps({"sql": "".join(parts)})
 
 
 #############################################################################
@@ -1761,22 +1922,27 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
 
     return json.dumps(result)
 
+def _placeholder_cast_offsets(sql: str, dialect: str = None):
+    """The offsets in `sql`, ascending, at which `_split_placeholder_casts` puts a space: after the `?` of each
+    `?::` token. Empty for Databricks, which reads `?::` itself, and for `sql` that does not tokenize."""
+    if dialect == "databricks" or "?::" not in sql:
+        return []
+    try:
+        tokens = sqlglot.tokenize(sql, read=dialect)
+    except Exception:
+        return []
+    return [tok.start + 1 for tok in tokens if tok.token_type == sqlglot.TokenType.QDCOLON]
+
+
 def _split_placeholder_casts(sql: str, dialect: str = None) -> str:
     """sqlglot's tokenizer treats `?::` as a single token in every dialect, but only Databricks'
     parser consumes it (the `expr?::type` try-cast operator). So a JDBC parameter followed by a
     cast (e.g. `select ?::text`) gets treated as this single token and fails to be parsed in every
     other dialect. To work around this we rewrite `?::` to `? ::` outside Databricks (#81373).
     """
-    if dialect == "databricks" or "?::" not in sql:
-        return sql
-    try:
-        tokens = sqlglot.tokenize(sql, read=dialect)
-    except Exception:
-        return sql
-    # Insert right-to-left so earlier token offsets stay valid.
-    for tok in reversed(tokens):
-        if tok.token_type == sqlglot.TokenType.QDCOLON:
-            sql = sql[: tok.start + 1] + " " + sql[tok.start + 1 :]
+    # Insert right-to-left so earlier offsets stay valid.
+    for at in reversed(_placeholder_cast_offsets(sql, dialect)):
+        sql = sql[:at] + " " + sql[at:]
     return sql
 
 
@@ -1870,21 +2036,15 @@ def _function_name(node: exp.Expression):
     return None
 
 
-def _first_function_in(stmt: exp.Expression, names):
-    """The name of the first function in `stmt` that is one of `names`, or None."""
+def _session_effect_function(stmt: exp.Expression, dialect: str):
+    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or of the
+    `_DIALECT_SESSION_EFFECT_FUNCTIONS` for `dialect`, or None."""
+    names = _SESSION_EFFECT_FUNCTIONS | _DIALECT_SESSION_EFFECT_FUNCTIONS.get(dialect, frozenset())
     for node in stmt.walk():
         name = _function_name(node)
         if name in names:
             return name
     return None
-
-
-def _session_effect_function(stmt: exp.Expression, dialect: str):
-    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or of the
-    `_DIALECT_SESSION_EFFECT_FUNCTIONS` for `dialect`, or None."""
-    return _first_function_in(
-        stmt, _SESSION_EFFECT_FUNCTIONS | _DIALECT_SESSION_EFFECT_FUNCTIONS.get(dialect, frozenset())
-    )
 
 
 def _external_table(stmt: exp.Expression, dialect: str) -> bool:
@@ -1954,31 +2114,18 @@ _LOCKING_TABLE_HINTS = frozenset(
 )
 
 
-def _write_function_name(node: exp.Expression):
-    """The name of the function `node` calls when it is one of `_WRITE_FUNCTIONS`, or advances a sequence in another
-    spelling (`NEXT VALUE FOR s`, `s.nextval`), else None."""
-    if isinstance(node, exp.NextValueFor):
-        return "next value for"
-    if isinstance(node, exp.Column) and node.table and node.name.lower() == "nextval":
-        return "nextval"
-    name = _function_name(node)
-    return name if name in _WRITE_FUNCTIONS else None
-
-
-def _user_variable_assignment(node: exp.Expression) -> bool:
-    """Whether `node` assigns a MySQL user variable, `@x := ...`, whose value outlives the query on its connection."""
-    # A bare name on the left is a named argument instead, as in DuckDB and Postgres, and changes nothing. The variable
-    # is searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
-    return isinstance(node, exp.PropertyEQ) and node.this.find(exp.Parameter) is not None
-
-
 def _writes_or_locks(node: exp.Expression) -> bool:
-    if (
-        isinstance(node, _NOT_READ_ONLY_NODES)
-        or _write_function_name(node) is not None
-        or _user_variable_assignment(node)
-    ):
+    if isinstance(node, _NOT_READ_ONLY_NODES):
         return True
+    if isinstance(node, exp.Anonymous):
+        return node.name.lower() in _WRITE_FUNCTIONS
+    # MySQL assigns a user variable inside a SELECT with `@x := ...`, and the value outlives the query on a pooled
+    # connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres, and changes nothing.
+    # The variable is searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
+    if isinstance(node, exp.PropertyEQ):
+        return node.this.find(exp.Parameter) is not None
+    if isinstance(node, exp.Column):
+        return bool(node.table) and node.name.lower() == "nextval"
     if isinstance(node, exp.WithTableHint):
         return any(hint.name.upper() in _LOCKING_TABLE_HINTS for hint in node.expressions)
     # SQL Server still honours a hint written without WITH, `FROM t (TABLOCKX)`, which parses as a call to a
@@ -2003,46 +2150,6 @@ def _writes_or_locks(node: exp.Expression) -> bool:
 # the Postgres driver applies it only to a transaction, and the QP runs a read under autocommit.
 def _read_only(stmt: exp.Expression) -> bool:
     return not any(_writes_or_locks(node) for node in stmt.walk())
-
-
-# Built-in functions a data-test write must not call, though the other modes admit them: each reads a table named in
-# a string, which the table check never sees, reads or writes the database server's files, reads or changes
-# replication slots and origins, or changes state that the run's rollback leaves changed (the random seed, the
-# statistics).
-_UNCONFINED_FUNCTIONS = frozenset(
-    {
-        # Postgres: a table, a schema or the database as XML, read by the name passed in
-        "table_to_xml", "table_to_xmlschema", "table_to_xml_and_xmlschema", "schema_to_xml", "schema_to_xmlschema",
-        "schema_to_xml_and_xmlschema", "database_to_xml", "database_to_xmlschema", "database_to_xml_and_xmlschema",
-        # Postgres: the server's files and directories, and the adminpack extension's file functions
-        "pg_read_file", "pg_read_binary_file", "pg_stat_file", "pg_ls_dir", "pg_ls_logdir", "pg_ls_waldir",
-        "pg_ls_logicalmapdir", "pg_ls_logicalsnapdir", "pg_ls_replslotdir", "pg_ls_archive_statusdir", "pg_ls_tmpdir",
-        "pg_ls_summariesdir", "pg_current_logfile", "pg_file_write", "pg_file_rename", "pg_file_unlink",
-        "pg_file_sync", "pg_logdir_ls",
-        # Postgres: the session's random seed
-        "setseed",
-        # Postgres: statistics resets, and the planner statistics a function can set or clear
-        "pg_stat_reset", "pg_stat_reset_shared", "pg_stat_reset_single_table_counters",
-        "pg_stat_reset_single_function_counters", "pg_stat_reset_slru", "pg_stat_reset_replication_slot",
-        "pg_stat_reset_subscription_stats", "pg_stat_reset_backend_stats", "pg_stat_statements_reset",
-        "pg_restore_relation_stats", "pg_restore_attribute_stats", "pg_clear_relation_stats",
-        "pg_clear_attribute_stats",
-        # Postgres: replication slots and origins
-        "pg_copy_physical_replication_slot", "pg_copy_logical_replication_slot", "pg_replication_slot_advance",
-        "pg_logical_slot_get_changes", "pg_logical_slot_peek_changes", "pg_logical_slot_get_binary_changes",
-        "pg_logical_slot_peek_binary_changes", "pg_sync_replication_slots", "pg_log_standby_snapshot",
-        "pg_replication_origin_create", "pg_replication_origin_drop", "pg_replication_origin_oid",
-        "pg_replication_origin_session_setup", "pg_replication_origin_session_reset",
-        "pg_replication_origin_session_is_setup", "pg_replication_origin_session_progress",
-        "pg_replication_origin_xact_setup", "pg_replication_origin_xact_reset", "pg_replication_origin_advance",
-        "pg_replication_origin_progress",
-    }
-)
-
-
-def _write_function(stmt: exp.Expression):
-    """The `_write_function_name` of the first node in `stmt` that has one, or None."""
-    return next((name for name in map(_write_function_name, stmt.walk()) if name is not None), None)
 
 
 # Words that start a T-SQL statement. SQL Server ends a SELECT at one of them without a semicolon, while sqlglot
@@ -2112,17 +2219,21 @@ def _hidden_sql(sql: str, dialect: str, select: bool):
 _PG_WORD = re.compile(r"[A-Za-z_\x80-\U0010ffff][A-Za-z_0-9$\x80-\U0010ffff]*")
 _PG_DOLLAR_QUOTE = re.compile(r"\$(?:[A-Za-z_\x80-\U0010ffff][A-Za-z_0-9\x80-\U0010ffff]*)?\$")
 _LINE_END = re.compile(r"[\n\r]")
+# The characters Postgres reads as whitespace, and `\v`, which it refuses outside a literal or a comment. It reads any
+# other character from U+0080 up as part of a name.
+_PG_SPACE = frozenset(" \t\n\r\f\v")
 
 
-def _pg_literal_end(sql: str, i: int, backslash_escapes: bool):
-    """The index after the quote that ends the literal whose text starts at `i`, or None when it does not end."""
+def _pg_quoted_end(sql: str, i: int, quote: str, backslash_escapes: bool):
+    """The index after the `quote` that ends the literal or quoted name whose text starts at `i`, a doubled `quote`
+    standing for one, or None when it does not end."""
     n = len(sql)
     while i < n:
         c = sql[i]
         if c == "\\" and backslash_escapes:
             i += 2
-        elif c == "'":
-            if sql.startswith("''", i):
+        elif c == quote:
+            if sql.startswith(quote * 2, i):
                 i += 2
             else:
                 return i + 1
@@ -2133,15 +2244,15 @@ def _pg_literal_end(sql: str, i: int, backslash_escapes: bool):
 
 def _postgres_statement_count(sql: str, standard_conforming_strings: bool) -> int:
     """The number of statements Postgres reads in `sql` with `standard_conforming_strings` set as given, counting a
-    piece between semicolons only when it holds more than whitespace and comments. Nothing after a literal, quoted
-    name or comment that does not end is read."""
+    piece between semicolons only when it holds more than whitespace and comments. A literal, quoted name or comment
+    that does not end ends the count, with the piece it started counted."""
     count, content, i, n = 0, False, 0, len(sql)
     while i < n:
         c = sql[i]
         if c == ";":
             count, content, i = count + content, False, i + 1
             continue
-        if c.isspace():
+        if c in _PG_SPACE:
             i += 1
             continue
         if sql.startswith("--", i):
@@ -2169,20 +2280,17 @@ def _postgres_statement_count(sql: str, standard_conforming_strings: bool) -> in
             # E'' reads backslash escapes whatever the setting; B'', X'' and U&'' read none. N'' is an ordinary
             # literal after its prefix.
             if prefix == "e":
-                end = _pg_literal_end(sql, i + 1, True)
+                end = _pg_quoted_end(sql, i + 1, "'", True)
             elif prefix in ("b", "x"):
-                end = _pg_literal_end(sql, i + 1, False)
+                end = _pg_quoted_end(sql, i + 1, "'", False)
             elif prefix == "u":
-                end = _pg_literal_end(sql, i + 2, False)
+                end = _pg_quoted_end(sql, i + 2, "'", False)
             else:
-                end = _pg_literal_end(sql, i + 1, not standard_conforming_strings)
+                end = _pg_quoted_end(sql, i + 1, "'", not standard_conforming_strings)
         elif c == "'":
-            end = _pg_literal_end(sql, i + 1, not standard_conforming_strings)
+            end = _pg_quoted_end(sql, i + 1, "'", not standard_conforming_strings)
         elif c == '"':
-            close = sql.find('"', i + 1)
-            while close != -1 and sql.startswith('""', close):
-                close = sql.find('"', close + 2)
-            end = None if close == -1 else close + 1
+            end = _pg_quoted_end(sql, i + 1, '"', False)
         elif dollar is not None:
             close = sql.find(dollar.group(), dollar.end())
             end = None if close == -1 else close + len(dollar.group())
@@ -2194,14 +2302,6 @@ def _postgres_statement_count(sql: str, standard_conforming_strings: bool) -> in
             break
         i = end
     return count + content
-
-
-def _hidden_by_string_setting(sql: str) -> bool:
-    """Whether Postgres reads `sql` as more than one statement with `standard_conforming_strings` on or off. sqlglot
-    reads it as one, lexing as the setting's default (on) does. With the setting off, a backslash before a quote moves
-    the end of a standard literal, whether the author wrote the literal or the rebuild made it from a dollar-quoted
-    string."""
-    return any(_postgres_statement_count(sql, scs) > 1 for scs in (True, False))
 
 
 def _unbracketed(stmt: exp.Expression) -> exp.Expression:
@@ -2239,22 +2339,37 @@ def _not_read_only_reason(stmts, sql: str, dialect: str):
     return _statement_reason(stmts[0], sql, dialect)
 
 
-def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None, recheck: bool = True) -> str:
+def _rebuild_problem(sql: str, rebuilt: str, stmt_type: str, dialect: str):
+    """`(reason, detail)` for why `rebuilt`, SQLGlot's reconstruction of the statement `sql` of `stmt_type`, fails the
+    checks of a rebuild, else None."""
+    # The checks of `sql` read `sql`, and the caller runs `rebuilt`. SQLGlot's writer does not always produce text that
+    # reads back as the tree it wrote: an E'' string holding `\\` comes back with one backslash, so its quote moves,
+    # and a dollar-quoted alias comes back bare.
+    # A rebuild equal to `sql` reads as `sql` did, so it is not parsed again.
+    if rebuilt != sql:
+        again = json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect))
+        if not again.get("allowed_stmt_type?"):
+            return ("rebuild-differs", again.get("reason"))
+    if dialect == "postgres" and _postgres_statement_count(rebuilt, True) > 1:
+        return ("rebuild-differs", "multiple-statements")
+    if dialect == "postgres" and _postgres_statement_count(rebuilt, False) > 1:
+        return ("backslash-quote", None)
+    return None
+
+
+def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None, check_rebuild: str = None) -> str:
     """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
     and returns the query reconstructed from the parsed AST.
 
     Every mode applies the checks the statement types share.
     `stmt_type` "read-only" is stricter than "read": the SELECT must also hold nothing that writes or locks anywhere in
-    its tree, and statements holding only a comment after the last semicolon are not counted. "confined-write" is
-    stricter than "write": the statement must also call none of `_WRITE_FUNCTIONS`, which write outside the table the
-    statement names (a sequence, a large object), and none of `_UNCONFINED_FUNCTIONS` (reason "unconfined-function"),
-    must assign no MySQL user variable (reason "user-variable"), must return no rows (no RETURNING or OUTPUT clause),
-    and its reconstruction must pass the same checks and reconstruct to itself (reason "rebuild-differs"). When the
-    statement is refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
+    its tree, and statements holding only a comment after the last semicolon are not counted. When the statement is
+    refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
 
-    For "postgres", "confined-write" also refuses, as "backslash-quote", a statement whose reconstruction Postgres would
-    read as more than one statement with `standard_conforming_strings` on or off. The other modes take the setting to
-    be on, its default, as the parser does.
+    `check_rebuild` is None or "rebuild". With "rebuild", the reconstruction of a statement of the allowed type must
+    also pass the same checks (reason "rebuild-differs", with the reconstruction's own reason as `reason_detail`), and
+    for "postgres", Postgres must read it as one statement with `standard_conforming_strings` on (reason
+    "rebuild-differs", detail "multiple-statements") and with it off (reason "backslash-quote").
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
@@ -2268,47 +2383,19 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             problem = _not_read_only_reason(stmts, sql, dialect)
         elif len(stmts) == 1:
             problem = _statement_reason(stmts[0], sql, dialect)
-            if problem is None and stmt_type == "confined-write":
-                function = _write_function(stmts[0])
-                unconfined = _first_function_in(stmts[0], _UNCONFINED_FUNCTIONS)
-                if function is not None:
-                    problem = ("write-function", function)
-                elif unconfined is not None:
-                    problem = ("unconfined-function", unconfined)
-                elif any(map(_user_variable_assignment, stmts[0].walk())):
-                    problem = ("user-variable", None)
-                elif stmts[0].args.get("returning") is not None:
-                    problem = ("returning", None)
         else:
             problem = None
         rebuilt = None
         if len(stmts) == 1:
             rebuilt = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
-            if (
-                problem is None
-                and stmt_type == "confined-write"
-                and dialect == "postgres"
-                and _hidden_by_string_setting(rebuilt)
-            ):
-                problem = ("backslash-quote", None)
-            # The checks above, except the backslash check, read `sql`, and the caller runs `rebuilt`. SQLGlot's
-            # writer does not always produce text that reads back as the tree it wrote (see `_E_STRING_AS_WRITTEN`
-            # for one case it got wrong), so the rebuild must pass the same checks and rebuild to itself. No input
-            # known at sqlglot 30.20.0 reaches this refusal, so no test does either.
-            if (
-                problem is None
-                and stmt_type == "confined-write"
-                and recheck
-                and isinstance(_unbracketed(stmts[0]), allowed_types)
-            ):
-                again = json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect, recheck=False))
-                if not again.get("allowed_stmt_type?") or again.get("sql") != rebuilt:
-                    problem = ("rebuild-differs", again.get("reason"))
+            allowed = isinstance(_unbracketed(stmts[0]), allowed_types)
+            if problem is None and check_rebuild and allowed:
+                problem = _rebuild_problem(sql, rebuilt, stmt_type, dialect)
         if problem is not None:
             result["reason"], result["reason_detail"] = problem
         if rebuilt is not None:
             result["is_single_stmt?"] = True
-            if isinstance(_unbracketed(stmts[0]), allowed_types) and problem is None:
+            if allowed and problem is None:
                 result["allowed_stmt_type?"] = True
             result["sql"] = rebuilt
     except Exception as e:

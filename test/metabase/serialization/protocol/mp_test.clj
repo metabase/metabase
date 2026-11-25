@@ -895,8 +895,5 @@
                      #(protocol/select-by-refs store :model/Collection #{"x"} [:id :entity_id])
                      #(protocol/select-by-pks store :model/Card #{1} [:id :name])
                      #(protocol/select-by-pks store :model/Card #{1} nil)
-                     #(protocol/select-by-parent-pks store :model/DashboardCard #{1} nil)
-                     #(protocol/insert-rows! store :model/Table [{}])
-                     #(protocol/update-row! store :model/Table 1 {})
-                     #(protocol/delete-rows! store :model/Table #{1})]]
+                     #(protocol/select-by-parent-pks store :model/DashboardCard #{1} nil)]]
         (is (= :not-implemented-yet (:error (ex-data (try (thunk) nil (catch clojure.lang.ExceptionInfo e e))))))))))

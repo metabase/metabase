@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
-   [metabase.content-verification.core :as moderation]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -218,16 +218,16 @@
                                                           :collection_id (:id metabot-coll)
                                                           :use_verified_content false}]
           ;; Mark some content as verified
-          (moderation/create-review! {:moderated_item_id (:id verified-model)
-                                      :moderated_item_type "card"
-                                      :moderator_id (mt/user->id :crowberto)
-                                      :status "verified"
-                                      :text "This is verified"})
-          (moderation/create-review! {:moderated_item_id (:id verified-metric)
-                                      :moderated_item_type "card"
-                                      :moderator_id (mt/user->id :crowberto)
-                                      :status "verified"
-                                      :text "This is verified"})
+          (moderation-review/create-moderation-reviews! [{:moderated_item_id (:id verified-model)
+                                                          :moderated_item_type "card"
+                                                          :moderator_id (mt/user->id :crowberto)
+                                                          :status "verified"
+                                                          :text "This is verified"}])
+          (moderation-review/create-moderation-reviews! [{:moderated_item_id (:id verified-metric)
+                                                          :moderated_item_type "card"
+                                                          :moderator_id (mt/user->id :crowberto)
+                                                          :status "verified"
+                                                          :text "This is verified"}])
           (testing "metabot with use_verified_content=true sees only verified content"
             (let [result (mt/with-test-user :crowberto
                            (metabot.tools.util/get-metrics-and-models (:id verified-metabot)))

@@ -20,6 +20,37 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
+(deftest ^:parallel expression-name-test
+  (testing ":lib/expression-name is the one qualified key besides :lib/type that counts"
+    (is (lib.equality/= [:+ {:lib/uuid "a", :lib/expression-name "x"} 1 2]
+                        [:+ {:lib/uuid "b", :lib/expression-name "x"} 1 2]))
+    (is (not (lib.equality/= [:+ {:lib/uuid "a", :lib/expression-name "x"} 1 2]
+                             [:+ {:lib/uuid "b", :lib/expression-name "y"} 1 2])))
+    (is (not (lib.equality/= [:+ {:lib/uuid "a", :lib/expression-name "x"} 1 2]
+                             [:+ {:lib/uuid "b"} 1 2])))))
+
+(deftest ^:parallel field-ref-types-test
+  (testing "a type key that only one :field ref has is ignored"
+    (are [x-opts y-opts] (and (lib.equality/= [:field x-opts 1] [:field y-opts 1])
+                              (lib.equality/= [:field y-opts 1] [:field x-opts 1]))
+      {}                                                    {}
+      {:base-type :type/Text}                               {}
+      {:base-type :type/Text}                               {:base-type :type/Text}
+      {:effective-type :type/Text}                          {}
+      {:base-type :type/Text, :effective-type :type/Text}   {:base-type :type/Text}
+      {:base-type :type/Text, :effective-type :type/Text}   {:effective-type :type/Text}
+      {:base-type :type/Text, :join-alias "J"}              {:join-alias "J"}))
+  (testing "a type key that both :field refs have has to match, and so does everything else"
+    (are [x y] (and (not (lib.equality/= x y))
+                    (not (lib.equality/= y x)))
+      [:field {:base-type :type/Text} 1]                                [:field {:base-type :type/Integer} 1]
+      [:field {:effective-type :type/Text} 1]                           [:field {:effective-type :type/Integer} 1]
+      [:field {:base-type :type/Text, :effective-type :type/Text} 1]    [:field {:base-type :type/Text, :effective-type :type/Integer} 1]
+      [:field {:base-type :type/Text} 1]                                [:field {} 2]
+      [:field {:base-type :type/Text, :join-alias "J"} 1]               [:field {} 1]
+      [:field {:base-type :type/Text, :temporal-unit :month} 1]         [:field {:temporal-unit :year} 1]
+      [:field {:base-type :type/Text} "A"]                              [:field {:base-type :type/Text} "B"])))
+
 (deftest ^:parallel untyped-map-test
   (testing "equal"
     (are [x y] (lib.equality/= x y)

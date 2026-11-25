@@ -31,9 +31,16 @@
   (replace-names [parser dialect sql replacements]
     "Replace schema/table/column names in the SQL. Returns the rewritten SQL string. Replacement values
     are injected into the AST unsanitized — callers must ensure they are system-generated.")
-  (single-stmt-of-type [parser dialect sql stmt-type]
+  (swap-tables [parser dialect sql replacements]
+    "The SQL with each table reference that the `:tables` of `replacements` replace written as its replacement, and
+    every other character as given, as a keywordized map of `:sql`, or of `:reason` and `:reason_detail` when a
+    reference cannot be replaced in the text. Replacement values are written into the SQL as identifiers: callers
+    must ensure they are system-generated.")
+  (single-stmt-of-type [parser dialect sql stmt-type check-rebuild]
     "Whether the SQL is a single statement of `stmt-type`, as a keywordized map that includes the SQL
-    reconstructed from the parsed AST.")
+    reconstructed from the parsed AST. `check-rebuild` is nil or `\"rebuild\"`. With `\"rebuild\"`, the
+    reconstruction of a statement of the allowed type must also pass the same checks, and for Postgres read as one
+    statement with `standard_conforming_strings` on and with it off.")
   (transpile-sql [parser sql from-dialect to-dialect]
     "Transpile the SQL from one dialect to another, as a keywordized result map."))
 

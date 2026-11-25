@@ -62,17 +62,6 @@
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
-(defn update-application-permissions!
-  "Perform update application permissions for a group-id."
-  [group-id changes]
-  (doseq [[perm-type perm-value] changes]
-    (case perm-value
-      :yes
-      (perms/grant-application-permissions! group-id perm-type)
-
-      :no
-      (perms/revoke-application-permissions! group-id perm-type))))
-
 (mu/defn update-graph!
   "Update the application Permissions graph.
   This works just like [[metabase.permissions-rest.data-permissions.graph/update-data-perms-graph!]], but for
@@ -90,6 +79,7 @@
      (when-not force? (perms/check-revision-numbers old-graph new-graph))
      (when (seq changes)
        (t2/with-transaction [_conn]
-         (doseq [[group-id changes] changes]
-           (update-application-permissions! group-id changes))
+         (perms/update-application-accesses! (for [[group-id group-changes] changes
+                                                   [perm-type value]        group-changes]
+                                               [group-id perm-type value]))
          (perms/save-perms-revision! :model/ApplicationPermissionsRevision (:revision old-graph) (:groups old-graph) changes))))))

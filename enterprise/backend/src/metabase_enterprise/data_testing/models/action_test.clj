@@ -4,12 +4,15 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.models :as data-testing.models]
+   [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase-enterprise.data-testing.subject.action :as data-testing.subject.action]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
+   [metabase-enterprise.data-testing.util :as data-testing.util]
+   [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -18,6 +21,7 @@
    [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -27,7 +31,6 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive :hook/events)
   (derive ::data-testing.models/saved-test))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/ActionTest :action]
@@ -35,23 +38,20 @@
   :model/Action)
 
 (def ^:private parameters-column
-  "The transform of the `parameters` column: [[data-testing.models/json-column]] of the parameter values, or nil."
-  (let [{:keys [in out]} (data-testing.models/json-column ::data-testing.schema/parameters)]
+  "The transform of the `parameters` column: [[data-testing.util/json-column]] of the parameter values, or nil."
+  (let [{:keys [in out]} (data-testing.util/json-column ::data-testing.schema/parameters)]
     {:in  #(some-> % in)
      :out #(some-> % out)}))
 
 (t2/deftransforms :model/ActionTest
   {:parameters   parameters-column
-   :inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
-   :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
+   :inputs       (data-testing.util/json-column ::data-testing.schema/inputs)
+   :expectations (data-testing.util/json-column ::data-testing.schema/expectations)})
 
-;;; ---------------------------------------------------- Hooks -----------------------------------------------------
-
-(t2/define-before-delete :model/ActionTest [action-test]
-  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
-  ;; delete's transaction. Toucan 2 has no after-delete hook.
-  (data-testing.db/clear-test-id-of-runs! :action (:id action-test))
-  action-test)
+(methodical/defmethod t2/batched-hydrate [:model/ActionTest :last_run]
+  "Add the newest run, or nil, to each action test."
+  [_model _k action-tests]
+  (data-testing.models/with-last-runs :action action-tests))
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -98,13 +98,86 @@
   (action-allows? mi/can-read? :can_read (:action_id action-test)
                   #(can-run-query-with-values? % (:parameters action-test))))
 
+(methodical/defmethod t2/batched-hydrate [:model/ActionTest :can_read]
+  "Add whether the current user can read the action of each action test, loading the actions at once."
+  [_model k action-tests]
+  (data-testing.models/with-readable-subjects k action-tests :action_id
+    (data-testing.db/actions-by-ids (into [] (comp (keep :action_id) (distinct)) action-tests))))
+
+(methodical/defmethod t2/batched-hydrate [:model/ActionTest :can_write]
+  "Add whether the current user may edit each action test, checking each action once."
+  [_model k action-tests]
+  (let [writable? (memoize (fn [action-id] (boolean (some-> action-id can-save-test?))))]
+    (vec (for [action-test action-tests]
+           (when action-test
+             (assoc action-test k (writable? (:action_id action-test))))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/ActionTest :can_query]
+  "Add whether the current user may run each action test: they read it and [[can-run?]] holds."
+  [_model k action-tests]
+  (vec (for [action-test (t2/hydrate action-tests :can_read)]
+         (when action-test
+           (assoc action-test k (boolean (and (mi/can-read? action-test) (can-run? action-test))))))))
+
+(defmethod mi/can-create? :model/ActionTest
+  [_model instance]
+  (boolean (some-> (:action_id instance) can-save-test?)))
+
+(defmethod mi/can-update? :model/ActionTest
+  [instance changes]
+  (boolean (and (mi/can-write? instance)
+                (some-> (:action_id changes (:action_id instance)) can-save-test?))))
+
+;;; -------------------------------------------------- Validation --------------------------------------------------
+
+(mu/defn validate-test :- :nil
+  "Throws the typed refusal of a test of the Action `action-id` with the inputs, expectations and parameter values of
+  `definition` that could not run. 404 when there is no such Action."
+  [action-id  :- ::lib.schema.id/action
+   definition :- ::data-testing.runner/definition]
+  (data-testing.runner/validate-test :action (api/check-404 (data-testing.db/action action-id)) definition))
+
+(mu/defn check-edit :- :nil
+  "Throws the typed refusal of an edit that sets the keys `edited-keys` of an action test and leaves it as `edited`.
+  An edit that sets the action or what a run reads is refused as a new test like `edited` would be."
+  [edited      :- [:map [:action_id ::lib.schema.id/action]]
+   edited-keys :- [:sequential :keyword]]
+  (when (data-testing.models/validates-edit? :action_id edited-keys)
+    (validate-test (:action_id edited) (data-testing.runner/test-definition edited))))
+
+(defmethod data-testing.test-type/spec :action [_test-type]
+  {:model      :model/ActionTest
+   :run-topics {:start   :event/action-test-run-start
+                :timeout :event/action-test-run-timeout}
+   :subject    #(data-testing.db/action (:action_id %))})
+
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
-(defenterprise delete-action-tests!
-  "Deletes the tests of the action `action-id` whatever the token says, since the rows outlive the feature."
+(mu/defn create-action-tests! :- [:sequential ::data-testing.schema/action-test]
+  "Insert the ActionTests `rows`, returning the inserted tests, each row normalized and validated by the column
+  transforms of the model."
+  [rows :- [:sequential ::data-testing.schema/action-test.create]]
+  (data-testing.models/create-saved-tests! :model/ActionTest rows))
+
+(mu/defn update-action-tests! :- :nil
+  "Apply the changes in each of `rows`, the id of an ActionTest and the columns to change, which the column transforms
+  of the model normalize and validate, publishing one update event for all."
+  ([rows :- [:sequential ::data-testing.schema/action-test.update]]
+   (update-action-tests! rows nil))
+  ([rows :- [:sequential ::data-testing.schema/action-test.update]
+    opts :- :metabase.events.schema/write-opts]
+   (data-testing.models/update-saved-tests! :model/ActionTest rows opts)))
+
+(mu/defn delete-action-tests! :- :nil
+  "Delete the ActionTests with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (data-testing.models/delete-saved-tests! :action :model/ActionTest ids))
+
+(defenterprise delete-action-tests-for-actions!
+  "Deletes the tests of the actions with `action-ids` whatever the token says, since the rows outlive the feature."
   :feature :none
-  [action-id]
-  (data-testing.db/delete-action-tests! action-id))
+  [action-ids]
+  (delete-action-tests! (data-testing.db/saved-test-ids-of-subjects :model/ActionTest :action_id (vec action-ids))))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -113,29 +186,27 @@
 
 (defn- revert-action-test!
   [id _user-id snapshot]
+  (update-action-tests! [(assoc snapshot :id id)] {:writer :revert}))
+
+(defn- check-revert
+  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
+  [id _user-id snapshot]
   (data-testing.models/check-revert-available)
-  (data-testing.db/update-action-test! id (select-keys snapshot revision-columns)))
+  (data-testing.errors/refusing
+   "action-test"
+   #(check-edit snapshot (data-testing.models/reverted-keys (data-testing.db/action-test id) snapshot)))
+  snapshot)
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
-
-(defmethod data-testing.models/saved-test-spec :model/ActionTest
-  [_model]
-  {:test-type   :action
-   :subject-key :action_id
-   :subjects    data-testing.db/actions-by-ids
-   :can-save?   can-save-test?})
-
-(defmethod events/spec :model/ActionTest
-  [_model]
-  {:create :event/action-test-create
-   :update :event/action-test-update
-   :delete :event/action-test-delete})
 
 (defmethod app-db-copy/spec :model/ActionTest [_model]
   {:skip? false})
 
 (defmethod serialization/spec :model/ActionTest [_]
   {:schema              ::data-testing.schema/external-action-test
+   :insert!             create-action-tests!
+   :update!             #(update-action-tests! % {:writer :import})
+   :delete!             delete-action-tests!
    :copy                [:entity_id :name :description :parameters :inputs :expectations]
    :transform           {:action_id  (serialization/fk-transform :model/Action)
                          :creator_id serialization/user-transform}
@@ -148,10 +219,12 @@
    :synced-filter-clause data-testing.db/synced-action-tests-clause})
 
 (defmethod revisions/spec :model/ActionTest [_model]
-  {:track     revision-columns
-   :skip      [:creator_id :entity_id]
-   :authorize :snapshot
-   :revert!   revert-action-test!})
+  {:track         revision-columns
+   :skip          [:creator_id :entity_id]
+   :schema        ::data-testing.schema/action-test.revision
+   :authorize     :snapshot
+   :before-revert check-revert
+   :revert!       revert-action-test!})
 
 (defmethod audit/spec :model/ActionTest [_model]
   {:track          [:action_id :name :description]

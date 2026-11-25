@@ -2,6 +2,8 @@
   "Application database queries for the sso module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [metabase.app-db.core :as mdb]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -22,7 +24,13 @@
 (mu/defn group-ids-by-name
   "The IDs of the PermissionsGroups named one of `group-names`."
   [group-names :- [:set :string]]
-  (t2/select-pks-set :model/PermissionsGroup :name [:in group-names]))
+  (mdb/select-batched-set #(t2/select-pks-set :model/PermissionsGroup :name [:in %]) group-names))
+
+(mu/defn expires-at-clause
+  "A HoneySQL form for the database's now plus `seconds`, the expiry the before-insert hook gives a new SsoRelayState."
+  [seconds :- ms/PositiveInt]
+  (let [db-type (mdb/db-type)]
+    (h2x/add-interval-honeysql-form db-type (h2x/current-datetime-honeysql-form db-type) seconds :second)))
 
 (mu/defn insert-relay-state!
   "Insert the SsoRelayState `row`, returning the number inserted."
@@ -31,14 +39,13 @@
            [:continue_url [:maybe :string]]
            [:origin       [:maybe :string]]
            [:embedding    :boolean]
-           [:expires_at   ms/TemporalInstant]]]
+           [:expires_at   {:optional true} ms/TemporalInstant]]]
   (t2/insert! :model/SsoRelayState row))
 
 (mu/defn unexpired-relay-state
-  "The SsoRelayState with `hashed-key` expiring after `now`, or nil."
-  [hashed-key :- :string
-   now        :- ms/TemporalInstant]
-  (t2/select-one :model/SsoRelayState :id hashed-key :expires_at [:> now]))
+  "The SsoRelayState with `hashed-key` expiring after the database's now, the clock its expiry is set by, or nil."
+  [hashed-key :- :string]
+  (t2/select-one :model/SsoRelayState :id hashed-key :expires_at [:> (h2x/current-datetime-honeysql-form (mdb/db-type))]))
 
 (mu/defn delete-relay-state!
   "Delete the SsoRelayState with `hashed-key`, returning the number deleted."

@@ -26,6 +26,7 @@
    [metabase-enterprise.data-testing.card-api]
    [metabase-enterprise.data-testing.run-api]
    [metabase-enterprise.data-testing.segment-api]
+   [metabase-enterprise.data-testing.suite-api]
    [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.dependencies.api]
@@ -33,6 +34,7 @@
    [metabase-enterprise.erd.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
+   [metabase-enterprise.lint.api]
    [metabase-enterprise.mcp.api.permissions]
    [metabase-enterprise.metabot-analytics.api]
    [metabase-enterprise.metabot.api]
@@ -150,6 +152,7 @@
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))
    "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
+   "/lint"                         (premium-handler metabase-enterprise.lint.api/routes :dependencies)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot"                      (premium-handler 'metabase-enterprise.metabot.api :metabot-v3)
    "/metabot-analytics"            (premium-handler metabase-enterprise.metabot-analytics.api/routes :audit-app)
@@ -160,6 +163,7 @@
    "/mfa"                          metabase-enterprise.mfa.routes/routes
    "/browser-sandboxing"           metabase-enterprise.browser-sandboxing.api/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
+   "/test-suite"                   (premium-handler metabase-enterprise.data-testing.suite-api/routes :transforms-testing)
    "/transform-test"               (premium-handler metabase-enterprise.data-testing.api/routes :transforms-testing)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)

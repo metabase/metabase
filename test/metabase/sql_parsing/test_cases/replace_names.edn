@@ -56,12 +56,6 @@
                            [{:table "people"} {:db nil :schema nil :table "tmp_people"}]]}
    :expected     "WITH orders AS (SELECT * FROM tmp_people) UPDATE orders SET total = 0"}
 
-  {:name         "an E'' string is written back as written, so a doubled backslash stays doubled"
-   :dialect      "postgres"
-   :sql          "SELECT E'a\\\\nb' AS v FROM orders"
-   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "tmp_orders"}]]}
-   :expected     "SELECT e'a\\\\nb' AS v FROM tmp_orders"}
-
   {:name         "an alias named after a replaced table keeps its own name"
    :dialect      "postgres"
    :sql          "SELECT people.id FROM orders AS people"

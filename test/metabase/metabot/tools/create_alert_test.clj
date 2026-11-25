@@ -44,7 +44,7 @@
           (let [{:keys [output error]} (create-alert (assoc (daily-alert card-id)
                                                             :send_condition "goal_above"
                                                             :send_once      true))
-                [alert]                (models.notification/notifications-for-card card-id)]
+                [alert]                (get (models.notification/notifications-for-cards [card-id]) card-id)]
             (is (nil? error))
             (testing "it posts to the conversation that asked for it, when its condition is met"
               (is (=? {:payload  {:card_id card-id :send_condition :goal_above :send_once true}

@@ -9,8 +9,10 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -26,7 +28,7 @@
   could run."
   [action-id  :- ms/PositiveInt
    definition :- ::data-testing.runner/definition]
-  (refusing #(data-testing.runner/validate-test :action (api/check-404 (data-testing.db/action action-id)) definition)))
+  (refusing #(data-testing.models.action-test/validate-test action-id definition)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/action-test.response]
   "List the action tests the caller can read, with their newest runs, optionally only those of one action. Needs Data
@@ -51,6 +53,18 @@
   (-> (api/read-check :model/ActionTest id)
       (t2/hydrate :last_run)))
 
+(mr/def ::create-request
+  "What a client sends to create a test."
+  [:merge
+   (data-testing.schema/test-create :action_id ::lib.schema.id/action)
+   ::data-testing.schema/action-test.parameters])
+
+(mr/def ::update-request
+  "What a client sends to update a test. Omitted fields are left unchanged."
+  [:merge
+   (data-testing.schema/test-update :action_id ::lib.schema.id/action)
+   ::data-testing.schema/action-test.parameters])
+
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/action-test
   "Create an action test. A run gives the action's parameters the test's `parameters`, by parameter id or slug, as
   `POST /api/action/:id/execute` does: a parameter left out takes its default, and a value for a hidden parameter or
@@ -63,10 +77,10 @@
   such as `nextval`. An `equals` expectation is refused: an action has no output to compare."
   [_route-params
    _query-params
-   {:keys [action_id] :as body} :- ::data-testing.schema/action-test.create]
+   {:keys [action_id] :as body} :- ::create-request]
   (api/create-check :model/ActionTest body)
   (validate-test! action_id (data-testing.runner/test-definition body))
-  (data-testing.db/insert-action-test! (assoc body :creator_id api/*current-user-id*)))
+  (first (data-testing.models.action-test/create-action-tests! [(assoc body :creator_id api/*current-user-id*)])))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/action-test
   "Update an action test. When the request body holds the action, the parameter values, the inputs or the expectations,
@@ -74,14 +88,12 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- ::data-testing.schema/action-test.update]
+   body :- ::update-request]
   (let [action-test (api/read-check :model/ActionTest id)]
     (api/update-check action-test body)
-    (when (some #(contains? body %) (cons :action_id data-testing.runner/definition-keys))
-      (let [{:keys [action_id] :as merged} (merge action-test body)]
-        (validate-test! action_id (data-testing.runner/test-definition merged))))
+    (refusing #(data-testing.models.action-test/check-edit (merge action-test body) (vec (keys body))))
     (when (seq body)
-      (data-testing.db/update-action-test! id body)))
+      (data-testing.models.action-test/update-action-tests! [(assoc body :id id)])))
   (data-testing.db/action-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -89,7 +101,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/ActionTest id)
-  (data-testing.db/delete-action-test! id)
+  (data-testing.models.action-test/delete-action-tests! [id])
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result
@@ -111,7 +123,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [action-test (api/read-check :model/ActionTest id)]
-    (api/check-403 (data-testing.models.action-test/can-run? action-test))
+    (api/check-403 (mi/can-query? (t2/hydrate action-test :can_query)))
     (refusing #(data-testing.runner/run-test! :action (data-testing.db/action (:action_id action-test)) action-test))))
 
 (def ^{:arglists '([request respond raise])} routes

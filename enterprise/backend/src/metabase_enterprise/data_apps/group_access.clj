@@ -51,8 +51,7 @@
       (t2/with-transaction [_conn]
         (api/check-400 (not-any? (access-group-ids app) group-ids)
                        (tru "One or more groups already have access to this data app."))
-        (doseq [group-id group-ids]
-          (perms/grant-collection-read-permissions! group-id collection)))))
+        (perms/grant-collection-read-permissions-to-groups! (mapv #(vector % collection) group-ids)))))
   (assigned-groups app))
 
 (defn remove-group!

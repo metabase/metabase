@@ -10,12 +10,14 @@
   bare, and every value is a bound parameter, so nothing an author writes is spliced into the SQL."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -112,7 +114,7 @@
   "A placeholder SQL may write for the output, such as `{{output}}`: a name in double braces."
   [:re #"^\{\{\s*[^{}\s]+\s*\}\}$"])
 
-(mu/defn- replace-output-token :- :string
+(mu/defn replace-output-token :- :string
   "`sql` with every occurrence of `output-token`, whitespace inside its braces allowed, replaced by [[output-name]]."
   [sql          :- :string
    output-token :- ::output-token]
@@ -121,11 +123,36 @@
                  (re-pattern (str "\\{\\{\\s*" (Pattern/quote inner) "\\s*\\}\\}"))
                  (constantly output-name))))
 
+(defn- unreplaceable-reference
+  "The `::data-testing.errors/unreplaceable-reference` refusal for the `reason` and `detail` that
+  [[sql-tools/swap-tables]] gives."
+  [reason detail]
+  (data-testing.errors/ex
+   ::data-testing.errors/unreplaceable-reference
+   (case reason
+     "ambiguous-table-name"
+     (tru "The SQL reads more than one table named {0} without an alias, and the test stands in for each with its own table. Give each an alias, such as `FROM my_schema.my_table AS a`, and qualify its columns by the alias."
+          detail)
+     "unaliased-name-reused"
+     (tru "The SQL names the table {0} without an alias where it can take none, as the table it writes, and also gives that name to an alias, a CTE or another table. The test cannot tell which of them a column qualified by that name belongs to. Rename the alias or the CTE."
+          detail)
+     (if detail
+       (tru "The test could not point the SQL''s reference to {0} at a test table: it could not find the reference exactly in the SQL''s text. Write it as a plain name, such as `my_schema.my_table`, with no comment inside the name."
+            detail)
+       (tru "The test could not point the SQL at its test tables: it could not find a table reference exactly in the SQL''s text.")))
+   (cond-> {:reason reason}
+     detail (assoc :detail detail))))
+
 (mu/defn replace-tables :- :string
-  "`sql` reading from the temp tables of `replacements` instead of the tables they replace.
+  "`sql` reading from the temp tables of `replacements` instead of the tables they replace, and every other character
+  as written. A replaced table that has no alias takes its own name as its alias, so a column qualified by the table's
+  name still resolves; a qualifier that also names the schema loses the schema. A table that `sql` writes without an
+  alias takes none: the columns qualified by its name are qualified by its temp table's name.
 
   With `output-token`, every occurrence of it, whitespace inside its braces allowed, first becomes [[output-name]],
-  string literals included."
+  string literals included.
+
+  Throws `::data-testing.errors/unreplaceable-reference` when a reference cannot be replaced in the text of `sql`."
   ([driver       :- :keyword
     sql          :- :string
     replacements :- ::table-replacements]
@@ -134,14 +161,16 @@
     sql          :- :string
     replacements :- ::table-replacements
     output-token :- [:maybe ::output-token]]
-   (sql-tools/replace-names driver
-                            (cond-> sql
-                              output-token (replace-output-token output-token))
-                            {:tables replacements}
-                            {:allow-unused? true})))
+   (let [{swapped :sql :keys [reason detail]} (sql-tools/swap-tables driver
+                                                                     (cond-> sql
+                                                                       output-token (replace-output-token output-token))
+                                                                     replacements)]
+     (or swapped
+         (throw (unreplaceable-reference reason detail))))))
 
 (mu/defn rewrite-query :- ::compiled-query
-  "`compiled` reading from the temp tables of `replacements` instead of the tables they replace."
+  "`compiled` reading from the temp tables of `replacements` instead of the tables they replace (see
+  [[replace-tables]]). `:params` stay as they are: the placeholders do not move."
   [driver       :- :keyword
    compiled     :- ::compiled-query
    replacements :- ::table-replacements]

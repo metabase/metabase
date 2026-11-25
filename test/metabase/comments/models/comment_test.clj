@@ -4,7 +4,9 @@
    [metabase.api.common :as api]
    [metabase.comments.api-test :as at]
    [metabase.comments.models.comment :as comment]
+   [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.schema :as comments.schema]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -102,3 +104,91 @@
         (mt/with-test-user :lucky
           (is (false? (mi/can-read? (t2/hydrate comment :can_read))))
           (is (false? (mi/can-write? (t2/hydrate comment :can_write)))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Document {doc-id :id} {}]
+    (mt/with-model-cleanup [:model/Comment]
+      (let [user-id (mt/user->id :rasta)
+            rows    (fn [n]
+                      (mapv (fn [_] {:target_type "document" :target_id doc-id :creator_id user-id
+                                     :content     {:type "text" :text (mt/random-name)}})
+                            (range n)))
+            fresh!  (fn [n]
+                      (let [ids (mapv :id (comment/create-comments! (rows n)))]
+                        (comment/update-comments! (mapv (fn [id] {:id id :is_resolved true}) (take-nth 2 ids)))
+                        ids))]
+        (testing "creating comments"
+          (events.tu/statement-count! #(comment/create-comments! (rows 1)))
+          (is (= (events.tu/statement-count! #(comment/create-comments! (rows 2)))
+                 (events.tu/statement-count! #(comment/create-comments! (rows 6))))))
+        (testing "updating comments, some already holding the new value"
+          (let [update! (fn [n]
+                          (let [ids (fresh! n)]
+                            (events.tu/statement-count!
+                             #(comment/update-comments! (mapv (fn [id] {:id id :is_resolved true}) ids)))))]
+            (update! 1)
+            (is (= (update! 2) (update! 6)))))
+        (testing "deleting comments, some already deleted"
+          (let [delete! (fn [n]
+                          (let [ids (fresh! n)]
+                            (comment/soft-delete-comments! (take-nth 2 ids))
+                            (events.tu/statement-count! #(comment/soft-delete-comments! ids))))]
+            (delete! 1)
+            (is (= (delete! 2) (delete! 6)))))
+        (testing "creating and deleting reactions"
+          (let [reactions (fn [n]
+                            (let [[{comment-id :id}] (comment/create-comments! (rows 1))]
+                              (mapv (fn [i] {:comment_id comment-id :user_id user-id :emoji (str "e" i)}) (range n))))
+                create!   (fn [n]
+                            (let [rows (reactions n)]
+                              (events.tu/statement-count! #(comment-reaction/create-reactions! rows))))
+                delete!   (fn [n]
+                            (let [ids (mapv :id (comment-reaction/create-reactions! (reactions n)))]
+                              (events.tu/statement-count! #(comment-reaction/delete-reactions! ids))))]
+            (create! 1)
+            (is (= (create! 2) (create! 6)))
+            (delete! 1)
+            (is (= (delete! 2) (delete! 6)))))))))
+
+(deftest can-update-each-resolve-test
+  (testing "mi/can-update-each? of Comments answers a resolve as mi/can-update? does row by row in a fixed number of statements"
+    (mt/with-model-cleanup [:model/Comment :model/Document :model/Collection]
+      (let [collection!  (fn [writable?]
+                           (let [id (t2/insert-returning-pk! :model/Collection
+                                                             (merge (mt/with-temp-defaults :model/Collection) {:name (str "bulk " (random-uuid))}))]
+                             (if writable?
+                               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) id)
+                               (perms/grant-collection-read-permissions! (perms-group/all-users) id))
+                             id))
+            comments-in  (fn [writable? n]
+                           (let [ids (mapv (fn [_]
+                                             (let [doc (t2/insert-returning-pk! :model/Document
+                                                                                (merge (mt/with-temp-defaults :model/Document)
+                                                                                       {:collection_id (collection! writable?)}))]
+                                               (t2/insert-returning-pk! :model/Comment
+                                                                        (merge (mt/with-temp-defaults :model/Comment)
+                                                                               {:target_type "document" :target_id doc :creator_id (mt/user->id :rasta)}))))
+                                           (range n))]
+                             (t2/select :model/Comment :id [:in ids])))
+            writable     (comments-in true 2)
+            read-only    (comments-in false 1)
+            changes      {:is_resolved true}
+            per-row      (fn [rows] (every? #(mi/can-update? % changes) (t2/hydrate (vec rows) :can_write)))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (testing "comments on documents the user writes"
+            (is (true? (mi/can-update-each? :model/Comment writable changes)))
+            (is (= (per-row writable) (mi/can-update-each? :model/Comment writable changes))))
+          (testing "a comment on a document the user only reads among comments on documents the user writes"
+            (let [rows (concat writable read-only)]
+              (is (false? (mi/can-update-each? :model/Comment rows changes)))
+              (is (= (per-row rows) (mi/can-update-each? :model/Comment rows changes))))))
+        (doseq [user [:crowberto :rasta]]
+          (testing (str "statement count as " user)
+            (mt/with-current-user (mt/user->id user)
+              (let [counted (fn [n]
+                              (let [rows (comments-in true n)]
+                                (events.tu/real-statement-count! #(mi/can-update-each? :model/Comment rows changes))))]
+                (counted 2)
+                (let [few  (counted 10)
+                      many (counted 40)]
+                  (is (= few many)))))))))))

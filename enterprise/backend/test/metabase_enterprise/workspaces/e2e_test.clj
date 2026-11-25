@@ -24,9 +24,10 @@
    The deftest body stays driver-agnostic via the `case admin-driver` dispatch
    inside each helper below."
   (:require
+   [clj-http.client :as http]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
@@ -40,17 +41,23 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
+   [metabase.server.instance :as server.instance]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.test.fixtures :as fixtures]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db :web-server))
 
 (defn- random-suffix
   "Eight hex chars from a random UUID — uniquifies the per-run schema/table/user
@@ -979,3 +986,167 @@
 
 (comment
   (workspace-full-e2e-test))
+
+;;; ------------------------------------------- Metadata seed over HTTP -------------------------------------------
+;;
+;; A workspace's Metabase whose first metadata is a seed from another Metabase, over real HTTP, as an app carries it:
+;; the app asks the receiver for a request, sends it to the sender, and gives the answer to the receiver, while there
+;; is a next cursor.
+;;
+;; Both sides are this process. The sender is its Database for the warehouse, synced (with fingerprints) before
+;; workspace mode starts. The receiver is a second Database row, in workspace mode, which Metabase never
+;; syncs itself. Both are in one app DB, so they cannot have one name: the test puts the sender's name in each
+;; request, which a deployment does not need.
+
+(defn- do-with-admin-api-key!
+  "Call `f` with an admin API key of this process, and delete the key after."
+  [f]
+  (let [key-name (str "metadata-seed-e2e-" (random-suffix))
+        api-key  (:unmasked_key (mt/user-http-request :crowberto :post 200 "api-key"
+                                                      {:group_id (:id (perms/admin-group)) :name key-name}))]
+    (try
+      (f api-key)
+      (finally
+        (t2/delete! :model/ApiKey :name key-name)))))
+
+(defn- post-metadata!
+  "POST the JSON `body` to this process's `/api/warehouse/metadata/<route>` as a real HTTP request, as the app does,
+  and return the status and the decoded body."
+  [api-key route body]
+  (let [{:keys [status body]} (http/post (str "http://localhost:" (server.instance/server-port)
+                                              "/api/warehouse/metadata/" route)
+                                         {:headers          {"x-api-key" api-key}
+                                          :content-type     :json
+                                          :body             (json/encode body)
+                                          :as               :string
+                                          :throw-exceptions false})]
+    {:status status :body (if (= 200 status) (json/decode+kw body) body)}))
+
+(defn- seed-over-http!
+  "Seed the receiver's Database `receiver-id` from the sender's Database named `sender-name` as the app does. Returns
+  the HTTP statuses, the number of rounds and the summed counts, and the error body of a call that failed. Both
+  Databases are in one app DB here, where two cannot have one name, so the request is sent with the sender's name and
+  the answer gets the name of the request back."
+  [api-key sender-name receiver-id]
+  (loop [after nil rounds 1 statuses [] counts {}]
+    (let [request  (post-metadata! api-key "request" (cond-> {:database_id receiver-id} after (assoc :after after)))
+          answer   (when (= 200 (:status request))
+                     (post-metadata! api-key "changes" (assoc (:body request) :database sender-name)))
+          applied  (when (= 200 (:status answer))
+                     (post-metadata! api-key "apply" {:database_id receiver-id
+                                                      :response    (assoc (:body answer)
+                                                                          :database (:database (:body request)))}))
+          statuses (into statuses (keep :status) [request answer applied])
+          counts   (merge-with + counts (get-in applied [:body :counts]))]
+      (cond
+        (not= 200 (:status applied))   {:statuses statuses
+                                        :error    (some #(when (not= 200 (:status %)) (:body %))
+                                                        [request answer applied])}
+        (nil? (:next (:body applied))) {:statuses statuses :rounds rounds :counts counts}
+        (> rounds 50)                  {:statuses statuses :error "the seed does not end"}
+        :else                          (recur (:next (:body applied)) (inc rounds) statuses counts)))))
+
+(defn- do-with-sender-and-receiver-of-a-workspace!
+  "Set up a warehouse schema with a source table and a pre-existing output table, a sender Database synced from it,
+  and a receiver Database of a workspace of it, then call `f` with a map of them. Tears it all down after."
+  [f]
+  (let [admin-driver  driver/*driver*
+        admin-details (:details (mt/db))
+        admin-spec    (admin-warehouse admin-driver admin-details)
+        run-id        (random-suffix)
+        main-schema   (canonical-schema-name admin-driver run-id admin-details)
+        src-name      (str "x_input_" run-id)
+        out-name      (str "t_out_" run-id)]
+    (try
+      (create-canonical-schema! admin-driver admin-spec admin-details main-schema)
+      (create-source-table! admin-driver admin-spec admin-details main-schema src-name)
+      (create-output-table! admin-driver admin-spec admin-details main-schema out-name
+                            [[99 "pre-existing"] [98 "still-pre-existing"]])
+      (mt/with-temp [:model/Database sender-db   {:engine  admin-driver
+                                                  :details admin-details
+                                                  :name    (str "seed-sender-" run-id)}
+                     :model/Database receiver-db {:engine              admin-driver
+                                                  :details             admin-details
+                                                  :name                (str "seed-receiver-" run-id)
+                                                  :initial_sync_status "incomplete"}]
+        ;; the sender reads the warehouse while this process is not in workspace mode
+        (sync/sync-database! (:id sender-db))
+        (let [{ws-id :id} (ws/create-workspace! {:name       (str "seed-" run-id)
+                                                 :creator_id (mt/user->id :crowberto)})]
+          (try
+            (add-database! ws-id (:id receiver-db) [(workspace-input-schema admin-driver admin-details main-schema)])
+            ;; a receiver starts no sync of its own while it is seeded
+            (mt/with-temporary-setting-values [config-from-file-sync-databases false]
+              (load-sidecar-config!
+               (yaml/parse-string (ws.config/config->yaml (ws.config/build-workspace-config ws-id)))))
+            (f {:sender-name (:name sender-db)
+                :sender      (:id sender-db)
+                :receiver    (:id receiver-db)
+                :main-schema main-schema
+                :tbl-schema  (table-row-schema-value admin-driver main-schema)
+                :src-name    src-name
+                :out-name    out-name})
+            (finally
+              (ws/clear-instance-workspace!)
+              (t2/update! :model/Database :id (:id receiver-db) {:details admin-details})
+              (try (ws/delete-workspace! ws-id)
+                   (catch Throwable t
+                     (log/warn t "delete-workspace! failed during the metadata seed test cleanup")))))))
+      (finally
+        (try (drop-canonical-schema! admin-driver admin-spec admin-details main-schema src-name out-name)
+             (catch Throwable _ nil))))))
+
+(deftest ^:synchronized workspace-database-is-seeded-over-http-test
+  (mt/test-drivers #{:postgres :mysql}
+    ;; the web server answers on its own threads, so the rows of this test must be committed
+    (mt/test-helpers-set-global-values!
+      (mt/with-premium-features #{:workspaces :config-text-file :transforms-basic :hosting}
+        (do-with-admin-api-key!
+         (fn [api-key]
+           (do-with-sender-and-receiver-of-a-workspace!
+            (fn [{:keys [sender-name sender receiver main-schema tbl-schema src-name out-name]}]
+              (let [table     (fn [db-id table-name]
+                                (t2/select-one :model/Table :db_id db-id :schema tbl-schema :name table-name
+                                               :active true))
+                    field     (fn [db-id table-name field-name]
+                                (t2/select-one :model/Field :table_id (:id (table db-id table-name)) :name field-name))
+                    rows      (fn [table-name]
+                                (mt/with-db (t2/select-one :model/Database :id receiver)
+                                  (try
+                                    (let [mp       (mt/metadata-provider)
+                                          table-id (:id (table receiver table-name))]
+                                      (set (mt/rows (mt/process-query (lib/query mp (lib.metadata/table mp table-id))))))
+                                    (catch Throwable t [::failed (ex-message t)]))))
+                    seed!     #(seed-over-http! api-key sender-name receiver)
+                    canonical #{[99 "pre-existing"] [98 "still-pre-existing"]}
+                    written   #{[1 "a"] [2 "b"] [3 "c"]}]
+                (testing "the receiver has no Tables before the seed, so the Tables it has after come from the seed"
+                  (is (zero? (t2/count :model/Table :db_id receiver))))
+                (testing "the seed gives the receiver the sender's Tables, Fields and fingerprints, over HTTP"
+                  (let [{:keys [statuses error counts]} (seed!)]
+                    (is (nil? error))
+                    (is (every? #{200} statuses))
+                    (is (=? {:tables_inserted pos-int?} counts)))
+                  (is (some? (table receiver src-name)))
+                  (is (some? (:fingerprint (field sender src-name "v"))))
+                  (is (= (:fingerprint (field sender src-name "v")) (:fingerprint (field receiver src-name "v"))))
+                  (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id receiver))))
+                (testing "the receiver's workspace login reads a seeded Table"
+                  (is (= canonical (rows out-name))))
+                (testing "only the Tables of the workspace's input schemas: the request sends its schema filter"
+                  (is (= #{tbl-schema} (t2/select-fn-set :schema :model/Table :db_id receiver :active true))))
+                (testing "a second seed writes nothing"
+                  (is (=? {:counts {:tables_inserted 0 :fields_inserted 0 :fks_set 0}} (seed!))))
+                (mt/with-db (t2/select-one :model/Database :id receiver)
+                  (let [mp (mt/metadata-provider)]
+                    (mt/with-temp [:model/Transform transform
+                                   {:name   (str "transform-" out-name)
+                                    :source {:type  :query
+                                             :query (lib/query mp (lib.metadata/table mp (:id (table receiver
+                                                                                                     src-name))))}
+                                    :target {:type :table :schema main-schema :name out-name}}]
+                      (testing "a transform run on a seeded Table writes its copy, read under the canonical name"
+                        (transforms.execute/execute! transform {:run-method :manual})
+                        (is (some? (ws.table-remapping/workspace-remap-schema+name
+                                    receiver {:schema tbl-schema :name out-name})))
+                        (is (= written (rows out-name))))))))))))))))

@@ -158,10 +158,7 @@
                                                                         (json/encode (or args {}))))}}]}
                   :tool-output {:role         "tool"
                                 :tool_call_id (:id part)
-                                :content      (or (get-in part [:result :output])
-                                                  (when-let [err (:error part)]
-                                                    (str "Error: " (:message err)))
-                                                  (pr-str (:result part)))}
+                                :content      (core/tool-result-text (:result part))}
                   ;; User messages pass through
                   {:role    (name (or (:role part) "user"))
                    :content (or (:content part) "")})))
@@ -258,14 +255,6 @@
       (cond-> [{:type :tool-input-start :toolCallId id :toolName name}]
         (not-empty arguments) (conj {:type :tool-input-delta :toolCallId id :inputTextDelta arguments})
         true                  (conj {:type :tool-input-available :toolCallId id :toolName name})))))
-
-(defn- error-chunk
-  "The AI SDK `:error` chunk for `error-text`, with the provider's `error` object when it sent one.
-
-  The object keeps fields that the text loses, such as OpenRouter's `metadata.error_type`."
-  [error error-text]
-  (cond-> {:type :error :errorText error-text}
-    (map? error) (assoc :error (assoc error :message error-text))))
 
 (defn chat-completions->aisdk-chunks-xf
   "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks.
@@ -364,11 +353,10 @@
                                      (delta-reasoning delta)) :reasoning
                                 :else                         nil)]
             (cond-> result
-              ;; Emit :start on first chunk
-              (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
-                                                                   (u/prog1
-                                                                     (vreset! message-id id)
-                                                                     (vreset! model-name model)))
+              ;; Emit :start on the first chunk, with a minted id when the chunk has none. Persistence stores each
+              ;; :start as the `step-start` that history replay splits a turn's LLM calls at.
+              (not @message-id)                                (-> (rf {:type :start :messageId (vreset! message-id (or id (core/mkid)))})
+                                                                   (u/prog1 (vreset! model-name model)))
               ;; Close the open text or reasoning block when the content type changes
               (and @current-type
                    chunk-type
@@ -428,8 +416,14 @@
                                                                      (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
                                                                             :raw-finish-reason @stop-reason)))
               ;; An error in the stream, e.g. a failure partway through generation
+              ;; A dialect's own failure reason, such as Z.AI's `network_error`, goes on as the error code, so
+              ;; that the failure can be classified. A plain `error` reason says nothing more than the text.
               error-text                                       (-> (close!)
-                                                                   (rf (error-chunk error error-text)))))))))))
+                                                                   (rf (core/error-chunk
+                                                                        (or error
+                                                                            (when (not= "error" finish-reason)
+                                                                              {:code finish-reason}))
+                                                                        error-text)))))))))))
 
 ;;; Request body
 

@@ -152,8 +152,6 @@
     :model/ExplorationBookmark
     ;; 63+
     :model/McpFeedback
-    ;; Not in dependency order, and cannot be: `transform.target_table_id` and `metabase_table.transform_id`
-    ;; point at each other. Order does not matter -- `copy!` defers or disables FK checks for the whole load.
     :model/Transform
     :model/TransformTag
     :model/TransformTransformTag
@@ -177,6 +175,9 @@
       :model/ActionTest
       :model/SegmentTest
       :model/DataTestRun
+      :model/TestSuite
+      :model/TestSuiteMember
+      :model/TestSuiteRun
       :model/Workspace
       :model/WorkspaceDatabase
       :model/TableRemapping])))

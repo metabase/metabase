@@ -20,8 +20,12 @@ function mergeRecords(
     }
     const sourceValue = source[key];
     const targetValue = target[key];
+    // Merge into own properties only, so that a merge never goes into a
+    // shared prototype.
     const nextValue =
-      isPlainObject(sourceValue) && isPlainObject(targetValue)
+      Object.hasOwn(target, key) &&
+      isPlainObject(sourceValue) &&
+      isPlainObject(targetValue)
         ? mergeRecords(targetValue, sourceValue)
         : sourceValue;
     if (nextValue !== targetValue || !Object.hasOwn(target, key)) {

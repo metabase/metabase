@@ -35,244 +35,10 @@
    :stmt-type  "write"
    :expected   {:verdict :allowed    :single-stmt? true}}
 
-  {:name       "a write that advances a sequence is still a write"
-   :dialect    "postgres"
-   :sql        "INSERT INTO orders (id) VALUES (nextval('orders_id_seq'))"
-   :stmt-type  "write"
-   :expected   {:verdict :allowed    :single-stmt? true}}
-
-  {:name       "a confined write is a write"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET total = 0 WHERE id = 1"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :allowed    :single-stmt? true}}
-
-  {:name       "a select is not a confined write, for no reason beyond its type"
-   :dialect    "postgres"
-   :sql        "SELECT * FROM orders"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason nil}}
-
-  {:name       "a confined write advances no sequence"
-   :dialect    "postgres"
-   :sql        "INSERT INTO orders (id) VALUES (nextval('orders_id_seq'))"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "write-function" :detail "nextval"}}
-
-  {:name       "nor one spelled as a pseudo-column"
-   :dialect    "snowflake"
-   :sql        "INSERT INTO orders (id) SELECT orders_seq.nextval"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "write-function" :detail "nextval"}}
-
-  {:name       "nor one spelled the SQL standard's way"
-   :dialect    "tsql"
-   :sql        "INSERT INTO orders (id) VALUES (NEXT VALUE FOR orders_seq)"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "write-function" :detail "next value for"}}
-
-  ;; A confined write also refuses the functions that read a table named in a string, read or write the server's
-  ;; files, read or change replication slots and origins, or change state that the run's rollback leaves changed.
-  ;; The other modes admit them.
-  {:name       "a confined write reads no table named in a string"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = table_to_xml('secrets', true, false, '')::text WHERE id = 1"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "unconfined-function" :detail "table_to_xml"}}
-
-  {:name       "a write may"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = table_to_xml('secrets', true, false, '')::text WHERE id = 1"
-   :stmt-type  "write"
-   :expected   {:verdict :allowed    :single-stmt? true}}
-
-  {:name       "a confined write reads no file on the server"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = pg_read_file('/etc/passwd') WHERE id = 1"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "unconfined-function" :detail "pg_read_file"}}
-
-  {:name       "nor sets the session's random seed"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = setseed(0.5)::text WHERE id = 1"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "unconfined-function" :detail "setseed"}}
-
-  {:name       "nor resets the database's statistics"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = pg_stat_reset()::text WHERE id = 1"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "unconfined-function" :detail "pg_stat_reset"}}
-
-  {:name       "nor reads changes from a replication slot"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = (SELECT string_agg(data, ',') FROM pg_logical_slot_peek_changes('s', NULL, NULL)) WHERE id = 1"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "unconfined-function" :detail "pg_logical_slot_peek_changes"}}
-
-  {:name       "a confined write assigns no MySQL user variable, which outlives the run"
-   :dialect    "mysql"
-   :sql        "UPDATE orders SET note = (@x := 'a') WHERE id = 1"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "user-variable"}}
-
-  {:name       "a write may"
-   :dialect    "mysql"
-   :sql        "UPDATE orders SET note = (@x := 'a') WHERE id = 1"
-   :stmt-type  "write"
-   :expected   {:verdict :allowed    :single-stmt? true}}
-
-  {:name       "a confined write returns no rows"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET total = 0 WHERE id = 1 RETURNING id"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "returning"}}
-
-  {:name       "a write may return rows"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET total = 0 WHERE id = 1 RETURNING id"
-   :stmt-type  "write"
-   :expected   {:verdict :allowed    :single-stmt? true}}
-
-  {:name       "a confined write may feed one of its CTEs' returned rows into its table"
-   :dialect    "postgres"
-   :sql        "WITH d AS (DELETE FROM orders RETURNING id) INSERT INTO archive SELECT id FROM d"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :allowed    :single-stmt? true}}
-
-  {:name       "a SELECT is not a confined write"
-   :dialect    "postgres"
-   :sql        "SELECT * FROM orders"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :disallowed :single-stmt? true}}
-
   {:name       "a CTE ahead of a select is still one read"
    :dialect    "postgres"
    :sql        "WITH c AS (SELECT id FROM people) SELECT * FROM c"
    :stmt-type  "read"
-   :expected   {:verdict :allowed    :single-stmt? true}}
-
-  ;; Postgres with `standard_conforming_strings` off reads a backslash in '...' as an escape, so `\'` does not end
-  ;; the literal there. Each refused case below is one statement to SQLGlot whose rebuild runs the DELETE as a second
-  ;; statement on such a server.
-  {:name       "a quote after a backslash hides a second statement from Postgres with standard_conforming_strings off"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = 'a\\''; DELETE FROM orders; --'"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
-
-  {:name       "so does a rebuild that has the backslash before a quote though the text had none"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = $q$a\\$q$ || $q$; DELETE FROM orders; --$q$"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
-
-  {:name       "an E'' string holding a doubled backslash is rebuilt as written, so its quote ends it where it did"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = E'a\\\\' || $q$; DELETE FROM orders; --$q$"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :allowed    :single-stmt? true
-                :sql     "UPDATE orders SET note = e'a\\\\' || '; DELETE FROM orders; --'"}}
-
-  ;; Only a data-test write is checked for the setting. Postgres runs every other caller's SQL with the setting as
-  ;; the connection has it, on by default, and reads each case below as one statement.
-  {:name       "a confined write with a literal ending in a backslash and a later semicolon is refused"
-   :dialect    "postgres"
-   :sql        "UPDATE files SET p = replace(path, '\\', '/'), sep = ';'"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
-
-  {:name       "a read of the same kind is not checked for the setting"
-   :dialect    "postgres"
-   :sql        "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"
-   :stmt-type  "read"
-   :expected   {:verdict :allowed    :single-stmt? true}}
-
-  {:name       "nor is a write"
-   :dialect    "postgres"
-   :sql        "UPDATE files SET p = replace(path, '\\', '/'), sep = ';'"
-   :stmt-type  "write"
-   :expected   {:verdict :allowed    :single-stmt? true}}
-
-  {:name       "nor a read-only select"
-   :dialect    "postgres"
-   :sql        "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"
-   :stmt-type  "read-only"
-   :expected   {:verdict :allowed    :single-stmt? true}}
-
-  {:name       "nor a read whose rebuild has a backslash before a quote though the text had none"
-   :dialect    "postgres"
-   :sql        "SELECT $q$a\\$q$ || $q$; RESET ROLE; DELETE FROM orders; --$q$"
-   :stmt-type  "read"
-   :expected   {:verdict :allowed    :single-stmt? true}}
-
-  ;; SQLGlot as shipped reads `\\` in an E'' string as one backslash and writes it back undoubled, so Postgres would
-  ;; read the rebuilt literal as ending one quote later. `sql_tools` writes an E'' string back as it was written.
-  {:name       "a confined write whose E'' string ends in a doubled backslash keeps the text after it a string"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = E'\\\\' || $q$' || (SELECT setval($z$orders_id_seq$z$, 4242))::text --$q$ WHERE id = 1"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :allowed    :single-stmt? true
-                :sql     "UPDATE orders SET note = e'\\\\' || ''' || (SELECT setval($z$orders_id_seq$z$, 4242))::text --' WHERE id = 1"}}
-
-  {:name       "a control: a confined write whose E'' string ends in a doubled backslash is allowed and rebuilt as written"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = E'a\\\\' WHERE id = 1"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :allowed    :single-stmt? true :sql "UPDATE orders SET note = e'a\\\\' WHERE id = 1"}}
-
-  {:name       "a doubled backslash before a letter stays doubled, so the rebuild holds no newline"
-   :dialect    "postgres"
-   :sql        "SELECT E'a\\\\nb' AS v"
-   :stmt-type  "read"
-   :expected   {:verdict :allowed    :single-stmt? true :sql "SELECT e'a\\\\nb' AS v"}}
-
-  {:name       "a quote doubled inside a literal is one statement under either setting"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = 'it''s'"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :allowed    :single-stmt? true :sql "UPDATE orders SET note = 'it''s'"}}
-
-  {:name       "a dollar-quoted string without backslashes is rebuilt as a plain literal, one statement under either setting"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = $q$it's; DELETE FROM orders$q$"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :allowed    :single-stmt? true :sql "UPDATE orders SET note = 'it''s; DELETE FROM orders'"}}
-
-  {:name       "a backslash that is not before a quote is one statement under either setting"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = 'C:\\temp' WHERE id = 1"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :allowed    :single-stmt? true}}
-
-  {:name       "a literal ending in a backslash is one statement, or with the setting off, text Postgres refuses whole"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = 'C:\\'"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :allowed    :single-stmt? true}}
-
-  {:name       "an E'' string whose quote is escaped is rebuilt as written, one statement under either setting"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = E'it\\'s; DELETE FROM orders'"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :allowed    :single-stmt? true :sql "UPDATE orders SET note = e'it\\'s; DELETE FROM orders'"}}
-
-  {:name       "a backslash before a quote in a quoted name starts no literal"
-   :dialect    "postgres"
-   :sql        "UPDATE \"a\\'\" SET note = ';' WHERE id = 1"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :allowed    :single-stmt? true}}
-
-  {:name       "nor does one in a comment"
-   :dialect    "postgres"
-   :sql        "UPDATE orders SET note = 'x' /* b\\' */ || ';' WHERE id = 1"
-   :stmt-type  "confined-write"
-   :expected   {:verdict :allowed    :single-stmt? true}}
-
-  {:name       "Redshift is not checked for the setting: SQLGlot reads its backslash as an escape already"
-   :dialect    "redshift"
-   :sql        "UPDATE orders SET note = 'it\\'s; DELETE FROM orders'"
-   :stmt-type  "confined-write"
    :expected   {:verdict :allowed    :single-stmt? true}}
 
   {:name       "a SET ROLE after a select is a second statement"
@@ -499,8 +265,8 @@
 
   {:name              "a 40 KB select is too long to gate, but can still be validated to run"
    :dialect           "snowflake"
-   :build             {:prefix    "WITH cte_0 AS (\n  -- running total for segment 0\n  SELECT a.id, a.name, a.cat, a.ts, b.x,\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_0\n  FROM base_table a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > 0\n),\n"
-                       :item      "cte_%4$d AS (\n  -- running total for segment %4$d\n  SELECT a.id, a.name, a.cat, a.ts, b.x,\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_%4$d\n  FROM cte_%1$d a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > %4$d\n)"
+   :build             {:prefix    "WITH cte_0 AS (\n  SELECT a.id, a.name, a.cat, a.ts, b.x, -- running total for segment 0\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_0\n  FROM base_table a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > 0\n),\n"
+                       :item      "cte_%4$d AS (\n  SELECT a.id, a.name, a.cat, a.ts, b.x, -- running total for segment %4$d\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_%4$d\n  FROM cte_%1$d a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > %4$d\n)"
                        :count     119
                        :separator ",\n"
                        :suffix    "\nSELECT * FROM cte_119"}
@@ -552,4 +318,193 @@
                 "-- note\nSELECT 'a;b' AS x FROM t"
                 "SELECT id FROM orders WHERE user_id IN (SELECT id FROM users WHERE active = TRUE)"]
    :stmt-type  "read"
-   :expected   {:verdict :unknown :reason "unparseable" :error "Unknown dialect 'mariadb'."}}]}
+   :expected   {:verdict :unknown :reason "unparseable" :error "Unknown dialect 'mariadb'."}}
+
+  ;; Postgres with `standard_conforming_strings` off reads a backslash in '...' as an escape, so `\'` does not end
+  ;; the literal there. For a caller that executes the rebuild, a rebuild that Postgres reads as more than one
+  ;; statement with the setting on is refused ("rebuild-differs"), and so is one it reads as more than one statement
+  ;; only with the setting off ("backslash-quote"). Each refused case below is one statement to SQLGlot. A caller
+  ;; that only reads the verdict gets neither check.
+
+  {:name              "an executed read with a backslash before a quote and a later semicolon is refused"
+   :dialect           "postgres"
+   :sql               "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name              "an executed read in which a quote after a backslash hides statements from Postgres with the setting off is refused"
+   :dialect           "postgres"
+   :sql               "SELECT 'a\\'' ; RESET ROLE; INSERT INTO public.orders VALUES (87670); SELECT current_user --'"
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name              "an executed write in which a quote after a backslash hides statements from Postgres with the setting off is refused"
+   :dialect           "postgres"
+   :sql               "INSERT INTO public.t VALUES ('a\\'' ); RESET ROLE; INSERT INTO public.orders VALUES (2) --')"
+   :stmt-type         "write"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name       "an executed read whose literal ends in a backslash, with no semicolon after it, is allowed"
+   :dialect    "postgres"
+   :sql        "SELECT 'C:\\' AS note"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed :single-stmt? true :sql "SELECT 'C:\\' AS note"}}
+
+  {:name       "an executed write whose literal ends in a backslash, with no semicolon after it, is allowed"
+   :dialect    "postgres"
+   :sql        "INSERT INTO t VALUES ('C:\\')"
+   :stmt-type  "write"
+   :expected   {:verdict :allowed :single-stmt? true :sql "INSERT INTO t VALUES ('C:\\')"}}
+
+  {:name              "an executed read whose dollar-quoted alias SQLGlot writes back bare, hiding a second statement, is refused"
+   :dialect           "postgres"
+   :sql               "SELECT 1 AS $q$a; RESET ROLE; SELECT current_user$q$"
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs"}}
+
+  ;; SQLGlot moves a `--` comment that opens a CTE's body into a `/* */` comment, which a second parse drops, so the
+  ;; rebuild does not rebuild to itself. No caller requires that it does.
+  {:name              "an executed read whose CTE body opens with a -- comment is allowed: its rebuild need not rebuild to itself"
+   :dialect           "postgres"
+   :sql               "WITH c AS (\n  -- note\n  SELECT id FROM t) SELECT * FROM c"
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :allowed :single-stmt? true :sql "WITH c AS (/* note */ SELECT id FROM t) SELECT * FROM c"}}
+
+  {:name              "an executed read whose rebuilt E'' string moves a quote, so `set_config` runs, is refused"
+   :dialect           "postgres"
+   :sql               "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$none$z$, false) --$q$ AS a"
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "session-function"}}
+
+  {:name              "an executed write whose dollar-quoted alias SQLGlot writes back bare, hiding a second statement, is refused"
+   :dialect           "postgres"
+   :sql               "INSERT INTO t SELECT 1 AS $q$a; RESET ROLE; SELECT 1$q$"
+   :stmt-type         "write"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs"}}
+
+  {:name              "an executed read-only statement with a backslash before a quote is refused"
+   :dialect           "postgres"
+   :sql               "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name              "a quote after a backslash hides a second statement from Postgres with standard_conforming_strings off"
+   :dialect           "postgres"
+   :sql               "SELECT 'a\\''; DELETE FROM orders; --' AS note"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name              "a dollar-quoted string ending in a backslash rebuilds to a literal that hides a second statement with the setting off"
+   :dialect           "postgres"
+   :sql               "SELECT $q$a\\$q$ || $q$; DELETE FROM orders; --$q$ AS note"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name              "a rebuilt E'' string hides a second statement whatever the setting"
+   :dialect           "postgres"
+   :sql               "SELECT E'a\\\\' || $q$; RESET ROLE; DELETE FROM orders; --$q$ AS note"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "multiple-statements"}}
+
+  {:name              "a dollar-quoted alias, which SQLGlot writes back bare, hides a second statement whatever the setting"
+   :dialect           "postgres"
+   :sql               "SELECT 1 AS $q$a;SELECT 2$q$"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "multiple-statements"}}
+
+  {:name       "a quote doubled inside a literal is one statement under either setting"
+   :dialect    "postgres"
+   :sql        "SELECT 'it''s' AS note"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true :sql "SELECT 'it''s' AS note"}}
+
+  {:name       "a dollar-quoted string without backslashes is one statement under either setting"
+   :dialect    "postgres"
+   :sql        "SELECT $q$it's; DELETE FROM orders$q$ AS note"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a backslash that is not before a quote is one statement under either setting"
+   :dialect    "postgres"
+   :sql        "SELECT 'C:\\temp' AS note"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a literal ending in a backslash is one statement with the setting on, and unterminated with it off"
+   :dialect    "postgres"
+   :sql        "SELECT 'C:\\' AS note"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "an E'' string whose quote is escaped is one statement under either setting"
+   :dialect    "postgres"
+   :sql        "SELECT E'it\\'s; DELETE FROM orders' AS note"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a backslash before a quote in a quoted name or a comment ends no literal"
+   :dialect    "postgres"
+   :sql        "SELECT 'x' AS \"a\\'\" /* b\\' */"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "Redshift is not checked for the setting: SQLGlot reads its backslash as an escape already"
+   :dialect    "redshift"
+   :sql        "SELECT 'it\\'s' AS note"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  ;; SQLGlot reads `\\` in an E'' string as one backslash and writes it back undoubled, so Postgres reads the rebuilt
+  ;; literal as ending one quote later than SQLGlot did. A caller that executes the rebuild of a "read-only" statement
+  ;; is refused a rebuild that fails the checks. A caller that only reads the verdict runs the original, which
+  ;; Postgres reads as SQLGlot did.
+  {:name              "control: a read-only E'' string with an escaped quote rebuilds to text that reads the same"
+   :dialect           "postgres"
+   :sql               "SELECT E'it\\'s' AS id"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true :sql "SELECT e'it''s' AS id"}}
+
+  {:name              "a read-only SELECT whose rebuilt E'' string moves a quote, so `setval` runs, is refused to a caller that executes the rebuild"
+   :dialect           "postgres"
+   :sql               "SELECT E'\\\\' || $q$' || (SELECT setval($z$orders_id_seq$z$, 4242))::text --$q$ AS id"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "writes-or-locks"}}
+
+  {:name              "a read-only SELECT whose rebuilt E'' string moves a quote, so `set_config` runs, is refused to a caller that executes the rebuild"
+   :dialect           "postgres"
+   :sql               "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$postgres$z$, false) --$q$ AS id"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "session-function"}}
+
+  {:name              "a read-only SELECT whose rebuilt E'' string never ends is refused to a caller that executes the rebuild"
+   :dialect           "postgres"
+   :sql               "SELECT E'a\\\\' AS id"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "unparseable"}}
+
+  {:name       "a read that impersonation executes may hold a number its rebuild writes another way"
+   :dialect    "postgres"
+   :sql        "SELECT 0x1F AS a"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed :single-stmt? true}}
+
+  {:name       "a MySQL read that impersonation executes may hold DIV, LOG10 and !"
+   :dialect    "mysql"
+   :sqls       ["SELECT a DIV 3 AS q FROM t" "SELECT LOG10(x) AS a FROM t" "SELECT !a AS b FROM t"]
+   :stmt-type  "read"
+   :expected   {:verdict :allowed :single-stmt? true}}]}

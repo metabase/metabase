@@ -23,7 +23,7 @@ type TableHeaderProps = {
 
 export function TableHeader({ table, ...rest }: TableHeaderProps) {
   const { path, isLoadingPath } = useCollectionPath({
-    collectionId: table.collection_id,
+    collectionId: table.collection?.id ?? null,
   });
   const [tableModal, setTableModal] = useState<TableModalState>();
 

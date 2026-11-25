@@ -7,6 +7,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
@@ -90,7 +91,7 @@
       :details           (stringify-keys (merge {} (:details params)))})))
 
 (mu/defn audit-row :- [:maybe :map]
-  "The Audit Log row that [[record-rows!]] inserts for `topic` and `params`, or nil when it would insert none."
+  "The Audit Log row that [[create-audit-logs!]] inserts for `topic` and `params`, or nil when it would insert none."
   [topic :- :keyword
    params :- ::event-params]
   (when (premium-features/log-enabled?)
@@ -102,18 +103,26 @@
        :model_id model-id
        :user_id  user-id})))
 
-(defn record-rows!
-  "Insert the Audit Log `rows`, which [[audit-row]] gives, in one statement and in their order."
-  [rows]
-  (when (seq rows)
-    (span/with-span! {:name "record-rows!" :attributes {:audit/rows (count rows)}}
-      (audit-app.db/insert-audit-logs! rows))))
-
 (t2/define-before-insert :model/AuditLog
   [activity]
   (let [defaults {:timestamp :%now
                   :details   {}}]
     (merge defaults activity)))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn create-audit-logs!
+  "Insert the Audit Log `rows`, which [[audit-row]] gives, in their order, one statement per
+  `mdb/create-partition-size` rows."
+  [rows]
+  (when (seq rows)
+    (span/with-span! {:name "create-audit-logs!" :attributes {:audit/rows (count rows)}}
+      (transduce (map (comp audit-app.db/insert-audit-logs! vec)) + 0 (partition-all mdb/create-partition-size rows)))))
+
+(mu/defn delete-audit-logs! :- :nil
+  "Delete the AuditLogs with `ids` in one transaction."
+  [ids :- [:sequential ms/PositiveInt]]
+  (mdb/delete-batched! :model/AuditLog ids {}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -3,8 +3,8 @@
   their bundles, and generate the files of their repository."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
+   [metabase-enterprise.data-apps.checks :as data-apps.checks]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.generate.actions :as generate.actions]
@@ -22,7 +22,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match])
   (:import
    (java.io ByteArrayInputStream)))
 
@@ -75,31 +76,9 @@
    [:created_at      :any]
    [:updated_at      :any]])
 
-(def ^:private CreateDataAppRequest
-  [:map {:closed true}
-   [:slug          ::data-apps.schema/slug]
-   [:name          {:optional true} ::data-apps.schema/name]
-   [:description   {:optional true} ::data-apps.schema/description]
-   [:version       {:optional true} ::data-apps.schema/version]
-   [:bundle_path   {:optional true} ::data-apps.schema/bundle-path]
-   [:allowed_hosts {:optional true} ::data-apps.schema/allowed-hosts]
-   [:enabled       {:optional true} :boolean]])
-
 (def ^:private UpdateDataAppRequest
   [:map {:closed true}
-   [:name          {:optional true} ::data-apps.schema/name]
-   [:description   {:optional true} ::data-apps.schema/description]
-   [:version       {:optional true} ::data-apps.schema/version]
-   [:bundle_path   {:optional true} ::data-apps.schema/bundle-path]
-   [:allowed_hosts {:optional true} ::data-apps.schema/allowed-hosts]
-   [:enabled       {:optional true} :boolean]])
-
-(def ^:private create-defaults
-  "What a new app starts with unless its request says otherwise: enabled, with an empty bundle at the path the app
-  template builds to."
-  {:enabled     true
-   :bundle_path "dist/index.js"
-   :bundle      (byte-array 0)})
+   [:enabled :boolean]])
 
 (def ^:private PublicDataAppResponse
   [:map {:closed true}
@@ -122,7 +101,7 @@
 (defn- kebab-case-keys
   "`x` with the keys of every map in it kebab-cased, as the SDK's camelCase keys are in Lib's test query spec."
   [x]
-  (walk/postwalk #(cond-> % (map? %) (update-keys (comp keyword u/->kebab-case-en name))) x))
+  (match/replace-all x #'map? (update-keys &match (comp keyword u/->kebab-case-en name))))
 
 (defn- definitions-schema
   "Request schema for definitions by export name."
@@ -198,57 +177,29 @@
        (remove #(and (not api/*is-superuser?*) (data-app.config/outdated? %)))
        (mapv data-app-response)))
 
-(api.macros/defendpoint :post "/" :- DataAppResponse
-  "Create a data app with its resource collection and an empty bundle. It is enabled unless the request says otherwise."
-  [_route-params
-   _query-params
-   body :- CreateDataAppRequest]
-  (api/create-check :model/DataApp body)
-  (api/check (not (data-apps.db/data-app-exists? (:slug body)))
-             [409 (tru "A data app with this slug already exists.")])
-  (let [app (data-apps.db/data-app
-             (data-apps.db/insert-data-app-returning-pk! (merge create-defaults {:name (:slug body)} body)))]
-    (data-app-response app)))
-
-(defn- update-app!
-  "Apply `changes` to the data app with `slug` and return the updated app."
-  [slug changes]
-  (let [{:keys [id] :as app} (api/check-404 (data-apps.db/data-app-by-slug slug))]
-    (api/update-check app changes)
-    (when (seq changes)
-      (data-apps.db/update-data-app! id changes))
-    (let [app (data-apps.db/data-app id)]
-      (data-app-response app))))
-
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows slashes inside a segment, so `/:slug`
 ;; would otherwise swallow `/x/bundle`. The regex also excludes the literal `repo-status` and `generate` routes.
 (api.macros/defendpoint :put ["/:slug" :slug slug-regex] :- DataAppResponse
-  "Update a data app's manifest fields, or enable or disable it. A disabled app is served to superusers only."
+  "Enable or disable a data app, which is served to superusers only while disabled and otherwise changes only through
+  a repository import."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
-   changes :- UpdateDataAppRequest]
-  (update-app! slug changes))
-
-(api.macros/defendpoint :put ["/:slug/bundle" :slug slug-regex] :- DataAppResponse
-  "Replace a data app's bundle."
-  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
-   _query-params
-   {:keys [bundle]} :- [:map {:closed true} [:bundle ::data-apps.schema/bundle-text]]]
-  (update-app! slug {:bundle (data-app/file->bundle bundle)}))
-
-(api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
-  "Delete a data app, its bundle, and its collection with the grants on it."
-  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
-  (let [app (api/write-check (data-apps.db/data-app-by-slug slug))]
-    (data-apps.db/delete-data-app! (:id app)))
-  nil)
+   {:keys [enabled]} :- UpdateDataAppRequest]
+  (let [{:keys [id] :as app} (api/check-404 (data-apps.db/data-app-by-slug slug))]
+    (api/update-check app {:enabled enabled})
+    (data-app/update-data-apps! [{:id id :enabled enabled}])
+    (data-app-response (data-apps.db/data-app id))))
 
 (api.macros/defendpoint :get "/generate/schema" :- GeneratedFiles
   "The `src/metabase.schema.ts` file of a data app: the Library's published tables, with their fields, segments and
-  measures, and its metrics. Superusers only."
-  []
+  measures, and its metrics, narrowed to the ones with `table-ids` and `metric-ids` when given. Superusers only."
+  [_route-params
+   {:keys [table-ids metric-ids]} :- [:map {:closed true}
+                                      [:table-ids  {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+                                      [:metric-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]]]
   (api/check-superuser)
-  (generate.schema/generate))
+  (generate.schema/generate {:table-ids  (some-> table-ids set)
+                             :metric-ids (some-> metric-ids set)}))
 
 (api.macros/defendpoint :post "/generate/queries" :- GeneratedFiles
   "The YAML files of the questions a data app defines, one per `defineQuery` export in `queries`, in its collection with
@@ -325,7 +276,7 @@
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single data app by its slug, disabled ones to superusers only."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
-  (let [app (api/read-check (data-apps.db/data-app-by-slug slug))]
+  (let [app (data-apps.checks/live-app-by-slug slug)]
     (data-app-response (cond-> app (not api/*is-superuser?*) check-not-outdated))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
@@ -339,7 +290,7 @@
    respond
    raise]
   (try
-    (let [row  (check-not-outdated (api/read-check (data-apps.db/data-app-by-slug slug)))
+    (let [row  (check-not-outdated (data-apps.checks/live-app-by-slug slug))
           hash (:bundle_hash row)
           etag (some->> hash (format "\"%s\""))]
       (cond

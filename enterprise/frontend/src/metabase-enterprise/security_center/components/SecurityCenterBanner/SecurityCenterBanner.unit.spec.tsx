@@ -1,6 +1,5 @@
 import fetchMock from "fetch-mock";
 
-import { setupNotificationChannelsEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -16,31 +15,20 @@ import { createAdvisory } from "metabase-types/api/mocks/security-center";
 import { SecurityCenterBanner } from "./SecurityCenterBanner";
 
 interface SetupOpts {
-  isProSelfHosted?: boolean;
-  emailConfigured?: boolean;
-  slackConfigured?: boolean;
   advisories?: Advisory[];
+  initialRoute?: string;
 }
 
-function setup({
-  isProSelfHosted = true,
-  emailConfigured = false,
-  slackConfigured = false,
-  advisories = [],
-}: SetupOpts = {}) {
-  const tokenFeatures = createMockTokenFeatures(
-    isProSelfHosted
-      ? { advanced_permissions: true, hosting: false }
-      : { hosting: false },
-  );
-
-  setupNotificationChannelsEndpoints({
-    email: { configured: emailConfigured },
-    slack: { configured: slackConfigured },
+function setup({ advisories = [], initialRoute = "/" }: SetupOpts = {}) {
+  const tokenFeatures = createMockTokenFeatures({
+    advanced_permissions: true,
+    hosting: false,
   });
 
-  fetchMock.get("path:/api/ee/security-center", {
+  fetchMock.get("path:/api/ee/security-center/advisories", {
     last_checked_at: null,
+    last_sync_attempted_at: null,
+    last_sync_error: null,
     advisories,
   });
 
@@ -52,7 +40,7 @@ function setup({
   });
 
   renderWithProviders(<Route path="*" element={<SecurityCenterBanner />} />, {
-    initialRoute: "/",
+    initialRoute,
     storeInitialState: state,
     withRouter: true,
   });
@@ -66,34 +54,13 @@ describe("SecurityCenterBanner", () => {
     expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 
-  it("does not render when email is configured", async () => {
-    setup({ emailConfigured: true });
-
-    await waitForRequestsToSettle();
-    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
-  });
-
-  it("does not render when slack is configured", async () => {
-    setup({ slackConfigured: true });
-
-    await waitForRequestsToSettle();
-    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
-  });
-
-  it("does not render for non-pro-self-hosted plans", async () => {
-    setup({ isProSelfHosted: false });
-
-    await waitForRequestsToSettle();
-    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
-  });
-
-  it("renders error banner with active advisories", async () => {
+  it("renders if there are active advisories", async () => {
     setup({
       advisories: [createAdvisory({ match_status: "active" })],
     });
 
     expect(
-      await screen.findByText(/Please configure notification channels/),
+      await screen.findByText(/A security update is available/),
     ).toBeInTheDocument();
   });
 
@@ -102,7 +69,7 @@ describe("SecurityCenterBanner", () => {
       advisories: [createAdvisory({ match_status: "active" })],
     });
 
-    await screen.findByText(/Please configure notification channels/);
+    await waitForRequestsToSettle();
     expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
   });
 
@@ -111,10 +78,31 @@ describe("SecurityCenterBanner", () => {
       advisories: [createAdvisory({ match_status: "active" })],
     });
 
-    const link = await screen.findByText("Security center");
-    expect(link).toHaveAttribute(
-      "href",
-      "/admin/security-center?open=notifications",
-    );
+    const link = await screen.findByText("Security Center");
+    expect(link).toHaveAttribute("href", "/admin/security-center/advisories");
+  });
+
+  it("does not render once acknowledged", async () => {
+    setup({
+      advisories: [
+        createAdvisory({
+          match_status: "active",
+          acknowledged_at: "2026-03-01T00:00:00Z",
+        }),
+      ],
+    });
+
+    await waitForRequestsToSettle();
+    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+  });
+
+  it("does not render if already in Security Center", async () => {
+    setup({
+      advisories: [createAdvisory({ match_status: "active" })],
+      initialRoute: "/admin/security-center/advisories",
+    });
+
+    await waitForRequestsToSettle();
+    expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
   });
 });

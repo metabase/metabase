@@ -27,16 +27,16 @@
                                           [:value      {:optional true} [:maybe [:or :string number? :boolean ::user-key-value.schema/value.object [:sequential [:or :string number? :boolean ::user-key-value.schema/value.object]]]]]
                                           [:expires_at {:optional true} [:maybe :metabase.lib.schema.literal/string.datetime]]]]
   (try
-    (user-key-value/put! api/*current-user-id* (mc/coerce ::types/user-key-value
-                                                          {:key k
-                                                           :namespace nmspace
-                                                           :value v
-                                                           :expires-at expires-at}
-                                                          (mtx/transformer
-                                                           (mtx/key-transformer {:decode keyword})
-                                                           (mtx/default-value-transformer)
-                                                           (mett/time-transformer)
-                                                           {:name :api-request})))
+    (user-key-value/put-user-key-value! api/*current-user-id* (mc/coerce ::types/user-key-value
+                                                                         {:key k
+                                                                          :namespace nmspace
+                                                                          :value v
+                                                                          :expires-at expires-at}
+                                                                         (mtx/transformer
+                                                                          (mtx/key-transformer {:decode keyword})
+                                                                          (mtx/default-value-transformer)
+                                                                          (mett/time-transformer)
+                                                                          {:name :api-request})))
     (catch Exception e
       (when (= (:type (ex-data e))
                ::mc/coercion)
@@ -78,4 +78,4 @@
   [{nmspace :namespace, k :key} :- [:map {:closed true}
                                     [:key       ms/NonBlankString]
                                     [:namespace ms/NonBlankString]]]
-  (user-key-value/delete! api/*current-user-id* nmspace k))
+  (user-key-value/delete-user-key-value! api/*current-user-id* nmspace k))

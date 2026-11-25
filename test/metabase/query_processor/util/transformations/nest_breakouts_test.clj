@@ -172,3 +172,19 @@
                   nest-breakouts/nest-breakouts-in-stages-with-window-aggregation
                   :stages
                   second))))))
+
+(deftest ^:parallel nest-single-row-aggregation-test
+  (let [query  (lib/append-stage (lib/query meta/metadata-provider (meta/table-metadata :orders)))
+        max-id (fn [query]
+                 (lib/aggregate query (lib/max (m/find-first #(= (:name %) "ID") (lib/visible-columns query)))))]
+    (testing "A multi-stage query whose last stage aggregates without breakouts gets a stage that selects its columns"
+      (is (=? {:stages [{}
+                        {:aggregation [[:max {} [:field {} "ID"]]]}
+                        {:lib/type :mbql.stage/mbql
+                         :fields   [[:field {} "max"]]}]}
+              (nest-breakouts/nest-single-row-aggregation (max-id query)))))
+    (testing "Other queries do not change"
+      (doseq [query [(lib/breakout (max-id query) (m/find-first #(= (:name %) "USER_ID") (lib/breakoutable-columns query)))
+                     (max-id (lib/query meta/metadata-provider (meta/table-metadata :orders)))
+                     query]]
+        (is (= query (nest-breakouts/nest-single-row-aggregation query)))))))

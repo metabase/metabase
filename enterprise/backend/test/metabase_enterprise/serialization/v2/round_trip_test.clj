@@ -130,13 +130,17 @@
 (def ^:private covered-by-dedicated-round-trip-test?
   "Models that have full export/import coverage in their own round-trip test and so don't need a
   fixture in this shared baseline. OsiAiContext is covered (in-memory + on-disk) by
-  metabase-enterprise.serialization.v2.osi-ai-context-test. TransformTest, CardTest and SegmentTest are covered by
-  their round-trip tests in metabase-enterprise.serialization.v2.e2e-test, ActionTest by
-  metabase-enterprise.data-testing.action-serialization-test, and DataApp by
-  metabase-enterprise.data-apps.serialization-test; these stay out of the baseline until
-  @metabase/representations publishes a schema for them — the baseline is validated against that
-  package, which refuses a model it does not know."
-  #{:model/ActionTest :model/CardTest :model/DataApp :model/OsiAiContext :model/SegmentTest :model/TransformTest})
+  metabase-enterprise.serialization.v2.osi-ai-context-test. The models below stay out of the baseline until
+  @metabase/representations publishes a schema for them, as the baseline is validated against that package, which
+  refuses a model it does not know:
+  - ActionTest: metabase-enterprise.data-testing.action-serialization-test;
+  - TransformTest: transform-test-round-trip-test and transform-test-expectations-round-trip-test, in
+    metabase-enterprise.serialization.v2.e2e-test;
+  - CardTest: the card-test round-trip tests, in metabase-enterprise.serialization.v2.e2e-test;
+  - SegmentTest: segment-test-round-trip-test, in metabase-enterprise.serialization.v2.e2e-test;
+  - DataApp: metabase-enterprise.data-apps.serialization-test;
+  - TestSuite: the push and pull tests of metabase-enterprise.data-testing.suite-remote-sync-test."
+  #{:model/ActionTest :model/CardTest :model/DataApp :model/OsiAiContext :model/SegmentTest :model/TestSuite :model/TransformTest})
 
 (defn add-to-baseline!
   "Use this within v2.extract-test where relevant to add their fixtures to the baseline."

@@ -3,6 +3,7 @@
   (:require
    [metabase.actions-rest.db :as actions-rest.db]
    [metabase.actions.core :as actions]
+   [metabase.actions.models :as actions.models]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
    [metabase.api-scope.data-app :as api-scope]
@@ -64,7 +65,7 @@
                             {:event     :action-deleted
                              :type      (:type action)
                              :action_id action-id})
-    (actions-rest.db/delete-action! action-id))
+    (actions.models/delete-actions! [action-id]))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/" :- ::actions.schema/action
@@ -78,7 +79,7 @@
   (actions/check-implicit-actions-supported action)
   (actions/check-implicit-action-table-pk action)
   (actions/check-action-databases-enabled action)
-  (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
+  (let [action-id (:id (first (actions.models/create-actions! [(assoc action :creator_id api/*current-user-id*)])))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created
                              :type           action-type
@@ -105,7 +106,7 @@
       (let [merged (merge (actions/select-action :id id) action)]
         (actions/check-implicit-action-table-pk merged)
         (actions/check-action-databases-enabled merged)))
-    (actions/update! (assoc action :id id) existing-action))
+    (actions.models/update-action! id action nil))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
     (analytics/track-event! :snowplow/action
                             {:event          :action-updated
@@ -134,7 +135,7 @@
     {:uuid (or (:public_uuid action)
                (let [uuid (str (random-uuid))]
                  (api/update-check action {:public_uuid uuid, :made_public_by_id api/*current-user-id*})
-                 (actions-rest.db/set-action-public-uuid! id uuid api/*current-user-id*)
+                 (actions.models/update-actions! [{:id id :public_uuid uuid :made_public_by_id api/*current-user-id*}] nil)
                  uuid))}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -149,7 +150,7 @@
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
-  (actions-rest.db/set-action-public-uuid! id nil nil)
+  (actions.models/update-actions! [{:id id :public_uuid nil :made_public_by_id nil}] nil)
   {:status 204, :body nil})
 
 (api.macros/defendpoint :post "/:action-id/execute/values" :- [:map-of :string :any]

@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
+   [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.email :as email.impl]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.urls :as urls]
@@ -12,7 +13,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.test :as mt]))
+   [metabase.task-history.core :as task-history]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest bcc-enabled-test
   (testing "When bcc is not enabled, return an email that uses to:"
@@ -67,7 +70,7 @@
                                   :include_csv true
                                   :include_xls true}
             result (mt/with-dynamic-fn-redefs [render.util/is-visualizer-dashcard? (constantly true)]
-                     (#'email.impl/assoc-attachment-booleans [matching-part-config] [visualizer-part]))]
+                     (email.result-attachment/assoc-attachment-booleans [matching-part-config] [visualizer-part]))]
         (is (true? (-> result first :card :include_csv))
             "Should include CSV attachment setting from matching part config")
         (is (true? (-> result first :card :include_xls))
@@ -80,7 +83,7 @@
                                   :dashboard_card_id 999 ;; Different from the dashcard.id
                                   :include_csv true
                                   :format_rows true}
-            result (#'email.impl/assoc-attachment-booleans [matching-part-config] [regular-part])]
+            result (email.result-attachment/assoc-attachment-booleans [matching-part-config] [regular-part])]
         (is (true? (-> result first :card :include_csv))
             "Should include CSV attachment setting using the fallback match")
         (is (true? (-> result first :card :format_rows))
@@ -245,3 +248,85 @@
            (testing "branding link is hidden with whitelabel"
              (mt/with-premium-features #{:whitelabel}
                (is (not (str/includes? (render!) "Made with")))))))))))
+
+(defn- statements-of-alert-send!
+  "The number of app DB statements of sending an alert created by `creator-id` to `n-handlers` email handlers."
+  [creator-id n-handlers]
+  (notification.tu/with-notification-testing-setup!
+    (notification.tu/with-card-notification
+      [notification {:card         {:name          "Orders question"
+                                    :dataset_query (let [mp (mt/metadata-provider)]
+                                                     (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                         (lib/limit 1)))}
+                     :notification {:creator_id creator-id}
+                     :subscriptions [{:type          :notification-subscription/cron
+                                      :cron_schedule "0 0 0 * * ? *"}]
+                     :handlers      (vec (repeat n-handlers
+                                                 {:channel_type :channel/email
+                                                  :recipients   [{:type    :notification-recipient/user
+                                                                  :user_id (mt/user->id :crowberto)}]}))}]
+      (t2/with-call-count [call-count]
+        (notification.tu/with-captured-channel-send!
+          (#'notification.send/send-notification-sync! notification))
+        (call-count)))))
+
+(defn- statements-of-task-histories!
+  "The number of app DB statements of recording `n` task histories, the accepted cost of `n` email handlers."
+  [n]
+  (t2/with-call-count [call-count]
+    (dotimes [_ n]
+      (task-history/with-task-history {:task "channel-send"} nil))
+    (call-count)))
+
+(deftest alert-send-statements-per-email-handler-test
+  (testing "an extra email handler of an alert costs no more than its task history"
+    (statements-of-alert-send! (mt/user->id :crowberto) 2)
+    (let [two (statements-of-alert-send! (mt/user->id :crowberto) 2)
+          six (statements-of-alert-send! (mt/user->id :crowberto) 6)]
+      (is (<= (- six two) (- (statements-of-task-histories! 6) (statements-of-task-histories! 2)))))))
+
+(deftest alert-send-statements-per-email-handler-download-levels-test
+  (mt/when-ee-evailable
+   (testing "an extra email handler of an alert sent for a non-admin creator costs no more than its task history"
+     (mt/with-premium-features #{:advanced-permissions}
+       (let [creator-id (mt/user->id :rasta)]
+         (statements-of-alert-send! creator-id 2)
+         (let [two (statements-of-alert-send! creator-id 2)
+               six (statements-of-alert-send! creator-id 6)]
+           (is (<= (- six two) (- (statements-of-task-histories! 6) (statements-of-task-histories! 2))))))))))
+
+(defn- statements-of-dashboard-email!
+  "The number of app DB statements of rendering a dashboard email with `n` csv attachments of one Database."
+  [n]
+  (let [mp        (mt/metadata-provider)
+        query     (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        result    (assoc (mt/process-query query) :database_id (mt/id))
+        dashcards (mapv #(test-dashcard (+ 1000 %) 1 (+ 2000 %)) (range n))
+        parts     (mapv (fn [dashcard]
+                          {:type      :card
+                           :card      {:id (:card_id dashcard) :name "Venues" :dataset_query query}
+                           :dashcard  dashcard
+                           :result    result})
+                        dashcards)
+        notification {:payload_type :notification/dashboard
+                      :payload      {:dashboard              {:id 1 :name "Test Dashboard"}
+                                     :parameters             []
+                                     :dashboard_parts        parts
+                                     :dashboard_subscription {:id 9
+                                                              :dashboard_subscription_dashcards
+                                                              (mapv #(assoc (select-keys % [:id :card_id]) :dashboard_card_id (:id %) :include_csv true)
+                                                                    dashcards)}}
+                      :creator_id   (mt/user->id :crowberto)}
+        recipients   [{:type :notification-recipient/user :user {:email "test@example.com"}}]]
+    (mt/with-dynamic-fn-redefs [email.impl/render-part (fn [_timezone _part _options] {:content [:div "BODY"]})]
+      (t2/with-call-count [call-count]
+        (let [messages (channel/render-notification :channel/email notification {:recipients recipients})]
+          [(call-count) (count (filter #(= :attachment (:type %)) (-> messages first :message)))])))))
+
+(deftest dashboard-email-statements-per-csv-attachment-test
+  (testing "csv attachments of one Database read the Database once"
+    (statements-of-dashboard-email! 2)
+    (let [[two two-attachments] (statements-of-dashboard-email! 2)
+          [six six-attachments] (statements-of-dashboard-email! 6)]
+      (is (< two-attachments six-attachments))
+      (is (= two six)))))

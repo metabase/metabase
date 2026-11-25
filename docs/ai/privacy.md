@@ -15,6 +15,7 @@ When using the Metabase AI service, the data we send includes:
 
 - Your prompts and the earlier messages in the conversation.
 - Metadata (like table and field names), so Metabot knows what to query.
+- The names and descriptions of up to five items the person recently viewed, like tables, questions, and dashboards. On self-hosted Metabases, admins can turn this off with the [`MB_METABOT_RECENT_VIEWS_ENABLED`](../configuring-metabase/environment-variables.md#mb_metabot_recent_views_enabled) environment variable.
 - A sampling of field values from your database. For example, if you ask Metabot to "Filter everyone from Wisconsin," it might check the values in the state field to see how the data is stored (like "WI" vs "Wisconsin"). See [syncs](../databases/sync-scan.md).
 - For chart analysis, metrics derived from the chart's data (like slopes and series correlations), and some categorical values. For example, if a question breaks out orders over time by a product category, the AI could see the category values ("Gadgets", "Widgets", etc).
 - Query results, if query execution is turned on for Metabot.
@@ -55,9 +56,16 @@ If you're using your own API key, everything listed above is sent to your select
 
 When using the [MCP server](./mcp.md), query _results_ are sent to the connected MCP client.
 
-## Data sent when submitting feedback
+## Who can see your feedback
 
-If you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses) on a Metabot response, the context for that conversation, including metadata, your prompts, and any query results that Metabot read, might be sent to Metabase the company, and may contain sensitive data.
+If you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses) on a Metabot response, Metabase stores your rating, the issue type, and any comments in your Metabase's application database.
+
+Who else can see your feedback depends on where your Metabase runs:
+
+- **Self-hosted**: your feedback stays in your Metabase.
+- **Metabase Cloud**: Metabase (the company) hosts your application database, so it can see your feedback.
+
+On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can see feedback next to the conversation it's about in [AI usage auditing](./usage-auditing.md#conversation-detail).
 
 ## Further reading
 

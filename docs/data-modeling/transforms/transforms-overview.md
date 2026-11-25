@@ -28,7 +28,8 @@ You'll write a query or a Python script in Metabase, a transform will run this q
 Currently, Metabase can create transforms on the following databases:
 
 - BigQuery
-- ClickHouse (only ClickHouse Cloud)
+- ClickHouse (ClickHouse Cloud and self-hosted single-node deployments)
+- MongoDB (only Python transforms)
 - MySQL/MariaDB
 - PostgreSQL
 - Redshift

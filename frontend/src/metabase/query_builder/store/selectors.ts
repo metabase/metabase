@@ -408,7 +408,7 @@ export const getRowIndexToPKMap = createSelector(
   },
 );
 
-function areLegacyQueriesEqual(
+function areQueriesEqual(
   queryA: DatasetQuery | undefined,
   queryB: DatasetQuery | undefined,
   tableFieldIds: FieldId[],
@@ -416,7 +416,7 @@ function areLegacyQueriesEqual(
   if (queryA == null || queryB == null) {
     return false;
   }
-  return Lib.areLegacyQueriesEqual(
+  return Lib.areQueriesEqual(
     queryA,
     queryB,
     tableFieldIds.filter((id): id is number => typeof id === "number"),
@@ -445,12 +445,12 @@ function areComposedEntitiesEquivalent({
 
   const composedOriginal = originalQuestion.composeQuestionAdhoc();
 
-  const isLastRunComposed = areLegacyQueriesEqual(
+  const isLastRunComposed = areQueriesEqual(
     lastRunQuestion.datasetQuery(),
     composedOriginal.datasetQuery(),
     tableFieldIds,
   );
-  const isCurrentComposed = areLegacyQueriesEqual(
+  const isCurrentComposed = areQueriesEqual(
     currentQuestion.datasetQuery(),
     composedOriginal.datasetQuery(),
     tableFieldIds,
@@ -458,7 +458,7 @@ function areComposedEntitiesEquivalent({
 
   const isLastRunEquivalentToCurrent =
     isLastRunComposed &&
-    areLegacyQueriesEqual(
+    areQueriesEqual(
       currentQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableFieldIds,
@@ -466,7 +466,7 @@ function areComposedEntitiesEquivalent({
 
   const isCurrentEquivalentToLastRun =
     isCurrentComposed &&
-    areLegacyQueriesEqual(
+    areQueriesEqual(
       lastRunQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableFieldIds,
@@ -487,7 +487,7 @@ export function areQueriesEquivalent({
   tableFieldIds: FieldId[];
 }) {
   return (
-    areLegacyQueriesEqual(
+    areQueriesEqual(
       lastRunQuestion?.datasetQuery(),
       currentQuestion?.datasetQuery(),
       tableFieldIds,
@@ -642,10 +642,10 @@ export const isResultsMetadataDirty = createSelector(
 );
 
 /**
- * The parts of a question that saving it keeps, for comparing a question
- * Metabot opened with what the user has made of it since.
+ * The query, display, visualization settings and parameters of a question.
+ * Comparing them tells whether the user has changed a question Metabot opened.
  */
-export const getMetabotCardBaseline = (
+export const toMetabotCardBaseline = (
   question: Question,
 ): MetabotCardBaseline => {
   const card = question.card();
@@ -658,15 +658,15 @@ export const getMetabotCardBaseline = (
   };
 };
 
-/** The baseline the current question still matches, if Metabot opened it. */
-export const getUntouchedMetabotCardBaseline = createSelector(
+/** Whether Metabot opened the current question and it still matches one of its baselines. */
+export const getIsUntouchedMetabotCard = createSelector(
   [getQuestion, getMetabotCardBaselines],
   (question, baselines) => {
     if (!question || baselines.length === 0) {
-      return undefined;
+      return false;
     }
-    const current = getMetabotCardBaseline(question);
-    return baselines.find((baseline) => _.isEqual(baseline, current));
+    const current = toMetabotCardBaseline(question);
+    return baselines.some((baseline) => _.isEqual(baseline, current));
   },
 );
 
@@ -678,7 +678,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     getQuestion,
     getOriginalQuestion,
     getUiControls,
-    getUntouchedMetabotCardBaseline,
+    getIsUntouchedMetabotCard,
   ],
   (
     queryBuilderMode,
@@ -687,7 +687,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     question,
     originalQuestion,
     uiControls,
-    untouchedMetabotCardBaseline,
+    isUntouchedMetabotCard,
   ) => {
     const isEditingModelOrMetric = queryBuilderMode === "dataset";
 
@@ -703,7 +703,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       const rawQuery = Lib.rawNativeQuery(question.query());
 
       if (isNewQuestion) {
-        return rawQuery.length > 0 && untouchedMetabotCardBaseline == null;
+        return rawQuery.length > 0 && !isUntouchedMetabotCard;
       }
 
       const rawOriginalQuery = Lib.rawNativeQuery(originalQuestion.query());

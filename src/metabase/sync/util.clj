@@ -11,7 +11,6 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.interface :as qp.i]
@@ -26,8 +25,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.memory :as u.mem]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [metabase.warehouse-schema.user-settings :as warehouse-schema.user-settings]
    [metabase.warehouses.models.database :as database]
    [toucan2.realize :as t2.realize])
   (:import
@@ -274,6 +271,15 @@
            e)
          (throw e))))))
 
+(defn rethrow-fatal
+  "Throw `result` when it is a Throwable with an Error or an interrupt in its chain, which no sync step retries past,
+  and return it otherwise."
+  [result]
+  (if (and (instance? Throwable result)
+           (some #(or (instance? Error %) (instance? InterruptedException %)) (u/full-exception-chain result)))
+    (throw result)
+    result))
+
 (defmacro with-error-handling
   "Execute `body` in a way that catches and logs any Exceptions thrown, and returns the exception itself if they do so.
   Pass a `message` to help provide information about what failed for the log message.
@@ -450,41 +456,25 @@
 ;; is complete (excluding analysis). This powers a UX that displays the progress of the initial sync to the admin who
 ;; added the database, and enables individual tables when they become usable for queries.
 
-(defn set-initial-table-sync-complete!
-  "Marks initial sync as complete for this table so that it becomes usable in the UI, if not already set"
-  [table]
-  (when (not= (:initial_sync_status table) "complete")
-    (sync.db/update-table! (u/the-id table) {:initial_sync_status "complete"})))
-
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *batch-size*
   "Size of table update partition."
   20000)
 
-(defn set-initial-table-sync-complete-for-db!
-  "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already
-  set."
-  [database]
-  (let [ids (sync.db/sync-table-ids (u/the-id database))]
-    (reduce (fn [acc ids']
-              (+ acc (sync.db/update-tables! ids' {:initial_sync_status "complete"})))
-            0
-            (partition-all *batch-size* ids))))
-
 (defn set-initial-database-sync-complete!
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
   [database]
   (when (not= (sync.db/database-initial-sync-status (u/the-id database)) "complete")
-    (sync.db/update-database! (u/the-id database) {:initial_sync_status "complete"
-                                                   :initial_sync_error  nil})))
+    (database/update-databases! [{:id (u/the-id database) :initial_sync_status "complete"
+                                  :initial_sync_error  nil}])))
 
 (defn set-initial-database-sync-aborted!
   "Marks initial sync as aborted for this database, recording the message of `error` (the Throwable that aborted it)
   so that the cause can be displayed on the UI"
   [database error]
   (when (not= (sync.db/database-initial-sync-status (u/the-id database)) "complete")
-    (sync.db/update-database! (u/the-id database) {:initial_sync_status "aborted"
-                                                   :initial_sync_error  (ex-message error)})))
+    (database/update-databases! [{:id (u/the-id database) :initial_sync_status "aborted"
+                                  :initial_sync_error  (ex-message error)}])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          OTHER SYNC UTILITY FUNCTIONS                                          |
@@ -807,23 +797,3 @@
   (and (or (isa? base-type :type/Text)
            (isa? base-type :type/TextLike))
        (can-be-list? base-type semantic-type)))
-
-(mu/defn update-field-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
-  "Apply to the Field with `field-id` the `changes` to columns no user set, returning the number updated."
-  [field-id :- ::lib.schema.id/field
-   changes  :- ::warehouse-schema.schema/field.update]
-  (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-field-columns
-                                       (sync.db/field-user-settings field-id)))]
-    (if (seq changes)
-      (sync.db/update-field! field-id changes)
-      0)))
-
-(mu/defn update-table-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
-  "Apply to the Table with `table-id` the `changes` to columns no user set, returning the number updated."
-  [table-id :- ::lib.schema.id/table
-   changes  :- ::warehouse-schema.schema/table.update]
-  (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-table-columns
-                                       (sync.db/table-user-settings table-id)))]
-    (if (seq changes)
-      (sync.db/update-table! table-id changes)
-      0)))

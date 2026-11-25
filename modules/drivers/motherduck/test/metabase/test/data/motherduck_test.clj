@@ -30,6 +30,39 @@
       (is (= "sha_x" (qualified-db-name {:database-name "sha_x"})))
       (is (= "temp_x" (qualified-db-name {:database-name "temp_x", :options {:static true}}))))))
 
+(deftest remember-shared-dataset-tables!-test
+  (let [shared (#'tx.motherduck/qualified-db-name static-dbdef)
+        tables #'tx.motherduck/shared-dataset-tables]
+    (try
+      (#'tx.motherduck/remember-shared-dataset-tables! static-dbdef)
+      (#'tx.motherduck/remember-shared-dataset-tables! (assoc static-dbdef :database-name "private-flocks"
+                                                              :options {}))
+      (testing "a static dataset's table names are recorded under its shared database name"
+        (is (= #{"bird"} (get @@tables shared))))
+      (testing "a private dataset's table names are not recorded"
+        (is (not-any? #(str/ends-with? % "private_flocks") (keys @@tables))))
+      (finally
+        (swap! @tables dissoc shared)))))
+
+(deftest first-sync-tables-test
+  (let [shared  "sha_2026_01_01_abc_first_sync_probe"
+        tables  #{{:name "bird", :schema "main"} {:name "g_transform_target", :schema "main"}}
+        listed  (fn [details status]
+                  (mt/with-temp [:model/Database db {:engine              :motherduck
+                                                     :details             details
+                                                     :initial_sync_status status}]
+                    (into #{} (map :name) (#'tx.motherduck/first-sync-tables db tables))))]
+    (try
+      (swap! @#'tx.motherduck/shared-dataset-tables assoc shared #{"bird"})
+      (testing "the first sync of a shared dataset lists only the tables in its definition"
+        (is (= #{"bird"} (listed {:dbname shared} "incomplete"))))
+      (testing "a later sync of a shared dataset lists every table"
+        (is (= #{"bird" "g_transform_target"} (listed {:dbname shared} "complete"))))
+      (testing "the first sync of a database that is not a shared dataset lists every table"
+        (is (= #{"bird" "g_transform_target"} (listed {:dbname "temp_x"} "incomplete"))))
+      (finally
+        (swap! @#'tx.motherduck/shared-dataset-tables dissoc shared)))))
+
 (deftest old-shared-database?-test
   (let [old?  #'tx.motherduck/old-shared-database?
         today (t/local-date (t/instant) (t/zone-id "UTC"))

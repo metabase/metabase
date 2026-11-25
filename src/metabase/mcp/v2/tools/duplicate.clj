@@ -16,6 +16,7 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -67,7 +68,7 @@
    Copy semantics, not create semantics: the query comes from a row the caller already passed a
    read check on, so they are not authoring it. `check-allowed-to-create-card!` would additionally
    demand run-permission on that query, which refuses a user who can read and run a native card but
-   lacks native authoring perms — the case `documents.models.document/clone-card!` calls out
+   lacks native authoring perms, the case `documents.models.document/clone-cards!` calls out
    (UXW-5037), and one `POST /api/card/:id/copy` allows. Destination create-permission is still
    enforced."
   [card collection-id new-name]
@@ -78,7 +79,7 @@
     ;; `POST /api/card/:id/copy`, while any change to it is still checked.
     (queries/with-copy-source-card card
       (api/create-check :model/Card new-card))
-    (queries/create-card! new-card @api/*current-user*)))
+    (first (queries.card/create-cards! [(queries.card/new-card-row new-card api/*current-user-id*)]))))
 
 (defn- fetch-dashboard
   [id-or-eid]
