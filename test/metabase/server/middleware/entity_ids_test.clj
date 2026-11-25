@@ -433,3 +433,20 @@
                                     {:join  [:permissions_group_membership [:= :permissions_group_membership.group_id :permissions_group.id]]
                                      :where [:= :permissions_group_membership.user_id (mt/user->id :crowberto)]}))
              (set (:group_ids response)))))))
+
+(deftest restored-measure-dimensions-test
+  (testing "a Measure's dimensions and their mappings are the same on an instance and on its restore"
+    (mt/with-model-cleanup [:model/Measure]
+      (let [mp      (mt/metadata-provider)
+            measure (mt/user-http-request :crowberto :post 200 "measure"
+                                          {:name       "eid restored dimensions measure"
+                                           :definition (lib/aggregate (venues-query)
+                                                                      (lib/sum (lib.metadata/field mp (mt/id :venues :price))))})
+            fetch   (fn []
+                      (select-keys (get-with-entity-ids :crowberto (str "measure/" (id-of :model/Measure (:entity_id measure))))
+                                   [:dimensions :dimension_mappings]))
+            before  (fetch)]
+        (is (seq (:dimensions before)))
+        (restore! [[:model/Measure [(t2/select-one :model/Measure :id (:id measure))]]])
+        (is (not= (:id measure) (id-of :model/Measure (:entity_id measure))))
+        (is (= before (fetch)))))))
