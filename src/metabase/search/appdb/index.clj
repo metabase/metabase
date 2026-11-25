@@ -161,11 +161,11 @@
   [index-state cause]
   (when config/is-prod?
     (log/warn "Triggering a late initialization of the appdb search index.")
-    (try
-      (future
-        (search.engine/init! :search.engine/appdb {:force-reset? false}))
-      (catch Exception e
-        (log/error (ex-message e)))))
+    (future
+      (try
+        (search.engine/init! :search.engine/appdb {:force-reset? false})
+        (catch Exception e
+          (log/error e "The late initialization of the appdb search index failed")))))
   (throw (ex-info "Search Index not found."
                   {:search/index-not-found? true
                    :search-engine           :search.engine/appdb
@@ -198,16 +198,25 @@
     (try
       (f table)
       (catch Exception e
-        (if (and (sql-errors/table-not-found? e) (not (exists? table)))
-          (let [active (synced-active-table! e)]
-            (log/warnf "The appdb search index %s is gone; querying the new index %s." table active)
-            (f active))
-          (do
-            ;; Rule out the error coming from stale index metadata.
-            (try
-              (sync-tracking-atoms!)
-              (catch Exception sync-e
-                (.addSuppressed e sync-e)))
+        ;; Rule out the error coming from stale index metadata. The sync keeps only tables that exist.
+        (let [index-state @indexes-component
+              active      (try
+                            (:active (sync-tracking-atoms!))
+                            (catch Exception sync-e
+                              (.addSuppressed e sync-e)
+                              (throw e)))]
+          (cond
+            (not (sql-errors/table-not-found? e))
+            (throw e)
+
+            (nil? active)
+            (index-not-found! index-state e)
+
+            (not= active table)
+            (do (log/warnf "The appdb search index %s is gone; querying the new index %s." table active)
+                (f active))
+
+            :else
             (throw e)))))))
 
 (defn- drop-table! [table]

@@ -22,16 +22,21 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
+(defn- search-catching!
+  "Search the appdb index with the tracking state `tracked`. Returns the results, or the exception that the search
+  throws."
+  [tracked]
+  (mc/reset! (search.index/indexes-handle) tracked)
+  (try
+    (vec (search.tu/search-results "orders" {:search-engine "appdb"}))
+    (catch Exception e
+      e)))
+
 (defn- search-with-tracking!
-  "Search the appdb index with the tracking state `tracked`, where a sync of the tracking state finds `synced`.
-  Returns the results, or the exception that the search throws."
+  "[[search-catching!]], where a sync of the tracking state finds `synced`."
   [tracked synced]
   (mt/with-dynamic-fn-redefs [search.index/sync-tracking-atoms! (fn [] (mc/reset! (search.index/indexes-handle) synced))]
-    (mc/reset! (search.index/indexes-handle) tracked)
-    (try
-      (vec (search.tu/search-results "orders" {:search-engine "appdb"}))
-      (catch Exception e
-        e))))
+    (search-catching! tracked)))
 
 (deftest results-sync-the-tracking-state-test
   (search.tu/with-temp-index-table
@@ -57,11 +62,7 @@
       (testing "when the sync after a failed query fails too, the query error is thrown, with the sync error suppressed"
         (mt/with-dynamic-fn-redefs [search.db/scored-search-rows       (fn [& _] (throw (ex-info "Boom" {})))
                                     search.index/sync-tracking-atoms! (fn [] (throw (ex-info "Sync failed" {})))]
-          (mc/reset! (search.index/indexes-handle) {:active table})
-          (let [^Throwable e (try
-                               (vec (search.tu/search-results "orders" {:search-engine "appdb"}))
-                               (catch Exception e
-                                 e))]
+          (let [^Throwable e (search-catching! {:active table})]
             (is (= "Boom" (ex-message e)))
             (is (= ["Sync failed"] (map ex-message (.getSuppressed e))))))))))
 

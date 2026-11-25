@@ -108,7 +108,7 @@
   "Whether `e`, or an exception in its cause chain, says that no search index can serve the query. See
   [[metabase.search.engine/results]]."
   [e]
-  (boolean (some (comp :search/index-not-found? ex-data) (u/full-exception-chain e))))
+  (boolean (:search/index-not-found? (u/all-ex-data e))))
 
 (defn check-for-removed-env-vars!
   "Fail startup when the removed MB_SEMANTIC_SEARCH_ENABLED kill switch is false, and would have been
