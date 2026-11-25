@@ -145,7 +145,10 @@
   [_ ctx]
   (and (:has-joins? ctx)
        (pos-int? (:from-table-id ctx))
-       (every? #(pos-int? (:source-table %)) (get-join-structure ctx))))
+       (every? #(pos-int? (:source-table %)) (get-join-structure ctx))
+       ;; A native query's joins are described even when they cannot be counted, and then have no step queries.
+       (or (some? (:mbql-context ctx))
+           (some? (:from-count-sql (:native-context ctx))))))
 
 (defmethod lens.core/lens-metadata :join-analysis
   [_ _ctx]

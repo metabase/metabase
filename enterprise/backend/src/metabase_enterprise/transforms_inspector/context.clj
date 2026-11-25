@@ -245,12 +245,12 @@
    [:conditions :any]])
 
 (mr/def ::native-join-structure-entry
-  "A single join in a native query structure, with the SQL of its step query."
+  "A single join in a native query structure, with the SQL of its step query when the joins can be counted."
   [:map
    [:strategy :keyword]
    [:alias [:maybe :string]]
    [:source-table {:optional true} [:maybe pos-int?]]
-   [:step-sql :string]])
+   [:step-sql [:maybe :string]]])
 
 (mr/def ::mbql-context
   "MBQL-specific context."

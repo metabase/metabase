@@ -293,21 +293,25 @@
   [:map {:closed true}
    [:source [:enum :table :cte :derived]]
    [:table  [:maybe :string]]
-   [:alias  [:maybe :string]]
-   [:sql    :string]])
+   [:alias  [:maybe :string]]])
+
+(mr/def ::join-step
+  [:merge
+   [:ref ::join-step-source]
+   [:map [:strategy [:enum :inner-join :left-join :right-join :full-join :cross-join]]]])
 
 (mr/def ::join-steps
   [:or
    [:map {:closed true}
-    [:unsupported :keyword]]
+    [:unsupported :keyword]
+    [:from  {:optional true} [:ref ::join-step-source]]
+    [:steps {:optional true} [:sequential [:ref ::join-step]]]]
    [:map {:closed true}
-    [:from  [:ref ::join-step-source]]
-    [:steps [:sequential [:merge
-                          [:ref ::join-step-source]
-                          [:map [:strategy [:enum :inner-join :left-join :right-join :full-join :cross-join]]]]]]]])
+    [:from  [:merge [:ref ::join-step-source] [:map [:sql :string]]]]
+    [:steps [:sequential [:merge [:ref ::join-step] [:map [:sql :string]]]]]]])
 
 (mu/defn join-steps :- ::join-steps
-  "The row-count queries of each join in `native-query`, a single SELECT, taken one join at a time, ready to run.
+  "The row-count queries of each join in `native-query`, a single SELECT, taken one join at a time.
 
   The `:from` map describes the FROM source, and its `:sql` counts that source's rows.
   Each of `:steps` describes one join, in query order.
@@ -319,15 +323,21 @@
   Its `:table` is the name of the table a `:table` source reads, normalized for `driver`, and nil for any other.
   Its `:alias` is the alias, or the table's name, normalized for `driver`.
 
-  A query whose joins cannot be rebuilt this way returns `{:unsupported reason}`.
+  A query whose joins cannot be counted this way returns `{:unsupported reason}`.
+  When its sources could be read, it also has its `:from` and `:steps`, without `:sql`.
+  A query that reads a CTE or a derived table is refused as `:non-table-source`: a step leaves out the WITH clause, and
+  a derived table has no table id to report counts against.
   A comma or CROSS join is a `:cross-join` step, and is refused as `:comma-join` when the query has a WHERE clause.
   A query whose generated SQL would write or lock is refused as `:not-read-only`.
   The other reasons are `:set-operation`, `:not-a-select`, `:no-from`, `:nested-join`, `:unsupported-join`,
   `:unsupported-source`, `:parameters`, `:large-literal-list` and `:unparseable`.
 
+  The `:sql` of an inner or cross join returns one count; that of a LEFT, RIGHT or FULL join returns the rows of the
+  chain first and the matched rows second.
+
   With the Macaw backend, the steps are the ones the Transform Inspector built from Macaw's AST before sqlglot:
-  every source is a `:table`, a query with a subquery source is refused as `:unsupported-source`, and a WITH clause is
-  left out."
+  every source is a `:table`, a query with a subquery source is refused as `:unsupported-source` without its sources,
+  and a WITH clause is left out."
   [driver       :- :keyword
    native-query :- :metabase.lib.schema/native-only-query]
   (let [parser (sql-tools.settings/current-parser-backend)]

@@ -77,13 +77,15 @@
 (defn- native-join-structure
   "The join structure of `native-query`, each join with its step query as `:step-sql`, from [[sql-tools/join-steps]].
   Tables resolve by name among `sources`.
-  Returns nil when the query's joins cannot be rebuilt.
+  Returns nil when the query's sources cannot be read.
+  When its joins cannot be counted, `:from-count-sql` and every `:step-sql` are nil.
   A join against a CTE or a derived table has a nil `:source-table`."
   [driver native-query sources]
   (let [{:keys [unsupported from steps]} (sql-tools/join-steps driver native-query)
         table->id                        (sources->table-id-lookup driver sources)]
-    (if unsupported
-      (log/debugf "No join analysis for native query: %s" (name unsupported))
+    (when unsupported
+      (log/debugf "No join analysis for native query: %s" (name unsupported)))
+    (when from
       {:from-table-id  (some-> (:table from) table->id)
        :from-count-sql (:sql from)
        :join-structure (mapv (fn [{:keys [strategy alias table sql]}]
@@ -101,7 +103,7 @@
 
 (defn analyze-native-query
   "Analyze a native SQL query for join structure and visited fields.
-   The join structure carries ready-to-run step queries from [[sql-tools/join-steps]].
+   The join structure carries the step queries from [[sql-tools/join-steps]], when its joins can be counted.
    The visited fields come from [[sql-tools/referenced-fields]].
    Either may be missing when its analysis fails, and the other is still returned.
    `sources` are the transform's source tables, which the joins' tables resolve against."

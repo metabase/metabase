@@ -89,29 +89,29 @@
 
 (defmethod sql-tools/join-steps-impl :sqlglot
   [backend driver query]
-  (let [parser  (sql-parsing/parser backend)
-        dialect (driver->dialect driver)
-        sql     (lib/raw-native-query query)
+  (let [parser    (sql-parsing/parser backend)
+        dialect   (driver->dialect driver)
+        sql       (lib/raw-native-query query)
         ;; A driver with no sqlglot dialect of its name, such as a third-party one, is read in the default dialect.
-        result  (try
-                  (sql-parsing/join-steps parser dialect sql)
-                  (catch Exception e
-                    (if (and dialect (re-find #"Unknown dialect" (str (ex-message e))))
-                      (sql-parsing/join-steps parser nil sql)
-                      (throw e))))]
-    (if-not (= "ok" (:status result))
-      {:unsupported (keyword (:reason result))}
-      (let [normalize #(sql-tools.common/normalize-name driver %)
-            describe  (fn [{:keys [source table alias]}]
-                        {:source (keyword source)
-                         :table  (some-> (last table) normalize)
-                         :alias  (normalize alias)})]
-        {:from  (assoc (describe (:from result)) :sql (:base_sql result))
-         :steps (mapv (fn [step]
-                        (assoc (describe step)
-                               :strategy (join-strategies (:strategy step))
-                               :sql      (:sql step)))
-                      (:steps result))}))))
+        result    (try
+                    (sql-parsing/join-steps parser dialect sql)
+                    (catch Exception e
+                      (if (and dialect (re-find #"Unknown dialect" (str (ex-message e))))
+                        (sql-parsing/join-steps parser nil sql)
+                        (throw e))))
+        normalize #(sql-tools.common/normalize-name driver %)
+        describe  (fn [{:keys [source table alias sql]}]
+                    (cond-> {:source (keyword source)
+                             :table  (some-> (last table) normalize)
+                             :alias  (normalize alias)}
+                      sql (assoc :sql sql)))
+        sources   (when (:from result)
+                    {:from  (cond-> (describe (:from result))
+                              (:base_sql result) (assoc :sql (:base_sql result)))
+                     :steps (mapv #(assoc (describe %) :strategy (join-strategies (:strategy %)))
+                                  (:steps result))})]
+    (cond-> sources
+      (not= "ok" (:status result)) (assoc :unsupported (keyword (:reason result))))))
 
 (defmethod sql-tools/referenced-tables-impl :sqlglot
   [backend driver query]

@@ -126,7 +126,10 @@
                :steps  [{:sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}]}
               (steps (str "SELECT * FROM a JOIN b ON a.id = b.id WHERE " big-list)))))
     (testing "one the steps would run is refused, not run with its list collapsed"
-      (is (= {:status "unsupported", :reason "large-literal-list"}
+      (is (= {:status "unsupported"
+              :reason "large-literal-list"
+              :from   {:source "table", :table [nil nil "a"], :alias "a"}
+              :steps  [{:source "table", :table [nil nil "b"], :alias "b", :strategy "inner"}]}
              (steps (str "SELECT * FROM a JOIN b ON a.id = b.id AND " big-list)))))))
 
 ;;; ------------------------------------------------ transpile-sql -------------------------------------------------

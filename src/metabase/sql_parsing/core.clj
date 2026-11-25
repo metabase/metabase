@@ -622,6 +622,14 @@
   [{:keys [base_sql steps]}]
   (cons base_sql (map :sql steps)))
 
+(defn- refuse-join-steps
+  "The `ok` result of [[join-steps]] refused for `reason`, its sources kept without their queries."
+  [{:keys [from steps]} reason]
+  {:status "unsupported"
+   :reason reason
+   :from   from
+   :steps  (mapv #(dissoc % :sql) steps)})
+
 (defn join-steps
   "The row-count queries of each join in `sql`, a SELECT, taken one join at a time, for a caller that will run them.
 
@@ -634,6 +642,8 @@
    For an outer join the step query returns a second count in the same row, of the rows where that join found a match.
 
    Anything else is `{:status \"unsupported\", :reason <reason>}`, with a reason from `join_steps` in `sql_tools.py`.
+   A query refused once its sources are read, as `\"non-table-source\"` when a source is a CTE or a derived table, still
+   has its `:from` and `:steps`, without SQL.
    A generated query that is not read-only is refused as `\"not-read-only\"`.
    SQL with a literal list too large to parse safely is read without it, and refused as `\"large-literal-list\"` if
    the list is in a clause the queries keep."
@@ -652,13 +662,13 @@
       ;; The pattern matches what `strip-large-literal-lists` leaves in place of a list: `(NULL, ...)` or `[NULL]`.
       (and (not= stripped sql)
            (some #(re-find #"\(NULL(, NULL)*\)|\[NULL\]" %) queries))
-      {:status "unsupported", :reason "large-literal-list"}
+      (refuse-join-steps result "large-literal-list")
 
       (every? allowed? queries)
       result
 
       :else
-      {:status "unsupported", :reason "not-read-only"})))
+      (refuse-join-steps result "not-read-only"))))
 
 ;;;; Transpile sql
 

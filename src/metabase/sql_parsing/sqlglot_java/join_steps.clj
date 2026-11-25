@@ -277,15 +277,30 @@
       (whole-query (first stmts) dialect)
       (throw (unsupported "unparseable")))))
 
-(defn- join-refusal
-  "Why the SELECT `stmt` cannot have its joins rebuilt from its FROM and JOIN clauses, or nil."
+(defn- statement-refusal
+  "Why the parsed statement `stmt` has no FROM and JOIN sources to describe, or nil.
+  Port of `_statement_refusal`."
   [stmt]
-  (let [from-node (ast/arg stmt "from_")
-        joins     (ast/arg stmt "joins")
-        kept      (cons from-node joins)]
+  (cond
+    (instance? Expressions$SetOperation stmt)      "set-operation"
+    (not (instance? Expressions$Select stmt))      "not-a-select"
+    (not (some-> (ast/arg stmt "from_") ast/this)) "no-from"))
+
+(defn- join-refusal
+  "Why the SELECT `stmt`, whose sources can be described, cannot have the rows of its joins counted, or nil.
+  Port of `_join_refusal`."
+  [stmt]
+  (let [joins (ast/arg stmt "joins")
+        kept  (cons (ast/arg stmt "from_") joins)]
     (cond
-      (not (and from-node (ast/this from-node)))
-      "no-from"
+      ;; Hive's `LATERAL VIEW` hangs off the SELECT, not a join.
+      (contains? (set-args stmt) "laterals")
+      "unsupported-join"
+
+      ;; ClickHouse's SETTINGS and T-SQL's OPTION can change what a join returns or whether it runs at all, and the
+      ;; step queries would leave them out.
+      (some (set-args stmt) ["settings" "options"])
+      "unsupported-join"
 
       ;; A placeholder is a value the step queries would have to be handed again, and nothing passes them on. One in a
       ;; clause the steps leave out does not matter.
@@ -305,21 +320,6 @@
            (some #(= "cross" (step-strategy %)) joins))
       "comma-join")))
 
-(defn- statement-refusal
-  "Why the parsed statement `stmt` cannot have its join steps rebuilt, or nil.
-  A source can still be refused when it is described.
-  Port of `_statement_refusal`."
-  [stmt]
-  (cond
-    (instance? Expressions$SetOperation stmt)     "set-operation"
-    (not (instance? Expressions$Select stmt))     "not-a-select"
-    ;; Hive's `LATERAL VIEW` hangs off the SELECT, not a join.
-    (contains? (set-args stmt) "laterals")        "unsupported-join"
-    ;; ClickHouse's SETTINGS and T-SQL's OPTION can change what a join returns or whether it runs at all, and the step
-    ;; queries would leave them out.
-    (some (set-args stmt) ["settings" "options"]) "unsupported-join"
-    :else                                         (join-refusal stmt)))
-
 (defn- step-query
   "The count query of the join at index `i` of `joins`, whose strategy is `strategy`."
   [from-node joins i strategy dialect]
@@ -337,25 +337,32 @@
                   (count-select from-node (conj (pop chain) (inner-variant join)))))))
 
 (defn- steps
-  "The `ok` result of [[join-steps]].
-  Throws a refusal, an `ex-info` with its reason under `::reason`, for a query whose joins cannot be rebuilt."
+  "The result of [[join-steps]] for a query whose sources can be described.
+  Throws a refusal, an `ex-info` with its reason under `::reason`, for one whose sources cannot."
   [dialect sql]
   (let [[stmt ctes] (parse-statement dialect sql)]
     (when-let [reason (statement-refusal stmt)]
       (throw (unsupported reason)))
     (let [from-node (ast/arg stmt "from_")
-          joins     (vec (ast/arg stmt "joins"))]
-      {:status   "ok"
-       :from     (step-source (ast/this from-node) ctes dialect)
-       :base_sql (ast/sql (count-select from-node []) dialect)
-       :steps    (into []
-                       (map-indexed
-                        (fn [i join]
-                          (let [strategy (step-strategy join)]
-                            (assoc (step-source (ast/this join) ctes dialect)
-                                   :strategy strategy
-                                   :sql      (ast/sql (step-query from-node joins i strategy dialect) dialect)))))
-                       joins)})))
+          joins     (vec (ast/arg stmt "joins"))
+          from      (step-source (ast/this from-node) ctes dialect)
+          sources   (mapv #(assoc (step-source (ast/this %) ctes dialect) :strategy (step-strategy %)) joins)
+          ;; A step that reads a CTE would fail, since the WITH clause is left out, and one that reads a derived table
+          ;; has no table to count against.
+          reason    (or (join-refusal stmt)
+                        (when (some #(not= "table" (:source %)) (cons from sources))
+                          "non-table-source"))]
+      (if reason
+        {:status "unsupported", :reason reason, :from from, :steps sources}
+        {:status   "ok"
+         :from     from
+         :base_sql (ast/sql (count-select from-node []) dialect)
+         :steps    (into []
+                         (map-indexed
+                          (fn [i source]
+                            (assoc source :sql (ast/sql (step-query from-node joins i (:strategy source) dialect)
+                                                        dialect))))
+                         sources)}))))
 
 (defn join-steps
   "The row-count queries of each join in `sql`, a SELECT, taken one join at a time.

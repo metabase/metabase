@@ -77,7 +77,7 @@
 
 (deftest analyze-native-query-cte-join-source-table-is-nil-test
   (mt/test-drivers (join-steps-drivers)
-    (testing "join against a CTE alias produces nil :source-table"
+    (testing "join against a CTE alias produces nil :source-table, and no step queries"
       (let [query     (lib/native-query
                        (mt/metadata-provider)
                        (str "WITH cte AS (SELECT * FROM " (qt :orders) ") "
@@ -85,12 +85,13 @@
                             "FROM " (qt :people) " p "
                             "LEFT JOIN cte ON p." (qf :people :id) " = cte." (qf :orders :user_id)))
             transform (make-native-transform query)]
-        (is (=? {:join-structure [{:strategy :left-join, :source-table nil}]}
+        (is (=? {:from-count-sql nil
+                 :join-structure [{:strategy :left-join, :source-table nil, :step-sql nil}]}
                 (query-analysis/analyze-native-query transform (test-sources))))))))
 
 (deftest analyze-native-query-mixed-simple-and-cte-joins-test
   (mt/test-drivers (join-steps-drivers)
-    (testing "mix of simple table join and CTE join: only simple table has source-table"
+    (testing "mix of simple table join and CTE join: only simple table has source-table, and neither a step query"
       (let [query     (lib/native-query
                        (mt/metadata-provider)
                        (str "WITH cte AS (SELECT * FROM " (qt :reviews) ") "
@@ -99,8 +100,9 @@
                             "JOIN " (qt :products) " pr ON o." (qf :orders :product_id) " = pr." (qf :products :id) " "
                             "LEFT JOIN cte ON o." (qf :orders :id) " = cte." (qf :reviews :id)))
             transform (make-native-transform query)]
-        (is (=? {:join-structure [{:strategy :inner-join, :source-table (mt/id :products)}
-                                  {:strategy :left-join, :source-table nil}]}
+        (is (=? {:from-count-sql nil
+                 :join-structure [{:strategy :inner-join, :source-table (mt/id :products), :step-sql nil}
+                                  {:strategy :left-join, :source-table nil, :step-sql nil}]}
                 (query-analysis/analyze-native-query transform (test-sources))))))))
 
 (deftest ^:parallel analyze-native-query-resolves-tables-by-name-among-sources-test
@@ -194,7 +196,9 @@
           (is (=? {:join-structure [{:strategy :cross-join, :source-table (mt/id :products)}]}
                   result))
           (is (= [[(* orders products)]] (step-counts result)))))
-      (testing "a comma join with a WHERE clause, which may hold its condition, has no join structure"
+      (testing "a comma join with a WHERE clause, which may hold its condition, has its joins but no step queries"
         (let [result (analyze (comma-join (str " WHERE pr." (qf :products :id) " = o." (qf :orders :product_id))))]
-          (is (nil? (:join-structure result)))
+          (is (=? {:from-count-sql nil
+                   :join-structure [{:strategy :cross-join, :source-table (mt/id :products), :step-sql nil}]}
+                  result))
           (is (contains? (get-in result [:visited-fields :all]) (mt/id :orders :product_id))))))))

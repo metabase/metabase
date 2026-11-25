@@ -639,14 +639,19 @@ def _on_counts_matches(from_, joins, strategy, dialect):
 
 
 def _statement_refusal(stmt):
-    """Why the parsed statement `stmt` cannot have its join steps rebuilt, or None.
-
-    A source can still be refused when it is described.
-    """
+    """Why the parsed statement `stmt` has no FROM and JOIN sources to describe, or None."""
     if isinstance(stmt, exp.SetOperation):
         return "set-operation"
     if not isinstance(stmt, exp.Select):
         return "not-a-select"
+    from_ = stmt.args.get("from_")
+    if from_ is None or from_.this is None:
+        return "no-from"
+    return None
+
+
+def _join_refusal(stmt):
+    """Why the SELECT `stmt`, whose sources can be described, cannot have the rows of its joins counted, or None."""
     # Hive's `LATERAL VIEW` hangs off the SELECT, not a join.
     if stmt.args.get("laterals"):
         return "unsupported-join"
@@ -654,11 +659,8 @@ def _statement_refusal(stmt):
     # queries would leave them out.
     if stmt.args.get("settings") or stmt.args.get("options"):
         return "unsupported-join"
-    from_ = stmt.args.get("from_")
-    if from_ is None or from_.this is None:
-        return "no-from"
     joins = stmt.args.get("joins") or []
-    kept = [from_, *joins]
+    kept = [stmt.args["from_"], *joins]
     # A placeholder is a value the step queries would have to be handed again, and nothing passes them on. One in a
     # clause the steps leave out does not matter.
     if any(node.find(exp.Placeholder, exp.Parameter) for node in kept):
@@ -682,8 +684,7 @@ def join_steps(sql: str, dialect: str = None) -> str:
     The FROM source and every join are described, each with the SQL of a query that counts its rows.
     For the FROM source that is the source alone; for a join, the FROM source joined with every join up to and
     including it.
-    The WHERE clause, the WITH clause and everything else outside FROM and JOIN are left out, so a step that reads a
-    CTE fails when run.
+    The WHERE clause, the WITH clause and everything else outside FROM and JOIN are left out.
 
     For a LEFT, RIGHT or FULL join, the step query returns two counts in one row: the rows of the chain as written,
     and those where that last join found a match.
@@ -696,8 +697,10 @@ def join_steps(sql: str, dialect: str = None) -> str:
     A source is `{"source": "table" | "cte" | "derived", "table": [catalog, schema, table] or null, "alias": ...}`.
     A step is a source with a `strategy` (`inner`, `left`, `right`, `full` or `cross`) and its `sql`.
     Otherwise it is `{"status": "unsupported", "reason": ...}`, with one of these reasons: `unparseable`,
-    `set-operation`, `not-a-select`, `no-from`, `comma-join`, `unsupported-join`, `unsupported-source`, `nested-join`
-    and `parameters`.
+    `set-operation`, `not-a-select`, `no-from`, `comma-join`, `unsupported-join`, `unsupported-source`, `nested-join`,
+    `parameters` and `non-table-source`.
+    A query refused as `non-table-source`, because a source is a CTE or a derived table, or for a reason found after
+    its sources were read, still has its `from` and `steps`, without SQL.
     Of several statements, only the first is read.
 
     Examples:
@@ -725,10 +728,19 @@ def join_steps(sql: str, dialect: str = None) -> str:
         from_ = stmt.args["from_"]
         joins = stmt.args.get("joins") or []
         from_source = _join_step_source(from_.this, cte_names, dialect)
+        sources = [
+            dict(_join_step_source(join.this, cte_names, dialect), strategy=_join_step_strategy(join)) for join in joins
+        ]
+        # A step that reads a CTE would fail, since the WITH clause is left out, and one that reads a derived table has
+        # no table to count against.
+        reason = _join_refusal(stmt) or (
+            "non-table-source" if any(src["source"] != "table" for src in [from_source, *sources]) else None
+        )
+        if reason:
+            return json.dumps({"status": "unsupported", "reason": reason, "from": from_source, "steps": sources})
         steps = []
-        for n, join in enumerate(joins, start=1):
-            source = _join_step_source(join.this, cte_names, dialect)
-            strategy = _join_step_strategy(join)
+        for n, (join, source) in enumerate(zip(joins, sources), start=1):
+            strategy = source["strategy"]
             chain = joins[:n]
             if strategy not in ("left", "right", "full"):
                 query = _count_select(from_, chain)
@@ -738,7 +750,7 @@ def join_steps(sql: str, dialect: str = None) -> str:
                 query = _two_counts(
                     _count_select(from_, chain), _count_select(from_, chain[:-1] + [_inner_variant(join)])
                 )
-            steps.append(dict(source, strategy=strategy, sql=query.sql(dialect=dialect)))
+            steps.append(dict(source, sql=query.sql(dialect=dialect)))
         return json.dumps(
             {
                 "status": "ok",

@@ -64,7 +64,8 @@
     (is (true? (lens.core/lens-applicable? :join-analysis
                                            {:has-joins? true
                                             :from-table-id 10
-                                            :native-context {:join-structure [{:strategy :left-join
+                                            :native-context {:from-count-sql "SELECT COUNT(*) AS n FROM a"
+                                                             :join-structure [{:strategy :left-join
                                                                                :source-table 1}]}})))
     (is (true? (lens.core/lens-applicable? :join-analysis
                                            {:has-joins? true
@@ -73,6 +74,14 @@
                                                                              :source-table 1}
                                                                             {:strategy :inner-join
                                                                              :source-table 2}]}}))))
+  (testing "join-analysis not applicable to native joins that cannot be counted (no step queries)"
+    (is (not (lens.core/lens-applicable? :join-analysis
+                                         {:has-joins? true
+                                          :from-table-id 10
+                                          :native-context {:from-count-sql nil
+                                                           :join-structure [{:strategy :cross-join
+                                                                             :source-table 1
+                                                                             :step-sql nil}]}}))))
   (testing "join-analysis not applicable without joins"
     (is (not (lens.core/lens-applicable? :join-analysis {:has-joins? false})))
     (is (not (lens.core/lens-applicable? :join-analysis {}))))
