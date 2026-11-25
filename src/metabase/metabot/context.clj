@@ -190,6 +190,13 @@
    [:type [:= "code_editor"]]
    [:buffers [:sequential CodeEditorBufferSchema]]])
 
+(def ^:private DashboardFilterValueSchema
+  "The value of one dashboard filter on the user's screen."
+  [:map {:closed true}
+   [:id    ms/NonBlankString]
+   ;; Optional so that a value the browser left undefined, and so out of the JSON, doesn't fail the whole request
+   [:value {:optional true} [:maybe [:ref :metabase.lib.schema.parameter/parameter.value]]]])
+
 (def ^:private item-entries
   "The keys of a viewing context item this code reads. The rest of the item is the shape of one of
   `MetabotEntityInfo`'s variants (card/dashboard/adhoc/document) or `MetabotCodeEditorContext`, so
@@ -208,7 +215,10 @@
                                                             [:description     {:optional true} [:maybe :string]]]]]]
    [:buffers         {:optional true} [:maybe [:sequential CodeEditorBufferSchema]]]
    [:query           {:optional true} ItemQuerySchema]
-   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]])
+   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]
+   ;; The value of each dashboard filter as the dashboard's cards ran with it, sent with a dashboard. A nil value is a
+   ;; cleared filter. Without this key the values are unknown, which is not the same as none being set.
+   [:parameters      {:optional true} [:maybe [:sequential DashboardFilterValueSchema]]]])
 
 (def DefaultItemSchema
   "Default schema of viewing context item."

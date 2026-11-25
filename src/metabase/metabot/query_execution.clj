@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.driver.settings :as driver.settings]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util :as u]
@@ -80,22 +81,13 @@
          (qp.error-type/connection-pool-saturated? error-type)
          (contains? #{qp.error-type/db qp.error-type/timed-out} error-type)))))
 
-(defn- execute!
-  "Run a serialized MBQL query through the QP with the standard agent userland preparation.
-   Caps this call's rows at `row-limit` (within the backend's 2000/10000 userland ceilings) and records the run
-   under `context`, stopping it as [[execute-page!]] describes for `options`."
-  [serialized-query row-limit context {:keys [request-canceled-chan timeout-ms]}]
-  (let [query      (-> (select-keys serialized-query query-passthrough-keys)
-                       (assoc :middleware {:js-int-to-string? true})
-                       qp/userland-query-with-default-constraints
-                       (assoc :constraints {:max-results           row-limit
-                                            :max-results-bare-rows row-limit}
-                              :info        {:executed-by api/*current-user-id*
-                                            :context     context}))
-        timeout-ms (some-> timeout-ms (min driver.settings/*query-timeout-ms*))
+(defn- run-bounded!
+  "Call `run`, a thunk that runs one query through the QP and returns its result, stopping it as [[execute-page!]]
+   describes for `options`. Returns the completed result, and throws an agent error for any other."
+  [run {:keys [request-canceled-chan timeout-ms]}]
+  (let [timeout-ms (some-> timeout-ms (min driver.settings/*query-timeout-ms*))
         timer      (u/start-timer)
         timed-out? (atom false)
-        run        #(qp/process-query query)
         ;; Depending on how far it got, a stopped run comes back from the QP as a failure, as nothing,
         ;; as an exception, or as a completed result holding only the rows read before it stopped.
         ;; Each is reported as what stopped it, so the model never reads it as a broken query or a complete page.
@@ -133,6 +125,32 @@
                        :permissions-error? (= :missing-required-permissions (:error_type result))})))
     result))
 
+(defn- execute!
+  "Run a serialized MBQL query through the QP with the standard agent userland preparation.
+   Caps this call's rows at `row-limit` (within the backend's 2000/10000 userland ceilings) and records the run
+   under `context`, stopping it as [[execute-page!]] describes for `options`."
+  [serialized-query row-limit context options]
+  (let [query (-> (select-keys serialized-query query-passthrough-keys)
+                  (assoc :middleware {:js-int-to-string? true})
+                  qp/userland-query-with-default-constraints
+                  (assoc :constraints {:max-results           row-limit
+                                       :max-results-bare-rows row-limit}
+                         :info        {:executed-by api/*current-user-id*
+                                       :context     context}))]
+    (run-bounded! #(qp/process-query query) options)))
+
+(defn- page
+  "`{:cols :rows :returned :truncated?}` for a `result` run for `row-limit` rows and one more, which only shows that
+   more rows exist and is dropped."
+  [result row-limit]
+  (let [all-rows   (vec (get-in result [:data :rows]))
+        truncated? (> (count all-rows) row-limit)
+        rows       (cond-> all-rows truncated? (subvec 0 row-limit))]
+    {:cols       (get-in result [:data :cols])
+     :rows       rows
+     :returned   (count rows)
+     :truncated? truncated?}))
+
 (defn execute-page!
   "Run `serialized-query` for one page of at most `row-limit` rows, recorded under the QP `context`.
    Returns `{:cols :rows :returned :truncated?}`.
@@ -152,14 +170,31 @@
   ([serialized-query row-limit context options]
    ;; Fetch one row past the limit so truncation is observed rather than inferred from a full page.
    ;; Dropping the probe row keeps `(last rows)` a real page boundary.
-   (let [result     (execute! serialized-query (inc row-limit) context options)
-         all-rows   (vec (get-in result [:data :rows]))
-         truncated? (> (count all-rows) row-limit)
-         rows       (cond-> all-rows truncated? (subvec 0 row-limit))]
-     {:cols       (get-in result [:data :cols])
-      :rows       rows
-      :returned   (count rows)
-      :truncated? truncated?})))
+   (page (execute! serialized-query (inc row-limit) context options) row-limit)))
+
+(defn execute-dashcard-page!
+  "Run the query of `card` on `dashcard` of `dashboard` with the dashboard filter values `parameters`
+   (`{:id :value}` maps), as the dashboard runs it for the current user, for one page of at most `row-limit` rows.
+   The run is recorded under the QP `context`, and the values are not stored as the user's last-used ones.
+   Returns and throws as [[execute-page!]], which also describes `options`."
+  [{:keys [dashboard dashcard card parameters]} row-limit context options]
+  (let [limit (inc row-limit)
+        run   #(qp.dashboard/process-query-for-dashcard
+                :dashboard                  dashboard
+                :dashcard                   dashcard
+                :card                       card
+                :parameters                 parameters
+                :context                    context
+                :export-format              :api
+                :save-last-used-parameters? false
+                :constraints                {:max-results           limit
+                                             :max-results-bare-rows limit}
+                :middleware                 {:js-int-to-string? true}
+                ;; The card's `:info` stays on the query, so the QP checks the run as a run of the card
+                :make-run                   (fn [qp _export-format]
+                                              (fn [query info]
+                                                (qp (update query :info merge info) nil))))]
+    (page (run-bounded! run options) row-limit)))
 
 (defn response-cols
   "The agent-facing description of result `cols`: name, display name, and qualified type names."

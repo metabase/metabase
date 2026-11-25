@@ -733,6 +733,44 @@
   "Cap on a dashboard filter's name."
   100)
 
+(def ^:private max-dashboard-filter-values
+  "Cap on the values listed for a dashboard filter's current value."
+  10)
+
+(def ^:private max-dashboard-filter-value-length
+  "Cap on a dashboard filter's current value, as written in the prompt."
+  500)
+
+(defn dashboard-filter-value
+  "The text of a dashboard filter's current `value`, with at most [[max-dashboard-filter-values]] of its values and
+  [[max-dashboard-filter-value-length]] characters, and a note of how many values were left out.
+  A string is written as it is, anything else as JSON."
+  [value]
+  (let [shown (cond-> value (sequential? value) (->> (take max-dashboard-filter-values) vec))
+        more  (when (sequential? value) (- (count value) (count shown)))]
+    (str (truncate (if (string? shown) shown (json/encode shown)) max-dashboard-filter-value-length)
+         (when (pos-int? more) (str " (+" more " more)")))))
+
+(defn- dashboard-filter->xml
+  "The `<filter>` element for the dashboard filter `parameter`.
+  A filter on the dashboard the user is viewing can carry `:current_value`, the value on the user's screen, where nil
+  is a cleared filter. A filter without the key says nothing about its value on screen."
+  [{:keys [id name type] :as parameter}]
+  (let [current? (contains? parameter :current_value)
+        current  (:current_value parameter)
+        ;; As the QP reads a filter value: nil, or a list of nothing but nils, applies no filter
+        current  (when-not (and (sequential? current) (every? nil? current)) current)]
+    (str "<filter id=\"" (escape-xml id)
+         "\" name=\"" (escape-xml (truncate name max-dashboard-filter-name-length))
+         "\" type=\"" (escape-xml (u/qualified-name type)) "\""
+         (cond
+           (and current? (some? current))
+           (str " current_value=\"" (escape-xml (dashboard-filter-value current)) "\"")
+
+           current?
+           " cleared=\"true\"")
+         "/>")))
+
 (defn- dashboard-filters->xml
   "The `<filters>` block for a dashboard's `parameters`, or nil when it has none. Lists at most
   [[max-dashboard-filters]] of them and says how many were left out."
@@ -741,9 +779,7 @@
     (let [total (count parameters)]
       (str "  <filters>\n"
            (str/join (for [param (take max-dashboard-filters parameters)]
-                       (str "    <filter id=\"" (escape-xml (:id param))
-                            "\" name=\"" (escape-xml (truncate (:name param) max-dashboard-filter-name-length))
-                            "\" type=\"" (escape-xml (u/qualified-name (:type param))) "\"/>\n")))
+                       (str "    " (dashboard-filter->xml param) "\n")))
            (when (> total max-dashboard-filters)
              (str "    <truncation-note>Showing " max-dashboard-filters " of " total " filters; the other "
                   (- total max-dashboard-filters) " are not listed.</truncation-note>\n"))

@@ -175,12 +175,12 @@
 
 (deftest internal-sql-profile-test
   (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))]
-    (testing "internal-sql is internal without the notebook builder"
+    (testing "internal-sql is internal without the notebook builder, or the dashboard card runner, which runs non-SQL cards"
       (let [internal     (profiles/get-profile :internal)
             internal-sql (profiles/get-profile :internal-sql)]
         (is (= :internal-sql (:name internal-sql)))
         (is (= (:prompt-template internal) (:prompt-template internal-sql)))
-        (is (= (disj (tool-names internal) "construct_notebook_query")
+        (is (= (disj (tool-names internal) "construct_notebook_query" "run_dashboard_card")
                (tool-names internal-sql)))))
     (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
       (binding [scope/*current-user-scope* api-scope/unrestricted]

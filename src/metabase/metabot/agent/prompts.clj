@@ -197,6 +197,7 @@
                                   ;; notebook query, or SQL where run_query may run it.
                                   :has_query_execution      (and (contains? tools "run_query")
                                                                  (or has-notebook? has-sql-execution?))
+                                  :has_dashboard_card_run   (contains? tools "run_dashboard_card")
                                   ;; The SQL guidance tells the model to write SQL and run it, so it needs the
                                   ;; SQL tools as well as everything run_query checks before it runs SQL.
                                   :has_sql_execution        has-sql-execution?

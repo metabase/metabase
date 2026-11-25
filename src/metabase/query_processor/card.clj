@@ -367,6 +367,8 @@
     :public-xlsx-download   nil
     :embedded-xlsx-download nil
     :dashboard-subscription nil
+    ;; Metabot reading a card for the user is not the user viewing it
+    :metabot                nil
     :pulse                  nil
     :map-tiles              nil
     context))

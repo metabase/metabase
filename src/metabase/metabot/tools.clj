@@ -15,6 +15,7 @@
    [metabase.metabot.tools.construct :as tools.construct]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.create-dashboard-subscription :as tools.create-dashboard-subscription]
+   [metabase.metabot.tools.dashboard-card :as tools.dashboard-card]
    [metabase.metabot.tools.document :as tools.document]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.metabot.tools.explorations :as tools.explorations]
@@ -53,6 +54,8 @@
  [tools.run-query
   run-query-tool
   run-sql-query-tool]
+ [tools.dashboard-card
+  run-dashboard-card-tool]
  [tools.document
   document-schema-collect-tool
   document-construct-sql-chart-tool
