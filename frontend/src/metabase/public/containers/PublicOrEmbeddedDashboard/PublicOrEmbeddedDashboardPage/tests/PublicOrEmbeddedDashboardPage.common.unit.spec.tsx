@@ -222,9 +222,8 @@ describe("PublicOrEmbeddedDashboardPage", () => {
         });
 
         const dashcard = await waitFor(() => getTimeSeriesDashCard());
-        expect(
-          await within(dashcard).findByText("Created At: Month"),
-        ).toBeInTheDocument();
+        // the chart redraws its axis labels and detaches the found node, so only wait for it
+        await within(dashcard).findByText("Created At: Month");
         expect(
           within(dashcard).queryAllByTestId("development-watermark"),
         ).toHaveLength(isDevelopmentMode ? 1 : 0);
