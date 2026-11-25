@@ -21,7 +21,7 @@
                                 :consistent-alias                                          2
                                 :def-fn                                                    1
                                 :deprecated-namespace                                      27
-                                :deprecated-var                                            59
+                                :deprecated-var                                            57
                                 :discouraged-java-method                                   4
                                 :duplicate-require                                         1
                                 :main-without-gen-class                                    1
@@ -75,7 +75,7 @@
                                 :ee.data-testing.expectations.empty/->Empty       1
                                 :ee.data-testing.expectations.equals/->EqualsRows 1
                                 :ee.data-testing.expectations.equals/->EqualsSql  1
-                                :lib.convert/->legacy-MBQL                        3
+                                :lib.convert/->legacy-MBQL                        2
                                 :lib.equality/find-column-indexes-for-refs        1
                                 :malli.core/explain                               1
                                 :malli.core/explainer                             1

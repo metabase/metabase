@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -11,7 +10,7 @@
    [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [metabase.xrays.automagic-dashboards.names :as names]
-   [metabase.xrays.automagic-dashboards.schema :as ads]))
+   [metabase.xrays.test-util.automagic-dashboards :as automagic-dashboards.test]))
 
 ;;; ------------------- Datetime humanization (for chart and dashboard titles) -------------------
 
@@ -80,7 +79,7 @@
 ;;; ------------------- Cell titles -------------------
 
 (defn- cell-title [root cell-query]
-  (names/cell-title root (lib/normalize ::ads/root.cell-query cell-query)))
+  (names/cell-title root (automagic-dashboards.test/mbql5-cell-query cell-query)))
 
 (deftest ^:parallel cell-title-test
   (mt/$ids venues
