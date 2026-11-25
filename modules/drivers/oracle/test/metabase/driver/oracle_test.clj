@@ -993,7 +993,7 @@
                         (str \" (:schema venues) \") (str \" (:name venues) \")])
         (is (= 100 (:estimated_row_count (find (describe))))))
       (testing "when the estimates cannot be read, the tables come without them"
-        (mt/with-dynamic-fn-redefs [oracle/query-row-count-estimates (fn [_conn] (throw (ex-info "no estimates" {})))]
+        (mt/with-dynamic-fn-redefs [oracle/query-row-count-estimates (fn [_driver _conn] (throw (ex-info "no estimates" {})))]
           (let [tables (describe)]
             (is (seq tables))
             (is (not-any? #(contains? % :estimated_row_count) tables))))))))
@@ -1012,5 +1012,5 @@
     (mt/with-dynamic-fn-redefs [oracle/query-row-count-estimates (constantly {["MB_TEST" "venues"] 100})]
       (is (= [{:schema "MB_TEST" :name "venues" :estimated_row_count 100}
               {:schema "MB_TEST" :name "empty" :estimated_row_count nil}]
-             (into [] (#'oracle/with-row-count-estimates nil [{:schema "MB_TEST" :name "venues"}
-                                                              {:schema "MB_TEST" :name "empty"}])))))))
+             (into [] (#'oracle/with-row-count-estimates :oracle nil [{:schema "MB_TEST" :name "venues"}
+                                                                      {:schema "MB_TEST" :name "empty"}])))))))

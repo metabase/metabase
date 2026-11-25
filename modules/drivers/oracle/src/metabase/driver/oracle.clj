@@ -831,13 +831,14 @@
 (defn- query-row-count-estimates
   "The row count estimates of the tables that the user of `conn` can see: `NUM_ROWS` of `ALL_TABLES`, which Oracle
   fills only when it collects statistics on the table. Views are not in `ALL_TABLES`. The excluded system schemas are
-  left out, to keep the query small."
-  [^Connection conn]
-  (let [excluded (vec (sql-jdbc.sync/excluded-schemas :oracle))]
+  left out, to keep the query small, and so are temporary tables, whose statistics can count rows that this session
+  never sees."
+  [driver ^Connection conn]
+  (let [excluded (vec (sql-jdbc.sync/excluded-schemas driver))]
     (row-count-estimates
      (jdbc/query {:connection conn}
                  (into [(str "SELECT owner, table_name, num_rows FROM all_tables"
-                             " WHERE num_rows > 0"
+                             " WHERE num_rows > 0 AND temporary = 'N'"
                              " AND owner NOT IN (" (str/join ", " (repeat (count excluded) "?")) ")")]
                        excluded)
                  {:timeout row-count-estimates-timeout-seconds}))))
@@ -845,9 +846,9 @@
 (defn- with-row-count-estimates
   "`tables` with the `:estimated_row_count` of each table, nil for a table with none. The estimate is extra
   information, so a failure to read it is logged and the tables are returned without the key."
-  [conn tables]
+  [driver conn tables]
   (if-let [estimates (try
-                       (query-row-count-estimates conn)
+                       (query-row-count-estimates driver conn)
                        (catch Exception e
                          (log/warn e "Could not read the row count estimates of the tables")
                          nil))]
@@ -858,7 +859,7 @@
 
 (defmethod sql-jdbc.sync/active-tables :oracle
   [driver conn & args]
-  (with-row-count-estimates conn (apply (get-method sql-jdbc.sync/active-tables :sql-jdbc) driver conn args)))
+  (with-row-count-estimates driver conn (apply (get-method sql-jdbc.sync/active-tables :sql-jdbc) driver conn args)))
 
 (defmethod driver/escape-entity-name-for-metadata :oracle
   [_ entity-name]
