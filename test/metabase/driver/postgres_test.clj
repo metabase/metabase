@@ -3127,20 +3127,41 @@
     ;; sync reads samples with no user; the namespace fixture binds a user who is not an admin
     (mt/with-test-user :crowberto
       (let [table  (t2/select-one :model/Table :id (mt/id :venues))
-            fields [(t2/select-one :model/Field :id (mt/id :venues :name))]
+            fields (mapv #(t2/select-one :model/Field :id (mt/id :venues %)) [:id :name])
+            last-params (atom nil)
             sample (fn [opts]
                      (let [sqls    (atom [])
                            execute qp.pipeline/*execute*]
                        (binding [qp.pipeline/*execute* (fn [driver query respond]
                                                          (swap! sqls conj (get-in query [:stages 0 :native]))
+                                                         (reset! last-params (get-in query [:stages 0 :params]))
                                                          (execute driver query respond))]
                          (assoc (driver/table-random-sample :postgres table fields (constantly conj) opts)
                                 :sqls @sqls))))]
-        (testing "the driver reads a block sample of about the sample size, with a limit it does not usually reach"
+        (testing (str "for a table too small for key blocks, the driver reads a block sample of about the sample size, "
+                      "with a limit it does not usually reach")
           (is (driver.u/supports? :postgres :table-random-sample (mt/db)))
-          (let [{:keys [method fraction sqls]} (sample {:rows 100 :row-count 1000})]
+          (let [{:keys [method fraction sqls]} (sample {:rows 100 :row-count 200})]
             (is (= :block method))
-            (is (= 0.1 fraction))
-            (is (=? [#".*TABLESAMPLE SYSTEM \(10\.0\) LIMIT 200"] sqls))))
+            (is (= 0.5 fraction))
+            (is (=? [#".*TABLESAMPLE SYSTEM \(50\.0\) LIMIT 200"] (filter #(str/includes? % "TABLESAMPLE") sqls)))))
+        (testing "for a table with a primary key of one number column, the driver reads key blocks"
+          (let [{:keys [method runs result sqls]} (sample {:rows 20 :runs 4 :row-count 100 :seed 1})
+                runs-sql (last (filter #(str/includes? % "UNION ALL") sqls))
+                ids      (set (map first result))]
+            (is (= :block method))
+            (is (= 4 runs))
+            (is (= 20 (count result)))
+            (is (contains? ids 1))
+            (is (contains? ids 100))
+            (is (not-any? #(str/includes? % "TABLESAMPLE") sqls))
+            (testing "each run can be an index scan of the primary key (a table this small reads faster with a scan)"
+              (let [spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+                    plan (jdbc/with-db-transaction [conn spec]
+                           (jdbc/execute! conn ["SET LOCAL enable_seqscan = off"])
+                           (str/join "\n" (map (comp first vals)
+                                               (jdbc/query conn (into [(str "EXPLAIN " runs-sql)] @last-params)))))]
+                (is (= 4 (count (re-seq #"Index Scan(?: Backward)? using venues_pkey" plan))))
+                (is (not (str/includes? plan "Seq Scan")))))))
         (testing "the driver declines, so that sync reads the first rows, when there is no row count estimate"
           (is (= {:method :first-rows :sqls []} (sample {:rows 100 :row-count nil}))))))))
