@@ -108,6 +108,34 @@
         (testing "fails when the query returns rows"
           (check-empty-expectation! schema table transform "rows returned" "name = 'abc'" :failed))))))
 
+(deftest run-transform-test-qualifiers-resolve-after-the-swap-test
+  (testing "a column qualified by its table's name still resolves once the table is a temp table"
+    (mt/test-drivers (data-testing.test-util/data-test-drivers)
+      (let [mp                            (mt/metadata-provider)
+            {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
+            qualified                     (str schema "." table)]
+        (doseq [[form sql] {"the table's name, no alias"
+                            (str "SELECT " table ".id, " table ".name FROM " qualified " -- as written\n WHERE " table ".id > 0")
+
+                            "the schema and the table's name, no alias"
+                            (str "SELECT " qualified ".id, " qualified ".name FROM " qualified " WHERE " qualified ".id > 0")
+
+                            "an alias"
+                            (str "SELECT p.id, p.name FROM " qualified " p WHERE p.id > 0")}]
+          (testing form
+            (mt/with-temp [:model/Transform transform
+                           {:source {:type :query :query (lib/native-query mp sql)}
+                            :target {:type "table" :schema schema :name "people_summary" :database (mt/id)}}]
+              (let [status (fn [expectation-sql]
+                             (:status (run-test! schema table transform one-row
+                                                 [{:type :empty :name "check" :sql expectation-sql}])))
+                    output (str schema ".people_summary")]
+                (testing "the output holds the input's row, read through a qualifier in the expectation too"
+                  (is (= :passed (status (str "SELECT * FROM " output
+                                              " WHERE NOT (people_summary.id = 1 AND people_summary.name = 'abc')")))))
+                (testing "control: an expectation that the input's row violates fails"
+                  (is (= :failed (status (str "SELECT * FROM " output " WHERE people_summary.id = 1")))))))))))))
+
 (deftest run-transform-test-input-the-check-rewrites-test
   (testing "an input whose SQL the statement check rewrites fills its table with the rows that SQL returns"
     (mt/test-drivers (data-testing.test-util/data-test-drivers)

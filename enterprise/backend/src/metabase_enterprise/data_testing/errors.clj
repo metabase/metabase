@@ -25,6 +25,7 @@
    ::duplicate-input-table      400  ; Two inputs stand in for the same table.
    ::unparseable-source         400  ; The SQL of the query under test could not be parsed to find what it reads.
    ::unremapped-reference       400  ; A real table survived the rewrite into the test's SQL.
+   ::unreplaceable-reference    400  ; A table reference could not be replaced in the text of the test's SQL.
    ::no-expectations            400  ; The test checks nothing.
    ::unknown-placeholder        400  ; Expectation SQL writes a `{{...}}` that is not the output token.
    ::missing-input-columns      400  ; A rows input lacks a column the query under test reads.
@@ -41,7 +42,7 @@
    ::unsupported-driver         422  ; The database does not support testing, or is H2, which data tests do not support yet.
    ::uncompilable-subject       422  ; The subject's query does not compile to SQL.
    ::query-failed               422  ; The query under test would not run.
-   ::parameters-not-kept        422  ; The query under test's placeholders are not one per value, or its rewrite does not keep each once.
+   ::parameters-not-kept        422  ; The query under test's placeholders are not one per value.
    ::duplicate-output-columns   422  ; The output of the query under test has two columns of one name.
    ::setup-failed               422  ; A test input could not be materialized.
    ::expectation-failed         422  ; An expectation's own query failed to execute.

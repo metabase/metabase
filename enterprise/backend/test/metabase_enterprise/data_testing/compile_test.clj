@@ -6,7 +6,6 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
-   [metabase-enterprise.data-testing.validator :as data-testing.validator]
    [metabase.driver :as driver]
    [metabase.driver.h2]
    [metabase.driver.postgres]))
@@ -209,41 +208,60 @@
 
 ;;; -------------------------------------------- rewrite-query --------------------------------------------
 
+(def ^:private orders->temp
+  "Replacements standing a temp table in for `orders`."
+  {{:table "orders"} {:db nil :schema nil :table "mb_tmp"}})
+
 (defn- rewrite
-  "`compiled` rewritten for Postgres with no replacements, its SQL passed through `check`, or the `:error-type` of the
-  refusal."
-  [compiled check]
+  "`compiled` rewritten for Postgres to read the temp table of [[orders->temp]], or the `:error-type` of the refusal."
+  [compiled]
   (try
-    (data-testing.compile/rewrite-query :postgres compiled {} check)
+    (data-testing.compile/rewrite-query :postgres compiled orders->temp identity)
     (catch clojure.lang.ExceptionInfo e
       (:error-type (ex-data e)))))
 
-(deftest rewrite-query-keeps-each-value-on-its-placeholder-test
-  (testing "control: a query whose rewrite keeps its placeholders in place keeps its values in order"
-    (is (= {:query "SELECT * FROM t WHERE a = ? AND b = ?" :params ["x" "y"]}
-           (rewrite {:query "SELECT * FROM t WHERE a = ? AND b = ?" :params ["x" "y"]} identity))))
-  (testing "a rewrite that swaps two placeholders swaps their values with them"
-    (is (= {:query "SELECT POSITION(? IN ?) AS id" :params ["cd" "abcdef"]}
-           (rewrite {:query "SELECT strpos(?, ?) AS id" :params ["abcdef" "cd"]}
-                    #(str/replace % #"strpos\((\w+), (\w+)\)" "POSITION($2 IN $1)")))))
-  (testing "a placeholder with a word right after it still parses once it has a name"
-    (is (= {:query "SELECT * FROM t WHERE x = ? AND y = ?" :params ["a" "b"]}
-           (rewrite {:query "SELECT * FROM t WHERE x=?AND y=?" :params ["a" "b"]}
-                    #(data-testing.validator/ensure-single-select :postgres % nil)))))
+(deftest rewrite-query-changes-only-the-table-references-test
+  (testing "control: the table is replaced, and takes its own name as alias"
+    (is (= {:query "SELECT id FROM mb_tmp AS orders" :params []}
+           (rewrite {:query "SELECT id FROM orders" :params []}))))
+  (testing "placeholders stay where they are, and the values in their order"
+    (is (= {:query "SELECT strpos(?, ?) AS id FROM mb_tmp AS orders WHERE x=?AND y = ?" :params ["abcdef" "cd" 1 2]}
+           (rewrite {:query "SELECT strpos(?, ?) AS id FROM orders WHERE x=?AND y = ?" :params ["abcdef" "cd" 1 2]}))))
+  (testing "whitespace, case, comments and functions come back as written"
+    (is (= {:query "select  date_part('year', created_at)  -- the year\nFROM mb_tmp o /* orders */" :params []}
+           (rewrite {:query "select  date_part('year', created_at)  -- the year\nFROM orders o /* orders */" :params []}))))
   (testing "a ? in a string literal, a quoted name or a comment is not a placeholder"
     (is (= {:query "SELECT '?' AS \"?\", ? AS id /* ? */" :params ["x"]}
-           (rewrite {:query "SELECT '?' AS \"?\", ? AS id /* ? */" :params ["x"]} identity))))
-  (testing "a query with no values is rewritten without naming anything"
-    (is (= {:query "SELECT '?' AS a" :params []}
-           (rewrite {:query "SELECT '?' AS a" :params []} identity))))
+           (rewrite {:query "SELECT '?' AS \"?\", ? AS id /* ? */" :params ["x"]}))))
   (testing "values that the parser reads no placeholder for are refused"
     (is (= ::data-testing.errors/parameters-not-kept
-           (rewrite {:query "SELECT '?' AS a, ? AS b" :params ["x" "y"]} identity))))
-  (testing "a rewrite that drops a placeholder is refused"
-    (is (= ::data-testing.errors/parameters-not-kept
-           (rewrite {:query "SELECT ? AS a, ? AS b" :params ["x" "y"]}
-                    #(str/replace % #"\w+_1\b" "NULL")))))
-  (testing "a rewrite that repeats a placeholder is refused"
-    (is (= ::data-testing.errors/parameters-not-kept
-           (rewrite {:query "SELECT ? AS a" :params ["x"]}
-                    #(str/replace % #"(\w+_0) AS a" "$1 AS a, $1 AS b"))))))
+           (rewrite {:query "SELECT '?' AS a, ? AS b" :params ["x" "y"]}))))
+  (testing "the SQL the run executes is what the check is given"
+    (let [checked (atom nil)]
+      (is (= {:query "SELECT id FROM mb_tmp AS orders" :params []}
+             (data-testing.compile/rewrite-query :postgres {:query "SELECT id FROM orders" :params []} orders->temp
+                                                 #(reset! checked %))))
+      (is (= "SELECT id FROM mb_tmp AS orders" @checked)))))
+
+(deftest replace-tables-refuses-a-reference-it-cannot-replace-in-the-text-test
+  (let [refusal (fn [sql replacements]
+                  (try
+                    (data-testing.compile/replace-tables :postgres sql replacements)
+                    (catch clojure.lang.ExceptionInfo e
+                      (select-keys (ex-data e) [:error-type :reason :detail]))))]
+    (testing "control: a plain qualified reference is replaced"
+      (is (= "SELECT id FROM mb_tmp AS orders"
+             (refusal "SELECT id FROM public.orders" {{:schema "public" :table "orders"} {:db nil :schema nil :table "mb_tmp"}}))))
+    (testing "a comment inside the reference"
+      (is (= {:error-type ::data-testing.errors/unreplaceable-reference
+              :reason     "reference-not-located"
+              :detail     "public.orders"}
+             (refusal "SELECT id FROM public /* c */ . orders"
+                      {{:schema "public" :table "orders"} {:db nil :schema nil :table "mb_tmp"}}))))
+    (testing "two tables of one name, each read without an alias"
+      (is (= {:error-type ::data-testing.errors/unreplaceable-reference
+              :reason     "ambiguous-table-name"
+              :detail     "orders"}
+             (refusal "SELECT a.orders.id FROM a.orders JOIN b.orders ON a.orders.id = b.orders.id"
+                      {{:schema "a" :table "orders"} {:db nil :schema nil :table "mb_a"}
+                       {:schema "b" :table "orders"} {:db nil :schema nil :table "mb_b"}}))))))

@@ -38,6 +38,7 @@
    ::errors/duplicate-input-table      400
    ::errors/unparseable-source         400
    ::errors/unremapped-reference       400
+   ::errors/unreplaceable-reference    400
    ::errors/no-expectations            400
    ::errors/unknown-placeholder        400
    ::errors/missing-input-columns      400
@@ -78,6 +79,7 @@
              ::errors/duplicate-input-table
              ::errors/unparseable-source
              ::errors/unremapped-reference
+             ::errors/unreplaceable-reference
              ::errors/no-expectations
              ::errors/unknown-placeholder
              ::errors/missing-input-columns
@@ -126,6 +128,7 @@
    ::errors/duplicate-input-table      "transform-test.duplicate-input-table"
    ::errors/unparseable-source         "transform-test.unparseable-source"
    ::errors/unremapped-reference       "transform-test.unremapped-reference"
+   ::errors/unreplaceable-reference    "transform-test.unreplaceable-reference"
    ::errors/no-expectations            "transform-test.no-expectations"
    ::errors/unknown-placeholder        "transform-test.unknown-placeholder"
    ::errors/missing-input-columns      "transform-test.missing-input-columns"

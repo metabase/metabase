@@ -197,9 +197,9 @@
       (is (thrown-with-msg?
            ExceptionInfo #"(?i)^The SQL of expectation \"leaks\" reads table\(s\) this test does not stand in for: orders"
            (validate inputs [{:type :empty :name "leaks" :sql "SELECT * FROM ORDERS"}] source))))
-    (testing "an expectation reading the transform's output or a declared input is accepted, as its rewrite"
-      (is (= {"output" "SELECT * FROM TMP_OUT"
-              "input"  "SELECT * FROM TMP_IN_1"}
+    (testing "an expectation reading the transform's output or a declared input is accepted, reading their temp tables"
+      (is (= {"output" "SELECT * FROM TMP_OUT AS UNREFERENCED_TARGET"
+              "input"  "SELECT * FROM TMP_IN_1 AS PEOPLE"}
              (validate inputs
                        [{:type :empty :name "output" :sql "SELECT * FROM UNREFERENCED_TARGET"}
                         {:type :empty :name "input"  :sql "SELECT * FROM PUBLIC.PEOPLE"}]

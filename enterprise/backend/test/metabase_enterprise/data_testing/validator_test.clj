@@ -441,10 +441,10 @@
         (is (nil? (parser-internals message)) (pr-str message))))))
 
 (deftest validate-returns-the-sql-a-run-executes-for-each-expectation-test
-  (testing "validate returns, by expectation name, the checked rewrite of each SQL expectation that a run executes"
+  (testing "validate returns, by expectation name, each SQL expectation as written but for its tables, which a run executes"
     (driver/the-initialized-driver :postgres)
-    (is (= {"later ids"  "SELECT * FROM MB_T1 WHERE ID > 1 /* c */"
-            "rows match" "SELECT ID FROM MB_T1"}
+    (is (= {"later ids"  "SELECT * FROM MB_T1 AS PEOPLE WHERE ID > 1 -- c"
+            "rows match" "SELECT ID FROM MB_T1 AS PEOPLE"}
            (validator/validate :postgres
                                (assoc complete-test
                                       :expectations [{:type :empty :name "later ids" :sql "SELECT * FROM PEOPLE WHERE ID > 1 -- c"}

@@ -123,11 +123,32 @@
                  (re-pattern (str "\\{\\{\\s*" (Pattern/quote inner) "\\s*\\}\\}"))
                  (constantly output-name))))
 
+(defn- unreplaceable-reference
+  "The `::data-testing.errors/unreplaceable-reference` refusal for the `reason` and `detail` that
+  [[sql-tools/swap-tables]] gives."
+  [reason detail]
+  (data-testing.errors/ex
+   ::data-testing.errors/unreplaceable-reference
+   (case reason
+     "ambiguous-table-name"
+     (tru "The SQL reads more than one table named {0} without an alias, and the test stands in for each with its own table. Give each an alias, such as `FROM my_schema.my_table AS a`, and qualify its columns by the alias."
+          detail)
+     (if detail
+       (tru "The test could not point the SQL''s reference to {0} at a test table: it could not find the reference exactly in the SQL''s text. Write it as a plain name, such as `my_schema.my_table`, with no comment inside the name."
+            detail)
+       (tru "The test could not point the SQL at its test tables: it could not find a table reference exactly in the SQL''s text.")))
+   (cond-> {:reason reason}
+     detail (assoc :detail detail))))
+
 (mu/defn replace-tables :- :string
-  "`sql` reading from the temp tables of `replacements` instead of the tables they replace.
+  "`sql` reading from the temp tables of `replacements` instead of the tables they replace, and every other character
+  as written. A replaced table that has no alias takes its own name as its alias, so a column qualified by the table's
+  name still resolves; a qualifier that also names the schema loses the schema.
 
   With `output-token`, every occurrence of it, whitespace inside its braces allowed, first becomes [[output-name]],
-  string literals included."
+  string literals included.
+
+  Throws `::data-testing.errors/unreplaceable-reference` when a reference cannot be replaced in the text of `sql`."
   ([driver       :- :keyword
     sql          :- :string
     replacements :- ::table-replacements]
@@ -136,64 +157,35 @@
     sql          :- :string
     replacements :- ::table-replacements
     output-token :- [:maybe ::output-token]]
-   (sql-tools/replace-names driver
-                            (cond-> sql
-                              output-token (replace-output-token output-token))
-                            {:tables replacements}
-                            {:allow-unused? true})))
-
-(defn- placeholder-prefix
-  "The prefix of the names [[rewrite-query]] gives the placeholders of a query for one rewrite, each name the prefix and
-  the placeholder's number. The nonce keeps the names apart from anything the query already holds."
-  [nonce]
-  (str "mb_param_" nonce "_"))
-
-(defn- placeholder-name
-  "A pattern of the names [[placeholder-prefix]] starts, with the number of each as the group."
-  [nonce]
-  (re-pattern (str "\\b" (Pattern/quote (placeholder-prefix nonce)) "(\\d+)\\b")))
-
-(mu/defn- bind-in-order :- ::compiled-query
-  "`sql`, which holds the names [[rewrite-query]] gave the placeholders of a query whose values are `params`, with each
-  name written `?` again and `params` reordered to the order the names now appear in. Throws
-  `::data-testing.errors/parameters-not-kept` unless `sql` holds each name exactly once."
-  [sql    :- :string
-   nonce  :- :string
-   params :- [:sequential ::lib.schema.common/field-value]]
-  (let [pattern (placeholder-name nonce)
-        order   (mapv (comp parse-long second) (re-seq pattern sql))]
-    (when-not (= (sort order) (range (count params)))
-      (throw (data-testing.errors/ex
-              ::data-testing.errors/parameters-not-kept
-              (tru "The query under test cannot be tested as it is: Metabase could not keep each parameter value bound to its placeholder while rewriting the query to read the test''s tables.")
-              {})))
-    {:query  (str/replace sql pattern "?")
-     :params (mapv params order)}))
+   (let [{swapped :sql :keys [reason detail]} (sql-tools/swap-tables driver
+                                                                     (cond-> sql
+                                                                       output-token (replace-output-token output-token))
+                                                                     replacements)]
+     (or swapped
+         (throw (unreplaceable-reference reason detail))))))
 
 (mu/defn rewrite-query :- ::compiled-query
-  "`compiled` reading from the temp tables of `replacements` instead of the tables they replace, its SQL as `check`
-  returns it. Each value of `:params` stays bound to the placeholder it was bound to, whatever order the rewrite and
-  `check` put the placeholders in: before the rewrite, each placeholder becomes a name, and after `check`, each name
-  becomes a placeholder again, the values in the order of the names. Values never enter the SQL.
+  "`compiled` reading from the temp tables of `replacements` instead of the tables they replace (see
+  [[replace-tables]]). `check` is called with the SQL the run executes, for the refusals it throws. `:params` stay as
+  they are: the placeholders do not move.
 
-  Throws `::data-testing.errors/parameters-not-kept` when the placeholders the parser reads are not one per value, or
-  the rewrite does not keep each exactly once."
+  Throws `::data-testing.errors/parameters-not-kept` when the placeholders the parser reads are not one per value."
   [driver       :- :keyword
    compiled     :- ::compiled-query
    replacements :- ::table-replacements
    check        :- ifn?]
   (let [{:keys [query params]} compiled]
-    (if (empty? params)
-      (update compiled :query #(check (replace-tables driver % replacements)))
-      (let [nonce                           (format "%08x" (rand-int Integer/MAX_VALUE))
-            {named :sql named-count :count} (sql-tools/name-placeholders driver query (placeholder-prefix nonce))]
-        (when (not= named-count (count params))
+    (when (seq params)
+      (let [{placeholders :count} (sql-tools/name-placeholders driver query "mb_param_")]
+        (when (not= placeholders (count params))
           (throw (data-testing.errors/ex
                   ::data-testing.errors/parameters-not-kept
                   (tru "The query under test cannot be tested as it is: it has {0} parameter value(s), and Metabase finds {1} placeholder(s) in its SQL."
-                       (count params) named-count)
-                  {})))
-        (bind-in-order (check (replace-tables driver named replacements)) nonce (vec params))))))
+                       (count params) placeholders)
+                  {})))))
+    (let [swapped (replace-tables driver query replacements)]
+      (check swapped)
+      (assoc compiled :query swapped))))
 
 ;;; ------------------------------------------------- Queries -------------------------------------------------
 

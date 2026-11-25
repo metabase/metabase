@@ -289,8 +289,8 @@
 
 (mu/defn- check-expectation-sql :- :string
   "The SQL the run executes for the expectation named `expectation-name`, whose SQL is `sql`: `sql` reading the temp
-  tables of `replacements` and `output-token`, as [[ensure-single-select]] returns it. Throws unless it is one SELECT
-  that reads only `temp-tables`. Its SQL is the author's, so SQL the parser cannot read is a refusal naming the
+  tables of `replacements` and `output-token`, otherwise as written. Throws unless it is one SELECT that passes
+  [[ensure-single-select]] and reads only `temp-tables`. Its SQL is the author's, so SQL the parser cannot read is a refusal naming the
   expectation rather than the parser's own escape."
   [driver           :- :keyword
    expectation-name :- :string
@@ -302,18 +302,24 @@
                           (cond-> sql output-token (data-testing.compile/replace-output-token output-token))
                           [:expectation expectation-name])
   (try
-    (let [query (ensure-single-select driver
-                                      (data-testing.compile/replace-tables driver sql replacements output-token)
-                                      [:expectation expectation-name])]
+    (let [query (data-testing.compile/replace-tables driver sql replacements output-token)]
+      (ensure-single-select driver query [:expectation expectation-name])
       (check-rewrite driver query temp-tables [:expectation expectation-name])
       query)
     (catch Exception e
-      (if (sql-parsing/parse-error? e)
+      (cond
+        (sql-parsing/parse-error? e)
         (throw (data-testing.errors/ex
                 ::data-testing.errors/unparseable-source
                 (tru "The SQL of {0} could not be parsed: {1}"
                      (sql-source-label [:expectation expectation-name]) (sql-parsing/parse-error-message e))
                 {:expectation expectation-name}))
+
+        (= ::data-testing.errors/unreplaceable-reference (:error-type (ex-data e)))
+        (throw (ex-info (tru "In the SQL of {0}: {1}" (sql-source-label [:expectation expectation-name]) (ex-message e))
+                        (assoc (ex-data e) :expectation expectation-name)))
+
+        :else
         (throw e)))))
 
 (def ^:private placeholder
