@@ -117,8 +117,8 @@
   including one that could not be evaluated, which comes back as that expectation's own `:error`.
 
   Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the
-  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)
-  carries none.
+  `:error-code` naming which refusal it was, including the 403 for a user whose connection to the database is
+  impersonated; a missing test (404), missing read or run permission (403) or missing feature (402) carries none.
 
   A run of a test whose segment is archived is refused. A run of a test of a segment whose definition is empty,
   cannot be read, names no table, or names a table that no longer exists is refused as one whose query cannot be

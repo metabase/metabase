@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase.driver :as driver]
    [metabase.driver.h2]
    [metabase.driver.postgres]))
@@ -204,3 +205,54 @@
   (testing "the drivers these tests format for load and initialize without a database"
     (is (= :postgres (driver/the-initialized-driver :postgres)))
     (is (= :h2 (driver/the-initialized-driver :h2)))))
+
+;;; -------------------------------------------- rewrite-query --------------------------------------------
+
+(def ^:private orders->temp
+  "Replacements standing a temp table in for `orders`."
+  {{:table "orders"} {:db nil :schema nil :table "mb_tmp"}})
+
+(defn- rewrite
+  "`compiled` rewritten for Postgres to read the temp table of [[orders->temp]], or the `:error-type` of the refusal."
+  [compiled]
+  (try
+    (data-testing.compile/rewrite-query :postgres compiled orders->temp)
+    (catch clojure.lang.ExceptionInfo e
+      (:error-type (ex-data e)))))
+
+(deftest rewrite-query-changes-only-the-table-references-test
+  (testing "control: the table is replaced, and takes its own name as alias"
+    (is (= {:query "SELECT id FROM mb_tmp AS orders" :params []}
+           (rewrite {:query "SELECT id FROM orders" :params []}))))
+  (testing "placeholders stay where they are, and the values in their order"
+    (is (= {:query "SELECT strpos(?, ?) AS id FROM mb_tmp AS orders WHERE x=?AND y = ?" :params ["abcdef" "cd" 1 2]}
+           (rewrite {:query "SELECT strpos(?, ?) AS id FROM orders WHERE x=?AND y = ?" :params ["abcdef" "cd" 1 2]}))))
+  (testing "whitespace, case, comments and functions come back as written"
+    (is (= {:query "select  date_part('year', created_at)  -- the year\nFROM mb_tmp o /* orders */" :params []}
+           (rewrite {:query "select  date_part('year', created_at)  -- the year\nFROM orders o /* orders */" :params []}))))
+  (testing "a ? in a string literal, a quoted name or a comment stays too"
+    (is (= {:query "SELECT '?' AS \"?\", ? AS id /* ? */" :params ["x"]}
+           (rewrite {:query "SELECT '?' AS \"?\", ? AS id /* ? */" :params ["x"]})))))
+
+(deftest replace-tables-refuses-a-reference-it-cannot-replace-in-the-text-test
+  (let [refusal (fn [sql replacements]
+                  (try
+                    (data-testing.compile/replace-tables :postgres sql replacements)
+                    (catch clojure.lang.ExceptionInfo e
+                      (select-keys (ex-data e) [:error-type :reason :detail]))))]
+    (testing "control: a plain qualified reference is replaced"
+      (is (= "SELECT id FROM mb_tmp AS orders"
+             (refusal "SELECT id FROM public.orders" {{:schema "public" :table "orders"} {:db nil :schema nil :table "mb_tmp"}}))))
+    (testing "a comment inside the reference"
+      (is (= {:error-type ::data-testing.errors/unreplaceable-reference
+              :reason     "reference-not-located"
+              :detail     "public.orders"}
+             (refusal "SELECT id FROM public /* c */ . orders"
+                      {{:schema "public" :table "orders"} {:db nil :schema nil :table "mb_tmp"}}))))
+    (testing "two tables of one name, each read without an alias"
+      (is (= {:error-type ::data-testing.errors/unreplaceable-reference
+              :reason     "ambiguous-table-name"
+              :detail     "orders"}
+             (refusal "SELECT a.orders.id FROM a.orders JOIN b.orders ON a.orders.id = b.orders.id"
+                      {{:schema "a" :table "orders"} {:db nil :schema nil :table "mb_a"}
+                       {:schema "b" :table "orders"} {:db nil :schema nil :table "mb_b"}}))))))

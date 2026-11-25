@@ -3,11 +3,12 @@
   (:require
    [clojure.string :as str]
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
-   [metabase.sql-parsing.sqlglot-java.references :as references])
+   [metabase.sql-parsing.sqlglot-java.references :as references]
+   [metabase.sql-parsing.sqlglot-java.statements :as statements])
   (:import
-   (com.metabase.sqlglot.ast Expressions$Alias Expressions$Column Expressions$CTE Expressions$Identifier
-                             Expressions$Query Expressions$Select Expressions$SetOperation Expressions$Subquery
-                             Expressions$Table)
+   (com.metabase.sqlglot.ast Expressions$Alias Expressions$Column Expressions$CTE Expressions$Final Expressions$From
+                             Expressions$Identifier Expressions$Join Expressions$Query Expressions$Select
+                             Expressions$SetOperation Expressions$Subquery Expressions$Table)
    (com.metabase.sqlglot.reference Scope)
    (java.util Collections IdentityHashMap Set)))
 
@@ -20,10 +21,12 @@
                         "from_"       (ast/create "From" {"this" table})}))
 
 (defn- wrap-base-table
-  "A self-UNION subquery, aliased `table-alias`, that scans `table` once but strips any IDENTITY property inherited
-  from it (see [[add-into-clause]]). Port of `_wrap_base_table`."
-  [table table-alias]
-  (let [bare-table (ast/set-arg! (ast/copy table) "alias" nil)
+  "A self-UNION subquery that scans `table` once but strips any IDENTITY property inherited from it (see
+  [[add-into-clause]]). Its alias is the identifier `table` is known by, quoted as it was, so a reserved word such as
+  `[order]` keeps its brackets. Port of `_wrap_base_table`."
+  [table]
+  (let [table-alias (ast/copy (or (some-> (ast/arg table "alias") ast/this) (ast/this table)))
+        bare-table  (ast/set-arg! (ast/copy table) "alias" nil)
         empty-side (ast/set-arg! (select-star-from (ast/copy bare-table))
                                  "where"
                                  (ast/create "Where" {"this" (ast/create "EQ" {"this"       (ast/create "Literal" {"this" "1" "is_string" false})
@@ -32,7 +35,7 @@
                                         "expression" empty-side
                                         "distinct"   false})]
     (ast/create "Subquery" {"this"  self-union
-                            "alias" (ast/create "TableAlias" {"this" (ast/to-identifier table-alias)})})))
+                            "alias" (ast/create "TableAlias" {"this" table-alias})})))
 
 (defn add-into-clause
   "`sql`, a SELECT, as a SQL Server `SELECT ... INTO table-name`, with every base table read through a self-UNION
@@ -67,7 +70,7 @@
       (doseq [column (.sourceColumns scope table-alias)]
         (ast/set-arg! column "db" nil)
         (ast/set-arg! column "catalog" nil))
-      (ast/replace! table (wrap-base-table table table-alias)))
+      (ast/replace! table (wrap-base-table table)))
     (ast/set-arg! into-select "into" (ast/create "Into" {"this" (ast/to-table table-name)}))
     (ast/sql stmt dialect)))
 
@@ -285,3 +288,156 @@
     (if (seq rewritten)
       (str/join "; " rewritten)
       sql)))
+
+;;; --------------------------------------------------- swap-tables ---------------------------------------------------
+
+(defn- original-offset
+  "The offset in SQL of the character at `split-offset` of the same SQL after
+  [[statements/split-placeholder-casts]] put a space at each offset of `inserts`, which are ascending.
+  Port of `_original_offset`."
+  [split-offset inserts]
+  (- split-offset
+     (count (filter true? (map-indexed (fn [k at] (< (+ (long at) (long k)) split-offset)) inserts)))))
+
+(defn- located
+  "`[start end]` of the text of `identifier` in the SQL whose tokens are `token-spans`, `end` exclusive. Nil unless
+  the parser recorded where it read `identifier` and the SQL holds one token there with the identifier's name.
+  Port of `_located`."
+  [identifier token-spans inserts]
+  (when (instance? Expressions$Identifier identifier)
+    (when-let [[start end] (ast/position identifier)]
+      (let [start (original-offset start inserts)
+            end   (original-offset end inserts)]
+        (when (= [(ast/node-name identifier) end] (get token-spans start))
+          [start (inc end)])))))
+
+(defn- located-parts
+  "`[start end]` of each name part that `node` holds under `args`, in the order of `args`. Nil unless each is located
+  (see [[located]]), they follow one another in `sql`, and only a dot and whitespace stand between two of them.
+  Port of `_located_parts`."
+  [node args ^String sql token-spans inserts]
+  (let [spans (mapv #(located (ast/arg node %) token-spans inserts)
+                    (filter #(some? (ast/arg node %)) args))]
+    (when (and (every? some? spans)
+               (every? (fn [[[_ previous-end] [next-start _]]]
+                         (and (<= previous-end next-start)
+                              ;; `(?U)`: Python's `\s` matches every Unicode space.
+                              (re-matches #"(?U)\s*\.\s*" (subs sql previous-end next-start))))
+                       (partition 2 1 spans)))
+      spans)))
+
+(defn- query-source?
+  "Whether the Table node `table` stands where a query reads rows from: in FROM or a JOIN, where every dialect takes
+  a table alias. The target of an INSERT, UPDATE, DELETE or MERGE does not. Port of `_query_source`."
+  [table]
+  (let [parent (ast/parent table)
+        ;; ClickHouse's `FROM t FINAL` parses as a Final node around the table.
+        parent (if (instance? Expressions$Final parent) (ast/parent parent) parent)]
+    (or (instance? Expressions$From parent) (instance? Expressions$Join parent))))
+
+(defn- swapped-reference
+  "The name the table reference `table` takes under `replacement`, as SQL in `dialect`."
+  [table replacement dialect]
+  (let [swapped (ast/create "Table" (into {}
+                                          (for [arg  ["catalog" "db" "this"]
+                                                :let [part (ast/arg table arg)]
+                                                :when part]
+                                            [arg (ast/identifier (ast/node-name part) (ast/quoted? part))])))]
+    (replace-table! swapped replacement "this" dialect)
+    (ast/sql swapped dialect)))
+
+(defn- not-located [label]
+  {:reason "reference-not-located" :reason_detail label})
+
+(defn- table-edit
+  "For the table reference `table`, which `replacement` replaces: `{:edit [start end text]}`, with
+  `:alias [name replacement]`, the name lower-cased, when the reference takes its table name as its alias, or
+  `{:refusal result}`."
+  [table replacement ^String sql token-spans inserts dialect]
+  (let [spans (when (empty? (references/temp-table-prefix table))
+                (located-parts table ["catalog" "db" "this"] sql token-spans inserts))]
+    (if-not spans
+      {:refusal (not-located (str/join "." (remove nil? (references/table-parts table))))}
+      (let [[name-start name-end] (peek spans)
+            aliased?              (and (nil? (ast/arg table "alias")) (query-source? table))]
+        (cond-> {:edit [(ffirst spans)
+                        name-end
+                        (cond-> (swapped-reference table replacement dialect)
+                          ;; Oracle takes no AS before a table alias.
+                          aliased? (str (if (= dialect "oracle") " " " AS ") (subs sql name-start name-end)))]}
+          aliased? (assoc :alias [(ast/lower (ast/node-name table)) replacement]))))))
+
+(defn- qualifier-edit
+  "For `column`, whose qualifier names a replaced table with its schema: `{:edit [start end \"\"]}`, which removes the
+  schema, or `{:refusal result}`."
+  [column ^String sql token-spans inserts]
+  (if-let [spans (located-parts column ["catalog" "db" "table"] sql token-spans inserts)]
+    {:edit [(ffirst spans) (first (peek spans)) ""]}
+    {:refusal (not-located (str/join "." (filter seq (map #(ast/text column %) ["catalog" "db" "table"]))))}))
+
+(defn swap-tables
+  "`sql` with each table reference that the `tables` of `replacements` replace (as [[replace-names]] reads them, and
+  for the same references) written as its replacement, and every other character as given: `{:sql ...}`, or
+  `{:reason ... :reason_detail ...}` when a reference cannot be replaced in the text. Nothing in `sql` is
+  reconstructed from the parsed tree: the tree only says where each name is.
+
+  What changes in the text:
+  - The whole name of a replaced reference becomes the name [[replace-names]] would give it.
+  - A replaced reference in FROM or a JOIN that has no alias takes its own table name, as written, as its alias, so
+    that column qualifiers naming the table resolve as they did.
+  - A column qualifier that names a replaced table with its schema loses the schema.
+
+  Reasons: `\"reference-not-located\"` (the parser recorded no position for a name part, the text there is not that
+  name, something other than a dot stands between two parts, or the reference is a T-SQL `#` temp table) and
+  `\"ambiguous-table-name\"` (two references without an alias have the same table name and different
+  replacements). A `replacements` holding `schemas` or `columns` is a ValueError. Port of `swap_tables`."
+  [dialect ^String sql replacements]
+  (when (or (seq (get replacements "schemas")) (seq (get replacements "columns")))
+    (throw (ast/python-error "ValueError" "swap_tables replaces tables only")))
+  (let [table-map   (into {} (for [[k new-name] (get replacements "tables")]
+                               [[(get k "db") (get k "schema") (required k "table")] new-name]))
+        inserts     (statements/placeholder-cast-offsets sql dialect)
+        token-spans (ast/token-spans sql dialect)
+        results     (vec
+                     (for [stmt   (references/statements (statements/split-placeholder-casts sql dialect) dialect)
+                           result (concat
+                                   (for [table (references/table-references stmt)
+                                         :let  [replacement (usable (find-table-replacement
+                                                                     table-map
+                                                                     (not-empty (ast/text table "catalog"))
+                                                                     (ast/text table "db")
+                                                                     (ast/node-name table)
+                                                                     (quoted-parts table "this")))]
+                                         :when replacement]
+                                     (table-edit table replacement sql token-spans inserts dialect))
+                                   ;; A qualifier without a schema names the table as the reference's alias does,
+                                   ;; and stays as written.
+                                   (for [column (ast/find-all stmt Expressions$Column)
+                                         :when  (and (seq (ast/text column "table")) (seq (ast/text column "db")))
+                                         :when  (usable (find-table-replacement
+                                                         table-map
+                                                         (not-empty (ast/text column "catalog"))
+                                                         (ast/text column "db")
+                                                         (ast/text column "table")
+                                                         (quoted-parts column "table")))]
+                                     (qualifier-edit column sql token-spans inserts)))]
+                       result))
+        ambiguous   (first (sort (for [[table-name aliases] (group-by first (keep :alias results))
+                                       :when (< 1 (count (distinct (map second aliases))))]
+                                   table-name)))
+        edits       (sort (keep :edit results))]
+    (or (some :refusal results)
+        (when ambiguous
+          {:reason "ambiguous-table-name" :reason_detail ambiguous})
+        (let [sb (StringBuilder.)
+              last-end (reduce (fn [last-end [start end text]]
+                                 (if (or (nil? last-end) (< start last-end))
+                                   (reduced nil)
+                                   (do (.append sb sql (int last-end) (int start))
+                                       (.append sb ^String text)
+                                       end)))
+                               0
+                               edits)]
+          (if last-end
+            {:sql (str (.append sb sql (int last-end) (int (count sql))))}
+            (not-located nil))))))

@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-testing.subject.card-test
-  "The `:card` subject plan: the database, the compiled SQL and the output names of a card. H2 only."
+  "The `:card` subject plan: the database, the compiled SQL and the output names of a card. Postgres only: data tests refuse H2 until VER-182."
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -16,12 +16,6 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(defn- table-ref
-  "The `{:schema :name}` of a test-data table, as compiled SQL references it."
-  [table-key]
-  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id table-key))]
-    {:schema schema :name name}))
-
 (defn- saved-card
   "The Card row with `card-id`, as the app database returns it."
   [card-id]
@@ -30,7 +24,7 @@
 (defn- tables-read
   "The tables the compiled SQL of `plan` reads."
   [plan]
-  (data-testing.compile/referenced-tables :h2 (get-in plan [:compiled :query])))
+  (data-testing.compile/referenced-tables driver/*driver* (get-in plan [:compiled :query])))
 
 (defn- table-query
   "An MBQL query of the test-data table `table-key`."
@@ -51,7 +45,7 @@
     template-tags (lib/with-template-tags template-tags)))
 
 (deftest mbql-card-plan-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (let [orders (table-query :orders)
           query  (lib/aggregate orders (lib/sum (column orders :orders :total)))]
       (mt/with-temp [:model/Card {card-id :id} {:name "Total revenue" :dataset_query query}]
@@ -59,7 +53,7 @@
           (testing "a saved MBQL card runs on its query's database"
             (is (= (mt/id) (get-in plan [:database :id]))))
           (testing "its compiled SQL reads the table of its query"
-            (is (= #{(table-ref :orders)} (tables-read plan))))
+            (is (= #{(data-testing.test-util/table-ref :orders)} (tables-read plan))))
           (testing "expectation SQL names the output with `{{output}}`, which stands for one reserved bare table"
             (is (= "{{output}}" (:output-token plan)))
             (is (= [{:schema nil :name data-testing.compile/output-name}] (:output-tables plan))))
@@ -70,36 +64,36 @@
                                 (data-testing.subject/subject-plan :card {:dataset_query (:dataset_query (saved-card card-id))} []))))))))
 
 (deftest mbql-card-implicit-join-plan-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (let [orders (table-query :orders)]
                                                                (-> orders
                                                                    (lib/aggregate (lib/sum (column orders :orders :total)))
                                                                    (lib/breakout (column orders :products :category))))}]
       (testing "an implicit join reads the joined table too"
-        (is (= #{(table-ref :orders) (table-ref :products)}
+        (is (= #{(data-testing.test-util/table-ref :orders) (data-testing.test-util/table-ref :products)}
                (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) []))))))))
 
 (deftest mbql-card-with-a-foreign-key-remap-plan-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (mt/with-column-remappings [orders.product_id products.title]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (let [orders (table-query :orders)]
                                                                  (lib/with-fields orders [(column orders :orders :id)
                                                                                           (column orders :orders :product_id)]))}]
         (testing "a foreign-key remap adds no join: the test need not declare the remapped table"
-          (is (= #{(table-ref :orders)}
+          (is (= #{(data-testing.test-util/table-ref :orders)}
                  (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) [])))))))))
 
 (deftest native-card-plan-test
-  (mt/test-driver :h2
-    (let [{:keys [schema name]} (table-ref :people)]
+  (mt/test-driver :postgres
+    (let [{:keys [schema name]} (data-testing.test-util/table-ref :people)]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (native-query (str "SELECT * FROM " schema "." name))}]
         (testing "a native card reads the tables its SQL names"
-          (is (= #{(table-ref :people)}
+          (is (= #{(data-testing.test-util/table-ref :people)}
                  (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) [])))))))))
 
 (deftest native-card-with-card-reference-plan-test
-  (mt/test-driver :h2
-    (let [{:keys [schema name]} (table-ref :products)]
+  (mt/test-driver :postgres
+    (let [{:keys [schema name]} (data-testing.test-util/table-ref :products)]
       (mt/with-temp [:model/Card {referenced-id :id} {:dataset_query (native-query (str "SELECT * FROM " schema "." name))}
                      :model/Card {card-id :id}       {:dataset_query
                                                       (native-query
@@ -109,12 +103,12 @@
                                                                                 :display-name (str "#" referenced-id)
                                                                                 :card-id      referenced-id})}]
         (testing "a `{{#ref}}` reads the tables of the card it names"
-          (is (= #{(table-ref :products)}
+          (is (= #{(data-testing.test-util/table-ref :products)}
                  (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) [])))))))))
 
 (deftest native-card-with-snippet-plan-test
-  (mt/test-driver :h2
-    (let [{:keys [schema name]} (table-ref :venues)]
+  (mt/test-driver :postgres
+    (let [{:keys [schema name]} (data-testing.test-util/table-ref :venues)]
       (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "venues table" :content (str schema "." name)}
                      :model/Card {card-id :id} {:dataset_query
                                                 (native-query
@@ -125,11 +119,11 @@
                                                                           :snippet-name "venues table"
                                                                           :snippet-id   snippet-id})}]
         (testing "a snippet reads the tables its content names"
-          (is (= #{(table-ref :venues)}
+          (is (= #{(data-testing.test-util/table-ref :venues)}
                  (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) [])))))))))
 
 (deftest metric-and-model-card-plan-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
                                                 :dataset_query (lib/aggregate (table-query :orders) (lib/count))}
                    :model/Card {model-id :id}  {:type          :model
@@ -138,18 +132,18 @@
                                                                      (-> (lib/query mp (lib.metadata/card mp model-id))
                                                                          (lib/aggregate (lib/count))))}]
       (testing "a metric card reads the tables of its query"
-        (is (= #{(table-ref :orders)}
+        (is (= #{(data-testing.test-util/table-ref :orders)}
                (tables-read (data-testing.subject/subject-plan :card (saved-card metric-id) [])))))
       (testing "a model card reads the tables of its query"
-        (is (= #{(table-ref :venues)}
+        (is (= #{(data-testing.test-util/table-ref :venues)}
                (tables-read (data-testing.subject/subject-plan :card (saved-card model-id) [])))))
       (testing "an MBQL question over a model reads the model's tables"
-        (is (= #{(table-ref :venues)}
+        (is (= #{(data-testing.test-util/table-ref :venues)}
                (tables-read (data-testing.subject/subject-plan :card (saved-card over-model-id) []))))))))
 
 (deftest card-with-a-parameter-that-needs-a-value-is-refused-test
-  (mt/test-driver :h2
-    (let [{:keys [schema name]} (table-ref :people)
+  (mt/test-driver :postgres
+    (let [{:keys [schema name]} (data-testing.test-util/table-ref :people)
           people                (str schema "." name)
           tag                   (fn [tag-name & {:as more}]
                                   (merge {:type :text :name tag-name :display-name tag-name} more))
@@ -195,7 +189,7 @@
                                          "source" (tag "source")))))))))
 
 (deftest card-on-a-database-without-testing-is-refused-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
       (let [supports? driver/database-supports?]
         (with-redefs [driver/database-supports? (fn [driver feature database]

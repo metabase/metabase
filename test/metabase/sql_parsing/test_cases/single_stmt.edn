@@ -265,8 +265,8 @@
 
   {:name              "a 40 KB select is too long to gate, but can still be validated to run"
    :dialect           "snowflake"
-   :build             {:prefix    "WITH cte_0 AS (\n  -- running total for segment 0\n  SELECT a.id, a.name, a.cat, a.ts, b.x,\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_0\n  FROM base_table a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > 0\n),\n"
-                       :item      "cte_%4$d AS (\n  -- running total for segment %4$d\n  SELECT a.id, a.name, a.cat, a.ts, b.x,\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_%4$d\n  FROM cte_%1$d a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > %4$d\n)"
+   :build             {:prefix    "WITH cte_0 AS (\n  SELECT a.id, a.name, a.cat, a.ts, b.x, -- running total for segment 0\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_0\n  FROM base_table a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > 0\n),\n"
+                       :item      "cte_%4$d AS (\n  SELECT a.id, a.name, a.cat, a.ts, b.x, -- running total for segment %4$d\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_%4$d\n  FROM cte_%1$d a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > %4$d\n)"
                        :count     119
                        :separator ",\n"
                        :suffix    "\nSELECT * FROM cte_119"}
@@ -318,4 +318,193 @@
                 "-- note\nSELECT 'a;b' AS x FROM t"
                 "SELECT id FROM orders WHERE user_id IN (SELECT id FROM users WHERE active = TRUE)"]
    :stmt-type  "read"
-   :expected   {:verdict :unknown :reason "unparseable" :error "Unknown dialect 'mariadb'."}}]}
+   :expected   {:verdict :unknown :reason "unparseable" :error "Unknown dialect 'mariadb'."}}
+
+  ;; Postgres with `standard_conforming_strings` off reads a backslash in '...' as an escape, so `\'` does not end
+  ;; the literal there. For a caller that executes the rebuild, a rebuild that Postgres reads as more than one
+  ;; statement with the setting on is refused ("rebuild-differs"), and so is one it reads as more than one statement
+  ;; only with the setting off ("backslash-quote"). Each refused case below is one statement to SQLGlot. A caller
+  ;; that only reads the verdict gets neither check.
+
+  {:name              "an executed read with a backslash before a quote and a later semicolon is refused"
+   :dialect           "postgres"
+   :sql               "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name              "an executed read in which a quote after a backslash hides statements from Postgres with the setting off is refused"
+   :dialect           "postgres"
+   :sql               "SELECT 'a\\'' ; RESET ROLE; INSERT INTO public.orders VALUES (87670); SELECT current_user --'"
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name              "an executed write in which a quote after a backslash hides statements from Postgres with the setting off is refused"
+   :dialect           "postgres"
+   :sql               "INSERT INTO public.t VALUES ('a\\'' ); RESET ROLE; INSERT INTO public.orders VALUES (2) --')"
+   :stmt-type         "write"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name       "an executed read whose literal ends in a backslash, with no semicolon after it, is allowed"
+   :dialect    "postgres"
+   :sql        "SELECT 'C:\\' AS note"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed :single-stmt? true :sql "SELECT 'C:\\' AS note"}}
+
+  {:name       "an executed write whose literal ends in a backslash, with no semicolon after it, is allowed"
+   :dialect    "postgres"
+   :sql        "INSERT INTO t VALUES ('C:\\')"
+   :stmt-type  "write"
+   :expected   {:verdict :allowed :single-stmt? true :sql "INSERT INTO t VALUES ('C:\\')"}}
+
+  {:name              "an executed read whose dollar-quoted alias SQLGlot writes back bare, hiding a second statement, is refused"
+   :dialect           "postgres"
+   :sql               "SELECT 1 AS $q$a; RESET ROLE; SELECT current_user$q$"
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs"}}
+
+  ;; SQLGlot moves a `--` comment that opens a CTE's body into a `/* */` comment, which a second parse drops, so the
+  ;; rebuild does not rebuild to itself. No caller requires that it does.
+  {:name              "an executed read whose CTE body opens with a -- comment is allowed: its rebuild need not rebuild to itself"
+   :dialect           "postgres"
+   :sql               "WITH c AS (\n  -- note\n  SELECT id FROM t) SELECT * FROM c"
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :allowed :single-stmt? true :sql "WITH c AS (/* note */ SELECT id FROM t) SELECT * FROM c"}}
+
+  {:name              "an executed read whose rebuilt E'' string moves a quote, so `set_config` runs, is refused"
+   :dialect           "postgres"
+   :sql               "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$none$z$, false) --$q$ AS a"
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "session-function"}}
+
+  {:name              "an executed write whose dollar-quoted alias SQLGlot writes back bare, hiding a second statement, is refused"
+   :dialect           "postgres"
+   :sql               "INSERT INTO t SELECT 1 AS $q$a; RESET ROLE; SELECT 1$q$"
+   :stmt-type         "write"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs"}}
+
+  {:name              "an executed read-only statement with a backslash before a quote is refused"
+   :dialect           "postgres"
+   :sql               "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name              "a quote after a backslash hides a second statement from Postgres with standard_conforming_strings off"
+   :dialect           "postgres"
+   :sql               "SELECT 'a\\''; DELETE FROM orders; --' AS note"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name              "a dollar-quoted string ending in a backslash rebuilds to a literal that hides a second statement with the setting off"
+   :dialect           "postgres"
+   :sql               "SELECT $q$a\\$q$ || $q$; DELETE FROM orders; --$q$ AS note"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+
+  {:name              "a rebuilt E'' string hides a second statement whatever the setting"
+   :dialect           "postgres"
+   :sql               "SELECT E'a\\\\' || $q$; RESET ROLE; DELETE FROM orders; --$q$ AS note"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "multiple-statements"}}
+
+  {:name              "a dollar-quoted alias, which SQLGlot writes back bare, hides a second statement whatever the setting"
+   :dialect           "postgres"
+   :sql               "SELECT 1 AS $q$a;SELECT 2$q$"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "multiple-statements"}}
+
+  {:name       "a quote doubled inside a literal is one statement under either setting"
+   :dialect    "postgres"
+   :sql        "SELECT 'it''s' AS note"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true :sql "SELECT 'it''s' AS note"}}
+
+  {:name       "a dollar-quoted string without backslashes is one statement under either setting"
+   :dialect    "postgres"
+   :sql        "SELECT $q$it's; DELETE FROM orders$q$ AS note"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a backslash that is not before a quote is one statement under either setting"
+   :dialect    "postgres"
+   :sql        "SELECT 'C:\\temp' AS note"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a literal ending in a backslash is one statement with the setting on, and unterminated with it off"
+   :dialect    "postgres"
+   :sql        "SELECT 'C:\\' AS note"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "an E'' string whose quote is escaped is one statement under either setting"
+   :dialect    "postgres"
+   :sql        "SELECT E'it\\'s; DELETE FROM orders' AS note"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a backslash before a quote in a quoted name or a comment ends no literal"
+   :dialect    "postgres"
+   :sql        "SELECT 'x' AS \"a\\'\" /* b\\' */"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "Redshift is not checked for the setting: SQLGlot reads its backslash as an escape already"
+   :dialect    "redshift"
+   :sql        "SELECT 'it\\'s' AS note"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  ;; SQLGlot reads `\\` in an E'' string as one backslash and writes it back undoubled, so Postgres reads the rebuilt
+  ;; literal as ending one quote later than SQLGlot did. A caller that executes the rebuild of a "read-only" statement
+  ;; is refused a rebuild that fails the checks. A caller that only reads the verdict runs the original, which
+  ;; Postgres reads as SQLGlot did.
+  {:name              "control: a read-only E'' string with an escaped quote rebuilds to text that reads the same"
+   :dialect           "postgres"
+   :sql               "SELECT E'it\\'s' AS id"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true :sql "SELECT e'it''s' AS id"}}
+
+  {:name              "a read-only SELECT whose rebuilt E'' string moves a quote, so `setval` runs, is refused to a caller that executes the rebuild"
+   :dialect           "postgres"
+   :sql               "SELECT E'\\\\' || $q$' || (SELECT setval($z$orders_id_seq$z$, 4242))::text --$q$ AS id"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "writes-or-locks"}}
+
+  {:name              "a read-only SELECT whose rebuilt E'' string moves a quote, so `set_config` runs, is refused to a caller that executes the rebuild"
+   :dialect           "postgres"
+   :sql               "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$postgres$z$, false) --$q$ AS id"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "session-function"}}
+
+  {:name              "a read-only SELECT whose rebuilt E'' string never ends is refused to a caller that executes the rebuild"
+   :dialect           "postgres"
+   :sql               "SELECT E'a\\\\' AS id"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "unparseable"}}
+
+  {:name       "a read that impersonation executes may hold a number its rebuild writes another way"
+   :dialect    "postgres"
+   :sql        "SELECT 0x1F AS a"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed :single-stmt? true}}
+
+  {:name       "a MySQL read that impersonation executes may hold DIV, LOG10 and !"
+   :dialect    "mysql"
+   :sqls       ["SELECT a DIV 3 AS q FROM t" "SELECT LOG10(x) AS a FROM t" "SELECT !a AS b FROM t"]
+   :stmt-type  "read"
+   :expected   {:verdict :allowed :single-stmt? true}}]}

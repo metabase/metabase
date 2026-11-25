@@ -4,7 +4,6 @@
   The query is the author's own SQL, rewritten so the tables it names resolve to the run's temp
   tables rather than to the real ones."
   (:require
-   [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
    [metabase-enterprise.data-testing.expectations.report :as expectations.report]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
@@ -45,8 +44,8 @@
   (temp-tables [_this _context]
     {})
 
-  (probes [_this {:keys [driver replacements output-token]}]
-    {:violations {:query    (data-testing.compile/replace-tables driver sql replacements output-token)
+  (probes [_this {:keys [expectation-query]}]
+    {:violations {:query    expectation-query
                   :params   []
                   :max-rows expectations.report/row-cap}})
 

@@ -518,6 +518,22 @@
   [parser dialect sql replacements]
   (protocol/replace-names parser dialect sql replacements))
 
+(defn swap-tables
+  "`sql` with each table reference that the `:tables` of `replacements` (a [[replace-names]] map) replace written as
+  its replacement, and every other character as given. A replaced table in FROM or a JOIN that has no alias takes its
+  own name as alias, so `orders.id` still resolves; `public.orders.id` loses its schema.
+
+  Returns `{:sql swapped}`, or `{:reason reason :detail detail}` when a reference cannot be replaced in the text:
+  `\"reference-not-located\"`, or `\"ambiguous-table-name\"` when two unaliased references share a table name and
+  have different replacements.
+
+  SECURITY: as for [[replace-names]], replacement values must be system-generated."
+  [parser dialect sql replacements]
+  (let [{:keys [reason reason_detail] swapped :sql} (protocol/swap-tables parser dialect sql replacements)]
+    (if reason
+      {:reason reason :detail reason_detail}
+      {:sql swapped})))
+
 ;;; --------------------------------------- Single-statement classification ----------------------------------------
 
 ;; Parsing time and memory grow with the length of the SQL, whatever it holds.
@@ -536,13 +552,18 @@
    generically-regenerated `:sql`, which is not the string that was checked."
   {:max-sql-chars        nil
    :literal-list-ceiling executable-literal-list-ceiling
-   :require-dialect?     true})
+   :require-dialect?     true
+   ;; The caller runs the rebuild, so every type has it checked.
+   :check-rebuild        {"read-only" "rebuild"
+                          "read"      "rebuild"
+                          "write"     "rebuild"}})
 
 (def ^:private gate-limits
   "Limits for a caller that only reads the verdict and never executes its `:sql` — [[classify-stmt]]."
   {:max-sql-chars        max-gate-sql-chars
    :literal-list-ceiling literal-list-strip-threshold
-   :require-dialect?     false})
+   :require-dialect?     false
+   :check-rebuild        {}})
 
 (defn- unknown
   "A verdict that `sql` could not be checked, for `reason`."
@@ -567,7 +588,7 @@
 (defn- classify-single-stmt
   "Classify `sql` as a single statement of `stmt-type` for `dialect` with `parser`, spending no more than `limits` allow.
    Applies `limits` as given; it does not infer them from `stmt-type`."
-  [parser dialect sql stmt-type {:keys [max-sql-chars literal-list-ceiling require-dialect?]}]
+  [parser dialect sql stmt-type {:keys [max-sql-chars literal-list-ceiling require-dialect? check-rebuild]}]
   (cond
     ;; The length is checked before anything scans the SQL: stripping literal lists is itself work that
     ;; grows with it.
@@ -585,7 +606,7 @@
     (unknown sql "large-literal-list")
 
     :else
-    (verdict sql (protocol/single-stmt-of-type parser dialect sql stmt-type))))
+    (verdict sql (protocol/single-stmt-of-type parser dialect sql stmt-type (get check-rebuild stmt-type)))))
 
 (defn validate-executable-stmt
   "Whether `sql` is a single statement of `stmt-type` for `dialect`, for a caller that will **execute** the
@@ -595,7 +616,12 @@
   The `:sql` is reconstructed from the parsed AST, and only ever from `sql` itself — SQL that cannot be
   parsed as it stands comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched
   for in its original one. See [[executable-limits]] for what that costs, and [[classify-stmt]] for the
-  same question asked by a caller that only needs a verdict."
+  same question asked by a caller that only needs a verdict.
+
+  The `:sql` must itself pass the same checks; otherwise the verdict is `:disallowed` with `:reason
+  \"rebuild-differs\"` and the reconstruction's own reason as `:detail`. On Postgres, it must also read as one
+  statement with `standard_conforming_strings` on (else `:reason \"rebuild-differs\"` with `:detail
+  \"multiple-statements\"`) and with it off (else `:reason \"backslash-quote\"`)."
   [parser dialect sql stmt-type]
   (classify-single-stmt parser dialect sql stmt-type executable-limits))
 

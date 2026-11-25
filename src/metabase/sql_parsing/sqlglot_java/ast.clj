@@ -56,7 +56,25 @@
   (mapv (fn [^Token token] [(str (.type token)) (.text token) (.start token)])
         (.tokenize (Tokenizer. dialect) sql)))
 
+(defn token-spans
+  "The tokens of `sql` as a map from each token's start offset to `[text end]`, `end` the offset of the token's last
+  character."
+  [^String sql ^String dialect]
+  (into {}
+        (map (fn [^Token token] [(.start token) [(.text token) (dec (.end token))]]))
+        (.tokenize (Tokenizer. dialect) sql)))
+
 ;;; ------------------------------------------------------- nodes -------------------------------------------------------
+
+(defn position
+  "`[start end]`, the offsets of the first and last characters the parser read `node` from (`node.meta`), or nil when
+  it recorded none."
+  [^Expr node]
+  (let [meta (.meta node)
+        start (get meta "start")
+        end   (get meta "end")]
+    (when (and start end)
+      [(long start) (long end)])))
 
 (defn arg
   "The value of `node`'s argument `k` (`node.args.get(k)`)."

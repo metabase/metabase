@@ -385,8 +385,10 @@
       (json/decode+kw (call "field_references" sql dialect)))
     (replace-names [_ dialect sql replacements]
       (call "replace_names" sql (json/encode replacements) dialect))
-    (single-stmt-of-type [_ dialect sql stmt-type]
-      (json/decode+kw (call "is_single_stmt_of_type" sql stmt-type dialect)))
+    (swap-tables [_ dialect sql replacements]
+      (json/decode+kw (call "swap_tables" sql (json/encode replacements) dialect)))
+    (single-stmt-of-type [_ dialect sql stmt-type check-rebuild]
+      (json/decode+kw (call "is_single_stmt_of_type" sql stmt-type dialect check-rebuild)))
     (transpile-sql [_ sql from-dialect to-dialect]
       (json/decode+kw (call "transpile_sql" sql from-dialect to-dialect)))))
 

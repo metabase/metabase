@@ -76,14 +76,13 @@
   "Run the saved test `test-id`, a `test-model` row, of `subject`, a `subject-type`, as crowberto. Returns the status of
   its one expectation (`:error` when that expectation could not run), or the error type of the run's refusal."
   [subject-type subject test-model test-id]
-  (binding [api/*current-user-id* (mt/user->id :crowberto)]
-    (try
-      (let [[expectation & more] (:expectations (data-testing.runner/run-test! subject-type subject
-                                                                               (t2/select-one test-model :id test-id)))]
-        (assert (empty? more))
-        (:status expectation))
-      (catch ExceptionInfo e
-        (:error-type (ex-data e))))))
+  (try
+    (let [[expectation & more] (:expectations (data-testing.test-util/run-as-admin! subject-type subject
+                                                                                    (t2/select-one test-model :id test-id)))]
+      (assert (empty? more))
+      (:status expectation))
+    (catch ExceptionInfo e
+      (:error-type (ex-data e)))))
 
 (defn- run-card-test!
   "Save a card with the query `query` and a test of it with `inputs`, one expectation and the further `test-fields`,
@@ -104,7 +103,7 @@
     {:pinned (run-test {:now now}) :unpinned (run-test {})}))
 
 (deftest relative-filters-read-the-pinned-clock-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [orders (orders-query)]
       (testing "a filter in days: Redshift computes it from the JVM clock, the other drivers from the database's"
         (is (= {:pinned :passed :unpinned :failed}
@@ -128,7 +127,7 @@
                                      [1])))))))
 
 (deftest card-on-a-segment-reads-the-pinned-clock-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [mp (mt/metadata-provider)]
       (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
                                                       :name       "Last 30 days"
@@ -190,12 +189,12 @@
                                                             :database (mt/id)}}
                    :model/TransformTest {test-id :id} (merge {:transform_id (:id transform)
                                                               :inputs       inputs
-                                                              :expectations [(expectation-of (str schema "." target-name))]}
+                                                              :expectations [(expectation-of (data-testing.test-util/qualified schema target-name))]}
                                                              test-fields)]
       (outcome! :transform transform :model/TransformTest test-id))))
 
 (deftest transform-reads-the-pinned-clock-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [query  (lib/filter (orders-query) (lib/time-interval (created-at) -30 :day))
           inputs [(orders-input {1 (pinned+ -10 :days) 2 (pinned+ -60 :days) 3 (real+ -10 :days)})]
           run-test #(run-transform-test! query % inputs (constantly (selects [1])))]
@@ -204,7 +203,7 @@
                {:pinned (run-test {:now now}) :unpinned (run-test {})}))))))
 
 (deftest native-subject-with-now-is-refused-test
-  (mt/test-drivers #{:h2 :postgres}
+  (mt/test-drivers #{:postgres}
     (let [mp      (mt/metadata-provider)
           {:keys [schema], table-name :name} (lib.metadata/table mp (mt/id :orders))
           native  (lib/native-query mp (str "SELECT id, created_at FROM " schema "." table-name
@@ -227,7 +226,7 @@
                 :unpinned (run-transform-test! native {} inputs (constantly (selects [1])))}))))))
 
 (deftest validate-test-refuses-now-on-native-sql-test
-  (mt/test-drivers #{:h2}
+  (mt/test-drivers #{:postgres}
     (let [mp     (mt/metadata-provider)
           {:keys [schema], table-name :name} (lib.metadata/table mp (mt/id :orders))
           native (lib/native-query mp (str "SELECT id FROM " schema "." table-name))
@@ -236,8 +235,9 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query native}]
         (let [card    (t2/select-one :model/Card :id card-id)
               refusal (fn [definition]
-                        (data-testing.test-util/refusal-type
-                         #(data-testing.runner/validate-test :card card definition)))]
+                        (binding [api/*current-user-id* (mt/user->id :crowberto)]
+                          (data-testing.test-util/refusal-type
+                           #(data-testing.runner/validate-test :card card definition))))]
           (testing "a test is refused as it is saved, not only when it runs"
             (is (= ::data-testing.errors/now-on-native-sql (refusal (assoc definition :now (t/offset-date-time now))))))
           (testing "control: without `now` the same test is accepted"

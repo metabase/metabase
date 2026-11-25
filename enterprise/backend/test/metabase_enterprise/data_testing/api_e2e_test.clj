@@ -19,7 +19,7 @@
         {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
     (mt/with-temp [:model/Transform {transform-id :id}
                    {:source {:type  :query
-                             :query (lib/native-query mp (str "SELECT id, name FROM " schema "." table))}
+                             :query (lib/native-query mp (str "SELECT id, name FROM " (data-testing.test-util/qualified schema table)))}
                     :target {:type     "table"
                              :schema   schema
                              :name     "people_summary"
@@ -33,7 +33,7 @@
 
 (deftest transform-test-lifecycle-test
   (testing "author, read, run, edit, re-run and delete a transform test over the API"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (mt/test-drivers (data-testing.test-util/data-test-drivers)
       (data-testing.test-util/with-transforms-enabled #{:transforms-basic :transforms-testing}
         (with-people-transform
           (fn [schema table transform-id]
@@ -42,7 +42,7 @@
                            :sql    "SELECT 1 AS id, 'abc' AS name"}
                   passing {:type "empty"
                            :name "no null ids"
-                           :sql  (str "SELECT * FROM " schema ".people_summary WHERE id IS NULL")}
+                           :sql  (str "SELECT * FROM " (data-testing.test-util/qualified schema "people_summary") " WHERE id IS NULL")}
                   ;; The output row is (1, 'abc'), so this one differs in a single cell.
                   [int-type text-type] (data-testing.test-util/cast-types)
                   failing {:type    "equals"
@@ -97,7 +97,7 @@
 
 (deftest run-refusal-test
   (testing "a non-200 from the run endpoint means nothing ran"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (mt/test-drivers (data-testing.test-util/data-test-drivers)
       (data-testing.test-util/with-transforms-enabled #{:transforms-basic :transforms-python :transforms-testing}
         (testing "422 — the environment prevents a run: not a query transform"
           (mt/with-temp [:model/Transform     {transform-id :id}

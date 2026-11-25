@@ -4,7 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.executor :as data-testing.executor]
-   [metabase-enterprise.data-testing.runner :as data-testing.runner]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -42,7 +42,7 @@
       (let [{:keys [input-sql declared produced]} (get cases driver/*driver*)
             mp                            (mt/metadata-provider)
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
-            transform-sql                 (str "SELECT id AS total FROM " schema "." table)]
+            transform-sql                 (str "SELECT id AS total FROM " (data-testing.test-util/qualified schema table))]
         (mt/with-temp [:model/Transform {transform-id :id :as transform}
                        {:source {:type  :query
                                  :query (lib/native-query mp transform-sql)}
@@ -55,7 +55,7 @@
                                         :format  :rows
                                         :columns [{:name "total" :cast_type declared}]
                                         :rows    [{"total" 1}]}]}]
-          (let [result (data-testing.runner/run-test! :transform transform transform-test)]
+          (let [result (data-testing.test-util/run-as-admin! :transform transform transform-test)]
             (testing "the run passes, so nothing here reaches the author as a problem"
               (is (= :passed (:status result))))
             (testing "the transform's output column is not the type the author declared"

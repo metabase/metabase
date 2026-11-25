@@ -19,7 +19,8 @@
     (add-insert-clause [_ dialect sql table-name] (f :add-insert-clause [dialect sql table-name]))
     (field-references [_ dialect sql] (f :field-references [dialect sql]))
     (replace-names [_ dialect sql replacements] (f :replace-names [dialect sql replacements]))
-    (single-stmt-of-type [_ dialect sql stmt-type] (f :single-stmt-of-type [dialect sql stmt-type]))
+    (swap-tables [_ dialect sql replacements] (f :swap-tables [dialect sql replacements]))
+    (single-stmt-of-type [_ dialect sql stmt-type check-rebuild] (f :single-stmt-of-type [dialect sql stmt-type check-rebuild]))
     (transpile-sql [_ sql from-dialect to-dialect] (f :transpile-sql [sql from-dialect to-dialect]))))
 
 (defn- shadow-parser
@@ -58,7 +59,8 @@
    :add-insert-clause        (protocol/add-insert-clause parser "postgres" "sql" "t")
    :field-references         (protocol/field-references parser "postgres" "sql")
    :replace-names            (protocol/replace-names parser "postgres" "sql" {})
-   :single-stmt-of-type      (protocol/single-stmt-of-type parser "postgres" "sql" "read")
+   :swap-tables              (protocol/swap-tables parser "postgres" "sql" {})
+   :single-stmt-of-type      (protocol/single-stmt-of-type parser "postgres" "sql" "read" nil)
    :transpile-sql            (protocol/transpile-sql parser "sql" "postgres" "mysql")})
 
 (deftest every-method-answers-with-the-primary-test
@@ -123,7 +125,7 @@
   (mt/with-prometheus-system! [_ system]
     ;; single-stmt-of-type normalization updates the :sql key of a map; a vector has no such key
     (let [parser (shadow-parser (stub-parser (fn [_ _] [1])) (stub-parser (fn [_ _] [1])))]
-      (is (= [1] (protocol/single-stmt-of-type parser "postgres" "sql" "read")))
+      (is (= [1] (protocol/single-stmt-of-type parser "postgres" "sql" "read" nil)))
       (wait-until #(pos? (comparisons system "single-stmt-of-type" "comparison-failed")))
       (is (== 1 (comparisons system "single-stmt-of-type" "comparison-failed"))))))
 
