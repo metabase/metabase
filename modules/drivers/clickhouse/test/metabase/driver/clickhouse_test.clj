@@ -24,6 +24,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.core :as qp.core]
    [metabase.query-processor.test :as qp]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
@@ -485,6 +486,17 @@
       (let [value (com.clickhouse.data.value.UnsignedLong/valueOf "84467440737095")]
         (is (= value (nippy/thaw (nippy/freeze value))))))))
 
+(defn- cache-round-trip
+  "`row` after the results cache writes it and reads it back."
+  [row]
+  (let [bytes (qp.core/do-with-serialization
+               (fn [in result-fn]
+                 (in {})
+                 (in row)
+                 (result-fn)))]
+    (qp.core/with-reducible-deserialized-results [[_metadata rows] (java.io.ByteArrayInputStream. bytes)]
+      (first (into [] rows)))))
+
 (deftest ^:parallel clickhouse-map-values-serialization-test
   (mt/test-driver :clickhouse
     (testing "the results cache can serialize Map, JSON and Variant values"
@@ -501,7 +513,16 @@
                 {"a.b" [1 2], "c" "x"}
                 {"x" [1]}]
                row
-               (nippy/thaw (nippy/freeze row))))))))
+               (cache-round-trip row)))))
+    (testing "a Map value keeps the order of its keys"
+      (let [value (->> (mt/native-query
+                        {:query "SELECT mapFromArrays(arrayMap(i -> toString(10 - i), range(10)), range(10)) AS m"})
+                       qp/process-query
+                       mt/rows
+                       ffirst)]
+        (is (= ["10" "9" "8" "7" "6" "5" "4" "3" "2" "1"]
+               (keys value)
+               (keys (first (cache-round-trip [value])))))))))
 
 (deftest ^:parallel clickhouse-query-formatting
   (mt/test-driver :clickhouse

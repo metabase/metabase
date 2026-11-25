@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.string :as str]
+   [flatland.ordered.map :as ordered-map]
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
@@ -705,11 +706,12 @@
     (.getHostAddress inet-address)))
 
 (defn- value->clojure
-  "Convert a Java map or list, and the values in it, to Clojure data. The results cache cannot read Java maps and lists."
+  "Convert a Java map or list, and the values in it, to Clojure data. The results cache cannot read Java maps and lists.
+  A map keeps the order of its keys."
   [value]
   (cond
     (instance? Map value)
-    (into {} (map (fn [[k v]] [k (some-> v value->clojure)])) value)
+    (into (ordered-map/ordered-map) (map (fn [[k v]] [k (some-> v value->clojure)])) value)
 
     (instance? List value)
     (mapv #(some-> % value->clojure) value)
