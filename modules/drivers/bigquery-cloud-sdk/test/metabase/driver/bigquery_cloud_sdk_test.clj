@@ -1960,8 +1960,11 @@
     (is (= 3000000000 (#'bigquery/sync-query-max-bytes-billed {:sync-query? true} {:sync-max-gb-billed "3"}))))
   (testing "no limit for a query that sync does not send"
     (is (nil? (#'bigquery/sync-query-max-bytes-billed {} {:sync-max-gb-billed 2}))))
+  (testing "a limit with a fraction of a GB"
+    (is (= 500000000 (#'bigquery/sync-query-max-bytes-billed {:sync-query? true} {:sync-max-gb-billed 0.5})))
+    (is (= 1500000000 (#'bigquery/sync-query-max-bytes-billed {:sync-query? true} {:sync-max-gb-billed "1.5"}))))
   (testing "no limit when the database sets none, or sets one that is not a positive number"
-    (doseq [setting [nil "" " " "abc" 0 -1]]
+    (doseq [setting [nil "" " " "abc" "1,000" 0 -1 1e-10]]
       (is (nil? (#'bigquery/sync-query-max-bytes-billed {:sync-query? true} {:sync-max-gb-billed setting}))
           (pr-str setting)))))
 
@@ -1970,3 +1973,18 @@
     (is (= 5000 (.getMaximumBytesBilled ^QueryJobConfiguration
                  (#'bigquery/build-bigquery-request "SELECT 1" [] {:max-bytes-billed 5000}))))
     (is (nil? (.getMaximumBytesBilled ^QueryJobConfiguration (#'bigquery/build-bigquery-request "SELECT 1" []))))))
+
+(deftest execute-reducible-query-passes-the-sync-limit-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "a sync query of a database with a limit runs with it, and other queries run without one"
+      (mt/with-temp [:model/Database {db-id :id} {:engine  :bigquery-cloud-sdk
+                                                  :details (assoc (:details (mt/db)) :sync-max-gb-billed 2)}]
+        (let [job-options (atom [])
+              run         (fn [query]
+                            (binding [bigquery/*process-native* (fn [respond _database _sql _params _cancel-chan & [opts]]
+                                                                  (swap! job-options conj opts)
+                                                                  (respond {:cols []} []))]
+                              (qp/process-query query)))]
+          (run {:database db-id :type :native :native {:query "SELECT 1"} :sync-query? true})
+          (run {:database db-id :type :native :native {:query "SELECT 1"}})
+          (is (= [{:max-bytes-billed 2000000000} nil] @job-options)))))))

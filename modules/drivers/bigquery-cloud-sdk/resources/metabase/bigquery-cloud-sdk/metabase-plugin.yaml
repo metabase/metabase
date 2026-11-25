@@ -60,8 +60,7 @@ driver:
         advanced-options: true
     - name: sync-max-gb-billed
       display-name: Maximum GB billed for each sync query
-      helper-text: Sync skips a sample or a filter value list when its query would bill more than this. Leave empty for no limit.
-      placeholder: "10"
+      helper-text: BigQuery refuses a query that reads a sample of a table or the values of a filter, including when someone first opens a filter, if it would bill more than this. One query can read up to 50 fields of a table. Leave empty for no limit.
       required: false
       type: integer
       visible-if:

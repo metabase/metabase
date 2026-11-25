@@ -712,8 +712,8 @@
    [:sync-query?
     {:optional true
      :description
-     "Whether sync sends this query, to read a sample of a table or the values of a field. A driver may limit the cost
-  of such a query, for example the bytes that the warehouse bills for it."}
+     "Whether sync sends this query, to read a sample of a table or the values of a field. A driver may use it only to
+  restrict the query, for example to limit the bytes that the warehouse bills for it, since a client can set it too."}
     :boolean]
    [:cache-strategy {:optional true} [:maybe [:ref ::cache-strategy]]]
    [:was-pivot

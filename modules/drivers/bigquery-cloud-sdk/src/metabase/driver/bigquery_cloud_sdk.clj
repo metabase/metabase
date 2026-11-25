@@ -967,16 +967,23 @@
       max-bytes-billed (.setMaximumBytesBilled (long max-bytes-billed))))))
 
 (defn- sync-query-max-bytes-billed
-  "The most bytes that BigQuery may bill for `query`: the `sync-max-gb-billed` of the database `details`, in GB, when
-  sync sends the query. Nil for other queries, and when the database sets no positive limit."
+  "The most bytes that BigQuery may bill for `query`: the `sync-max-gb-billed` of the database `details`, in GB of
+  10^9 bytes, when sync sends the query. Nil for other queries, and when the database sets no positive limit. A value
+  that is not a number is logged and ignored."
   [query details]
   (when (:sync-query? query)
     (let [setting (:sync-max-gb-billed details)
           gb      (cond
-                    (number? setting) setting
-                    (string? setting) (parse-long (str/trim setting)))]
-      (when (some-> gb pos?)
-        (* (long gb) 1000 1000 1000)))))
+                    (number? setting)       (bigdec setting)
+                    (str/blank? setting)    nil
+                    (string? setting)       (try (bigdec (str/trim setting))
+                                                 (catch NumberFormatException _
+                                                   (log/warnf "Ignoring the sync limit %s, which is not a number of GB"
+                                                              (pr-str setting))
+                                                   nil)))
+          bytes   (some-> gb (* 1000000000M) long)]
+      (when (some-> bytes pos?)
+        bytes))))
 
 (defn- query-results-page
   "Fetch one page of query-job results from `job` with the given `options`. A thin wrapper over `.getQueryResults`
