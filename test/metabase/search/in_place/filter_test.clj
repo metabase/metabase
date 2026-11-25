@@ -8,7 +8,8 @@
    [metabase.search.in-place.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]
    [metabase.test :as mt]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.util.honey-sql-2 :as h2x]
+   [toucan2.core :as t2]))
 
 (def default-search-ctx
   {:search-string                  nil
@@ -240,33 +241,33 @@
 
 (def ^:private newest-revision
   "The filter that keeps the newest Revision of a card."
-  (revisions.sql/newest-revision-clause :revision "Card" :card.id))
+  (revisions.sql/newest-revision-clause :rev "Card" :card.id))
 
 (deftest ^:parallel last-edited-at-filter-test
   (testing "last edited at filter"
     (is (= {:select [:*]
             :from   [:table]
-            :join   [:revision [:= :revision.model_id :card.id]]
+            :join   [[(t2/table-name :model/Revision) :rev] [:= :rev.model_id :card.id]]
             :where  [:and
                      [:= :card.archived false]
-                     [:= :revision.model "Card"]
+                     [:= :rev.model "Card"]
                      newest-revision
-                     [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
-                     [:< [:cast :revision.timestamp :date] #t "2016-04-24"]]}
+                     [:>= [:cast :rev.timestamp :date] #t "2016-04-18"]
+                     [:< [:cast :rev.timestamp :date] #t "2016-04-24"]]}
            (search.filter/build-filters
             base-search-query "dataset"
             (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"}))))
     (testing "do not join twice if has both last-edited-at and last-edited-by"
       (is (= {:select [:*]
               :from   [:table]
-              :join   [:revision [:= :revision.model_id :card.id]]
+              :join   [[(t2/table-name :model/Revision) :rev] [:= :rev.model_id :card.id]]
               :where  [:and
                        [:= :card.archived false]
-                       [:= :revision.model "Card"]
+                       [:= :rev.model "Card"]
                        newest-revision
-                       [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
-                       [:< [:cast :revision.timestamp :date] #t "2016-04-24"]
-                       [:= :revision.user_id 1]]}
+                       [:>= [:cast :rev.timestamp :date] #t "2016-04-18"]
+                       [:< [:cast :rev.timestamp :date] #t "2016-04-24"]
+                       [:= :rev.user_id 1]]}
              (search.filter/build-filters
               base-search-query "dataset"
               (merge default-search-ctx {:last-edited-at "2016-04-18~2016-04-23"
@@ -300,10 +301,10 @@
             :from   [:table]
             :where  [:and
                      [:= :card.archived false]
-                     [:= :revision.model "Card"]
+                     [:= :rev.model "Card"]
                      newest-revision
-                     [:= :revision.user_id 1]]
-            :join   [:revision [:= :revision.model_id :card.id]]}
+                     [:= :rev.user_id 1]]
+            :join   [[(t2/table-name :model/Revision) :rev] [:= :rev.model_id :card.id]]}
            (search.filter/build-filters
             base-search-query "dataset"
             (merge default-search-ctx
@@ -315,10 +316,10 @@
             :from   [:table]
             :where  [:and
                      [:= :card.archived false]
-                     [:= :revision.model "Card"]
+                     [:= :rev.model "Card"]
                      newest-revision
-                     [:in :revision.user_id #{1 2}]]
-            :join   [:revision [:= :revision.model_id :card.id]]}
+                     [:in :rev.user_id #{1 2}]]
+            :join   [[(t2/table-name :model/Revision) :rev] [:= :rev.model_id :card.id]]}
            (search.filter/build-filters
             base-search-query "dataset"
             (merge default-search-ctx
@@ -332,10 +333,10 @@
                 base-search-query
                 {:where  [:and
                           [:= :card.archived false]
-                          [:= :moderation_review.status "verified"]
-                          [:= :moderation_review.moderated_item_type "card"]
-                          [:= :moderation_review.most_recent true]]
-                 :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
+                          [:= :vmr.status "verified"]
+                          [:= :vmr.moderated_item_type "card"]
+                          [:= :vmr.most_recent true]]
+                 :join   [[(t2/table-name :model/ModerationReview) :vmr] [:= :vmr.moderated_item_id :card.id]]})
                (search.filter/build-filters
                 base-search-query "card"
                 (merge default-search-ctx {:verified true}))))))))
@@ -348,10 +349,10 @@
                 base-search-query
                 {:where  [:and
                           [:= :card.archived false]
-                          [:= :moderation_review.status "verified"]
-                          [:= :moderation_review.moderated_item_type "card"]
-                          [:= :moderation_review.most_recent true]]
-                 :join   [:moderation_review [:= :moderation_review.moderated_item_id :card.id]]})
+                          [:= :vmr.status "verified"]
+                          [:= :vmr.moderated_item_type "card"]
+                          [:= :vmr.most_recent true]]
+                 :join   [[(t2/table-name :model/ModerationReview) :vmr] [:= :vmr.moderated_item_id :card.id]]})
                (search.filter/build-filters
                 base-search-query "dataset"
                 (merge default-search-ctx {:verified true}))))))))

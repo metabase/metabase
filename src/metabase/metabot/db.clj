@@ -66,9 +66,9 @@
                                       :from   [[(metabot-metrics-and-models-query metabot-id nil) :scope]]}
                     :card]
                    [:and
-                    [:= :card.id :metabot_prompt.card_id]]]
+                    [:= :card.id (u/qualified-key (t2/table-name :model/MetabotPrompt) :card_id)]]]
            :where [:and
-                   [:= :metabot_prompt.metabot_id metabot-id]]}
+                   [:= (u/qualified-key (t2/table-name :model/MetabotPrompt) :metabot_id) metabot-id]]}
     card-type (update :where conj [:= :card.type card-type])
     card-id   (update :where conj [:= :card.id card-id])))
 
@@ -154,7 +154,7 @@
   [:or
    [:= :c.user_id user-id]
    [:exists ^:allow-subquery {:select [[[:inline 1]]]
-                              :from   [[:metabot_message :participation_message]]
+                              :from   [[(t2/table-name :model/MetabotMessage) :participation_message]]
                               :where  [:and
                                        [:= :participation_message.conversation_id :c.id]
                                        [:= :participation_message.user_id user-id]]}]])
@@ -163,7 +163,7 @@
   []
   ^:allow-subquery
   {:select   [:last_message.profile_id]
-   :from     [[:metabot_message :last_message]]
+   :from     [[(t2/table-name :model/MetabotMessage) :last_message]]
    :where    [:and
               [:= :last_message.conversation_id :c.id]
               [:= :last_message.deleted_at nil]]
@@ -174,7 +174,7 @@
   []
   ^:allow-subquery
   {:select [[[:count :*]]]
-   :from   [[:metabot_message :counted_message]]
+   :from   [[(t2/table-name :model/MetabotMessage) :counted_message]]
    :where  [:and
             [:= :counted_message.conversation_id :c.id]
             [:= :counted_message.deleted_at nil]]})
@@ -183,7 +183,7 @@
   []
   ^:allow-subquery
   {:select [[[:max :recent_message.created_at]]]
-   :from   [[:metabot_message :recent_message]]
+   :from   [[(t2/table-name :model/MetabotMessage) :recent_message]]
    :where  [:and
             [:= :recent_message.conversation_id :c.id]
             [:= :recent_message.deleted_at nil]]})
@@ -209,7 +209,7 @@
                          [(live-message-count-subquery) :message_count]
                          [(last-live-message-at-subquery) :last_message_at]
                          [(last-live-message-profile-id-subquery) :profile_id]]
-              :from     [[:metabot_conversation :c]]
+              :from     [[(t2/table-name :model/MetabotConversation) :c]]
               :where    (conversations-list-where user-id profile-id)
               :order-by [[(activity-at-expression) :desc] [:c.id :asc]]
               :limit    limit
@@ -221,7 +221,7 @@
   [user-id :- ::lib.schema.id/user
    profile-id :- [:maybe :string]]
   (:count (t2/query-one {:select [[[:count :*] :count]]
-                         :from   [[:metabot_conversation :c]]
+                         :from   [[(t2/table-name :model/MetabotConversation) :c]]
                          :where  (conversations-list-where user-id profile-id)})))
 
 (mu/defn titleless-conversation-ids
@@ -370,28 +370,11 @@
 ;;; --------------------------------------------------- Feedback ---------------------------------------------------
 
 (defn- upsert-row!
-  "Insert the `row` of `table` or, when a row with the same values of the unique `key-columns` exists, set its other
-  columns to those of `row`, in one statement (`ON CONFLICT` on Postgres, `ON DUPLICATE KEY UPDATE` on MySQL and
-  MariaDB, `MERGE ... KEY` on H2), binding the values and taking every identifier from the constants of this
-  namespace."
-  [table key-columns row]
-  (let [columns     (vec (keys row))
-        names       (mapv name columns)
-        updated     (mapv name (remove (set key-columns) columns))
-        placeholder (str/join ", " (repeat (count columns) "?"))
-        column-list (str/join ", " names)
-        key-list    (str/join ", " (map name key-columns))
-        sql         (case (mdb/db-type)
-                      :postgres (str "INSERT INTO " (name table) " (" column-list ") VALUES (" placeholder ")"
-                                     " ON CONFLICT (" key-list ") DO UPDATE SET "
-                                     (str/join ", " (map #(str % " = EXCLUDED." %) updated)))
-                      :mysql    (str "INSERT INTO " (name table) " (" column-list ") VALUES (" placeholder ")"
-                                     " ON DUPLICATE KEY UPDATE "
-                                     (str/join ", " (map #(str % " = VALUES(" % ")") updated)))
-                      :h2       (str "MERGE INTO " (name table) " (" column-list ") KEY (" key-list ") VALUES ("
-                                     placeholder ")"))]
-    (t2/query (into [sql] (map #(if (keyword? %) (name %) %)) (map row columns)))
-    nil))
+  "Insert the `row` of `model` or, when a row with the same values of the unique `key-columns` exists, set its other
+  columns to those of `row`, binding keyword values as their names."
+  [model key-columns row]
+  (t2/query (mdb/upsert-query (t2/table-name model) key-columns (update-vals row #(if (keyword? %) (name %) %))))
+  nil)
 
 (mu/defn upsert-feedback!
   "Insert the MetabotFeedback of the User with `submitter-user-id` on the MetabotMessage with `message-id`, or update
@@ -399,7 +382,7 @@
   [message-id        :- ms/PositiveInt
    submitter-user-id :- ::lib.schema.id/user
    columns           :- (mut/dissoc ::metabot.schema/metabot-feedback.update :message_id :user_id)]
-  (upsert-row! :metabot_feedback [:message_id :user_id]
+  (upsert-row! :model/MetabotFeedback [:message_id :user_id]
                (assoc columns :message_id message-id :user_id submitter-user-id))
   (t2/select-one-pk :model/MetabotFeedback :message_id message-id :user_id submitter-user-id))
 
@@ -411,7 +394,7 @@
    source-id         :- ms/PositiveInt
    source-type       :- [:enum "table" "card" "model" "dashboard"]
    columns           :- (mut/select-keys ::metabot.schema/metabot-source-feedback.update [:positive :updated_at])]
-  (upsert-row! :metabot_source_feedback [:message_id :user_id :source_id :source_type]
+  (upsert-row! :model/MetabotSourceFeedback [:message_id :user_id :source_id :source_type]
                (assoc columns :message_id message-id :user_id submitter-user-id
                       :source_id source-id :source_type source-type))
   (t2/select-one-pk :model/MetabotSourceFeedback
@@ -788,34 +771,34 @@
         ;; library-published (under a Library root). Each disjunct is gated on its feature.
         curated-conds (cond-> []
                         verified? (conj [:= :mr.status "verified"])
-                        official? (conj [:= :collection.authority_level "official"])
-                        (seq library-coll-ids) (conj [:in :report_card.collection_id (vec library-coll-ids)]))
-        ;; Columns are qualified with report_card because the official-collections branch joins
-        ;; `collection`, which shares column names (type, archived, id) — unqualified refs would be ambiguous.
+                        official? (conj [:= :c.authority_level "official"])
+                        (seq library-coll-ids) (conj [:in :card.collection_id (vec library-coll-ids)]))
+        ;; Columns are qualified with `card` because the official-collections branch joins
+        ;; `collection` as `c`, which shares column names (type, archived, id) — unqualified refs would be ambiguous.
         collection-filter (if metabot-collection-id
                             (let [metabot-collection (collection metabot-collection-id)
                                   collection-ids (conj (collection.model/descendant-ids metabot-collection) metabot-collection-id)]
-                              [:in :report_card.collection_id collection-ids])
+                              [:in :card.collection_id collection-ids])
                             [:and true])
-        base-query ^:allow-subquery {:select [:report_card.*]
-                                     :from   [[:report_card]]
+        base-query ^:allow-subquery {:select [:card.*]
+                                     :from   [[(t2/table-name :model/Card) :card]]
                                      :where [:and
-                                             [:!= :report_card.database_id audit-app/audit-db-id]
+                                             [:!= :card.database_id audit-app/audit-db-id]
                                              collection-filter
-                                             [:in :report_card.type ["metric" "model"]]
-                                             [:= :report_card.archived false]
+                                             [:in :card.type ["metric" "model"]]
+                                             [:= :card.archived false]
                                              (when api/*current-user-id*
-                                               (perms/visible-collections-filter-clause :report_card.collection_id (api/current-user-info) {:root-namespace nil}))]}]
+                                               (perms/visible-collections-filter-clause :card.collection_id (api/current-user-info) {:root-namespace nil}))]}]
     (cond-> base-query
       verified?
-      (update :left-join (fnil into []) [[:moderation_review :mr] [:and
-                                                                   [:= :mr.moderated_item_id :report_card.id]
-                                                                   [:= :mr.moderated_item_type "card"]
-                                                                   [:= :mr.most_recent true]]])
+      (update :left-join (fnil into []) [[(t2/table-name :model/ModerationReview) :mr] [:and
+                                                                                        [:= :mr.moderated_item_id :card.id]
+                                                                                        [:= :mr.moderated_item_type "card"]
+                                                                                        [:= :mr.most_recent true]]])
 
       official?
-      (update :left-join (fnil into []) [[:collection :collection]
-                                         [:= :collection.id :report_card.collection_id]])
+      (update :left-join (fnil into []) [[(t2/table-name :model/Collection) :c]
+                                         [:= :c.id :card.collection_id]])
 
       ;; Prioritize curated content.
       (seq curated-conds)
@@ -841,7 +824,7 @@
    limit      :- [:maybe ms/PositiveInt]]
   (t2/select :model/Card (h2x/assert-map-or-nil!
                           (-> (metabot-metrics-and-models-query metabot-id limit)
-                              (update :order-by (fnil conj []) [:report_card.id])))))
+                              (update :order-by (fnil conj []) [:card.id])))))
 
 (mu/defn card-entity-ids
   "A map of Card ID to entity ID for `card-ids`."

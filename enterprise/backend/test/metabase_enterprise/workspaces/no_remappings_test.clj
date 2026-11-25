@@ -136,7 +136,7 @@
             (try
               (is (false? (ws.remapping/enabled-for-db? (mt/id))))
               ;; a plain HoneySQL insert skips the model hooks, so this process's cache isn't invalidated
-              (t2/query-one {:insert-into :table_remapping
+              (t2/query-one {:insert-into (t2/table-name :model/TableRemapping)
                              :values      [{:database_id     (mt/id)
                                             :from_db         ""
                                             :from_schema     "PUBLIC"
@@ -263,7 +263,7 @@
             db-id "ws_kept"
             (fn []
               ;; a plain HoneySQL insert skips the model hooks, as another node's insert does
-              (t2/query-one {:insert-into :table_remapping
+              (t2/query-one {:insert-into (t2/table-name :model/TableRemapping)
                              :values      [{:database_id     db-id
                                             :from_db         ""
                                             :from_schema     "PUBLIC"
@@ -297,7 +297,7 @@
         (is (not (ws/workspace-mode?)) "premise: outside workspace mode")
         (is (false? (ws.remapping/enabled-for-db? db-id)) "premise: this node fills its cache")
         ;; a plain HoneySQL insert skips the model hooks, as another node's insert does
-        (t2/query-one {:insert-into :table_remapping
+        (t2/query-one {:insert-into (t2/table-name :model/TableRemapping)
                        :values      [{:database_id     db-id
                                       :from_db         ""
                                       :from_schema     "PUBLIC"
@@ -315,7 +315,7 @@
 (defn- insert-remapping-row!
   "Insert a remap row of the test database as a plain HoneySQL statement, so no model hook runs."
   [table to-schema]
-  (t2/query-one {:insert-into :table_remapping
+  (t2/query-one {:insert-into (t2/table-name :model/TableRemapping)
                  :values      [{:database_id     (mt/id)
                                 :from_db         ""
                                 :from_schema     "PUBLIC"

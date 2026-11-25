@@ -36,7 +36,7 @@
   "The `core_session` row with `key-hashed` of the User with `user-id`, or nil."
   [key-hashed :- :string
    user-id    :- ::lib.schema.id/user]
-  (t2/select-one :core_session :key_hashed [:auto/param key-hashed] :user_id [:auto/param user-id]))
+  (t2/select-one (t2/table-name :model/Session) :key_hashed [:auto/param key-hashed] :user_id [:auto/param user-id]))
 
 (mu/defn insert-mcp-session!
   "Insert the MCP-backed `core_session` `row` into the table rather than through `:model/Session`, so that it gets no
@@ -48,7 +48,7 @@
            [:anti_csrf_token  :nil]
            [:auth_identity_id ms/PositiveInt]
            [:created_at       :keyword]]]
-  (t2/insert-returning-instance! :core_session row))
+  (t2/insert-returning-instance! (t2/table-name :model/Session) row))
 
 (defn- session-ending
   "The columns that record the ending of a Session with `reason` by `ended-by`, clearing its key."
@@ -87,7 +87,7 @@
   "Delete the `core_session` with `key-hashed` if it belongs to the User with `user-id`."
   [key-hashed :- :string
    user-id    :- ::lib.schema.id/user]
-  (t2/query {:delete-from :core_session
+  (t2/query {:delete-from (t2/table-name :model/Session)
              :where       [:and
                            [:= :key_hashed key-hashed]
                            [:= :user_id user-id]]}))
@@ -118,7 +118,7 @@
 
                       (not (:not-timed-out predicates))
                       (conj :else (h2x/literal "expired")))]
-    (t2/query (merge session.query/session-from-and-joins
+    (t2/query (merge (session.query/session-from-and-joins)
                      {:select [[:session.id :id]
                                [reason-expr :reason]]
                       :where  [:and
@@ -148,7 +148,7 @@
                         :where       [:and
                                       [:in :auth_identity_id ^:allow-subquery
                                        {:select [:id]
-                                        :from   [:auth_identity]
+                                        :from   [(t2/table-name :model/AuthIdentity)]
                                         :where  [:= :provider (h2x/literal session.query/mcp-provider)]}]
                                       (cond-> [:or
                                                [:< :created_at oldest-allowed]

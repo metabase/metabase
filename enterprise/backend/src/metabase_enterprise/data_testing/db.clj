@@ -11,6 +11,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.run-tracking.core :as rt]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -225,15 +226,15 @@
   (if (empty? test-ids)
     [:= [:inline 1] [:inline 0]]
     [:and
-     [:= :data_test_run.test_type (name test-type)]
-     [:in :data_test_run.test_id test-ids]
+     [:= (u/qualified-key (t2/table-name :model/DataTestRun) :test_type) (name test-type)]
+     [:in (u/qualified-key (t2/table-name :model/DataTestRun) :test_id) test-ids]
      ;; test_id has no foreign key, so a run can keep the id of a deleted test, and a later test can get the same id.
      ;; The start time tells the runs of the later test from those of the deleted one.
      [:exists ^:allow-subquery {:select [1]
                                 :from   [[(t2/table-name (:model (data-testing.test-type/spec test-type))) :the_test]]
                                 :where  [:and
-                                         [:= :the_test.id :data_test_run.test_id]
-                                         [:>= :data_test_run.start_time :the_test.created_at]]}]]))
+                                         [:= :the_test.id (u/qualified-key (t2/table-name :model/DataTestRun) :test_id)]
+                                         [:>= (u/qualified-key (t2/table-name :model/DataTestRun) :start_time) :the_test.created_at]]}]]))
 
 (def ^:private RunFilters
   [:map {:closed true}
@@ -293,15 +294,15 @@
                         (runs-of-tests-clause test-type (set %))
                         ;; A newer run starts no earlier than this one, so it passes the start-time guard too.
                         [:not [:exists ^:allow-subquery {:select [1]
-                                                         :from   [[:data_test_run :newer]]
+                                                         :from   [[(t2/table-name :model/DataTestRun) :newer]]
                                                          :where  [:and
-                                                                  [:= :newer.test_type :data_test_run.test_type]
-                                                                  [:= :newer.test_id :data_test_run.test_id]
+                                                                  [:= :newer.test_type (u/qualified-key (t2/table-name :model/DataTestRun) :test_type)]
+                                                                  [:= :newer.test_id (u/qualified-key (t2/table-name :model/DataTestRun) :test_id)]
                                                                   [:or
-                                                                   [:> :newer.start_time :data_test_run.start_time]
+                                                                   [:> :newer.start_time (u/qualified-key (t2/table-name :model/DataTestRun) :start_time)]
                                                                    [:and
-                                                                    [:= :newer.start_time :data_test_run.start_time]
-                                                                    [:> :newer.id :data_test_run.id]]]]}]]]})
+                                                                    [:= :newer.start_time (u/qualified-key (t2/table-name :model/DataTestRun) :start_time)]
+                                                                    [:> :newer.id (u/qualified-key (t2/table-name :model/DataTestRun) :id)]]]]}]]]})
    test-ids))
 
 (mu/defn users-by-id

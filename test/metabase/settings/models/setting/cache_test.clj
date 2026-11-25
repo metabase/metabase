@@ -50,7 +50,7 @@
                               target-cast-type])
                            :timestamp]]})
                :timestamp)]
-    (t2/update! :setting {:key setting.cache/settings-last-updated-key}
+    (t2/update! (t2/table-name :model/Setting) {:key setting.cache/settings-last-updated-key}
                 {:value          ts
                  :value_with_aad (encryption/maybe-encrypt ts {:aad (mdb.setting/setting-aad setting.cache/settings-last-updated-key)})})))
 

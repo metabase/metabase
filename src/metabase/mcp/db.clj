@@ -183,7 +183,7 @@
   can each materialize their own row under one id. Reading a single owner picks one of them arbitrarily and
   locks the rest out of a session they already hold — see `metabase.mcp.session/owned-by-user?`."
   [key-hashed]
-  (t2/select-fn-set :user_id :core_session :key_hashed key-hashed))
+  (t2/select-fn-set :user_id (t2/table-name :model/Session) :key_hashed key-hashed))
 
 (mu/defn insert-query-handle!
   "Insert the McpQueryHandle `row` under the client-generated `handle-id`, returning the number inserted."
@@ -197,8 +197,8 @@
    user-id   :- ::lib.schema.id/user]
   (t2/select-one :model/McpQueryHandle
                  {:select [:mqh.*]
-                  :from   [[:mcp_query_handle :mqh]]
-                  :join   [[:core_session :cs] [:= :cs.id :mqh.core_session_id]]
+                  :from   [[(t2/table-name :model/McpQueryHandle) :mqh]]
+                  :join   [[(t2/table-name :model/Session) :cs] [:= :cs.id :mqh.core_session_id]]
                   :where  [:and
                            [:= :mqh.id handle-id]
                            [:= :cs.user_id user-id]]}))
@@ -215,13 +215,13 @@
   The subquery is deliberate: resolving those session ids in a separate round trip leaves a window where a
   concurrent teardown drops the session between the two statements."
   [mcp-session-id key-hashed user-id]
-  (t2/query {:delete-from :mcp_query_handle
+  (t2/query {:delete-from (t2/table-name :model/McpQueryHandle)
              :where       [:and
                            [:= :mcp_session_id mcp-session-id]
                            [:or
                             [:= :core_session_id nil]
                             [:in :core_session_id ^:allow-subquery {:select [:id]
-                                                                    :from   [:core_session]
+                                                                    :from   [(t2/table-name :model/Session)]
                                                                     :where  [:and
                                                                              [:= :key_hashed key-hashed]
                                                                              [:= :user_id user-id]]}]]]}))

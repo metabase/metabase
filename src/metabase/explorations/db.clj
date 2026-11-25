@@ -27,7 +27,7 @@
   [exploration-id :- ms/PositiveInt]
   ^:allow-subquery {:select [[[:+ [:coalesce [:max :last.position] 0] 1]]]
                     :from   [[^:allow-subquery {:select [:position]
-                                                :from   [:exploration_thread]
+                                                :from   [(t2/table-name :model/ExplorationThread)]
                                                 :where  [:= :exploration_id [:auto/param exploration-id]]}
                               :last]]})
 
@@ -56,19 +56,19 @@
         {:union-all
          [^:allow-subquery
           {:select [[:model_id :eid] [:timestamp :ts]]
-           :from   [:revision]
+           :from   [(t2/table-name :model/Revision)]
            :where  [:and [:= :model "Exploration"] [:= :user_id user-id]]}
           ^:allow-subquery
           {:select [[:d.exploration_id :eid] [:dr.timestamp :ts]]
-           :from   [[:revision :dr]]
-           :join   [[:document :d] [:= :d.id :dr.model_id]]
+           :from   [[(t2/table-name :model/Revision) :dr]]
+           :join   [[(t2/table-name :model/Document) :d] [:= :d.id :dr.model_id]]
            :where  [:and
                     [:= :dr.model "Document"]
                     [:= :dr.user_id user-id]
                     [:not= :d.exploration_id nil]]}
           ^:allow-subquery
           {:select [[:id :eid] [:created_at :ts]]
-           :from   [:exploration]
+           :from   [(t2/table-name :model/Exploration)]
            :where  [:= :creator_id user-id]}]}
         ;; MAX rather than GREATEST — the latter's NULL semantics differ across app DBs. And
         ;; `my-touches` is a derived table here rather than a sibling CTE: a second `:with` binding
@@ -77,15 +77,15 @@
         {:select   [:eid [[:max :ts] :max_ts]]
          :from     [[my-touches :my_touches]]
          :group-by [:eid]}]
-    (cond-> {:select   [:exploration.*
+    (cond-> {:select   [(u/qualified-key (t2/table-name :model/Exploration) :*)
                         [:agg.max_ts :current_user_last_touched_at]
                         [[:over [[:count :*] ^:allow-subquery {}]] :total_count]]
-             :from     [:exploration]
-             :join     [[agg :agg] [:= :agg.eid :exploration.id]]
+             :from     [(t2/table-name :model/Exploration)]
+             :join     [[agg :agg] [:= :agg.eid (u/qualified-key (t2/table-name :model/Exploration) :id)]]
              :where    [:and
-                        [:= :exploration.archived false]
-                        (perms/visible-collections-filter-clause :exploration.collection_id (api/current-user-info) {:root-namespace nil})]
-             :order-by [[:current_user_last_touched_at :desc] [:exploration.id :desc]]}
+                        [:= (u/qualified-key (t2/table-name :model/Exploration) :archived) false]
+                        (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Exploration) :collection_id) (api/current-user-info) {:root-namespace nil})]
+             :order-by [[:current_user_last_touched_at :desc] [(u/qualified-key (t2/table-name :model/Exploration) :id) :desc]]}
       limit  (assoc :limit limit)
       offset (assoc :offset offset))))
 
@@ -101,8 +101,8 @@
   "The creator of the Exploration owning the ExplorationThread with `thread-id`."
   [thread-id :- ms/PositiveInt]
   (t2/select-one-fn :creator_id :model/Exploration
-                    {:join  [:exploration_thread [:= :exploration_thread.exploration_id :exploration.id]]
-                     :where [:= :exploration_thread.id thread-id]}))
+                    {:join  [(t2/table-name :model/ExplorationThread) [:= (u/qualified-key (t2/table-name :model/ExplorationThread) :exploration_id) (u/qualified-key (t2/table-name :model/Exploration) :id)]]
+                     :where [:= (u/qualified-key (t2/table-name :model/ExplorationThread) :id) thread-id]}))
 
 ;;; ------------------------------------------------- Threads -------------------------------------------------
 
@@ -194,7 +194,7 @@
   "The `:id` row of the ExplorationThread with `thread-id`, locked for update."
   [thread-id :- ms/PositiveInt]
   (t2/query {:select [:id]
-             :from   [:exploration_thread]
+             :from   [(t2/table-name :model/ExplorationThread)]
              :where  [:= :id thread-id]
              :for    [:update]}))
 
@@ -214,7 +214,7 @@
   still running. Returns the number of rows updated."
   [thread-id  :- ms/PositiveInt
    started-at :- ms/TemporalInstant]
-  (t2/query-one {:update :exploration_thread
+  (t2/query-one {:update (t2/table-name :model/ExplorationThread)
                  :set    {:started_at            started-at
                           :query_plan_started_at nil
                           :query_plan_transcript nil
@@ -225,7 +225,7 @@
                           [:= :id thread-id]
                           [:not= :completed_at nil]
                           [:not-exists ^:allow-subquery {:select [1]
-                                                         :from   [:exploration_query]
+                                                         :from   [(t2/table-name :model/ExplorationQuery)]
                                                          :where  [:and
                                                                   [:= :exploration_thread_id thread-id]
                                                                   [:= :status "running"]]}]]}))
@@ -235,7 +235,7 @@
   claimed, canceled, or left with pending queries. Returns the number of rows updated."
   [thread-id :- ms/PositiveInt
    now       :- ms/TemporalInstant]
-  (t2/query-one {:update :exploration_thread
+  (t2/query-one {:update (t2/table-name :model/ExplorationThread)
                  :set    {:analysis_started_at now
                           :completed_at        now}
                  :where  [:and
@@ -243,7 +243,7 @@
                           [:= :analysis_started_at nil]
                           [:= :canceled_at nil]
                           [:not-exists ^:allow-subquery {:select [1]
-                                                         :from   [:exploration_query]
+                                                         :from   [(t2/table-name :model/ExplorationQuery)]
                                                          :where  [:and
                                                                   [:= :exploration_thread_id thread-id]
                                                                   [:= :status "pending"]]}]]}))
@@ -264,8 +264,8 @@
   "The ExplorationBlock owning the ExplorationPage with `page-id`, or nil."
   [page-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationBlock
-                 {:select [:exploration_block.*]
-                  :join   [[:exploration_page :p] [:= :p.exploration_block_id :exploration_block.id]]
+                 {:select [(u/qualified-key (t2/table-name :model/ExplorationBlock) :*)]
+                  :join   [[(t2/table-name :model/ExplorationPage) :p] [:= :p.exploration_block_id (u/qualified-key (t2/table-name :model/ExplorationBlock) :id)]]
                   :where  [:= :p.id page-id]}))
 
 (mu/defn blocks-for-thread
@@ -344,8 +344,8 @@
   "Rows of ExplorationPage `:id` and the `:thread_id` of its block, for the ExplorationThreads with `thread-ids`."
   [thread-ids :- [:sequential ms/PositiveInt]]
   (mdb/select-batched #(t2/query {:select [[:p.id :id] [:b.exploration_thread_id :thread_id]]
-                                  :from   [[:exploration_page :p]]
-                                  :join   [[:exploration_block :b] [:= :b.id :p.exploration_block_id]]
+                                  :from   [[(t2/table-name :model/ExplorationPage) :p]]
+                                  :join   [[(t2/table-name :model/ExplorationBlock) :b] [:= :b.id :p.exploration_block_id]]
                                   :where  [:in :b.exploration_thread_id %]})
                       thread-ids))
 
@@ -382,8 +382,8 @@
   [query-id :- ms/PositiveInt]
   (t2/select-one :model/ExplorationQuery
                  {:select [:eq.*]
-                  :from   [[:exploration_query :eq]]
-                  :join   [[:exploration_thread :et] [:= :et.id :eq.exploration_thread_id]]
+                  :from   [[(t2/table-name :model/ExplorationQuery) :eq]]
+                  :join   [[(t2/table-name :model/ExplorationThread) :et] [:= :et.id :eq.exploration_thread_id]]
                   :where  [:and
                            [:= :eq.id query-id]
                            [:= :eq.status "pending"]
@@ -424,7 +424,7 @@
                                       [:in :id %]
                                       [:in :exploration_thread_id
                                        ^:allow-subquery {:select [:id]
-                                                         :from   [:exploration_thread]
+                                                         :from   [(t2/table-name :model/ExplorationThread)]
                                                          :where  [:= :exploration_id exploration-id]}]]}))
              +
              0
@@ -453,7 +453,7 @@
   update (`SKIP LOCKED` outside H2, whose single-worker model neither needs nor supports it)."
   [thread-id :- ms/PositiveInt]
   (map :id (t2/query (cond-> {:select [:id]
-                              :from   [:exploration_query]
+                              :from   [(t2/table-name :model/ExplorationQuery)]
                               :where  [:and
                                        [:= :exploration_thread_id thread-id]
                                        [:= :status "pending"]]}
@@ -536,10 +536,11 @@
   "The query ID and stored row count of the ExplorationQueryResults of the ExplorationQueries with `query-ids`."
   [query-ids :- [:sequential ms/PositiveInt]]
   (mdb/select-batched #(t2/select [:model/ExplorationQueryResult
-                                   :exploration_query_result.exploration_query_id
-                                   [:stored_result.row_count :row_count]]
-                                  {:join  [:stored_result [:= :stored_result.id :exploration_query_result.stored_result_id]]
-                                   :where [:in :exploration_query_result.exploration_query_id %]})
+                                   (u/qualified-key (t2/table-name :model/ExplorationQueryResult) :exploration_query_id)
+                                   [:sr.row_count :row_count]]
+                                  {:join  [[(t2/table-name :model/StoredResult) :sr]
+                                           [:= :sr.id (u/qualified-key (t2/table-name :model/ExplorationQueryResult) :stored_result_id)]]
+                                   :where [:in (u/qualified-key (t2/table-name :model/ExplorationQueryResult) :exploration_query_id) %]})
                       query-ids))
 
 (mu/defn insert-query-results!
@@ -565,13 +566,13 @@
   [created-before :- ms/TemporalInstant
    limit          :- ms/PositiveInt]
   (t2/query {:select   [:sr.id]
-             :from     [[:stored_result :sr]]
+             :from     [[(t2/table-name :model/StoredResult) :sr]]
              :where    [:and
                         [:not [:exists ^:allow-subquery {:select [1]
-                                                         :from   [[:exploration_query_result :eqr]]
+                                                         :from   [[(t2/table-name :model/ExplorationQueryResult) :eqr]]
                                                          :where  [:= :eqr.stored_result_id :sr.id]}]]
                         [:not [:exists ^:allow-subquery {:select [1]
-                                                         :from   [[:stored_result_use :sru]]
+                                                         :from   [[(t2/table-name :model/StoredResultUse) :sru]]
                                                          :where  [:and
                                                                   [:= :sru.stored_result_id :sr.id]
                                                                   [:not= :sru.card_id nil]]}]]
@@ -606,8 +607,8 @@
   "The `:name` rows of the Timelines selected on the ExplorationThread with `thread-id`, in position order."
   [thread-id :- ms/PositiveInt]
   (t2/query {:select    [[:t.name :name]]
-             :from      [[:exploration_thread_timeline :ett]]
-             :left-join [[:timeline :t] [:= :t.id :ett.timeline_id]]
+             :from      [[(t2/table-name :model/ExplorationThreadTimeline) :ett]]
+             :left-join [[(t2/table-name :model/Timeline) :t] [:= :t.id :ett.timeline_id]]
              :where     [:= :ett.exploration_thread_id thread-id]
              :order-by  [[:ett.position :asc]]}))
 
@@ -624,11 +625,11 @@
                          [:te.timestamp :event_timestamp]
                          [:te.icon :event_icon]
                          [:ett.position :position]]
-             :from      [[:exploration_thread_timeline :ett]]
-             :join      [[:timeline :t] [:= :t.id :ett.timeline_id]]
-             :left-join [[:timeline_event :te] [:and
-                                                [:= :te.timeline_id :t.id]
-                                                [:= :te.archived false]]]
+             :from      [[(t2/table-name :model/ExplorationThreadTimeline) :ett]]
+             :join      [[(t2/table-name :model/Timeline) :t] [:= :t.id :ett.timeline_id]]
+             :left-join [[(t2/table-name :model/TimelineEvent) :te] [:and
+                                                                     [:= :te.timeline_id :t.id]
+                                                                     [:= :te.archived false]]]
              :where     [:= :ett.exploration_thread_id thread-id]
              :order-by  [[:ett.position :asc] [:te.timestamp :asc]]}))
 
@@ -797,22 +798,22 @@
                                   {:select [[:e.id        :exploration_id]
                                             [:r.timestamp :timestamp]
                                             [:r.user_id   :user_id]]
-                                   :from   [[:exploration :e]]
-                                   :join   [[:revision :r] [:and
-                                                            [:= :r.model_id :e.id]
-                                                            [:= :r.model (h2x/literal "Exploration")]
-                                                            (revisions.sql/newest-revision-clause :r "Exploration" :e.id)]]
+                                   :from   [[(t2/table-name :model/Exploration) :e]]
+                                   :join   [[(t2/table-name :model/Revision) :r] [:and
+                                                                                  [:= :r.model_id :e.id]
+                                                                                  [:= :r.model (h2x/literal "Exploration")]
+                                                                                  (revisions.sql/newest-revision-clause :r "Exploration" :e.id)]]
                                    :where  (listed? "e")}
                                   ^:allow-subquery
                                   {:select [[:d.exploration_id :exploration_id]
                                             [:r.timestamp      :timestamp]
                                             [:r.user_id        :user_id]]
-                                   :from   [[:document :d]]
-                                   :join   [[:exploration :e] [:= :e.id :d.exploration_id]
-                                            [:revision :r] [:and
-                                                            [:= :r.model_id :d.id]
-                                                            [:= :r.model (h2x/literal "Document")]
-                                                            (revisions.sql/newest-revision-clause :r "Document" :d.id)]]
+                                   :from   [[(t2/table-name :model/Document) :d]]
+                                   :join   [[(t2/table-name :model/Exploration) :e] [:= :e.id :d.exploration_id]
+                                            [(t2/table-name :model/Revision) :r] [:and
+                                                                                  [:= :r.model_id :d.id]
+                                                                                  [:= :r.model (h2x/literal "Document")]
+                                                                                  (revisions.sql/newest-revision-clause :r "Document" :d.id)]]
                                    :where  (listed? "e")}]}
                :all_edits]]}))
 
@@ -836,12 +837,12 @@
               [:u.last_name  :last_edit_last_name]
               [:ere.timestamp :last_edit_timestamp]
               [(h2x/literal "exploration") :model]]
-     :from [[:exploration :exploration]]
+     :from [[(t2/table-name :model/Exploration) :exploration]]
      :left-join [[(exploration-recent-edits-subquery collection) :ere]
                  [:and
                   [:= :ere.exploration_id :exploration.id]
                   [:= :ere.rn [:inline 1]]]
-                 [:core_user :u] [:= :u.id :ere.user_id]]
+                 [(t2/table-name :model/User) :u] [:= :u.id :ere.user_id]]
      :where [:and
              (collections.listing/visible-items-clause :exploration.collection_id archived? {:root-namespace nil})
              (if (collection/is-trash? collection)

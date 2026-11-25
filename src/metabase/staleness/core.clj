@@ -62,7 +62,7 @@
   map selecting `id`/`model`/`name`/`last_used_at` from a single table."
   [:map {:closed true}
    [:select    [:sequential ::select-entry]]
-   [:from      :keyword]
+   [:from      [:or :keyword [:tuple [:tuple :keyword :keyword]]]]
    [:left-join {:optional true} [:sequential [:or :keyword ::derived-table ::predicate]]]
    [:where     {:optional true} ::predicate]])
 

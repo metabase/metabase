@@ -6,6 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.login-history.schema :as login-history.schema]
    [metabase.session.core :as session]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -21,9 +22,9 @@
              {:select    [:lh.timestamp :lh.device_description :lh.ip_address
                           ;; 1/0, normalised to a boolean by the model's after-select
                           [(session/live-expr (session/liveness-params)) :active]]
-              :from      [[:login_history :lh]]
-              :left-join (into [[:core_session :session] [:= :session.id :lh.session_id]]
-                               session/session-left-joins)
+              :from      [[(t2/table-name :model/LoginHistory) :lh]]
+              :left-join (into [[(t2/table-name :model/Session) :session] [:= :session.id :lh.session_id]]
+                               (session/session-left-joins))
               :where     [:= :lh.user_id user-id]
               :order-by  [[:lh.timestamp :desc]]}))
 
@@ -57,8 +58,8 @@
                      [:not [:exists
                             ^:allow-subquery
                             {:select [1]
-                             :from   [[:login_history :lh2]]
+                             :from   [[(t2/table-name :model/LoginHistory) :lh2]]
                              :where  [:and
-                                      [:= :lh2.user_id   :login_history.user_id]
-                                      [:= :lh2.device_id :login_history.device_id]
-                                      [:< :lh2.id        :login_history.id]]}]]]}))
+                                      [:= :lh2.user_id   (u/qualified-key (t2/table-name :model/LoginHistory) :user_id)]
+                                      [:= :lh2.device_id (u/qualified-key (t2/table-name :model/LoginHistory) :device_id)]
+                                      [:< :lh2.id        (u/qualified-key (t2/table-name :model/LoginHistory) :id)]]}]]]}))

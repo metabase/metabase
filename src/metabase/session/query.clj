@@ -11,7 +11,8 @@
    [metabase.session.schema :as session.schema]
    [metabase.settings.core :as setting]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,21 +29,23 @@
   [:or [:= :auth_identity.provider nil]
    [:not= :auth_identity.provider (h2x/literal mcp-provider)]])
 
-(def session-left-joins
+(defn session-left-joins
   "The `:left-join`s from a `core_session` row aliased `session` that [[live-session-conditions]] needs: they bind
   the aliases `user`, `tenant` and `auth_identity`. For a query that starts from another table and joins `session`
   itself; a query that starts from `core_session` uses [[session-from-and-joins]]."
   ;; all LEFT joins: a session whose user row, tenant, or auth identity is missing must still be *considered* (and
   ;; then rejected, or bucketed as `unknown`) rather than silently dropped by an inner join
-  [[:core_user :user] [:= :session.user_id :user.id]
-   [:tenant]          [:= :tenant.id :user.tenant_id]
-   [:auth_identity]   [:= :auth_identity.id :session.auth_identity_id]])
+  []
+  [[(t2/table-name :model/User) :user]                   [:= :session.user_id :user.id]
+   [:tenant :tenant]               [:= :tenant.id :user.tenant_id]
+   [(t2/table-name :model/AuthIdentity) :auth_identity] [:= :auth_identity.id :session.auth_identity_id]])
 
-(def session-from-and-joins
+(defn session-from-and-joins
   "The `:from`/`:left-join` a query must use for [[live-session-conditions]] to resolve. Binds the aliases `session`,
   `user`, `tenant` and `auth_identity`."
-  {:from      [[:core_session :session]]
-   :left-join session-left-joins})
+  []
+  {:from      [[(t2/table-name :model/Session) :session]]
+   :left-join (session-left-joins)})
 
 (mu/defn liveness-params :- ::session.schema/liveness-params
   "The [[live-session-conditions]] inputs for this instance right now."

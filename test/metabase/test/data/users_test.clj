@@ -10,5 +10,5 @@
       (mt/user-http-request {:id user-id} :get 200 "user/current")
       (is (nil? (t2/select-one-fn :last_login :model/User :id user-id))
           "last_login stays empty, so :event/user-login never fired")
-      (is (false? (t2/exists? :core_session :user_id user-id))
+      (is (false? (t2/exists? (t2/table-name :model/Session) :user_id user-id))
           "and the borrowed session is deleted"))))

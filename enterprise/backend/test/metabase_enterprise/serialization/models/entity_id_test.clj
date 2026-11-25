@@ -39,6 +39,7 @@
     :model/AnalysisFindingStatus
     :model/ApiKey
     :model/ApiKeyUsageLog
+    :model/ChangeLog
     :model/AuthIdentity
     :model/ImplicitAction
     :model/QueryAction

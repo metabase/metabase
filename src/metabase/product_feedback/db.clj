@@ -19,9 +19,9 @@
                         [[:count [:distinct [:case [:= :d.archived false] :d.id]]] :num_dashboards]
                         [[:count [:distinct [:case [:and [:= :rc.type "question"] [:= :rc.archived false]] :rc.id]]] :num_questions]
                         [[:count [:distinct [:case [:and [:= :rc.type "model"] [:= :rc.archived false]] :rc.id]]] :num_models]]
-               :from [[:core_user :u]]
-               :join [[:report_card :rc] [:= :rc.creator_id :u.id]
-                      [:report_dashboard :d] [:= :d.creator_id :u.id]]
+               :from [[(t2/table-name :model/User) :u]]
+               :join [[(t2/table-name :model/Card) :rc] [:= :rc.creator_id :u.id]
+                      [(t2/table-name :model/Dashboard) :d] [:= :d.creator_id :u.id]]
                :where [:and
                        [:>= :rc.created_at created-after]
                        [:>= :d.created_at created-after]

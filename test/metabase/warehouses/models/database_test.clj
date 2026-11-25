@@ -1085,7 +1085,7 @@
                (fetch-visible-db-ids [db1-id db2-id db3-id]
                                      {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                      default-permission-mapping
-                                     :metabase_database.id)))))))
+                                     (u/qualified-key (t2/table-name :model/Database) :id))))))))
 
 (deftest visible-databases-filter-clause-column-expression-test
   (testing "Should work with column expressions"
@@ -1111,7 +1111,7 @@
                (fetch-visible-db-ids [db1-id db2-id db3-id]
                                      {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                      default-permission-mapping
-                                     [:coalesce :id :metabase_database.id])))))))
+                                     [:coalesce :id (u/qualified-key (t2/table-name :model/Database) :id)])))))))
 
 (deftest visible-databases-filter-clause-view-data-only-test
   (testing "Requiring only view-data permissions should include databases where user has view permissions"

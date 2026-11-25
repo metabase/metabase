@@ -18,6 +18,7 @@
    [metabase.search.in-place.search-model :as search-model]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -236,7 +237,7 @@
         (sql.helpers/where permitted-clause)
         (cond->
          ;; add a JOIN against Collection *unless* the source table is already Collection
-         (not= model "collection") (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
+         (not= model "collection") (sql.helpers/left-join [(t2/table-name :model/Collection) :collection] [:= collection-id-col :collection.id])
          personal-clause           (sql.helpers/where personal-clause)))))
 
 (mu/defn- replace-select :- :map
@@ -269,7 +270,7 @@
   (-> query
       (replace-select :last_editor_id :r.user_id)
       (replace-select :last_edited_at :r.timestamp)
-      (sql.helpers/left-join [:revision :r]
+      (sql.helpers/left-join [(t2/table-name :model/Revision) :r]
                              [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
                               [:= :r.model (search-model/search-model->revision-model model)]
                               (revisions.sql/newest-revision-clause :r
@@ -281,7 +282,7 @@
    model :- [:enum "card" "dataset" "dashboard"]]
   (-> query
       (replace-select :moderated_status :mr.status)
-      (sql.helpers/left-join [:moderation_review :mr]
+      (sql.helpers/left-join [(t2/table-name :model/ModerationReview) :mr]
                              [:and
                               [:= :mr.moderated_item_type (if (= model "dashboard") model "card")]
                               [:= :mr.moderated_item_id (search.config/column-with-model-alias model :id)]
@@ -321,11 +322,12 @@
   "Case statement to return boolean values of `:bookmark` for Card, Collection and Dashboard."
   [[:case [:not= :bookmark.id nil] true :else false] :bookmark])
 
-(def ^:private dashboardcard-count-col
+(defn- dashboardcard-count-col
   "Subselect to get the count of associated DashboardCards"
+  []
   [^:allow-subquery {:select [:%count.*]
-                     :from   [:report_dashboardcard]
-                     :where  [:= :report_dashboardcard.card_id :card.id]}
+                     :from   [(t2/table-name :model/DashboardCard)]
+                     :where  [:= (u/qualified-key (t2/table-name :model/DashboardCard) :card_id) :card.id]}
    :dashboardcard_count])
 
 (def ^:private table-columns
@@ -362,7 +364,7 @@
         [:collection.authority_level :collection_authority_level]
         [:card.database_id :database_id]
         :dashboard_id
-        bookmark-col dashboardcard-count-col
+        bookmark-col (dashboardcard-count-col)
         [:display :display_type]))
 
 (defmethod columns-for-model "document"
@@ -453,7 +455,7 @@
    [:collection.type :collection_type]
    [:table.data_authority :data_authority]
    [:table.data_layer :data_layer]
-   [:metabase_database.name :database_name]])
+   [:db.name :database_name]])
 
 (defmethod columns-for-model "transform"
   [_]
@@ -496,7 +498,7 @@
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
       (sql.helpers/where [:= :card.type (name model)])
-      (sql.helpers/left-join [:card_bookmark :bookmark]
+      (sql.helpers/left-join [(t2/table-name :model/CardBookmark) :bookmark]
                              [:and
                               [:= :bookmark.card_id :card.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
@@ -509,7 +511,7 @@
                           (when (:include-dashboard-questions? search-ctx)
                             [:exists
                              ^:allow-subquery {:select 1
-                                               :from [:report_dashboardcard]
+                                               :from [(t2/table-name :model/DashboardCard)]
                                                :where [:= :card_id :card.id]}])])
       (add-collection-join-and-where-clauses "card" search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))
@@ -519,9 +521,9 @@
 (defmethod search-query-for-model "action"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:report_card :model]
+      (sql.helpers/left-join [(t2/table-name :model/Card) :model]
                              [:= :model.id :action.model_id])
-      (sql.helpers/left-join :query_action
+      (sql.helpers/left-join [(t2/table-name :model/QueryAction) :query_action]
                              [:= :query_action.action_id :action.id])
       (sql.helpers/where [:not= :action.model_id nil])
       (add-collection-join-and-where-clauses model search-ctx)))
@@ -545,7 +547,7 @@
 (defmethod search-query-for-model "collection"
   [model search-ctx]
   (-> (base-query-for-model "collection" search-ctx)
-      (sql.helpers/left-join [:collection_bookmark :bookmark]
+      (sql.helpers/left-join [(t2/table-name :model/CollectionBookmark) :bookmark]
                              [:and
                               [:= :bookmark.collection_id :collection.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
@@ -554,7 +556,7 @@
 (defmethod search-query-for-model "document"
   [model search-ctx]
   (-> (base-query-for-model "document" search-ctx)
-      (sql.helpers/left-join [:document_bookmark :bookmark]
+      (sql.helpers/left-join [(t2/table-name :model/DocumentBookmark) :bookmark]
                              [:and
                               [:= :bookmark.document_id :document.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
@@ -590,7 +592,7 @@
 (defmethod search-query-for-model "dashboard"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:dashboard_bookmark :bookmark]
+      (sql.helpers/left-join [(t2/table-name :model/DashboardBookmark) :bookmark]
                              [:and
                               [:= :bookmark.dashboard_id :dashboard.id]
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
@@ -611,10 +613,10 @@
 (defmethod search-query-for-model "indexed-entity"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [:model_index :model-index]
+      (sql.helpers/left-join [(t2/table-name :model/ModelIndex) :model-index]
                              [:= :model-index.id :model-index-value.model_index_id])
-      (sql.helpers/left-join [:report_card :model] [:= :model-index.model_id :model.id])
-      (sql.helpers/left-join [:collection :collection] [:= :model.collection_id :collection.id])
+      (sql.helpers/left-join [(t2/table-name :model/Card) :model] [:= :model-index.model_id :model.id])
+      (sql.helpers/left-join [(t2/table-name :model/Collection) :collection] [:= :model.collection_id :collection.id])
       (add-model-index-permissions-clause search-ctx)))
 
 (defmethod search-query-for-model "measure"
@@ -638,9 +640,9 @@
       (add-table-where-clauses model search-ctx)
       (sql.helpers/left-join [(t2/table-name :model/TableUserSettings) :table_settings]
                              [:= :table_settings.table_id :table.id])
-      (sql.helpers/left-join [:collection :collection]
+      (sql.helpers/left-join [(t2/table-name :model/Collection) :collection]
                              [:and :table_settings.is_published [:= :table_settings.collection_id :collection.id]])
-      (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id])))
+      (sql.helpers/left-join [(t2/table-name :model/Database) :db] [:= :table.db_id :db.id])))
 
 (defn- extract-and-hoist-ctes
   "Extract :with clauses from a collection of queries and return a map with:

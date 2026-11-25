@@ -59,8 +59,8 @@
   [date :- ms/TemporalInstant]
   ;; New rows stamp `metabot_message.user_id`; legacy rows fall back to the conversation's user.
   (t2/query-one {:select [[[:count [:distinct [:coalesce :m.user_id :c.user_id]]] :cnt]]
-                 :from   [[:metabot_message :m]]
-                 :join   [[:metabot_conversation :c] [:= :c.id :m.conversation_id]]
+                 :from   [[(t2/table-name :model/MetabotMessage) :m]]
+                 :join   [[(t2/table-name :model/MetabotConversation) :c] [:= :c.id :m.conversation_id]]
                  :where  [:and
                           :ai_proxied
                           [:= :m.forked_from_message_id nil]
@@ -200,7 +200,7 @@
                               [(u/count-case [:and (contains-embedding-param "disabled")
                                               embedding-on])
                                :with_disabled_params])))
-     {:where (mi/non-internal-filter-clause :model/Card :report_card)})))
+     {:where (mi/non-internal-filter-clause :model/Card (t2/table-name :model/Card))})))
 
 (mu/defn active-personal-user-email-domain-count
   "The `:count` of distinct email domains of active personal Users."
@@ -211,7 +211,7 @@
     (t2/query-one {:select [[:%count.* :count]]
                    :from [[^:allow-subquery
                            {:select-distinct [[domain-expr]]
-                            :from [:core_user]
+                            :from [(t2/table-name :model/User)]
                             :where [:and
                                     [:= :is_active true]
                                     [:= :type "personal"]]} :distinct_emails]]})))

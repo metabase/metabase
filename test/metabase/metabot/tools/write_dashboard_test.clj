@@ -1066,7 +1066,7 @@
                                                 {:op "set_series", :dashcard_id -1, :card_ids [card-id]}]})))))
            (testing "and so is one whose stored query can't be read"
              ;; Written past the model, whose transform refuses a query it can't parse.
-             (t2/query-one {:update :report_card, :set {:dataset_query "{\"bogus\":1}"}, :where [:= :id broken-q]})
+             (t2/query-one {:update (t2/table-name :model/Card), :set {:dataset_query "{\"bogus\":1}"}, :where [:= :id broken-q]})
              (is (=? {:code ::write-dashboard/cards-not-curated
                       :text (re-pattern (str "(?s)\\QQuestion " broken-q " \\E.*"))}
                      (failure {:dashboard_id dash-id

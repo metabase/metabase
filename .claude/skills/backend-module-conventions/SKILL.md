@@ -50,19 +50,17 @@ Write `db` functions in the style of `src/metabase/settings/db.clj`:
 
 ### Bind values with `[:auto/param v]`
 
-`metabase.app-db.value-guard` binds a value written as `[:auto/param v]` as a SQL parameter. The
+Funny SQL (`metabase.funnysql.core`) binds a value written as `[:auto/param v]` as a SQL parameter. The
 `:metabase/unsafe-app-db-query` lint is off globally. `.clj-kondo/config.edn` turns it on per namespace
 under `:config-in-ns`, one converted `db.clj` at a time. Follow these rules in every `db.clj`, whether or
 not the lint covers it yet:
 
 1. Mark a value that comes from a variable when it sits in a **value slot**. Value slots are the right-hand side of `:=`, `:in`, `:like`, ..., and kv-arg values used as filters.
 2. Never mark a literal. A literal cannot carry a request value.
-3. Never mark a value in an **identifier slot** (`:select`, `:from`, joins, aliases, and similar). `value-guard` throws `::marker-outside-value-slot` at compile time. In `:order-by` and `:group-by` a marker compiles to `ORDER BY ?`, which is useless but does not throw. Don't write one there either.
-4. Leave a possibly-empty collection unmarked. Toucan rewrites `[:in col []]` to `false` before the marker step.
+3. Never mark a value in an **identifier slot** (`:select`, `:from`, joins, aliases, and similar). There it throws at compile time or fails at the database. In `:order-by` and `:group-by` a marker compiles to `ORDER BY ?`, which is useless but does not throw. Don't write one there either.
+4. A marked empty collection in `:in` compiles to `FALSE`, like an unmarked one.
 5. Leave values that `t2/update!` *writes* unmarked. Model hooks such as encryption must still see them.
 6. Keep kv-arg style (`:engine engine`) for a column with a Toucan type transform. If you move a keyword value into a raw `{:where ...}` map, the transform is skipped. HoneySQL then formats the keyword as an identifier, and the query returns wrong rows without failing.
-
-The docstring of `metabase.app-db.value-guard` explains what the guard refuses without any marker.
 
 ## Add app-DB migrations
 
@@ -71,8 +69,9 @@ in year directories like `resources/migrations/2026/` (`./bin/mage new-migration
 cherry-picking the same file to each release branch. `./bin/lint-migrations-file.sh` enforces the rules. The versioned
 layout (`0NN/` directories, `vNN.` ids) only holds changesets that already shipped.
 
-The whole `metabase.app-db.*` module, custom migrations included, is exempt from the `<module>.db` rule (the
-`app-db-namespaces` group in `.clj-kondo/config.edn`).
+Custom migrations (`metabase.app-db.custom-migrations*`) are exempt from the `<module>.db` rule (the
+`app-db-namespaces` group in `.clj-kondo/config.edn`), since they use table names frozen at the version they shipped
+in. The rest of the `app-db` module follows it and runs its queries in `metabase.app-db.db`.
 
 ## Cross module boundaries through `:api`
 

@@ -197,7 +197,7 @@
                                     {:select [:x.id]
                                      :from   [[^:allow-subquery
                                                {:select [:id]
-                                                :from   [:metabase_table]
+                                                :from   [(t2/table-name :model/Table)]
                                                 :where  [:and
                                                          [:= :db_id (:id db)]
                                                          (perms/visible-tables-filter-clause

@@ -5,6 +5,7 @@
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -105,11 +106,11 @@
   [field-ids :- [:set ::lib.schema.id/field]]
   (boolean (some #(t2/exists? :model/Field {:from  [(t2/table-name :model/Field)]
                                             :join  [(t2/table-name :model/Table)
-                                                    [:= :metabase_field.table_id :metabase_table.id]]
+                                                    [:= (u/qualified-key (t2/table-name :model/Field) :table_id) (u/qualified-key (t2/table-name :model/Table) :id)]]
                                             :where [:and
-                                                    [:in :metabase_field.fk_target_field_id %]
-                                                    [:= :metabase_field.active true]
-                                                    [:= :metabase_table.active true]]})
+                                                    [:in (u/qualified-key (t2/table-name :model/Field) :fk_target_field_id) %]
+                                                    [:= (u/qualified-key (t2/table-name :model/Field) :active) true]
+                                                    [:= (u/qualified-key (t2/table-name :model/Table) :active) true]]})
                  (mdb/select-partitions field-ids))))
 
 (mu/defn sandbox-exists-for-table?

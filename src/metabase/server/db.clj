@@ -13,110 +13,71 @@
 
 (set! *warn-on-reflection* true)
 
-;; These session/API-key/OAuth-token lookup queries run on every single authenticated API request, so it's worth it
-;; to optimize a bit and only compile each one to SQL once (keyed by its boolean/enum arguments) rather than every
-;; time.
-
-;; Hard-coded rather than `(descendants :metabase.auth-identity.provider/supports-mfa)` so the session query below is
-;; compiled once rather than depending on load order of the provider namespaces.
+;; Hard-coded rather than `(descendants :metabase.auth-identity.provider/supports-mfa)` so the session query below
+;; does not depend on load order of the provider namespaces.
 ;; [[metabase.server.middleware.session-test/mfa-providers-list-test]] keeps this in sync with the hierarchy.
 (def ^:private mfa-supported-methods
   #{:provider/password :provider/ldap})
 
-(def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required])} session-with-id-query
-  (mdb/memoize-for-application-db
-   (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required?]
-     (first
-      (t2.pipeline/compile*
-       (cond-> (merge session/session-from-and-joins
-                      {:select [[:session.user_id :metabase-user-id]
-                                [:user.is_superuser :is-superuser?]
-                                [:user.is_data_analyst :is-data-analyst?]
-                                [:user.locale :user-locale]
-                                [:auth_identity.provider :auth-provider]]
-                       :where  (into [:and
-                                      [:= :session.key_hashed (Object.)] ; force a `?` placeholder
-                                      [:= :session.anti_csrf_token (case session-type
-                                                                     :normal         nil
-                                                                     :full-app-embed (Object.))]]
-                                     cat
-                                     [(session/live-session-conditions
-                                       {:db-type                 db-type
-                                        :max-age-minutes         max-age-minutes
-                                        :enable-tenants?         enable-tenants?
-                                        :session-timeout-seconds session-timeout-seconds})
-                                      (when mfa-required?
-                                        [[:or
-                                          [:not= :session.mfa_auth_identity_id nil]
-                                          (into [:and]
-                                                (map (fn [mfa-supporting-provider]
-                                                       [:not= :auth_identity.provider
-                                                        (h2x/literal (name mfa-supporting-provider))])
-                                                     mfa-supported-methods))]])])
-                       :limit  [:inline 1]})
-         enable-advanced-permissions?
-         (->
-          (sql.helpers/select
-           [:pgm.is_group_manager :is-group-manager?])
-          (sql.helpers/left-join
-           [:permissions_group_membership :pgm] [:and
-                                                 [:= :pgm.user_id :user.id]
-                                                 [:is :pgm.is_group_manager true]]))))))))
+(defn- select-group-manager
+  "`query`, whose user is aliased `user`, also selecting whether the user manages a group when
+  `enable-advanced-permissions?`."
+  [query enable-advanced-permissions?]
+  (cond-> query
+    enable-advanced-permissions?
+    (-> (sql.helpers/select [:pgm.is_group_manager :is-group-manager?])
+        (sql.helpers/left-join [(t2/table-name :model/PermissionsGroupMembership) :pgm]
+                               [:and [:= :pgm.user_id :user.id] [:is :pgm.is_group_manager true]]))))
 
-(def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-api-key-prefix-query
-  (mdb/memoize-for-application-db
-   (fn [enable-advanced-permissions?]
-     (first
-      (t2.pipeline/compile*
-       ;; `api-key-id` and `api-key-creator-id` are here for API-key usage analytics: the auth query already has
-       ;; both rows joined, so carrying them on the request costs nothing and spares the response path a second
-       ;; lookup. `api-key-creator-id` is the real human who created the key — distinct from `metabase-user-id`,
-       ;; which is the key's own synthetic service-account user used for permission checks.
-       (cond-> {:select    [[:api_key.id :api-key-id]
-                            [:api_key.creator_id :api-key-creator-id]
-                            [:api_key.user_id :metabase-user-id]
-                            [:api_key.key :api-key]
-                            [:api_key.scope :api-key-scope]
-                            [:user.is_superuser :is-superuser?]
-                            [:user.is_data_analyst :is-data-analyst?]
-                            [:user.locale :user-locale]]
-                :from      :api_key
-                :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
-                :where     [:and
-                            [:= :user.is_active true]
-                            [:= :api_key.key_prefix (Object.)]] ; to produce `?` in the SQL
-                :limit     [:inline 1]}
-         enable-advanced-permissions?
-         (->
-          (sql.helpers/select
-           [:pgm.is_group_manager :is-group-manager?])
-          (sql.helpers/left-join
-           [:permissions_group_membership :pgm] [:and
-                                                 [:= :pgm.user_id :user.id]
-                                                 [:is :pgm.is_group_manager true]]))))))))
+(defn- session-with-id-query
+  "The query of the user of the live Session whose `key_hashed` is `session-key-hash`, with the `anti-csrf-token` of a
+  full-app-embed session."
+  [session-key-hash anti-csrf-token max-age-minutes enable-advanced-permissions? enable-tenants? session-timeout-seconds
+   mfa-required?]
+  (select-group-manager
+   (merge (session/session-from-and-joins)
+          {:select [[:session.user_id :metabase-user-id]
+                    [:user.is_superuser :is-superuser?]
+                    [:user.is_data_analyst :is-data-analyst?]
+                    [:user.locale :user-locale]
+                    [:auth_identity.provider :auth-provider]]
+           :where  (into [:and
+                          [:= :session.key_hashed session-key-hash]
+                          [:= :session.anti_csrf_token anti-csrf-token]]
+                         cat
+                         [(session/live-session-conditions
+                           {:db-type                 (mdb/db-type)
+                            :max-age-minutes         max-age-minutes
+                            :enable-tenants?         enable-tenants?
+                            :session-timeout-seconds session-timeout-seconds})
+                          (when mfa-required?
+                            [[:or
+                              [:not= :session.mfa_auth_identity_id nil]
+                              (into [:and]
+                                    (map (fn [mfa-supporting-provider]
+                                           [:not= :auth_identity.provider (h2x/literal (name mfa-supporting-provider))]))
+                                    mfa-supported-methods)]])])
+           :limit  [:inline 1]})
+   enable-advanced-permissions?))
 
-(def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-id-query
+(defn- query-one-compiled
+  "The first row of the statement Funny SQL compiled as `compiled`, run with `params` for its placeholders."
+  [compiled params]
+  (t2/query-one (with-meta (into [(first compiled)] params) (meta compiled))))
+
+(def ^:private ^{:arglists '([max-age-minutes full-app-embed? enable-advanced-permissions? enable-tenants?
+                              session-timeout-seconds mfa-required?])}
+  compiled-session-query
   (mdb/memoize-for-application-db
-   (fn [enable-advanced-permissions?]
-     (first
-      (t2.pipeline/compile*
-       (cond-> {:select    [[:user.id :metabase-user-id]
-                            [:user.is_superuser :is-superuser?]
-                            [:user.is_data_analyst :is-data-analyst?]
-                            [:user.locale :user-locale]]
-                :from      [[:core_user :user]]
-                :where     [:and
-                            [:= :user.is_active true]
-                            [:= :user.id (Object.)]]
-                :limit     [:inline 1]}
-         enable-advanced-permissions?
-         (->
-          (sql.helpers/select
-           [:pgm.is_group_manager :is-group-manager?])
-          (sql.helpers/left-join
-           [:permissions_group_membership :pgm] [:and
-                                                 [:= :pgm.user_id :user.id]
-                                                 [:is :pgm.is_group_manager true]]))))))))
+   (fn [max-age-minutes full-app-embed? enable-advanced-permissions? enable-tenants? session-timeout-seconds
+        mfa-required?]
+     (t2.pipeline/compile* (session-with-id-query (Object.)
+                                                  (when full-app-embed? (Object.))
+                                                  max-age-minutes
+                                                  enable-advanced-permissions?
+                                                  enable-tenants?
+                                                  session-timeout-seconds
+                                                  mfa-required?)))))
 
 (mu/defn session-user-info
   "The user id, superuser/data-analyst/group-manager flags, locale, and auth provider for the active, unexpired
@@ -130,26 +91,56 @@
    enable-tenants?              :- :boolean
    session-timeout-seconds      :- [:maybe :int]
    mfa-required?                :- :boolean]
-  (let [sql    (session-with-id-query (mdb/db-type)
-                                      max-age-minutes
-                                      (if (seq anti-csrf-token) :full-app-embed :normal)
-                                      enable-advanced-permissions?
-                                      enable-tenants?
-                                      session-timeout-seconds
-                                      mfa-required?)
-        params (concat [session-key-hash] (when (seq anti-csrf-token) [anti-csrf-token]))]
-    (t2/query-one (cons sql params))))
+  (query-one-compiled (compiled-session-query max-age-minutes
+                                              (boolean (seq anti-csrf-token))
+                                              enable-advanced-permissions?
+                                              enable-tenants?
+                                              session-timeout-seconds
+                                              mfa-required?)
+                      (cond-> [session-key-hash] (seq anti-csrf-token) (conj anti-csrf-token))))
+
+(def ^:private ^{:arglists '([enable-advanced-permissions?])} compiled-api-key-query
+  (mdb/memoize-for-application-db
+   (fn [enable-advanced-permissions?]
+     (t2.pipeline/compile* (select-group-manager
+                            {:select    [[:api_key.id :api-key-id]
+                                         [:api_key.creator_id :api-key-creator-id]
+                                         [:api_key.user_id :metabase-user-id]
+                                         [:api_key.key :api-key]
+                                         [:api_key.scope :api-key-scope]
+                                         [:user.is_superuser :is-superuser?]
+                                         [:user.is_data_analyst :is-data-analyst?]
+                                         [:user.locale :user-locale]]
+                             :from      [[(t2/table-name :model/ApiKey) :api_key]]
+                             :left-join [[(t2/table-name :model/User) :user] [:= :api_key.user_id :user.id]]
+                             :where     [:and [:= :user.is_active true] [:= :api_key.key_prefix (Object.)]]
+                             :limit     [:inline 1]}
+                            enable-advanced-permissions?)))))
+
+(def ^:private ^{:arglists '([enable-advanced-permissions?])} compiled-oauth-query
+  (mdb/memoize-for-application-db
+   (fn [enable-advanced-permissions?]
+     (t2.pipeline/compile* (select-group-manager
+                            {:select [[:user.id :metabase-user-id]
+                                      [:user.is_superuser :is-superuser?]
+                                      [:user.is_data_analyst :is-data-analyst?]
+                                      [:user.locale :user-locale]]
+                             :from   [[(t2/table-name :model/User) :user]]
+                             :where  [:and [:= :user.is_active true] [:= :user.id (Object.)]]
+                             :limit  [:inline 1]}
+                            enable-advanced-permissions?)))))
 
 (mu/defn api-key-user-info
-  "The API key id, user id, api key, key scope, superuser/data-analyst/group-manager flags, and locale for the active
-  User whose ApiKey starts with `key-prefix`, or nil if there is none."
+  "The API key id, the id of the human who created the key (`api-key-creator-id`, distinct from `metabase-user-id`, the
+  key's own service-account user that permission checks use), api key, key scope, superuser/data-analyst/group-manager
+  flags, and locale for the active User whose ApiKey starts with `key-prefix`, or nil if there is none."
   [key-prefix                   :- :string
    enable-advanced-permissions? :- :boolean]
-  (t2/query-one (cons (user-data-for-api-key-prefix-query enable-advanced-permissions?) [key-prefix])))
+  (query-one-compiled (compiled-api-key-query enable-advanced-permissions?) [key-prefix]))
 
 (mu/defn oauth-user-info
   "The user id, superuser/data-analyst/group-manager flags, and locale for the active User with `user-id`, or nil if
   there is none."
   [user-id                      :- ::lib.schema.id/user
    enable-advanced-permissions? :- :boolean]
-  (t2/query-one (cons (user-data-for-id-query enable-advanced-permissions?) [user-id])))
+  (query-one-compiled (compiled-oauth-query enable-advanced-permissions?) [user-id]))

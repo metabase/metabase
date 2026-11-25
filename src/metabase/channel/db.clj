@@ -74,11 +74,11 @@
   "The ids of the Users belonging to a PermissionsGroup that holds `permission-path`."
   [permission-path :- :string]
   (app-db/query {:select   [:pgm.user_id]
-                 :from     [[:permissions_group_membership :pgm]]
-                 :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
+                 :from     [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                 :join     [[(t2/table-name :model/PermissionsGroup) :pg] [:= :pgm.group_id :pg.id]]
                  :where    [:exists ^:allow-subquery
                             {:select [1]
-                             :from   [[:permissions :p]]
+                             :from   [[(t2/table-name :model/Permissions) :p]]
                              :where  [:and
                                       [:= :p.group_id :pg.id]
                                       [:= :p.object permission-path]]}]

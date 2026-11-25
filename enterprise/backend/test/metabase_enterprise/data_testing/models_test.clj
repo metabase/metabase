@@ -177,7 +177,7 @@
           ;; Raw: the model's before-delete hook reads the row back, which is the very thing under
           ;; test here. Nothing should have been written, but a leftover row would break the
           ;; Transform's own cleanup on its FK.
-          (t2/query {:delete-from :transform_test :where [:= :transform_id transform-id]}))))))
+          (t2/query {:delete-from (t2/table-name :model/TransformTest) :where [:= :transform_id transform-id]}))))))
 
 (deftest duplicate-expectation-names-test
   ;; Uniqueness is a property of the vector rather than of one expectation, so `::expectations`
@@ -191,7 +191,7 @@
         (is (re-find #"unique" (pr-str (keep (comp :error ex-data) (causes e))))
             (pr-str (mapv ex-message (causes e)))))
       (finally
-        (t2/query {:delete-from :transform_test :where [:= :transform_id transform-id]})))))
+        (t2/query {:delete-from (t2/table-name :model/TransformTest) :where [:= :transform_id transform-id]})))))
 
 (deftest update-is-validated-too-test
   (testing "an update goes through the same :in transform as an insert"

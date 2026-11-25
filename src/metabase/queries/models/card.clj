@@ -277,10 +277,10 @@
   [:and
    [:= :type "metric"]
    [:= :archived false]
-   (perms/visible-collections-filter-clause :report_card.collection_id (api/current-user-info) {:include-trash-collection? false
-                                                                                                :include-archived-items    :exclude
-                                                                                                :permission-level          :read
-                                                                                                :root-namespace            nil})])
+   (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Card) :collection_id) (api/current-user-info) {:include-trash-collection? false
+                                                                                                                                  :include-archived-items    :exclude
+                                                                                                                                  :permission-level          :read
+                                                                                                                                  :root-namespace            nil})])
 
 (mu/defn- source-card-id :- [:maybe ::lib.schema.id/card]
   [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]

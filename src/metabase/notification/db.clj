@@ -103,7 +103,7 @@
   [handler-id :- ms/PositiveInt]
   (t2/select-one :model/Notification
                  :id [:in ^:allow-subquery {:select [:notification_id]
-                                            :from   :notification_handler
+                                            :from   (t2/table-name :model/NotificationHandler)
                                             :where  [:= :id handler-id]}]))
 
 (mu/defn notifications-matching
@@ -124,32 +124,33 @@
        [:legacy-user-id           {:optional true} [:maybe ::lib.schema.id/user]]]]
   (t2/reducible-select
    :model/Notification
-   (cond-> {:select-distinct [:notification.*]}
+   (cond-> {:select-distinct [:notification.*]
+            :from            [[(t2/table-name :model/Notification) :notification]]}
      creator-id
      (sql.helpers/where [:= :notification.creator_id creator-id])
 
      recipient-id
      (-> (sql.helpers/left-join
-          :notification_handler [:= :notification_handler.notification_id :notification.id])
+          [(t2/table-name :model/NotificationHandler) :nh] [:= :nh.notification_id :notification.id])
          (sql.helpers/left-join
-          :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
-         (sql.helpers/where [:= :notification_recipient.user_id recipient-id]))
+          [(t2/table-name :model/NotificationRecipient) :nr] [:= :nr.notification_handler_id :nh.id])
+         (sql.helpers/where [:= :nr.user_id recipient-id]))
 
      creator-or-recipient-id
      (-> (sql.helpers/left-join
-          :notification_handler [:= :notification_handler.notification_id :notification.id])
+          [(t2/table-name :model/NotificationHandler) :nh] [:= :nh.notification_id :notification.id])
          (sql.helpers/left-join
-          :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
-         (sql.helpers/where [:or [:= :notification_recipient.user_id creator-or-recipient-id]
+          [(t2/table-name :model/NotificationRecipient) :nr] [:= :nr.notification_handler_id :nh.id])
+         (sql.helpers/where [:or [:= :nr.user_id creator-or-recipient-id]
                              [:= :notification.creator_id creator-or-recipient-id]]))
 
      card-id
      (-> (sql.helpers/left-join
-          :notification_card
+          [(t2/table-name :model/NotificationCard) :nc]
           [:and
-           [:= :notification_card.id :notification.payload_id]
+           [:= :nc.id :notification.payload_id]
            [:= :notification.payload_type "notification/card"]])
-         (sql.helpers/where [:= :notification_card.card_id card-id]))
+         (sql.helpers/where [:= :nc.card_id card-id]))
 
      (and (nil? legacy-active) (not (true? include-inactive?)))
      (sql.helpers/where [:= :notification.active true])
@@ -162,11 +163,11 @@
 
      legacy-user-id
      (-> (sql.helpers/left-join
-          :notification_handler [:= :notification_handler.notification_id :notification.id])
+          [(t2/table-name :model/NotificationHandler) :nh] [:= :nh.notification_id :notification.id])
          (sql.helpers/left-join
-          :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
+          [(t2/table-name :model/NotificationRecipient) :nr] [:= :nr.notification_handler_id :nh.id])
          (sql.helpers/where [:or
-                             [:= :notification_recipient.user_id legacy-user-id]
+                             [:= :nr.user_id legacy-user-id]
                              [:= :notification.creator_id legacy-user-id]])))))
 
 (mu/defn notifications-by-id
@@ -186,9 +187,9 @@
                                   :active true
                                   :payload_type :notification/card
                                   {:where [:exists ^:allow-subquery {:select [1]
-                                                                     :from   [[:notification_card :nc]]
+                                                                     :from   [[(t2/table-name :model/NotificationCard) :nc]]
                                                                      :where  [:and
-                                                                              [:= :nc.id :notification.payload_id]
+                                                                              [:= :nc.id (u/qualified-key (t2/table-name :model/Notification) :payload_id)]
                                                                               [:in :nc.card_id [:auto/param %]]]}]})
                       card-ids))
 
@@ -197,8 +198,8 @@
   [event-name :- :string]
   (t2/select :model/Notification
              {:select    [:n.*]
-              :from      [[:notification :n]]
-              :left-join [[:notification_subscription :ns] [:= :n.id :ns.notification_id]]
+              :from      [[(t2/table-name :model/Notification) :n]]
+              :left-join [[(t2/table-name :model/NotificationSubscription) :ns] [:= :n.id :ns.notification_id]]
               :where     [:and
                           [:= :n.active true]
                           [:= :ns.event_name event-name]
@@ -268,7 +269,7 @@
   [notification-ids :- [:sequential ms/PositiveInt]]
   (mdb/sum-batched mdb/delete-partition-size (fn [chunk]
                                                (let [payload-ids [:in ^:allow-subquery {:select [:payload_id]
-                                                                                        :from   [:notification]
+                                                                                        :from   [(t2/table-name :model/Notification)]
                                                                                         :where  [:and
                                                                                                  [:in :id [:auto/param (vec chunk)]]
                                                                                                  [:= :payload_type "notification/card"]]}]]
@@ -293,8 +294,8 @@
   (t2/select-pk->fn identity :model/NotificationSubscription
                     :type :notification-subscription/cron
                     {:select [:ns.*]
-                     :from   [[:notification_subscription :ns]]
-                     :join   [[:notification :n] [:= :ns.notification_id :n.id]]
+                     :from   [[(t2/table-name :model/NotificationSubscription) :ns]]
+                     :join   [[(t2/table-name :model/Notification) :n] [:= :ns.notification_id :n.id]]
                      :where  [:and
                               [:= :ns.type "notification-subscription/cron"]
                               [:= :n.active true]]}))
@@ -324,11 +325,11 @@
     (letfn [(notification-ids-where [where]
               (t2/select-fn-set :notification_id (t2/table-name :model/NotificationHandler)
                                 {:join      [[(t2/table-name :model/NotificationRecipient) :nr]
-                                             [:= :nr.notification_handler_id :notification_handler.id]]
-                                 :left-join [[:core_user :cu] [:= :cu.id :nr.user_id]]
+                                             [:= :nr.notification_handler_id (u/qualified-key (t2/table-name :model/NotificationHandler) :id)]]
+                                 :left-join [[(t2/table-name :model/User) :cu] [:= :cu.id :nr.user_id]]
                                  :where     where}))]
       (if (seq raw-value-handler-ids)
-        (mdb/select-batched-set #(notification-ids-where [:or user-clause [:in :notification_handler.id %]])
+        (mdb/select-batched-set #(notification-ids-where [:or user-clause [:in (u/qualified-key (t2/table-name :model/NotificationHandler) :id) %]])
                                 raw-value-handler-ids)
         (notification-ids-where user-clause)))))
 
@@ -388,7 +389,7 @@
   (t2/select :model/NotificationRecipient
              :user_id user-id
              :notification_handler_id [:in ^:allow-subquery {:select [:id]
-                                                             :from   [:notification_handler]
+                                                             :from   [(t2/table-name :model/NotificationHandler)]
                                                              :where  [:= :notification_id notification-id]}]))
 
 ;;; ---------------------------------------------- Channels ----------------------------------------------
@@ -441,8 +442,8 @@
   (t2/reducible-select :model/TaskHistory
                        {:select   [:th.run_id :th.task_details :th.status
                                    [:tr.started_at :run_started_at]]
-                        :from     [[:task_history :th]]
-                        :join     [[:task_run :tr] [:= :tr.id :th.run_id]]
+                        :from     [[(t2/table-name :model/TaskHistory) :th]]
+                        :join     [[(t2/table-name :model/TaskRun) :tr] [:= :tr.id :th.run_id]]
                         :where    [:and
                                    [:= :tr.run_type        run-type]
                                    [:= :tr.notification_id notification-id]
@@ -470,7 +471,7 @@
                                                                :else                     1] :asc]
                                                              [:ended_at :desc]]}]]
                                      :rn]]
-                           :from   [:task_history]
+                           :from   [(t2/table-name :model/TaskHistory)]
                            :where  [:and
                                     [:in :run_id %]
                                     [:in :status ["failed" "abandoned"]]
@@ -496,7 +497,7 @@
                                 {:partition-by [:notification_id]
                                  :order-by     [[:started_at :desc]]}]]
                         :rn]]
-              :from   [:task_run]
+              :from   [(t2/table-name :model/TaskRun)]
               :where  [:and
                        [:= :run_type admin-run-type-alert]
                        [:is-not :notification_id nil]
@@ -514,7 +515,7 @@
             [[:case
               [:exists ^:allow-subquery
                {:select [[1]]
-                :from   [[:task_history :tf]]
+                :from   [[(t2/table-name :model/TaskHistory) :tf]]
                 :where  [:and
                          [:= :tf.run_id :lr.run_id]
                          [:= :tf.task admin-task-channel-send]
@@ -531,7 +532,7 @@
                                 {:partition-by [:tr2.notification_id]
                                  :order-by     [[:tr2.started_at :desc]]}]]
                         :rn]]
-              :from   [[:task_run :tr2]]
+              :from   [[(t2/table-name :model/TaskRun) :tr2]]
               :where  [:and
                        [:= :tr2.run_type admin-run-type-alert]
                        [:is-not :tr2.notification_id nil]
@@ -539,16 +540,17 @@
                        [:> :tr2.started_at lookback]
                        [:exists ^:allow-subquery
                         {:select [[1]]
-                         :from   [[:task_history :tx]]
+                         :from   [[(t2/table-name :model/TaskHistory) :tx]]
                          :where  [:and
                                   [:= :tx.run_id :tr2.id]
                                   [:= :tx.task admin-task-channel-send]]}]]}
              :lr]]
    :where [:= :lr.rn 1]})
 
-(def ^:private admin-sort-column->order-by
+(defn- admin-sort-column->order-by
   "Maps the public `sort_column` enum to the SQL expression used in `ORDER BY`. Uses raw expressions rather than the
   SELECT aliases because H2 does not resolve aliases inside expressions."
+  []
   {:id           :notification.id
    :last_send    :ls.started_at
    :last_check   :lc.started_at
@@ -564,8 +566,8 @@
      {:select [[1]]
       :from   [(t2/table-name :model/NotificationHandler)]
       :where  [:and
-               [:= :notification_handler.notification_id :notification.id]
-               [:in :notification_handler.channel_type channels]]}]))
+               [:= (u/qualified-key (t2/table-name :model/NotificationHandler) :notification_id) :notification.id]
+               [:in (u/qualified-key (t2/table-name :model/NotificationHandler) :channel_type) channels]]}]))
 
 (defn- admin-query-where-clause
   [query]
@@ -628,15 +630,15 @@
                                [:ls.id                                            :ls_id]
                                [:ls.started_at                                    :ls_started_at]
                                [:ls.has_failure                                   :ls_has_failure]]))
-              :from   [:notification]
+              :from   [[(t2/table-name :model/Notification) :notification]]
               :where  [:and
                        [:= :notification.payload_type "notification/card"]
                        [:is-not :notification.payload_id nil]]}
 
        true
-       (-> (sql.helpers/left-join [:notification_card :nc] [:= :nc.id :notification.payload_id])
-           (sql.helpers/left-join [:report_card :c]        [:= :c.id :nc.card_id])
-           (sql.helpers/left-join [:core_user :cu]         [:= :cu.id :notification.creator_id]))
+       (-> (sql.helpers/left-join [(t2/table-name :model/NotificationCard) :nc] [:= :nc.id :notification.payload_id])
+           (sql.helpers/left-join [(t2/table-name :model/Card) :c]        [:= :c.id :nc.card_id])
+           (sql.helpers/left-join [(t2/table-name :model/User) :cu]         [:= :cu.id :notification.creator_id]))
 
        (not skip-run-joins?)
        (-> (sql.helpers/left-join [(latest-run-per-notification lookback)       :lc] [:= :lc.notification_id :notification.id])
@@ -645,7 +647,7 @@
 
 (defn- admin-order-by-clauses
   [sort-column sort-direction]
-  (let [col (admin-sort-column->order-by sort-column)
+  (let [col ((admin-sort-column->order-by) sort-column)
         dir (or sort-direction :desc)]
     [[[:case [:= col nil] 1 :else 0] :asc]
      [col dir]

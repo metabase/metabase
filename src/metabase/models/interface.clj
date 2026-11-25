@@ -36,6 +36,7 @@
    [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
+   [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]
@@ -693,9 +694,39 @@
                                    (next-method rf query-type model parsed-args resolved-query)))
    ::uniform-update-guard))
 
+(def ^:private row-statement-pattern
+  "Matches SQL that reads or writes rows, after any leading comments and parentheses."
+  #"(?is)^(?:\s|--[^\n]*(?:\n|$)|/\*.*?\*/|\()*(select|insert|update|delete|merge|with|values|table|replace)\b")
+
+(defn- check-not-sql-string
+  "Throws when the Toucan query `query`, a SQL string or `[sql & params]` that is not run against a warehouse Database,
+  reads or writes rows, which an app-DB query must express in Honey SQL, unless Funny SQL compiled it."
+  [query]
+  (let [sql (if (string? query) query (first query))]
+    (when (and (string? sql)
+               (not (:metabase.funnysql.core/compiled (meta query)))
+               (not (instance-of? :model/Database t2.connection/*current-connectable*))
+               (re-find row-statement-pattern sql))
+      (throw (ex-info (format (str "An app-DB query must be Honey SQL, not the SQL string %s; write it as a Honey SQL map "
+                                   "with (t2/table-name :model/X) table names")
+                              (pr-str sql))
+                      {:sql sql})))))
+
+(defn- install-sql-string-guard!
+  "Wraps the Toucan compile of a SQL string or `[sql & params]` query in [[check-not-sql-string]]."
+  []
+  (doseq [query-class [String clojure.lang.IPersistentVector clojure.lang.ISeq]]
+    (methodical/add-aux-method-with-unique-key!
+     #'t2.pipeline/compile :around [:default :default query-class]
+     (fn [next-method query-type model query]
+       (check-not-sql-string query)
+       (next-method query-type model query))
+     ::sql-string-guard)))
+
 (when (or config/is-dev? config/is-test?)
   (install-hook-statement-guard!)
-  (install-uniform-update-guard!))
+  (install-uniform-update-guard!)
+  (install-sql-string-guard!))
 
 ;; --- helper fns
 (defn changes-with-pk

@@ -6,6 +6,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -21,9 +22,9 @@
                                    :entity_id :result_metadata :dimensions :dimension_mappings
                                    :collection.authority_level [:collection.name :collection_name]
                                    [:dashboard.name :dashboard_name] :dashboard_id]
-                                  {:where     [:in :report_card.id %]
-                                   :left-join [:collection [:= :collection.id :report_card.collection_id]
-                                               [:report_dashboard :dashboard] [:= :dashboard.id :report_card.dashboard_id]]})
+                                  {:where     [:in (u/qualified-key (t2/table-name :model/Card) :id) %]
+                                   :left-join [[(t2/table-name :model/Collection) :collection] [:= :collection.id (u/qualified-key (t2/table-name :model/Card) :collection_id)]
+                                               [(t2/table-name :model/Dashboard) :dashboard] [:= :dashboard.id (u/qualified-key (t2/table-name :model/Card) :dashboard_id)]]})
                       ids))
 
 (mu/defn recent-dashboards
@@ -32,9 +33,9 @@
   (mdb/select-batched #(t2/select [:model/Dashboard
                                    :id :name :collection_id :description
                                    :archived
-                                   :collection.authority_level [:collection.name :collection_name]]
-                                  {:where     [:in :report_dashboard.id %]
-                                   :left-join [:collection [:= :collection.id :report_dashboard.collection_id]]})
+                                   (u/qualified-key (t2/table-name :model/Collection) :authority_level) [(u/qualified-key (t2/table-name :model/Collection) :name) :collection_name]]
+                                  {:where     [:in (u/qualified-key (t2/table-name :model/Dashboard) :id) %]
+                                   :left-join [(t2/table-name :model/Collection) [:= (u/qualified-key (t2/table-name :model/Collection) :id) (u/qualified-key (t2/table-name :model/Dashboard) :collection_id)]]})
                       ids))
 
 (mu/defn recent-tables
@@ -42,11 +43,11 @@
   [ids :- [:sequential ms/PositiveInt]]
   (mdb/select-batched #(t2/select [:model/Table
                                    :id :name :db_id :active
-                                   :display_name [:metabase_database.initial_sync_status :initial-sync-status]
+                                   :display_name [(u/qualified-key (t2/table-name :model/Database) :initial_sync_status) :initial-sync-status]
                                    [:visibility_type :visibility_type]
-                                   [:metabase_database.name :database-name]]
-                                  {:where     [:in :metabase_table.id %]
-                                   :left-join [:metabase_database [:= :metabase_database.id :metabase_table.db_id]]})
+                                   [(u/qualified-key (t2/table-name :model/Database) :name) :database-name]]
+                                  {:where     [:in (u/qualified-key (t2/table-name :model/Table) :id) %]
+                                   :left-join [(t2/table-name :model/Database) [:= (u/qualified-key (t2/table-name :model/Database) :id) (u/qualified-key (t2/table-name :model/Table) :db_id)]]})
                       ids))
 
 (mu/defn recent-dashboard-and-table-views
@@ -54,7 +55,7 @@
   viewer."
   [limit :- ms/PositiveInt]
   (t2/select [:model/RecentViews
-              [[:min :recent_views.user_id] :user_id]
+              [[:min (u/qualified-key (t2/table-name :model/RecentViews) :user_id)] :user_id]
               :model
               :model_id
               [[:max [:coalesce :d.view_count :t.view_count]] :cnt]
@@ -67,7 +68,7 @@
                           [:or [:= :archived false] [:= :archived nil]]]
               :order-by  [[:max_ts :desc] [:model :desc]]
               :limit     limit
-              :left-join [[:report_dashboard :d]
+              :left-join [[(t2/table-name :model/Dashboard) :d]
                           [:and
                            [:= :model "dashboard"]
                            [:= :d.id :model_id]]
@@ -81,10 +82,10 @@
   [limit :- ms/PositiveInt]
   (t2/select [:model/QueryExecution
               [:%min.executor_id :user_id]
-              [:query_execution.card_id :model_id]
+              [(u/qualified-key (t2/table-name :model/QueryExecution) :card_id) :model_id]
               [:%count.* :cnt]
               [:%max.started_at :max_ts]]
-             {:group-by [:query_execution.card_id :context]
+             {:group-by [(u/qualified-key (t2/table-name :model/QueryExecution) :card_id) :context]
               :where    [:and
                          [:= :context (h2x/literal :question)]]
               :order-by [[:max_ts :desc]]
@@ -151,11 +152,11 @@
    contexts :- [:sequential :string]]
   (->> (mdb/select-batched #(t2/select :model/RecentViews
                                        {:select    [:rv.id :rv.user_id :rv.context :rv.model :rv.model_id [:rc.type :card_type] :rv.timestamp]
-                                        :from      [[:recent_views :rv]]
+                                        :from      [[(t2/table-name :model/RecentViews) :rv]]
                                         :where     [:and
                                                     [:in :rv.user_id [:auto/param %]]
                                                     [:in :rv.context (mapv h2x/literal contexts)]]
-                                        :left-join [[:report_card :rc]
+                                        :left-join [[(t2/table-name :model/Card) :rc]
                                                     [:and
                                                      [:= :rv.model (h2x/literal "card")]
                                                      [:= :rc.id :rv.model_id]]]
@@ -186,9 +187,9 @@
                [:= :model (h2x/literal "dashboard")]
                [:> :timestamp since]
                [:not= :d.archived true]]
-    :order-by [[:recent_views.id :desc]]
-    :left-join [[:report_dashboard :d]
-                [:= :recent_views.model_id :d.id]]}))
+    :order-by [[(u/qualified-key (t2/table-name :model/RecentViews) :id) :desc]]
+    :left-join [[(t2/table-name :model/Dashboard) :d]
+                [:= (u/qualified-key (t2/table-name :model/RecentViews) :model_id) :d.id]]}))
 
 (mu/defn recent-view-collections
   "The unarchived Collections with `collection-ids`, with their location, type, authority level, effective parent, and
@@ -215,7 +216,7 @@
    selections? :- :boolean]
   (t2/select :model/RecentViews
              {:select    [:rv.* [:rc.type :card_type]]
-              :from      [[:recent_views :rv]]
+              :from      [[(t2/table-name :model/RecentViews) :rv]]
               :where     [:and
                           [:= :rv.user_id user-id]
                           [:in :rv.context contexts]
@@ -241,16 +242,16 @@
                           ;; exploration documents are accessible only through their owning Exploration;
                           ;; hide them from recents to match search and collection-listing behavior.
                           [:or [:!= :rv.model "document"] [:= :doc.exploration_id nil]]]
-              :left-join [[:report_card :rc]
+              :left-join [[(t2/table-name :model/Card) :rc]
                           [:and
                            ;; only want to join on card_type if it's a card
                            [:= :rv.model "card"]
                            [:= :rc.id :rv.model_id]]
-                          [:collection :coll]
+                          [(t2/table-name :model/Collection) :coll]
                           [:and
                            [:= :rv.model "collection"]
                            [:= :coll.id :rv.model_id]]
-                          [:document :doc]
+                          [(t2/table-name :model/Document) :doc]
                           [:and
                            [:= :rv.model "document"]
                            [:= :doc.id :rv.model_id]]]

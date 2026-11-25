@@ -495,7 +495,7 @@
                    saved?   (fn [metric-ids]
                               (every? (comp some? :dimensions)
                                       (t2/query {:select [:dimensions]
-                                                 :from   [:report_card]
+                                                 :from   [(t2/table-name :model/Card)]
                                                  :where  [:in :id metric-ids]})))]
                (generate (metrics! 1))
                (let [small (metrics! 2)

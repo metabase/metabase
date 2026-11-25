@@ -6,7 +6,8 @@
    [metabase.collections.models.collection :as collection]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.util.honey-sql-2 :as h2x]
+   [toucan2.core :as t2]))
 
 (def ^:private seconds-in-a-day 86400)
 
@@ -97,13 +98,13 @@
                 [:= :search_index.model "transform"]
                 one-day-ago
                 :else
-                [:max :recent_views.timestamp]]
+                [:max (u/qualified-key (t2/table-name :model/RecentViews) :timestamp)]]
                :last_viewed_at]]
-     :from   [:recent_views]
+     :from   [(t2/table-name :model/RecentViews)]
      :where  [:and
-              [:= :recent_views.user_id current-user-id]
-              [:= (cast-to-text :recent_views.model_id) :search_index.model_id]
-              [:= :recent_views.model
+              [:= (u/qualified-key (t2/table-name :model/RecentViews) :user_id) current-user-id]
+              [:= (cast-to-text (u/qualified-key (t2/table-name :model/RecentViews) :model_id)) :search_index.model_id]
+              [:= (u/qualified-key (t2/table-name :model/RecentViews) :model)
                [:case
                 [:= :search_index.model "dataset"] "card"
                 [:= :search_index.model "metric"] "card"
@@ -165,16 +166,19 @@
                               [:inline 1]])]
     (into [:case] (concat (mapcat (comp match-clause name) bookmarked-models) [:else [:inline 0]]))))
 
+(def ^:private bookmark-models
+  {:card :model/CardBookmark, :collection :model/CollectionBookmark, :dashboard :model/DashboardBookmark})
+
 (defn- bookmark-join [model user-id]
   (let [model-name (name model)
-        table-name (str model-name "_bookmark")]
-    [(keyword table-name)
+        alias      (keyword (str model-name "_bookmark"))]
+    [[(t2/table-name (bookmark-models model)) alias]
      [:and
       (if-let [sms (bookmarked-sub-models model)]
         [:in :search_index.model (mapv name sms)]
         [:= :search_index.model model-name])
-      [:= (keyword (str table-name ".user_id")) user-id]
-      [:= :search_index.model_id (cast-to-text (keyword (str table-name "." model-name "_id")))]]]))
+      [:= (u/qualified-key alias :user_id) user-id]
+      [:= :search_index.model_id (cast-to-text (u/qualified-key alias (str model-name "_id")))]]]))
 
 (defn join-bookmarks
   "Add join clause to bookmark tables for :bookmarked scorer."

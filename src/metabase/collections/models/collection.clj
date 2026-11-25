@@ -1150,7 +1150,7 @@
         [:like (->col "location") (str (children-location parent-coll) "%")]
         ;; but NOT a child of any OTHER visible collection.
         [:not [:exists ^:allow-subquery {:select 1
-                                         :from [[:collection :c2]]
+                                         :from [[(t2/table-name :model/Collection) :c2]]
                                          :where [:and
                                                  (perms/visible-collections-filter-clause :c2.id (api/current-user-info)
                                                                                           visibility-config)
@@ -1402,7 +1402,7 @@
    visibility-config :- CollectionVisibilityConfig
    & additional-honeysql-where-clauses :- [:* ::h2x/honeysql-expr]]
   ^:allow-subquery {:select [:id :name :description :type]
-                    :from   [[:collection :col]]
+                    :from   [[(t2/table-name :model/Collection) :col]]
                     :where  (apply effective-children-where-clause collection :col visibility-config additional-honeysql-where-clauses)})
 
 (mu/defn- effective-children* :- [:set (ms/InstanceOf :model/Collection)]

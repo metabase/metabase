@@ -117,9 +117,9 @@
 (defn- session-lock-wait-timeout
   [^Connection conn]
   (with-open [stmt (.createStatement conn)
-              rset (.executeQuery stmt "SELECT @@session.innodb_lock_wait_timeout")]
+              rset (.executeQuery stmt "SHOW SESSION VARIABLES LIKE 'innodb_lock_wait_timeout'")]
     (when (.next rset)
-      (.getLong rset 1))))
+      (.getLong rset 2))))
 
 (defn- set-session-lock-wait-timeout!
   [^Connection conn seconds]

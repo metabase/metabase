@@ -17,8 +17,8 @@
   [session-key-hashed :- :string]
   (t2/query-one {:select [:u.email :u.sso_source :session.saml_session_index
                           :session.saml_name_id :session.saml_name_id_format]
-                 :from   [[:core_user :u]]
-                 :join   [[:core_session :session] [:= :u.id :session.user_id]]
+                 :from   [[(t2/table-name :model/User) :u]]
+                 :join   [[(t2/table-name :model/Session) :session] [:= :u.id :session.user_id]]
                  :where  [:= :key_hashed session-key-hashed]}))
 
 (mu/defn group-ids-by-name

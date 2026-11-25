@@ -4,7 +4,7 @@
    [honey.sql :as sql]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as app-db]
-   [metabase.app-db.honeysql-guard :as honeysql-guard]
+   [metabase.funnysql.core :as funnysql]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -396,8 +396,9 @@
     (is (= ["SELECT * FROM t WHERE LOWER(name) LIKE ? ESCAPE '!'" "a!%b%"]
            (sql/format {:select [:*] :from [:t]
                         :where  [:like [:lower :name] (h2x/like-prefix "A%b")]}))))
-  (testing "passes the app-DB HoneySQL guard"
-    (is (honeysql-guard/safe-syntax? {:select [:*] :from [:t] :where [:like :name (h2x/like-substring "a%b")]}))))
+  (testing "compiles with Funny SQL"
+    (is (= ["SELECT * FROM \"t\" WHERE \"name\" LIKE ? ESCAPE '!'" "%a!%b%"]
+           (funnysql/format {:select [:*] :from [:t] :where [:like :name (h2x/like-substring "a%b")]} :postgres)))))
 
 (deftest ^:parallel h2x-timestamp-diff-test
   (testing (str "metabase.util.honey-sql-2 is shared by Funny SQL (the app DB) and Honey SQL (warehouses, pgvector), "

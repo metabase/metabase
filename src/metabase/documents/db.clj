@@ -73,7 +73,7 @@
   "The unarchived Documents not attached to an Exploration, in a Collection visible to the current user."
   []
   (t2/select :model/Document {:where [:and
-                                      (perms/visible-collections-filter-clause :document.collection_id (api/current-user-info) {:root-namespace nil})
+                                      (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Document) :collection_id) (api/current-user-info) {:root-namespace nil})
                                       [:= :archived false]
                                       [:= :exploration_id nil]]}))
 
@@ -225,8 +225,8 @@
             [:document.name :name]
             [[:case [:= :document.view_count [:inline 0]] nil :else :document.last_viewed_at] :last_used_at]
             :document.collection_id]
-   :from :document
-   :left-join [:collection [:= :collection.id :document.collection_id]]
+   :from [[(t2/table-name :model/Document) :document]]
+   :left-join [[(t2/table-name :model/Collection) :collection] [:= :collection.id :document.collection_id]]
    :where [:and
            [:= :document.archived false]
            [:or
@@ -247,8 +247,8 @@
    :- :metabase.dependencies.items/items-opts]
   (let [location (collections.listing/collection-location :collection nil)]
     {:select    [[:document.id :entity_id] [:document.name :name] [location :location]]
-     :from      [:document]
-     :left-join [:collection [:= :document.collection_id :collection.id]]
+     :from      [[(t2/table-name :model/Document) :document]]
+     :left-join [[(t2/table-name :model/Collection) :collection] [:= :document.collection_id :collection.id]]
      :where     (into [:and]
                       (remove nil?)
                       [(collections.listing/visible-in-collections-clause :document opts include-archived nil)
@@ -273,12 +273,12 @@
             [:u.last_name :last_edit_last_name]
             [:r.timestamp :last_edit_timestamp]
             [(h2x/literal "document") :model]]
-   :from [[:document :document]]
-   :left-join [[:revision :r] [:and
-                               [:= :r.model_id :document.id]
-                               [:= :r.model (h2x/literal "Document")]
-                               (revisions.sql/newest-revision-clause :r "Document" :document.id)]
-               [:core_user :u] [:= :u.id :r.user_id]]
+   :from [[(t2/table-name :model/Document) :document]]
+   :left-join [[(t2/table-name :model/Revision) :r] [:and
+                                                     [:= :r.model_id :document.id]
+                                                     [:= :r.model (h2x/literal "Document")]
+                                                     (revisions.sql/newest-revision-clause :r "Document" :document.id)]
+               [(t2/table-name :model/User) :u] [:= :u.id :r.user_id]]
    :where [:and
            (collections.listing/visible-items-clause :document.collection_id archived? {:root-namespace nil})
            (if (collection/is-trash? collection)
@@ -307,9 +307,9 @@
                            [:c.id :collection_id]
                            [:c.name :collection_name]
                            [:c.authority_level :collection_authority_level]]
-                  :from [[:document :d]]
+                  :from [[(t2/table-name :model/Document) :d]]
                   :where [:in :d.id document-ids]
-                  :left-join [[:collection :c]
+                  :left-join [[(t2/table-name :model/Collection) :c]
                               [:and
                                [:= :c.id :d.collection_id]
                                [:= :c.archived false]]]}))

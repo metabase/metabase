@@ -70,8 +70,8 @@
   [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
   (app-db/select-batched #(app-db/query {:select-distinct [[:p.dashboard_id :dashboard-id] [:p.id :pulse-id] [:p.name :name]
                                                            [:p.collection_id :collection-id] [:pc.card_id :card-id]]
-                                         :from            [[:pulse :p]]
-                                         :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
+                                         :from            [[(t2/table-name :model/Pulse) :p]]
+                                         :left-join       [[(t2/table-name :model/PulseCard) :pc] [:= :p.id :pc.pulse_id]]
                                          :where           [:in :p.dashboard_id %]})
                          dashboard-ids))
 
@@ -80,7 +80,7 @@
   `dashboard-ids`, in id order."
   [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
   (vec (sort-by :id (app-db/select-batched #(app-db/query {:select [:dc.id :dc.dashboard_id :dc.card_id]
-                                                           :from   [[:report_dashboardcard :dc]]
+                                                           :from   [[(t2/table-name :model/DashboardCard) :dc]]
                                                            :where  [:and
                                                                     [:in :dc.dashboard_id %]
                                                                     [:not= :dc.card_id nil]]})
@@ -153,7 +153,7 @@
    user-id   :- [:maybe ::lib.schema.id/user]]
   (t2/select :model/Pulse
              (merge {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
-                     :from            [[:pulse :p]]
+                     :from            [[(t2/table-name :model/Pulse) :p]]
                      :where           [:and
                                        [:not= :p.alert_condition nil]
                                        [:= :p.archived archived?]
@@ -163,8 +163,8 @@
                                           [:= :pcr.user_id user-id]])]
                      :order-by        [[:lower-name :asc]]}
                     (when user-id
-                      {:left-join [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]
-                                   [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]}))))
+                      {:left-join [[(t2/table-name :model/PulseChannel) :pchan] [:= :p.id :pchan.pulse_id]
+                                   [(t2/table-name :model/PulseChannelRecipient) :pcr] [:= :pchan.id :pcr.pulse_channel_id]]}))))
 
 (mu/defn pulses
   "The dashboard-subscription Pulses (unarchived unless `archived?`), optionally narrowed to `dashboard-id` and/or
@@ -174,12 +174,12 @@
    user-id      :- [:maybe ::lib.schema.id/user]]
   (t2/select :model/Pulse
              {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
-              :from            [[:pulse :p]]
+              :from            [[(t2/table-name :model/Pulse) :p]]
               :left-join       (concat
-                                [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
+                                [[(t2/table-name :model/Dashboard) :d] [:= :p.dashboard_id :d.id]]
                                 (when user-id
-                                  [[:pulse_channel :pchan]         [:= :p.id :pchan.pulse_id]
-                                   [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
+                                  [[(t2/table-name :model/PulseChannel) :pchan]         [:= :p.id :pchan.pulse_id]
+                                   [(t2/table-name :model/PulseChannelRecipient) :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
               :where           [:and
                                 [:= :p.alert_condition nil]
                                 [:= :p.archived archived?]
@@ -204,10 +204,10 @@
    archived? :- :boolean]
   (t2/select :model/Pulse
              {:select [:p.*]
-              :from   [[:pulse :p]]
-              :join   [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
-                       [:pulse_channel :pchan] [:= :pchan.pulse_id :p.id]
-                       [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]
+              :from   [[(t2/table-name :model/Pulse) :p]]
+              :join   [[(t2/table-name :model/PulseCard) :pc] [:= :p.id :pc.pulse_id]
+                       [(t2/table-name :model/PulseChannel) :pchan] [:= :pchan.pulse_id :p.id]
+                       [(t2/table-name :model/PulseChannelRecipient) :pcr] [:= :pchan.id :pcr.pulse_channel_id]]
               :where  [:and
                        [:not= :p.alert_condition nil]
                        [:= :pc.card_id card-id]
@@ -220,8 +220,8 @@
    archived? :- :boolean]
   (app-db/select-batched #(t2/select :model/Pulse
                                      {:select [:p.*]
-                                      :from   [[:pulse :p]]
-                                      :join   [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
+                                      :from   [[(t2/table-name :model/Pulse) :p]]
+                                      :join   [[(t2/table-name :model/PulseCard) :pc] [:= :p.id :pc.pulse_id]]
                                       :where  [:and
                                                [:not= :p.alert_condition nil]
                                                [:in :pc.card_id %]
@@ -249,7 +249,7 @@
   the Dashboard is in."
   [dashboard-id :- ::lib.schema.id/dashboard]
   ^:allow-subquery {:select [:d.collection_id]
-                    :from   [[:report_dashboard :d]]
+                    :from   [[(t2/table-name :model/Dashboard) :d]]
                     :where  [:= :d.id [:auto/param dashboard-id]]})
 
 (mu/defn update-pulse!
@@ -289,10 +289,10 @@
      :model/Card
      {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls :pc.format_rows :pc.pivot_results
                   :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings] [:p.id :pulse_id]] ;; :dc.parameter_mappings - how do you select this?
-      :from      [[:pulse :p]]
-      :join      [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
-                  [:report_card :c] [:= :c.id :pc.card_id]]
-      :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
+      :from      [[(t2/table-name :model/Pulse) :p]]
+      :join      [[(t2/table-name :model/PulseCard) :pc] [:= :p.id :pc.pulse_id]
+                  [(t2/table-name :model/Card) :c] [:= :c.id :pc.card_id]]
+      :left-join [[(t2/table-name :model/DashboardCard) :dc] [:= :pc.dashboard_card_id :dc.id]]
       :where     [:and
                   [:in :p.id %]
                   [:= :c.archived false]]
@@ -314,7 +314,7 @@
   (into {}
         (map (juxt :pulse_id :max))
         (app-db/select-batched #(app-db/query {:select   [:pulse_id [:%max.position :max]]
-                                               :from     [:pulse_card]
+                                               :from     [(t2/table-name :model/PulseCard)]
                                                :where    [:in :pulse_id %]
                                                :group-by [:pulse_id]})
                                pulse-ids)))
@@ -328,7 +328,7 @@
    [:coalesce
     ^:allow-subquery {:select [:last.position]
                       :from   [[^:allow-subquery {:select [[[:max :pc.position] :position]]
-                                                  :from   [[:pulse_card :pc]]
+                                                  :from   [[(t2/table-name :model/PulseCard) :pc]]
                                                   :where  [:= :pc.pulse_id [:auto/param pulse-id]]}
                                 :last]]}
     [:inline -1]]
@@ -400,9 +400,9 @@
                       [:= :pulse_id pulse-id]
                       [:not [:exists ^:allow-subquery
                              {:select [1]
-                              :from   [:pulse_channel_recipient]
-                              :where  [:= :pulse_channel_recipient.pulse_channel_id
-                                       :pulse_channel.id]}]]]}))
+                              :from   [(t2/table-name :model/PulseChannelRecipient)]
+                              :where  [:= (u/qualified-key (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id)
+                                       (u/qualified-key (t2/table-name :model/PulseChannel) :id)]}]]]}))
 
 (mu/defn enabled-pulse-channel-ids
   "The ids among `channel-ids` of enabled PulseChannels, or nil."
@@ -414,9 +414,9 @@
   []
   (t2/select :model/PulseChannel
              {:select    [:pc.*]
-              :from      [[:pulse_channel :pc]]
-              :left-join [[:pulse :p] [:= :pc.pulse_id :p.id]
-                          [:report_dashboard :d] [:= :p.dashboard_id :d.id]]
+              :from      [[(t2/table-name :model/PulseChannel) :pc]]
+              :left-join [[(t2/table-name :model/Pulse) :p] [:= :pc.pulse_id :p.id]
+                          [(t2/table-name :model/Dashboard) :d] [:= :p.dashboard_id :d.id]]
               :where     [:and
                           [:= :pc.enabled true]
                           ;; only do this for dashboard subscriptions, alert has been
@@ -469,10 +469,10 @@
   User id order."
   [channel-ids :- [:sequential ms/PositiveInt]]
   (vec (sort-by :id (app-db/select-batched #(t2/select [:model/User :id :email :first_name :last_name :pcr.pulse_channel_id]
-                                                       {:left-join [[:pulse_channel_recipient :pcr] [:= :core_user.id :pcr.user_id]]
+                                                       {:left-join [[(t2/table-name :model/PulseChannelRecipient) :pcr] [:= (u/qualified-key (t2/table-name :model/User) :id) :pcr.user_id]]
                                                         :where     [:and
                                                                     [:in :pcr.pulse_channel_id %]
-                                                                    [:= :core_user.is_active true]]})
+                                                                    [:= (u/qualified-key (t2/table-name :model/User) :is_active) true]]})
                                            channel-ids))))
 
 (mu/defn pulse-channel-recipient-id
@@ -572,8 +572,8 @@
                        :p.collection_position
                        :p.collection_id
                        [(h2x/literal "pulse") :model]]
-     :from            [[:pulse :p]]
-     :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
+     :from            [[(t2/table-name :model/Pulse) :p]]
+     :left-join       [[(t2/table-name :model/PulseCard) :pc] [:= :p.id :pc.pulse_id]]
      :where           [:and
                        [:= :p.collection_id      (:id collection)]
                        [:= :p.archived           (boolean archived?)]

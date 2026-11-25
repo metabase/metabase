@@ -13,24 +13,24 @@
 (mu/defn insert-entries!
   "Adds `entries` to the change log."
   [entries :- [:sequential [:map {:closed true} [:table_name :string] [:row_id :int] [:action :string]]]]
-  (t2/insert! :change_log entries))
+  (t2/insert! :model/ChangeLog entries))
 
 (mu/defn unnumbered-ids
   "The ids of up to `limit` committed entries that have no `position`, lowest first."
   [limit :- ms/PositiveInt]
-  (t2/select-fn-vec :id [:change_log :id] {:where [:= :position nil], :order-by [[:id :asc]], :limit limit}))
+  (t2/select-fn-vec :id [:model/ChangeLog :id] {:where [:= :position nil], :order-by [[:id :asc]], :limit limit}))
 
 (mu/defn highest-position
   "The highest `position` of an entry, or nil when no entry has one."
   []
-  (t2/select-one-fn :position :change_log {:select [[[:max :position] :position]]}))
+  (t2/select-one-fn :position :model/ChangeLog {:select [[[:max :position] :position]]}))
 
 (mu/defn set-positions!
   "Sets the `position` of each entry in `ids` to `start + (id - lowest-id)`."
   [ids       :- [:sequential ms/PositiveInt]
    start     :- ms/PositiveInt
    lowest-id :- ms/PositiveInt]
-  (mdb/sum-batched mdb/update-partition-size #(t2/query-one {:update :change_log, :set {:position [:+ start [:- :id lowest-id]]}, :where [:in :id %]}) ids))
+  (mdb/sum-batched mdb/update-partition-size #(t2/query-one {:update (t2/table-name :model/ChangeLog), :set {:position [:+ start [:- :id lowest-id]]}, :where [:in :id %]}) ids))
 
 (mu/defn foreign-keys
   "The foreign keys of the app DB's tables, as JDBC's `DatabaseMetaData.getImportedKeys` reports them."
@@ -64,9 +64,9 @@
   "Deletes up to `batch-size` entries created before `cutoff`, lowest ids first, and returns how many."
   [cutoff     :- ms/TemporalInstant
    batch-size :- ms/PositiveInt]
-  (t2/query-one {:delete-from :change_log
+  (t2/query-one {:delete-from (t2/table-name :model/ChangeLog)
                  :where       [:in :id ^:allow-subquery {:select   [:id]
-                                                         :from     :change_log
+                                                         :from     (t2/table-name :model/ChangeLog)
                                                          :where    [:< :created_at [:auto/param cutoff]]
                                                          :order-by [[:id :asc]]
                                                          :limit    batch-size}]}))
@@ -75,6 +75,6 @@
   "Deletes up to `batch-size` entries created before `cutoff`, and returns how many."
   [cutoff     :- ms/TemporalInstant
    batch-size :- ms/PositiveInt]
-  (t2/query-one {:delete-from :change_log
+  (t2/query-one {:delete-from (t2/table-name :model/ChangeLog)
                  :where       [:< :created_at [:auto/param cutoff]]
                  :limit       batch-size}))

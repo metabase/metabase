@@ -74,7 +74,7 @@
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
   (let [descendant-collections (collection/descendants-flat parent-coll nil
-                                                            (perms/visible-collections-filter-clause :collection.id (api/current-user-info) {:include-archived-items :all :root-namespace nil}))
+                                                            (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Collection) :id) (api/current-user-info) {:include-archived-items :all :root-namespace nil}))
 
         descendant-collection-ids (mapv u/the-id descendant-collections)
 

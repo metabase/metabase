@@ -39,7 +39,7 @@
   (t2/select :model/Timeline
              {:where    [:and
                          [:= :archived archived]
-                         (perms/visible-collections-filter-clause :timeline.collection_id (api/current-user-info) {:root-namespace nil})]
+                         (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Timeline) :collection_id) (api/current-user-info) {:root-namespace nil})]
               :order-by [[:%lower.name :asc]]}))
 
 (mu/defn timeline
@@ -127,9 +127,9 @@
   `default-icon` when it has none."
   [timeline-id  :- ms/PositiveInt
    default-icon :- :string]
-  [:coalesce ^:allow-subquery {:select [:timeline.icon]
-                               :from   [:timeline]
-                               :where  [:= :timeline.id [:auto/param timeline-id]]}
+  [:coalesce ^:allow-subquery {:select [(u/qualified-key (t2/table-name :model/Timeline) :icon)]
+                               :from   [(t2/table-name :model/Timeline)]
+                               :where  [:= (u/qualified-key (t2/table-name :model/Timeline) :id) [:auto/param timeline-id]]}
    default-icon])
 
 (mu/defn synced-timeline-items :- [:sequential ::timeline.schema/timeline]
@@ -148,7 +148,7 @@
    {:keys [archived? pinned-state created-by-id]} :- :map]
   (when (nil? created-by-id)
     {:select [:id :collection_id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
-     :from   [[:timeline :timeline]]
+     :from   [[(t2/table-name :model/Timeline) :timeline]]
      :where  [:and
               (collections.listing/poison-when-pinned-clause pinned-state)
               [:= :collection_id (:id collection)]

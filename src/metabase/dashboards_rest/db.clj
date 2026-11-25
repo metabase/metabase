@@ -54,7 +54,7 @@
                      [nil :location]
                      [(h2x/literal "card") :model]
                      [^:allow-subquery {:select   [:status]
-                                        :from     [:moderation_review]
+                                        :from     [(t2/table-name :model/ModerationReview)]
                                         :where    [:and
                                                    [:= :moderated_item_type "card"]
                                                    [:= :moderated_item_id :c.id]
@@ -64,11 +64,11 @@
                                         :order-by [[:id :desc]]
                                         :limit    1}
                       :moderated_status]]
-            :from  [[:report_card :c]]
+            :from  [[(t2/table-name :model/Card) :c]]
             :where [:and
                     [:= :c.dashboard_id dashboard-id]
                     [:exists ^:allow-subquery {:select 1
-                                               :from   [[:report_dashboardcard :dc]]
+                                               :from   [[(t2/table-name :model/DashboardCard) :dc]]
                                                :where  [:and [:= :c.id :dc.card_id] [:= :c.dashboard_id :dc.dashboard_id]]}]
                     [:= :c.archived false]]}
      paged? (merge {:limit limit :offset offset}))))

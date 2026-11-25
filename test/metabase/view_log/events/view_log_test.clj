@@ -672,12 +672,12 @@
 (defn- latest-v-view-log
   "Returns the most recent row from the v_view_log view for a given entity_id."
   [entity-id]
-  (first (t2/query ["SELECT * FROM v_view_log WHERE entity_id = ? ORDER BY id DESC LIMIT 1" entity-id])))
+  (first (t2/query {:select [:*] :from [:v_view_log] :where [:= :entity_id entity-id] :order-by [[:id :desc]] :limit [:inline 1]})))
 
 (defn- latest-v-query-log
   "Returns the most recent row from the v_query_log view for a given card_id."
   [card-id]
-  (first (t2/query ["SELECT * FROM v_query_log WHERE card_id = ? ORDER BY entity_id DESC LIMIT 1" card-id])))
+  (first (t2/query {:select [:*] :from [:v_query_log] :where [:= :card_id card-id] :order-by [[:entity_id :desc]] :limit [:inline 1]})))
 
 (deftest end-to-end-analytics-views-pii-true-test
   (mt/with-premium-features #{:audit-app}

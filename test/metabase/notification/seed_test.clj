@@ -61,7 +61,7 @@
             legacy-path "metabase/channel/email/new_user_invite.hbs"]
         ;; plant the legacy path with a raw update: rows written by a pre-upgrade version never went
         ;; through the current before-update validation, so neither should this
-        (t2/query {:update [:channel_template]
+        (t2/query {:update [(t2/table-name :model/ChannelTemplate)]
                    :set    {:details (json/encode (assoc details :path legacy-path))}
                    :where  [:= :id template-id]})
         (is (= legacy-path (t2/select-one-fn (comp :path :details) :model/ChannelTemplate :id template-id)))

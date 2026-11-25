@@ -24,7 +24,7 @@
   "The latest `updated_at` across every SecurityAdvisory, or nil when there are none."
   []
   (:updated_at (t2/query-one {:select [[[:max :updated_at] :updated_at]]
-                              :from   [:security_advisory]})))
+                              :from   [(t2/table-name :model/SecurityAdvisory)]})))
 
 (mu/defn advisories-newest-first
   "Every SecurityAdvisory, newest first."

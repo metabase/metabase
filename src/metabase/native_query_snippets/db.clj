@@ -93,8 +93,8 @@
                 (not (perms/user-has-highest-permission-anywhere? (perms/user-info user-id) :perms/create-queries)))
     (let [location (collections.listing/collection-location :collection :snippets)]
       {:select    [[:snippet.id :entity_id] [:snippet.name :name] [location :location]]
-       :from      [[:native_query_snippet :snippet]]
-       :left-join [:collection [:= :snippet.collection_id :collection.id]]
+       :from      [[(t2/table-name :model/NativeQuerySnippet) :snippet]]
+       :left-join [[(t2/table-name :model/Collection) :collection] [:= :snippet.collection_id :collection.id]]
        :where     (into [:and]
                         (remove nil?)
                         [(collections.listing/visible-in-collections-clause :snippet opts include-archived :snippets)
@@ -108,7 +108,7 @@
   metabase-enterprise.snippet-collections.api.native-query-snippet
   [_collection {:keys [archived?]}]
   {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
-   :from   [[:native_query_snippet :nqs]]
+   :from   [[(t2/table-name :model/NativeQuerySnippet) :nqs]]
    :where  [:= :archived (boolean archived?)]})
 
 (mu/defn collection-snippet-items :- [:maybe :map]

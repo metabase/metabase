@@ -4,7 +4,9 @@
    [clojure.test :refer [are deftest is testing]]
    [honey.sql.pg-ops]
    [metabase.funnysql.core :as funnysql]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.test :as mt]
+   [metabase.util.honey-sql-2 :as h2x]
+   [toucan2.core :as t2]))
 
 (deftest ^:parallel interpose-fn-test
   (letfn [(interpose-fn* [xs]
@@ -1065,11 +1067,9 @@
                        (funnysql/format [:inline x] :mysql))
     6    "6"
     true "true")
-  (testing "a value that can't be inlined is not inlined: `inline!` logs a warning and the value falls through to the
-            ordinary `?`-parameter handling, so nothing is spliced into the SQL. See the TODO on
-            metabase.funnysql.core/inline!, which plans to make this an error instead of a warning."
-    (is (= ["?" "s"]
-           (funnysql/format [:inline "s"] :mysql)))))
+  (testing "a value that can't be inlined throws rather than being spliced into the SQL"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #":inline is only allowed"
+                          (funnysql/format [:inline "s"] :mysql)))))
 
 (deftest ^:parallel map-recursion-blocked-test
   (testing "a map used as an ordinary value must never be compiled/recursed into as SQL -- only the top-level
@@ -1121,8 +1121,7 @@
       ["true"]  [:not-in :id [:param :p]] {:p []}))
   (testing "a `:param` naming something that is not a sequence or set is left alone"
     ;; One value is not a list of them, so there is nothing to expand. A map stays one opaque bound
-    ;; value here, as it would in any other value slot -- an unmarked one is refused upstream by
-    ;; `metabase.app-db.honeysql-guard`.
+    ;; value here, as it would in any other value slot.
     (are [expected clause params] (= expected
                                      (funnysql/format clause :postgres {:params params}))
       ["\"id\" IN ?" 1]               [:in :id [:param :p]] {:p 1}
@@ -1684,3 +1683,59 @@
        clojure.lang.ExceptionInfo
        #"Top-level map key :raw is not currently supported"
        (funnysql/format {:raw "x"} :postgres))))
+
+(deftest ^:parallel auto-param-test
+  (testing "a marked value is bound, whatever its shape"
+    (are [clause expected] (= expected (funnysql/format clause :postgres))
+      [:= :a [:auto/param 5]]
+      ["\"a\" = ?" 5]
+
+      [:= :a [:auto/param {:raw "(SELECT password FROM core_user)"}]]
+      ["\"a\" = ?" {:raw "(SELECT password FROM core_user)"}]
+
+      [:and [:= :a [:auto/param 1]] [:= :b [:auto/param 2]]]
+      ["(\"a\" = ?) AND (\"b\" = ?)" 1 2]
+
+      [:= :a [:auto/param [:auto/param 5]]]
+      ["\"a\" = ?" [:auto/param 5]]))
+  (testing "Toucan folds a marked kv-arg into [:auto/param column value], which compiles as a comparison"
+    (is (= ["\"locale\" = ?" "de"]
+           (funnysql/format [:auto/param :locale "de"] :postgres)))
+    (is (= ["\"locale\" IS NULL"]
+           (funnysql/format [:auto/param :locale nil] :postgres))))
+  (testing "a marked nil compares as IS NULL, since `= ?` with a bound nil matches nothing"
+    (is (= ["\"a\" IS NULL"]
+           (funnysql/format [:= :a [:auto/param nil]] :postgres))))
+  (testing "a marked collection in IN spreads across one argument per element, and an empty one is FALSE"
+    (is (= ["\"locale\" IN (?, ?)" "de" "fr"]
+           (funnysql/format [:in :locale [:auto/param ["de" "fr"]]] :postgres)))
+    (is (= ["false"]
+           (funnysql/format [:in :id [:auto/param []]] :postgres))))
+  (testing "a marker written any way but [:auto/param value] throws"
+    (are [marker] (thrown-with-msg? clojure.lang.ExceptionInfo #"Malformed"
+                                    (funnysql/format [:= :a marker] :postgres))
+      [:auto/param]
+      [:auto/param 1 2 3])))
+
+(deftest auto-param-query-test
+  (mt/with-temp [:model/ContentTranslation {id :id} {:locale "de" :msgid "x" :msgstr "ex"}
+                 :model/ContentTranslation _ {:locale "fr" :msgid "y" :msgstr "why"}]
+    (testing "a query filters on the bound value"
+      (is (= ["ex"]
+             (map :msgstr (t2/select :model/ContentTranslation {:where [:= :locale [:auto/param "de"]]})))))
+    (testing "a value that looks like SQL is compared as data and matches nothing"
+      (is (empty? (t2/select :model/ContentTranslation {:where [:= :locale [:auto/param "de' OR '1'='1"]]}))))
+    (testing "a marked kv-arg filters like an unmarked one"
+      (is (= ["ex"] (map :msgstr (t2/select :model/ContentTranslation :locale [:auto/param "de"])))))
+    (testing "a marked collection in IN matches each of its elements"
+      (is (= #{"ex" "why"}
+             (set (map :msgstr (t2/select :model/ContentTranslation
+                                          {:where [:in :locale [:auto/param ["de" "fr"]]]}))))))
+    (testing "a marked value is bound in an update and an insert"
+      (t2/update! :model/ContentTranslation :id id {:msgstr [:auto/param "updated"]})
+      (is (= "updated" (t2/select-one-fn :msgstr :model/ContentTranslation :id id)))
+      (t2/insert! :model/ContentTranslation {:locale [:auto/param "es"] :msgid "z" :msgstr "zeta"})
+      (try
+        (is (= ["zeta"] (map :msgstr (t2/select :model/ContentTranslation :locale "es"))))
+        (finally
+          (t2/delete! :model/ContentTranslation :locale "es"))))))

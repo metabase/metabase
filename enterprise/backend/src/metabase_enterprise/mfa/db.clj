@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -11,34 +12,37 @@
 
 (def ^:private totp-provider "totp")
 
-(def ^:private confirmed-totp-exists
+(defn- confirmed-totp-exists
+  []
   ;; enrollment state is the auth_identity.confirmed_at COLUMN (queryable), not the encrypted credentials JSON
   [:exists ^:allow-subquery {:select [1]
-                             :from   [:auth_identity]
+                             :from   [[(t2/table-name :model/AuthIdentity) :ai]]
                              :where  [:and
-                                      [:= :auth_identity.user_id :core_user.id]
-                                      [:= :auth_identity.provider totp-provider]
-                                      [:not= :auth_identity.confirmed_at nil]]}])
+                                      [:= :ai.user_id (u/qualified-key (t2/table-name :model/User) :id)]
+                                      [:= :ai.provider totp-provider]
+                                      [:not= :ai.confirmed_at nil]]}])
 
-(def ^:private unenrolled-user-where
+(defn- unenrolled-user-where
+  []
   ;; active personal users without a confirmed TOTP enrollment
   [:and
-   [:= :core_user.is_active true]
-   [:= :core_user.type "personal"]
-   [:not confirmed-totp-exists]])
+   [:= (u/qualified-key (t2/table-name :model/User) :is_active) true]
+   [:= (u/qualified-key (t2/table-name :model/User) :type) "personal"]
+   [:not (confirmed-totp-exists)]])
 
 (def ^:private list-columns
   [:id :email :first_name :last_name :sso_source :is_active :is_superuser])
 
-(def ^:private enrolled-at-select
+(defn- enrolled-at-select
+  []
   ;; a correlated scalar subselect rather than a join: the unique (user_id, provider) constraint guarantees at most
   ;; one row, and joining would force qualifying every selected column, since auth_identity also has
   ;; id/created_at/updated_at
-  [[^:allow-subquery {:select [:auth_identity.confirmed_at]
-                      :from   [:auth_identity]
+  [[^:allow-subquery {:select [:ai.confirmed_at]
+                      :from   [[(t2/table-name :model/AuthIdentity) :ai]]
                       :where  [:and
-                               [:= :auth_identity.user_id :core_user.id]
-                               [:= :auth_identity.provider totp-provider]]}
+                               [:= :ai.user_id (u/qualified-key (t2/table-name :model/User) :id)]
+                               [:= :ai.provider totp-provider]]}
     :enrolled_at]])
 
 (defn- user-list-where
@@ -48,7 +52,7 @@
   `:%lower.x` columns since `.` in `:%lower.x` splits on the column name, not a table qualifier — fine here
   because neither list query joins."
   [enrolled? search]
-  (cond-> [:and (if enrolled? confirmed-totp-exists unenrolled-user-where)]
+  (cond-> [:and (if enrolled? (confirmed-totp-exists) (unenrolled-user-where))]
     (not (str/blank? search))
     (conj (let [pattern (h2x/like-substring search)]
             [:or
@@ -99,7 +103,7 @@
 (mu/defn unenrolled-user-count
   "The number of active personal Users without a confirmed TOTP enrollment."
   []
-  (t2/count :model/User {:where unenrolled-user-where}))
+  (t2/count :model/User {:where (unenrolled-user-where)}))
 
 (mu/defn user-list
   "The name-ordered admin list of enrolled (with their enrollment time) or unenrolled Users matching `search`, paged
@@ -109,7 +113,7 @@
    limit     :- [:maybe ms/PositiveInt]
    offset    :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/User
-             (cond-> {:select   (cond-> list-columns enrolled? (into enrolled-at-select))
+             (cond-> {:select   (cond-> list-columns enrolled? (into (enrolled-at-select)))
                       :where    (user-list-where enrolled? search)
                       :order-by [[:%lower.first_name :asc]
                                  [:%lower.last_name  :asc]

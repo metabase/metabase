@@ -3,6 +3,7 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -30,20 +31,24 @@
   (t2/query-one
    (case (mdb/db-type)
      :postgres
-     ["INSERT INTO embedding_sdk_react_18_host (host, last_seen_at) VALUES (?, ?)
-       ON CONFLICT (host) DO UPDATE SET last_seen_at = GREATEST(embedding_sdk_react_18_host.last_seen_at, EXCLUDED.last_seen_at)"
-      host seen-at]
+     {:insert-into   (t2/table-name :model/EmbeddingSdkReact18Host)
+      :values        [{:host host :last_seen_at seen-at}]
+      :on-conflict   [:host]
+      :do-update-set {:last_seen_at [:greatest
+                                     (u/qualified-key (t2/table-name :model/EmbeddingSdkReact18Host) :last_seen_at)
+                                     :excluded.last_seen_at]}}
 
      :mysql
-     ["INSERT INTO embedding_sdk_react_18_host (host, last_seen_at) VALUES (?, ?)
-       ON DUPLICATE KEY UPDATE last_seen_at = GREATEST(last_seen_at, VALUES(last_seen_at))"
-      host seen-at]
+     {:insert-into             (t2/table-name :model/EmbeddingSdkReact18Host)
+      :values                  [{:host host :last_seen_at seen-at}]
+      :on-duplicate-key-update {:last_seen_at [:greatest :last_seen_at [:values :last_seen_at]]}}
 
      :h2
-     ["MERGE INTO embedding_sdk_react_18_host AS t
-       USING (VALUES (CAST(? AS VARCHAR(512)), CAST(? AS TIMESTAMP WITH TIME ZONE))) AS s (host, seen_at)
-       ON t.host = s.host
-       WHEN MATCHED THEN UPDATE SET last_seen_at = GREATEST(t.last_seen_at, s.seen_at)
-       WHEN NOT MATCHED THEN INSERT (host, last_seen_at) VALUES (s.host, s.seen_at)"
-      host seen-at]))
+     {:merge-into              [(t2/table-name :model/EmbeddingSdkReact18Host) :t]
+      :using                   [^:allow-subquery {:select [[[:cast host [:varchar 512]] :host]
+                                                           [[:cast seen-at :timestamp-with-time-zone] :seen_at]]}
+                                :s]
+      :on                      [:= :t.host :s.host]
+      :when-matched-update-set {:last_seen_at [:greatest :t.last_seen_at :s.seen_at]}
+      :when-not-matched-insert [[:host :last_seen_at] [:s.host :s.seen_at]]}))
   nil)

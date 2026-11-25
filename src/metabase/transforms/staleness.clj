@@ -5,7 +5,8 @@
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.freshness :as freshness]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,7 +24,7 @@
                  [:transform.name :name]
                  [:latest_run.last_start :last_used_at]
                  :transform.collection_id]
-     :from      :transform
+     :from      [[(t2/table-name :model/Transform) :transform]]
      :left-join [[(transforms.db/latest-run-start-times-query) :latest_run]
                  [:= :latest_run.transform_id :transform.id]]
      :where     [:and

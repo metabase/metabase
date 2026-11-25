@@ -47,7 +47,7 @@
   [setting-key    :- [:or :keyword :string]
    value          :- [:maybe :string]
    value-with-aad :- [:maybe :string]]
-  (t2/update! :setting {:key [:auto/param (name setting-key)]} {:value value, :value_with_aad value-with-aad}))
+  (t2/update! (t2/table-name :model/Setting) {:key [:auto/param (name setting-key)]} {:value value, :value_with_aad value-with-aad}))
 
 (mu/defn insert-raw-setting-row!
   "Insert a raw Setting row for `setting-key` holding `value` and `value-with-aad`, returning the number inserted."

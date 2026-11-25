@@ -49,8 +49,8 @@
   (t2/select :model/Sandbox
              {:select    [[:pgm.group_id :group_id]
                           [:s.*]]
-              :from      [[:permissions_group_membership :pgm]]
-              :left-join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]]
+              :from      [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+              :left-join [[(t2/table-name :model/Sandbox) :s] [:= :s.group_id :pgm.group_id]]
               :where     [:and
                           [:= :pgm.user_id user-id]]}))
 
@@ -64,7 +64,7 @@
   (letfn [(select-sandboxes [group-ids]
             (t2/select :model/Sandbox
                        {:select [:s.group_id :s.table_id :t.db_id :t.schema]
-                        :from   [[:sandboxes :s]]
+                        :from   [[(t2/table-name :model/Sandbox) :s]]
                         :join   [[(t2/table-name :model/Table) :t]
                                  [:= :s.table_id :t.id]]
                         :where  [:and
@@ -84,16 +84,16 @@
   (mdb/select-batched
    (fn [ids]
      (mdb/query
-      {:select    [[:sandboxes.id :id]
-                   [:sandboxes.group_id :group_id]
-                   [:sandboxes.table_id :table_id]
+      {:select    [[(u/qualified-key (t2/table-name :model/Sandbox) :id) :id]
+                   [(u/qualified-key (t2/table-name :model/Sandbox) :group_id) :group_id]
+                   [(u/qualified-key (t2/table-name :model/Sandbox) :table_id) :table_id]
                    [:table.db_id :db_id]
                    [:table.schema :schema]]
-       :from      [[:sandboxes]]
+       :from      [[(t2/table-name :model/Sandbox)]]
        :left-join [[(t2/table-name :model/Table) :table]
-                   [:= :sandboxes.table_id :table.id]]
+                   [:= (u/qualified-key (t2/table-name :model/Sandbox) :table_id) :table.id]]
        :where     [:and
-                   [:in :sandboxes.group_id group-ids]
+                   [:in (u/qualified-key (t2/table-name :model/Sandbox) :group_id) group-ids]
                    [:in :table.db_id ids]]}))
    db-ids))
 
@@ -196,6 +196,6 @@
   id as text: all of them for a superuser, none for anyone else."
   [{:keys [is-superuser?]} :- :metabase.dependencies.items/items-opts]
   (when is-superuser?
-    (let [id-text [:cast :sandboxes.id (if (= :mysql (mdb/db-type)) :char :text)]]
-      {:select [[:sandboxes.id :entity_id] [id-text :name] [id-text :location]]
-       :from   [:sandboxes]})))
+    (let [id-text [:cast (u/qualified-key (t2/table-name :model/Sandbox) :id) (if (= :mysql (mdb/db-type)) :char :text)]]
+      {:select [[(u/qualified-key (t2/table-name :model/Sandbox) :id) :entity_id] [id-text :name] [id-text :location]]
+       :from   [(t2/table-name :model/Sandbox)]})))

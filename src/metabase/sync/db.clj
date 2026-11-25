@@ -20,7 +20,7 @@
   [database-id :- ::lib.schema.id/database]
   ^:allow-subquery {:select [:id]
                     :from   [(t2/table-name :model/Table)]
-                    :where  [:and (sync-tables-clause :metabase_table) [:= :db_id database-id]]})
+                    :where  [:and (sync-tables-clause (t2/table-name :model/Table)) [:= :db_id database-id]]})
 
 (mu/defn- sync-tables-clause
   "Honey SQL clause matching the Tables aliased `table-alias` that take part in sync: active, with no
@@ -78,7 +78,7 @@
    metadata-crons            :- [:set :string]
    cache-field-values-crons  :- [:set :string]]
   (t2/reducible-query {:select [:*]
-                       :from   [:metabase_database]
+                       :from   [(t2/table-name :model/Database)]
                        :where  [:or
                                 [:and
                                  [:= :is_sample true]
@@ -131,7 +131,7 @@
   `:lower_schema`."
   [database-id :- ::lib.schema.id/database
    lower-names :- [:sequential {:min 1} :string]]
-  (app-db/select-batched #(t2/select [:model/Table :metabase_table.* [:%lower.name :lower_name] [:%lower.schema :lower_schema]]
+  (app-db/select-batched #(t2/select [:model/Table (u/qualified-key (t2/table-name :model/Table) :*) [:%lower.name :lower_name] [:%lower.schema :lower_schema]]
                                      {:where [:and
                                               [:= :db_id [:auto/param database-id]]
                                               [:in [:lower :name] [:auto/param %]]
@@ -290,7 +290,7 @@
    lower-names :- [:sequential {:min 1} :string]]
   (app-db/select-batched
    (fn [table-ids]
-     (app-db/select-batched #(t2/select [:model/Field :metabase_field.* [:%lower.name :lower_name]]
+     (app-db/select-batched #(t2/select [:model/Field (u/qualified-key (t2/table-name :model/Field) :*) [:%lower.name :lower_name]]
                                         {:where [:and
                                                  [:in :table_id [:auto/param table-ids]]
                                                  [:in [:lower :name] [:auto/param %]]
@@ -495,7 +495,7 @@
   [:exists ^:allow-subquery {:select [1]
                              :from   [[(t2/table-name :model/FieldUserSettings) :s]]
                              :where  [:and
-                                      [:= :s.field_id :metabase_field.id]
+                                      [:= :s.field_id (u/qualified-key (t2/table-name :model/Field) :id)]
                                       [:not= :s.data_sensitivity nil]]}])
 
 (mu/defn table-ids-with-fields-to-scan-for-data-sensitivity
@@ -504,16 +504,16 @@
   [database-id    :- ::lib.schema.id/database
    rescan-public? :- [:maybe :boolean]]
   (t2/select-fn-set :table_id :model/Field
-                    {:select   [[:metabase_field.table_id :table_id]]
+                    {:select   [[(u/qualified-key (t2/table-name :model/Field) :table_id) :table_id]]
                      :from     [(t2/table-name :model/Field)]
-                     :join     [(t2/table-name :model/Table) [:= :metabase_field.table_id :metabase_table.id]]
+                     :join     [(t2/table-name :model/Table) [:= (u/qualified-key (t2/table-name :model/Field) :table_id) (u/qualified-key (t2/table-name :model/Table) :id)]]
                      :where    [:and
-                                [:= :metabase_table.db_id database-id]
-                                [:= :metabase_table.active true]
-                                [:= :metabase_field.active true]
-                                [:not= :metabase_field.visibility_type "retired"]
+                                [:= (u/qualified-key (t2/table-name :model/Table) :db_id) database-id]
+                                [:= (u/qualified-key (t2/table-name :model/Table) :active) true]
+                                [:= (u/qualified-key (t2/table-name :model/Field) :active) true]
+                                [:not= (u/qualified-key (t2/table-name :model/Field) :visibility_type) "retired"]
                                 (data-sensitivity-to-scan-clause rescan-public?)]
-                     :group-by [:metabase_field.table_id]}))
+                     :group-by [(u/qualified-key (t2/table-name :model/Field) :table_id)]}))
 
 (mu/defn tables-by-schema-and-name
   "The Tables with `table-ids`, ordered by schema and name."
@@ -749,13 +749,13 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (map #(into {} %)
        (t2/select [:model/FieldValues :id [:f.table_id :table_id] [:f.name :field_name] :values :has_more_values
-                   :metabase_fieldvalues.updated_at]
-                  {:join  [[(t2/table-name :model/Field) :f] [:= :f.id :metabase_fieldvalues.field_id]
+                   (u/qualified-key (t2/table-name :model/FieldValues) :updated_at)]
+                  {:join  [[(t2/table-name :model/Field) :f] [:= :f.id (u/qualified-key (t2/table-name :model/FieldValues) :field_id)]
                            [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
                    :where [:and
                            [:in :f.table_id table-ids]
                            (field-values-field-clause :f :t)
-                           [:= :metabase_fieldvalues.type "full"]]})))
+                           [:= (u/qualified-key (t2/table-name :model/FieldValues) :type) "full"]]})))
 
 (mu/defn table-user-settings-of-tables :- [:sequential ::warehouse-schema.schema/table-user-settings]
   "The TableUserSettings of the Tables with `table-ids` that have one."

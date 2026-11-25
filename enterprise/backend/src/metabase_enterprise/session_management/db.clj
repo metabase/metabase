@@ -35,7 +35,7 @@
    offset           :- [:maybe ms/IntGreaterThanOrEqualToZero]
    current-key-hash :- [:maybe :string]]
   (t2/query
-   (cond-> (merge sm.query/session-list-from-and-joins
+   (cond-> (merge (sm.query/session-list-from-and-joins)
                   {:select   [[:session.id :id]
                               [:session.user_id :user_id]
                               [:user.email :user_email]
@@ -67,7 +67,7 @@
 (mu/defn- count-where :- ms/IntGreaterThanOrEqualToZero
   "How many `core_session` rows satisfy `where`."
   [where :- ::h2x/honeysql-expr]
-  (-> (t2/query (merge sm.query/session-list-from-and-joins
+  (-> (t2/query (merge (sm.query/session-list-from-and-joins)
                        {:select [[[:count [:inline 1]] :count]]
                         :where  where}))
       first
@@ -113,7 +113,7 @@
                        ;; 1/0 rather than a boolean, for the same reason as in [[sessions]]
                        [:case [:= :session.key_hashed current-key-hash] [:inline 1] :else [:inline 0]]
                        [:inline 0])
-        matched      (t2/query (merge session/session-from-and-joins
+        matched      (t2/query (merge (session/session-from-and-joins)
                                       {:select [[:session.id :id]
                                                 [:session.user_id :user_id]
                                                 [current-expr :current]]

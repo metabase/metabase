@@ -225,7 +225,7 @@
   (vec (into (set (app-db/select-batched #(t2/select-fn-set :action_id :model/QueryAction :database_id [:in %]) database-ids))
              (app-db/select-batched #(t2/select-fn-set :action_id :model/ImplicitAction
                                                        {:join  [[(t2/table-name :model/Table) :table]
-                                                                [:= :table.id :implicit_action.table_id]]
+                                                                [:= :table.id (u/qualified-key (t2/table-name :model/ImplicitAction) :table_id)]]
                                                         :where [:in :table.db_id %]})
                                     database-ids))))
 
@@ -381,8 +381,8 @@
                    :else
                    (:name (collection.root/root-collection-with-ui-details nil))]]]
     {:select    [[:action.id :entity_id] [:action.name :name] [location :location]]
-     :from      [:action]
-     :left-join [:collection [:= :action.collection_id :collection.id]]
+     :from      [[(t2/table-name :model/Action) :action]]
+     :left-join [[(t2/table-name :model/Collection) :collection] [:= :action.collection_id :collection.id]]
      :where     (into [:and]
                       (remove nil?)
                       [[:or
@@ -406,7 +406,7 @@
              (nil? created-by-id))
     {:select [:action.id :action.collection_id :action.name :action.description :action.entity_id
               :action.archived :action.archived_directly [(h2x/literal "action") :model]]
-     :from   [[:action :action]]
+     :from   [[(t2/table-name :model/Action) :action]]
      :where  [:and
               (collections.listing/poison-when-pinned-clause pinned-state)
               [:= :action.collection_id (:id collection)]

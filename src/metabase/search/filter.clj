@@ -10,7 +10,8 @@
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [toucan2.core :as t2])
   (:import
    (java.time LocalDate)))
 
@@ -146,7 +147,7 @@
     ;; Correlated subquery: assumes the outer query has `:collection` as FROM or LEFT JOIN.
     (let [descendant-of-personal-collection
           [:exists ^:allow-subquery {:select [[[:inline 1]]]
-                                     :from   [[:collection :pc]]
+                                     :from   [[(t2/table-name :model/Collection) :pc]]
                                      :where  [:and
                                               [:not= :pc.personal_owner_id nil]
                                               [:= :pc.location "/"]

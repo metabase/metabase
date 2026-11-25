@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.namespace.find :as ns.find]
+   [honey.sql :as sql]
    [malli.error :as me]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.data-source :as mdb.data-source]
@@ -55,9 +56,10 @@
             (assoc-in m [magic_group_type perm_type] perm_value))
           {}
           (jdbc/query {:datasource data-source}
-                      ["SELECT pg.magic_group_type, mp.perm_type, mp.perm_value
-                        FROM metabot_permissions mp
-                        LEFT JOIN permissions_group pg ON pg.id = mp.group_id"])))
+                      (sql/format {:select    [:pg.magic_group_type :mp.perm_type :mp.perm_value]
+                                   :from      [[:metabot_permissions :mp]]
+                                   :left-join [[(t2/table-name :model/PermissionsGroup) :pg] [:= :pg.id :mp.group_id]]}
+                                  {:quoted false}))))
 
 (deftest copy-metabot-permissions-test
   (testing "a dump made by an OSS build before metabot_permissions was copied restores like a fresh install (#78414)"
@@ -69,10 +71,13 @@
           ;; such a dump holds the dumping build's seed rows under its own group ids, while the source's magic groups
           ;; sit elsewhere with none
           (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY FALSE"])
-          (jdbc/execute! {:datasource source} ["UPDATE permissions_group SET id = id + 10 WHERE id > 2"])
+          (jdbc/execute! {:datasource source} (sql/format {:update (t2/table-name :model/PermissionsGroup) :set {:id [:+ :id 10]} :where [:> :id 2]} {:quoted false}))
           (doseq [table ["permissions" "data_permissions"]]
-            (jdbc/execute! {:datasource source} [(format "UPDATE %s SET group_id = group_id + 10 WHERE group_id > 2" table)]))
-          (jdbc/execute! {:datasource source} ["UPDATE metabot_permissions SET perm_value = 'no' WHERE group_id = 1 AND perm_type = 'permission/metabot'"])
+            (jdbc/execute! {:datasource source} (sql/format {:update (keyword table) :set {:group_id [:+ :group_id 10]} :where [:> :group_id 2]} {:quoted false})))
+          (jdbc/execute! {:datasource source} (sql/format {:update :metabot_permissions
+                                                           :set    {:perm_value "no"}
+                                                           :where  [:and [:= :group_id 1] [:= :perm_type "permission/metabot"]]}
+                                                          {:quoted false}))
           (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY TRUE"])
           (copy/copy! :h2 source :h2 target)
           (is (= (assoc-in fresh ["all-internal-users" "permission/metabot"] "no")
@@ -88,25 +93,21 @@
         (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
         (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY FALSE"])
         (jdbc/execute! {:datasource source}
-                       ["INSERT INTO core_user (
-                           id, email, first_name, last_name, password, password_salt, date_joined,
-                           is_superuser, is_active, entity_id
-                         )
-                         VALUES (
-                           1, 'nobody@nowhere.test', 'No', 'Body', 'nopassword', 'nosalt', NOW(),
-                           FALSE, TRUE, 'loginhistoryuser00001'
-                         )"])
+                       (sql/format {:insert-into (t2/table-name :model/User)
+                                    :columns     [:id :email :first_name :last_name :password :password_salt :date_joined
+                                                  :is_superuser :is_active :entity_id]
+                                    :values      [[1 "nobody@nowhere.test" "No" "Body" "nopassword" "nosalt" [:now]
+                                                   false true "loginhistoryuser00001"]]}
+                                   {:quoted false}))
         (jdbc/execute! {:datasource source}
-                       ["INSERT INTO login_history (
-                           timestamp, user_id, session_id, device_id, device_description, ip_address
-                         )
-                         VALUES (
-                           NOW(), 1, 'deleted-session-id', 'device', 'browser', '127.0.0.1'
-                         )"])
+                       (sql/format {:insert-into (t2/table-name :model/LoginHistory)
+                                    :columns     [:timestamp :user_id :session_id :device_id :device_description :ip_address]
+                                    :values      [[[:now] 1 "deleted-session-id" "device" "browser" "127.0.0.1"]]}
+                                   {:quoted false}))
         (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY TRUE"])
         (copy/copy! :h2 source :h2 target)
         (is (= [{:user_id 1, :session_id nil}]
-               (jdbc/query {:datasource target} ["SELECT user_id, session_id FROM login_history"])))
+               (jdbc/query {:datasource target} (sql/format {:select [:user_id :session_id] :from [(t2/table-name :model/LoginHistory)]} {:quoted false}))))
         (finally
           (run! shutdown! [source target]))))))
 
@@ -119,22 +120,22 @@
       (try
         (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
         (jdbc/execute! {:datasource source}
-                       ["INSERT INTO core_user (
-                           id, email, first_name, last_name, password, password_salt, date_joined,
-                           is_superuser, is_active, entity_id
-                         )
-                         VALUES (
-                           1, 'nobody@nowhere.test', 'No', 'Body', 'nopassword', 'nosalt', NOW(),
-                           FALSE, TRUE, 'sessioncopyuser000001'
-                         )"])
+                       (sql/format {:insert-into (t2/table-name :model/User)
+                                    :columns     [:id :email :first_name :last_name :password :password_salt :date_joined
+                                                  :is_superuser :is_active :entity_id]
+                                    :values      [[1 "nobody@nowhere.test" "No" "Body" "nopassword" "nosalt" [:now]
+                                                   false true "sessioncopyuser000001"]]}
+                                   {:quoted false}))
         (jdbc/execute! {:datasource source}
-                       ["INSERT INTO core_session (id, user_id, created_at, key_hashed)
-                         VALUES ('session-id', 1, NOW(), 'hashed-key')"])
+                       (sql/format {:insert-into (t2/table-name :model/Session)
+                                    :columns     [:id :user_id :created_at :key_hashed]
+                                    :values      [["session-id" 1 [:now] "hashed-key"]]}
+                                   {:quoted false}))
         (is (= [{:count 1}]
-               (jdbc/query {:datasource source} ["SELECT COUNT(*) AS count FROM core_session"])))
+               (jdbc/query {:datasource source} (sql/format {:select [[[:count :*] :count]] :from [(t2/table-name :model/Session)]} {:quoted false}))))
         (copy/copy! :h2 source :h2 target)
         (is (= [{:count 0}]
-               (jdbc/query {:datasource target} ["SELECT COUNT(*) AS count FROM core_session"])))
+               (jdbc/query {:datasource target} (sql/format {:select [[[:count :*] :count]] :from [(t2/table-name :model/Session)]} {:quoted false}))))
         (finally
           (run! shutdown! [source target]))))))
 

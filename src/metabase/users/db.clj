@@ -45,20 +45,20 @@
   manage-table-metadata."
   []
   [:exists ^:allow-subquery {:select [1]
-                             :from   [[:permissions_group_membership :pgm]]
-                             :join   [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+                             :from   [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                             :join   [[(t2/table-name :model/DataPermissions) :p] [:= :p.group_id :pgm.group_id]]
                              :where  [:and
-                                      [:= :pgm.user_id :core_user.id]
+                                      [:= :pgm.user_id (u/qualified-key (t2/table-name :model/User) :id)]
                                       [:= :p.perm_type "perms/manage-table-metadata"]
                                       [:= :p.perm_value "yes"]]}])
 
 (defn- data-studio-access-clauses
   "The disjuncts, any one of which grants a user access to Data Studio."
   []
-  (cond-> [:core_user.is_superuser
+  (cond-> [(u/qualified-key (t2/table-name :model/User) :is_superuser)
            (table-metadata-perms-exist-clause)]
     ;; Data Studio entry pauses on downgrade, so membership only counts while the feature is available
-    (premium-features/enable-advanced-permissions?) (conj :core_user.is_data_analyst)))
+    (premium-features/enable-advanced-permissions?) (conj (u/qualified-key (t2/table-name :model/User) :is_data_analyst))))
 
 (defn- tenant-clause
   "Honeysql clause restricting `:tenant_id`: `tenant-filter` is a tenant id to restrict to, `:all` for no
@@ -84,25 +84,25 @@
            limit offset]
     :as   options} :- ::users.schema/user-filters]
   (cond-> {}
-    true                                    (sql.helpers/where [:= :core_user.type "personal"])
+    true                                    (sql.helpers/where [:= (u/qualified-key (t2/table-name :model/User) :type) "personal"])
     true                                    (sql.helpers/where (status-clause status include-deactivated))
     ;; don't send the internal user
-    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
+    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= (u/qualified-key (t2/table-name :model/User) :id) api/*current-user-id*])
     (contains? options :tenant-filter)      (sql.helpers/where (tenant-clause (:tenant-filter options)))
     (some? query)                           (sql.helpers/where (query-clause query))
     (some? is-data-analyst?)                (sql.helpers/where (if is-data-analyst?
-                                                                 :core_user.is_data_analyst
-                                                                 [:not :core_user.is_data_analyst]))
+                                                                 (u/qualified-key (t2/table-name :model/User) :is_data_analyst)
+                                                                 [:not (u/qualified-key (t2/table-name :model/User) :is_data_analyst)]))
     (some? can-access-data-studio?)         (sql.helpers/where (let [clauses (data-studio-access-clauses)]
                                                                  (if can-access-data-studio?
                                                                    (into [:or] clauses)
                                                                    (into [:and] (map #(vector :not %)) clauses))))
     (some? group-ids)                       (sql.helpers/right-join
-                                             :permissions_group_membership
-                                             [:= :core_user.id :permissions_group_membership.user_id])
+                                             [(t2/table-name :model/PermissionsGroupMembership) :gm]
+                                             [:= (u/qualified-key (t2/table-name :model/User) :id) :gm.user_id])
     (some? group-ids)                       (sql.helpers/where
-                                             [:in :permissions_group_membership.group_id group-ids])
-    (seq user-ids)                          (sql.helpers/where [:in :core_user.id user-ids])
+                                             [:in :gm.group_id group-ids])
+    (seq user-ids)                          (sql.helpers/where [:in (u/qualified-key (t2/table-name :model/User) :id) user-ids])
     (some? sort)                            (add-sort sort)
     (some? limit)                           (sql.helpers/limit limit)
     (some? offset)                          (sql.helpers/offset offset)))
@@ -233,14 +233,14 @@
   with `user-id`."
   [user-id            :- ::lib.schema.id/user
    all-users-group-id :- ms/PositiveInt]
-  (t2/query {:select-distinct [:permissions_group_membership.user_id]
-             :from [:permissions_group_membership]
-             :where [:in :permissions_group_membership.group_id
+  (t2/query {:select-distinct [(u/qualified-key (t2/table-name :model/PermissionsGroupMembership) :user_id)]
+             :from [(t2/table-name :model/PermissionsGroupMembership)]
+             :where [:in (u/qualified-key (t2/table-name :model/PermissionsGroupMembership) :group_id)
                      ^:allow-subquery
-                     {:select-distinct [:permissions_group_membership.group_id]
-                      :from  [:permissions_group_membership]
-                      :where [:and [:= :permissions_group_membership.user_id user-id]
-                              [:not= :permissions_group_membership.group_id all-users-group-id]]}]}))
+                     {:select-distinct [(u/qualified-key (t2/table-name :model/PermissionsGroupMembership) :group_id)]
+                      :from  [(t2/table-name :model/PermissionsGroupMembership)]
+                      :where [:and [:= (u/qualified-key (t2/table-name :model/PermissionsGroupMembership) :user_id) user-id]
+                              [:not= (u/qualified-key (t2/table-name :model/PermissionsGroupMembership) :group_id) all-users-group-id]]}]}))
 
 (mu/defn delete-user-parameter-values!
   "Delete the UserParameterValues identified by the `:user_id`, `:dashboard_id`, and `:parameter_id` of `parameters`."

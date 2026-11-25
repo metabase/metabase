@@ -582,11 +582,11 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (app-db/select-batched #(t2/select [:model/FieldValues :field_id :values :field.table_id]
                                      {:join  [[(t2/table-name :model/Field) :field]
-                                              [:= :metabase_fieldvalues.field_id :field.id]]
+                                              [:= (u/qualified-key (t2/table-name :model/FieldValues) :field_id) :field.id]]
                                       :where [:and
                                               [:in :field.table_id %]
                                               [:= :field.visibility_type "normal"]
-                                              [:= :metabase_fieldvalues.type "full"]]})
+                                              [:= (u/qualified-key (t2/table-name :model/FieldValues) :type) "full"]]})
                          table-ids))
 
 (mu/defn full-field-values-with-human-readable-values
@@ -720,8 +720,8 @@
   "The conditions on FieldValues of every Field of the Database with `database-id`."
   [database-id]
   [:field_id [:in ^:allow-subquery {:select     [:f.id]
-                                    :from       [[:metabase_field :f]]
-                                    :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
+                                    :from       [[(t2/table-name :model/Field) :f]]
+                                    :right-join [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
                                     :where      [:= :t.db_id [:auto/param database-id]]}]])
 
 (mu/defn field-values-ids-of-fields :- [:sequential ms/PositiveInt]
@@ -759,14 +759,14 @@
   (vec (t2/select-pks-vec :model/FieldValues
                           :type [:in types]
                           {:where [:and
-                                   [:< :metabase_fieldvalues.created_at
+                                   [:< (u/qualified-key (t2/table-name :model/FieldValues) :created_at)
                                     (h2x/add-interval-honeysql-form (app-db/db-type) :%now (- max-age-days) :day)]
                                    [:exists ^:allow-subquery
                                     {:select [[[:inline 1] :one]]
                                      :from   [[(t2/table-name :model/Field) :f]]
                                      :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
                                      :where  [:and
-                                              [:= :f.id :metabase_fieldvalues.field_id]
+                                              [:= :f.id (u/qualified-key (t2/table-name :model/FieldValues) :field_id)]
                                               [:= :f.active true]
                                               [:= :f.visibility_type "normal"]
                                               [:= :t.db_id [:auto/param database-id]]
@@ -979,12 +979,12 @@
   user queries, active or not, so that dependencies broken by a dropped or hidden table stay visible, without those of
   the sample and audit databases unless `:include-sample-databases?`, located by their database."
   [{:keys [include-sample-databases?] :as opts} :- :metabase.dependencies.items/items-opts]
-  {:select    [[:metabase_table.id :entity_id] [:metabase_table.display_name :name] [:database.name :location]]
-   :from      [:metabase_table]
-   :left-join [[:metabase_database :database] [:= :metabase_table.db_id :database.id]]
+  {:select    [[(u/qualified-key (t2/table-name :model/Table) :id) :entity_id] [(u/qualified-key (t2/table-name :model/Table) :display_name) :name] [:database.name :location]]
+   :from      [(t2/table-name :model/Table)]
+   :left-join [[(t2/table-name :model/Database) :database] [:= (u/qualified-key (t2/table-name :model/Table) :db_id) :database.id]]
    :where     (into [:and]
                     (remove nil?)
-                    [(collections.listing/visible-tables-clause :metabase_table.id opts)
+                    [(collections.listing/visible-tables-clause (u/qualified-key (t2/table-name :model/Table) :id) opts)
                      (when-not include-sample-databases?
                        [:and [:not :database.is_sample] [:not :database.is_audit]])])})
 
@@ -1039,7 +1039,7 @@
                           [:= :visibility_type nil]
                           [:!= :visibility_type "hidden"]]
                          [:in :t.id %]]
-                 :left-join [[:metabase_database :db]
+                 :left-join [[(t2/table-name :model/Database) :db]
                              [:= :db.id :t.db_id]]})
     table-ids)
    :can_read :can_write))
@@ -1075,7 +1075,7 @@
                                                                    :parent_fields]]}]
                           [:not [:exists ^:allow-subquery {:select [1]
                                                            :from   [[(t2/table-name :model/Field) :child_field]]
-                                                           :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+                                                           :where  [:= :child_field.parent_id (u/qualified-key (t2/table-name :model/Field) :id)]}]])]
     ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
     #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
     (t2/query-one {:delete-from (t2/table-name :model/Field)

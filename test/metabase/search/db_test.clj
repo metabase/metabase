@@ -29,7 +29,7 @@
                       (let [card-ids (set (t2/insert-returning-pks!
                                            :model/Card
                                            (repeatedly n #(merge (mt/with-temp-defaults :model/Card) metric))))]
-                        (t2/query-one {:update :report_card
+                        (t2/query-one {:update (t2/table-name :model/Card)
                                        :set    {:card_schema 23, :dimensions nil, :dimension_mappings nil}
                                        :where  [:in :id card-ids]})
                         (t2/with-call-count [call-count]

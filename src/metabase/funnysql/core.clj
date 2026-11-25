@@ -10,8 +10,7 @@
    [flatland.ordered.set :as ordered-set]
    [honey.sql.pg-ops]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log])
+   [metabase.util.honey-sql-2 :as h2x])
   (:import
    (java.time DateTimeException ZoneId)))
 
@@ -341,6 +340,42 @@
       (append-sql! context "VALUES ")
       (interpose-fn rows #(list! % context) #(append-sql! context ", ")))))
 
+(defn- merge-into!
+  "Compile H2's `MERGE INTO <table> [AS <alias>]`."
+  [identifier context]
+  (append-sql! context "MERGE INTO ")
+  (identifier-with-optional-alias! identifier context :check-lhs check-identifier-form))
+
+(defn- key! [columns context]
+  (append-sql! context "KEY ")
+  (identifier-list! columns context))
+
+(defn- using!
+  "Compile the `USING <query> AS <alias>` source of a `MERGE`."
+  [source context]
+  (append-sql! context "USING ")
+  (identifier-with-optional-alias! source context :check-lhs check-subquery-marked))
+
+(defn- on! [condition context]
+  (append-sql! context "ON ")
+  (compile! condition context))
+
+(defn- when-matched-update-set! [kvs context]
+  (append-sql! context "WHEN MATCHED THEN UPDATE SET ")
+  (kvs-map! kvs context))
+
+(defn- when-not-matched-insert!
+  "Compile `WHEN NOT MATCHED THEN INSERT (<columns>) VALUES (<values>)` from `[columns values]`."
+  [[columns values] context]
+  (append-sql! context "WHEN NOT MATCHED THEN INSERT ")
+  (identifier-list! columns context)
+  (append-sql! context " VALUES ")
+  (list! values context))
+
+(defn- on-duplicate-key-update! [kvs context]
+  (append-sql! context "ON DUPLICATE KEY UPDATE ")
+  (kvs-map! kvs context))
+
 (defn- drop-table! [table context]
   (let [options (butlast table)
         table   (last table)]
@@ -510,8 +545,14 @@
 
 (defn- on-conflict!
   [columns context]
-  (append-sql! context "ON CONFLICT ")
-  (identifier-list! columns context))
+  (append-sql! context "ON CONFLICT")
+  (when (seq columns)
+    (append-sql! context \space)
+    (identifier-list! columns context)))
+
+(defn- do-nothing!
+  [_ context]
+  (append-sql! context "DO NOTHING"))
 
 (defn- do-update-set!
   [kvs context]
@@ -553,7 +594,13 @@
    :create-table    create-table!
    :with-columns    with-columns!
    :insert-into     insert-into!
+   :merge-into      merge-into!
+   :using           using!
+   :on              on!
+   :when-matched-update-set when-matched-update-set!
+   :when-not-matched-insert when-not-matched-insert!
    :columns         identifier-list!
+   :key             key!
    :values          values!
    :drop-table      drop-table!
    :update          update!
@@ -580,6 +627,8 @@
    :for             for!
    :on-conflict     on-conflict!
    :do-update-set   do-update-set!
+   :do-nothing      do-nothing!
+   :on-duplicate-key-update on-duplicate-key-update!
    :returning       returning!
    :nest            parens!))
 
@@ -737,6 +786,13 @@
   [x context]
   ((if (infix-call? x) parens! compile!) x context))
 
+(defn- marked-value
+  "The value of an `[:auto/param v]` marker, or `x` itself when `x` is not one."
+  [x]
+  (if (and (fn-call-of-type? x :auto/param) (= 2 (count x)))
+    (second x)
+    x))
+
 (defn- equals! [sql nil-sql [x y :as args] context]
   (when-not (= (count args) 2)
     (throw (ex-info "Wrong number of args to :=/:!=/:<>/:not= (expected 2 args)" {:args args})))
@@ -749,9 +805,9 @@
             ;; the unparsable `x IS NULL = y`. (A scalar subquery gets the same treatment, but [[compile!]] already
             ;; parenthesizes those.)
             ((if (predicate-call? v) parens! compile!) v context))]
-    (if (or (nil? x) (nil? y))
+    (if (or (nil? (marked-value x)) (nil? (marked-value y)))
       (do
-        (operand! (if (nil? x) y x))
+        (operand! (if (nil? (marked-value x)) y x))
         (append-sql! context nil-sql))
       (do
         (operand! x)
@@ -807,14 +863,14 @@
 
   A param naming anything else is left alone, and compiles to a single `?` as it would in any other
   value slot. A scalar is not a list of values, and a map must stay one bound value rather than
-  become a list of its entries -- `metabase.app-db.honeysql-guard` is what refuses an unmarked one."
+  become a list of its entries."
   [vs context]
-  (if (fn-call-of-type? vs :param)
-    (let [v (lift-value (param-value (second vs) context))]
-      (if (or (sequential? v) (set? v))
-        v
-        vs))
-    vs))
+  (let [v (cond
+            (fn-call-of-type? vs :param)      (lift-value (param-value (second vs) context))
+            (fn-call-of-type? vs :auto/param) (lift-value (second vs)))]
+    (if (or (sequential? v) (set? v))
+      v
+      vs)))
 
 (defn- in! [f [lhs vs] context]
   (let [vs (in-values vs context)]
@@ -907,10 +963,8 @@
         (append-sql! context ")"))
 
       :else
-      (do
-        ;; TODO (Cam 2026-10-01) Make this an actual error instead of just a warning
-        (log/warnf ":inline is only allowed for numbers, booleans and nil, got: %s" (pr-str x))
-        (compile! x context)))))
+      (throw (ex-info ":inline is only allowed for numbers, booleans and nil; use h2x/literal for a string"
+                      {:inline x})))))
 
 (defn- check-valid-unit [unit]
   (when-not (and ((some-fn keyword? string?) unit)
@@ -951,6 +1005,14 @@
 
 (defn- param! [k context]
   (object! (param-value k context) context))
+
+(defn- auto-param!
+  "Bind the value of an `[:auto/param v]` marker, or compile the `[:auto/param column v]` that Toucan builds from a marked kv-arg as `column = v`."
+  [[x y :as args] context]
+  (case (count args)
+    1 (object! x context)
+    2 (compile! [:= x [:auto/param y]] context)
+    (throw (ex-info "Malformed [:auto/param ...] marker; write it as [:auto/param value]" {:args args}))))
 
 (defn- unary-binary-operator! [f x context]
   (case f
@@ -1115,6 +1177,7 @@
     :or                (compound! " OR " false args context)
     :over              (over! (first args) context)
     :param             (param! (first args) context)
+    :auto/param        (auto-param! args context)
     :position          (position! args context)
     :timestampdiff     (timestamp-diff! args context)
 
@@ -1141,6 +1204,7 @@
 
     ;; other custom operators
     (:abs
+     :any
      :avg
      :ceil
      :coalesce
@@ -1148,6 +1212,7 @@
      :concat_ws
      :count
      :current_database
+     :current_setting
      :current_schema
      :database
      :date_part
@@ -1189,6 +1254,7 @@
      :trim
      :ts_rank
      :upper
+     :values
      :year)
     (simple-fn! f args context)
 
@@ -1238,10 +1304,8 @@
   clojure.lang.Sequential     (compile! [this context] (sequence! this context)))
 
 (defn format
-  "Compile `honeysql-form` (either a top-level map or an individual clause) to SQL for `engine`.
-
-  Returns the standard `[sql & args]` shape if able to compile successfully; throws an exception on unsupported or
-  invalid forms."
+  "Compile `honeysql-form`, a top-level map or an individual clause, to the standard `[sql & args]` for `engine`, with
+  `::compiled` metadata, throwing on unsupported or invalid forms."
   ([honeysql-form engine]
    (format honeysql-form engine nil))
   ([honeysql-form engine options]
@@ -1250,7 +1314,7 @@
      (let [context (default-context engine options)]
        ;; [[compile!]] doesn't support compiling maps recursively unless marked `^:allow-subquery`
        ((if (map? honeysql-form) map! compile!) honeysql-form context)
-       (result! context))
+       (with-meta (result! context) {::compiled true}))
      (catch Exception e
        (throw (ex-info (str "Error compiling Honey SQL: " (ex-message e))
                        {:form honeysql-form, :engine engine, :options options}

@@ -6,6 +6,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.run-tracking.core :as rt]
    [metabase.task-history.schema :as task-history.schema]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -33,7 +34,7 @@
                                              [[:count :id] :task_count]
                                              [[:sum [:case [:= :status (h2x/literal "success")] [:inline 1] :else [:inline 0]]] :success_count]
                                              [[:sum [:case [:= :status (h2x/literal "failed")] [:inline 1] :else [:inline 0]]] :failed_count]]
-                                  :from     :task_history
+                                  :from     (t2/table-name :model/TaskHistory)
                                   :where    [:in :run_id %]
                                   :group-by [:run_id]})
                       run-ids))
@@ -43,12 +44,12 @@
   ;; (e.g. report_card.entity_id)
   [{:keys [run-type entity-type entity-id status started-at-start started-at-end]}]
   (let [conditions (cond-> []
-                     run-type          (conj [:= :task_run.run_type run-type])
-                     entity-type       (conj [:= :task_run.entity_type entity-type])
-                     entity-id         (conj [:= :task_run.entity_id entity-id])
-                     status            (conj [:= :task_run.status status])
-                     started-at-start  (conj [:>= :task_run.started_at started-at-start])
-                     started-at-end    (conj [:< :task_run.started_at started-at-end]))]
+                     run-type          (conj [:= (u/qualified-key (t2/table-name :model/TaskRun) :run_type) run-type])
+                     entity-type       (conj [:= (u/qualified-key (t2/table-name :model/TaskRun) :entity_type) entity-type])
+                     entity-id         (conj [:= (u/qualified-key (t2/table-name :model/TaskRun) :entity_id) entity-id])
+                     status            (conj [:= (u/qualified-key (t2/table-name :model/TaskRun) :status) status])
+                     started-at-start  (conj [:>= (u/qualified-key (t2/table-name :model/TaskRun) :started_at) started-at-start])
+                     started-at-end    (conj [:< (u/qualified-key (t2/table-name :model/TaskRun) :started_at) started-at-end]))]
     (when (seq conditions)
       {:where (into [:and] conditions)})))
 
@@ -58,25 +59,25 @@
   `task_history` subquery. Derived-column variants keep the selected shape to `task_run.*` and add a
   deterministic `[:id :desc]` secondary key."
   [sort-column sort-direction]
-  (let [secondary [:task_run.id :desc]]
+  (let [secondary [(u/qualified-key (t2/table-name :model/TaskRun) :id) :desc]]
     (case sort-column
       :entity_name
-      {:select    [:task_run.*]
-       :left-join [[:metabase_database :sort_db]
-                   [:and [:= :task_run.entity_type "database"]  [:= :task_run.entity_id :sort_db.id]]
-                   [:report_card :sort_card]
-                   [:and [:= :task_run.entity_type "card"]      [:= :task_run.entity_id :sort_card.id]]
-                   [:report_dashboard :sort_dash]
-                   [:and [:= :task_run.entity_type "dashboard"] [:= :task_run.entity_id :sort_dash.id]]]
+      {:select    [(u/qualified-key (t2/table-name :model/TaskRun) :*)]
+       :left-join [[(t2/table-name :model/Database) :sort_db]
+                   [:and [:= (u/qualified-key (t2/table-name :model/TaskRun) :entity_type) "database"]  [:= (u/qualified-key (t2/table-name :model/TaskRun) :entity_id) :sort_db.id]]
+                   [(t2/table-name :model/Card) :sort_card]
+                   [:and [:= (u/qualified-key (t2/table-name :model/TaskRun) :entity_type) "card"]      [:= (u/qualified-key (t2/table-name :model/TaskRun) :entity_id) :sort_card.id]]
+                   [(t2/table-name :model/Dashboard) :sort_dash]
+                   [:and [:= (u/qualified-key (t2/table-name :model/TaskRun) :entity_type) "dashboard"] [:= (u/qualified-key (t2/table-name :model/TaskRun) :entity_id) :sort_dash.id]]]
        :order-by  [[[:coalesce :sort_db.name :sort_card.name :sort_dash.name] sort-direction] secondary]}
 
       :task_count
-      {:select    [:task_run.*]
+      {:select    [(u/qualified-key (t2/table-name :model/TaskRun) :*)]
        :left-join [[^:allow-subquery {:select   [:run_id [[:count :*] :task_count]]
-                                      :from     [:task_history]
+                                      :from     [(t2/table-name :model/TaskHistory)]
                                       :group-by [:run_id]}
                     :sort_tc]
-                   [:= :sort_tc.run_id :task_run.id]]
+                   [:= :sort_tc.run_id (u/qualified-key (t2/table-name :model/TaskRun) :id)]]
        :order-by  [[[:coalesce :sort_tc.task_count [:inline 0]] sort-direction] secondary]}
 
       {:order-by [[sort-column sort-direction] secondary]})))
@@ -125,7 +126,7 @@
    started-at-start  :- [:maybe ms/TemporalInstant]
    started-at-end    :- [:maybe ms/TemporalInstant]]
   (t2/query {:select-distinct [:entity_type :entity_id]
-             :from            :task_run
+             :from            (t2/table-name :model/TaskRun)
              :where           (into [:and [:= :run_type run-type]]
                                     (keep identity)
                                     [(when started-at-start [:>= :started_at started-at-start])
@@ -143,18 +144,19 @@
   [ended-before :- ms/TemporalInstant]
   (vec (t2/select-pks-vec :model/TaskHistory :ended_at [:<= ended-before])))
 
-(def ^:private join-sort-columns
+(defn- join-sort-columns
   "Sort columns that require a LEFT JOIN to `metabase_database`, mapped to the joined column to order by."
-  {:db_name   :metabase_database.name
-   :db_engine :metabase_database.engine})
+  []
+  {:db_name   (u/qualified-key (t2/table-name :model/Database) :name)
+   :db_engine (u/qualified-key (t2/table-name :model/Database) :engine)})
 
 (defn- task-history-where
   ;; qualified so filters stay unambiguous when the db_name/db_engine sorts join metabase_database
   [status task]
   (when (or status task)
     (cond-> [:and]
-      task   (conj [:= :task_history.task task])
-      status (conj [:= :task_history.status (name status)]))))
+      task   (conj [:= (u/qualified-key (t2/table-name :model/TaskHistory) :task) task])
+      status (conj [:= (u/qualified-key (t2/table-name :model/TaskHistory) :status) (name status)]))))
 
 (mu/defn task-histories
   "Up to `limit` (offset by `offset`) TaskHistory rows, optionally narrowed to `status` and/or `task`, sorted by
@@ -170,12 +172,12 @@
              (cond-> (if-let [where (task-history-where status task)]
                        {:where where}
                        {})
-               (join-sort-columns sort-column)
-               (merge {:select    [:task_history.*]
-                       :left-join [:metabase_database [:= :task_history.db_id :metabase_database.id]]
-                       :order-by  [[(join-sort-columns sort-column) sort-direction] [:task_history.id :desc]]})
+               ((join-sort-columns) sort-column)
+               (merge {:select    [(u/qualified-key (t2/table-name :model/TaskHistory) :*)]
+                       :left-join [(t2/table-name :model/Database) [:= (u/qualified-key (t2/table-name :model/TaskHistory) :db_id) (u/qualified-key (t2/table-name :model/Database) :id)]]
+                       :order-by  [[((join-sort-columns) sort-column) sort-direction] [(u/qualified-key (t2/table-name :model/TaskHistory) :id) :desc]]})
 
-               (not (join-sort-columns sort-column))
+               (not ((join-sort-columns) sort-column))
                (assoc :order-by [[sort-column sort-direction] [:id :desc]])
 
                limit  (assoc :limit limit)

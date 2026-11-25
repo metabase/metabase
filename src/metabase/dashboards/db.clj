@@ -143,8 +143,8 @@
   "The id and Collection `authority_level` of the Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (mdb/select-batched #(mdb/query {:select    [:dashboard.id :collection.authority_level]
-                                   :from      [[:report_dashboard :dashboard]]
-                                   :left-join [[:collection :collection] [:= :collection.id :dashboard.collection_id]]
+                                   :from      [[(t2/table-name :model/Dashboard) :dashboard]]
+                                   :left-join [[(t2/table-name :model/Collection) :collection] [:= :collection.id :dashboard.collection_id]]
                                    :where     [:in :dashboard.id %]})
                       dashboard-ids))
 
@@ -156,9 +156,9 @@
                 (mdb/select-batched
                  #(t2/select :model/DashboardCard
                              {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
-                              :from      [[:report_dashboardcard :dashcard]]
-                              :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
-                                          [:collection :collection] [:= :collection.id :card.collection_id]]
+                              :from      [[(t2/table-name :model/DashboardCard) :dashcard]]
+                              :left-join [[(t2/table-name :model/Card) :card] [:= :dashcard.card_id :card.id]
+                                          [(t2/table-name :model/Collection) :collection] [:= :collection.id :card.collection_id]]
                               :where     [:and
                                           [:in :dashcard.dashboard_id %]
                                           [:or
@@ -271,7 +271,7 @@
   (mdb/select-batched #(t2/select [:model/Card :id :name :description :display :dataset_query :type :database_id
                                    :visualization_settings :collection_id :card_schema :entity_id :result_metadata
                                    :dimensions :dimension_mappings :series.dashboardcard_id]
-                                  {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
+                                  {:left-join [[(t2/table-name :model/DashboardCardSeries) :series] [:= (u/qualified-key (t2/table-name :model/Card) :id) :series.card_id]]
                                    :where     [:in :series.dashboardcard_id %]
                                    :order-by  [[:series.position :asc]]})
                       dashcard-ids))
@@ -286,8 +286,8 @@
   with `dashboard-ids`."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (mdb/query {:select [[:dashcard.dashboard_id :dashboard_id] [:series.card_id :card_id]]
-              :from   [[:dashboardcard_series :series]]
-              :join   [[:report_dashboardcard :dashcard] [:= :dashcard.id :series.dashboardcard_id]]
+              :from   [[(t2/table-name :model/DashboardCardSeries) :series]]
+              :join   [[(t2/table-name :model/DashboardCard) :dashcard] [:= :dashcard.id :series.dashboardcard_id]]
               :where  [:in :dashcard.dashboard_id dashboard-ids]}))
 
 (mu/defn parameters-for-dashboards
@@ -304,10 +304,10 @@
   "The unarchived Cards added to the DashboardCard with `dashcard-id` as series (the 'add series' feature)."
   [dashcard-id :- [:maybe ::lib.schema.id/dashcard]]
   (mdb/query {:select    [:newcard.*]
-              :from      [[:report_dashboardcard :dashcard]]
-              :left-join [[:dashboardcard_series :dashcardseries]
+              :from      [[(t2/table-name :model/DashboardCard) :dashcard]]
+              :left-join [[(t2/table-name :model/DashboardCardSeries) :dashcardseries]
                           [:= :dashcard.id :dashcardseries.dashboardcard_id]
-                          [:report_card :newcard]
+                          [(t2/table-name :model/Card) :newcard]
                           [:= :dashcardseries.card_id :newcard.id]]
               :where     [:and
                           [:= :newcard.archived false]
@@ -549,7 +549,7 @@
   [tab-ids :- [:sequential ms/PositiveInt]]
   (mdb/select-batched #(t2/select :model/PulseCard
                                   :dashboard_card_id [:in ^:allow-subquery {:select [:id]
-                                                                            :from   [:report_dashboardcard]
+                                                                            :from   [(t2/table-name :model/DashboardCard)]
                                                                             :where  [:in :dashboard_tab_id %]}])
                       tab-ids))
 
@@ -577,32 +577,32 @@
 (mu/defn stale-dashboard-candidates :- ::staleness/query
   "The query of the Dashboards that are stale for `opts`, `{:collection-ids (:all | #{int|nil}), :cutoff-date local-date}`."
   [opts :- ::staleness/candidates-options]
-  ^:allow-subquery {:select [:report_dashboard.id
+  ^:allow-subquery {:select [:dashboard.id
                              [(h2x/literal "Dashboard") :model]
-                             [:report_dashboard.name :name]
+                             [:dashboard.name :name]
                              [:last_viewed_at :last_used_at]
-                             :report_dashboard.collection_id]
-                    :from :report_dashboard
-                    :left-join [:pulse [:and
-                                        [:= :pulse.archived false]
-                                        [:= :pulse.dashboard_id :report_dashboard.id]]
-                                :collection [:= :collection.id :report_dashboard.collection_id]
-                                :moderation_review [:and
-                                                    [:= :moderation_review.moderated_item_id :report_dashboard.id]
-                                                    [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
-                                                    [:= :moderation_review.most_recent true]
-                                                    [:= :moderation_review.status (h2x/literal "verified")]]]
+                             :dashboard.collection_id]
+                    :from [[(t2/table-name :model/Dashboard) :dashboard]]
+                    :left-join [[(t2/table-name :model/Pulse) :pulse] [:and
+                                                                       [:= :pulse.archived false]
+                                                                       [:= :pulse.dashboard_id :dashboard.id]]
+                                [(t2/table-name :model/Collection) :collection] [:= :collection.id :dashboard.collection_id]
+                                [(t2/table-name :model/ModerationReview) :mr] [:and
+                                                                               [:= :mr.moderated_item_id :dashboard.id]
+                                                                               [:= :mr.moderated_item_type (h2x/literal "dashboard")]
+                                                                               [:= :mr.most_recent true]
+                                                                               [:= :mr.status (h2x/literal "verified")]]]
                     :where [:and
                             [:= :pulse.id nil]
-                            [:= :moderation_review.id nil]
-                            [:= :report_dashboard.archived false]
-                            [:<= :report_dashboard.last_viewed_at (:cutoff-date opts)]
+                            [:= :mr.id nil]
+                            [:= :dashboard.archived false]
+                            [:<= :dashboard.last_viewed_at (:cutoff-date opts)]
                             [:= :collection.type nil]
                             (when (embed.settings/some-embedding-enabled?)
-                              [:= :report_dashboard.enable_embedding false])
+                              [:= :dashboard.enable_embedding false])
                             (when (setting/get :enable-public-sharing)
-                              [:= :report_dashboard.public_uuid nil])
-                            (staleness/collection-filter :report_dashboard.collection_id opts)]})
+                              [:= :dashboard.public_uuid nil])
+                            (staleness/collection-filter :dashboard.collection_id opts)]})
 
 (mu/defn stale-dashboard-items
   "The listing columns of the Dashboards with `dashboard-ids`, with the hydrations the stale content page shows."
@@ -634,8 +634,8 @@
    :- :metabase.dependencies.items/items-opts]
   (let [location (collections.listing/collection-location :collection nil)]
     {:select    [[:dashboard.id :entity_id] [:dashboard.name :name] [location :location]]
-     :from      [[:report_dashboard :dashboard]]
-     :left-join [:collection [:= :dashboard.collection_id :collection.id]]
+     :from      [[(t2/table-name :model/Dashboard) :dashboard]]
+     :left-join [[(t2/table-name :model/Collection) :collection] [:= :dashboard.collection_id :collection.id]]
      :where     (into [:and]
                       (remove nil?)
                       [(collections.listing/visible-in-collections-clause :dashboard opts include-archived nil)
@@ -661,16 +661,16 @@
                [:u.last_name :last_edit_last_name]
                [:r.timestamp :last_edit_timestamp]
                [:mr.status :moderated_status]]
-   :from      [[:report_dashboard :d]]
-   :left-join [[:moderation_review :mr] [:and
-                                         [:= :mr.moderated_item_id :d.id]
-                                         [:= :mr.most_recent true]
-                                         [:= :mr.moderated_item_type (h2x/literal "dashboard")]]
-               [:revision :r] [:and
-                               [:= :r.model_id :d.id]
-                               [:= :r.model (h2x/literal "Dashboard")]
-                               (revisions.sql/newest-revision-clause :r "Dashboard" :d.id)]
-               [:core_user :u] [:= :u.id :r.user_id]]
+   :from      [[(t2/table-name :model/Dashboard) :d]]
+   :left-join [[(t2/table-name :model/ModerationReview) :mr] [:and
+                                                              [:= :mr.moderated_item_id :d.id]
+                                                              [:= :mr.most_recent true]
+                                                              [:= :mr.moderated_item_type (h2x/literal "dashboard")]]
+               [(t2/table-name :model/Revision) :r] [:and
+                                                     [:= :r.model_id :d.id]
+                                                     [:= :r.model (h2x/literal "Dashboard")]
+                                                     (revisions.sql/newest-revision-clause :r "Dashboard" :d.id)]
+               [(t2/table-name :model/User) :u] [:= :u.id :r.user_id]]
    :where     [:and
                (collections.listing/visible-items-clause :d.collection_id archived? {:root-namespace nil})
                (if (collection/is-trash? collection)
@@ -699,14 +699,14 @@
                            [:c.name :collection_name]
                            [:c.authority_level :collection_authority_level]
                            [:mr.status :moderated-status]]
-                  :from [[:report_dashboard :dash]]
+                  :from [[(t2/table-name :model/Dashboard) :dash]]
                   :where [:in :dash.id dashboard-ids]
-                  :left-join [[:moderation_review :mr]
+                  :left-join [[(t2/table-name :model/ModerationReview) :mr]
                               [:and
                                [:= :mr.moderated_item_id :dash.id]
                                [:= :mr.moderated_item_type "dashboard"]
                                [:= :mr.most_recent true]]
-                              [:collection :c]
+                              [(t2/table-name :model/Collection) :c]
                               [:and
                                [:= :c.id :dash.collection_id]
                                [:= :c.archived false]]]}))

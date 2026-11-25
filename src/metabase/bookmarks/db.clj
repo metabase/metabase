@@ -145,7 +145,7 @@
                                                  [:card_id :item_id]
                                                  [(h2x/literal "card") :type]
                                                  :created_at]
-                                        :from   [:card_bookmark]
+                                        :from   [(t2/table-name :model/CardBookmark)]
                                         :where  [:= :user_id user-id]}
                       ^:allow-subquery {:select [[as-null :card_id]
                                                  :dashboard_id
@@ -155,7 +155,7 @@
                                                  [:dashboard_id :item_id]
                                                  [(h2x/literal "dashboard") :type]
                                                  :created_at]
-                                        :from   [:dashboard_bookmark]
+                                        :from   [(t2/table-name :model/DashboardBookmark)]
                                         :where  [:= :user_id user-id]}
                       ^:allow-subquery {:select [[as-null :card_id]
                                                  [as-null :dashboard_id]
@@ -165,7 +165,7 @@
                                                  [:collection_id :item_id]
                                                  [(h2x/literal "collection") :type]
                                                  :created_at]
-                                        :from   [:collection_bookmark]
+                                        :from   [(t2/table-name :model/CollectionBookmark)]
                                         :where  [:= :user_id user-id]}
                       ^:allow-subquery {:select [[as-null :card_id]
                                                  [as-null :dashboard_id]
@@ -175,7 +175,7 @@
                                                  [:document_id :item_id]
                                                  [(h2x/literal "document") :type]
                                                  :created_at]
-                                        :from   [:document_bookmark]
+                                        :from   [(t2/table-name :model/DocumentBookmark)]
                                         :where  [:= :user_id user-id]}]]
     ^:allow-subquery
     {:union-all (conj base-queries
@@ -187,7 +187,7 @@
                                                  [:exploration_id :item_id]
                                                  [(h2x/literal "exploration") :type]
                                                  :created_at]
-                                        :from   [:exploration_bookmark]
+                                        :from   [(t2/table-name :model/ExplorationBookmark)]
                                         :where  [:= :user_id user-id]})}))
 
 (mr/def ::bookmark-row
@@ -247,16 +247,16 @@
                           [:exploration.name        :exploration.name]
                           [:exploration.description :exploration.description]
                           [:exploration.archived    :exploration.archived]]
-        left-joins       [[:report_card :card] [:= :bookmark.card_id :card.id]
-                          [:report_dashboard :dashboard]          [:= :bookmark.dashboard_id :dashboard.id]
-                          [:collection :collection]               [:in :collection.id [(h2x/identifier :field :bookmark :collection_id)
-                                                                                       (h2x/identifier :field :dashboard :collection_id)]]
-                          [:bookmark_ordering :bookmark_ordering] [:and
-                                                                   [:= :bookmark_ordering.user_id user-id]
-                                                                   [:= :bookmark_ordering.type :bookmark.type]
-                                                                   [:= :bookmark_ordering.item_id :bookmark.item_id]]
-                          [:document :document] [:= :bookmark.document_id :document.id]
-                          [:exploration :exploration] [:= :bookmark.exploration_id :exploration.id]]
+        left-joins       [[(t2/table-name :model/Card) :card]               [:= :bookmark.card_id :card.id]
+                          [(t2/table-name :model/Dashboard) :dashboard]     [:= :bookmark.dashboard_id :dashboard.id]
+                          [(t2/table-name :model/Collection) :collection]   [:in :collection.id [(h2x/identifier :field :bookmark :collection_id)
+                                                                                                 (h2x/identifier :field :dashboard :collection_id)]]
+                          [(t2/table-name :model/BookmarkOrdering) :bookmark_ordering] [:and
+                                                                                        [:= :bookmark_ordering.user_id user-id]
+                                                                                        [:= :bookmark_ordering.type :bookmark.type]
+                                                                                        [:= :bookmark_ordering.item_id :bookmark.item_id]]
+                          [(t2/table-name :model/Document) :document]       [:= :bookmark.document_id :document.id]
+                          [(t2/table-name :model/Exploration) :exploration] [:= :bookmark.exploration_id :exploration.id]]
         where-conditions (into [:and]
                                (for [table [:card :dashboard :collection :document :exploration]
                                      :let  [field (keyword (str (name table) "." "archived"))]]

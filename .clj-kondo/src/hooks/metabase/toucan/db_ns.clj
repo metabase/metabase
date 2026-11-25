@@ -53,10 +53,10 @@
 (def ^:private identifier-clauses
   "Clause keys whose entries name a column or a table rather than carrying a value.
 
-  A symbol here is a name, and `metabase.app-db.value-guard` refuses a marker in one, so reporting
-  it would ask for a fix that throws at compile. `:order-by` and `:group-by` are included even
-  though the guard allows a marker there: it compiles to `ORDER BY ?` and loses the ordering, so
-  asking for one is still wrong."
+  A symbol here is a name, and a marker in one throws at compile or fails at the database, so
+  reporting it would ask for a broken fix. `:order-by` and `:group-by` are included even though a
+  marker compiles there: it becomes `ORDER BY ?` and loses the ordering, so asking for one is still
+  wrong."
   #{:select :select-distinct :select-top :from :join :left-join :right-join :inner-join :full-join
     :cross-join :update :insert-into :delete-from :returning :with :with-columns :using
     :order-by :group-by :partition-by :window})
@@ -64,9 +64,8 @@
 (def ^:private expression-entry-clauses
   "Identifier clauses where index 0 of an `[expr alias]` entry is an expression, not a name.
 
-  HoneySQL binds a parameter there -- `SELECT ? AS a` -- so the guard accepts a marker, and mirrors
-  this set as `expression-entry-clauses` in `metabase.app-db.value-guard`. Everything after index 0
-  is an alias, and a bare entry is a name; the guard refuses a marker in both."
+  Funny SQL binds a parameter there -- `SELECT ? AS a` -- so a marker works. Everything after index 0
+  is an alias, and a bare entry is a name, so a marker in either breaks the query."
   #{:select :select-distinct :select-top :returning :partition-by})
 
 (defn- comparison-node?

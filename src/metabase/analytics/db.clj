@@ -2,10 +2,11 @@
   "Application database queries for the analytics module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
-   [clojure.string :as str]
+   [java-time.api :as t]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -72,7 +73,7 @@
   "The creator, public uuid, parameters, and embedding columns of the non-internal Dashboards."
   []
   (t2/select [:model/Dashboard :creator_id :public_uuid :parameters :enable_embedding :embedding_params]
-             {:where (mi/non-internal-filter-clause :model/Dashboard :report_dashboard)}))
+             {:where (mi/non-internal-filter-clause :model/Dashboard (t2/table-name :model/Dashboard))}))
 
 (mu/defn dashcards-of-dashboards
   "The DashboardCards of the non-internal Dashboards."
@@ -86,8 +87,8 @@
   [model column alerts? left-join?]
   (t2/select [model [column :k] [:%count.* :count]]
              (cond-> {:group-by [column]
-                      :where    [(if alerts? :not= :=) :pulse.alert_condition nil]}
-               left-join? (assoc :left-join [:pulse [:= :pulse.id :pulse_id]]))))
+                      :where    [(if alerts? :not= :=) (u/qualified-key (t2/table-name :model/Pulse) :alert_condition) nil]}
+               left-join? (assoc :left-join [(t2/table-name :model/Pulse) [:= (u/qualified-key (t2/table-name :model/Pulse) :id) :pulse_id]]))))
 
 (mu/defn pulse-channel-frequencies-by-column
   "The distinct `column` values (as `:k`) and their `:count` among the PulseChannels of alerts when `alerts?`, or of
@@ -119,13 +120,13 @@
   "The `:count` of Notifications with at least one PulseCard with `:include_xls` or `:include_csv`, of alerts when
   `alerts?`, or of pulses otherwise."
   [alerts? :- :boolean]
-  (t2/query-one {:select    [[[::h2x/distinct-count :pulse.id] :count]]
-                 :from      [:pulse]
-                 :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
+  (t2/query-one {:select    [[[::h2x/distinct-count (u/qualified-key (t2/table-name :model/Pulse) :id)] :count]]
+                 :from      [(t2/table-name :model/Pulse)]
+                 :left-join [(t2/table-name :model/PulseCard) [:= (u/qualified-key (t2/table-name :model/Pulse) :id) (u/qualified-key (t2/table-name :model/PulseCard) :pulse_id)]]
                  :where     [:and
                              [:or
-                              [:= :pulse_card.include_csv true]
-                              [:= :pulse_card.include_xls true]]
+                              [:= (u/qualified-key (t2/table-name :model/PulseCard) :include_csv) true]
+                              [:= (u/qualified-key (t2/table-name :model/PulseCard) :include_xls) true]]
                              [(if alerts? :not= :=) :alert_condition nil]]}))
 
 (mu/defn alert-count
@@ -146,18 +147,18 @@
 (mu/defn collection-count
   "The number of non-internal Collections."
   []
-  (t2/count :model/Collection {:where (mi/non-internal-filter-clause :model/Collection :collection)}))
+  (t2/count :model/Collection {:where (mi/non-internal-filter-clause :model/Collection (t2/table-name :model/Collection))}))
 
 (mu/defn card-collection-ids
   "The Collection id of the non-internal Cards."
   []
-  (t2/select [:model/Card :collection_id] {:where [:and (mi/non-internal-filter-clause :model/Card :report_card)]}))
+  (t2/select [:model/Card :collection_id] {:where [:and (mi/non-internal-filter-clause :model/Card (t2/table-name :model/Card))]}))
 
 (mu/defn database-stats-columns
   "The sync, engine, and DBMS version of the non-internal Databases."
   []
   (t2/select [:model/Database :is_full_sync :engine :dbms_version]
-             {:where (mi/non-internal-filter-clause :model/Database :metabase_database)}))
+             {:where (mi/non-internal-filter-clause :model/Database (t2/table-name :model/Database))}))
 
 (mu/defn table-database-and-schema
   "The Database id and schema of the Tables of the non-internal Databases."
@@ -186,62 +187,52 @@
   []
   (t2/count :model/Card :type :metric :archived false))
 
-(defn- execution-metrics-sql []
-  ;; Postgres automatically adjusts for daylight saving time when performing time calculations on TIMESTAMP WITH TIME
-  ;; ZONE. This can cause discrepancies when subtracting 30 days if the calculation crosses a DST boundary (e.g., in the
-  ;; Pacific/Auckland timezone). To avoid this, we ensure all date computations are done in UTC on Postgres to prevent
-  ;; any time shifts due to DST. See PR #48204
-  (let [thirty-days-ago (case (app-db/db-type)
-                          :postgres "CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - INTERVAL '30 days'"
-                          :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP)"
-                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")
-        started-at      (case (app-db/db-type)
-                          :postgres "started_at AT TIME ZONE 'UTC'"
-                          :h2       "started_at"
-                          :mysql    "started_at")
-        timestamp-where (str started-at " > " thirty-days-ago)]
-    (str/join
-     "\n"
-     ["WITH user_executions AS ("
-      "    SELECT executor_id, COUNT(*) AS num_executions"
-      "    FROM query_execution"
-      "    WHERE " timestamp-where
-      "    GROUP BY executor_id"
-      "),"
-      "query_stats_1 AS ("
-      "    SELECT"
-      "        COUNT(*) AS executions,"
-      "        SUM(CASE WHEN error IS NULL OR length(error) = 0 THEN 1 ELSE 0 END) AS by_status__completed,"
-      "        SUM(CASE WHEN error IS NOT NULL OR length(error) > 0 THEN 1 ELSE 0 END) AS by_status__failed,"
-      "        COALESCE(SUM(CASE WHEN running_time = 0 THEN 1 ELSE 0 END), 0) AS num_by_latency__0,"
-      "        COALESCE(SUM(CASE WHEN running_time > 0 AND running_time < 1000 THEN 1 ELSE 0 END), 0) AS num_by_latency__lt_1,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 1000 AND running_time < 10000 THEN 1 ELSE 0 END), 0) AS num_by_latency__1_10,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 10000 AND running_time < 50000 THEN 1 ELSE 0 END), 0) AS num_by_latency__11_50,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 50000 AND running_time < 250000 THEN 1 ELSE 0 END), 0) AS num_by_latency__51_250,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 250000 AND running_time < 1000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__251_1000,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 1000000 AND running_time < 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__1001_10000,"
-      "        COALESCE(SUM(CASE WHEN running_time >= 10000000 THEN 1 ELSE 0 END), 0) AS num_by_latency__10000_plus"
-      "    FROM query_execution"
-      "    WHERE " timestamp-where
-      "),"
-      "query_stats_2 AS ("
-      "    SELECT"
-      "        COALESCE(SUM(CASE WHEN num_executions = 0 THEN 1 ELSE 0 END), 0) AS num_per_user__0,"
-      "        COALESCE(SUM(CASE WHEN num_executions > 0 AND num_executions < 1 THEN 1 ELSE 0 END), 0) AS num_per_user__lt_1,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 1 AND num_executions < 10 THEN 1 ELSE 0 END), 0) AS num_per_user__1_10,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 10 AND num_executions < 50 THEN 1 ELSE 0 END), 0) AS num_per_user__11_50,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 50 AND num_executions < 250 THEN 1 ELSE 0 END), 0) AS num_per_user__51_250,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 250 AND num_executions < 1000 THEN 1 ELSE 0 END), 0) AS num_per_user__251_1000,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 1000 AND num_executions < 10000 THEN 1 ELSE 0 END), 0) AS num_per_user__1001_10000,"
-      "        COALESCE(SUM(CASE WHEN num_executions >= 10000 THEN 1 ELSE 0 END), 0) AS num_per_user__10000_plus"
-      "    FROM user_executions"
-      ")"
-      "SELECT q1.*, q2.* FROM query_stats_1 q1, query_stats_2 q2;"])))
+(defn- count-where
+  "The number of rows matching `condition`, zero over no rows."
+  [condition]
+  [:coalesce [:sum [:case condition 1 :else 0]] 0])
+
+(defn- execution-metrics-query
+  "The query of the execution statistics over the QueryExecutions of the last 30 days, counted from an instant so that
+  no daylight saving shift moves the cutoff, with the per-user counts in a derived table because H2 binds no parameter
+  in a CTE that another CTE reads."
+  []
+  (let [recent          [:> :started_at (t/minus (t/instant) (t/days 30))]
+        user-executions ^:allow-subquery {:select   [:executor_id [[:count :*] :num_executions]]
+                                          :from     [[(t2/table-name :model/QueryExecution) :qe]]
+                                          :where    recent
+                                          :group-by [:executor_id]}]
+    {:with   [[:query_stats_1 ^:allow-subquery
+               {:select [[[:count :*] :executions]
+                         [[:sum [:case [:or [:= :error nil] [:= [:length :error] 0]] 1 :else 0]] :by_status__completed]
+                         [[:sum [:case [:or [:not= :error nil] [:> [:length :error] 0]] 1 :else 0]] :by_status__failed]
+                         [(count-where [:= :running_time 0]) :num_by_latency__0]
+                         [(count-where [:and [:> :running_time 0] [:< :running_time 1000]]) :num_by_latency__lt_1]
+                         [(count-where [:and [:>= :running_time 1000] [:< :running_time 10000]]) :num_by_latency__1_10]
+                         [(count-where [:and [:>= :running_time 10000] [:< :running_time 50000]]) :num_by_latency__11_50]
+                         [(count-where [:and [:>= :running_time 50000] [:< :running_time 250000]]) :num_by_latency__51_250]
+                         [(count-where [:and [:>= :running_time 250000] [:< :running_time 1000000]]) :num_by_latency__251_1000]
+                         [(count-where [:and [:>= :running_time 1000000] [:< :running_time 10000000]]) :num_by_latency__1001_10000]
+                         [(count-where [:>= :running_time 10000000]) :num_by_latency__10000_plus]]
+                :from   [[(t2/table-name :model/QueryExecution) :qe]]
+                :where  recent}]
+              [:query_stats_2 ^:allow-subquery
+               {:select [[(count-where [:= :num_executions 0]) :num_per_user__0]
+                         [(count-where [:and [:> :num_executions 0] [:< :num_executions 1]]) :num_per_user__lt_1]
+                         [(count-where [:and [:>= :num_executions 1] [:< :num_executions 10]]) :num_per_user__1_10]
+                         [(count-where [:and [:>= :num_executions 10] [:< :num_executions 50]]) :num_per_user__11_50]
+                         [(count-where [:and [:>= :num_executions 50] [:< :num_executions 250]]) :num_per_user__51_250]
+                         [(count-where [:and [:>= :num_executions 250] [:< :num_executions 1000]]) :num_per_user__251_1000]
+                         [(count-where [:and [:>= :num_executions 1000] [:< :num_executions 10000]]) :num_per_user__1001_10000]
+                         [(count-where [:>= :num_executions 10000]) :num_per_user__10000_plus]]
+                :from   [[user-executions :user_executions]]}]]
+     :select [:q1.* :q2.*]
+     :from   [[:query_stats_1 :q1] [:query_stats_2 :q2]]}))
 
 (mu/defn execution-metrics
   "The execution statistics over the last 30 days of QueryExecutions."
   []
-  (first (t2/query (execution-metrics-sql))))
+  (first (t2/query (execution-metrics-query))))
 
 (mu/defn query-cache-stats
   "The average result `:length` and `:count` of the QueryCache entries."
@@ -254,7 +245,7 @@
    limit         :- ms/PositiveInt]
   (t2/count :model/User {:where [:and
                                  [:<= :date_joined joined-before]
-                                 (mi/non-internal-filter-clause :model/User :core_user)]
+                                 (mi/non-internal-filter-clause :model/User (t2/table-name :model/User))]
                          :limit limit}))
 
 (mu/defn query-execution-ids-excluding-database

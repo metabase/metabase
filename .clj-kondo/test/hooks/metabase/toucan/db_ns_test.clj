@@ -281,9 +281,8 @@
 
 (deftest ^:parallel identifier-clauses-are-not-value-slots-test
   (testing "a symbol naming a column or a table is not reported"
-    ;; `value-guard` refuses a marker in these clauses, so reporting one asks for a fix that throws
-    ;; at compile. data_studio/db.clj, task_history/db.clj and permissions/db.clj are written this
-    ;; way. `:select` is the exception: index 0 of its entries is an expression, so it has its own
+    ;; A marker in these clauses breaks the query, so reporting one asks for a broken fix.
+    ;; data_studio/db.clj, task_history/db.clj and permissions/db.clj are written this way. `:select` is the exception: index 0 of its entries is an expression, so it has its own
     ;; test in expression-entry-clauses-test.
     (are [form] (empty? (lint-query-call form 'metabase.foo.db))
       '(t2/query {:select [:*] :from [[union-query :subquery]]})
@@ -301,8 +300,8 @@
 
 (deftest ^:parallel expression-entry-clauses-test
   (testing "index 0 of an entry is a value slot, because HoneySQL binds a parameter there"
-    ;; `{:select [[[:auto/param "a"] :k]]}` compiles to `SELECT ? AS "K"`, so `value-guard` accepts
-    ;; a marker there. Treating the whole clause as names would hide a request value.
+    ;; `{:select [[[:auto/param "a"] :k]]}` compiles to `SELECT ? AS "K"`, so a marker
+    ;; works there. Treating the whole clause as names would hide a request value.
     (are [form] (=? [{:type    :metabase/unsafe-app-db-query
                       :message #"`v`.*reaches a SQL value slot unmarked.*"}]
                     (lint-query-call form 'metabase.foo.db))
@@ -310,7 +309,7 @@
       '(t2/query {:select-distinct [[v :label]] :from [:t]})
       '(t2/query {:insert-into [:t] :returning [[v :label]]})))
   (testing "the alias, a bare entry and a table entry are names"
-    ;; `value-guard` refuses a marker in each of these, so asking for one would break the query.
+    ;; A marker in each of these breaks the query, so asking for one would be wrong.
     (are [form] (empty? (lint-query-call form 'metabase.foo.db))
       '(t2/query {:select [[:key alias-sym]] :from [:t]})
       '(t2/query {:select [cols] :from [:t]})

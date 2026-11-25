@@ -16,7 +16,7 @@
                     (if (= (mdb/db-type) :postgres)
                       [:= [:date_part (name part-key) :started_at] part-value]
                       [:= [part-key :started_at] part-value]))]
-    (t2/select :query_execution
+    (t2/select (t2/table-name :model/QueryExecution)
                {:order-by [[:started_at :desc]]
                 :where    [:and
                            (date-part :year year)

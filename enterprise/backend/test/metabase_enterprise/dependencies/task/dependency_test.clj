@@ -527,9 +527,9 @@
   (is (true? (dependencies.db/app-db-reachable?)))
   (testing "inside a transaction a failed statement aborted, the app DB still answers"
     (t2/with-transaction [^java.sql.Connection conn]
-      (is (thrown? Exception (t2/query conn ["SELECT * FROM no_such_table"])))
+      (is (thrown? Exception (t2/query conn {:select [:*] :from [:no_such_table]})))
       (when (= :postgres (mdb/db-type))
-        (is (thrown? Exception (t2/query conn ["SELECT 1"])) "test setup: the transaction is aborted"))
+        (is (thrown? Exception (t2/query conn {:select [[[:inline 1] :one]]})) "test setup: the transaction is aborted"))
       (is (true? (dependencies.db/app-db-reachable?)))
       (.rollback conn))))
 

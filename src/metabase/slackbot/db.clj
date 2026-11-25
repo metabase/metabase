@@ -4,6 +4,7 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -13,7 +14,7 @@
   (t2/select-one [:model/AuthIdentity :user_id :metadata]
                  :provider "slack-connect"
                  :provider_id [:auto/param slack-user-id]
-                 {:join     [[:core_user :user] [:= :user.id :auth_identity.user_id]]
+                 {:join     [[(t2/table-name :model/User) :user] [:= :user.id (u/qualified-key (t2/table-name :model/AuthIdentity) :user_id)]]
                   :where    [:= :user.is_active true]
                   :order-by [[:created_at :desc]]}))
 

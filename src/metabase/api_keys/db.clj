@@ -6,6 +6,7 @@
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -52,11 +53,11 @@
   [api-key-ids :- [:sequential ms/PositiveInt]]
   (mdb/select-batched #(t2/query {:select [[:pg.name :group-name]
                                            [:pg.id :group-id]
-                                           [:api_key.id :api-key-id]]
-                                  :from   [[:permissions_group :pg]]
-                                  :join   [[:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]
-                                           :api_key [:= :api_key.user_id :pgm.user_id]]
-                                  :where  [:in :api_key.id %]})
+                                           [(u/qualified-key (t2/table-name :model/ApiKey) :id) :api-key-id]]
+                                  :from   [[(t2/table-name :model/PermissionsGroup) :pg]]
+                                  :join   [[(t2/table-name :model/PermissionsGroupMembership) :pgm] [:= :pgm.group_id :pg.id]
+                                           (t2/table-name :model/ApiKey) [:= (u/qualified-key (t2/table-name :model/ApiKey) :user_id) :pgm.user_id]]
+                                  :where  [:in (u/qualified-key (t2/table-name :model/ApiKey) :id) %]})
                       api-key-ids))
 
 (mu/defn user-types :- [:map-of ::lib.schema.id/user :keyword]

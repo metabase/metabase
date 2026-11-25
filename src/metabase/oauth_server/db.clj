@@ -26,8 +26,8 @@
    event-type :- [:maybe :string]]
   (let [where (client-event-where client-id event-type)]
     (t2/query (cond-> {:select    [[[:count :*] :count]]
-                       :from      [[:oauth_client_event :e]]
-                       :left-join [[:oauth_client :c] [:= :e.oauth_client_id :c.id]]}
+                       :from      [[(t2/table-name :model/OAuthClientEvent) :e]]
+                       :left-join [[(t2/table-name :model/OAuthClient) :c] [:= :e.oauth_client_id :c.id]]}
                 where (assoc :where where)))))
 
 (mu/defn client-events
@@ -48,9 +48,9 @@
                                     [:u.email :user_email]
                                     [:u.first_name :user_first_name]
                                     [:u.last_name :user_last_name]]
-                       :from       [[:oauth_client_event :e]]
-                       :left-join  [[:oauth_client :c] [:= :e.oauth_client_id :c.id]
-                                    [:core_user :u]    [:= :e.user_id :u.id]]
+                       :from       [[(t2/table-name :model/OAuthClientEvent) :e]]
+                       :left-join  [[(t2/table-name :model/OAuthClient) :c] [:= :e.oauth_client_id :c.id]
+                                    [(t2/table-name :model/User) :u]    [:= :e.user_id :u.id]]
                        :order-by   [[:e.created_at :desc] [:e.id :desc]]
                        :limit      limit
                        :offset     offset}

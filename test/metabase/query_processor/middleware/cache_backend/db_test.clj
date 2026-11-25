@@ -4,11 +4,13 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.util.encryption-test :as encryption-test])
+   [metabase.util.encryption-test :as encryption-test]
+   [toucan2.core :as t2])
   (:import
    (java.util.concurrent CountDownLatch TimeUnit)
    (javax.sql DataSource)))
@@ -19,7 +21,7 @@
   "Get the stored value from the query_cache"
   []
   (let [conn (.getConnection ^DataSource (:data-source (mdb.connection/current-application-db)))]
-    (-> (jdbc/query {:connection conn} "select results from query_cache limit 1")
+    (-> (jdbc/query {:connection conn} (sql/format {:select [:results] :from [(t2/table-name :model/QueryCache)] :limit 1} {:quoted false}))
         first
         :results
         byte-array

@@ -15,6 +15,7 @@
    [metabase.search.ingestion.query :as ingestion.query]
    [metabase.search.schema :as search.schema]
    [metabase.search.spec :as search.spec]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -167,12 +168,11 @@
   [table   :- [:or :keyword :string]
    entries :- [:sequential SearchIndexRow]]
   (when (seq entries)
-    (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
-          excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
+    (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))]
       (t2/query {:insert-into   table
                  :values        entries
                  :on-conflict   [:model :model_id]
-                 :do-update-set (with-meta (zipmap update-keys (map excluded-kw update-keys))
+                 :do-update-set (with-meta (zipmap update-keys (map #(u/qualified-key :excluded %) update-keys))
                                            {:allow-subquery true})}))))
 
 (mu/defn commit!

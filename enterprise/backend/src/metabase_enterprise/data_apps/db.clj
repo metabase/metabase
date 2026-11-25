@@ -9,6 +9,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.card-schema :as queries.card-schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -290,8 +291,8 @@
   none: those the user reads, none without the data apps feature."
   [{:keys [user-id is-superuser?]} :- :metabase.dependencies.items/items-opts]
   (when-let [visible-ids (data-apps/visible-data-app-filter-select {:user-id user-id :is-superuser? is-superuser?})]
-    {:select [[:data_app.id :entity_id] [:data_app.name :name] [nil :location]]
-     :from   [:data_app]
+    {:select [[(u/qualified-key (t2/table-name :model/DataApp) :id) :entity_id] [(u/qualified-key (t2/table-name :model/DataApp) :name) :name] [nil :location]]
+     :from   [(t2/table-name :model/DataApp)]
      :where  (into [:and]
                    (remove nil?)
-                   [[:in :data_app.id visible-ids]])}))
+                   [[:in (u/qualified-key (t2/table-name :model/DataApp) :id) visible-ids]])}))

@@ -195,7 +195,7 @@
                                               [:not [:exists ^:allow-subquery {:select [1]
                                                                                :from   [[(t2/table-name :model/FieldUserSettings) :s]]
                                                                                :where  [:and
-                                                                                        [:= :s.field_id :metabase_field.id]
+                                                                                        [:= :s.field_id (u/qualified-key (t2/table-name :model/Field) :id)]
                                                                                         [:not= :s.data_sensitivity nil]]}]]
                                               [:> :id [:auto/param after-id]]]
                                    :order-by [[:id :asc]]

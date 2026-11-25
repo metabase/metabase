@@ -65,7 +65,7 @@
                                                                             ^:allow-subquery {:partition-by [:moderated_item_type :moderated_item_id]
                                                                                               :order-by     [[:id :desc]]}]]
                                                                     :rn]]
-                                                          :from   [:moderation_review]
+                                                          :from   [(t2/table-name :model/ModerationReview)]
                                                           :where  (items-clause %)}
                                                          :ranked]]
                                                :where  [:> :rn n]}]})

@@ -51,12 +51,12 @@
   case-insensitive name order."
   [model-id :- ms/PositiveInt]
   (t2/select :model/Card {:select [:c.*]
-                          :from [[:report_card :m]]
-                          :join [[:report_card :c] [:and
-                                                    [:= :c.database_id :m.database_id]
-                                                    [:or
-                                                     [:like :c.dataset_query (format "%%card__%s%%" model-id)]
-                                                     [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
+                          :from [[(t2/table-name :model/Card) :m]]
+                          :join [[(t2/table-name :model/Card) :c] [:and
+                                                                   [:= :c.database_id :m.database_id]
+                                                                   [:or
+                                                                    [:like :c.dataset_query (format "%%card__%s%%" model-id)]
+                                                                    [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
                           :where [:and [:= :m.id model-id] [:not :c.archived]]
                           :order-by [[[:lower :c.name] :asc]]}))
 
@@ -75,7 +75,7 @@
   [segment-id :- ::lib.schema.id/segment]
   (t2/select-one-fn :db_id :model/Table {:select [:t.db_id]
                                          :from [[(t2/table-name :model/Table) :t]]
-                                         :join [[:segment :m] [:= :t.id :m.table_id]]
+                                         :join [[(t2/table-name :model/Segment) :m] [:= :t.id :m.table_id]]
                                          :where [:= :m.id segment-id]}))
 
 (mu/defn table-database-id
