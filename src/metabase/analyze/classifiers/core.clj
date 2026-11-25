@@ -6,7 +6,8 @@
   1.  `name`: Looks at the name of a Field and infers a semantic type if possible
   2.  `no-preview-display`: Looks at average length of text Field recorded in fingerprint and decides whether or not we
       should hide this Field
-  3.  `category`: Looks at the number of distinct values of Field and determines whether it can be a Category
+  3.  `category`: Looks at the number of distinct values of Field and determines whether it can be a Category, and
+      whether it has too many values for a list
   4.  `text-fingerprint`: Looks at percentages recorded in a text Fields' TextFingerprint and infers a semantic type if
       possible
 
@@ -39,6 +40,7 @@
   `:sync.classify/original`."
   [#'classifiers.name/infer-and-assoc-semantic-type-by-name
    #'classifiers.category/infer-is-category
+   #'classifiers.category/infer-has-field-values
    #'classifiers.no-preview-display/infer-no-preview-display
    #'classifiers.text-fingerprint/infer-semantic-type])
 

@@ -430,7 +430,8 @@
 (deftest ^:mb/driver-tests ^:synchronized union-batching-test
   (testing "Field count > *batch-size* is broken into multiple queries; every field's counts are accounted for"
     (mt/dataset test-data
-      (binding [distinct-batch/*batch-size* 2]
+      ;; Only a few `people` Fields have few enough values for a list
+      (binding [distinct-batch/*batch-size* 1]
         (let [fields           (vec (t2/select :model/Field
                                                :table_id (mt/id :people)
                                                :active true

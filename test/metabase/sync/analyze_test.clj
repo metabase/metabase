@@ -1,5 +1,6 @@
 (ns metabase.sync.analyze-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.analyze.classifiers.category :as classifiers.category]
    [metabase.analyze.classifiers.data-sensitivity :as classifiers.data-sensitivity]
@@ -11,13 +12,16 @@
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.models.interface :as mi]
    [metabase.sync.analyze :as analyze]
+   [metabase.sync.core :as sync]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.test.data :as data]
+   [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.sync :refer [sync-survives-crash?! cache-normal-sync-steps-fixture]]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (use-fixtures :once #'cache-normal-sync-steps-fixture)
@@ -296,3 +300,19 @@
     (let [field (mi/instance :model/Field {:base_type :type/Boolean :name "active"})]
       (is (not-category (classifiers.category/infer-is-category field {})))
       (is (not-category (classifiers.name/infer-and-assoc-semantic-type-by-name field {}))))))
+
+(deftest too-many-values-for-a-list-get-search-test
+  (testing "sync gives search to a field whose sample has more than 1,500 distinct values, so it gets no list"
+    (one-off-dbs/with-blank-db
+      (jdbc/execute! one-off-dbs/*conn* ["CREATE TABLE things (name VARCHAR(20) NOT NULL, kind VARCHAR(20) NOT NULL);"])
+      (jdbc/execute! one-off-dbs/*conn* ["INSERT INTO things (name, kind) SELECT 'n' || x, 'k' || MOD(x, 5) FROM SYSTEM_RANGE(1, 2000);"])
+      (sync/sync-database! (mt/id))
+      (let [field      #(t2/select-one :model/Field :id (mt/id :things %))
+            first-use! #(:values (field-values/get-or-create-full-field-values! (field %)))]
+        (is (= :search (:has_field_values (field :name))))
+        (is (= :auto-list (:has_field_values (field :kind))))
+        (testing "the first use of the field reads no list for it"
+          (is (nil? (first-use! :name)))
+          (is (not (t2/exists? :model/FieldValues :field_id (mt/id :things :name)))))
+        (testing "a field with few values still gets its list"
+          (is (= ["k0" "k1" "k2" "k3" "k4"] (first-use! :kind))))))))

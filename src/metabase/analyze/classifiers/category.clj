@@ -50,3 +50,25 @@
   (when (and (sync-util/can-be-category? (:base_type field) (:semantic_type field))
              (field-should-be-category? fingerprint field))
     (assoc field :semantic_type :type/Category)))
+
+(def ^Long too-many-values-threshold
+  "Fields whose fingerprint sample has more than this many distinct values get a `has_field_values` of `search`
+  instead of `auto-list`, so sync does not read their values from the warehouse. The list holds at most
+  [[auto-list-cardinality-threshold]] values. The sample's distinct count is an estimate, so the limit is well over
+  that."
+  1500)
+
+(mu/defn infer-has-field-values :- [:maybe analyze.schema/Field]
+  "Classifier that gives an `auto-list` `field` a `has_field_values` of `search` when its `fingerprint` shows more
+  distinct values than a list can hold. A list for it would hold an arbitrary part of its values. Text fields then
+  search their values, and other fields take a typed value. A value an admin set is not changed."
+  [field       :- analyze.schema/Field
+   fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
+  (let [distinct-count (get-in fingerprint [:global :distinct-count])]
+    (when (and (= :auto-list (keyword (:has_field_values field)))
+               (some-> distinct-count (> too-many-values-threshold)))
+      (log/debugf "%s has about %d distinct values, more than %d, so it gets search instead of a list."
+                  (sync-util/name-for-logging field)
+                  distinct-count
+                  too-many-values-threshold)
+      (assoc field :has_field_values :search))))

@@ -15,7 +15,6 @@
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses-rest.api-test :as api.database-test]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
@@ -202,13 +201,12 @@
 (deftest sync-sample-database-test
   (testing "Make sure the Sample Database is getting synced correctly."
     (with-temp-sample-database-db [db]
-      ;; Manually activate Field values since they are not created during sync (#53387)
-      (field-values/get-or-create-full-field-values! (field db "PEOPLE" "NAME"))
       (is (= {:description      "The name of the user who owns an account"
               :database_type    "CHARACTER VARYING"
               :semantic_type    :type/Name
               :name             "NAME"
-              :has_field_values :list
+              ;; about 2,500 distinct values: more than a list holds
+              :has_field_values :search
               :active           true
               :visibility_type  :normal
               :preview_display  true
@@ -225,9 +223,6 @@
                                                       :percent-blank  0.0}}}
               :base_type        :type/Text}
              (-> (field db "PEOPLE" "NAME")
-                 ;; it should be `nil` after sync but get set to `search` by the auto-inference. We only set `list` in
-                 ;; sync and setting anything else is reserved for admins, however we fill in what we think should be
-                 ;; the appropiate value with the hydration fn
                  (t2/hydrate :has_field_values)
                  (select-keys [:name :description :database_type :semantic_type :has_field_values :active :visibility_type
                                :preview_display :display_name :fingerprint :base_type])))))))
