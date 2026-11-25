@@ -15,7 +15,8 @@
 
 (doto :model/ExplorationThreadTimeline
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationThreadTimeline :timeline]
   [_model k join-rows]

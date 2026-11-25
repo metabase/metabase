@@ -72,7 +72,8 @@
 (doto :model/Dashboard
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at :initially_published_at})

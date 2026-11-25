@@ -20,7 +20,8 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 ;; NOTE: the `use_verified_content` column now means "use only verified OR curated content" — when on,
 ;; Metabot search is restricted via the precomputed `curated` flag (see metabase.collections.curation),

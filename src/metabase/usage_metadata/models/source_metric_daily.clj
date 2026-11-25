@@ -17,7 +17,9 @@
    :agg_type       mi/transform-keyword
    :temporal_unit  mi/transform-keyword})
 
-(derive :model/SourceMetricDaily :metabase/model)
+(doto :model/SourceMetricDaily
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 

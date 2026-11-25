@@ -16,7 +16,9 @@
 
 (methodical/defmethod t2/table-name :model/AnalysisFindingError [_model] :analysis_finding_error)
 
-(derive :model/AnalysisFindingError :metabase/model)
+(doto :model/AnalysisFindingError
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 (mr/def ::analysis-finding-error
   "Schema for an AnalysisFindingError record."

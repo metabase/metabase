@@ -325,7 +325,8 @@
 
 (doto :model/Collection
   (derive :metabase/model)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defn- default-audit-collection?
   "Whether `collection` is the default audit Collection, whose id `audit-collection-ids` holds, outside analytics dev

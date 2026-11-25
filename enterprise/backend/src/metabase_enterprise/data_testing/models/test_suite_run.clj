@@ -15,7 +15,9 @@
 
 (methodical/defmethod t2/table-name :model/TestSuiteRun [_model] :test_suite_run)
 
-(derive :model/TestSuiteRun :metabase/model)
+(doto :model/TestSuiteRun
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/TestSuiteRun
   {:status  mi/transform-keyword

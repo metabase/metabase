@@ -24,7 +24,8 @@
 (doto :model/TimelineEvent
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (def default-icon
   "The default icon for Timeline and TimelineEvents."

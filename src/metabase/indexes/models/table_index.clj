@@ -27,7 +27,8 @@
 
 (doto :model/TableIndex
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (def ^:private transform-structured
   "JSON in/out for `:structured`, re-keywordizing enum-valued fields (the `fixes`) and validating against the schema

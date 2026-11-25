@@ -17,7 +17,8 @@
 
 (doto :model/PulseCard
   (derive :metabase/model)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 ;;; ------------------------------------------------------- Hooks --------------------------------------------------------
 

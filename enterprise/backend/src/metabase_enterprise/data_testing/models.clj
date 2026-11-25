@@ -36,7 +36,8 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive ::saved-test))
+  (derive ::saved-test)
+  (derive :hook/worktree-id))
 
 (def now-column
   "A Toucan transform for the `now` column of a saved test: a value of [[::data-testing.schema/now]], normalized and

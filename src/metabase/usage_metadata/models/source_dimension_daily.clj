@@ -16,7 +16,9 @@
    :ownership_mode mi/transform-keyword
    :temporal_unit  mi/transform-keyword})
 
-(derive :model/SourceDimensionDaily :metabase/model)
+(doto :model/SourceDimensionDaily
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 

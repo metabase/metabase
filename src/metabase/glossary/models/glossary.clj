@@ -20,7 +20,8 @@
 (doto :model/Glossary
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (def GlossaryEntry
   "Schema for a glossary entry."

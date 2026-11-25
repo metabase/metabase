@@ -19,7 +19,8 @@
 (doto :model/ExplorationQuery
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/ExplorationQuery
   {:visualization_settings mi/transform-json

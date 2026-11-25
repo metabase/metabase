@@ -18,7 +18,8 @@
 
 (doto :model/TransformJobTransformTag
   (derive :metabase/model)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 

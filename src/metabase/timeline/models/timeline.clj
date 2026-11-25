@@ -26,7 +26,8 @@
 (doto :model/Timeline
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (t2/define-after-select :model/Timeline
   [timeline]

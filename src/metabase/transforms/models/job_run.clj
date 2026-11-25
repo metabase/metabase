@@ -18,7 +18,8 @@
 
 (doto :model/TransformJobRun
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (t2/define-before-update :model/TransformJobRun
   [run]

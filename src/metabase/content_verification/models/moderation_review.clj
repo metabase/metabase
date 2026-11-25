@@ -40,7 +40,8 @@
 (doto :model/ModerationReview
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :search/indexed))
+  (derive :search/indexed)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/ModerationReview
   {:moderated_item_type mi/transform-keyword})

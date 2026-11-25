@@ -48,7 +48,8 @@
     (derive :metabase/model)
     (derive (if (= model :model/NotificationSubscription)
               :hook/created-at-timestamped?
-              :hook/timestamped?))))
+              :hook/timestamped?))
+    (derive :hook/worktree-id)))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/Notification                                       ;;

@@ -31,8 +31,13 @@
 (methodical/defmethod t2/table-name :model/ModelIndex [_model] :model_index)
 (methodical/defmethod t2/table-name :model/ModelIndexValue [_model] :model_index_value)
 
-(derive :model/ModelIndex :metabase/model)
-(derive :model/ModelIndexValue :metabase/model)
+(doto :model/ModelIndex
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
+
+(doto :model/ModelIndexValue
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 (derive :model/ModelIndex :hook/created-at-timestamped?)
 ;; TODO disabled due to issues having an update hook causes, seemingly due to a toucan2 bug

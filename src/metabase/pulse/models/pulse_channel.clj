@@ -71,7 +71,8 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive ::mi/read-policy.always-allow)
-  (derive ::mi/write-policy.superuser))
+  (derive ::mi/write-policy.superuser)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/PulseChannel
   {:details (mi/transform-encrypted-json "pulse_channel.details")

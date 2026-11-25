@@ -22,7 +22,8 @@
 
 (doto :model/Comment
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 ;; NOTE: the `content_html` column is deprecated and no longer written to.
 ;; HTML for email notifications is now rendered server-side from the `content` JSON

@@ -24,6 +24,7 @@
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
    [metabase.app-db.value-guard]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.global-system.mutable-component :as mc]
    [potemkin :as p]))
@@ -110,7 +111,12 @@
  [metabase.app-db.query-cancelation
   query-canceled-exception?]
  [liquibase
-  changelog-by-id])
+  changelog-by-id]
+ [mdb.worktree
+  default-worktree-id
+  do-with-worktree-scope
+  with-worktree-scope
+  worktree-id])
 
 ;; TODO -- consider whether we can just do this automatically when `getConnection` is called on
 ;; the application DB (or its data source)

@@ -20,12 +20,29 @@
 (methodical/defmethod t2/table-name :model/DocumentBookmark    [_model] :document_bookmark)
 (methodical/defmethod t2/table-name :model/ExplorationBookmark [_model] :exploration_bookmark)
 
-(derive :model/CardBookmark :metabase/model)
-(derive :model/DashboardBookmark :metabase/model)
-(derive :model/CollectionBookmark :metabase/model)
-(derive :model/BookmarkOrdering :metabase/model)
-(derive :model/DocumentBookmark :metabase/model)
-(derive :model/ExplorationBookmark :metabase/model)
+(doto :model/CardBookmark
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
+
+(doto :model/DashboardBookmark
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
+
+(doto :model/CollectionBookmark
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
+
+(doto :model/BookmarkOrdering
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
+
+(doto :model/DocumentBookmark
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
+
+(doto :model/ExplorationBookmark
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 ;;; ---------------------------------------------------- Bookmarks ---------------------------------------------------
 

@@ -31,7 +31,8 @@
 (doto :model/OsiAiContext
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/OsiAiContext
   ;; ai_context is keywordized on read so reconcile reads (:instructions ai_context) etc. directly. On write

@@ -10,7 +10,9 @@
 
 (methodical/defmethod t2/table-name :model/ChangeLog [_model] :change_log)
 
-(derive :model/ChangeLog :metabase/model)
+(doto :model/ChangeLog
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 (defmethod app-db-copy/spec :model/ChangeLog [_model]
   {:skip? true})

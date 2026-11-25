@@ -34,7 +34,8 @@
 
 (doto :model/CacheConfig
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (methodical/defmethod t2/table-name :model/CacheConfig [_model] :cache_config)
 

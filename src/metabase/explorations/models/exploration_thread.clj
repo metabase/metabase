@@ -18,7 +18,8 @@
 (doto :model/ExplorationThread
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/ExplorationThread
   {:query_plan_transcript (mi/transform-json-with-schema "exploration_thread.query_plan_transcript"

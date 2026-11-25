@@ -68,7 +68,8 @@
 (doto :model/Exploration
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :can_read]
   "Whether the current user reads each of `explorations`, as the content of its Collection."

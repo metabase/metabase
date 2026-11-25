@@ -170,7 +170,8 @@
 (doto :model/Card
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defn- summary-card-snapshots
   "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it

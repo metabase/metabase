@@ -36,7 +36,8 @@
 (doto :model/DashboardCard
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/DashboardCard
   {:parameter_mappings     parameters/transform-parameter-mappings

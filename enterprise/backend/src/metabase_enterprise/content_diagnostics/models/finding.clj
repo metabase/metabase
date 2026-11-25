@@ -16,7 +16,8 @@
 (methodical/defmethod t2/table-name :model/ContentDiagnosticsFinding [_model] :content_diagnostics_finding)
 
 (doto :model/ContentDiagnosticsFinding
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/ContentDiagnosticsFinding
   {:entity_type  mi/transform-keyword

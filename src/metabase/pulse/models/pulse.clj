@@ -62,7 +62,8 @@
 (doto :model/Pulse
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (def ^:private transform-pulse-parameters
   "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."

@@ -13,7 +13,9 @@
 
 (methodical/defmethod t2/table-name :model/AnalysisFindingStatus [_model] :analysis_finding_status)
 
-(derive :model/AnalysisFindingStatus :metabase/model)
+(doto :model/AnalysisFindingStatus
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/AnalysisFindingStatus
   {:entity_type mi/transform-keyword})

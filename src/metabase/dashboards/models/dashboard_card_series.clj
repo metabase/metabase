@@ -15,7 +15,8 @@
 (methodical/defmethod t2/table-name :model/DashboardCardSeries [_model] :dashboardcard_series)
 
 (doto :model/DashboardCardSeries
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

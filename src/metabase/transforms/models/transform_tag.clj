@@ -25,7 +25,8 @@
 (doto :model/TransformTag
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 

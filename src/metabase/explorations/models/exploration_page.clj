@@ -16,7 +16,8 @@
 (doto :model/ExplorationPage
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationPage :can_read]
   "Add whether the current user can read each ExplorationPage, which is whether they can read its parent."

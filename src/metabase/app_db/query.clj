@@ -24,6 +24,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.db :as app-db.db]
    [metabase.app-db.format :as app-db.format]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.funnysql.core :as funnysql]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -106,7 +107,7 @@
 
 (defmethod compile clojure.lang.IPersistentMap
   [honeysql]
-  (funnysql/format honeysql (mdb.connection/db-type)))
+  (funnysql/format (mdb.worktree/scope-honeysql honeysql) (mdb.connection/db-type)))
 
 (defn current-timestamp-string
   "The application DB's own current timestamp, as a string. Read from the DB rather than from this machine's clock,

@@ -26,7 +26,8 @@
 
 (doto :model/ExplorationBlock
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/worktree-id))
 
 (defn- keywordize-dim-types
   "The dim snapshot stores `effective-type`/`semantic-type` as JSON strings (`\"type/Date\"`),

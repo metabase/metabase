@@ -20,7 +20,7 @@
 
 (methodical/defmethod t2/table-name :model/PythonLibrary [_model] :python_library)
 
-(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
+(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id :hook/worktree-id]]
   (derive :model/PythonLibrary trait))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------

@@ -46,7 +46,8 @@
   (derive :metabase/model)
   ;;; only admins can work with sandboxes
   (derive ::mi/read-policy.superuser)
-  (derive ::mi/write-policy.superuser))
+  (derive ::mi/write-policy.superuser)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/Sandbox
   {:attribute_remappings sandbox.schema/attribute-remappings-transform})

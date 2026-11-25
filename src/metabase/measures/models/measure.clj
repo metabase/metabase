@@ -47,7 +47,8 @@
 (doto :model/Measure
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 (defn- definition-table-id
   "The id of the Table `definition`, a full query, is built on, read without the app DB."

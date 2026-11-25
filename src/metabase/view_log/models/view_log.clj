@@ -19,7 +19,8 @@
 (doto :model/ViewLog
   (derive :metabase/model)
   (derive ::mi/read-policy.always-allow)
-  (derive ::mi/write-policy.always-allow))
+  (derive ::mi/write-policy.always-allow)
+  (derive :hook/worktree-id))
 
 (mr/def ::context [:maybe view-log-impl/context])
 

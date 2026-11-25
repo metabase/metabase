@@ -30,7 +30,8 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive ::data-testing.models/saved-test))
+  (derive ::data-testing.models/saved-test)
+  (derive :hook/worktree-id))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/CardTest :card]
   [_original-model _k]

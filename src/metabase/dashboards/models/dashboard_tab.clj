@@ -28,7 +28,8 @@
 (doto :model/DashboardTab
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/worktree-id))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

@@ -15,8 +15,10 @@
 
 (methodical/defmethod t2/table-name :model/QueryExecution [_model] :query_execution)
 
-(derive :model/QueryExecution :metabase/model)
-(derive :model/QueryExecution ::t2.disallow/update)
+(doto :model/QueryExecution
+  (derive :metabase/model)
+  (derive ::t2.disallow/update)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/QueryExecution
   {:json_query mi/transform-json

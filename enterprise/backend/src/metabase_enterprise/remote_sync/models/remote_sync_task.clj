@@ -22,7 +22,9 @@
 
 (methodical/defmethod t2/table-name :model/RemoteSyncTask [_model] :remote_sync_task)
 
-(derive :model/RemoteSyncTask :metabase/model)
+(doto :model/RemoteSyncTask
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/RemoteSyncTask
   {:conflicts mi/transform-json
