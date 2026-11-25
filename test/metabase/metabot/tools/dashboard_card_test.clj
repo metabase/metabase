@@ -8,6 +8,8 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.dashboard-card :as dashboard-card]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.users.models.user-parameter-value :as user-parameter-value]))
 
@@ -31,21 +33,32 @@
     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
         (lib/aggregate (lib/count)))))
 
+(def ^:private price-filter
+  "A dashboard filter on venue price, with 4 as its default."
+  {:id      "price"
+   :name    "Price"
+   :slug    "price"
+   :type    "category"
+   :default [4]})
+
 (defn- do-with-venues-dashboard
   "Call `f` with `{:dashboard-id :dashcard-id :text-dashcard-id :card-id}` for a dashboard with a Price filter
    (default 4) connected to a card that counts venues, and a text card."
   [f]
   (mt/with-temp [:model/Card          {card-id :id}          {:dataset_query (venues-count)}
-                 :model/Dashboard     {dashboard-id :id}     {:parameters [{:id "price", :name "Price", :slug "price"
-                                                                            :type "category", :default [4]}]}
+                 :model/Dashboard     {dashboard-id :id}     {:parameters [price-filter]}
                  :model/DashboardCard {dashcard-id :id}      {:dashboard_id       dashboard-id
                                                               :card_id            card-id
                                                               :parameter_mappings [{:parameter_id "price"
                                                                                     :card_id      card-id
-                                                                                    :target       [:dimension (mt/$ids venues $price)]}]}
+                                                                                    :target       (mt/$ids venues
+                                                                                                    [:dimension $price])}]}
                  :model/DashboardCard {text-dashcard-id :id} {:dashboard_id           dashboard-id
                                                               :visualization_settings {:text "Hello"}}]
-    (f {:dashboard-id dashboard-id, :dashcard-id dashcard-id, :text-dashcard-id text-dashcard-id, :card-id card-id})))
+    (f {:dashboard-id     dashboard-id
+        :dashcard-id      dashcard-id
+        :text-dashcard-id text-dashcard-id
+        :card-id          card-id})))
 
 (defn- count-shown
   "The count in the one-cell table of a run's `output`."
@@ -64,7 +77,10 @@
            (is (= 22 (count-shown output)))
            (is (str/includes? output "with the dashboard filter values on the user's screen: Price = [1]."))
            (is (str/includes? output (str "`metabase://question/" card-id "`")))
-           (is (= {:dashcard-id dashcard-id, :card-id card-id, :returned 1, :truncated? false}
+           (is (= {:dashcard-id dashcard-id
+                   :card-id     card-id
+                   :returned    1
+                   :truncated?  false}
                   structured-output))))
        (testing "a cleared filter applies no value, not its default"
          (let [{:keys [output]} (run [{:id "price", :value nil}])]
@@ -118,10 +134,32 @@
                                                     nil :internal))]
                      ((:fn (get entries "run_dashboard_card")) {:dashcard_id dashcard-id}))))))))))
 
+(deftest unreadable-card-not-found-test
+  (testing "a card the user can't read, on a dashboard they can, is not found"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection    {open-id :id}      {}
+                     :model/Collection    {closed-id :id}    {}
+                     :model/Card          {card-id :id}      {:collection_id closed-id, :dataset_query (venues-count)}
+                     :model/Dashboard     {dashboard-id :id} {:collection_id open-id}
+                     :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) open-id)
+        (is (=? {:error {:code ::dashboard-card/dashcard-not-found}}
+                (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id})))))))
+
+(deftest blocked-data-refused-test
+  (testing "a card the user can read, on a database whose data they are blocked from, is refused"
+    (do-with-venues-dashboard
+     (fn [{:keys [dashboard-id dashcard-id]}]
+       (mt/with-no-data-perms-for-all-users!
+         (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+         (is (=? {:error {:code ::dashboard-card/no-permission}}
+                 (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id}))))))))
+
 (deftest metabot-sql-card-refused-test
   (testing "a question holding SQL that Metabot saved doesn't run with filter values"
     (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}
-                   :model/Card                {card-id :id}         {:dataset_query           (mt/native-query {:query "SELECT 1"})
+                   :model/Card                {card-id :id}         {:dataset_query
+                                                                     (mt/native-query {:query "SELECT 1"})
                                                                      :metabot_conversation_id conversation-id}
                    :model/Dashboard           {dashboard-id :id}    {}
                    :model/DashboardCard       {dashcard-id :id}     {:dashboard_id dashboard-id, :card_id card-id}]

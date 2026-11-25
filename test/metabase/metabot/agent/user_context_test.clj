@@ -459,11 +459,18 @@
 (deftest format-dashboard-filter-values-test
   (mt/with-test-user :rasta
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name       "Sales"
-                                                   :parameters [{:id "cat", :name "Category", :slug "category"
-                                                                 :type "string/=", :default ["Gizmo"]}
-                                                                {:id "date", :name "Date", :slug "date"
+                                                   :parameters [{:id      "cat"
+                                                                 :name    "Category"
+                                                                 :slug    "category"
+                                                                 :type    "string/="
+                                                                 :default ["Gizmo"]}
+                                                                {:id   "date"
+                                                                 :name "Date"
+                                                                 :slug "date"
                                                                  :type "date/all-options"}
-                                                                {:id "state", :name "State", :slug "state"
+                                                                {:id   "state"
+                                                                 :name "State"
+                                                                 :slug "state"
                                                                  :type "string/="}]}]
       (let [viewing (fn [item]
                       (user-context/format-viewing-context
