@@ -15,6 +15,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
@@ -1931,20 +1932,28 @@
     (is (= [0 100 200 300] (#'bigquery/run-starts 400 4 10 (constantly 0))))
     (is (= [89 189 289 389] (#'bigquery/run-starts 400 4 10 dec)))))
 
-(deftest ^:synchronized table-random-sample-test
+(deftest ^:parallel run-rows-test
+  (testing "a run reads an even share of the sample, but no more rows than fit the page byte budget"
+    (is (= 500 (#'bigquery/run-rows 10000 1000000 1000000)))
+    (is (= 4 (#'bigquery/run-rows 10000 1000 (* 1000 1024 1024))))
+    (is (= 500 (#'bigquery/run-rows 10000 nil nil)))))
+
+(deftest ^:parallel table-random-sample-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "the driver supports the better sample for itself"
       (is (true? (driver/database-supports? :bigquery-cloud-sdk :table-random-sample (mt/db)))))
-    (let [table  (t2/select-one :model/Table :id (mt/id :checkins))
-          fields (t2/select :model/Field :table_id (:id table) :active true {:order-by [[:database_position :asc]]})
-          sample #(driver/table-random-sample :bigquery-cloud-sdk table fields (constantly conj)
-                                              {:rows % :truncation-size 1234})]
-      (testing "a table with many more rows than the sample is read in runs at random rows"
-        (let [{:keys [method runs fraction result]} (sample 40)]
+    (let [table    (t2/select-one :model/Table :id (mt/id :checkins))
+          fields   (t2/select :model/Field :table_id (:id table) :active true {:order-by [[:database_position :asc]]})
+          bq-table (#'bigquery/get-table (driver.u/lib-database (mt/id)) (:schema table) (:name table))]
+      (testing "runs at random rows of a table of 1,000 rows, with a sample of 40, read 40 different rows"
+        ;; the row count is given, since a new dataset can still have its rows in the streaming buffer
+        (let [{:keys [method runs fraction result]} (#'bigquery/random-runs-sample bq-table fields (constantly conj) 40 1000)
+              id-idx                                (u/index-of #(= "id" (:name %)) fields)]
           (is (= :block method))
           (is (= 20 runs))
-          (is (< 0 fraction 1))
+          (is (= 0.04 fraction))
           (is (= 40 (count result)))
-          (is (every? #(= (count fields) (count %)) result))))
+          (is (= 40 (count (distinct (map #(nth % id-idx) result)))))))
       (testing "a table with not many more rows than the sample reads its first rows"
-        (is (= :first-rows (:method (sample 10000))))))))
+        (is (= :first-rows (:method (driver/table-random-sample :bigquery-cloud-sdk table fields (constantly conj)
+                                                                {:rows 10000 :truncation-size 1234}))))))))
