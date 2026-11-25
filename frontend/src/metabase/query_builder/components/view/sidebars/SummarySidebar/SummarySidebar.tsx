@@ -15,7 +15,10 @@ import { getSummaryGeneratedExpressions } from "../../../../store/selectors";
 
 import { SummaryDragPreview } from "./SummaryDragPreview";
 import { SummaryFieldList } from "./SummaryFieldList";
-import { useSummaryFormulaBar } from "./SummaryFormulaBar";
+import {
+  useRequestedFormulaEdit,
+  useSummaryFormulaBar,
+} from "./SummaryFormulaBar";
 import { useSummaryFormulaGenerator } from "./SummaryFormulaGenerator";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
@@ -144,6 +147,7 @@ export function SummarySidebar({
         }
       },
     });
+  useRequestedFormulaEdit(query, stageIndex, formulaInputs.columns);
 
   const formulaGenerator = useSummaryFormulaGenerator({
     query,

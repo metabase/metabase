@@ -62,6 +62,7 @@ export interface QueryBuilderUIControls {
   isRunning: boolean;
   isShowingSummarySidebar: boolean;
   summaryGeneratedExpressions: SummaryGeneratedExpression[];
+  summaryFormulaToEdit?: ExpressionClause;
   isShowingChartTypeSidebar: boolean;
   isShowingChartSettingsSidebar: boolean;
   isShowingQuestionDetailsSidebar: boolean;
