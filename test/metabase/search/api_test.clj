@@ -2657,22 +2657,31 @@
           [{other-card :id}]      (card/create-cards! [(assoc card-row :collection_id nil :name "No Collection Card")])]
       (testing "Filter by parent collection returns parent and all descendants"
         (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
-          (is (= #{parent-card parent-dash child-card grandchild-card parent-coll child-coll grandchild-coll}
-                 (set (map :id (:data results)))))))
+          (is (= #{["card" child-card]
+                   ["card" grandchild-card]
+                   ["card" parent-card]
+                   ["collection" child-coll]
+                   ["collection" grandchild-coll]
+                   ["collection" parent-coll]
+                   ["dashboard" parent-dash]}
+                 (set (map (juxt :model :id) (:data results)))))))
       (testing "Filter by child collection returns child and descendants only"
         (let [results (mt/user-http-request :crowberto :get 200 "search" :collection child-coll)]
-          (is (= #{child-card grandchild-card child-coll grandchild-coll}
-                 (set (map :id (:data results)))))))
+          (is (= #{["card" child-card]
+                   ["card" grandchild-card]
+                   ["collection" child-coll]
+                   ["collection" grandchild-coll]}
+                 (set (map (juxt :model :id) (:data results)))))))
       (testing "Filter by leaf collection returns only that collection's items"
         (let [results (mt/user-http-request :crowberto :get 200 "search" :collection grandchild-coll)]
-          (is (= #{grandchild-card grandchild-coll}
-                 (set (map :id (:data results)))))))
+          (is (= #{["card" grandchild-card] ["collection" grandchild-coll]}
+                 (set (map (juxt :model :id) (:data results)))))))
       (testing "Filter by non-existent collection returns no results"
         (let [results (mt/user-http-request :crowberto :get 200 "search" :collection 99999)]
           (is (empty? (:data results)))))
       (testing "Items with no collection are not included when filtering by collection"
         (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
-          (is (not (some #{other-card} (map :id (:data results))))))))))
+          (is (not-any? #{["card" other-card]} (map (juxt :model :id) (:data results)))))))))
 
 (deftest collection-filter-with-search-string-test
   (mt/with-temp [:model/Collection {coll-1 :id} {:name "Collection 1"} :model/Collection _ {:name "Collection 2"}]
@@ -2709,10 +2718,11 @@
             (mt/with-temp [:model/Table {table-id :id} {:name "OSS Published Table"}
                            :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id parent-coll}]
               (testing "Collection-filtered search should NOT include published tables in OSS"
-                (let [result-ids (into #{} (map :id) (:data (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)))]
-                  (is (contains? result-ids card-id)
+                (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)
+                      found   (set (map (juxt :model :id) (:data results)))]
+                  (is (contains? found ["card" card-id])
                       "Card in collection should be included")
-                  (is (not (contains? result-ids table-id))
+                  (is (not (contains? found ["table" table-id]))
                       "Published table should NOT be included in collection search in OSS"))))))))))
 
 (deftest collection-filter-respects-permissions-test
@@ -2728,8 +2738,9 @@
                                                     :collection_id coll-id :name "scoped one"}])]
           (is (empty? (:data (mt/user-http-request :rasta :get 200 "search" :collection coll-id))))
           (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
-          (is (= #{card-id coll-id}
-                 (set (map :id (:data (mt/user-http-request :rasta :get 200 "search" :collection coll-id)))))))))))
+          (is (= #{["card" card-id] ["collection" coll-id]}
+                 (set (map (juxt :model :id)
+                           (:data (mt/user-http-request :rasta :get 200 "search" :collection coll-id)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Measure Search Tests (Phase 4)                                         |
