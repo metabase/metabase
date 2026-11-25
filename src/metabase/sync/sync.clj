@@ -16,6 +16,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
+   [metabase.sync.analyze.sample :as sample]
    [metabase.sync.db :as sync.db]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.interface :as i]
@@ -137,9 +138,11 @@
            (if (binding [driver.settings/*allow-testing-h2-connections* true
                          driver.settings/*allow-testing-sqlite-connections* true]
                  (driver.u/can-connect-with-details? (:engine database) (:details database)))
-             (doseq [table tables]
-               (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
-               (sync-table! table))
+             (sample/do-with-better-sample-run
+              (fn []
+                (doseq [table tables]
+                  (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
+                  (sync-table! table))))
              (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
                                        (:id database))))))))))
 

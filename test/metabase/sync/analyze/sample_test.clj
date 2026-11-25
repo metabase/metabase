@@ -54,6 +54,52 @@
   (Thread/sleep 3000)
   {:method :block :result []})
 
+(driver/register! ::bad-shape, :parent :h2)
+
+(defmethod driver/database-supports? [::bad-shape :table-random-sample]
+  [driver _feature _database]
+  (= driver ::bad-shape))
+
+(defmethod driver/table-random-sample ::bad-shape
+  [driver _table _fields _rff _opts]
+  (swap! better-calls conj {:driver driver})
+  {:method :block :runs 7.5 :result []})
+
+(driver/register! ::erroring, :parent :h2)
+
+(defmethod driver/database-supports? [::erroring :table-random-sample]
+  [driver _feature _database]
+  (= driver ::erroring))
+
+(defmethod driver/table-random-sample ::erroring
+  [_driver _table _fields _rff _opts]
+  (throw (AssertionError. "a bug, not a failed sample")))
+
+(driver/register! ::empty-better, :parent :h2)
+
+(defmethod driver/database-supports? [::empty-better :table-random-sample]
+  [driver _feature _database]
+  (= driver ::empty-better))
+
+(defmethod driver/table-random-sample ::empty-better
+  [_driver _table _fields rff _opts]
+  (let [rf (rff nil)]
+    {:method :block :result (rf (rf))}))
+
+;; A parent that declares the flag for its children too, which the rules say not to do.
+(driver/register! ::flag-for-all, :parent :h2)
+
+(defmethod driver/database-supports? [::flag-for-all :table-random-sample]
+  [_driver _feature _database]
+  true)
+
+(defmethod driver/table-random-sample ::flag-for-all
+  [driver _table _fields _rff _opts]
+  (swap! better-calls conj {:driver driver})
+  {:method :block :result []})
+
+(driver/register! ::flag-for-all-child, :parent ::flag-for-all)
+
 (defn- sample-with-driver
   "Sample `venues` and `checkins` of a copy of test-data whose engine is `driver`, in one sync run, returning the
   `:method` of each sample."
@@ -89,6 +135,33 @@
     (testing "a child of a driver with the feature does not inherit it, and keeps its own table-rows-sample"
       (is (= [:unspecified :unspecified] (sample-with-driver ::better-child :row-count 1000000)))
       (is (= [] @better-calls)))))
+
+(deftest a-child-without-its-own-method-keeps-table-rows-sample-test
+  (mt/test-driver :h2
+    (testing "a child gets no better sample from its parent's method, even when the parent declares the flag for it"
+      (is (= [:unspecified :unspecified] (sample-with-driver ::flag-for-all-child :row-count 1000000)))
+      (is (= [] @better-calls)))))
+
+(deftest a-wrong-or-fatal-better-sample-test
+  (mt/test-driver :h2
+    (testing "a better sample of the wrong shape gives the first rows, and is not tried again in the run"
+      (is (= [:unspecified :unspecified] (sample-with-driver ::bad-shape :row-count 1000000)))
+      (is (= 1 (count @better-calls))))
+    (testing "an Error is not a failed sample: it fails the step"
+      (is (thrown-with-msg? AssertionError #"a bug"
+                            (sample-with-driver ::erroring :row-count 1000000))))))
+
+(deftest an-empty-better-sample-falls-back-to-first-rows-test
+  (mt/test-driver :h2
+    (testing "a better sample with no rows gives no fingerprints, so the step reads the first rows instead"
+      (mt/with-temp-copy-of-db
+        (t2/update! :model/Database :id (mt/id) {:engine ::empty-better})
+        (t2/update! :model/Table :id (mt/id :venues) {:estimated_row_count 1000000})
+        (binding [sync.fingerprint/*refingerprint?* true]
+          (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (mt/id :venues))))
+        (is (=? {:fingerprint        {:global {:distinct-count pos-int?}}
+                 :fingerprint_origin {:method :unspecified}}
+                (t2/select-one [:model/Field :fingerprint :fingerprint_origin] :id (mt/id :venues :name))))))))
 
 (deftest a-failing-better-sample-falls-back-for-the-rest-of-the-run-test
   (mt/test-driver :h2

@@ -108,9 +108,17 @@
    fields :- [:maybe [:sequential i/FieldInstance]]]
   (let [rff                          (fn [_metadata]
                                        (analyze/fingerprint-fields fields))
+        opts                         {:truncation-size *truncation-size*}
+        no-data?                     (fn [fingerprints]
+                                       (every? #(= :no-data-fingerprints (fingerprint-outcome %)) fingerprints))
         {fingerprints :result :as how} (tracing/with-span :sync "sync.fingerprint.sample" {:sync/table       (:name table)
                                                                                            :sync/field-count (count fields)}
-                                         (sample/sample table fields rff {:truncation-size *truncation-size*}))]
+                                         (let [how (sample/sample table fields rff opts)]
+                                           ;; A better sample with no rows, for example of a table whose row count
+                                           ;; estimate is old, gives no fingerprints; the first rows may have some.
+                                           (if (and (not= :unspecified (:method how)) (no-data? (:result how)))
+                                             (sample/first-rows-sample table fields rff opts)
+                                             how)))]
     {:rows  (into [] (keep identity) (map (partial fingerprint-row (sample-origin table how)) fields fingerprints))
      :stats (fingerprint-stats fingerprints)}))
 
