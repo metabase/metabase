@@ -160,6 +160,31 @@ describe("PaletteResults", () => {
     ).toBeInTheDocument();
   });
 
+  it("should link a metric search result to its metric page", async () => {
+    setup({
+      query: "Count of orders",
+      searchItems: [
+        createMockSearchResult({
+          id: 1,
+          model: "card",
+          name: "Count of orders by month",
+        }),
+        createMockSearchResult({
+          id: 2,
+          model: "metric",
+          name: "Count of orders",
+        }),
+      ],
+    });
+
+    const option = await screen.findByRole("option", {
+      name: "Count of orders",
+    });
+    expect(
+      within(option).getByRole("link", { name: "Count of orders" }),
+    ).toHaveAttribute("href", "/metric/2");
+  });
+
   it("should link a data app search result to its app", async () => {
     setup({
       query: "Link",
@@ -176,6 +201,32 @@ describe("PaletteResults", () => {
     expect(
       await screen.findByRole("link", { name: "Link Test" }),
     ).toHaveAttribute("href", "/apps/link-test");
+  });
+
+  it("should link an indexed record search result to the record in its model", async () => {
+    setup({
+      query: "marble shoes",
+      searchItems: [
+        createMockSearchResult({
+          id: 1,
+          model: "indexed-entity",
+          name: "Rustic Paper Wallet",
+          model_id: 3,
+          model_name: "Products Model",
+        }),
+        createMockSearchResult({
+          id: 2,
+          model: "indexed-entity",
+          name: "Small Marble Shoes",
+          model_id: 3,
+          model_name: "Products Model",
+        }),
+      ],
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "Small Marble Shoes" }),
+    ).toHaveAttribute("href", "/model/3-products-model/2");
   });
 
   it("should label a data app search result as a data app, not by a collection", async () => {

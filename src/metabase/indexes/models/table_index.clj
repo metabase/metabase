@@ -8,6 +8,7 @@
 
   `:structured` and `:status` are validated at the transform layer (on read and write), so every writer is covered."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.indexes.db :as indexes.db]
    [metabase.indexes.schema :as schema]
    [metabase.models.interface :as mi]
@@ -145,6 +146,11 @@
 ;; travels; lifecycle is local, so an imported index starts fresh as `:create-pending`. `:structured` holds physical
 ;; column names (no references), so it copies verbatim. `:created_by` is skipped: the user may
 ;; not resolve on import.
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TableIndex [_model]
+  {:skip? true})
 
 (defmethod serialization/spec :model/TableIndex [_]
   {:schema    ::schema/external-table-index

@@ -18,7 +18,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.data-apps.schema :as data-apps.schema]
-   [metabase.events.core :as events]
    [metabase.server.middleware.security :as mw.security]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -209,7 +208,6 @@
              [409 (tru "A data app with this slug already exists.")])
   (let [app (data-apps.db/data-app
              (data-apps.db/insert-data-app-returning-pk! (merge create-defaults {:name (:slug body)} body)))]
-    (events/publish-event! :event/data-app-create {:object app :user-id api/*current-user-id*})
     (data-app-response app)))
 
 (defn- update-app!
@@ -220,7 +218,6 @@
     (when (seq changes)
       (data-apps.db/update-data-app! id changes))
     (let [app (data-apps.db/data-app id)]
-      (events/publish-event! :event/data-app-update {:object app :user-id api/*current-user-id*})
       (data-app-response app))))
 
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows slashes inside a segment, so `/:slug`
@@ -243,8 +240,7 @@
   "Delete a data app, its bundle, and its collection with the grants on it."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (let [app (api/write-check (data-apps.db/data-app-by-slug slug))]
-    (data-apps.db/delete-data-app! (:id app))
-    (events/publish-event! :event/data-app-delete {:object app :user-id api/*current-user-id*}))
+    (data-apps.db/delete-data-app! (:id app)))
   nil)
 
 (api.macros/defendpoint :get "/generate/schema" :- GeneratedFiles

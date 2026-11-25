@@ -98,7 +98,7 @@
          (is (mt/user-http-request :crowberto :post 200 "dataset/csv"
                                    (assoc-in as-data-app [:request-options :content-type]
                                              "application/x-www-form-urlencoded")
-                                   {:query (json/encode (lib/->legacy-MBQL query))})))
+                                   {:query (json/encode query)})))
        (testing "a custom column on it runs"
          (is (= "completed" (:status (run-query 202 (lib/expression query "Double price"
                                                                     (lib/* (lib.metadata/field (mt/metadata-provider)
@@ -219,10 +219,8 @@
      (let [categories (table-query :categories)
            name-col   (some #(when (= (mt/id :categories :name) (:id %)) %) (lib/filterable-columns categories))]
        (mt/with-temp [:model/Segment {segment-id :id} {:name       "Bars"
-                                                       :table_id   (mt/id :categories)
                                                        :definition (lib/filter categories (lib/= name-col "Bar"))}
                       :model/Measure {measure-id :id} {:name       "Names"
-                                                       :table_id   (mt/id :categories)
                                                        :definition (lib/aggregate categories (lib/distinct name-col))}]
          (let [mp           (mt/metadata-provider)
                with-segment #(lib/filter % (lib.metadata/segment mp segment-id))

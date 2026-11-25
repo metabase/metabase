@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -137,3 +138,8 @@
          (fail-run! run-id (ex-message throwable))
          (when on-complete
            (deliver on-complete :run/fail)))))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ReplacementRun [_model]
+  {:skip? true})

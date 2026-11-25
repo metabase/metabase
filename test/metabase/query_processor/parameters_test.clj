@@ -807,7 +807,7 @@
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                         (lib/expression "Quantity_2" (lib.metadata/field mp (mt/id :orders :quantity))))
               query (assoc query :parameters [{:type   :number/=
-                                               :target [:dimension (lib.convert/->legacy-MBQL
+                                               :target [:dimension (lib.convert/->legacy-MBQL-ref
                                                                     (lib/expression-ref query "Quantity_2"))]
                                                :value  [14]}])]
           (is (= 1
@@ -864,7 +864,7 @@
                                            (lib/returned-columns query)))
               query   (assoc query :parameters [{:type   :string/=
                                                  :value  ["Facebook MN"]
-                                                 :target [:dimension (lib.convert/->legacy-MBQL (lib/ref ss-col))]}])
+                                                 :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref ss-col))]}])
               rows    (mt/rows (qp/process-query query))]
           (is (some? ss-idx))
           (is (seq rows))

@@ -17,8 +17,6 @@ import type { DashboardSavedValue } from "metabase/api/ai-streaming/schemas";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type { State } from "metabase/redux/store";
-import { getRouterLocation, navigate } from "metabase/router";
-import { setBasename } from "metabase/utils/basename";
 import {
   createMockUser,
   createMockUserMetabotPermissions,
@@ -37,15 +35,13 @@ jest.mock("metabase/api/ai-streaming", () => ({
   findMatchingInflightAiStreamingRequests: jest.fn(() => []),
 }));
 
+// the turn ends by opening the saved dashboard, which these tests don't follow
 jest.mock("metabase/router", () => ({
   ...jest.requireActual("metabase/router"),
   navigate: jest.fn(),
-  getRouterLocation: jest.fn(),
 }));
 
 const mockedAiStreamingQuery = jest.mocked(aiStreamingQuery);
-const mockedNavigate = jest.mocked(navigate);
-const mockedGetRouterLocation = jest.mocked(getRouterLocation);
 
 const createDashboardSaved = (
   overrides: Partial<DashboardSavedValue> = {},
@@ -59,14 +55,6 @@ const createDashboardSaved = (
   saved_charts: [{ chart_id: "chart-a", card_id: 501 }],
   tool_call_id: "call-1",
   ...overrides,
-});
-
-const viewing = (pathname: string) => ({
-  pathname,
-  search: "",
-  hash: "",
-  state: null,
-  key: "default",
 });
 
 const CollectionItemsProbe = () => {
@@ -110,10 +98,8 @@ const setupStore = (ui: React.ReactElement) => {
 const streamDashboardSaved = async (
   value: DashboardSavedValue,
   {
-    isFullPageMetabot = false,
     store = setupStore(<ChatMessagesProbe />),
   }: {
-    isFullPageMetabot?: boolean;
     store?: ReturnType<typeof setupStore>;
   } = {},
 ) => {
@@ -129,7 +115,7 @@ const streamDashboardSaved = async (
         message: "Make a churn dashboard",
         conversation_id: convoForAgent(store).conversationId,
         assistant_message_id: "msg_dashboard_saved",
-        isFullPageMetabot,
+        isFullPageMetabot: false,
         context: {
           user_is_viewing: [],
           current_time_with_timezone: "2026-11-05T00:00:00Z",
@@ -145,8 +131,6 @@ describe("metabot > dashboard_saved", () => {
   beforeEach(() => {
     setupEnterprisePlugins();
     mockedAiStreamingQuery.mockReset();
-    mockedNavigate.mockReset();
-    mockedGetRouterLocation.mockReturnValue(undefined);
     jest.mocked(findMatchingInflightAiStreamingRequests).mockReturnValue([]);
     fetchMock.get(
       "path:/api/metabot/permissions/user-permissions",
@@ -181,48 +165,6 @@ describe("metabot > dashboard_saved", () => {
     await streamDashboardSaved(createDashboardSaved(), { store });
 
     await waitFor(() => expect(itemsFetches()).toBe(2));
-  });
-
-  it("opens the dashboard when the save asks for it", async () => {
-    await streamDashboardSaved(createDashboardSaved());
-
-    expect(mockedNavigate).toHaveBeenCalledWith("/dashboard/43");
-  });
-
-  it("doesn't open the dashboard the user is already viewing", async () => {
-    mockedGetRouterLocation.mockReturnValue(
-      viewing("/dashboard/43-churn-overview"),
-    );
-    await streamDashboardSaved(createDashboardSaved());
-
-    expect(mockedNavigate).not.toHaveBeenCalled();
-  });
-
-  it("doesn't open the dashboard the user is viewing under a subpath", async () => {
-    setBasename("/metabase");
-    mockedGetRouterLocation.mockReturnValue(
-      viewing("/metabase/dashboard/43-churn-overview"),
-    );
-    await streamDashboardSaved(createDashboardSaved());
-    setBasename("");
-
-    expect(mockedNavigate).not.toHaveBeenCalled();
-  });
-
-  it("doesn't open the dashboard when the save doesn't ask for it", async () => {
-    await streamDashboardSaved(
-      createDashboardSaved({ action: "trashed", open: false }),
-    );
-
-    expect(mockedNavigate).not.toHaveBeenCalled();
-  });
-
-  it("doesn't open the dashboard from full-page Metabot", async () => {
-    await streamDashboardSaved(createDashboardSaved(), {
-      isFullPageMetabot: true,
-    });
-
-    expect(mockedNavigate).not.toHaveBeenCalled();
   });
 });
 

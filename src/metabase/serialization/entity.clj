@@ -6,13 +6,13 @@
   name of a Database, or the `[db-name schema table-name]` of a Table."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.serialization.protocol :as protocol]
    [metabase.serialization.spec :as serialization.spec]
    [metabase.util :as u]
-   [metabase.util.malli.humanize :as mu.humanize]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.humanize :as mu.humanize]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,16 +26,64 @@
   [entity]
   (some->> entity :serdes/meta last :model (keyword "model")))
 
+(declare entity-ref)
+
+(defn external-keys
+  "The keys an entity of `model` holds as serialization writes it: its `:serdes/meta`, the keys of the columns its spec
+  copies or transforms, but the parent column a loader sets, the keys its `:after-export` adds, and the keys its
+  children nest under."
+  [model]
+  (let [spec       (serialization.spec/spec-of model)
+        parent-key (:key (:parent spec))]
+    (-> #{:serdes/meta}
+        (into (:copy spec))
+        (into (keep (fn [[k transform]]
+                      (when-not (and (= k parent-key) (not (:export transform)))
+                        (:as transform k))))
+              (:transform spec))
+        (into (:after-export-keys spec))
+        (into (keys (:children spec))))))
+
+(defn external-entity
+  "`entity`, an entity of `model`, and its nested children with only their [[external-keys]], dropping the keys their
+  specs do not read."
+  [model entity]
+  (reduce-kv (fn [entity k child-model]
+               (cond-> entity
+                 (sequential? (get entity k)) (update k (partial mapv #(external-entity child-model %)))))
+             (select-keys entity (external-keys model))
+             (serialization.spec/children model)))
+
+(def ^:private with-optional-keys
+  "`schema` with the keys `ks` optional, compiled once for each schema and keys."
+  (memoize (fn [schema ks] (mut/optional-keys schema ks))))
+
+(defn check-entity
+  "`entity`, an entity of `model` as serialization writes it, normalized by the `:schema` of its spec and throwing when
+  it still does not match, with the `unchecked-keys` the schema takes as optional."
+  ([model entity]
+   (check-entity model entity #{}))
+  ([model entity unchecked-keys]
+   (let [schema (or (:schema (serialization.spec/spec-of model))
+                    (throw (ex-info (format "No :schema in the serialization spec of %s" model)
+                                    {:model model})))
+         schema (cond-> schema
+                  (seq unchecked-keys) (with-optional-keys (vec unchecked-keys)))]
+     (try
+       (lib/normalize schema entity {:throw? true})
+       (catch Exception e
+         (let [error (some-> (ex-data e) :error :explain mu.humanize/humanize)]
+           (throw (ex-info (format "Invalid %s %s: %s" (name model) (pr-str (entity-ref model entity))
+                                   (pr-str (or error (ex-message e))))
+                           {:model model :error error}
+                           e))))))))
+
 (defn validate-export
   "In dev and test, throws when `entity`, exported from a row of `model`, does not match the schema of its spec."
   [model entity]
   (when (or config/is-dev? config/is-test?)
-    (let [schema (or (:schema (serialization.spec/spec-of model))
-                     (throw (ex-info (format "No :schema in the serialization spec of %s" model)
-                                     {:model model})))]
-      (when-let [error (some-> (mr/explain schema entity) mu.humanize/humanize)]
-        (throw (ex-info (format "Invalid export of %s: %s" model (pr-str error))
-                        {:model model :error error}))))))
+    (check-entity model entity)
+    nil))
 
 (defn- transformed
   "The values of column `k` of the rows or entities `batch` transformed by `f`, a fn of `store`, the batch, the
@@ -94,17 +142,22 @@
     (vec (map-indexed exported rows))))
 
 (defn deserialize-entities
-  "The `entities` of `model`, normalized by the `:schema` of its spec but for the columns its import transforms
-  normalize themselves, as the rows to insert, with their references resolved to database ids in `store` with `opts`
-  all at once. Each column the spec copies or exports is set to the entity's value, or else to its default, or else to
-  nil; a column it only imports is set only when the entity holds a value, and the columns imported after insert are
-  left out."
+  "The `entities` of `model` as the rows to insert, each cut to its [[external-entity]] and passed through
+  [[check-entity]], or only normalized by the `:schema` of its spec when `opts` has `:skip-schema-validation?` or
+  `:nested?`, with their references resolved to database ids in `store` with `opts` all at once, setting each column the
+  spec copies or exports to the value of the entity, else its default, else nil, a column it only imports only when the
+  entity holds a value, and leaving out the columns imported after insert."
   [model store entities opts]
   (let [spec     (serialization.spec/spec-of model)
         defaults (:defaults spec)
         raw-keys (into [] (keep (fn [[k transform]] (when (:import transform) (:as transform k)))) (:transform spec))
-        entities (mapv #(merge (lib/normalize (:schema spec) (apply dissoc % raw-keys)) (select-keys % raw-keys))
-                       entities)
+        query-keys (into #{} (keep (fn [[k transform]] (when (:validates-query? transform) (:as transform k)))) (:transform spec))
+        check    (fn [entity]
+                   (let [entity (external-entity model entity)]
+                     (if (or (:nested? opts) (:skip-schema-validation? opts))
+                       (lib/normalize (:schema spec) (apply dissoc entity raw-keys))
+                       (apply dissoc (check-entity model (apply dissoc entity query-keys) query-keys) raw-keys))))
+        entities (mapv #(merge (check %) (select-keys % raw-keys)) entities)
         columns  (concat (for [k (:copy spec)]
                            [k true (mapv #(get % k) entities)])
                          (for [[k transform] (:transform spec)
@@ -158,20 +211,19 @@
                  (identity-of (pop path)))
       entity)))
 
-(defmulti entity-ref
-  "The ref of `entity`, an entity of `model`: the exported value of its one identity column, or the vector of the
-  values of several, with keywords as their names."
-  {:arglists '([model entity])}
-  (fn [model _entity] model))
-
-(defmethod entity-ref :default [model entity]
-  (let [spec   (serialization.spec/spec-of model)
-        values (for [k (serialization.spec/identity-columns model)]
-                 (let [v (get entity (get-in spec [:transform k :as] k))]
-                   (cond-> v
-                     (string? v)  str/trim
-                     (keyword? v) u/qualified-name)))]
-    (if (next values) (vec values) (first values))))
+(defn entity-ref
+  "The ref of `entity`, an entity of `model`, by the `:entity-ref` of the spec of `model`, by default the exported value
+  of its one identity column, or the vector of the values of several, with keywords as their names."
+  [model entity]
+  (let [spec (serialization.spec/spec-of model)]
+    (if-let [f (:entity-ref spec)]
+      (f entity)
+      (let [values (for [k (or (:identity spec) [:entity_id])]
+                     (let [v (get entity (get-in spec [:transform k :as] k))]
+                       (cond-> v
+                         (string? v)  str/trim
+                         (keyword? v) u/qualified-name)))]
+        (if (next values) (vec values) (first values))))))
 
 (defn key-of
   "The `[model ref]` key of `entity`, which the dependencies of other entities name."

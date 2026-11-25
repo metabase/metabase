@@ -1,6 +1,7 @@
 (ns metabase-enterprise.custom-viz-plugin.schema
   "Malli schemas for the custom-viz-plugin module."
   (:require
+   [clojure.string :as str]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.util.malli.registry :as mr]
@@ -14,6 +15,14 @@
    [:metabase {:optional true} [:maybe [:map {:closed true} [:version {:optional true} [:maybe :string]]]]]
    [:sdk      {:optional true} [:maybe [:map {:closed true} [:version {:optional true} [:maybe :string]]]]]])
 
+(mr/def ::custom-viz-plugin.identifier
+  "The `:identifier` of a CustomVizPlugin: a non-blank string without `:`, which separates the parts of the
+  `custom:<identifier>:<setting id>` viz-settings keys, so an identifier containing it could read another plugin's
+  settings."
+  [:and
+   ms/NonBlankString
+   [:fn {:error/message "plugin identifier must not contain \":\""} #(not (str/includes? % ":"))]])
+
 (mr/def ::custom-viz-plugin
   "A CustomVizPlugin as selected from the app DB: every column of `:custom_viz_plugin`."
   [:merge
@@ -25,7 +34,7 @@
   "What an update (or insert) of a CustomVizPlugin accepts: every column of `:custom_viz_plugin` except `id`, all optional."
   [:map {:closed true}
    [:entity_id        {:optional true} [:maybe :string]]
-   [:identifier       {:optional true} [:maybe :string]]
+   [:identifier       {:optional true} ::custom-viz-plugin.identifier]
    [:display_name     {:optional true} [:maybe :string]]
    [:status           {:optional true} [:maybe [:or :keyword :string]]]
    [:error_message    {:optional true} [:maybe :string]]
@@ -44,8 +53,12 @@
   files, and those files as resources."
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
-    [:select-keys ::custom-viz-plugin [:entity_id :identifier]]
+    [:select-keys ::custom-viz-plugin [:entity_id]]
     [:map {:closed true}
+     ;; not `::custom-viz-plugin.identifier`: an identifier holding `:` imports as an :error plugin instead of
+     ;; aborting the import (see `custom-viz-plugin.serialization/bundle-columns`)
+     [:identifier       {:optional true} ms/NonBlankString]
      [:serdes/meta      {:optional true} ::models.schema/external-meta]
      [:files            {:optional true} [:sequential :string]]
-     [:serdes/resources {:optional true} [:map-of :string :string]]]]])
+     ;; a file the YAML lists but its directory lacks is read as nil
+     [:serdes/resources {:optional true} [:maybe [:map-of :string [:maybe :string]]]]]]])

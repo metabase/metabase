@@ -10,7 +10,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Customizable fonts" is_plural=true%}
 
-On Pro and Enterprise plans, you can customize the font Metabase uses (the default is [Lato](https://fonts.google.com/specimen/Lato)). You can choose from a curated set of Google Fonts that accommodate the regular, bold, and heavy font weights that Metabase relies on for its various UI elements.
+The default font is [Lato](https://fonts.google.com/specimen/Lato). The curated Google Fonts all accommodate the regular, bold, and heavy font weights that Metabase relies on for its various UI elements.
 
 ![Font settings](./images/font-settings.png)
 

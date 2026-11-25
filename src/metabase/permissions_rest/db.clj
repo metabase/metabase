@@ -66,11 +66,6 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/PermissionsGroup :id id))
 
-(mu/defn permissions-group-exists?
-  "Whether a PermissionsGroup with `id` exists."
-  [id :- ms/PositiveInt]
-  (t2/exists? :model/PermissionsGroup :id id))
-
 (mu/defn insert-permissions-group!
   "Insert a PermissionsGroup and return the inserted instance."
   [group-name    :- :string
@@ -103,11 +98,6 @@
                               [:not-in :group_id ^:allow-subquery {:select [:id]
                                                                    :from   [:permissions_group]
                                                                    :where  [:= :is_tenant_group true]}])])}))
-
-(mu/defn non-admin-user-exists?
-  "Whether the User with `user-id` exists and is not a superuser."
-  [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User :id user-id :is_superuser false))
 
 (mu/defn group-membership
   "The PermissionsGroupMembership with `id`, or nil."

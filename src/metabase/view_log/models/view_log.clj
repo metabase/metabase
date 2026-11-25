@@ -2,6 +2,7 @@
   "The ViewLog is used to log an event where a given User views a given object such as a Table or Card (Question)."
   (:require
    [metabase.analytics.core :as analytics]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
@@ -31,3 +32,8 @@
 (t2/deftransforms :model/ViewLog
   {:metadata mi/transform-json
    :context  mi/transform-keyword})
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ViewLog [_model]
+  {:skip? false})

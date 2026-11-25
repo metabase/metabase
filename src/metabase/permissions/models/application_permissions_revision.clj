@@ -1,5 +1,6 @@
 (ns metabase.permissions.models.application-permissions-revision
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
    [metabase.util.i18n :refer [tru]]
@@ -20,7 +21,7 @@
 
 (t2/define-before-update :model/ApplicationPermissionsRevision
   [_]
-  (throw (Exception. (tru "You cannot update a PermissionsRevision!"))))
+  (throw (ex-info (tru "You cannot update a PermissionsRevision!") {:status-code 400})))
 
 (defn latest-id
   "Return the ID of the newest `ApplicationPermissionsRevision`, or zero if none have been made yet.
@@ -28,3 +29,8 @@
   []
   (or (permissions.db/latest-application-permissions-revision-id)
       0))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ApplicationPermissionsRevision [_model]
+  {:skip? false})

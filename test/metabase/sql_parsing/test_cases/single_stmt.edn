@@ -39,4 +39,283 @@
    :dialect    "postgres"
    :sql        "WITH c AS (SELECT id FROM people) SELECT * FROM c"
    :stmt-type  "read"
-   :expected   {:verdict :allowed    :single-stmt? true}}]}
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a SET ROLE after a select is a second statement"
+   :dialect    "postgres"
+   :sql        "SELECT 1; SET ROLE admin"
+   :stmt-type  "read"
+   :expected   {:verdict :disallowed :single-stmt? false}}
+
+  {:name       "a DROP after a select is a second statement"
+   :dialect    "postgres"
+   :sql        "SELECT 1; DROP TABLE orders"
+   :stmt-type  "read"
+   :expected   {:verdict :disallowed :single-stmt? false}}
+
+  {:name       "a SET ROLE alone is one statement, but not a read"
+   :dialect    "postgres"
+   :sql        "SET ROLE admin"
+   :stmt-type  "read"
+   :expected   {:verdict :disallowed :single-stmt? true}}
+
+  {:name       "SHOW is one statement, but not a read"
+   :dialect    "postgres"
+   :sql        "SHOW TIMEZONE"
+   :stmt-type  "read"
+   :expected   {:verdict :disallowed :single-stmt? true}}
+
+  {:name       "EXPLAIN is one statement, but not a read"
+   :dialect    "postgres"
+   :sql        "EXPLAIN SELECT * FROM orders"
+   :stmt-type  "read"
+   :expected   {:verdict :disallowed :single-stmt? true}}
+
+  {:name       "CALL is one statement, but not a read"
+   :dialect    "postgres"
+   :sql        "CALL refresh_stats()"
+   :stmt-type  "read"
+   :expected   {:verdict :disallowed :single-stmt? true}}
+
+  {:name       "one trailing semicolon after a literal select"
+   :dialect    "postgres"
+   :sql        "SELECT 1;"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a leading semicolon makes an empty first statement"
+   :dialect    "postgres"
+   :sql        ";SELECT 1"
+   :stmt-type  "read"
+   :expected   {:verdict :disallowed :single-stmt? false}}
+
+  {:name       "two trailing semicolons make an empty second statement"
+   :dialect    "postgres"
+   :sql        "SELECT 1;;"
+   :stmt-type  "read"
+   :expected   {:verdict :disallowed :single-stmt? false}}
+
+  {:name       "a comment after the semicolon is a second statement"
+   :dialect    "postgres"
+   :sql        "SELECT 1; -- trailing comment"
+   :stmt-type  "read"
+   :expected   {:verdict :disallowed :single-stmt? false}}
+
+  {:name       "a semicolon inside a block comment is not a statement boundary"
+   :dialect    "postgres"
+   :sql        "SELECT 1 /* ; DROP TABLE t */"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a semicolon inside a string alias is not a statement boundary"
+   :dialect    "postgres"
+   :sql        "SELECT 'x; DROP TABLE t' AS s"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a semicolon inside a postgres dollar-quoted string is not a statement boundary"
+   :dialect    "postgres"
+   :sql        "SELECT $$a; b$$ AS s"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a semicolon inside a snowflake dollar-quoted string is not a statement boundary"
+   :dialect    "snowflake"
+   :sql        "SELECT $$a; b$$ AS s"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a semicolon inside a quoted identifier is not a statement boundary"
+   :dialect    "postgres"
+   :sql        "SELECT 1 AS \"a;b\""
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a select from a writable CTE is accepted as a read"
+   :dialect    "postgres"
+   :sql        "WITH d AS (DELETE FROM audit_log WHERE id = 1 RETURNING id) SELECT * FROM d"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a CTE ahead of a DELETE is not a read"
+   :dialect    "postgres"
+   :sql        "WITH x AS (SELECT 1 AS a) DELETE FROM t WHERE t.id IN (SELECT a FROM x)"
+   :stmt-type  "read"
+   :expected   {:verdict :disallowed :single-stmt? true}}
+
+  {:name       "a union of parenthesized selects is one read"
+   :dialect    "postgres"
+   :sql        "(SELECT 1) UNION (SELECT 2)"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "an intersect is one read"
+   :dialect    "postgres"
+   :sql        "SELECT id FROM a INTERSECT SELECT id FROM b"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a select from VALUES is one read"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM (VALUES (1, 'a'), (2, 'b')) AS v(id, name)"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "an empty string is not a read"
+   :dialect    "postgres"
+   :sql        ""
+   :stmt-type  "read"
+   :expected   {:verdict :unknown :reason "unparseable"}}
+
+  {:name       "whitespace only is not a read"
+   :dialect    "postgres"
+   :sql        "   \n  "
+   :stmt-type  "read"
+   :expected   {:verdict :unknown :reason "unparseable"}}
+
+  {:name       "a comment only is not a read"
+   :dialect    "postgres"
+   :sql        "-- nothing here"
+   :stmt-type  "read"
+   :expected   {:verdict :unknown :reason "unparseable"}}
+
+  {:name       "a cast placeholder is a read"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM orders WHERE created_at > ?::date"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "two cast placeholders are a read"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM orders WHERE created_at >= ?::timestamp AND created_at < ?::timestamp"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a leading comment line before a snowflake select is a read"
+   :dialect    "snowflake"
+   :sql        "-- warehouse: REPORTING_WH\nSELECT id FROM orders"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "unicode identifiers are a read"
+   :dialect    "postgres"
+   :sql        "SELECT \"\u540d\u524d\" FROM \"\u30e6\u30fc\u30b6\u30fc\""
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "an INSERT with placeholders is a write"
+   :dialect    "postgres"
+   :sql        "INSERT INTO t (a, b) VALUES (?, ?)"
+   :stmt-type  "write"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "an UPDATE with placeholders is a write"
+   :dialect    "postgres"
+   :sql        "UPDATE t SET a = ? WHERE id = ?"
+   :stmt-type  "write"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a DELETE with a placeholder is a write"
+   :dialect    "postgres"
+   :sql        "DELETE FROM t WHERE id = ?"
+   :stmt-type  "write"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a select is not a write"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM t"
+   :stmt-type  "write"
+   :expected   {:verdict :disallowed :single-stmt? true}}
+
+  {:name       "TRUNCATE is not a write"
+   :dialect    "postgres"
+   :sql        "TRUNCATE TABLE t"
+   :stmt-type  "write"
+   :expected   {:verdict :disallowed :single-stmt? true}}
+
+  {:name       "a snowflake MERGE is not a write"
+   :dialect    "snowflake"
+   :sql        "MERGE INTO t USING s ON t.id = s.id WHEN MATCHED THEN UPDATE SET a = s.a"
+   :stmt-type  "write"
+   :expected   {:verdict :disallowed :single-stmt? true}}
+
+  {:name       "two UPDATEs are not a single write"
+   :dialect    "postgres"
+   :sql        "UPDATE t SET a = 1; UPDATE t SET b = 2"
+   :stmt-type  "write"
+   :expected   {:verdict :disallowed :single-stmt? false}}
+
+  {:name       "an IN list that stripping left as NULL is a read"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM orders WHERE id IN (NULL)"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a VALUES list that stripping left as NULLs is a write"
+   :dialect    "postgres"
+   :sql        "INSERT INTO t (a, b, c) VALUES (NULL, NULL, NULL)"
+   :stmt-type  "write"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name       "a query with an expanded snippet is a read"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM orders WHERE 1 = 1 AND status NOT IN ('cancelled', 'returned') AND total > ?"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed    :single-stmt? true}}
+
+  {:name              "a 40 KB select is too long to gate, but can still be validated to run"
+   :dialect           "snowflake"
+   :build             {:prefix    "WITH cte_0 AS (\n  -- running total for segment 0\n  SELECT a.id, a.name, a.cat, a.ts, b.x,\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_0\n  FROM base_table a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > 0\n),\n"
+                       :item      "cte_%4$d AS (\n  -- running total for segment %4$d\n  SELECT a.id, a.name, a.cat, a.ts, b.x,\n         SUM(a.amount) OVER (PARTITION BY a.cat ORDER BY a.ts ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_%4$d\n  FROM cte_%1$d a\n  LEFT JOIN table_b b ON a.id = b.id AND a.ts > b.ts\n  WHERE a.status = 'active' AND a.amount > %4$d\n)"
+                       :count     119
+                       :separator ",\n"
+                       :suffix    "\nSELECT * FROM cte_119"}
+   :stmt-type         "read"
+   :expected          {:verdict :unknown :reason "too-long"}
+   :validate-expected {:verdict :allowed :single-stmt? true}}
+
+  {:name       "common read shapes are one read in each dialect"
+   :dialects   ["postgres" "mysql" "snowflake" "bigquery" "redshift" "tsql" "spark" "presto" "trino" "clickhouse" "oracle" "sqlite" "athena" "databricks"]
+   :sqls       ["SELECT * FROM orders"
+                "SELECT o.id, p.name FROM orders o JOIN products p ON o.product_id = p.id WHERE o.total > 100"
+                "WITH t AS (SELECT id, total FROM orders WHERE status = 'paid') SELECT id, SUM(total) AS st FROM t GROUP BY id HAVING SUM(total) > 10 ORDER BY st DESC LIMIT 10"
+                "SELECT id, SUM(total) OVER (PARTITION BY user_id ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS rt FROM orders"
+                "SELECT id FROM a UNION ALL SELECT id FROM b"
+                "SELECT * FROM orders WHERE created_at >= ? AND user_id IN (?, ?, ?)"
+                "SELECT CASE WHEN total > 100 THEN 'big' ELSE 'small' END AS size, COUNT(*) FROM orders GROUP BY 1"
+                "SELECT sub.id FROM (SELECT id FROM orders WHERE total > 0) AS sub"
+                "-- note\nSELECT 'a;b' AS x FROM t"
+                "SELECT id FROM orders WHERE user_id IN (SELECT id FROM users WHERE active = TRUE)"]
+   :stmt-type  "read"
+   :expected   {:verdict :allowed :single-stmt? true}}
+
+  {:name              "with no dialect, the same reads are gated with the generic dialect, but are not validated to run"
+   :dialects          [nil]
+   :sqls              ["SELECT * FROM orders"
+                       "SELECT o.id, p.name FROM orders o JOIN products p ON o.product_id = p.id WHERE o.total > 100"
+                       "WITH t AS (SELECT id, total FROM orders WHERE status = 'paid') SELECT id, SUM(total) AS st FROM t GROUP BY id HAVING SUM(total) > 10 ORDER BY st DESC LIMIT 10"
+                       "SELECT id, SUM(total) OVER (PARTITION BY user_id ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS rt FROM orders"
+                       "SELECT id FROM a UNION ALL SELECT id FROM b"
+                       "SELECT * FROM orders WHERE created_at >= ? AND user_id IN (?, ?, ?)"
+                       "SELECT CASE WHEN total > 100 THEN 'big' ELSE 'small' END AS size, COUNT(*) FROM orders GROUP BY 1"
+                       "SELECT sub.id FROM (SELECT id FROM orders WHERE total > 0) AS sub"
+                       "-- note\nSELECT 'a;b' AS x FROM t"
+                       "SELECT id FROM orders WHERE user_id IN (SELECT id FROM users WHERE active = TRUE)"]
+   :stmt-type         "read"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :unknown :reason "unknown-dialect"}}
+
+  {:name       "a dialect sqlglot does not know makes the same reads unparseable"
+   :dialects   ["mariadb"]
+   :sqls       ["SELECT * FROM orders"
+                "SELECT o.id, p.name FROM orders o JOIN products p ON o.product_id = p.id WHERE o.total > 100"
+                "WITH t AS (SELECT id, total FROM orders WHERE status = 'paid') SELECT id, SUM(total) AS st FROM t GROUP BY id HAVING SUM(total) > 10 ORDER BY st DESC LIMIT 10"
+                "SELECT id, SUM(total) OVER (PARTITION BY user_id ORDER BY created_at ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS rt FROM orders"
+                "SELECT id FROM a UNION ALL SELECT id FROM b"
+                "SELECT * FROM orders WHERE created_at >= ? AND user_id IN (?, ?, ?)"
+                "SELECT CASE WHEN total > 100 THEN 'big' ELSE 'small' END AS size, COUNT(*) FROM orders GROUP BY 1"
+                "SELECT sub.id FROM (SELECT id FROM orders WHERE total > 0) AS sub"
+                "-- note\nSELECT 'a;b' AS x FROM t"
+                "SELECT id FROM orders WHERE user_id IN (SELECT id FROM users WHERE active = TRUE)"]
+   :stmt-type  "read"
+   :expected   {:verdict :unknown :reason "unparseable" :error "Unknown dialect 'mariadb'."}}]}

@@ -250,6 +250,72 @@ describe("Notebook", () => {
     ).not.toBeInTheDocument();
   });
 
+  describe("custom column action of the data step on a summarized stage (metabase#43226)", () => {
+    async function openCustomColumnFromDataStep() {
+      await userEvent.click(
+        within(
+          within(screen.getByTestId("step-data-0-0")).getByTestId(
+            "action-buttons",
+          ),
+        ).getByRole("img", { name: "add_data icon" }),
+      );
+      return screen.findByTestId("step-expression-0-0");
+    }
+
+    it("should extract a column of the stage", async () => {
+      setup({ question: createSummarizedQuestion("question") });
+
+      expect(
+        screen.queryByTestId("step-expression-0-0"),
+      ).not.toBeInTheDocument();
+      await openCustomColumnFromDataStep();
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Extract columns/ }),
+      );
+      const [createdAt] = screen
+        .getAllByTestId("dimension-list-item")
+        .filter((item) => item.getAttribute("aria-label") === "Created At");
+      await userEvent.click(within(createdAt).getByText("Created At"));
+      await userEvent.click(
+        within(screen.getByTestId("expression-editor")).getByRole("button", {
+          name: /^Hour of day/,
+        }),
+      );
+
+      expect(
+        screen.getByTestId<HTMLTextAreaElement>(
+          "custom-expression-query-editor",
+        ).value,
+      ).toBe("hour([Created At])");
+      expect(screen.getByTestId("expression-name")).toHaveValue("Hour of day");
+    });
+
+    it("should combine columns of the stage", async () => {
+      setup({ question: createSummarizedQuestion("question") });
+
+      await openCustomColumnFromDataStep();
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Combine columns/ }),
+      );
+      // The first column starts as the first column of the stage. The default
+      // separator depends on the type of the first column.
+      await userEvent.click(
+        screen.getByRole("button", { name: /^Created At chevrondown/ }),
+      );
+      await userEvent.click(await screen.findByText("User"));
+      await userEvent.click(await screen.findByText("Email"));
+
+      expect(
+        screen.getByRole("button", { name: /^User → Email/ }),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Separated by (empty)" }),
+      );
+      expect(screen.getByLabelText("Separator")).toHaveValue("");
+    });
+  });
+
   describe("when filtering with modelsFilterList", () => {
     describe.each<Exclude<DataPickerValue["model"], "database">>([
       "metric",

@@ -2,9 +2,12 @@
   (:require
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
-   [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
+   [metabase-enterprise.custom-viz-plugin.serialization :as custom-viz-plugin.serialization]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -12,7 +15,6 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
-   (java.nio.charset StandardCharsets)
    (java.sql Blob)))
 
 (set! *warn-on-reflection* true)
@@ -51,6 +53,7 @@
 
 (doto :model/CustomVizPlugin
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
@@ -96,169 +99,38 @@
   [plugin]
   (cache/purge-plugin-cache! plugin))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-;; A plugin serializes as `custom_viz_plugins/<slug>/custom_viz_plugin.yaml` with its unpacked bundle beside it, and
-;; is identified by its `entity_id`, which the YAML carries as `data_app.yaml` does. `enabled` is per-instance, so it
-;; isn't serialized.
+(defmethod events/spec :model/CustomVizPlugin
+  [_model]
+  {:create :event/custom-viz-plugin-create
+   :update :event/custom-viz-plugin-update
+   :delete :event/custom-viz-plugin-delete})
 
-(def ^:private index-file
-  "The resource file holding the plugin's built JavaScript, relative to its YAML file."
-  "dist/index.js")
-
-(defn- asset-file
-  "The resource file holding the asset `asset-name`, relative to the plugin's YAML file."
-  [asset-name]
-  (str "dist/assets/" asset-name))
-
-(defn- served-paths
-  "Archive paths of the manifest, JS, and icon; `read-text` reads an archive path as a string, or nil."
-  [read-text]
-  (into [(manifest/manifest-path) index-file]
-        (map (comp asset-file manifest/normalize-path))
-        (manifest/asset-paths (some-> (read-text (manifest/manifest-path)) manifest/parse-manifest))))
-
-(defn- file->text
-  "The bytes of an archive file as the text of its file."
-  ^String [^bytes content]
-  (String. content StandardCharsets/UTF_8))
-
-(defn- text->file
-  "The `content` of a text file as the bytes an archive holds."
-  ^bytes [^String content]
-  (.getBytes content StandardCharsets/UTF_8))
-
-(defn- served-files
-  "`files` (archive path -> bytes) narrowed to [[served-paths]], as text. Extra files such as source maps are
-  dropped, since an import would ignore them."
-  [files]
-  (let [read-text (fn [path] (some-> ^bytes (get files path) file->text))]
-    (into {}
-          (keep (fn [path]
-                  (when-some [text (read-text path)]
-                    [path text])))
-          (served-paths read-text))))
-
-(defn- export-bundle
-  "The files of `plugin`'s stored `bundle` exported beside its YAML, or nil for a dev-only plugin, which has none. A
-  bundle that can't be unpacked fails the export: exported without its files, the plugin would get an empty bundle on
-  the next import."
-  [{:keys [identifier]} ^bytes bundle]
-  (when bundle
-    (try
-      (served-files (cache/bundle->files bundle))
-      (catch Exception e
-        (throw (ex-info (format "The bundle of custom viz plugin \"%s\" can't be unpacked: %s Upload it again, or delete the plugin."
-                                identifier (ex-message e))
-                        {:identifier identifier}
-                        e))))))
-
-(defn- import-bundle
-  "The archive of the `files` read from beside a plugin's YAML. A file that isn't there is left out, and
-  validation names it."
-  [files]
-  (cache/files->bundle (update-vals (u/remove-nils files) text->file)))
+(defmethod app-db-copy/spec :model/CustomVizPlugin [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/CustomVizPlugin [_]
-  {:schema       ::custom-viz-plugin.schema/external-custom-viz-plugin
-   :copy         [:entity_id :identifier]
-   :skip         [;; derived from the bundle at import time (see [[bundle-columns]]), exactly as on upload
-                  :display_name :icon :manifest :metabase_version :bundle_hash :status :error_message
-                  ;; admin-owned state of this instance
-                  :enabled
-                  ;; dev-only plugins are never served from another instance
-                  :dev_bundle_url]
-   :transform    {:bundle {:as     :serdes/resources
-                           :export (fn [_store plugins bundles _opts] (mapv export-bundle plugins bundles))
-                           :import (fn [_store _entities files _opts] (mapv import-bundle files))}}
-   ;; the YAML lists the files beside it, so an import knows which to read without opening the manifest
-   :after-export (fn [entity]
-                   (cond-> entity
-                     (:serdes/resources entity) (assoc :files (vec (sort (keys (:serdes/resources entity)))))))})
+  {:schema            ::custom-viz-plugin.schema/external-custom-viz-plugin
+   :copy              [:entity_id :identifier]
+   :skip              [;; derived from the bundle at import time, exactly as on upload
+                       :display_name :icon :manifest :metabase_version :bundle_hash :status :error_message
+                       ;; admin-owned state of this instance
+                       :enabled
+                       ;; dev-only plugins are never served from another instance
+                       :dev_bundle_url]
+   :transform         {:bundle custom-viz-plugin.serialization/bundle-transform}
+   :after-export      custom-viz-plugin.serialization/after-export
+   :after-export-keys [:files]
+   :storage-paths     custom-viz-plugin.serialization/storage-paths
+   :resource-paths    custom-viz-plugin.serialization/resource-paths
+   :before-load       custom-viz-plugin.serialization/before-load
+   :after-load        custom-viz-plugin.serialization/after-load})
 
-(defmethod serialization/storage-paths :model/CustomVizPlugin [_ entities _ctx]
-  ;; slugified and deduplicated by `entity_id` like a collection's directory, so identifiers that slugify alike
-  ;; (`my-viz`, `my_viz`) get distinct directories
-  (mapv (fn [{:keys [identifier entity_id]}]
-          [{:label "custom_viz_plugins"}
-           {:label identifier :key entity_id}
-           {:label "custom_viz_plugin"}])
-        entities))
-
-(defmethod serialization/resource-paths :model/CustomVizPlugin [{:keys [files]}]
-  (when-not (or (nil? files) (sequential? files))
-    (throw (ex-info (format "CustomVizPlugin files must be a list of paths, got: %s" (pr-str files))
-                    {:files files})))
-  files)
-
-;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
-
-(defn- bundle-columns
-  "Validates the imported bundle against its identifier using upload checks. Returns `:active` with manifest metadata,
-  or `:error` with the reason and identifier as display name. Stores bytes and hash in either case."
-  [{:keys [identifier ^bytes bundle]}]
-  (try
-    (->> (cache/validate-bundle! bundle)
-         (cache/check-bundle-identifier! identifier)
-         cache/derived-columns)
-    (catch Exception e
-      ;; the manifest-derived columns are cleared, not kept from a bundle the row no longer holds
-      {:status           :error
-       :error_message    (ex-message e)
-       :display_name     identifier
-       :bundle           bundle
-       :bundle_hash      (some-> bundle cache/bytes-hash)
-       :manifest         nil
-       :icon             nil
-       :metabase_version nil})))
-
-(defn- check-bundle-size!
-  "Throws if the imported `row`'s bundle is over the upload limit."
-  [{:keys [identifier ^bytes bundle]}]
-  ;; aborts the import instead of loading as :error like other bad bundles: an :error row still stores its bundle,
-  ;; so the oversized bytes would land in the app DB, bypassing the upload limit
-  (when (and bundle (> (alength bundle) cache/max-bundle-bytes))
-    (throw (ex-info (format "The bundle of custom viz plugin \"%s\" is larger than %dMB. Shrink its files and import again."
-                            identifier cache/max-bundle-mib)
-                    {:identifier identifier :status-code 413}))))
-
-(defn check-identifier-free!
-  "Throws a 400 if a plugin other than `except-id` (nil for none) already holds `identifier`, ignoring case, so
-  case-only variants can't become two plugins. `exists-message` is the error when it holds exactly `identifier`."
-  [identifier except-id exists-message]
-  (when-let [existing (custom-viz-plugin.db/plugin-identifier-ignoring-case identifier except-id)]
-    (throw (ex-info (if (= existing identifier)
-                      exists-message
-                      (format "Custom viz plugin \"%s\" differs only in case from the existing plugin \"%s\""
-                              identifier existing))
-                    {:status-code 400}))))
-
-(defn- check-registration!
-  "Throws unless the imported plugin `row`, loaded over its `local` row or as new when nil, may hold its identifier."
-  [{:keys [identifier]} local]
-  ;; a `:` identifier isn't refused here: its bundle fails validation, so it loads as :error without aborting the batch
-  ;; the unique index would refuse the write anyway, but with an error that doesn't say what to do
-  (check-identifier-free! identifier (:id local)
-                          (format (str "A custom viz plugin \"%s\" already exists on this instance. Delete it and pull "
-                                       "again: cards reference the plugin by its identifier, so they keep working "
-                                       "once it is pulled.")
-                                  identifier)))
-
-(defmethod serialization/before-load :model/CustomVizPlugin [_ items]
-  (mapv (fn [{:keys [row local] :as item}]
-          (check-registration! row local)
-          (check-bundle-size! row)
-          (if (and local (some-> ^bytes (:bundle row) cache/bytes-hash (= (:bundle_hash local))))
-            (update item :row dissoc :bundle)
-            (update item :row #(merge % (bundle-columns %)))))
-        items))
-
-(defmethod serialization/after-load :model/CustomVizPlugin [_ items]
-  (doseq [{:keys [local]} items
-          :when local]
-    (cache/purge-plugin-cache! {:id (:id local)})))
-
-;;; -------------------------------------------------- Remote sync ----------------------------------------------------
+(defmethod audit/spec :model/CustomVizPlugin [_model]
+  {:track          [:identifier :display_name :status :enabled :bundle_hash]
+   :track-redacted [:bundle :dev_bundle_url :error_message :icon :manifest :metabase_version]
+   :skip           [:entity_id]})
 
 (defmethod remote-sync/spec :model/CustomVizPlugin
   [_model]

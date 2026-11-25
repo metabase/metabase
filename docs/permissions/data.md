@@ -7,7 +7,7 @@ redirect_from:
 
 # Data permissions
 
-This page covers permissions for databases and tables. If you haven't already, check out our [Permissions introduction][permissions-introduction].
+If you haven't already, check out our [Permissions introduction][permissions-introduction].
 
 ## Setting permissions on a database, schema, or table
 
@@ -162,7 +162,29 @@ Native query access can only be set for a whole database, so when you switch a d
 
 ### No create queries permission
 
-People can't create or edit questions, including drill-through. They can still view questions in collections they have access to, if their View data permissions allow it.
+A group can't create questions directly on the data source, or edit questions that query the data directly, including drill-through. If the group has View data permissions on the table, they'll be able to view questions built on that data source.
+
+#### If a group has Create queries access on at least one table, they can also create questions based on other questions
+
+A group can still create questions based on a question, model, or metric that uses a table, even if they lack Create queries access to that table, if the group has:
+
+- View data access to the underlying table.
+- View access to the collection that holds the saved question, model, or metric.
+- At least **Query builder only** create queries access to some other table.
+
+People can filter, summarize, and drill through the results of the question, model, or metric, and save the new questions. But they only get the columns and records that the underlying question, model, or metric returns. People can't drill through to the rest of the underlying table.
+
+For example, say you want your Sales team to explore orders, but not the Discount column of the Orders table. Here's how you'd set that up:
+
+1. Create an "Orders without discounts" model that leaves out that column.
+2. Put the model in a collection the Sales group can view.
+3. Set the Sales group's data permissions:
+   - Orders table: Create queries permission to **No** for the Orders table.
+   - Products table:  **Query builder only**.
+   
+People in the Sales group can filter the model, drill through its charts, and save their own questions based on the model. The group can't start a new question from the Orders table, and they can't edit questions that query the Orders table directly.
+
+But, at that point, you may want to consider creating a transform to create a table with all the columns the Sales group should be able to query.
 
 On Pro and Enterprise plans, tables published to the [Library](../data-modeling/semantic-layer/library.md#permissions-to-use-library-content) give query builder access to people who can view them in the Library, even if their group has Create queries set to No.
 

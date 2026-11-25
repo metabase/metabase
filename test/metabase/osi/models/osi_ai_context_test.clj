@@ -1,9 +1,12 @@
 (ns metabase.osi.models.osi-ai-context-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.osi.schema :as osi.schema]
    [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -98,3 +101,9 @@
         (testing "delete"
           (is (pos? (t2/delete! :model/OsiAiContext :entity_type (k 0) :entity_local_id (k 1))))
           (is (nil? (by-key entity))))))))
+
+(deftest entity-type-must-be-described-type-test
+  (testing "the schema refuses an entity_type no OsiAiContext describes and stores a card flavor as card"
+    (is (not (mr/validate ::osi.schema/osi-ai-context.update {:entity_type "dashboard"})))
+    (is (= {:entity_type "card"} (lib/normalize ::osi.schema/osi-ai-context.update {:entity_type "metric"})))
+    (is (mr/validate ::osi.schema/osi-ai-context.update {:entity_type "table"}))))

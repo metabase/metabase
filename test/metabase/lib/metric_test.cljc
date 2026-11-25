@@ -2,7 +2,6 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metric :as lib.metric]
@@ -19,8 +18,7 @@
 (def ^:private metric-definition
   (-> (lib.tu/venues-query)
       (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
-      (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
-      lib.convert/->legacy-MBQL))
+      (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))))
 
 (def ^:private metrics-db
   {:cards [{:id            metric-id
@@ -204,7 +202,7 @@
                        {:cards [{:id 1
                                  :name "metric"
                                  :database-id (meta/id)
-                                 :dataset-query (lib.convert/->legacy-MBQL metric-card-query)
+                                 :dataset-query metric-card-query
                                  :type :metric}]})
         metric-based-query (lib/query meta-provider (lib.metadata/card meta-provider 1))]
     (testing "Metric aggregation added and breakouts copied on query creation"

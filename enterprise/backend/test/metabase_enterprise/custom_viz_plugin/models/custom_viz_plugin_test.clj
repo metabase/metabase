@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase-enterprise.custom-viz-plugin.test-util :as cv.tu]
    [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase.api.common :as api]
@@ -11,6 +12,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -354,3 +356,8 @@
                        :error_message #(str/includes? % "does not match")})
             (load-as-new-and-over-existing!
              (ingested-plugin "calendar-heatmap-viz" (cv.tu/valid-bundle-bytes "thumbs-viz")))))))
+
+(deftest identifier-must-not-contain-colon-test
+  (is (not (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.update {:identifier "colon:insert"})))
+  (is (not (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.update {:identifier " "})))
+  (is (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.update {:identifier "plain-identifier"})))

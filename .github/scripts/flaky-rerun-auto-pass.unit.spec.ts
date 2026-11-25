@@ -1,11 +1,14 @@
 import {
+  type PullRequest,
+  RUN_TESTS_PATH,
+  type WorkflowRun,
   autoPassComment,
   decideAutoPass,
   failedJobNames,
   fetchFlakeProbability,
   formatPercent,
-  jobNamesToPass,
   readContext,
+  runMismatch,
   unfinishedJobNames,
 } from "./flaky-rerun-auto-pass";
 
@@ -61,38 +64,85 @@ describe("decideAutoPass", () => {
 
 describe("readContext", () => {
   const env = {
-    RUN_EVENT: "pull_request",
     RUN_ID: "123",
-    RUN_ATTEMPT: "2",
     PR_NUMBER: "82887",
     HEAD_SHA: SHA,
-    PR_AUTHOR: "octocat",
-    CI_CONDUCTOR_BASE_URL: "https://conductor.example.com",
-    CI_CONDUCTOR_WEBHOOK_SECRET: "secret",
   };
 
-  it("reads a PR re-run", () => {
+  it("reads the dispatch inputs", () => {
     expect(readContext(env)).toEqual({
       runId: 123,
-      runAttempt: 2,
       prNumber: 82887,
       headSha: SHA,
-      author: "octocat",
-      baseUrl: "https://conductor.example.com",
-      secret: "secret",
     });
   });
 
   it.each([
-    ["a push", { RUN_EVENT: "push" }],
-    ["a first attempt", { RUN_ATTEMPT: "1" }],
     ["a missing run id", { RUN_ID: "" }],
+    ["a run id that isn't a number", { RUN_ID: "abc" }],
     ["a missing PR number", { PR_NUMBER: "" }],
     ["a missing head sha", { HEAD_SHA: "" }],
-    ["a missing secret (fork PRs)", { CI_CONDUCTOR_WEBHOOK_SECRET: "" }],
-    ["a missing base URL", { CI_CONDUCTOR_BASE_URL: "" }],
+    ["a short head sha", { HEAD_SHA: SHA.slice(0, 7) }],
   ])("skips %s", (_, override) => {
     expect(readContext({ ...env, ...override })).toHaveProperty("skip");
+  });
+});
+
+describe("runMismatch", () => {
+  const REPO = "metabase/metabase";
+  const run: WorkflowRun = {
+    path: RUN_TESTS_PATH,
+    event: "pull_request",
+    status: "completed",
+    head_sha: SHA,
+    head_branch: "my-branch",
+    run_attempt: 1,
+    head_repository: { full_name: REPO },
+  };
+  const pr: PullRequest = {
+    state: "open",
+    user: { login: "octocat" },
+    head: { sha: SHA, ref: "my-branch", repo: { full_name: REPO } },
+  };
+  const check = (
+    runOverride: Partial<WorkflowRun> = {},
+    prOverride: Partial<PullRequest> = {},
+  ) =>
+    runMismatch({
+      run: { ...run, ...runOverride },
+      pr: { ...pr, ...prOverride },
+      headSha: SHA,
+      repository: REPO,
+    });
+
+  it("accepts a finished Run tests run of an open PR at the run's commit", () => {
+    expect(check()).toBeNull();
+  });
+
+  it("matches the sha case-insensitively", () => {
+    expect(check({ head_sha: SHA.toUpperCase() })).toBeNull();
+  });
+
+  it.each([
+    ["another workflow", { path: ".github/workflows/e2e.yml" }],
+    ["a push", { event: "push" }],
+    ["a fork", { head_repository: { full_name: "someone/metabase" } }],
+    ["another commit", { head_sha: "f".repeat(40) }],
+    ["a run still in progress", { status: "in_progress" }],
+  ])("rejects %s", (_, override) => {
+    expect(check(override)).not.toBeNull();
+  });
+
+  it.each([
+    ["a closed PR", { state: "closed" }],
+    ["a PR that has moved on", { head: { ...pr.head, sha: "f".repeat(40) } }],
+    ["a PR from another branch", { head: { ...pr.head, ref: "other" } }],
+    [
+      "a PR from a fork",
+      { head: { ...pr.head, repo: { full_name: "someone/metabase" } } },
+    ],
+  ])("rejects %s", (_, override) => {
+    expect(check({}, override)).not.toBeNull();
   });
 });
 
@@ -135,42 +185,6 @@ describe("unfinishedJobNames", () => {
         { name: "frontend-tests / fe-tests-result", conclusion: "success" },
       ]),
     ).toEqual([]);
-  });
-});
-
-describe("jobNamesToPass", () => {
-  it("passes the previous failures and every job the cancel left unpassed", () => {
-    expect(
-      jobNamesToPass(
-        [
-          { name: "backend-tests / be-tests (1)", conclusion: "failure" },
-          { name: "backend-tests / be-tests-result", conclusion: "failure" },
-          { name: "frontend-tests / fe-tests-result", conclusion: "success" },
-          {
-            name: "sdk-tests / embedding-sdk-tests-result",
-            conclusion: "skipped",
-          },
-        ],
-        [
-          { name: "backend-tests / be-tests (1)", conclusion: "cancelled" },
-          { name: "backend-tests / be-tests-result", conclusion: "skipped" },
-          { name: "frontend-tests / fe-tests-result", conclusion: "cancelled" },
-          {
-            name: "sdk-tests / embedding-sdk-tests-result",
-            conclusion: "cancelled",
-          },
-          { name: "loki-tests / visual-test", conclusion: "success" },
-          { name: "driver-tests / be-tests-oracle", conclusion: "skipped" },
-          { name: "e2e-tests / e2e-tests-result", conclusion: null },
-        ],
-      ),
-    ).toEqual([
-      "backend-tests / be-tests (1)",
-      "backend-tests / be-tests-result",
-      "frontend-tests / fe-tests-result",
-      "sdk-tests / embedding-sdk-tests-result",
-      "e2e-tests / e2e-tests-result",
-    ]);
   });
 });
 

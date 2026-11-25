@@ -8,6 +8,7 @@
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.events.core :as events]
    [metabase.util.malli.schema :as ms]
    [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
@@ -80,10 +81,11 @@
                                             [:name     {:optional true} [:maybe ::api-keys.schema/name]]]]
   (api/check-superuser)
   (api/let-404 [api-key-before (api-keys.db/api-key id)]
-    (-> api-key-before
-        (m/assoc-some ::api-keys/group-id group-id, :name key-name)
-        api-keys.db/save-api-key!
-        present-api-key)))
+    (events/with-event-context {:details {:previous-group (:group (t2/hydrate api-key-before :group))}}
+      (-> api-key-before
+          (m/assoc-some ::api-keys/group-id group-id, :name key-name)
+          api-keys.db/save-api-key!
+          present-api-key))))
 
 (api.macros/defendpoint :put "/:id/regenerate" :- [:map
                                                    [:id           ::api-keys.schema/id]
@@ -117,8 +119,9 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ::api-keys.schema/id]]]
   (api/check-superuser)
-  (api/check-404 (api-keys.db/api-key-exists? id))
-  (api-keys.db/delete-api-key! id)
+  (api/let-404 [api-key (api-keys.db/api-key id)]
+    (events/with-event-context {:details {:previous-group (:group (t2/hydrate api-key :group))}}
+      (api-keys.db/delete-api-key! id)))
   api/generic-204-no-content)
 
 (comment

@@ -264,6 +264,17 @@
                       {:status-code 400})))
     validated))
 
+(defn check-identifier-free!
+  "Throws a 400 if a plugin other than `except-id` (nil for none) already holds `identifier`, ignoring case, so
+  case-only variants can't become two plugins. `exists-message` is the error when it holds exactly `identifier`."
+  [identifier except-id exists-message]
+  (when-let [existing (custom-viz-plugin.db/plugin-identifier-ignoring-case identifier except-id)]
+    (throw (ex-info (if (= existing identifier)
+                      exists-message
+                      (format "Custom viz plugin \"%s\" differs only in case from the existing plugin \"%s\""
+                              identifier existing))
+                    {:status-code 400}))))
+
 (defn derived-columns
   "DB columns derived from a validated bundle (see [[validate-bundle!]])."
   [{:keys [bytes hash manifest version-str]}]

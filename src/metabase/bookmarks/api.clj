@@ -9,12 +9,12 @@
    [metabase.api.macros :as api.macros]
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.bookmarks.models.bookmark :as bookmark]
+   [metabase.bookmarks.schema :as bookmarks.schema]
    [metabase.util.malli.schema :as ms]))
 
 (def Models
   "Schema enumerating bookmarkable models."
-  (into [:enum]
-        ["card" "dashboard" "collection" "document" "exploration"]))
+  ::bookmarks.schema/bookmark-ordering.type)
 
 (def BookmarkOrderings
   "Schema for an ordered of bookmark orderings"

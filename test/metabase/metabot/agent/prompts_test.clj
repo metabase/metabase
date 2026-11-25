@@ -353,6 +353,13 @@
           (is (not (str/includes? with-tool "direct the user to the dashboard builder")))
           (is (not (str/includes? without-tool "write_dashboard")))
           (is (str/includes? without-tool "direct the user to the dashboard builder"))))
+      (testing "internal Metabot is told to build charts for a dashboard only when it can build queries"
+        (let [with-queries    (render "internal.selmer" {"write_dashboard" nil, "construct_notebook_query" nil})
+              without-queries (render "internal.selmer" {"write_dashboard" nil})]
+          (is (str/includes? with-queries "For a dashboard about a topic, build its charts"))
+          (is (not (str/includes? without-queries "build its charts")))
+          (is (str/includes? without-queries (str "For a dashboard about a topic, search for existing questions about"
+                                                  " it and add them all in one call with `card_id`")))))
       (doseq [template ["natural-language-querying-only.selmer" "natural-language-querying-fallback.selmer"]]
         (testing template
           (is (str/includes? (render template {"write_dashboard" nil})

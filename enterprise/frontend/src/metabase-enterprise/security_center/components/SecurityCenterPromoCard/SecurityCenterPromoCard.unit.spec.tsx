@@ -44,7 +44,7 @@ function setup({
     slack: { configured: slackConfigured },
   });
 
-  fetchMock.get("path:/api/ee/security-center", {
+  fetchMock.get("path:/api/ee/security-center/advisories", {
     last_checked_at: null,
     advisories,
   });
@@ -94,7 +94,10 @@ describe("SecurityCenterPromoCard", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Set up security alerts/i }),
-    ).toHaveAttribute("href", "/admin/security-center?open=notifications");
+    ).toHaveAttribute(
+      "href",
+      "/admin/security-center/advisories?open=notifications",
+    );
   });
 
   it("does not render when email is configured", async () => {
@@ -124,7 +127,7 @@ describe("SecurityCenterPromoCard", () => {
     ).not.toBeInTheDocument();
 
     expect(
-      fetchMock.callHistory.calls("path:/api/ee/security-center"),
+      fetchMock.callHistory.calls("path:/api/ee/security-center/advisories"),
     ).toHaveLength(0);
     expect(
       fetchMock.callHistory.calls("path:/api/pulse/form_input"),

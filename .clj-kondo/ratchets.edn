@@ -20,13 +20,13 @@
 {:ignore-counts                {:aliased-namespace-symbol                                  3
                                 :consistent-alias                                          2
                                 :def-fn                                                    1
-                                :deprecated-namespace                                      30
-                                :deprecated-var                                            53
+                                :deprecated-namespace                                      28
+                                :deprecated-var                                            65
                                 :discouraged-java-method                                   4
                                 :duplicate-require                                         1
                                 :main-without-gen-class                                    1
-                                :metabase/change-log-raw-write                             13
-                                :metabase/discourage-dynamic-vars                          289
+                                :metabase/change-log-raw-write                             12
+                                :metabase/discourage-dynamic-vars                          287
                                 :metabase/discourage-millis-duration                       1
                                 :metabase/modules                                          15
                                 :metabase/namespace-name                                   3
@@ -66,7 +66,7 @@
                                 :clojure.core/update-keys                         1
                                 :clojure.java.jdbc/get-connection                 2
                                 :clojure.pprint/pprint                            2
-                                :clojure.string/lower-case                        2
+                                :clojure.string/lower-case                        1
                                 :clojure.string/upper-case                        1
                                 :compojure.core/context                           2
                                 :compojure.core/defroutes                         4
@@ -74,7 +74,7 @@
                                 :ee.data-testing.expectations.empty/->Empty       1
                                 :ee.data-testing.expectations.equals/->EqualsRows 1
                                 :ee.data-testing.expectations.equals/->EqualsSql  1
-                                :lib.convert/->legacy-MBQL                        10
+                                :lib.convert/->legacy-MBQL                        5
                                 :lib.equality/find-column-indexes-for-refs        1
                                 :malli.core/explain                               1
                                 :malli.core/explainer                             1

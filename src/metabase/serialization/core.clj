@@ -52,6 +52,8 @@
   import-visualization-settings-dependencies]
  [serialization.entity
   entity-ref
+  check-entity
+  external-entity
   key-of
   log-str
   model-of
@@ -69,6 +71,7 @@
   load-error
   load-error?
   load-order
+  loaded-entities
   local-rows
   with-import-transaction]
  [serialization.storage
@@ -102,7 +105,17 @@
   target-not-found?
   visit-some]
  [protocol.app-db
-  rows-by-refs]
+  channel-rows-by-refs
+  database-rows-by-refs
+  dimension-rows-by-refs
+  field-rows-by-refs
+  field-user-settings-rows-by-refs
+  field-values-rows-by-refs
+  osi-ai-context-rows-by-refs
+  rows-by-refs
+  setting-rows-by-refs
+  table-rows-by-refs
+  table-user-settings-rows-by-refs]
  [serialization.parameters
   export-parameter-mappings
   export-parameters

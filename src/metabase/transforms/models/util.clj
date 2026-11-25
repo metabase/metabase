@@ -4,9 +4,21 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private terminal-statuses
+  "The statuses of a run that has ended."
+  #{:succeeded :failed :canceled :timeout})
+
+(defn ended-without-end-time?
+  "Whether the pending changes of `run` move it to a terminal status and leave its `end_time` unset."
+  [run]
+  (let [changes (t2/changes run)]
+    (and (contains? terminal-statuses (keyword (:status changes)))
+         (not (contains? changes :end_time)))))
 
 (mu/defn timestamp-range :- [:tuple [:maybe ms/TemporalInstant] [:maybe ms/TemporalInstant]]
   "Parse `date-string` (in the same format as the query-processor date parameter, e.g. \"2025-01\",

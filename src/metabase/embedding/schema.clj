@@ -9,7 +9,7 @@
 
 (mr/def ::embedding-theme.settings
   "The `:settings` column of a EmbeddingTheme, decoded."
-  ms/OpaqueJSONObject)
+  [:map {:closed false, :description "embedding theme settings"}])
 
 (mr/def ::embedding-theme
   "A EmbeddingTheme as selected from the app DB: every column of `:embedding_theme`."

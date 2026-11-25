@@ -15,6 +15,7 @@ import {
   isQuestionDirty,
   isQuestionRunnable,
 } from "metabase/querying/common/utils/question";
+import type { MetabotCardBaseline } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import { filterTimelinesByXAxes } from "metabase/timelines/panel/utils";
@@ -152,6 +153,12 @@ export const getIsBookmarked = (
 
 export const getQueryStartTime = (state: QueryBuilderStoreState) =>
   state.qb.queryStartTime;
+
+export const getPendingMetabotCard = (state: QueryBuilderStoreState) =>
+  state.qb.pendingMetabotCard;
+
+export const getMetabotCardBaselines = (state: QueryBuilderStoreState) =>
+  state.qb.metabotCardBaselines;
 
 export const getDatabaseId = createSelector(
   [getCard],
@@ -634,6 +641,35 @@ export const isResultsMetadataDirty = createSelector(
   },
 );
 
+/**
+ * The query, display, visualization settings and parameters of a question.
+ * Comparing them tells whether the user has changed a question Metabot opened.
+ */
+export const toMetabotCardBaseline = (
+  question: Question,
+): MetabotCardBaseline => {
+  const card = question.card();
+  return {
+    dataset_query: card.dataset_query,
+    display: card.display,
+    visualization_settings: card.visualization_settings,
+    // as `updateQuestion` writes them, since a loaded card may have none
+    parameters: question.applyTemplateTagParameters().card().parameters,
+  };
+};
+
+/** Whether Metabot opened the current question and it still matches one of its baselines. */
+export const getIsUntouchedMetabotCard = createSelector(
+  [getQuestion, getMetabotCardBaselines],
+  (question, baselines) => {
+    if (!question || baselines.length === 0) {
+      return false;
+    }
+    const current = toMetabotCardBaseline(question);
+    return baselines.some((baseline) => _.isEqual(baseline, current));
+  },
+);
+
 export const getShouldShowUnsavedChangesWarning = createSelector(
   [
     getQueryBuilderMode,
@@ -642,6 +678,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     getQuestion,
     getOriginalQuestion,
     getUiControls,
+    getIsUntouchedMetabotCard,
   ],
   (
     queryBuilderMode,
@@ -650,6 +687,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     question,
     originalQuestion,
     uiControls,
+    isUntouchedMetabotCard,
   ) => {
     const isEditingModelOrMetric = queryBuilderMode === "dataset";
 
@@ -665,7 +703,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       const rawQuery = Lib.rawNativeQuery(question.query());
 
       if (isNewQuestion) {
-        return rawQuery.length > 0;
+        return rawQuery.length > 0 && !isUntouchedMetabotCard;
       }
 
       const rawOriginalQuery = Lib.rawNativeQuery(originalQuestion.query());
