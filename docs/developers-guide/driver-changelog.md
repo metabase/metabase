@@ -20,9 +20,9 @@ summary: Changes to the Metabase driver interface, listed by release.
 - New multimethod `metabase.driver.sql.query-processor/table-sample->honeysql`, for a SQL driver's built-in block
   sample (such as `TABLESAMPLE SYSTEM`). It returns the `FROM` item for a compiled table identifier and
   `{:percent p}`. The compiler calls it for a query stage with `:table-sample`. The `:sql` default throws. A driver
-  uses it from its `metabase.driver/table-random-sample`: pass `{:table-sample {:percent p}}` to
-  `metabase.driver.common.table-rows-sample/table-rows-sample`, with `p` from
-  `metabase.driver.common.table-rows-sample/block-sample-percent`. The Postgres driver is the first to do this.
+  that implements it uses `metabase.driver.common.table-rows-sample/block-sample` as its
+  `metabase.driver/table-random-sample`. A driver with its own `apply-top-level-clause` for `:source-table` must call
+  the new method itself. The Postgres driver is the first to use it.
 
 - New driver feature `:stage-ctes/nest-single-row-aggregation`. Drivers that use `:stage-ctes` can opt in to put an
   aggregation with no breakouts over a previous stage in its own stage CTE. This is for databases like Postgres that

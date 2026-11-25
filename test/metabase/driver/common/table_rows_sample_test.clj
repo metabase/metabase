@@ -48,8 +48,8 @@
                           :table-sample))))))
 
 (deftest ^:parallel block-sample-percent-test
-  (testing "the percent of the table to sample, with a margin, from the sample size and the row count estimate"
-    (is (= 1.25 (table-rows-sample/block-sample-percent {:rows 10000 :row-count 1000000})))
+  (testing "the percent of the table to sample, from the sample size and the row count estimate"
+    (is (= 1.0 (table-rows-sample/block-sample-percent {:rows 10000 :row-count 1000000})))
     (is (= 100.0 (table-rows-sample/block-sample-percent {:rows 10000 :row-count 9000})))
     (testing "no percent without a row count estimate"
       (is (nil? (table-rows-sample/block-sample-percent {:rows 10000 :row-count nil})))

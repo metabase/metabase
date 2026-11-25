@@ -351,11 +351,14 @@
    (complement (every-pred :page :limit))])
 
 (mr/def ::stage.table-sample
-  "The built-in block sample of the stage's source table that sync asks for, as a percent of the table. Only the SQL
-  compiler of a driver with its own `metabase.driver.sql.query-processor/table-sample->honeysql` reads it."
+  "A built-in block sample of the stage's source table, as a percent of the table. Sync sets it on its sample query for
+  a driver with its own `metabase.driver.sql.query-processor/table-sample->honeysql`, and the SQL compiler reads it. A
+  query from a client can carry it too: it then reads a sample of a table the user can read anyway, and compiling it
+  fails for a driver without the method."
   [:map
-   {:closed true}
-   [:percent [:double {:min 0 :max 100}]]])
+   {:decode/normalize common/normalize-map
+    :closed           true}
+   [:percent [:and number? [:>= 0] [:<= 100]]]])
 
 (mr/def ::stage.mbql
   [:and

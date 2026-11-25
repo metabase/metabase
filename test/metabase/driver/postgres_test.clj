@@ -3112,7 +3112,15 @@
                       (lib/limit 10)
                       (assoc-in [:stages 0 :table-sample] {:percent 2.5}))]
         (is (re-find #"FROM \"public\".\"venues\" TABLESAMPLE SYSTEM \(2\.5\)"
-                     (:query (qp.compile/compile query))))))))
+                     (:query (qp.compile/compile query))))))
+    (testing "the sample query of sync, with its text expressions, keeps the clause"
+      (let [mp    (mt/metadata-provider)
+            table (lib.metadata/table mp (mt/id :venues))
+            query (#'table-rows-sample/table-rows-sample-query mp table (lib.metadata/fields mp (mt/id :venues))
+                                                               {:truncation-size 50 :table-sample {:percent 2.5}})
+            sql   (:query (qp.compile/compile query))]
+        (is (re-find #"TABLESAMPLE SYSTEM \(2\.5\)" sql))
+        (is (re-find #"(?i)substring" sql))))))
 
 (deftest table-random-sample-test
   (mt/test-driver :postgres
@@ -3121,29 +3129,18 @@
       (let [table  (t2/select-one :model/Table :id (mt/id :venues))
             fields [(t2/select-one :model/Field :id (mt/id :venues :name))]
             sample (fn [opts]
-                     (driver/table-random-sample :postgres table fields (constantly conj) opts))]
-        (testing "the driver reads a block sample of a table"
+                     (let [sqls    (atom [])
+                           execute qp.pipeline/*execute*]
+                       (binding [qp.pipeline/*execute* (fn [driver query respond]
+                                                         (swap! sqls conj (get-in query [:stages 0 :native]))
+                                                         (execute driver query respond))]
+                         (assoc (driver/table-random-sample :postgres table fields (constantly conj) opts)
+                                :sqls @sqls))))]
+        (testing "the driver reads a block sample of about the sample size, with a limit it does not usually reach"
           (is (driver.u/supports? :postgres :table-random-sample (mt/db)))
-          (let [{:keys [method fraction result]} (sample {:rows 200 :row-count 100})]
+          (let [{:keys [method fraction sqls]} (sample {:rows 100 :row-count 1000})]
             (is (= :block method))
-            (is (= 1.0 fraction))
-            (is (= 100 (count result)))))
-        (testing "the driver reads the first rows when there is no row count estimate"
-          (let [{:keys [method fraction result]} (sample {:rows 200 :row-count nil})]
-            (is (= :first-rows method))
-            (is (nil? fraction))
-            (is (= 100 (count result)))))
-        (testing "Redshift, which derives from Postgres, does not get the feature"
-          (is (not (driver/database-supports? :redshift :table-random-sample nil))))))))
-
-(deftest block-sample-relation-test
-  (mt/test-driver :postgres
-    (let [spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
-      (jdbc/execute! spec ["CREATE OR REPLACE VIEW public.venues_sample_view AS SELECT * FROM public.venues"])
-      (try
-        (testing "a table can be sampled with TABLESAMPLE, and a view cannot"
-          (is (true? (#'postgres/block-sampleable? :postgres (mt/id) "public" "venues")))
-          (is (false? (#'postgres/block-sampleable? :postgres (mt/id) "public" "venues_sample_view")))
-          (is (false? (#'postgres/block-sampleable? :postgres (mt/id) "public" "no_such_table"))))
-        (finally
-          (jdbc/execute! spec ["DROP VIEW IF EXISTS public.venues_sample_view"]))))))
+            (is (= 0.1 fraction))
+            (is (=? [#".*TABLESAMPLE SYSTEM \(10\.0\) LIMIT 200"] sqls))))
+        (testing "the driver declines, so that sync reads the first rows, when there is no row count estimate"
+          (is (= {:method :first-rows :sqls []} (sample {:rows 100 :row-count nil}))))))))

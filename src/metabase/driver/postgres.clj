@@ -186,31 +186,12 @@
   [_driver table-expr {:keys [percent]}]
   [:raw [table-expr " TABLESAMPLE SYSTEM (" [:inline percent] ")"]])
 
-(defn- block-sampleable?
-  "Whether `schema`.`table-name` is a table, a partitioned table or a materialized view, which `TABLESAMPLE` can read.
-  A view or a foreign table cannot be read that way."
-  [driver database schema table-name]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver database nil
-   (fn [^java.sql.Connection conn]
-     (with-open [stmt (.prepareStatement conn (str "SELECT 1 FROM pg_catalog.pg_class c"
-                                                   " JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace"
-                                                   " WHERE n.nspname = ? AND c.relname = ? AND c.relkind IN ('r', 'p', 'm')"))]
-       (.setString stmt 1 schema)
-       (.setString stmt 2 table-name)
-       (with-open [rset (.executeQuery stmt)]
-         (.next rset))))))
-
+;; Only tables, partitioned tables and materialized views can be read with TABLESAMPLE. Sync gives a table a row count
+;; estimate only from `pg_stat_user_tables` (see [[describe-syncable-tables]]), which has no rows for views and
+;; foreign tables, so those get no estimate and the block sample declines for them.
 (defmethod driver/table-random-sample :postgres
-  [driver {:keys [schema name db_id] :as table} fields rff opts]
-  (let [percent (table-rows-sample/block-sample-percent opts)
-        opts    (select-keys opts [:truncation-size])]
-    (if (and percent (block-sampleable? driver db_id schema name))
-      {:method   :block
-       :fraction (/ percent 100.0)
-       :result   (table-rows-sample/table-rows-sample table fields rff (assoc opts :table-sample {:percent percent}))}
-      {:method :first-rows
-       :result (driver/table-rows-sample driver table fields rff opts)})))
+  [_driver table fields rff opts]
+  (table-rows-sample/block-sample table fields rff opts))
 
 (defmethod driver/db-default-timezone :postgres
   [driver database]
