@@ -948,17 +948,35 @@
     (driver-api/system-timezone-id)
     "UTC"))
 
-(defn- build-bigquery-request [^String sql parameters]
-  (.build
-   (doto (QueryJobConfiguration/newBuilder sql)
-     ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
-     (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
-     (bigquery.params/set-parameters! parameters)
-     ;; .setMaxResults is very misleading; it's actually the page size, and it only takes
-     ;; effect for RPC (a.k.a. "fast") calls
-     ;; there is no equivalent of .setMaxRows on a JDBC Statement; we rely on our middleware to stop
-     ;; realizing more rows as per the maximum result size
-     (.setMaxResults *page-size*))))
+(defn- build-bigquery-request
+  "The query job for `sql`. With `:max-bytes-billed`, BigQuery fails the job before it runs, and bills nothing, when it
+  would bill more bytes than that."
+  ([sql parameters]
+   (build-bigquery-request sql parameters nil))
+  ([^String sql parameters {:keys [max-bytes-billed]}]
+   (.build
+    (cond-> (doto (QueryJobConfiguration/newBuilder sql)
+              ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
+              (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
+              (bigquery.params/set-parameters! parameters)
+              ;; .setMaxResults is very misleading; it's actually the page size, and it only takes
+              ;; effect for RPC (a.k.a. "fast") calls
+              ;; there is no equivalent of .setMaxRows on a JDBC Statement; we rely on our middleware to stop
+              ;; realizing more rows as per the maximum result size
+              (.setMaxResults *page-size*))
+      max-bytes-billed (.setMaximumBytesBilled (long max-bytes-billed))))))
+
+(defn- sync-query-max-bytes-billed
+  "The most bytes that BigQuery may bill for `query`: the `sync-max-gb-billed` of the database `details`, in GB, when
+  sync sends the query. Nil for other queries, and when the database sets no positive limit."
+  [query details]
+  (when (:sync-query? query)
+    (let [setting (:sync-max-gb-billed details)
+          gb      (cond
+                    (number? setting) setting
+                    (string? setting) (parse-long (str/trim setting)))]
+      (when (some-> gb pos?)
+        (* (long gb) 1000 1000 1000)))))
 
 (defn- query-results-page
   "Fetch one page of query-job results from `job` with the given `options`. A thin wrapper over `.getQueryResults`
@@ -1078,80 +1096,90 @@
     (respond cols results)))
 
 (defn- execute-bigquery
-  [respond database-details ^String sql parameters cancel-chan]
-  {:pre [(not (str/blank? sql))]}
-  (validate-query-length! sql parameters)
-  ;; Kicking off two async jobs:
-  ;; - Waiting for the cancel-chan to get either a cancel message or to be closed.
-  ;; - Running the BigQuery execution in another thread, since it's blocking.
-  (let [^BigQuery client (database-details->client database-details)
-        result-promise   (promise)
-        request          (build-bigquery-request sql parameters)
-        _                (driver.conn/track-connection-acquisition! database-details)
-        ;; Wrap exception to avoid responding with HTTP 500 and reporting "We're experiencing server issues"
-        ;; in the UI. (#71558)
-        ^Job job         (try
-                           (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
-                           (catch Throwable t
-                             (handle-bigquery-exception t sql parameters)))
-        job-id           (.getJobId job)
-        query-future     (future
-                           ;; ensure the classloader is available within the future.
-                           (driver-api/the-classloader)
-                           (try
-                             (*page-callback*)
-                             (let [result-options [(BigQuery$QueryResultsOption/pageSize (or *page-size* initial-page-rows))]
-                                   result         (.getQueryResults job (u/varargs BigQuery$QueryResultsOption result-options))]
-                               (if result
-                                 (deliver result-promise [:ready result])
-                                 (throw (ex-info "Null response from query" {}))))
-                             (catch Throwable t
-                               (deliver result-promise [:error t]))))]
-    ;; This `go` is responsible for cancelling the *initial* job execution.
-    ;; Future pages may still not be fetched and so the reducer needs to check `cancel-chan` as well.
-    (when cancel-chan
-      (a/go
-        (when-let [cancelled (a/<! cancel-chan)]
-          (deliver result-promise [:cancel cancelled])
-          (some-> query-future future-cancel))))
-    ;; Now block the original thread on that promise.
-    ;; It will receive either [:ready [& respond-args]], [:error Throwable], or [:cancel truthy].
-    (let [[status result] @result-promise]
-      (case status
-        :error  (handle-bigquery-exception result sql parameters)
-        :cancel (try
-                  (.cancel client job-id)
-                  (catch Throwable t
-                    (log/warnf "Couldn't cancel job %s: %s" job-id (ex-message t)))
-                  (finally
-                    (throw-cancelled sql parameters)))
-        :ready  (bigquery-execute-response result job client respond cancel-chan)))))
+  ([respond database-details sql parameters cancel-chan]
+   (execute-bigquery respond database-details sql parameters cancel-chan nil))
+  ([respond database-details ^String sql parameters cancel-chan job-options]
+   {:pre [(not (str/blank? sql))]}
+   (validate-query-length! sql parameters)
+   ;; Kicking off two async jobs:
+   ;; - Waiting for the cancel-chan to get either a cancel message or to be closed.
+   ;; - Running the BigQuery execution in another thread, since it's blocking.
+   (let [^BigQuery client (database-details->client database-details)
+         result-promise   (promise)
+         request          (build-bigquery-request sql parameters job-options)
+         _                (driver.conn/track-connection-acquisition! database-details)
+         ;; Wrap exception to avoid responding with HTTP 500 and reporting "We're experiencing server issues"
+         ;; in the UI. (#71558)
+         ^Job job         (try
+                            (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
+                            (catch Throwable t
+                              (handle-bigquery-exception t sql parameters)))
+         job-id           (.getJobId job)
+         query-future     (future
+                            ;; ensure the classloader is available within the future.
+                            (driver-api/the-classloader)
+                            (try
+                              (*page-callback*)
+                              (let [result-options [(BigQuery$QueryResultsOption/pageSize (or *page-size* initial-page-rows))]
+                                    result         (.getQueryResults job (u/varargs BigQuery$QueryResultsOption result-options))]
+                                (if result
+                                  (deliver result-promise [:ready result])
+                                  (throw (ex-info "Null response from query" {}))))
+                              (catch Throwable t
+                                (deliver result-promise [:error t]))))]
+     ;; This `go` is responsible for cancelling the *initial* job execution.
+     ;; Future pages may still not be fetched and so the reducer needs to check `cancel-chan` as well.
+     (when cancel-chan
+       (a/go
+         (when-let [cancelled (a/<! cancel-chan)]
+           (deliver result-promise [:cancel cancelled])
+           (some-> query-future future-cancel))))
+     ;; Now block the original thread on that promise.
+     ;; It will receive either [:ready [& respond-args]], [:error Throwable], or [:cancel truthy].
+     (let [[status result] @result-promise]
+       (case status
+         :error  (handle-bigquery-exception result sql parameters)
+         :cancel (try
+                   (.cancel client job-id)
+                   (catch Throwable t
+                     (log/warnf "Couldn't cancel job %s: %s" job-id (ex-message t)))
+                   (finally
+                     (throw-cancelled sql parameters)))
+         :ready  (bigquery-execute-response result job client respond cancel-chan))))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn- ^:dynamic *process-native*
-  [respond     :- fn?
-   database    :- :metabase.warehouses.schema/database-or-metadata
-   sql         :- :string
-   parameters  :- [:maybe [:sequential :metabase.lib.schema.common/field-value]]
-   cancel-chan :- [:maybe (driver-api/instance-of-class ManyToManyChannel)]]
-  {:pre [(map? database) (map? (:details database))]}
-  ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
-  ;; `execute`
-  (let [details (driver.conn/effective-details database)
-        thunk   (fn []
-                  (execute-bigquery
-                   respond
-                   details
-                   sql
-                   parameters
-                   cancel-chan))]
-    (try
-      (thunk)
-      (catch Throwable e
-        (let [ex-data (u/all-ex-data e)]
-          (if (:retryable? ex-data)
-            (thunk)
-            (throw e)))))))
+  ([respond     :- fn?
+    database    :- :metabase.warehouses.schema/database-or-metadata
+    sql         :- :string
+    parameters  :- [:maybe [:sequential :metabase.lib.schema.common/field-value]]
+    cancel-chan :- [:maybe (driver-api/instance-of-class ManyToManyChannel)]]
+   (*process-native* respond database sql parameters cancel-chan nil))
+  ([respond     :- fn?
+    database    :- :metabase.warehouses.schema/database-or-metadata
+    sql         :- :string
+    parameters  :- [:maybe [:sequential :metabase.lib.schema.common/field-value]]
+    cancel-chan :- [:maybe (driver-api/instance-of-class ManyToManyChannel)]
+    job-options :- [:maybe [:map [:max-bytes-billed {:optional true} pos-int?]]]]
+   {:pre [(map? database) (map? (:details database))]}
+   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
+   ;; `execute`
+   (let [details (driver.conn/effective-details database)
+         thunk   (fn []
+                   (execute-bigquery
+                    respond
+                    details
+                    sql
+                    parameters
+                    cancel-chan
+                    job-options))]
+     (try
+       (thunk)
+       (catch Throwable e
+         (let [ex-data (u/all-ex-data e)]
+           (if (:retryable? ex-data)
+             (thunk)
+             (throw e))))))))
 
 (mu/defmethod driver/execute-reducible-query :bigquery-cloud-sdk
   [_driver                                              :- :keyword
@@ -1164,7 +1192,9 @@
       (let [sql (if (:include-user-id-and-hash (driver.conn/effective-details database) true)
                   (str sql "\n\n-- " (driver-api/query->remark :bigquery-cloud-sdk query))
                   sql)]
-        (*process-native* respond database sql params (driver-api/canceled-chan))))))
+        (if-let [max-bytes-billed (sync-query-max-bytes-billed query (driver.conn/effective-details database))]
+          (*process-native* respond database sql params (driver-api/canceled-chan) {:max-bytes-billed max-bytes-billed})
+          (*process-native* respond database sql params (driver-api/canceled-chan)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Other Driver Method Impls                                            |

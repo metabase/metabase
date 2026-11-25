@@ -36,6 +36,12 @@
                        :limit        100}]}
             (#'table-rows-sample/table-rows-sample-query mp table fields opts)))))
 
+(deftest ^:parallel table-rows-sample-query-is-a-sync-query-test
+  (testing "the sample query tells the driver that sync sends it, so that a driver can limit its cost"
+    (let [mp    meta/metadata-provider
+          table (meta/table-metadata :orders)]
+      (is (true? (:sync-query? (#'table-rows-sample/table-rows-sample-query mp table (driver-api/fields mp (:id table)) nil)))))))
+
 (deftest ^:parallel table-rows-sample-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
     (let [expected [["20th Century Cafe"]

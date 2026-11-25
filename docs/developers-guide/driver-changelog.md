@@ -7,6 +7,10 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- The queries that sync sends to read a sample of a table or the values of a field now have the top-level key
+  `:sync-query? true`, which reaches `metabase.driver/execute-reducible-query`. A driver can use it to limit the cost
+  of these queries. The BigQuery driver uses it for its new connection option "Maximum GB billed for each sync query".
+
 - New driver feature `:stage-ctes/nest-single-row-aggregation`. Drivers that use `:stage-ctes` can opt in to put an
   aggregation with no breakouts over a previous stage in its own stage CTE. This is for databases like Postgres that
   do not use an index for `MIN`/`MAX` when the aggregation is in a `SELECT` that has a `WITH` clause. The default is

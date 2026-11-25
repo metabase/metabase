@@ -12,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -986,3 +987,23 @@
               (is (< raw-count field-values/*distinct-limit*)
                   "source has few enough distinct values to not hit the LIMIT")
               (is (every? string? values)))))))))
+
+(defn- sync-query-marks
+  "Run `thunk` and return, for each query that reached the driver, whether it was marked as a sync query."
+  [thunk]
+  (let [marks   (atom [])
+        execute qp.pipeline/*execute*]
+    (binding [qp.pipeline/*execute* (fn [driver query respond]
+                                      (swap! marks conj (boolean (:sync-query? query)))
+                                      (execute driver query respond))]
+      (thunk))
+    @marks))
+
+(deftest value-list-scans-are-sync-queries-test
+  (testing "the value-list scans tell the driver that sync sends them, so that a driver can limit their cost"
+    (let [table  (t2/select-one :model/Table :id (mt/id :venues))
+          fields (t2/select :model/Field :id [:in [(mt/id :venues :name) (mt/id :venues :price)]])]
+      (testing "the scan of one field"
+        (is (= [true] (sync-query-marks #(field-values/distinct-values (first fields))))))
+      (testing "the scan of several fields in one query"
+        (is (= [true] (sync-query-marks #(distinct-batch/run-distinct-batch :h2 table fields))))))))

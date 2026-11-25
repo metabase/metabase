@@ -413,7 +413,8 @@
                   (fn [query]
                     (-> query
                         (lib/breakout field)
-                        (lib/limit *distinct-limit*)))
+                        (lib/limit *distinct-limit*)
+                        (assoc :sync-query? true)))
                   qp.reducible/default-rff)]
       {:values (-> result :data :rows)})
     (catch Throwable e

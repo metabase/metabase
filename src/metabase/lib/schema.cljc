@@ -709,6 +709,12 @@
    [:constraints {:optional true} [:ref ::lib.schema.constraints/constraints]]
    [:middleware  {:optional true} [:ref ::lib.schema.middleware-options/middleware-options]]
    [:async?      {:optional true} :boolean]
+   [:sync-query?
+    {:optional true
+     :description
+     "Whether sync sends this query, to read a sample of a table or the values of a field. A driver may limit the cost
+  of such a query, for example the bytes that the warehouse bills for it."}
+    :boolean]
    [:cache-strategy {:optional true} [:maybe [:ref ::cache-strategy]]]
    [:was-pivot
     {:optional true

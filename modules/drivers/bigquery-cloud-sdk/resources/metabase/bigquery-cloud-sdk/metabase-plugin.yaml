@@ -58,6 +58,14 @@ driver:
       type: boolean
       visible-if:
         advanced-options: true
+    - name: sync-max-gb-billed
+      display-name: Maximum GB billed for each sync query
+      helper-text: Sync skips a sample or a filter value list when its query would bill more than this. Leave empty for no limit.
+      placeholder: "10"
+      required: false
+      type: integer
+      visible-if:
+        advanced-options: true
     - name: host
       display-name: Alternate hostname
       helper-text: Alternate hostname used to connect to BigQuery
