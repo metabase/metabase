@@ -19,6 +19,8 @@ export type SidePanelTab = "templates" | "functions";
 export type SidePanelTemplateItem = {
   type: "template";
   name: string;
+  /** What the snippet gives, in a sentence or two, for the panel to show. */
+  description: string;
   /** Inserted as a fill-in: its columns and quoted values become blanks. */
   code: string;
   /** Only when it differs from the section's icon. */
@@ -169,51 +171,81 @@ export function getSidePanelSections(
 }
 
 function template(
-  name: string,
-  code: string,
-  icon?: SidePanelIconName,
+  item: Omit<SidePanelTemplateItem, "type">,
 ): SidePanelTemplateItem {
-  return { type: "template", name, code, icon };
+  return { type: "template", ...item };
 }
 
 function functions(...names: string[]): SidePanelFunctionItem[] {
   return names.map((name) => ({ type: "function", name }));
 }
 
-/** Custom column: Templates */
+/** Custom column: Snippets */
 function getTemplateSections(): SidePanelSection[] {
   return [
     {
       name: t`Text`,
       icon: "text",
       blocks: [
-        [template(t`Count characters`, `length([Text])`)],
         [
-          template(
-            t`Remove or replace text`,
-            `replace([Text], "https://", "")`,
-          ),
-          template(t`Tidy up spaces and capitals`, `lower(trim([Text]))`),
+          template({
+            name: t`Count characters`,
+            description: t`The number of characters in the text, spaces included.`,
+            code: `length([Text])`,
+          }),
         ],
         [
-          template(t`Domain from an email`, `domain([Text])`),
-          template(t`Number from text`, `regexExtract([Text], "[0-9]+")`),
-          template(t`Year or month of a date`, `year([Date])`),
+          template({
+            name: t`Replace text`,
+            description: t`Replaces every match of one text with another, like removing "https://" from links.`,
+            code: `replace([Text], "https://", "")`,
+          }),
+          template({
+            name: t`Lowercase and trim spaces`,
+            description: t`Makes the text lowercase and removes spaces at the start and end, so " Acme" and "acme" match.`,
+            code: `lower(trim([Text]))`,
+          }),
         ],
         [
-          template(
-            t`Text contains a word`,
-            `contains([Text], "refund", "case-insensitive")`,
-          ),
-          template(
-            t`Text contains any of several words`,
-            `contains([Text], "student") OR contains([Text], "intern")`,
-          ),
+          template({
+            name: t`Domain of an email or website`,
+            description: t`The domain with its ending, like "metabase.com" from "hello@metabase.com".`,
+            code: `host([Text])`,
+          }),
+          template({
+            name: t`Digits from text`,
+            description: t`The first run of digits in the text, like "1042" from "Order #1042". The result is text.`,
+            code: `regexExtract([Text], "[0-9]+")`,
+          }),
         ],
         [
-          template(t`First N characters`, `substring([Text], 1, 2)`),
-          template(t`Text before a character`, `splitPart([Text], "-", 1)`),
-          template(t`Text after a character`, `splitPart([Text], "/", 2)`),
+          template({
+            name: t`Text contains a word`,
+            description: t`True when the text contains the word, in any capitalization.`,
+            code: `contains([Text], "refund", "case-insensitive")`,
+          }),
+          template({
+            name: t`Text contains any of several words`,
+            description: t`True when the text contains at least one of the words. Capitalization must match.`,
+            code: `contains([Text], "student") OR contains([Text], "intern")`,
+          }),
+        ],
+        [
+          template({
+            name: t`First characters of text`,
+            description: t`The first 2 characters of the text, like "AB" from "AB-1234". Change 2 to take more.`,
+            code: `substring([Text], 1, 2)`,
+          }),
+          template({
+            name: t`Text before a separator`,
+            description: t`Everything before the first separator, like "2026" from "2026-05-14".`,
+            code: `splitPart([Text], "-", 1)`,
+          }),
+          template({
+            name: t`Text after a separator`,
+            description: t`The second part of the text split by a separator, like "invoices" from "docs/invoices". Change 2 for a later part.`,
+            code: `splitPart([Text], "/", 2)`,
+          }),
         ],
       ],
     },
@@ -222,23 +254,36 @@ function getTemplateSections(): SidePanelSection[] {
       icon: "date",
       blocks: [
         [
-          template(t`Age in years`, `datetimeDiff([Date], today(), "year")`),
-          template(
-            t`Start of this month`,
-            `datetimeSubtract(today(), day(today()) - 1, "day")`,
-          ),
+          template({
+            name: t`Age in years`,
+            description: t`Whole years from the date until today, like an age from a birth date.`,
+            code: `datetimeDiff([Date], today(), "year")`,
+          }),
+          template({
+            name: t`Year of a date`,
+            description: t`The year of the date as a number, like 2026.`,
+            code: `year([Date])`,
+          }),
         ],
         [
-          template(
-            t`Days since a date`,
-            `datetimeDiff([Date], today(), "day")`,
-          ),
-          template(
-            t`Days between two dates`,
-            `datetimeDiff([Date 1], [Date 2], "day")`,
-          ),
+          template({
+            name: t`Days since a date`,
+            description: t`Days from the date until today. Dates in the future give negative numbers.`,
+            code: `datetimeDiff([Date], today(), "day")`,
+          }),
+          template({
+            name: t`Days between two dates`,
+            description: t`Days from the first date to the second, like from order to delivery. Negative when the second date is earlier.`,
+            code: `datetimeDiff([Date 1], [Date 2], "day")`,
+          }),
         ],
-        [template(t`Add or subtract time`, `datetimeAdd([Date], 7, "day")`)],
+        [
+          template({
+            name: t`Add days to a date`,
+            description: t`The date plus a number of days, like a due date 7 days after an order. A negative number goes back.`,
+            code: `datetimeAdd([Date], 7, "day")`,
+          }),
+        ],
       ],
     },
     {
@@ -246,29 +291,45 @@ function getTemplateSections(): SidePanelSection[] {
       icon: "math",
       blocks: [
         [
-          template(t`Calculate with two columns`, `[Number 1] * [Number 2]`),
-          template(
-            t`Higher of two columns`,
-            `case([Number 1] > [Number 2], [Number 1], [Number 2])`,
-          ),
-          template(
-            t`Percent change between two columns`,
-            `([Number 1] - [Number 2]) / [Number 2]`,
-          ),
+          template({
+            name: t`Multiply two columns`,
+            description: t`One column times another, like price times quantity. Change * to +, - or / for other math.`,
+            code: `[Number 1] * [Number 2]`,
+          }),
+          template({
+            name: t`Higher of two columns`,
+            description: t`The larger of the two values in each row.`,
+            code: `case([Number 1] > [Number 2], [Number 1], [Number 2])`,
+          }),
+          template({
+            name: t`Percent change between two columns`,
+            description: t`How much the first value differs from the second, as a decimal: 0.25 is 25% more. Empty when the second is 0.`,
+            code: `([Number 1] - [Number 2]) / [Number 2]`,
+          }),
         ],
         [
-          template(t`Make a number positive`, `abs([Number])`),
-          template(t`Round to 2 decimals`, `round([Number] * 100) / 100`),
-          template(
-            t`Add a leading zero`,
-            `case([Number] < 10, concat("0", text([Number])), text([Number]))`,
-          ),
+          template({
+            name: t`Make a number positive`,
+            description: t`The number without its minus sign: -5 becomes 5.`,
+            code: `abs([Number])`,
+          }),
+          template({
+            name: t`Round to 2 decimals`,
+            description: t`Rounds to 2 decimal places, like 3.14159 to 3.14.`,
+            code: `round([Number] * 100) / 100`,
+          }),
+          template({
+            name: t`Pad a number with a leading zero`,
+            description: t`Turns 1 to 9 into "01" to "09", so that the numbers sort in order as text. The result is text.`,
+            code: `case([Number] < 10, concat("0", text([Number])), text([Number]))`,
+          }),
         ],
         [
-          template(
-            t`Sort numbers into ranges`,
-            `case([Number] <= 30, "0–30", [Number] <= 60, "31–60", "60+")`,
-          ),
+          template({
+            name: t`Group numbers into ranges`,
+            description: t`Puts each number in a range: 30 or less, 31 to 60, and over 60. Edit the limits and the labels.`,
+            code: `case([Number] <= 30, "30 or less", [Number] <= 60, "31–60", "Over 60")`,
+          }),
         ],
       ],
     },
@@ -277,10 +338,26 @@ function getTemplateSections(): SidePanelSection[] {
       icon: "conversion",
       blocks: [
         [
-          template(t`Text to number`, `integer([Text])`),
-          template(t`Text to date`, `date([Text])`),
-          template(t`Number or date to text`, `text([Column])`),
-          template(t`Show a month as a name`, `monthName(month([Date]))`),
+          template({
+            name: t`Text to whole number`,
+            description: t`Turns text like "42" into a number, to do math with it. Text with decimals, like "4.2", gives an error.`,
+            code: `integer([Text])`,
+          }),
+          template({
+            name: t`Text to date`,
+            description: t`Turns text in the format "2026-05-14" into a date, to filter and group by it.`,
+            code: `date([Text])`,
+          }),
+          template({
+            name: t`Number or date to text`,
+            description: t`Turns a number or a date into text, to join it with other text.`,
+            code: `text([Column])`,
+          }),
+          template({
+            name: t`Month name of a date`,
+            description: t`The short name of the month, like "Oct".`,
+            code: `monthName(month([Date]))`,
+          }),
         ],
       ],
     },
@@ -289,44 +366,59 @@ function getTemplateSections(): SidePanelSection[] {
       icon: "table-column",
       blocks: [
         [
-          template(
-            t`Join text columns with a separator`,
-            `concat([Text 1], " ", [Text 2])`,
-          ),
+          template({
+            name: t`Join text columns`,
+            description: t`Joins two text columns with a separator, like a first and a last name. Empty when either is empty.`,
+            code: `concat([Text 1], " ", [Text 2])`,
+          }),
         ],
         [
-          template(t`Replace empty with a default`, `coalesce([Number], 0)`),
-          template(
-            t`Show a label when empty`,
-            `case(isNull([Column]), "Not shipped", "Shipped")`,
-          ),
-          template(
-            t`Add columns when one may be empty`,
-            `coalesce([Number 1], 0) + coalesce([Number 2], 0)`,
-          ),
-          template(
-            t`Leave a value empty on purpose`,
-            `case([Number] != 0, [Number])`,
-          ),
+          template({
+            name: t`Replace empty values`,
+            description: t`Uses a fallback, like 0, where the column is empty.`,
+            code: `coalesce([Number], 0)`,
+          }),
+          template({
+            name: t`Label empty and filled values`,
+            description: t`One label where the column is empty, and another where it has a value.`,
+            code: `case(isNull([Column]), "Not shipped", "Shipped")`,
+          }),
+          template({
+            name: t`Add columns that may be empty`,
+            description: t`Adds two columns, counting empty values as 0. A plain + is empty when either value is.`,
+            code: `coalesce([Number 1], 0) + coalesce([Number 2], 0)`,
+          }),
+          template({
+            name: t`Turn zeros into empty values`,
+            description: t`Leaves the value empty where it's 0, so that averages skip it and divisions by it don't fail.`,
+            code: `case([Number] != 0, [Number])`,
+          }),
         ],
         [
-          template(
-            t`Label rows by a condition`,
-            `case([Text] = "Done", "Closed", "Open")`,
-            "table-row",
-          ),
-          template(
-            t`Flag rows with 1 or 0`,
-            `case(notNull([Column]), 1, 0)`,
-            "table-row",
-          ),
+          template({
+            name: t`Label rows by a condition`,
+            description: t`One label for rows that match a condition, and another for the rest.`,
+            code: `case([Text] = "Done", "Closed", "Open")`,
+            icon: "table-row",
+          }),
+          template({
+            name: t`Flag rows with 1 or 0`,
+            description: t`1 where the column has a value, and 0 where it's empty. Sum it to count the rows.`,
+            code: `case(notNull([Column]), 1, 0)`,
+            icon: "table-row",
+          }),
         ],
         [
-          template(
-            t`Map many values to labels`,
-            `case(in([Text], "CA", "OR", "WA"), "West", in([Text], "NY", "NJ"), "East", "Other")`,
-          ),
-          template(t`Value is one of a list`, `in([Text], "Paid", "Cleared")`),
+          template({
+            name: t`Group values under labels`,
+            description: t`Gives lists of values a label each, like states to regions. Other values get "Other".`,
+            code: `case(in([Text], "CA", "OR", "WA"), "West", in([Text], "NY", "NJ"), "East", "Other")`,
+          }),
+          template({
+            name: t`Value is one of a list`,
+            description: t`True when the value is one of the listed values.`,
+            code: `in([Text], "Paid", "Cleared")`,
+          }),
         ],
       ],
     },
@@ -341,17 +433,26 @@ function getConditionSections(): SidePanelSection[] {
       icon: "text",
       blocks: [
         [
-          template(t`Character count`, `length([Text]) > 100`),
-          template(t`Year or month of a date`, `year([Date]) = 2026`),
-          template(
-            t`Text contains a word`,
-            `contains([Text], "refund", "case-insensitive")`,
-          ),
-          template(
-            t`Text contains any of several words`,
-            `contains([Text], "student") OR contains([Text], "intern")`,
-          ),
-          template(t`First N characters`, `substring([Text], 1, 2) = "AB"`),
+          template({
+            name: t`Text longer than N characters`,
+            description: t`Rows where the text has more than 100 characters.`,
+            code: `length([Text]) > 100`,
+          }),
+          template({
+            name: t`Text contains a word`,
+            description: t`Rows where the text contains the word, in any capitalization.`,
+            code: `contains([Text], "refund", "case-insensitive")`,
+          }),
+          template({
+            name: t`Text contains any of several words`,
+            description: t`Rows where the text contains at least one of the words. Capitalization must match.`,
+            code: `contains([Text], "student") OR contains([Text], "intern")`,
+          }),
+          template({
+            name: t`Text starts with`,
+            description: t`Rows where the text starts with the given text, like "AB" in "AB-1234". Capitalization must match.`,
+            code: `startsWith([Text], "AB")`,
+          }),
         ],
       ],
     },
@@ -360,16 +461,31 @@ function getConditionSections(): SidePanelSection[] {
       icon: "date",
       blocks: [
         [
-          template(
-            t`Start of this month`,
-            `[Date] >= datetimeSubtract(today(), day(today()) - 1, "day")`,
-          ),
-          template(t`Dates in the last N days`, `interval([Date], -30, "day")`),
-          template(t`Dates in the next N days`, `interval([Date], 7, "day")`),
-          template(
-            t`Dates before or after a fixed date`,
-            `[Date] < "2026-01-01"`,
-          ),
+          template({
+            name: t`Dates this month`,
+            description: t`Rows with a date in the current calendar month.`,
+            code: `interval([Date], 0, "month")`,
+          }),
+          template({
+            name: t`Dates in the last N days`,
+            description: t`Rows with a date in the 30 days before today, not counting today. Change -30 for another range.`,
+            code: `interval([Date], -30, "day")`,
+          }),
+          template({
+            name: t`Dates in the next N days`,
+            description: t`Rows with a date in the 7 days after today, not counting today.`,
+            code: `interval([Date], 7, "day")`,
+          }),
+          template({
+            name: t`Dates in a given year`,
+            description: t`Rows with a date in 2026.`,
+            code: `year([Date]) = 2026`,
+          }),
+          template({
+            name: t`Dates before a given date`,
+            description: t`Rows with a date before January 1, 2026. Use > for dates after it.`,
+            code: `[Date] < "2026-01-01"`,
+          }),
         ],
       ],
     },
@@ -378,9 +494,22 @@ function getConditionSections(): SidePanelSection[] {
       icon: "table-column",
       blocks: [
         [
-          template(t`Rows with filled value`, `notNull([Column])`, "table-row"),
-          template(t`Two columns compared`, `[Date 1] > [Date 2]`),
-          template(t`Value is one of a list`, `in([Text], "Paid", "Cleared")`),
+          template({
+            name: t`Rows where a column has a value`,
+            description: t`Rows where the column isn't empty.`,
+            code: `notNull([Column])`,
+            icon: "table-row",
+          }),
+          template({
+            name: t`One date after another`,
+            description: t`Rows where the first date is later than the second, like orders shipped after their due date.`,
+            code: `[Date 1] > [Date 2]`,
+          }),
+          template({
+            name: t`Value is one of a list`,
+            description: t`Rows where the value is one of the listed values.`,
+            code: `in([Text], "Paid", "Cleared")`,
+          }),
         ],
       ],
     },
@@ -395,39 +524,62 @@ function getAggregationSections(): SidePanelSection[] {
       icon: "table-column",
       blocks: [
         [
-          template(t`Count rows`, `Count()`, "table-row"),
-          template(
-            t`Count rows that match`,
-            `CountIf([Text] = "Done")`,
-            "table-row",
-          ),
-          template(t`Count unique values`, `Distinct([Column])`, "table-row"),
+          template({
+            name: t`Count rows`,
+            description: t`The number of rows.`,
+            code: `Count()`,
+            icon: "table-row",
+          }),
+          template({
+            name: t`Count rows that match`,
+            description: t`The number of rows that match a condition.`,
+            code: `CountIf([Text] = "Done")`,
+            icon: "table-row",
+          }),
+          template({
+            name: t`Count unique values`,
+            description: t`The number of different values in a column.`,
+            code: `Distinct([Column])`,
+            icon: "table-row",
+          }),
         ],
         [
-          template(t`Total a column`, `Sum([Number])`),
-          template(t`Compare two columns`, `Sum([Number 1]) - Sum([Number 2])`),
+          template({
+            name: t`Total of a column`,
+            description: t`Adds up all the values of a column.`,
+            code: `Sum([Number])`,
+          }),
+          template({
+            name: t`Difference between two totals`,
+            description: t`The total of one column minus the total of another.`,
+            code: `Sum([Number 1]) - Sum([Number 2])`,
+          }),
         ],
         [
-          template(
-            t`Total for matching rows`,
-            `SumIf([Number], [Text] = "Paid")`,
-            "table-row",
-          ),
-          template(
-            t`Unique values in matching rows`,
-            `DistinctIf([Column], [Text] = "Done")`,
-            "table-row",
-          ),
-          template(
-            t`Average for matching rows`,
-            `Average(case([Text] = "Done", [Number]))`,
-            "table-row",
-          ),
-          template(
-            t`Percentage of rows that match`,
-            `Share([Text] = "Done")`,
-            "table-row",
-          ),
+          template({
+            name: t`Total for matching rows`,
+            description: t`Adds up a column only for the rows that match a condition.`,
+            code: `SumIf([Number], [Text] = "Paid")`,
+            icon: "table-row",
+          }),
+          template({
+            name: t`Unique values in matching rows`,
+            description: t`The number of different values among the rows that match a condition.`,
+            code: `DistinctIf([Column], [Text] = "Done")`,
+            icon: "table-row",
+          }),
+          template({
+            name: t`Average for matching rows`,
+            description: t`The average of a column only for the rows that match a condition.`,
+            code: `Average(case([Text] = "Done", [Number]))`,
+            icon: "table-row",
+          }),
+          template({
+            name: t`Percentage of rows that match`,
+            description: t`The share of rows that match a condition, as a decimal: 0.25 is 25%.`,
+            code: `Share([Text] = "Done")`,
+            icon: "table-row",
+          }),
         ],
       ],
     },
@@ -436,18 +588,16 @@ function getAggregationSections(): SidePanelSection[] {
       icon: "date",
       blocks: [
         [
-          template(
-            t`Days between two dates`,
-            `Average(datetimeDiff([Date 1], [Date 2], "day"))`,
-          ),
-          template(
-            t`Dates in the last N days`,
-            `CountIf(interval([Date], -30, "day"))`,
-          ),
-          template(
-            t`Dates in the next N days`,
-            `CountIf(interval([Date], 7, "day"))`,
-          ),
+          template({
+            name: t`Average days between two dates`,
+            description: t`The average number of days from one date to another, like from order to delivery.`,
+            code: `Average(datetimeDiff([Date 1], [Date 2], "day"))`,
+          }),
+          template({
+            name: t`Count rows from the last N days`,
+            description: t`The number of rows with a date in the 30 days before today, not counting today.`,
+            code: `CountIf(interval([Date], -30, "day"))`,
+          }),
         ],
       ],
     },
@@ -455,17 +605,29 @@ function getAggregationSections(): SidePanelSection[] {
       name: t`Numbers`,
       icon: "math",
       blocks: [
-        [template(t`Running total`, `CumulativeSum([Number])`)],
         [
-          template(t`Previous period's value`, `Offset(Sum([Number]), -1)`),
-          template(
-            t`Change vs previous period`,
-            `(Sum([Number]) - Offset(Sum([Number]), -1)) / Offset(Sum([Number]), -1)`,
-          ),
-          template(
-            t`Rate between two counts`,
-            `CountIf([Text] = "Yes") / (CountIf([Text] = "Yes") + CountIf([Text] = "No"))`,
-          ),
+          template({
+            name: t`Running total`,
+            description: t`The total so far, row by row. Group by a date to see it grow over time.`,
+            code: `CumulativeSum([Number])`,
+          }),
+        ],
+        [
+          template({
+            name: t`Previous period's total`,
+            description: t`The total of the row before, like last month's sales next to this month's. Group by a date first.`,
+            code: `Offset(Sum([Number]), -1)`,
+          }),
+          template({
+            name: t`Percent change from the previous period`,
+            description: t`How much the total changed from the row before, as a decimal: 0.1 is 10% more. Group by a date first.`,
+            code: `(Sum([Number]) - Offset(Sum([Number]), -1)) / Offset(Sum([Number]), -1)`,
+          }),
+          template({
+            name: t`Rate of one outcome out of two`,
+            description: t`Yes divided by yes plus no, like a conversion rate. Rows with other values don't count.`,
+            code: `CountIf([Text] = "Yes") / (CountIf([Text] = "Yes") + CountIf([Text] = "No"))`,
+          }),
         ],
         functions(
           "Average",

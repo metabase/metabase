@@ -24,6 +24,7 @@ export type SidePanelTemplateRow = {
   type: "template";
   key: string;
   name: string;
+  description: string;
   code: string;
   icon: SidePanelIconName;
   /** Why the row matches the search, when its name does not show it. */
@@ -76,7 +77,10 @@ export function getSidePanelView({
   const matches = (text: string) => text.toLowerCase().includes(query);
 
   const describes = (row: SidePanelRow) => {
-    if (row.type !== "function" || database == null) {
+    if (row.type === "template") {
+      return matches(row.description);
+    }
+    if (database == null) {
       return false;
     }
     // Descriptions are Markdown, with `$name` marking argument names.
@@ -153,6 +157,10 @@ function toRow(
   database: Options["database"],
 ): SidePanelRow[] {
   if (item.type === "template") {
+    // A snippet that needs a function the database lacks would only fail.
+    if (database != null && !canRunTemplate(item.code, database)) {
+      return [];
+    }
     return [
       {
         ...item,
@@ -179,4 +187,20 @@ function toRow(
         !hasRequiredFeature(database, clause.requiresFeature),
     },
   ];
+}
+
+/** True when the database supports every function the code calls. */
+function canRunTemplate(
+  code: string,
+  database: Pick<Database, "engine" | "features">,
+) {
+  const names = Array.from(code.matchAll(/([A-Za-z]+)\(/g), (match) =>
+    getMBQLName(match[1]),
+  );
+  return names.every((name) => {
+    const clause = name ? getClauseDefinition(name) : undefined;
+    return (
+      clause == null || hasRequiredFeature(database, clause.requiresFeature)
+    );
+  });
 }
