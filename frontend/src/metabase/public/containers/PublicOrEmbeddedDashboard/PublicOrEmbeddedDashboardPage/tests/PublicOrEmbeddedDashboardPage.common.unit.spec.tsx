@@ -1,13 +1,19 @@
 import fetchMock from "fetch-mock";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
-import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
+import {
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
 import { PLUGIN_API } from "metabase/api/client";
 import * as embeddingConfig from "metabase/embedding/config";
 import { setupEmbedPreviewRewrite } from "metabase/embedding/lib/override-requests-for-embeds";
 import {
   createMockActionDashboardCard,
   createMockImplicitQueryAction,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { type SetupOpts, setup } from "./setup";
@@ -15,6 +21,7 @@ import {
   RC1,
   createTimeSeriesDashcard,
   expectReadOnlyDashboardEvents,
+  getTimeSeriesDashCard,
   setupTimeSeriesChart,
 } from "./timeline-events";
 
@@ -199,5 +206,29 @@ describe("PublicOrEmbeddedDashboardPage", () => {
         fetchMock.callHistory.called(`begin:${EMBED_DASHBOARD_PATH}`),
       ).toBe(false);
     });
+  });
+
+  describe("development watermark", () => {
+    it.each([true, false])(
+      "shows the watermark on a chart only in development mode (development mode: %s)",
+      async (isDevelopmentMode) => {
+        setupTimeSeriesChart();
+        await setup({
+          dashboardTitle: DASHBOARD_TITLE,
+          extraDashcards: [createTimeSeriesDashcard([])],
+          tokenFeatures: createMockTokenFeatures({
+            development_mode: isDevelopmentMode,
+          }),
+        });
+
+        const dashcard = await waitFor(() => getTimeSeriesDashCard());
+        expect(
+          await within(dashcard).findByText("Created At: Month"),
+        ).toBeInTheDocument();
+        expect(
+          within(dashcard).queryAllByTestId("development-watermark"),
+        ).toHaveLength(isDevelopmentMode ? 1 : 0);
+      },
+    );
   });
 });

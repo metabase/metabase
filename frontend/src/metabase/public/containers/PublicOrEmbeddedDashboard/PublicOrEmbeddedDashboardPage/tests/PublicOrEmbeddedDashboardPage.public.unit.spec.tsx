@@ -7,6 +7,7 @@ import type { TimelineEvent } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockImplicitQueryAction,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import { setup } from "./setup";
@@ -16,6 +17,7 @@ import {
   createTimeSeriesDashcard,
   expectReadOnlyDashboardEvents,
   findEventChip,
+  getTimeSeriesDashCard,
   getTimelineRequests,
   setupTimeSeriesChart,
 } from "./timeline-events";
@@ -149,5 +151,30 @@ describe("PublicOrEmbeddedDashboardPage (public link)", () => {
       await waitFor(() => expect(chip).toHaveFocus());
       expect(getTimelineRequests()).toEqual([]);
     });
+  });
+
+  describe("development watermark", () => {
+    it.each([true, false])(
+      "shows the watermark on a chart only in development mode (development mode: %s)",
+      async (isDevelopmentMode) => {
+        setupTimeSeriesChart();
+        await setup({
+          dashboardTitle: DASHBOARD_TITLE,
+          accessType: "public",
+          extraDashcards: [createTimeSeriesDashcard([])],
+          tokenFeatures: createMockTokenFeatures({
+            development_mode: isDevelopmentMode,
+          }),
+        });
+
+        const dashcard = await waitFor(() => getTimeSeriesDashCard());
+        expect(
+          await within(dashcard).findByText("Created At: Month"),
+        ).toBeInTheDocument();
+        expect(
+          within(dashcard).queryAllByTestId("development-watermark"),
+        ).toHaveLength(isDevelopmentMode ? 1 : 0);
+      },
+    );
   });
 });
