@@ -2,6 +2,9 @@ const { H } = cy;
 
 const QUESTION_NAME = "Subtotal by total and weekday";
 const SUM_COLOR = "#88BF4D";
+const TUESDAY_COLOR = "#F2A86F";
+const TUESDAY_POINT_COUNT = 8;
+const TOTAL_80_TO_100_POINT_INDEX = 4;
 const WEEKDAYS = [
   "Sunday",
   "Monday",
@@ -765,6 +768,17 @@ function assertChart() {
     expect($items.toArray().map((item) => item.textContent)).to.deep.equal(
       WEEKDAYS,
     );
+  });
+  H.ensureChartIsActive();
+  H.cartesianChartCircleWithColor(TUESDAY_COLOR)
+    .should("have.length", TUESDAY_POINT_COUNT)
+    .eq(TOTAL_80_TO_100_POINT_INDEX)
+    .realHover();
+  // a hovered point changes color, so the next lookup by color needs it blurred
+  H.assertEChartsTooltip({
+    header: "80  –  100",
+    rows: [{ name: "Tuesday", value: "28,977.16" }],
+    blurAfter: true,
   });
 }
 
