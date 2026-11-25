@@ -57,6 +57,13 @@
   [table]
   (some-> *databases-without-better-sample* (swap! conj (:db_id table))))
 
+(defn- declined?
+  "Whether the driver declined to give a better sample of a table: `{:method :first-rows}` with no `:result`."
+  [result]
+  (and (map? result)
+       (= :first-rows (:method result))
+       (not (contains? result :result))))
+
 (defn- valid-sample?
   "Whether `result` has the shape [[driver/table-random-sample]] promises."
   [result]
@@ -101,6 +108,9 @@
           (log/warn result "The better sample failed")
           (give-up "The better sample of %s failed" (sync-util/name-for-logging table)))
 
+      (declined? result)
+      result
+
       (not (valid-sample? result))
       (give-up "The better sample of %s gave %s, not a map with a keyword :method and a :result"
                (sync-util/name-for-logging table) (pr-str (dissoc result :result)))
@@ -112,7 +122,8 @@
   "Reduce with `rff` a sample of the rows of `fields` of `table`, and return
   `{:method m, :fraction f, :runs n, :result <what rff returned>}` (`:fraction` and `:runs` when the driver gives
   them). The sample is the driver's better one when [[better-sample-allowed?]], and otherwise, or when that fails,
-  [[first-rows-sample]], whose method is `:unspecified`.
+  [[first-rows-sample]], whose method is `:unspecified`. When the driver declines for the table, the sample is
+  [[first-rows-sample]], read outside the time limit, with the method `:first-rows`.
 
   `opts` takes `:truncation-size`; this adds `:rows`, the sample size, and `:row-count`, the row count estimate of
   `table`, or nil when there is none, which the driver must handle."
@@ -120,7 +131,10 @@
   (let [driver (driver.u/database->driver (:db_id table))
         opts   (assoc opts
                       :rows      sample-rows
-                      :row-count (:estimated_row_count table))]
-    (or (when (better-sample-allowed? driver table opts)
-          (better-sample driver table fields rff opts))
-        (first-rows-sample table fields rff opts))))
+                      :row-count (:estimated_row_count table))
+        better (when (better-sample-allowed? driver table opts)
+                 (better-sample driver table fields rff opts))]
+    (cond
+      (declined? better) (assoc (first-rows-sample table fields rff opts) :method :first-rows)
+      better             better
+      :else              (first-rows-sample table fields rff opts))))

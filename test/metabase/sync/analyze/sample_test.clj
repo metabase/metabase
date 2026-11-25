@@ -86,6 +86,18 @@
   (let [rf (rff nil)]
     {:method :block :result (rf (rf))}))
 
+;; A driver that declines the better sample for every table, and leaves the first rows to sync.
+(driver/register! ::declining, :parent :h2)
+
+(defmethod driver/database-supports? [::declining :table-random-sample]
+  [driver _feature _database]
+  (= driver ::declining))
+
+(defmethod driver/table-random-sample ::declining
+  [driver _table _fields _rff _opts]
+  (swap! better-calls conj {:driver driver})
+  {:method :first-rows})
+
 ;; A parent that declares the flag for its children too, which the rules say not to do.
 (driver/register! ::flag-for-all, :parent :h2)
 
@@ -183,3 +195,10 @@
           (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (mt/id :venues))))
         (is (=? {:source :sample :method :block :runs 7 :fraction 0.5 :row-count 1000000}
                 (t2/select-one-fn :fingerprint_origin :model/Field :id (mt/id :venues :name))))))))
+
+(deftest a-driver-can-decline-the-better-sample-test
+  (mt/test-driver :h2
+    (testing "a driver that returns {:method :first-rows} with no result leaves the first rows to sync"
+      (testing "sync reads them, records :first-rows, and asks the driver again for the next table"
+        (is (= [:first-rows :first-rows] (sample-with-driver ::declining :row-count 1000000)))
+        (is (= 2 (count @better-calls)))))))
