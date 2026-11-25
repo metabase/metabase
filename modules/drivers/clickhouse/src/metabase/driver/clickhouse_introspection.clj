@@ -241,15 +241,18 @@
                                                :type/Dictionary
                                                (sql-jdbc.sync/database-type->base-type :clickhouse element-type))
                           :database-position database-position}
-                   element-elements (assoc :nested-fields (tuple-nested-fields database-position element-type))))))
+                   element-elements (assoc :nested-fields   (tuple-nested-fields database-position element-type)
+                                           :visibility-type :details-only)))))
         (tuple-elements database-type)))
 
 (defn- with-tuple-nested-fields
   [{:keys [database-type database-position] :as field}]
   (cond-> field
     (tuple-elements database-type)
-    (assoc :base-type     :type/Dictionary
-           :nested-fields (tuple-nested-fields database-position database-type))))
+    (assoc :base-type       :type/Dictionary
+           :nested-fields   (tuple-nested-fields database-position database-type)
+           ;; the elements show all of its values
+           :visibility-type :details-only)))
 
 (defn- ^:private is-db-required?
   [field]

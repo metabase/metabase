@@ -158,6 +158,11 @@
                  ["info" "addr" "zip"]    :type/Text
                  ["pair"]                 :type/*}
                 (field-paths table))))
+       (testing "only the elements show in the table"
+         (is (= {"loc" :details-only, "info" :details-only, "addr" :details-only
+                 "lat" :normal, "city" :normal, "pair" :normal}
+                (select-keys (t2/select-fn->fn :name :visibility_type :model/Field :table_id (:id table) :active true)
+                             ["loc" "info" "addr" "lat" "city" "pair"]))))
        (let [mp    (mt/metadata-provider)
              field (fn [field-name parent-name]
                      (let [parent-id (t2/select-one-pk :model/Field :table_id (:id table) :name parent-name)]
