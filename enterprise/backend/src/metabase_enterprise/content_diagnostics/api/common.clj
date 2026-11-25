@@ -19,7 +19,6 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -113,7 +112,7 @@
   `POSITION(… IN …)` form; the `/` is spliced as a literal rather than bound. Comparing strings rather than ints
   avoids a dialect-specific cast."
   [:substring :location [:inline 1]
-   [:+ [:position (h2x/literal "/") [:substring :location [:inline 2]]]
+   [:+ [:position [:literal "/"] [:substring :location [:inline 2]]]
     [:inline 1]]])
 
 (defn- personal-collection-clause

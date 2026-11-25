@@ -4,7 +4,6 @@
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -52,7 +51,7 @@
                      :last_used_at :c.collection_id :c.archived_directly :c.archived :c.database_id
                      :c.dashboard_id
                      [nil :location]
-                     [(h2x/literal "card") :model]
+                     [[:literal "card"] :model]
                      [^:allow-subquery {:select   [:status]
                                         :from     [(t2/table-name :model/ModerationReview)]
                                         :where    [:and

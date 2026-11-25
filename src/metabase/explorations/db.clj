@@ -801,7 +801,7 @@
                                    :from   [[(t2/table-name :model/Exploration) :e]]
                                    :join   [[(t2/table-name :model/Revision) :r] [:and
                                                                                   [:= :r.model_id :e.id]
-                                                                                  [:= :r.model (h2x/literal "Exploration")]
+                                                                                  [:= :r.model [:literal "Exploration"]]
                                                                                   (revisions.sql/newest-revision-clause :r "Exploration" :e.id)]]
                                    :where  (listed? "e")}
                                   ^:allow-subquery
@@ -812,7 +812,7 @@
                                    :join   [[(t2/table-name :model/Exploration) :e] [:= :e.id :d.exploration_id]
                                             [(t2/table-name :model/Revision) :r] [:and
                                                                                   [:= :r.model_id :d.id]
-                                                                                  [:= :r.model (h2x/literal "Document")]
+                                                                                  [:= :r.model [:literal "Document"]]
                                                                                   (revisions.sql/newest-revision-clause :r "Document" :d.id)]]
                                    :where  (listed? "e")}]}
                :all_edits]]}))
@@ -836,7 +836,7 @@
               [:u.first_name :last_edit_first_name]
               [:u.last_name  :last_edit_last_name]
               [:ere.timestamp :last_edit_timestamp]
-              [(h2x/literal "exploration") :model]]
+              [[:literal "exploration"] :model]]
      :from [[(t2/table-name :model/Exploration) :exploration]]
      :left-join [[(exploration-recent-edits-subquery collection) :ere]
                  [:and

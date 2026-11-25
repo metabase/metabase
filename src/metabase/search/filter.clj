@@ -9,7 +9,6 @@
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2])
   (:import
@@ -152,7 +151,7 @@
                                               [:not= :pc.personal_owner_id nil]
                                               [:= :pc.location "/"]
                                               [:like :collection.location
-                                               [:concat (h2x/literal "/") :pc.id (h2x/literal "/%")]]]}]]
+                                               [:concat [:literal "/"] :pc.id [:literal "/%"]]]]}]]
       (case filter-type
         "only"
         [:or

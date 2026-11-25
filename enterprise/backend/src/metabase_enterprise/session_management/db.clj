@@ -4,11 +4,11 @@
   (:require
    [metabase-enterprise.session-management.query :as sm.query]
    [metabase-enterprise.session-management.schema :as sm.schema]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.session.core :as session]
    [metabase.session.models.session :as models.session]
    [metabase.session.schema :as session.schema]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -66,7 +66,7 @@
 
 (mu/defn- count-where :- ms/IntGreaterThanOrEqualToZero
   "How many `core_session` rows satisfy `where`."
-  [where :- ::h2x/honeysql-expr]
+  [where :- ::funnysql.schema/expr]
   (-> (t2/query (merge (sm.query/session-list-from-and-joins)
                        {:select [[[:count [:inline 1]] :count]]
                         :where  where}))

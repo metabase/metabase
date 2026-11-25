@@ -12,6 +12,7 @@
    [metabase.collections.schema :as collections.schema]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
@@ -447,7 +448,7 @@
           :let           [maybe-aliased-col (get model-col-alias->honeysql-clause col)]]
       (cond
         (= col :model)
-        [(h2x/literal model) :model]
+        [[:literal model] :model]
 
         maybe-aliased-col
         maybe-aliased-col
@@ -574,11 +575,11 @@
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
 
-(mu/defn stale-dashboard-candidates :- ::staleness/query
+(mu/defn stale-dashboard-candidates :- ::funnysql.schema/query.select
   "The query of the Dashboards that are stale for `opts`, `{:collection-ids (:all | #{int|nil}), :cutoff-date local-date}`."
   [opts :- ::staleness/candidates-options]
   ^:allow-subquery {:select [:dashboard.id
-                             [(h2x/literal "Dashboard") :model]
+                             [[:literal "Dashboard"] :model]
                              [:dashboard.name :name]
                              [:last_viewed_at :last_used_at]
                              :dashboard.collection_id]
@@ -589,9 +590,9 @@
                                 [(t2/table-name :model/Collection) :collection] [:= :collection.id :dashboard.collection_id]
                                 [(t2/table-name :model/ModerationReview) :mr] [:and
                                                                                [:= :mr.moderated_item_id :dashboard.id]
-                                                                               [:= :mr.moderated_item_type (h2x/literal "dashboard")]
+                                                                               [:= :mr.moderated_item_type [:literal "dashboard"]]
                                                                                [:= :mr.most_recent true]
-                                                                               [:= :mr.status (h2x/literal "verified")]]]
+                                                                               [:= :mr.status [:literal "verified"]]]]
                     :where [:and
                             [:= :pulse.id nil]
                             [:= :mr.id nil]
@@ -653,7 +654,7 @@
                [:last_viewed_at :last_used_at]
                :d.collection_id
                :d.archived_directly
-               [(h2x/literal "dashboard") :model]
+               [[:literal "dashboard"] :model]
                [:u.id :last_edit_user]
                :d.archived
                [:u.email :last_edit_email]
@@ -665,10 +666,10 @@
    :left-join [[(t2/table-name :model/ModerationReview) :mr] [:and
                                                               [:= :mr.moderated_item_id :d.id]
                                                               [:= :mr.most_recent true]
-                                                              [:= :mr.moderated_item_type (h2x/literal "dashboard")]]
+                                                              [:= :mr.moderated_item_type [:literal "dashboard"]]]
                [(t2/table-name :model/Revision) :r] [:and
                                                      [:= :r.model_id :d.id]
-                                                     [:= :r.model (h2x/literal "Dashboard")]
+                                                     [:= :r.model [:literal "Dashboard"]]
                                                      (revisions.sql/newest-revision-clause :r "Dashboard" :d.id)]
                [(t2/table-name :model/User) :u] [:= :u.id :r.user_id]]
    :where     [:and

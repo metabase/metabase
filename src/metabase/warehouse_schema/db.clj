@@ -16,7 +16,6 @@
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.types.core :as types]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
@@ -760,7 +759,7 @@
                           :type [:in types]
                           {:where [:and
                                    [:< (u/qualified-key (t2/table-name :model/FieldValues) :created_at)
-                                    (h2x/add-interval-honeysql-form (app-db/db-type) :%now (- max-age-days) :day)]
+                                    [:date-add :%now (- max-age-days) :day]]
                                    [:exists ^:allow-subquery
                                     {:select [[[:inline 1] :one]]
                                      :from   [[(t2/table-name :model/Field) :f]]
@@ -1004,7 +1003,7 @@
               :s.collection_id
               [:t.db_id :database_id]
               [[:!= :t.archived_at nil] :archived]
-              [(h2x/literal "table") :model]]
+              [[:literal "table"] :model]]
      :from   [[(t2/table-name :model/Table) :t]]
      :join   [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
      :where  [:and

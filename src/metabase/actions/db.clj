@@ -13,7 +13,6 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -405,7 +404,7 @@
   (when (and (contains? #{collection/data-actions-ns collection/data-apps-ns} (some-> (:namespace collection) keyword))
              (nil? created-by-id))
     {:select [:action.id :action.collection_id :action.name :action.description :action.entity_id
-              :action.archived :action.archived_directly [(h2x/literal "action") :model]]
+              :action.archived :action.archived_directly [[:literal "action"] :model]]
      :from   [[(t2/table-name :model/Action) :action]]
      :where  [:and
               (collections.listing/poison-when-pinned-clause pinned-state)

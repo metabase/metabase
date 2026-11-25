@@ -432,8 +432,10 @@
        ;; directions — null means "no measurable duration yet," not
        ;; "longest duration."
        :duration       [[[:is :end_time nil] :asc]
-                        [(h2x/calculate-interval-honeysql-form
-                          (mdb/db-type) :end_time :start_time)
+                        [(case (mdb/db-type)
+                           :postgres [:- :end_time :start_time]
+                           :mysql    [:timestampdiff :microsecond :start_time :end_time]
+                           :h2       [:datediff [:literal "MILLISECOND"] :start_time :end_time])
                          sort-direction]]
        [[:start_time sort-direction]
         [:end_time   sort-direction-with-nulls]])
@@ -636,7 +638,7 @@
   [age  :- ms/PositiveInt
    unit :- :keyword]
   (t2/select [:model/TransformRunCancelation :run_id :time]
-             :time [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]))
+             :time [:< [:date-add :%now (- age) unit]]))
 
 (mu/defn delete-cancelation-for-inactive-run!
   "Delete the TransformRunCancelation of the TransformRun with `run-id` if that run is no longer active."
@@ -794,7 +796,7 @@
 (defn- job-run-subquery
   [transform-ids]
   ^:allow-subquery
-  {:select [[(h2x/literal "job") :run_type]
+  {:select [[[:literal "job"] :run_type]
             :id
             [:job_id :entity_id]
             [:job_name :entity_name]
@@ -816,13 +818,13 @@
 (defn- dag-run-subquery
   [transform-ids]
   ^:allow-subquery
-  {:select [[(h2x/literal "dag") :run_type]
+  {:select [[[:literal "dag"] :run_type]
             :id
             [:source_transform_id :entity_id]
             [:source_transform_name :entity_name]
             :direction
             :transform_count
-            [(h2x/literal "manual") :run_method]
+            [[:literal "manual"] :run_method]
             :status :is_active :start_time :end_time :message
             :user_id]
    :from   [(t2/table-name :model/TransformDagRun)]
@@ -837,7 +839,7 @@
 (defn- transform-run-subquery
   [transform-ids]
   ^:allow-subquery
-  {:select [[(h2x/literal "transform") :run_type]
+  {:select [[[:literal "transform"] :run_type]
             :id
             [:transform_id :entity_id]
             [:transform_name :entity_name]
@@ -947,7 +949,7 @@
 (mu/defn app-db-now
   "The current time according to the application database."
   []
-  (:now (t2/query-one {:select [[(h2x/current-datetime-honeysql-form (mdb/db-type)) :now]]})))
+  (:now (t2/query-one {:select [[[:current-datetime] :now]]})))
 
 ;;; ----------------------------------------------- Other models -----------------------------------------------
 
@@ -1059,7 +1061,7 @@
    {:keys [pinned-state created-by-id]} :- :map]
   (when (nil? created-by-id)
     (let [enabled-types (transforms.gating/enabled-source-types-for-user)]
-      {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
+      {:select [:id :collection_id :name [[:literal "transform"] :model] :description :entity_id]
        :from   [[(t2/table-name :model/Transform) :transform]]
        :where  [:and
                 (collections.listing/poison-when-pinned-clause pinned-state)

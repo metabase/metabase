@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
-   [metabase.app-db.core :as mdb]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.session.models.session :as models.session]
@@ -16,7 +15,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -27,10 +25,10 @@
                               (f))))
 
 (defn- ago [amount unit]
-  (h2x/add-interval-honeysql-form (mdb/db-type) (h2x/current-datetime-honeysql-form (mdb/db-type)) (- amount) unit))
+  [:date-add [:current-datetime] (- amount) unit])
 
 (defn- from-now [amount unit]
-  (h2x/add-interval-honeysql-form (mdb/db-type) (h2x/current-datetime-honeysql-form (mdb/db-type)) amount unit))
+  [:date-add [:current-datetime] amount unit])
 
 (defn- insert-session!
   "Insert a `core_session` row directly, bypassing the model hooks so timestamps can be arbitrary (including DB-side)

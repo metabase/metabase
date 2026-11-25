@@ -7,7 +7,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -120,7 +119,7 @@
   "The `:count` of Notifications with at least one PulseCard with `:include_xls` or `:include_csv`, of alerts when
   `alerts?`, or of pulses otherwise."
   [alerts? :- :boolean]
-  (t2/query-one {:select    [[[::h2x/distinct-count (u/qualified-key (t2/table-name :model/Pulse) :id)] :count]]
+  (t2/query-one {:select    [[[:distinct-count (u/qualified-key (t2/table-name :model/Pulse) :id)] :count]]
                  :from      [(t2/table-name :model/Pulse)]
                  :left-join [(t2/table-name :model/PulseCard) [:= (u/qualified-key (t2/table-name :model/Pulse) :id) (u/qualified-key (t2/table-name :model/PulseCard) :pulse_id)]]
                  :where     [:and

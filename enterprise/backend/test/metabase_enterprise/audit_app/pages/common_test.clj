@@ -3,10 +3,10 @@
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (defn- run-query
@@ -58,8 +58,8 @@
 (deftest ^:parallel add-search-clause-test
   (testing "add search clause"
     (is (= {:where [:or
-                    [:like [:lower :t.name] (h2x/like-substring "birds")]
-                    [:like [:lower :db.name] (h2x/like-substring "birds")]]}
+                    [:like [:lower :t.name] (funnysql.util/like-substring "birds")]
+                    [:like [:lower :db.name] (funnysql.util/like-substring "birds")]]}
            (#'common/add-search-clause {} "birds" :t.name :db.name)))))
 
 (deftest query-limit-and-offset-test

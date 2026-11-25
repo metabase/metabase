@@ -4,7 +4,6 @@
    [honey.sql :as sql]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as app-db]
-   [metabase.funnysql.core :as funnysql]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -374,31 +373,6 @@
   (is (=  ["count"]
           (h2x/identifier->components
            (h2x/identifier :field-alias :count)))))
-
-(deftest ^:parallel like-pattern-test
-  (are [s expected] (= expected (second (h2x/like-pattern s)))
-    "plain"   "plain"
-    "a%b_c"   "a!%b!_c"
-    "a!b"     "a!!b"
-    "%%%%"    "!%!%!%!%")
-  (testing "no unescaped LIKE metacharacter survives from the input"
-    (doseq [input ["a%b%c%d" "a_b_c_d" "%%%%%%%%" "!%!_" "plain"]]
-      (is (empty? (re-seq #"(?<!!)[%_]" (second (h2x/like-pattern input)))) (pr-str input))))
-  (testing "wrap is applied to the escaped string and the ESCAPE character is named explicitly"
-    (is (= ["SELECT * FROM t WHERE name LIKE ? ESCAPE '!'" "a!%b%"]
-           (sql/format {:select [:*] :from [:t]
-                        :where  [:like :name (h2x/like-pattern "a%b" #(str % "%"))]}))))
-  (testing "like-substring lowercases, escapes and wraps in %"
-    (is (= ["SELECT * FROM t WHERE LOWER(name) LIKE ? ESCAPE '!'" "%a!%b!_c%"]
-           (sql/format {:select [:*] :from [:t]
-                        :where  [:like [:lower :name] (h2x/like-substring "A%b_C")]}))))
-  (testing "like-prefix"
-    (is (= ["SELECT * FROM t WHERE LOWER(name) LIKE ? ESCAPE '!'" "a!%b%"]
-           (sql/format {:select [:*] :from [:t]
-                        :where  [:like [:lower :name] (h2x/like-prefix "A%b")]}))))
-  (testing "compiles with Funny SQL"
-    (is (= ["SELECT * FROM \"t\" WHERE \"name\" LIKE ? ESCAPE '!'" "%a!%b%"]
-           (funnysql/format {:select [:*] :from [:t] :where [:like :name (h2x/like-substring "a%b")]} :postgres)))))
 
 (deftest ^:parallel h2x-timestamp-diff-test
   (testing (str "metabase.util.honey-sql-2 is shared by Funny SQL (the app DB) and Honey SQL (warehouses, pgvector), "

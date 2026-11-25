@@ -33,7 +33,6 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.match :as match]
@@ -174,9 +173,9 @@
                            (juxt :object :group_id)
                            :permissions
                            {:where [:or
-                                    [:like :object (h2x/literal "/db/%")]
-                                    [:like :object (h2x/literal "/data/db/%")]
-                                    [:like :object (h2x/literal "/query/db/%")]]})
+                                    [:like :object [:literal "/db/%"]]
+                                    [:like :object [:literal "/data/db/%"]]
+                                    [:like :object [:literal "/query/db/%"]]]})
         v2-perms-set      (into #{} (mapcat
                                      (fn [[v1-path group-id]]
                                        (for [v2-path (->v2-paths v1-path)]
@@ -188,8 +187,8 @@
                              :columns     [:object :group_id]
                              :values      new-v2-perms})))
   (t2.execute/query-one {:delete-from :permissions
-                         :where [:or [:like :object (h2x/literal "/data/db/%")]
-                                 [:like :object (h2x/literal "/query/db/%")]]}))
+                         :where [:or [:like :object [:literal "/data/db/%"]]
+                                 [:like :object [:literal "/query/db/%"]]]}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Quartz Scheduler Helpers                                             |

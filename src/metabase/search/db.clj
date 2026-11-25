@@ -4,6 +4,7 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.search.appdb.index-schema :as index-schema]
@@ -16,7 +17,6 @@
    [metabase.search.schema :as search.schema]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -30,7 +30,7 @@
                              :updated_at :search_vector :with_native_query_vector :search_terms
                              :native_search_terms}
                            (remove #{:id :created_at :updated_at} search.spec/attr-columns))]
-          [column {:optional true} ::h2x/expr])))
+          [column {:optional true} ::funnysql.schema/expr])))
 
 (mu/defn spec-index-reducible-rows
   "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)

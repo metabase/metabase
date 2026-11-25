@@ -11,7 +11,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -573,7 +572,7 @@
                        :p.entity_id
                        :p.collection_position
                        :p.collection_id
-                       [(h2x/literal "pulse") :model]]
+                       [[:literal "pulse"] :model]]
      :from            [[(t2/table-name :model/Pulse) :p]]
      :left-join       [[(t2/table-name :model/PulseCard) :pc] [:= :p.id :pc.pulse_id]]
      :where           [:and

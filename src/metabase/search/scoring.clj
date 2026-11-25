@@ -4,9 +4,9 @@
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (def ^:private seconds-in-a-day 86400)
@@ -24,7 +24,7 @@
 (defn prefix
   "Prefer it when the given value is a completion of a specific (non-null) value"
   [column value]
-  [:coalesce [:case [:like column (h2x/like-prefix value)] [:inline 1] :else [:inline 0]] [:inline 0]])
+  [:coalesce [:case [:like column (funnysql.util/like-prefix value)] [:inline 1] :else [:inline 0]] [:inline 0]])
 
 (defn normalize-text-expr
   "Wrap a string column/value SQL expr with the normalization the text scorers compare on:
@@ -77,7 +77,7 @@
            [:coalesce
             [[:timestampdiff :second from-column to-column]]
             [:* ceiling (double seconds-in-a-day)]]
-           [[::h2x/extract :epoch [:- to-column from-column]]])
+           [[:extract :epoch [:- to-column from-column]]])
          [:inline (double seconds-in-a-day)]]]
        [:inline 0]]
       ceiling])))
@@ -91,7 +91,7 @@
 (defn user-recency-expr
   "Expression to select the `:user-recency` timestamp for the `current-user-id`."
   [{:keys [current-user-id]}]
-  (let [one-day-ago (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :day)]
+  (let [one-day-ago [:date-add :%now -1 :day]]
     ^:allow-subquery
     {:select [[[:case
                 ;; Transforms get a hardcoded 1-day last_viewed_at because we don't track views on them

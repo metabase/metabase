@@ -13,7 +13,6 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -67,7 +66,7 @@
                   :type
                   [[:case [:= :is_remote_synced nil] [:inline false] :else :is_remote_synced] :is_remote_synced]
                   [:type :collection_type]
-                  [(h2x/literal "collection") :model]
+                  [[:literal "collection"] :model]
                   :authority_level])
         (sql.helpers/where (collections.listing/pinned-state->clause pinned-state nil)))))
 

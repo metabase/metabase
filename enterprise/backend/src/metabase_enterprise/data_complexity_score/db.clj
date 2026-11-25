@@ -6,7 +6,6 @@
    [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -97,7 +96,7 @@
               {:where [:and
                        [:= :fingerprint fingerprint]
                        [:= :source source]
-                       [:>= :created_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- hours) :hour)]]}))
+                       [:>= :created_at [:date-add :%now (- hours) :hour]]]}))
 
 (mu/defn insert-score!
   "Insert `score-entry` and return its ID."

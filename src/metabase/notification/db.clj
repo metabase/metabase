@@ -8,6 +8,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.change-log.core :as change-log]
    [metabase.channel.schema :as channel.schema]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.schema :as notification.schema]
    [metabase.util :as u]
@@ -418,7 +419,7 @@
   "The earliest `started_at` considered for the admin notification list/detail run history:
   [[admin-run-lookback-days]] days before now, as a Honey SQL form."
   []
-  (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- admin-run-lookback-days) :day))
+  [:date-add :%now (- admin-run-lookback-days) :day])
 
 (mu/defn terminal-alert-runs
   "Up to `limit` TaskRuns of `run-type` for the Notification with `notification-id` that reached one of `statuses`
@@ -575,7 +576,7 @@
 
 (defn- admin-query-where-clause
   [query]
-  (let [wildcard (h2x/like-substring query)]
+  (let [wildcard (funnysql.util/like-substring query)]
     [:or
      [:like [:lower :c.name]        wildcard]
      [:like [:lower :cu.first_name] wildcard]

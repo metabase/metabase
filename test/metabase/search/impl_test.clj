@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib.core :as lib]
    [metabase.queries-rest.api.card :as api.card]
    [metabase.queries.models.card :as card]
@@ -18,7 +19,6 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.transforms.feature-gating :as transforms.gating]
-   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel parse-engine-test
@@ -57,22 +57,22 @@
 (deftest ^:parallel order-clause-test
   (testing "it includes all columns and normalizes the query"
     (is (= [[:case
-             [:like [:lower :model] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :name] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :display_name] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :description] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :collection_name] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :collection_type] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :display] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :display_type] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :table_schema] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :table_name] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :table_display_name] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :table_description] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :database_name] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :model_name] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :dataset_query] (h2x/like-substring "foo")] [:inline 0]
-             [:like [:lower :slug] (h2x/like-substring "foo")] [:inline 0]
+             [:like [:lower :model] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :name] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :display_name] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :description] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :collection_name] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :collection_type] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :display] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :display_type] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :table_schema] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :table_name] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :table_display_name] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :table_description] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :database_name] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :model_name] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :dataset_query] (funnysql.util/like-substring "foo")] [:inline 0]
+             [:like [:lower :slug] (funnysql.util/like-substring "foo")] [:inline 0]
              :else [:inline 1]]]
            (search.legacy/order-clause "Foo")))))
 

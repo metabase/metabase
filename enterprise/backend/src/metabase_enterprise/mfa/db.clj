@@ -3,9 +3,9 @@
   additional logic, so the rest of the module only touches `toucan2.core` for transactions."
   (:require
    [clojure.string :as str]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -54,7 +54,7 @@
   [enrolled? search]
   (cond-> [:and (if enrolled? (confirmed-totp-exists) (unenrolled-user-where))]
     (not (str/blank? search))
-    (conj (let [pattern (h2x/like-substring search)]
+    (conj (let [pattern (funnysql.util/like-substring search)]
             [:or
              [:like :%lower.first_name pattern]
              [:like :%lower.last_name  pattern]

@@ -12,7 +12,6 @@
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.timeline.schema :as timeline.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -117,9 +116,9 @@
                                               [:and
                                                [:= :time_matters false]
                                                (when start
-                                                 [:<= (h2x/->date start) (h2x/->date :timestamp)])
+                                                 [:<= [:cast start :date] [:cast :timestamp :date]])
                                                (when end
-                                                 [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]})
+                                                 [:<= [:cast :timestamp :date] [:cast end :date]])]])]})
                       timeline-ids))
 
 (mu/defn icon-clause
@@ -147,7 +146,7 @@
   [collection                                       :- :map
    {:keys [archived? pinned-state created-by-id]} :- :map]
   (when (nil? created-by-id)
-    {:select [:id :collection_id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
+    {:select [:id :collection_id :name [[:literal "timeline"] :model] :description :entity_id :icon]
      :from   [[(t2/table-name :model/Timeline) :timeline]]
      :where  [:and
               (collections.listing/poison-when-pinned-clause pinned-state)

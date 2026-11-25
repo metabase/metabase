@@ -17,6 +17,7 @@
    [metabase.config.core :as config]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -27,7 +28,6 @@
    [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -1154,7 +1154,7 @@
                                          :where [:and
                                                  (perms/visible-collections-filter-clause :c2.id (api/current-user-info)
                                                                                           visibility-config)
-                                                 [:= (->col "location") [:concat :c2.location :c2.id (h2x/literal "/")]]
+                                                 [:= (->col "location") [:concat :c2.location :c2.id [:literal "/"]]]
                                                  (when-not (collection.root/is-root-collection? parent-coll)
                                                    [:not= :c2.id [:inline (u/the-id parent-coll)]])]}]]])]))
 
@@ -1362,7 +1362,7 @@
   [collection             :- CollectionWithLocationAndIDOrRoot
    collection-table-alias :- :keyword
    visibility-config      :- CollectionVisibilityConfig
-   & additional-honeysql-where-clauses :- [:* ::h2x/honeysql-expr]]
+   & additional-honeysql-where-clauses :- [:* ::funnysql.schema/expr]]
   (into
    [:and
     (effective-child-of-filter-clause collection collection-table-alias visibility-config)
@@ -1400,7 +1400,7 @@
    access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
   [collection :- CollectionWithLocationAndIDOrRoot
    visibility-config :- CollectionVisibilityConfig
-   & additional-honeysql-where-clauses :- [:* ::h2x/honeysql-expr]]
+   & additional-honeysql-where-clauses :- [:* ::funnysql.schema/expr]]
   ^:allow-subquery {:select [:id :name :description :type]
                     :from   [[(t2/table-name :model/Collection) :col]]
                     :where  (apply effective-children-where-clause collection :col visibility-config additional-honeysql-where-clauses)})
@@ -1929,7 +1929,7 @@
 
 (defmethod mi/non-internal-filter-clause :model/Collection
   [_model alias]
-  (let [maybe-alias #(h2x/identifier :field (name alias) %)]
+  (let [maybe-alias #(u/qualified-key (name alias) %)]
     [:and
      [:or [:= (maybe-alias :type) nil]
       [:and

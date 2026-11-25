@@ -12,7 +12,6 @@
    [metabase.app-db.format :as app-db.format]
    [metabase.app-db.query :as mdb.query]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -685,7 +684,7 @@
   "The application DB's own current timestamp, as a string, for app DB type `db-type`."
   ^String [db-type :- [:enum :h2 :mysql :postgres]]
   ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
-  (let [cast-form (h2x/cast (if (= db-type :mysql) :char :text) (h2x/current-datetime-honeysql-form db-type))]
+  (let [cast-form [:cast [:current-datetime] (if (= db-type :mysql) :char :text)]]
     (:timestamp (t2/query-one {:select [[cast-form :timestamp]]}))))
 
 (def ^:private unmigrated-settings-where

@@ -4,8 +4,7 @@
    [honey.sql.pg-ops]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.db :as search.db]
-   [metabase.search.util :as search.util]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.search.util :as search.util]))
 
 (defmethod specialization/table-schema :postgres [base-schema]
   (into [[:id :bigint [:primary-key] :generated-by-default-as-identity]
@@ -35,7 +34,7 @@
    ;; Using a join allows us to share the query expression between our SELECT and WHERE clauses.
    ;; the text-search config name is a `regconfig`, not a value: as a `?` parameter Postgres cannot resolve the
    ;; overload, so it has to be a real SQL literal
-   :join   [[[:to_tsquery (h2x/literal (search.util/tsv-language))
+   :join   [[[:to_tsquery [:literal (search.util/tsv-language)]
               [:lift (search.util/to-tsquery-expr search-term)]]
              :query] [:= 1 1]]
    :where  (if (str/blank? search-term)
@@ -82,11 +81,11 @@
 (defmethod specialization/text-score :postgres
   []
   ;; the weights are a `float4[]` literal; a `?` parameter leaves the `ts_rank` overload unresolvable
-  [:ts_rank (h2x/literal ts-rank-weights) :search_vector :query [:inline ts-rank-normalization]])
+  [:ts_rank [:literal ts-rank-weights] :search_vector :query [:inline ts-rank-normalization]])
 
 (defmethod specialization/view-count-percentile-query :postgres
   [index-table p-value]
-  (let [expr [::h2x/percentile-cont :view_count p-value]]
+  (let [expr [:percentile-cont :view_count p-value]]
     {:select   [:search_index.model [expr :vcp]]
      :from     [[index-table :search_index]]
      :group-by [:search_index.model]

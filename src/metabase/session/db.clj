@@ -9,7 +9,6 @@
    [metabase.session.schema :as session.schema]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -128,14 +127,14 @@
   (let [predicates  (session.query/liveness-predicates liveness)
         ;; a not-live row fails at least one of these, so the CASE always resolves; `:else` names the last one
         reason-expr (cond-> [:case
-                             [:not (:user-active predicates)]   (h2x/literal "user-deactivated")
-                             [:not (:tenant-active predicates)] (h2x/literal "tenant-deactivated")]
+                             [:not (:user-active predicates)]   [:literal "user-deactivated"]
+                             [:not (:tenant-active predicates)] [:literal "tenant-deactivated"]]
                       (:not-timed-out predicates)
-                      (conj [:not (:not-expired predicates)] (h2x/literal "expired")
-                            :else (h2x/literal "timed-out"))
+                      (conj [:not (:not-expired predicates)] [:literal "expired"]
+                            :else [:literal "timed-out"])
 
                       (not (:not-timed-out predicates))
-                      (conj :else (h2x/literal "expired")))]
+                      (conj :else [:literal "expired"]))]
     (t2/query (merge (session.query/session-from-and-joins)
                      {:select [[:session.id :id]
                                [reason-expr :reason]]
@@ -157,17 +156,16 @@
   idle longer than `idle-timeout-seconds` when it is given, and return the number deleted."
   [max-age-minutes      :- ms/PositiveInt
    idle-timeout-seconds :- [:maybe ms/PositiveInt]]
-  (let [db-type        (mdb/db-type)
-        now            (h2x/current-datetime-honeysql-form db-type)
-        oldest-allowed (h2x/add-interval-honeysql-form db-type now (- max-age-minutes) :minute)
+  (let [now            [:current-datetime]
+        oldest-allowed [:date-add now (- max-age-minutes) :minute]
         timeout-oldest (when idle-timeout-seconds
-                         (h2x/add-interval-honeysql-form db-type now (- idle-timeout-seconds) :second))
+                         [:date-add now (- idle-timeout-seconds) :second])
         hsql           {:delete-from [(t2/table-name :model/Session)]
                         :where       [:and
                                       [:in :auth_identity_id ^:allow-subquery
                                        {:select [:id]
                                         :from   [(t2/table-name :model/AuthIdentity)]
-                                        :where  [:= :provider (h2x/literal session.query/mcp-provider)]}]
+                                        :where  [:= :provider [:literal session.query/mcp-provider]]}]
                                       (cond-> [:or
                                                [:< :created_at oldest-allowed]
                                                [:and [:not= :expires_at nil] [:< :expires_at now]]]

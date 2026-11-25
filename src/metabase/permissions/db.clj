@@ -12,7 +12,6 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -418,7 +417,7 @@
   (into [:case]
         cat
         (for [value (-> permissions.schema/data-permissions perm-type :values)]
-          [[:= column (h2x/literal value)] [:inline (value-rank perm-type value)]])))
+          [[:= column [:literal value]] [:inline (value-rank perm-type value)]])))
 
 (defn- sees-every-row?
   "Whether the user of `user-info` sees every Table and Database for `permission-mapping` without asking."
@@ -457,8 +456,8 @@
    {:select [[[:inline 1] :one]]
     :from   [[(t2/table-name :model/DataPermissions) :dp]]
     :where  [:and
-             [:= :dp.perm_type (h2x/literal perm-type)]
-             [:in :dp.perm_value (mapv h2x/literal values)]
+             [:= :dp.perm_type [:literal perm-type]]
+             [:in :dp.perm_value (mapv (fn [s] [:literal s]) values)]
              [:in :dp.group_id ^:allow-subquery {:select [:group_id]
                                                  :from   [(t2/table-name :model/PermissionsGroupMembership)]
                                                  :where  [:= :user_id [:inline user-id]]}]
@@ -542,7 +541,7 @@
              (into [:or]
                    (map (fn [[perm-type level]]
                           [:and
-                           [:= :dp.perm_type (h2x/literal perm-type)]
+                           [:= :dp.perm_type [:literal perm-type]]
                            [:>= [:inline (value-rank perm-type level)] (rank-case perm-type :dp.perm_value)]]))
                    permission-mapping))})
 
@@ -571,7 +570,7 @@
    also-under-paths  :- [:sequential :string]]
   [:and
    [:= :group_id group-id]
-   (into [:or [:like path (h2x/concat :object (h2x/literal "%"))]]
+   (into [:or [:like path [:concat :object [:literal "%"]]]]
          (map (fn [path-form] [:like :object (str path-form "%")]))
          also-under-paths)])
 
@@ -1008,9 +1007,9 @@
                              :from   [[(t2/table-name :model/Permissions) :perms_row]]
                              :where  [:and
                                       [:= :perms_row.collection_id :perms_collection.id]
-                                      [:= :perms_row.perm_type (h2x/literal :perms/collection-access)]
-                                      [:in :perms_row.perm_value (cond-> [(h2x/literal :read-and-write)]
-                                                                   (= permission-level :read) (conj (h2x/literal :read)))]
+                                      [:= :perms_row.perm_type [:literal :perms/collection-access]]
+                                      [:in :perms_row.perm_value (cond-> [[:literal :read-and-write]]
+                                                                   (= permission-level :read) (conj [:literal :read]))]
                                       [:in :perms_row.group_id (user-groups-query user-id)]]}])
 
 (defn- own-collection-clause
@@ -1024,11 +1023,11 @@
                                 :from   [[(t2/table-name :model/Collection) :perms_personal]]
                                 :where  [:and
                                          [:= :perms_personal.personal_owner_id [:inline user-id]]
-                                         [:like :perms_collection.location [:concat (h2x/literal "/") :perms_personal.id (h2x/literal "/%")]]]}]
+                                         [:like :perms_collection.location [:concat [:literal "/"] :perms_personal.id [:literal "/%"]]]]}]
      (when (seq tenant-collection-ids)
        [:in :perms_collection.id (mapv (fn [id] [:inline id]) tenant-collection-ids)])
      (when (:is-data-analyst? user)
-       [:= :perms_collection.namespace (h2x/literal "transforms")])]))
+       [:= :perms_collection.namespace [:literal "transforms"]])]))
 
 (defn- collection-level-clause
   "A HoneySQL clause holding when `user` has `permission-level` on the Collection aliased `perms_collection`."
@@ -1051,7 +1050,7 @@
 (defn- trash-clause
   "Whether the Collection aliased `perms_collection` is the trash."
   []
-  [:= :perms_collection.type (h2x/literal "trash")])
+  [:= :perms_collection.type [:literal "trash"]])
 
 (defn- listed-collection-clause
   "The clause over the Collection aliased `perms_collection` applying the criteria of `options` beyond permissions: the trash,
@@ -1060,14 +1059,14 @@
    {:keys [include-trash-collection? include-archived-items archive-operation-id]}]
   [:and
    (when-not include-trash-collection?
-     [:or [:= :perms_collection.type nil] [:not= :perms_collection.type (h2x/literal "trash")]])
+     [:or [:= :perms_collection.type nil] [:not= :perms_collection.type [:literal "trash"]]])
    (case include-archived-items
      :exclude [:= :perms_collection.archived false]
      ;; the trash is included when viewing archived items only
      :only    [:or [:= :perms_collection.archived true] (trash-clause)]
      :all     nil)
    (when-not use-tenants?
-     [:or [:= :perms_collection.namespace nil] [:not= :perms_collection.namespace (h2x/literal "shared-tenant-collection")]])
+     [:or [:= :perms_collection.namespace nil] [:not= :perms_collection.namespace [:literal "shared-tenant-collection"]]])
    (when archive-operation-id
      ;; the trash is part of every archive operation
      [:or [:= :perms_collection.archive_operation_id archive-operation-id] (trash-clause)])])
@@ -1077,7 +1076,7 @@
   and otherwise as it is, for a parameter: a namespace can come from a request."
   [object]
   (if (re-matches #"[a-z0-9/_-]+" object)
-    (h2x/literal object)
+    [:literal object]
     object))
 
 (defn- root-collection-clause

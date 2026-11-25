@@ -67,7 +67,6 @@
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -1346,7 +1345,7 @@
 
 (defmethod mi/non-internal-filter-clause :model/Card
   [_model alias]
-  [:not= (h2x/identifier :field alias :creator_id) config/internal-mb-user-id])
+  [:not= (u/qualified-key alias :creator_id) config/internal-mb-user-id])
 
 (defn sole-dashboard-id
   "Given a card, returns the dashboard_id of the *sole* dashboard it's in, or `nil` if it's not in exactly one dashboard."

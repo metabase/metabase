@@ -3,12 +3,12 @@
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.revisions.sql :as revisions.sql]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]
    [metabase.test :as mt]
-   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (def default-search-ctx
@@ -176,10 +176,10 @@
   (testing "with search string"
     (is (= [:and
             [:or
-             [:like [:lower :card.name] (h2x/like-substring "a")]
-             [:like [:lower :card.name] (h2x/like-substring "string")]
-             [:like [:lower :card.description] (h2x/like-substring "a")]
-             [:like [:lower :card.description] (h2x/like-substring "string")]]
+             [:like [:lower :card.name] (funnysql.util/like-substring "a")]
+             [:like [:lower :card.name] (funnysql.util/like-substring "string")]
+             [:like [:lower :card.description] (funnysql.util/like-substring "a")]
+             [:like [:lower :card.description] (funnysql.util/like-substring "string")]]
             [:= :card.archived false]]
            (:where (search.filter/build-filters
                     base-search-query "card"
@@ -398,7 +398,7 @@
   (testing "users that are not sandboxed or impersonated can search for indexed entity"
     (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-impersonated-or-routed-user? (constantly false)]
       (is (= [:and
-              [:or [:like [:lower :model-index-value.name] (h2x/like-substring "foo")]]
+              [:or [:like [:lower :model-index-value.name] (funnysql.util/like-substring "foo")]]
               [:= [:inline 1] [:inline 1]]]
              (:where (search.filter/build-filters
                       base-search-query
@@ -421,7 +421,7 @@
     (testing model
       (testing "do not search for native query by default"
         (is (= [:and
-                [:or [:like [:lower :card.name] (h2x/like-substring "foo")] [:like [:lower :card.description] (h2x/like-substring "foo")]]
+                [:or [:like [:lower :card.name] (funnysql.util/like-substring "foo")] [:like [:lower :card.description] (funnysql.util/like-substring "foo")]]
                 [:= :card.archived false]]
                (:where (search.filter/build-filters
                         base-search-query
@@ -433,11 +433,11 @@
     (testing model
       (testing "search in both name, description and dataset_query if is enabled"
         (is (= [:and [:or
-                      [:like [:lower :card.name] (h2x/like-substring "foo")]
-                      [:like [:lower :card.description] (h2x/like-substring "foo")]
+                      [:like [:lower :card.name] (funnysql.util/like-substring "foo")]
+                      [:like [:lower :card.description] (funnysql.util/like-substring "foo")]
                       [:and
                        [:= :card.query_type "native"]
-                       [:like [:lower :card.dataset_query] (h2x/like-substring "foo")]]]
+                       [:like [:lower :card.dataset_query] (funnysql.util/like-substring "foo")]]]
                 [:= :card.archived false]]
                (:where (search.filter/build-filters
                         base-search-query
@@ -448,7 +448,7 @@
   (testing "action"
     (testing "do not search for native query by default"
       (is (= [:and
-              [:or [:like [:lower :action.name] (h2x/like-substring "foo")] [:like [:lower :action.description] (h2x/like-substring "foo")]]
+              [:or [:like [:lower :action.name] (funnysql.util/like-substring "foo")] [:like [:lower :action.description] (funnysql.util/like-substring "foo")]]
               [:= :action.archived false]]
              (:where (search.filter/build-filters
                       base-search-query
@@ -460,9 +460,9 @@
     (testing "search in both name, description and dataset_query if is enabled"
       (is (= [:and
               [:or
-               [:like [:lower :action.name] (h2x/like-substring "foo")]
-               [:like [:lower :action.description] (h2x/like-substring "foo")]
-               [:like [:lower :query_action.dataset_query] (h2x/like-substring "foo")]]
+               [:like [:lower :action.name] (funnysql.util/like-substring "foo")]
+               [:like [:lower :action.description] (funnysql.util/like-substring "foo")]
+               [:like [:lower :query_action.dataset_query] (funnysql.util/like-substring "foo")]]
               [:= :action.archived false]]
              (:where (search.filter/build-filters
                       base-search-query

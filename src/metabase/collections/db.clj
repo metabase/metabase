@@ -35,7 +35,7 @@
                                           [:or
                                            [:= :synced_root.id (column :id)]
                                            [:like (column :location)
-                                            [:concat (h2x/literal "/") :synced_root.id (h2x/literal "/%")]]]]}]
+                                            [:concat [:literal "/"] :synced_root.id [:literal "/%"]]]]]}]
       [:in (column :namespace) (mapv name always-synced)]]]))
 
 (mu/defn collection

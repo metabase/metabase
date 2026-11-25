@@ -35,7 +35,6 @@
    [metabase.config.core :as config]
    [metabase.funnysql.core :as funnysql]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
   (:import
    (java.sql Connection SQLException)
@@ -634,7 +633,7 @@
                                             [legacy-version-tracking-suffix]
                                             [[:case [:or [:= [:max :dateexecuted] nil] [:> [:current-timestamp] [:max :dateexecuted]]]
                                               [:current-timestamp]
-                                              :else (h2x/add-interval-honeysql-form (mdb.connection/db-type) [:max :dateexecuted] 1 :second)]]
+                                              :else [:date-add [:max :dateexecuted] 1 :second]]]
                                             [[:+ [:coalesce [:max :orderexecuted] 0] 1]]
                                             ["EXECUTED"]
                                             [deployment-id]

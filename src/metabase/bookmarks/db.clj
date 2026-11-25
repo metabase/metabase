@@ -6,7 +6,7 @@
    [metabase.bookmarks.schema :as bookmarks.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -136,14 +136,14 @@
 
 (defn- bookmarks-union-query
   [user-id]
-  (let [as-null      (when (= (mdb/db-type) :postgres) (h2x/->integer nil))
+  (let [as-null      (when (= (mdb/db-type) :postgres) [:cast nil :integer])
         base-queries [^:allow-subquery {:select [:card_id
                                                  [as-null :dashboard_id]
                                                  [as-null :collection_id]
                                                  [as-null :document_id]
                                                  [as-null :exploration_id]
                                                  [:card_id :item_id]
-                                                 [(h2x/literal "card") :type]
+                                                 [[:literal "card"] :type]
                                                  :created_at]
                                         :from   [(t2/table-name :model/CardBookmark)]
                                         :where  [:= :user_id user-id]}
@@ -153,7 +153,7 @@
                                                  [as-null :document_id]
                                                  [as-null :exploration_id]
                                                  [:dashboard_id :item_id]
-                                                 [(h2x/literal "dashboard") :type]
+                                                 [[:literal "dashboard"] :type]
                                                  :created_at]
                                         :from   [(t2/table-name :model/DashboardBookmark)]
                                         :where  [:= :user_id user-id]}
@@ -163,7 +163,7 @@
                                                  [as-null :document_id]
                                                  [as-null :exploration_id]
                                                  [:collection_id :item_id]
-                                                 [(h2x/literal "collection") :type]
+                                                 [[:literal "collection"] :type]
                                                  :created_at]
                                         :from   [(t2/table-name :model/CollectionBookmark)]
                                         :where  [:= :user_id user-id]}
@@ -173,7 +173,7 @@
                                                  :document_id
                                                  [as-null :exploration_id]
                                                  [:document_id :item_id]
-                                                 [(h2x/literal "document") :type]
+                                                 [[:literal "document"] :type]
                                                  :created_at]
                                         :from   [(t2/table-name :model/DocumentBookmark)]
                                         :where  [:= :user_id user-id]}]]
@@ -185,7 +185,7 @@
                                                  [as-null :document_id]
                                                  :exploration_id
                                                  [:exploration_id :item_id]
-                                                 [(h2x/literal "exploration") :type]
+                                                 [[:literal "exploration"] :type]
                                                  :created_at]
                                         :from   [(t2/table-name :model/ExplorationBookmark)]
                                         :where  [:= :user_id user-id]})}))
@@ -219,8 +219,8 @@
   "The bookmarks of the User with `user-id`, joined against the Card, Dashboard, Collection, Document, and Exploration
   tables, excluding archived items, and filtered to items the target `user-scope` (a map of `:current-user-id`,
   `:is-superuser?` and `:is-data-analyst?`) can still read (re-checked at read time rather than trusted from when the
-  bookmark was created, see SEC-669). The `collection_id` join uses [[h2x/identifier]] to work around
-  https://github.com/seancorfield/honeysql/issues/450."
+  bookmark was created, see SEC-669). The `collection_id` join qualifies its columns with
+  [[u/qualified-key]]."
   [user-id    :- ::lib.schema.id/user
    user-scope :- [:map {:closed true}
                   [:current-user-id  ::lib.schema.id/user]
@@ -249,8 +249,8 @@
                           [:exploration.archived    :exploration.archived]]
         left-joins       [[(t2/table-name :model/Card) :card]               [:= :bookmark.card_id :card.id]
                           [(t2/table-name :model/Dashboard) :dashboard]     [:= :bookmark.dashboard_id :dashboard.id]
-                          [(t2/table-name :model/Collection) :collection]   [:in :collection.id [(h2x/identifier :field :bookmark :collection_id)
-                                                                                                 (h2x/identifier :field :dashboard :collection_id)]]
+                          [(t2/table-name :model/Collection) :collection]   [:in :collection.id [(u/qualified-key :bookmark :collection_id)
+                                                                                                 (u/qualified-key :dashboard :collection_id)]]
                           [(t2/table-name :model/BookmarkOrdering) :bookmark_ordering] [:and
                                                                                         [:= :bookmark_ordering.user_id user-id]
                                                                                         [:= :bookmark_ordering.type :bookmark.type]
@@ -268,11 +268,11 @@
                                                                      :is-data-analyst? (:is-data-analyst? user-scope)}
                                                                     {:include-archived-items :all :root-namespace nil}))
         readable-conditions [:or
-                             [:and [:= :bookmark.type (h2x/literal "card")]       (visible? :card.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "dashboard")]  (visible? :dashboard.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "collection")] (visible? :collection.id)]
-                             [:and [:= :bookmark.type (h2x/literal "document")]   (visible? :document.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "exploration")] (visible? :exploration.collection_id)]]]
+                             [:and [:= :bookmark.type [:literal "card"]]       (visible? :card.collection_id)]
+                             [:and [:= :bookmark.type [:literal "dashboard"]]  (visible? :dashboard.collection_id)]
+                             [:and [:= :bookmark.type [:literal "collection"]] (visible? :collection.id)]
+                             [:and [:= :bookmark.type [:literal "document"]]   (visible? :document.collection_id)]
+                             [:and [:= :bookmark.type [:literal "exploration"]] (visible? :exploration.collection_id)]]]
     (mdb/query
      {:select select-fields
       :from [[(bookmarks-union-query user-id) :bookmark]]

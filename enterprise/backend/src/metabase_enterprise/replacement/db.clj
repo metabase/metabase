@@ -6,7 +6,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -56,7 +55,7 @@
    unit :- :keyword]
   (t2/update! :model/ReplacementRun
               :is_active true
-              :start_time [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
+              :start_time [:< [:date-add :%now (- age) unit]]
               {:status    :timeout
                :is_active nil
                :end_time  :%now

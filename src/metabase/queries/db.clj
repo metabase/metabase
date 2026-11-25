@@ -10,6 +10,7 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.collections.schema :as collections.schema]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -22,7 +23,6 @@
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -470,10 +470,7 @@
 
 (defn- rolling-average-expr
   [c0 c1]
-  (h2x/cast (int-casting-type)
-            (h2x/round (h2x/+ (h2x/* c0 :average_execution_time)
-                              c1)
-                       [:inline 0])))
+  [:cast [:round [:+ [:* [:inline c0] :average_execution_time] [:inline c1]] [:inline 0]] (int-casting-type)])
 
 (mu/defn backfill-queries-and-average-execution-times!
   "Set the query text of each Query identified by the `[query-hash query-json c0 c1]` entries of `entries`, and its
@@ -576,20 +573,20 @@
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
 
-(mu/defn stale-card-candidates :- ::staleness/query
+(mu/defn stale-card-candidates :- ::funnysql.schema/query.select
   "The query of the Cards that are stale for `opts`, `{:collection-ids (:all | #{int|nil}), :cutoff-date local-date}`."
   [opts :- ::staleness/candidates-options]
   ^:allow-subquery {:select [:card.id
-                             [(h2x/literal "Card") :model]
+                             [[:literal "Card"] :model]
                              [:card.name :name]
                              :last_used_at
                              :card.collection_id]
                     :from [[(t2/table-name :model/Card) :card]]
                     :left-join [[(t2/table-name :model/ModerationReview) :mr] [:and
                                                                                [:= :mr.moderated_item_id :card.id]
-                                                                               [:= :mr.moderated_item_type (h2x/literal "card")]
+                                                                               [:= :mr.moderated_item_type [:literal "card"]]
                                                                                [:= :mr.most_recent true]
-                                                                               [:= :mr.status (h2x/literal "verified")]]
+                                                                               [:= :mr.status [:literal "verified"]]]
                                 [(t2/table-name :model/PulseCard) :pulse_card] [:= :pulse_card.card_id :card.id]
                                 [(t2/table-name :model/Pulse) :pulse] [:and
                                                                        [:= :pulse_card.pulse_id :pulse.id]
@@ -687,10 +684,10 @@
                        :c.archived_directly
                        :c.archived
                        :c.dataset_query
-                       [(h2x/literal (case card-type
-                                       :model "dataset"
-                                       :metric  "metric"
-                                       "card"))
+                       [[:literal (case card-type
+                                    :model "dataset"
+                                    :metric  "metric"
+                                    "card")]
                         :model]
                        [:u.id :last_edit_user]
                        [:u.email :last_edit_email]
@@ -703,12 +700,12 @@
    :from      [[(t2/table-name :model/Card) :c]]
    :left-join (cond-> [[(t2/table-name :model/Revision) :r] [:and
                                                              [:= :r.model_id :c.id]
-                                                             [:= :r.model (h2x/literal "Card")]
+                                                             [:= :r.model [:literal "Card"]]
                                                              (revisions.sql/newest-revision-clause :r "Card" :c.id)]
                        [(t2/table-name :model/ModerationReview) :mr] [:and
                                                                       [:= :mr.moderated_item_id :c.id]
                                                                       [:= :mr.most_recent true]
-                                                                      [:= :mr.moderated_item_type (h2x/literal "card")]]
+                                                                      [:= :mr.moderated_item_type [:literal "card"]]]
                        [(t2/table-name :model/User) :u] [:= :u.id :r.user_id]]
                 (= :model card-type) (conj [(t2/table-name :model/Table) :t] [:= :t.id :c.table_id]))
    :where     [:and
@@ -726,12 +723,12 @@
                [:= :c.archived (boolean archived?)]
                (case card-type
                  :model
-                 [:= :c.type (h2x/literal "model")]
+                 [:= :c.type [:literal "model"]]
 
                  :metric
-                 [:= :c.type (h2x/literal "metric")]
+                 [:= :c.type [:literal "metric"]]
 
-                 [:= :c.type (h2x/literal "question")])
+                 [:= :c.type [:literal "question"]])
                (collections.listing/pinned-state->clause pinned-state)]})
 
 (mu/defn collection-question-items :- :map

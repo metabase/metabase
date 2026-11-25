@@ -11,7 +11,6 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -107,7 +106,7 @@
   collections are an EE feature."
   metabase-enterprise.snippet-collections.api.native-query-snippet
   [_collection {:keys [archived?]}]
-  {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
+  {:select [:id :name :entity_id [[:literal "snippet"] :model]]
    :from   [[(t2/table-name :model/NativeQuerySnippet) :nqs]]
    :where  [:= :archived (boolean archived?)]})
 

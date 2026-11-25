@@ -14,7 +14,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
-   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -39,14 +38,14 @@
   []
   (let [ts (-> (t2/query-one
                 {:select [[(let [db-type          (mdb/db-type)
-                                 now-form         (h2x/current-datetime-honeysql-form db-type)
+                                 now-form         [:current-datetime]
                                  target-cast-type (case db-type
                                                     (:h2 :postgres) :text
                                                     :mysql          :char)]
                              [:cast
                               ;; make it one second in the future so we don't end up getting an exact match when we try
                               ;; to test to see if things update below
-                              (h2x/add-interval-honeysql-form db-type now-form 1 :second)
+                              [:date-add now-form 1 :second]
                               target-cast-type])
                            :timestamp]]})
                :timestamp)]

@@ -6,12 +6,12 @@
    [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -30,7 +30,7 @@
       "active"      [:= :is_active true]
       [:= :is_active true])))
 
-(defn- wildcard-query [query] (h2x/like-substring query))
+(defn- wildcard-query [query] (funnysql.util/like-substring query))
 
 (defn- query-clause
   "Honeysql clause to shove into user query if there's a query"

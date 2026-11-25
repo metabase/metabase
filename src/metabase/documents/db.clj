@@ -10,6 +10,7 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.collections.schema :as collections.schema]
    [metabase.documents.schema :as documents.schema]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
@@ -18,7 +19,6 @@
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -214,14 +214,14 @@
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
 
-(mu/defn stale-document-candidates :- ::staleness/query
+(mu/defn stale-document-candidates :- ::funnysql.schema/query.select
   "The query of the Documents that are stale for `opts`, `{:collection-ids (:all | #{int|nil}), :cutoff-date local-date}`:
   those not viewed since the cutoff, or never viewed and created before it, in regular collections. `last_viewed_at`
   is never null, so the recency is null for a Document that was never viewed."
   [opts :- ::staleness/candidates-options]
   ^:allow-subquery
   {:select [:document.id
-            [(h2x/literal "Document") :model]
+            [[:literal "Document"] :model]
             [:document.name :name]
             [[:case [:= :document.view_count [:inline 0]] nil :else :document.last_viewed_at] :last_used_at]
             :document.collection_id]
@@ -272,11 +272,11 @@
             [:u.first_name :last_edit_first_name]
             [:u.last_name :last_edit_last_name]
             [:r.timestamp :last_edit_timestamp]
-            [(h2x/literal "document") :model]]
+            [[:literal "document"] :model]]
    :from [[(t2/table-name :model/Document) :document]]
    :left-join [[(t2/table-name :model/Revision) :r] [:and
                                                      [:= :r.model_id :document.id]
-                                                     [:= :r.model (h2x/literal "Document")]
+                                                     [:= :r.model [:literal "Document"]]
                                                      (revisions.sql/newest-revision-clause :r "Document" :document.id)]
                [(t2/table-name :model/User) :u] [:= :u.id :r.user_id]]
    :where [:and

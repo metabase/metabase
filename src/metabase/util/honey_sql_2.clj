@@ -9,38 +9,12 @@
    [honey.sql.protocols :as sql.protocols]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [potemkin.types :as p.types])
   (:import
    (java.util Locale)))
 
 (set! *warn-on-reflection* true)
-
-(defn- escape-like-pattern
-  "Escape `%`, `_` and the escape character `!` so `s` matches literally in a `LIKE` pattern."
-  ^String [^String s]
-  (str/replace s #"([!%_])" "!$1"))
-
-(defn like-pattern
-  "`LIKE` right-hand side matching `s` literally, with an explicit `ESCAPE` clause so it behaves the same on every app DB.
-  `wrap` receives the escaped string and returns the final pattern (string or HoneySQL expr), e.g. to add wildcards."
-  ([s]
-   (like-pattern s identity))
-  ([s wrap]
-   ;; `::literal` rather than [:inline "!"]: with a driver bound, inline strings compile via driver-specific
-   ;; `inline-value` (MySQL emits `_utf8mb4 X'21'`, whose collation can clash with LIKE's other operands)
-   [:escape (wrap (escape-like-pattern s)) [::literal "!"]]))
-
-(defn like-substring
-  "`LIKE` right-hand side matching `s` case-insensitively as a literal substring; compare it against a lowercased column."
-  [s]
-  (like-pattern (u/lower-case-en s) #(str "%" % "%")))
-
-(defn like-prefix
-  "`LIKE` right-hand side matching `s` case-insensitively as a literal prefix; compare it against a lowercased column."
-  [s]
-  (like-pattern (u/lower-case-en s) #(str % "%")))
 
 (defn assert-map-or-nil!
   "`honeysql`, a Honey SQL query or conditions map (or nil), to pass to a Toucan 2 call such as `t2/select` after the
@@ -180,19 +154,6 @@
    :field-alias ; is `f`
    ;; for [[quoted-cast]]
    :type-name])
-
-(mr/def ::expr
-  "A Honey SQL 2 expression: a literal value, a column/table identifier keyword, or a vector-form SQL clause
-  (recursively, e.g. a function call, cast, or tagged form like [[identifier]] or a `TypedHoneySQLForm`)."
-  [:or
-   :keyword
-   :string
-   number?
-   :boolean
-   nil?
-   ms/TemporalInstant
-   [:fn {:error/message "::h2x/typed Honey SQL form", :json-schema {:type "array"}} (fn [x] (and (vector? x) (= (first x) ::typed)))]
-   [:sequential [:ref ::expr]]])
 
 (defn identifier?
   "Whether `x` is a valid `::identifier`."
@@ -420,7 +381,7 @@
     (with-database-type-info :field \"text\")
     ;; -> [::typed :field \"text\"]"
   {:style/indent [:form]}
-  [honeysql-form :- ::honeysql-expr
+  [honeysql-form :- [:maybe [:or :keyword :string number? :boolean sequential? inst? [:fn #(instance? java.time.temporal.Temporal %)]]]
    db-type       :- [:maybe ms/KeywordOrString]]
   (if (some? db-type)
     (with-type-info honeysql-form {:database-type db-type})
@@ -428,24 +389,6 @@
 
 (def ^:private TypedExpression
   [:fn {:error/message "::h2x/typed Honey SQL form", :json-schema {:type "array"}} typed?])
-
-(mr/def ::honeysql-clause-opts
-  "A map inside a Honey SQL 2 clause (a window spec, a subquery, ...), whose keys the Honey SQL library and the clauses drivers register own."
-  [:map {:closed false}])
-
-(mr/def ::honeysql-expr
-  "A Honey SQL 2 expression: a literal value, a column/identifier keyword, a `TypedHoneySQLForm` wrapping another
-  expression, or a clause vector whose args are themselves Honey SQL expressions (or a clause options map, e.g.
-  `:over`'s window spec)."
-  [:or
-   :string
-   :keyword
-   number?
-   :boolean
-   nil?
-   ms/TemporalInstant
-   [:fn {:error/message "::h2x/typed Honey SQL form", :json-schema {:type "array"}} typed?]
-   [:sequential [:or [:ref ::honeysql-expr] ::honeysql-clause-opts]]])
 
 (def ^:private raw-type-name-regex
   "The shape of a plain SQL type name, from the grammar the supported engines report their types in:
@@ -514,7 +457,7 @@
 (mu/defn cast :- TypedExpression
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
   [sql-type :- ms/KeywordOrString
-   expr     :- ::honeysql-expr]
+   expr     :- [:maybe [:or :keyword :string number? :boolean sequential? inst? [:fn #(instance? java.time.temporal.Temporal %)]]]]
   (-> (if (raw-type-name? sql-type)
         [:cast expr [::raw-type-name (name sql-type)]]
         [:cast expr (identifier :type-name (name sql-type))])
@@ -523,7 +466,7 @@
 (mu/defn maybe-cast :- TypedExpression
   "Cast `expr` to `sql-type`, unless `expr` is typed and already of that type. Returns a typed HoneySQL form."
   [sql-type :- [:maybe ms/KeywordOrString]
-   expr     :- ::honeysql-expr]
+   expr     :- [:maybe [:or :keyword :string number? :boolean sequential? inst? [:fn #(instance? java.time.temporal.Temporal %)]]]]
   (if (or (nil? sql-type)
           (is-of-type? expr sql-type))
     expr

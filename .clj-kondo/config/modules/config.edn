@@ -681,6 +681,7 @@
    :uses #{api
            app-db
            collections
+           funnysql
            models
            request
            revisions.schema
@@ -704,6 +705,7 @@
            audit-app
            collection-items
            events
+           funnysql
            lib
            lib.schema
            models
@@ -875,6 +877,7 @@
            dependencies
            embedding
            events
+           funnysql
            lib
            lib.be
            lib.schema
@@ -1015,6 +1018,7 @@
            collections
            dependencies
            events
+           funnysql
            lib
            lib.be
            lib.schema
@@ -1263,7 +1267,7 @@
 
   funnysql
   {:team "Querying"
-   :api  #{metabase.funnysql.core}
+   :api  #{metabase.funnysql.core metabase.funnysql.schema metabase.funnysql.util}
    :uses #{util}}
 
   geojson
@@ -1300,6 +1304,7 @@
            app-db
            audit-app
            events
+           funnysql
            lib.schema
            models
            remote-sync
@@ -2025,6 +2030,7 @@
            driver
            embedding
            events
+           funnysql
            lib.schema
            models
            parameters
@@ -2352,6 +2358,7 @@
            documents
            embedding
            events
+           funnysql
            lib
            lib.be
            lib.metadata
@@ -2426,6 +2433,7 @@
            collections
            data-apps
            events
+           funnysql
            lib
            lib.be
            lib.schema
@@ -2726,6 +2734,7 @@
            collections
            data-apps
            events
+           funnysql
            global-system
            health-inspector
            lib
@@ -2922,6 +2931,7 @@
            appearance
            channel
            events
+           funnysql
            lib.schema
            premium-features
            request
@@ -3305,6 +3315,7 @@
            dependencies
            driver
            events
+           funnysql
            lib
            lib.be
            lib.schema
@@ -3530,6 +3541,7 @@
            batch-processing
            change-log
            events
+           funnysql
            lib.schema
            models
            notification
@@ -3666,6 +3678,7 @@
            documents
            driver
            events
+           funnysql
            lib.schema
            models
            permissions
@@ -3766,6 +3779,7 @@
            database-routing
            driver
            events
+           funnysql
            lib
            lib.metadata
            lib.schema
@@ -3948,6 +3962,7 @@
            audit-app
            collections
            driver
+           funnysql
            lib
            lib.metadata
            lib.schema
@@ -4323,6 +4338,7 @@
            documents
            driver
            events
+           funnysql
            lib
            lib.be
            lib.metadata
@@ -4550,6 +4566,7 @@
            appearance
            channel
            events
+           funnysql
            lib.schema
            mfa
            premium-features
@@ -4884,6 +4901,7 @@
    :api  #{metabase-enterprise.session-management.api}
    :uses #{api
            events
+           funnysql
            lib.schema
            request
            session
@@ -4948,6 +4966,7 @@
    :uses #{analytics
            api
            collections
+           funnysql
            lib.schema
            premium-features
            request

@@ -6,7 +6,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.session.core :as session]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
@@ -55,10 +54,14 @@
                               [:not= :session.mfa_auth_identity_id nil]
                               (into [:and]
                                     (map (fn [mfa-supporting-provider]
-                                           [:not= :auth_identity.provider (h2x/literal (name mfa-supporting-provider))]))
+                                           [:not= :auth_identity.provider [:literal (name mfa-supporting-provider)]]))
                                     mfa-supported-methods)]])])
            :limit  [:inline 1]})
    enable-advanced-permissions?))
+
+(def ^:private placeholder
+  "A value standing in for a parameter of a compiled statement, which compiles to a `?` that [[query-one-compiled]] binds."
+  "?")
 
 (defn- query-one-compiled
   "The first row of the statement Funny SQL compiled as `compiled`, run with `params` for its placeholders."
@@ -71,8 +74,8 @@
   (mdb/memoize-for-application-db
    (fn [max-age-minutes full-app-embed? enable-advanced-permissions? enable-tenants? session-timeout-seconds
         mfa-required?]
-     (t2.pipeline/compile* (session-with-id-query (Object.)
-                                                  (when full-app-embed? (Object.))
+     (t2.pipeline/compile* (session-with-id-query placeholder
+                                                  (when full-app-embed? placeholder)
                                                   max-age-minutes
                                                   enable-advanced-permissions?
                                                   enable-tenants?
@@ -117,7 +120,7 @@
                                          [:user.locale :user-locale]]
                              :from      [[(t2/table-name :model/ApiKey) :api_key]]
                              :left-join [[(t2/table-name :model/User) :user] [:= :api_key.user_id :user.id]]
-                             :where     [:and [:= :user.is_active true] [:= :api_key.key_prefix (Object.)]]
+                             :where     [:and [:= :user.is_active true] [:= :api_key.key_prefix placeholder]]
                              :limit     [:inline 1]}
                             enable-advanced-permissions?)))))
 
@@ -130,7 +133,7 @@
                                       [:user.is_data_analyst :is-data-analyst?]
                                       [:user.locale :user-locale]]
                              :from   [[(t2/table-name :model/User) :user]]
-                             :where  [:and [:= :user.is_active true] [:= :user.id (Object.)]]
+                             :where  [:and [:= :user.is_active true] [:= :user.id placeholder]]
                              :limit  [:inline 1]}
                             enable-advanced-permissions?)))))
 

@@ -19,7 +19,6 @@
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -158,7 +157,7 @@
         :let [maybe-aliased-col (get col-alias->honeysql-clause search-col)]]
     (cond
       (= search-col :model)
-      [(h2x/literal model) :model]
+      [[:literal model] :model]
 
       ;; This is an aliased column, no need to include the table alias
       (sequential? maybe-aliased-col)
@@ -231,7 +230,7 @@
                                  [:= [:inline 1] [:inline 1]]
                                  (search.permissions/permitted-collections-clause
                                   search-ctx collection-id-col
-                                  (if (= model "search-index") :search_index.model (h2x/literal (or model "")))))
+                                  (if (= model "search-index") :search_index.model [:literal (or model "")])))
         personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
     (-> honeysql-query
         (sql.helpers/where permitted-clause)
@@ -536,13 +535,13 @@
   [_model search-ctx]
   (-> (shared-card-impl :model search-ctx)
       (update :select (fn [columns]
-                        (cons [(h2x/literal "dataset") :model] (rest columns))))))
+                        (cons [[:literal "dataset"] :model] (rest columns))))))
 
 (defmethod search-query-for-model "metric"
   [_model search-ctx]
   (-> (shared-card-impl :metric search-ctx)
       (update :select (fn [columns]
-                        (cons [(h2x/literal "metric") :model] (rest columns))))))
+                        (cons [[:literal "metric"] :model] (rest columns))))))
 
 (defmethod search-query-for-model "collection"
   [model search-ctx]

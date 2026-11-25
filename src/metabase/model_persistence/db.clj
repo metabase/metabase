@@ -63,7 +63,7 @@
                            ;; Buffer deletions for an hour if the prune job happens soon after setting
                            ;; state: 1. so people have a chance to change their mind, 2. so a query
                            ;; running against the cache doesn't get ripped out.
-                           [:< :state_change_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
+                           [:< :state_change_at [:date-add :%now -1 :hour]]]
                           [:= :c.type "question"]
                           [:= :c.archived true]
                           ;; card_id is set to null when the corresponding card is deleted

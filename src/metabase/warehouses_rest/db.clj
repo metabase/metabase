@@ -4,10 +4,10 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -114,7 +114,7 @@
       ;; e.g. search-string = "123"
       (and (not-empty search-id) (empty? search-name))
       [:like
-       (h2x/cast (if (= (mdb/db-type) :mysql) :char :text) (u/qualified-key (t2/table-name :model/Card) :id))
+       [:cast (u/qualified-key (t2/table-name :model/Card) :id) (if (= (mdb/db-type) :mysql) :char :text)]
        (str search-id "%")]
 
       ;; e.g. search-string = "123-foo"
@@ -122,11 +122,11 @@
       [:and
        [:= (u/qualified-key (t2/table-name :model/Card) :id) (parse-long search-id)]
        ;; this is a prefix match to be consistent with substring matches on the entire slug
-       [:like [:lower (u/qualified-key (t2/table-name :model/Card) :name)] (h2x/like-prefix search-name)]]
+       [:like [:lower (u/qualified-key (t2/table-name :model/Card) :name)] (funnysql.util/like-prefix search-name)]]
 
       ;; e.g. search-string = "foo"
       (and (empty? search-id) (not-empty search-name))
-      [:like [:lower (u/qualified-key (t2/table-name :model/Card) :name)] (h2x/like-substring search-name)])))
+      [:like [:lower (u/qualified-key (t2/table-name :model/Card) :name)] (funnysql.util/like-substring search-name)])))
 
 (mu/defn autocomplete-cards
   "Up to 50 unarchived Cards of the Database with `database-id` matching `search-card-slug` (see

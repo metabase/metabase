@@ -32,8 +32,8 @@
   [run-ids :- [:sequential ms/PositiveInt]]
   (mdb/select-batched #(t2/query {:select   [:run_id
                                              [[:count :id] :task_count]
-                                             [[:sum [:case [:= :status (h2x/literal "success")] [:inline 1] :else [:inline 0]]] :success_count]
-                                             [[:sum [:case [:= :status (h2x/literal "failed")] [:inline 1] :else [:inline 0]]] :failed_count]]
+                                             [[:sum [:case [:= :status [:literal "success"]] [:inline 1] :else [:inline 0]]] :success_count]
+                                             [[:sum [:case [:= :status [:literal "failed"]] [:inline 1] :else [:inline 0]]] :failed_count]]
                                   :from     (t2/table-name :model/TaskHistory)
                                   :where    [:in :run_id %]
                                   :group-by [:run_id]})
@@ -201,7 +201,7 @@
   []
   (case (mdb/db-type)
     :postgres :%statement_timestamp
-    (h2x/current-datetime-honeysql-form (mdb/db-type))))
+    [:current-datetime]))
 
 (defn- duration-clause
   "A HoneySQL form for the whole milliseconds, never negative, from the stored `started_at` of a TaskHistory row to the
@@ -212,9 +212,9 @@
     [:greatest
      [:inline 0]
      (case db-type
-       :postgres [:cast [:floor [:* [:inline 1000] [::h2x/extract :epoch [:- now :started_at]]]] :integer]
-       :mysql    [:floor [:/ [::h2x/timestampdiff :microsecond :started_at now] [:inline 1000]]]
-       :h2       [:datediff (h2x/literal "millisecond") :started_at now])]))
+       :postgres [:cast [:floor [:* [:inline 1000] [:extract :epoch [:- now :started_at]]]] :integer]
+       :mysql    [:floor [:/ [:timestampdiff :microsecond :started_at now] [:inline 1000]]]
+       :h2       [:datediff [:literal "millisecond"] :started_at now])]))
 
 (mu/defn end-task-history!
   "Record the end of the TaskHistory row with `id` with `changes`: `ended_at` is the database's now and `duration` the

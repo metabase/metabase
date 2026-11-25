@@ -2,12 +2,10 @@
   "Application database queries for the login history module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.login-history.schema :as login-history.schema]
    [metabase.session.core :as session]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -58,7 +56,7 @@
   (t2/count :model/LoginHistory
             {:where [:and
                      [:= :user_id user-id]
-                     [:> :timestamp (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- window-hours) :hour)]
+                     [:> :timestamp [:date-add :%now (- window-hours) :hour]]
                      [:not [:exists
                             ^:allow-subquery
                             {:select [1]

@@ -7,10 +7,11 @@
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase.app-db.core :as mdb]
    [metabase.dependencies.core :as dependencies]
+   [metabase.funnysql.schema :as funnysql.schema]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -20,10 +21,6 @@
 (def ^:private Column
   "A Honey SQL column keyword, or a string literal standing in for one."
   [:or :keyword :string])
-
-(def ^:private HoneySQLForm
-  "A Honey SQL expression or query map."
-  [:or ::h2x/honeysql-expr ::h2x/honeysql-clause-opts])
 
 ;;; ------------------------------------------------ Graph edge restrictions ------------------------------------------------
 ;;; The dependency graph is traversed generically over every entity type the module knows about; these private
@@ -44,7 +41,7 @@
    :include-internal?             true
    :include-sample-databases?     true})
 
-(mu/defn- items-query :- [:maybe ::h2x/honeysql-clause-opts]
+(mu/defn- items-query :- [:maybe ::funnysql.schema/expr.subquery]
   "The `:items` query of the spec of `model` for `opts`, marked as a subquery, or nil when the model is not listed or
   the user reads none of its entities."
   [model :- :keyword
@@ -52,7 +49,7 @@
   (when-let [items (:items (dependencies/spec model))]
     (some-> (items opts) (vary-meta assoc :allow-subquery true))))
 
-(mu/defn- visible-entities-expr :- ::h2x/honeysql-expr
+(mu/defn- visible-entities-expr :- ::funnysql.schema/expr
   "Matches entities at `entity-type-field`/`entity-id-field` that are readable by the user described by `user-id`,
   `is-superuser?`, and `is-data-analyst?`, honoring `include-archived-items` (`:exclude`, `:all`, or `:only`,
   default `:exclude`): those that the `:items` query of the spec of their model selects for them, none of a model
@@ -70,7 +67,7 @@
                                                             :from   [[items :items]]}]])))
           (dependencies/type->model))))
 
-(mu/defn- broken-entities-expr :- ::h2x/honeysql-expr
+(mu/defn- broken-entities-expr :- ::funnysql.schema/expr
   "Matches entities at `entity-type-field`/`entity-id-field` that have failed analysis (an AnalysisFinding with
   `:result` false)."
   [entity-type-field :- Column
@@ -88,13 +85,13 @@
                             [:= (u/qualified-key (t2/table-name :model/AnalysisFinding) :result) false]]}]]))
         (dependencies/type->model)))
 
-(mu/defn- allowed-entity-types-expr :- ::h2x/honeysql-expr
+(mu/defn- allowed-entity-types-expr :- ::funnysql.schema/expr
   "Matches entities at `entity-type-field` whose type is one of `entity-types`."
   [entity-type-field :- Column
    entity-types      :- [:set ::dependencies.schema/entity-type]]
   (into [:or] (map (fn [entity-type] [:= entity-type-field (name entity-type)])) entity-types))
 
-(mu/defn- entity-ids-expr :- ::h2x/honeysql-expr
+(mu/defn- entity-ids-expr :- ::funnysql.schema/expr
   "Matches entities at `entity-type-field`/`entity-id-field` that are of type `entity-type` and whose id is in
   `ids`."
   [entity-type-field          :- Column
@@ -104,7 +101,7 @@
                                   [:ids         [:sequential ::deps.dependency-types/entity-id]]]]
   [:and [:= entity-type-field (name entity-type)] [:in entity-id-field ids]])
 
-(mu/defn- edge-restriction-expr :- [:maybe ::h2x/honeysql-expr]
+(mu/defn- edge-restriction-expr :- [:maybe ::funnysql.schema/expr]
   "The combined `:where` fragment for `restriction-spec` (nil for no filter), which may include `:visible` (opts for
   [[visible-entities-expr]]), `:broken?` (restrict to [[broken-entities-expr]]), `:types` (restrict to
   [[allowed-entity-types-expr]]), or `:entity-type` + `:ids` (restrict to [[entity-ids-expr]]). Combinable
@@ -224,8 +221,8 @@
     :data-actions))
 
 (mu/defn- item-query-join :- [:map {:closed true}
-                              [:join        [:sequential HoneySQLForm]]
-                              [:join-filter ::h2x/honeysql-expr]]
+                              [:join        ::funnysql.schema/clause.left-join]
+                              [:join-filter ::funnysql.schema/expr]]
   "The join and join-filter for `query-type`, restricting the joined-in dependency/finding-error rows to those
   whose other-side entity passes `default-visible-restriction` (see [[edge-restriction-expr]]; this is independent of any
   archived-items override applied to the item's own visibility)."
@@ -251,7 +248,7 @@
                        (edge-restriction-expr :afe.analyzed_entity_type :afe.analyzed_entity_id default-visible-restriction)]]
                :join-filter [:!= :afe.id nil]}))
 
-(mu/defn- sort-key-expr :- HoneySQLForm
+(mu/defn- sort-key-expr :- ::funnysql.schema/expr
   "The sort expression for `sort-column` over the `items` of `entity-type`, restricting the
   `dependents-errors`/`dependents-with-errors` counts to finding errors whose analyzed entity passes
   `default-visible-restriction` (see [[edge-restriction-expr]])."
@@ -280,7 +277,7 @@
              (edge-restriction-expr :analyzed_entity_type :analyzed_entity_id default-visible-restriction)]}
     :items.name))
 
-(mu/defn- dependency-item-select :- [:maybe ::h2x/honeysql-clause-opts]
+(mu/defn- dependency-item-select :- [:maybe ::funnysql.schema/expr.subquery]
   "The per-entity-type SELECT that [[dependency-item-ids]] and [[dependency-item-count]] union together: the
   `:items` of the spec of `entity-type` for the user described by `user-id`, `is-superuser?`, and
   `is-data-analyst?`, restricted to `card-types` and `include-personal-collections?`, whose `name` or `location`
@@ -308,18 +305,18 @@
           {:keys [join join-filter]}  (item-query-join query-type entity-type default-visible-restriction)]
       ^:allow-subquery
       {(if (= query-type :breaking) :select-distinct :select)
-       [[(h2x/literal (name entity-type)) :entity_type]
+       [[[:literal (name entity-type)] :entity_type]
         [:items.entity_id :entity_id]
         [(sort-key-expr sort-column entity-type default-visible-restriction) :sort_key]]
        :from      [[items :items]]
        :left-join join
        :where     (cond-> [:and join-filter]
-                    search-text (conj (let [pattern (h2x/like-substring search-text)]
+                    search-text (conj (let [pattern (funnysql.util/like-substring search-text)]
                                         [:or
                                          [:like [:lower :items.name] pattern]
                                          [:like [:lower :items.location] pattern]])))})))
 
-(mu/defn- dependency-item-union :- [:maybe ::h2x/honeysql-clause-opts]
+(mu/defn- dependency-item-union :- [:maybe ::funnysql.schema/expr.subquery]
   "The union of the [[dependency-item-select]]s of the `entity-types` for `params`, or nil when there is none."
   [entity-types :- [:sequential ::deps.dependency-types/dependency-types]
    params       :- ::dependency-item-filter-params]

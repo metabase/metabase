@@ -11,7 +11,6 @@
    [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -50,10 +49,10 @@
         (sm.db/sessions liveness-params filters :created_at :desc nil nil nil)))
 
 (defn- ago [amount unit]
-  (h2x/add-interval-honeysql-form (mdb/db-type) (h2x/current-datetime-honeysql-form (mdb/db-type)) (- amount) unit))
+  [:date-add [:current-datetime] (- amount) unit])
 
 (defn- from-now [amount unit]
-  (h2x/add-interval-honeysql-form (mdb/db-type) (h2x/current-datetime-honeysql-form (mdb/db-type)) amount unit))
+  [:date-add [:current-datetime] amount unit])
 
 (deftest live-session-conditions-max-age-test
   (testing "a session past `max-session-age` is neither listed nor counted"

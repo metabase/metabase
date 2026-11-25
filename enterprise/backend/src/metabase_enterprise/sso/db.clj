@@ -3,7 +3,6 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase.app-db.core :as mdb]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -33,8 +32,7 @@
 (mu/defn expires-at-clause
   "A HoneySQL form for the database's now plus `seconds`, the expiry the before-insert hook gives a new SsoRelayState."
   [seconds :- ms/PositiveInt]
-  (let [db-type (mdb/db-type)]
-    (h2x/add-interval-honeysql-form db-type (h2x/current-datetime-honeysql-form db-type) seconds :second)))
+  [:date-add [:current-datetime] seconds :second])
 
 (mu/defn insert-relay-state!
   "Insert the SsoRelayState `row`, returning the number inserted."
@@ -54,7 +52,7 @@
   [hashed-key :- :string]
   (when-not (string? hashed-key)
     (throw (ex-info "hashed-key must be a string" {:hashed-key hashed-key})))
-  (t2/select-one :model/SsoRelayState :id hashed-key :expires_at [:> (h2x/current-datetime-honeysql-form (mdb/db-type))]))
+  (t2/select-one :model/SsoRelayState :id hashed-key :expires_at [:> [:current-datetime]]))
 
 (mu/defn delete-relay-state!
   "Delete the SsoRelayState with `hashed-key`, returning the number deleted."

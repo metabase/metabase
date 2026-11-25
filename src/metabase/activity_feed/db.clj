@@ -7,7 +7,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -87,7 +86,7 @@
               [:%max.started_at :max_ts]]
              {:group-by [(u/qualified-key (t2/table-name :model/QueryExecution) :card_id) :context]
               :where    [:and
-                         [:= :context (h2x/literal :question)]]
+                         [:= :context [:literal :question]]]
               :order-by [[:max_ts :desc]]
               :limit    limit}))
 
@@ -155,10 +154,10 @@
                                         :from      [[(t2/table-name :model/RecentViews) :rv]]
                                         :where     [:and
                                                     [:in :rv.user_id %]
-                                                    [:in :rv.context (mapv h2x/literal contexts)]]
+                                                    [:in :rv.context (mapv (fn [s] [:literal s]) contexts)]]
                                         :left-join [[(t2/table-name :model/Card) :rc]
                                                     [:and
-                                                     [:= :rv.model (h2x/literal "card")]
+                                                     [:= :rv.model [:literal "card"]]
                                                      [:= :rc.id :rv.model_id]]]
                                         :order-by  [[:rv.timestamp :desc]]})
                            user-ids)
@@ -184,7 +183,7 @@
    :model/RecentViews
    {:where    [:and
                [:= :user_id user-id]
-               [:= :model (h2x/literal "dashboard")]
+               [:= :model [:literal "dashboard"]]
                [:> :timestamp since]
                [:not= :d.archived true]]
     :order-by [[(u/qualified-key (t2/table-name :model/RecentViews) :id) :desc]]
@@ -226,7 +225,7 @@
                           (when (seq card-types)
                             [:or
                              [:!= :rv.model "card"]
-                             [:in :rc.type (map h2x/literal card-types)]])
+                             [:in :rc.type (map (fn [s] [:literal s]) card-types)]])
                           ;; include non-collections, or collections without a namespace/type.
                           [:or
                            [:= :coll.id nil]
