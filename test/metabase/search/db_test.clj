@@ -6,7 +6,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.search.db :as search.db]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -56,7 +55,7 @@
 (deftest table-exists-in-the-app-database-only-test
   (when (= :mysql (mdb/db-type))
     (testing "A table of the same name in another database on the server does not count"
-      (let [table-name (str "search_index__probe_" (u/lower-case-en (u/generate-nano-id)))]
+      (let [table-name (str "search_index__probe_" (System/nanoTime))]
         (t2/query ["CREATE DATABASE IF NOT EXISTS mb_search_other"])
         (try
           (t2/query [(format "CREATE TABLE mb_search_other.%s (id INT)" table-name)])
