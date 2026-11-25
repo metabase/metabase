@@ -122,9 +122,9 @@
       (is (= [{:role  "user"
                :parts [{:functionResponse {:name "search" :response {:output ""}}}]}]
              (sgc/parts->contents [part])))))
-  (testing "a failed result without :output still sends its empty text under `error`"
+  (testing "a failed result without :output sends the fallback text under `error`"
     (is (= [{:role  "user"
-             :parts [{:functionResponse {:name "search" :response {:error ""}}}]}]
+             :parts [{:functionResponse {:name "search" :response {:error "Tool execution failed"}}}]}]
            (sgc/parts->contents
             [{:type :tool-output :id "call-1" :function "search" :result {:error {:class :recoverable :code :x}}}])))))
 

@@ -168,6 +168,12 @@
            (chat-completions/parts->cc-messages
             [{:type :tool-output :id "call-1" :result {:rows [1 2]}}])))))
 
+(deftest ^:parallel parts->cc-messages-error-result-test
+  (testing "a failed call without :output sends the fallback text"
+    (is (= [{:role "tool" :tool_call_id "call-1" :content "Tool execution failed"}]
+           (chat-completions/parts->cc-messages
+            [{:type :tool-output :id "call-1" :result {:error {:class :recoverable :code :x}}}])))))
+
 (deftest ^:parallel parts->cc-messages-multiple-tool-results-test
   (testing "multiple tool outputs become separate tool messages"
     (is (=? [{:role "tool" :tool_call_id "call-1" :content "Result 1"}

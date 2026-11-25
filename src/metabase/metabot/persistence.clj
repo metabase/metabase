@@ -105,10 +105,14 @@
                              ;; failure — the table that was missing, the argument to repair — on
                              ;; every replay. One field, two audiences; the model wins, because the
                              ;; live SSE channel has its own and the whole point of the text is that
-                             ;; the agent can act on it. A failure that no tool declared is stored as
-                             ;; the neutral sentence `tools.runtime/replay-text` gives it, because its
-                             ;; live text tells the model what to do in a turn that will have ended.
-                             (assoc :errorText (str (tools.runtime/replay-text (:result output))))))
+                             ;; the agent can act on it. It is the text that the adapters send (see
+                             ;; `self.core/tool-result-text`). A failure that no tool declared is the
+                             ;; exception. It is stored as the neutral sentence of
+                             ;; `tools.runtime/replay-text`. Its live text tells the model what to do,
+                             ;; but that turn will have ended.
+                             (assoc :errorText (tools.runtime/replay-text
+                                                (assoc (:result output)
+                                                       :output (self.core/tool-result-text (:result output)))))))
                          :data {:type (str "data-" (or (:data-type part) "data"))
                                 :data (:data part)}
                          (do (log/warn "Dropping internal part with no v2 storage representation"
@@ -494,8 +498,17 @@
   stays replayable rather than being silently dropped. Pass
   `:on-unresolved :skip` to drop it instead (Slack replays only completed tool
   calls and gets assistant text from its own thread copy).
-  While query execution is off, a stored query result is replaced with a note that it is hidden.
-  The result of a failed (`output-error`) call has `:is_error true`."
+  The result of a failed (`output-error`) call has `:is_error true`. A blank `errorText` replays as
+  [[metabase.metabot.self.core/failed-tool-result-text]], which is the text that the adapters send for it.
+
+  The result text is the text that the adapters sent in the turn that stored the part (see
+  [[metabase.metabot.self.core/tool-result-text]]), so the next turn's request starts with the same bytes. There are
+  three exceptions:
+  - While query execution is off, a stored query result is replaced with a note that it is hidden.
+  - A failure that no tool declared replays as the neutral sentence of [[metabase.metabot.tools.runtime/replay-text]].
+  - A successful result whose `:output` (or the result itself, when it is not a map) is not a string replays as the
+    text of its JSON round trip, because the part is stored as JSON. For example, `:ok` is sent as `\":ok\"` and
+    replayed as `\"ok\"`."
   ([part] (tool-part->llm-messages part nil))
   ([part {:keys [on-unresolved]}]
    (when (schema.v2/tool-part? part)
@@ -503,8 +516,10 @@
            content (case state
                      "output-available" (if (hidden-query-results? part)
                                           hidden-query-results
-                                          (str (if (map? output) (:output output) output)))
-                     "output-error"     (or errorText "Tool execution failed")
+                                          (self.core/tool-result-text output))
+                     "output-error"     (if (str/blank? errorText)
+                                          self.core/failed-tool-result-text
+                                          errorText)
                      "input-available"  (when-not (= on-unresolved :skip)
                                           "Tool execution interrupted by user")
                      nil)]
@@ -521,11 +536,6 @@
             ;; The Claude and Gemini adapters mark a failed result as they marked it in the turn that
             ;; failed, so the next turn's request starts with the bytes that this turn sent. The other
             ;; adapters send only the text, with no mark in either turn.
-            ;;
-            ;; A stored failure can have a blank `errorText`, for example in a v1 row or after an exception with an
-            ;; empty message. Claude then gets an `is_error` result with empty content, which Anthropic rejects.
-            ;; https://github.com/metabase/metabase/pull/87321 makes `self.core/tool-result-text` send "Tool
-            ;; execution failed" for it. When it is merged, remove this paragraph.
             (= "output-error" state) (assoc :is_error true))])))))
 
 (defn- message-text
