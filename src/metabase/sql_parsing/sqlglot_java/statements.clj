@@ -1,6 +1,6 @@
 (ns metabase.sql-parsing.sqlglot-java.statements
-  "What kind of statement a query is: `is_single_stmt_of_type`, with the read-only checks behind `read-only-select?`
-  and the confined-write checks behind data-test writes, and `simple_query`."
+  "What kind of statement a query is: `is_single_stmt_of_type`, with the read-only checks behind `read-only-select?`,
+  and `simple_query`."
   (:require
    [clojure.string :as str]
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
@@ -8,8 +8,8 @@
   (:import
    (com.metabase.sqlglot.ast Expressions$Anonymous Expressions$Column Expressions$Delete Expressions$Dot
                              Expressions$DynamicIdentifier Expressions$Func
-                             Expressions$Insert Expressions$NextValueFor Expressions$Parameter Expressions$PropertyEQ
-                             Expressions$Query Expressions$Select Expressions$SetOperation Expressions$Subquery
+                             Expressions$Insert Expressions$Parameter Expressions$PropertyEQ Expressions$Query
+                             Expressions$Select Expressions$SetOperation Expressions$Subquery
                              Expressions$Table Expressions$TableAlias Expressions$Update
                              Expressions$WithTableHint)
    (com.metabase.sqlglot.reference ParseError)))
@@ -150,15 +150,10 @@
     (instance? Expressions$Func node)      (ast/lower (ast/sql-name node))))
 
 (defn- first-function-in
-  "The name of the first function in `stmt` that is in `names`, or nil. Port of `_first_function_in`."
+  "The name of the first function in `stmt` that is in `names`, or nil.
+  Port of `_session_effect_function`, with the names passed in."
   [names stmt]
   (some #(names (function-name %)) (ast/walk stmt)))
-
-(defn- session-effect-function
-  "The name of the first function in `stmt` that is one of [[session-effect-functions]], or of the
-  [[dialect-session-effect-functions]] for `dialect`, or nil. Port of `_session_effect_function`."
-  [stmt dialect]
-  (first-function-in (into session-effect-functions (dialect-session-effect-functions dialect)) stmt))
 
 (defn- sql-executing-function
   "The name of the first function in `stmt` that runs SQL passed to it as text, or nil.
@@ -201,41 +196,27 @@
   [node]
   (contains? locking-table-hints (u/upper-case-en (ast/node-name node))))
 
-(defn- write-function-name
-  "The name of the function `node` calls when it is one of [[write-functions]], or advances a sequence in another
-  spelling (`NEXT VALUE FOR s`, `s.nextval`), else nil. Port of `_write_function_name`."
-  [node]
-  (cond
-    (instance? Expressions$NextValueFor node)
-    "next value for"
-
-    (and (instance? Expressions$Column node)
-         (seq (ast/text node "table"))
-         (= "nextval" (ast/lower (ast/node-name node))))
-    "nextval"
-
-    :else
-    (write-functions (function-name node))))
-
-(defn- user-variable-assignment?
-  "Whether `node` assigns a MySQL user variable, `@x := ...`, whose value outlives the query on its connection.
-  Port of `_user_variable_assignment`."
-  [node]
-  ;; A bare name on the left is a named argument instead, as in DuckDB and Postgres, and changes nothing. The variable
-  ;; is searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
-  (and (instance? Expressions$PropertyEQ node)
-       (let [target (ast/this node)]
-         (and (ast/ast-node? target)
-              (boolean (some #(instance? Expressions$Parameter %) (ast/walk target)))))))
-
 (defn- writes-or-locks?
   "Whether the node `node` writes data, changes the session, or locks a table. Port of `_writes_or_locks`."
   [node]
   (cond
-    (or (ast/instance-of-any? not-read-only-classes node)
-        (some? (write-function-name node))
-        (user-variable-assignment? node))
+    (ast/instance-of-any? not-read-only-classes node)
     true
+
+    (instance? Expressions$Anonymous node)
+    (contains? write-functions (ast/lower (ast/node-name node)))
+
+    ;; MySQL assigns a user variable inside a SELECT with `@x := ...`, and the value outlives the query on a pooled
+    ;; connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres. The variable is
+    ;; searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
+    (instance? Expressions$PropertyEQ node)
+    (let [target (ast/this node)]
+      (and (ast/ast-node? target)
+           (boolean (some #(instance? Expressions$Parameter %) (ast/walk target)))))
+
+    (instance? Expressions$Column node)
+    (and (seq (ast/text node "table"))
+         (= "nextval" (ast/lower (ast/node-name node))))
 
     (instance? Expressions$WithTableHint node)
     (boolean (some locking-hint? (ast/expressions node)))
@@ -262,42 +243,6 @@
   "Whether no node in the statement `stmt` writes, changes the session, or locks a table. Port of `_read_only`."
   [stmt]
   (not-any? writes-or-locks? (ast/walk stmt)))
-
-;; Built-in functions a data-test write must not call, though the other modes admit them: each reads a table named in
-;; a string, which the table check never sees, reads or writes the database server's files, reads or changes
-;; replication slots and origins, or changes state that the run's rollback leaves changed (the random seed, the
-;; statistics).
-(def ^:private unconfined-functions
-  #{;; Postgres: a table, a schema or the database as XML, read by the name passed in
-    "table_to_xml" "table_to_xmlschema" "table_to_xml_and_xmlschema" "schema_to_xml" "schema_to_xmlschema"
-    "schema_to_xml_and_xmlschema" "database_to_xml" "database_to_xmlschema" "database_to_xml_and_xmlschema"
-    ;; Postgres: the server's files and directories, and the adminpack extension's file functions
-    "pg_read_file" "pg_read_binary_file" "pg_stat_file" "pg_ls_dir" "pg_ls_logdir" "pg_ls_waldir"
-    "pg_ls_logicalmapdir" "pg_ls_logicalsnapdir" "pg_ls_replslotdir" "pg_ls_archive_statusdir" "pg_ls_tmpdir"
-    "pg_ls_summariesdir" "pg_current_logfile" "pg_file_write" "pg_file_rename" "pg_file_unlink"
-    "pg_file_sync" "pg_logdir_ls"
-    ;; Postgres: the session's random seed
-    "setseed"
-    ;; Postgres: statistics resets, and the planner statistics a function can set or clear
-    "pg_stat_reset" "pg_stat_reset_shared" "pg_stat_reset_single_table_counters"
-    "pg_stat_reset_single_function_counters" "pg_stat_reset_slru" "pg_stat_reset_replication_slot"
-    "pg_stat_reset_subscription_stats" "pg_stat_reset_backend_stats" "pg_stat_statements_reset"
-    "pg_restore_relation_stats" "pg_restore_attribute_stats" "pg_clear_relation_stats"
-    "pg_clear_attribute_stats"
-    ;; Postgres: replication slots and origins
-    "pg_copy_physical_replication_slot" "pg_copy_logical_replication_slot" "pg_replication_slot_advance"
-    "pg_logical_slot_get_changes" "pg_logical_slot_peek_changes" "pg_logical_slot_get_binary_changes"
-    "pg_logical_slot_peek_binary_changes" "pg_sync_replication_slots" "pg_log_standby_snapshot"
-    "pg_replication_origin_create" "pg_replication_origin_drop" "pg_replication_origin_oid"
-    "pg_replication_origin_session_setup" "pg_replication_origin_session_reset"
-    "pg_replication_origin_session_is_setup" "pg_replication_origin_session_progress"
-    "pg_replication_origin_xact_setup" "pg_replication_origin_xact_reset" "pg_replication_origin_advance"
-    "pg_replication_origin_progress"})
-
-(defn- write-function
-  "The [[write-function-name]] of the first node in `stmt` that has one, or nil. Port of `_write_function`."
-  [stmt]
-  (some write-function-name (ast/walk stmt)))
 
 (defn- hidden-sql
   "`[reason detail]` when `sql` holds text its database would run and sqlglot would not parse as a statement of its
@@ -455,7 +400,8 @@
   "`[reason detail]` for why `stmt`, parsed from `sql`, fails the checks every statement type shares, else nil.
   Port of `_statement_reason`."
   [stmt sql dialect]
-  (or (when-let [function (session-effect-function stmt dialect)]
+  (or (when-let [function (first-function-in (into session-effect-functions (dialect-session-effect-functions dialect))
+                                             stmt)]
         ["session-function" function])
       (when (external-table? stmt dialect)
         ["external-table" nil])
@@ -503,9 +449,6 @@
   a statement holding only a comment after the last semicolon. Every mode applies the checks the statement types
   share. `:reason` (and `:reason_detail`) say why a query is refused for what it holds.
 
-  `\"confined-write\"` is stricter than `\"write\"`: the statement must also call none of [[write-functions]] nor of
-  [[unconfined-functions]], assign no MySQL user variable, and return no rows.
-
   `check-rebuild` is nil or `\"rebuild\"`. With `\"rebuild\"`, the regenerated SQL of a statement of the allowed
   type must also pass the same checks (`:reason` `\"rebuild-differs\"`, with the regenerated SQL's own reason as
   `:reason_detail`), and for `\"postgres\"`, Postgres must read it as one statement with
@@ -521,19 +464,8 @@
             allowed (if (#{"read" "read-only"} stmt-type) read-classes write-classes)
             [stmt]  stmts
             problem (cond
-                      read-only-type?
-                      (not-read-only-reason stmts sql dialect)
-
-                      (= 1 (count stmts))
-                      (or (statement-reason stmt sql dialect)
-                          (when (= stmt-type "confined-write")
-                            (let [function   (write-function stmt)
-                                  unconfined (first-function-in unconfined-functions stmt)]
-                              (cond
-                                function                                         ["write-function" function]
-                                unconfined                                       ["unconfined-function" unconfined]
-                                (some user-variable-assignment? (ast/walk stmt)) ["user-variable" nil]
-                                (some? (ast/arg stmt "returning"))               ["returning" nil])))))
+                      read-only-type?        (not-read-only-reason stmts sql dialect)
+                      (= 1 (count stmts))    (statement-reason stmt sql dialect))
             rebuilt  (when (= 1 (count stmts))
                        (when-not stmt
                          (throw (ex-info "'NoneType' object has no attribute 'sql'" {})))

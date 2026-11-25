@@ -177,12 +177,10 @@
     (doseq [{:keys [name sql dialect stmt-type expected validate-expected]} (case-files/expanded-cases "single_stmt")]
       (testing (str name ", dialect " (pr-str dialect))
         (let [classified (sql-parsing/classify-stmt (sql-tools/sqlglot-parser) dialect sql stmt-type)
-              validated  (sql-parsing/validate-executable-stmt (sql-tools/sqlglot-parser) dialect sql stmt-type)
-              ;; A key that an expectation maps to nil is one the verdict must not hold.
-              absent-as-nil (fn [expected verdict] (merge (update-vals expected (constantly nil)) verdict))]
-          (is (=? expected (absent-as-nil expected classified)) (pr-str sql))
+              validated  (sql-parsing/validate-executable-stmt (sql-tools/sqlglot-parser) dialect sql stmt-type)]
+          (is (=? expected classified) (pr-str sql))
           (if validate-expected
-            (is (=? validate-expected (absent-as-nil validate-expected validated)) (pr-str sql))
+            (is (=? validate-expected validated) (pr-str sql))
             (is (= classified validated) (pr-str sql))))))))
 
 (defn- executable-verdict

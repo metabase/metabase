@@ -2074,21 +2074,15 @@ def _function_name(node: exp.Expression):
     return None
 
 
-def _first_function_in(stmt: exp.Expression, names):
-    """The name of the first function in `stmt` that is one of `names`, or None."""
+def _session_effect_function(stmt: exp.Expression, dialect: str):
+    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or of the
+    `_DIALECT_SESSION_EFFECT_FUNCTIONS` for `dialect`, or None."""
+    names = _SESSION_EFFECT_FUNCTIONS | _DIALECT_SESSION_EFFECT_FUNCTIONS.get(dialect, frozenset())
     for node in stmt.walk():
         name = _function_name(node)
         if name in names:
             return name
     return None
-
-
-def _session_effect_function(stmt: exp.Expression, dialect: str):
-    """The name of the first function in `stmt` that is one of `_SESSION_EFFECT_FUNCTIONS`, or of the
-    `_DIALECT_SESSION_EFFECT_FUNCTIONS` for `dialect`, or None."""
-    return _first_function_in(
-        stmt, _SESSION_EFFECT_FUNCTIONS | _DIALECT_SESSION_EFFECT_FUNCTIONS.get(dialect, frozenset())
-    )
 
 
 def _external_table(stmt: exp.Expression, dialect: str) -> bool:
@@ -2158,31 +2152,18 @@ _LOCKING_TABLE_HINTS = frozenset(
 )
 
 
-def _write_function_name(node: exp.Expression):
-    """The name of the function `node` calls when it is one of `_WRITE_FUNCTIONS`, or advances a sequence in another
-    spelling (`NEXT VALUE FOR s`, `s.nextval`), else None."""
-    if isinstance(node, exp.NextValueFor):
-        return "next value for"
-    if isinstance(node, exp.Column) and node.table and node.name.lower() == "nextval":
-        return "nextval"
-    name = _function_name(node)
-    return name if name in _WRITE_FUNCTIONS else None
-
-
-def _user_variable_assignment(node: exp.Expression) -> bool:
-    """Whether `node` assigns a MySQL user variable, `@x := ...`, whose value outlives the query on its connection."""
-    # A bare name on the left is a named argument instead, as in DuckDB and Postgres, and changes nothing. The variable
-    # is searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
-    return isinstance(node, exp.PropertyEQ) and node.this.find(exp.Parameter) is not None
-
-
 def _writes_or_locks(node: exp.Expression) -> bool:
-    if (
-        isinstance(node, _NOT_READ_ONLY_NODES)
-        or _write_function_name(node) is not None
-        or _user_variable_assignment(node)
-    ):
+    if isinstance(node, _NOT_READ_ONLY_NODES):
         return True
+    if isinstance(node, exp.Anonymous):
+        return node.name.lower() in _WRITE_FUNCTIONS
+    # MySQL assigns a user variable inside a SELECT with `@x := ...`, and the value outlives the query on a pooled
+    # connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres, and changes nothing.
+    # The variable is searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
+    if isinstance(node, exp.PropertyEQ):
+        return node.this.find(exp.Parameter) is not None
+    if isinstance(node, exp.Column):
+        return bool(node.table) and node.name.lower() == "nextval"
     if isinstance(node, exp.WithTableHint):
         return any(hint.name.upper() in _LOCKING_TABLE_HINTS for hint in node.expressions)
     # SQL Server still honours a hint written without WITH, `FROM t (TABLOCKX)`, which parses as a call to a
@@ -2207,46 +2188,6 @@ def _writes_or_locks(node: exp.Expression) -> bool:
 # the Postgres driver applies it only to a transaction, and the QP runs a read under autocommit.
 def _read_only(stmt: exp.Expression) -> bool:
     return not any(_writes_or_locks(node) for node in stmt.walk())
-
-
-# Built-in functions a data-test write must not call, though the other modes admit them: each reads a table named in
-# a string, which the table check never sees, reads or writes the database server's files, reads or changes
-# replication slots and origins, or changes state that the run's rollback leaves changed (the random seed, the
-# statistics).
-_UNCONFINED_FUNCTIONS = frozenset(
-    {
-        # Postgres: a table, a schema or the database as XML, read by the name passed in
-        "table_to_xml", "table_to_xmlschema", "table_to_xml_and_xmlschema", "schema_to_xml", "schema_to_xmlschema",
-        "schema_to_xml_and_xmlschema", "database_to_xml", "database_to_xmlschema", "database_to_xml_and_xmlschema",
-        # Postgres: the server's files and directories, and the adminpack extension's file functions
-        "pg_read_file", "pg_read_binary_file", "pg_stat_file", "pg_ls_dir", "pg_ls_logdir", "pg_ls_waldir",
-        "pg_ls_logicalmapdir", "pg_ls_logicalsnapdir", "pg_ls_replslotdir", "pg_ls_archive_statusdir", "pg_ls_tmpdir",
-        "pg_ls_summariesdir", "pg_current_logfile", "pg_file_write", "pg_file_rename", "pg_file_unlink",
-        "pg_file_sync", "pg_logdir_ls",
-        # Postgres: the session's random seed
-        "setseed",
-        # Postgres: statistics resets, and the planner statistics a function can set or clear
-        "pg_stat_reset", "pg_stat_reset_shared", "pg_stat_reset_single_table_counters",
-        "pg_stat_reset_single_function_counters", "pg_stat_reset_slru", "pg_stat_reset_replication_slot",
-        "pg_stat_reset_subscription_stats", "pg_stat_reset_backend_stats", "pg_stat_statements_reset",
-        "pg_restore_relation_stats", "pg_restore_attribute_stats", "pg_clear_relation_stats",
-        "pg_clear_attribute_stats",
-        # Postgres: replication slots and origins
-        "pg_copy_physical_replication_slot", "pg_copy_logical_replication_slot", "pg_replication_slot_advance",
-        "pg_logical_slot_get_changes", "pg_logical_slot_peek_changes", "pg_logical_slot_get_binary_changes",
-        "pg_logical_slot_peek_binary_changes", "pg_sync_replication_slots", "pg_log_standby_snapshot",
-        "pg_replication_origin_create", "pg_replication_origin_drop", "pg_replication_origin_oid",
-        "pg_replication_origin_session_setup", "pg_replication_origin_session_reset",
-        "pg_replication_origin_session_is_setup", "pg_replication_origin_session_progress",
-        "pg_replication_origin_xact_setup", "pg_replication_origin_xact_reset", "pg_replication_origin_advance",
-        "pg_replication_origin_progress",
-    }
-)
-
-
-def _write_function(stmt: exp.Expression):
-    """The `_write_function_name` of the first node in `stmt` that has one, or None."""
-    return next((name for name in map(_write_function_name, stmt.walk()) if name is not None), None)
 
 
 # Words that start a T-SQL statement. SQL Server ends a SELECT at one of them without a semicolon, while sqlglot
@@ -2463,9 +2404,6 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     its tree, and statements holding only a comment after the last semicolon are not counted. When the statement is
     refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
 
-    "confined-write" is stricter than "write": the statement must also call none of `_WRITE_FUNCTIONS` nor of
-    `_UNCONFINED_FUNCTIONS`, assign no MySQL user variable, and return no rows.
-
     `check_rebuild` is None or "rebuild". With "rebuild", the reconstruction of a statement of the allowed type must
     also pass the same checks (reason "rebuild-differs", with the reconstruction's own reason as `reason_detail`), and
     for "postgres", Postgres must read it as one statement with `standard_conforming_strings` on (reason
@@ -2483,17 +2421,6 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             problem = _not_read_only_reason(stmts, sql, dialect)
         elif len(stmts) == 1:
             problem = _statement_reason(stmts[0], sql, dialect)
-            if problem is None and stmt_type == "confined-write":
-                function = _write_function(stmts[0])
-                unconfined = _first_function_in(stmts[0], _UNCONFINED_FUNCTIONS)
-                if function is not None:
-                    problem = ("write-function", function)
-                elif unconfined is not None:
-                    problem = ("unconfined-function", unconfined)
-                elif any(map(_user_variable_assignment, stmts[0].walk())):
-                    problem = ("user-variable", None)
-                elif stmts[0].args.get("returning") is not None:
-                    problem = ("returning", None)
         else:
             problem = None
         rebuilt = None
