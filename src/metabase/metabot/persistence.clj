@@ -7,6 +7,7 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.call-records :as call-records]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.models.metabot-conversation :as metabot-conversation]
    [metabase.metabot.models.metabot-message :as metabot-message]
@@ -47,7 +48,7 @@
   (when (map? structured)
     (not-empty (select-keys structured persisted-structured-output-keys))))
 
-(defn- tool-result->storable-output
+(defn tool-result->storable-output
   "The stored `:output` value for a v2 tool part. A map result is trimmed to
   `:output` (the LLM-facing text adapters read on history replay) plus the
   `persisted-structured-output-keys` subset of structured output, canonicalized
@@ -396,7 +397,9 @@
   is captured into the `error` column via the `:error` kwarg; why the turn
   stopped early, if it did, is derived from those same parts into the
   `finish_reason` column, and whether a `length` stop filled the context window
-  into `context_window_full`.
+  into `context_window_full`. `finished_at` gets the time of this call, which is when the agent
+  loop ended, and the turn's LLM call and tool call records that are still open are set to
+  `aborted` (see [[metabase.metabot.call-records]]).
 
   Keyword args:
   - `:profile-id` — same value passed to [[start-turn!]]; tags the
@@ -426,6 +429,7 @@
         usage          (extract-usage parts)
         context-tokens (extract-context-tokens parts)
         finish-reason  (self.core/parts->incomplete-finish-reason parts)
+        finished-at    (OffsetDateTime/now)
         ;; used-table extraction needs the raw internal parts before conversion trims
         ;; tool outputs, so it can see keys the stored format discards, e.g. `:transform`
         kept-parts     (->> parts
@@ -446,6 +450,7 @@
                                                                              (reduce + 0))
                                                         :context_tokens context-tokens
                                                         :finished       (boolean finished?)
+                                                        :finished_at    finished-at
                                                         ;; Recorded whatever else the turn did: a turn the client
                                                         ;; abandoned, or one that also errored, was still truncated
                                                         ;; or filtered, and support and EE analytics read that back.
@@ -459,6 +464,9 @@
                                                  ;; Set only on a full turn, so every other row keeps NULL.
                                                  (filled-context-window? finish-reason context-tokens context-window-tokens)
                                                  (assoc :context_window_full true))])
+    ;; After the message UPDATE, so a reader that sees `finished_at` set on the message sees no open record that this
+    ;; turn will still close here. A tool that is still running writes its own end later, over `aborted`.
+    (call-records/abort-open-calls! assistant-msg-id finished-at)
     ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
     ;; UPDATE commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
     ;; `message_id` FK is valid even before the UPDATE completes.

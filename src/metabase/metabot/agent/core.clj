@@ -171,6 +171,8 @@
   "Options for snowplow and prometheus analytics tracking."
   [:map {:closed true}
    [:session-id          {:optional true} [:maybe ms/UUIDString]]
+   ;; The pk of the assistant MetabotMessage that this turn writes, for the turn's LLM call and tool call records.
+   [:message-id          {:optional true} [:maybe ms/PositiveInt]]
    [:source              {:optional true} [:maybe :string]]
    [:tag                 {:optional true} [:maybe :string]]])
 

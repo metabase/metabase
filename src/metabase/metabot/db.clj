@@ -360,6 +360,38 @@
   [rows :- [:sequential ::metabot.schema/metabot-used-table.create]]
   (t2/insert! :model/MetabotUsedTable rows))
 
+;;; ------------------------------------------- LLM calls and tool calls -------------------------------------------
+
+(mu/defn abort-open-llm-calls! :- :int
+  "Set the MetabotLlmCalls of the MetabotMessages with `message-ids` that have no end to `aborted`, ended at
+  `finished-at`, one statement per partition of ids. Returns the number of rows updated."
+  [message-ids :- [:sequential ms/PositiveInt]
+   finished-at :- ms/TemporalInstant]
+  (mdb/sum-batched mdb/update-partition-size
+                   #(t2/update! :model/MetabotLlmCall :message_id [:in [:auto/param %]] :finished_at nil
+                                {:status "aborted" :finished_at finished-at})
+                   message-ids))
+
+(mu/defn abort-open-tool-calls! :- :int
+  "Set the MetabotToolCalls of the MetabotMessages with `message-ids` that have no end to `aborted`, ended at
+  `finished-at`, one statement per partition of ids. Returns the number of rows updated."
+  [message-ids :- [:sequential ms/PositiveInt]
+   finished-at :- ms/TemporalInstant]
+  (mdb/sum-batched mdb/update-partition-size
+                   #(t2/update! :model/MetabotToolCall :message_id [:in [:auto/param %]] :finished_at nil
+                                {:status "aborted" :finished_at finished-at})
+                   message-ids))
+
+(mu/defn llm-call-ids-started-before :- [:sequential ms/PositiveInt]
+  "The ids of the MetabotLlmCalls started before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
+  (vec (t2/select-pks-vec :model/MetabotLlmCall {:where [:< :started_at [:auto/param cutoff]]})))
+
+(mu/defn tool-call-ids-created-before :- [:sequential ms/PositiveInt]
+  "The ids of the MetabotToolCalls submitted before `cutoff`."
+  [cutoff :- ms/TemporalInstant]
+  (vec (t2/select-pks-vec :model/MetabotToolCall {:where [:< :created_at [:auto/param cutoff]]})))
+
 ;;; -------------------------------------------------- AI usage --------------------------------------------------
 
 (mu/defn usage-log-ids-created-before :- [:sequential ms/PositiveInt]

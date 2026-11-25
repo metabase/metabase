@@ -138,6 +138,8 @@
     :model/MetabotFeedback
     :model/MetabotSourceFeedback
     :model/MetabotUsedTable
+    :model/MetabotLlmCall
+    :model/MetabotToolCall
     :model/MetabotPrompt
     :model/OsiAiContext
     ;; 61+, by table name: migrations create and seed it on every edition, but its model is EE-only

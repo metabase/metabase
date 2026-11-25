@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot.task.ai-usage-trimmer
-  "Scheduled task to delete `ai_usage_log` rows older than the configured `ai-usage-max-retention-days`."
+  "Scheduled task to delete `ai_usage_log`, `metabot_llm_call` and `metabot_tool_call` rows older than the configured
+  `ai-usage-max-retention-days`."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
@@ -7,6 +8,8 @@
    [java-time.api :as t]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.models.ai-usage-log :as ai-usage-log]
+   [metabase.metabot.models.metabot-llm-call :as metabot-llm-call]
+   [metabase.metabot.models.metabot-tool-call :as metabot-tool-call]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.task.core :as task]
    [metabase.util.log :as log]))
@@ -23,10 +26,16 @@
       (log/info "Skipping AI usage log cleanup; ai-usage-max-retention-days is 0 (infinite retention).")
       (do
         (log/infof "Trimming AI usage log rows older than %d days." (long retention-days))
-        (let [cutoff (t/minus (t/offset-date-time) (t/days (long retention-days)))
-              ids    (metabot.db/usage-log-ids-created-before cutoff)]
+        (let [cutoff        (t/minus (t/offset-date-time) (t/days (long retention-days)))
+              ids           (metabot.db/usage-log-ids-created-before cutoff)
+              ;; Tool calls first: the delete of an LLM call cascades to its tool calls, whatever their age.
+              tool-call-ids (metabot.db/tool-call-ids-created-before cutoff)
+              llm-call-ids  (metabot.db/llm-call-ids-started-before cutoff)]
           (ai-usage-log/delete-ai-usage-logs! ids)
-          (log/infof "AI usage log cleanup complete. Deleted %d rows." (count ids)))))))
+          (metabot-tool-call/delete-metabot-tool-calls! tool-call-ids)
+          (metabot-llm-call/delete-metabot-llm-calls! llm-call-ids)
+          (log/infof "AI usage log cleanup complete. Deleted %d rows, %d LLM call records and %d tool call records."
+                     (count ids) (count llm-call-ids) (count tool-call-ids)))))))
 
 (task/defjob AiUsageTrimmer
   "Delete old ai_usage_log rows"

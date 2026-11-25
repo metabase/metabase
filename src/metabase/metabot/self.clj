@@ -15,6 +15,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.llm.provider :as llm.provider]
+   [metabase.metabot.call-records :as call-records]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.registry :as registry]
@@ -196,6 +197,10 @@
   [{:keys [provider ai-proxy?]}]
   (if ai-proxy? "metabase" provider))
 
+(def ^:private streamed-error-class
+  "The `error-type` label and the recorded error class of a failure that the provider streamed instead of throwing."
+  "llm-sse-error")
+
 (defn- report-aisdk-errors-xf
   "Transducer that logs and increments the llm-errors counter for :error parts in the aisdk stream."
   [tracking-opts]
@@ -213,7 +218,7 @@
                            {:model      (:model tracking-opts "unknown")
                             :source     (:tag tracking-opts "none")
                             :provider   (provider-label tracking-opts)
-                            :error-type "llm-sse-error"}))
+                            :error-type streamed-error-class}))
          part)))
 
 (defn- report-token-usage-xf
@@ -341,10 +346,58 @@
                                                                                  "error_code"  (u/qualified-name code)))})))
          part)))
 
+(declare streamed-status)
+
+(defn- observe-llm-call-xf
+  "Transducer that keeps, in the volatile `observed` of one LLM call attempt, what the attempt's parts say about its
+  end: the `:usage` and the provider's finish reason of its `:usage` part, and the `:error` of an `:error` part.
+  [[llm-call-outcome]] reads it. Goes before [[streamed-error-xf]], which reduces the error to what Metabot shows."
+  [observed]
+  (map (fn [{:keys [usage raw-finish-reason finish-reason error] :as part}]
+         (case (:type part)
+           :usage (vswap! observed #(cond-> (assoc % :usage usage)
+                                      (or raw-finish-reason finish-reason)
+                                      (assoc :finish-reason (or raw-finish-reason finish-reason))))
+           :error (vswap! observed assoc :error error)
+           nil)
+         part)))
+
+(defn- llm-call-outcome
+  "What [[call-records/record-llm-call-end!]] takes for an LLM call attempt that returned, from what it `observed`.
+
+  An attempt whose stream held an error ended with `error`, and one whose consumer stopped reading it with `aborted`."
+  [{:keys [usage finish-reason error consumer-stopped?]}]
+  (cond-> {:status        (cond
+                            error             "error"
+                            consumer-stopped? "aborted"
+                            :else             "ok")
+           :usage         usage
+           :finish-reason finish-reason}
+    error (assoc :error-class  streamed-error-class
+                 :error-status (streamed-status error))))
+
+(defn- thrown-llm-call-outcome
+  "What [[call-records/record-llm-call-end!]] takes for an LLM call attempt that threw `e`, after which Metabot
+  waits `delay` ms for the next attempt, or makes none when `delay` is nil."
+  [^Exception e {:keys [error] :as observed} delay]
+  (let [status (:status (ex-data e))]
+    (assoc (select-keys observed [:usage :finish-reason])
+           :status         "error"
+           ;; The structured path throws for an error that the provider streamed; the record names that error.
+           :error-class    (if error streamed-error-class (.getSimpleName (class e)))
+           :error-status   (cond
+                             (int? status) status
+                             error         (streamed-status error))
+           :retry-delay-ms delay)))
+
 (defn- with-retries
-  "Execute `(thunk)` with retry logic for transient LLM errors.
+  "Execute `(thunk call)` with retry logic for transient LLM errors.
   Retries up to `max-llm-retries` attempts with exponential backoff.
   Records prometheus metrics with `:model` and `:tag` from `tracking-opts`, and its [[provider-label]], as labels.
+
+  Each attempt is recorded as one MetabotLlmCall (see [[call-records]]): its start before the thunk runs, and its end
+  when the thunk returns or throws. `call` is that attempt: `:id`, the id of its record or nil, and `:observed`, a
+  volatile that the thunk fills through [[observe-llm-call-xf]] with what the end of the record needs.
 
   `retry?` is an optional predicate on the caught exception, ANDed with
   [[retryable-error?]]; returning false surfaces the error without retrying. The
@@ -358,8 +411,12 @@
      (loop [attempt 1]
        (analytics/inc! :metabase-metabot/llm-requests labels)
        (let [timer  (u/start-timer)
+             call   {:id       (call-records/record-llm-call-start! tracking-opts attempt)
+                     :observed (volatile! nil)}
              result (try
-                      {:ok (thunk)}
+                      (let [value (thunk call)]
+                        (call-records/record-llm-call-end! (:id call) (llm-call-outcome @(:observed call)))
+                        {:ok value})
                       (catch Exception e
                         (if (and (< attempt max-llm-retries)
                                  (retry? e)
@@ -372,9 +429,13 @@
                                        :status  (:status (ex-data e))
                                        :error   (ex-message e)})
                             (analytics/inc! :metabase-metabot/llm-retries labels)
+                            (call-records/record-llm-call-end!
+                             (:id call) (thrown-llm-call-outcome e @(:observed call) delay))
                             {:retry delay})
                           (do (analytics/inc! :metabase-metabot/llm-errors
                                               (assoc labels :error-type (.getSimpleName (class e))))
+                              (call-records/record-llm-call-end!
+                               (:id call) (thrown-llm-call-outcome e @(:observed call) nil))
                               (throw e))))
                       (finally
                         (analytics/observe! :metabase-metabot/llm-duration-ms labels (u/since-ms timer))))]
@@ -774,11 +835,14 @@
                                 (and (seq tools)
                                      tool-choice)           (assoc :tool_choice tool-choice)
                                 (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))
-               make-source    (fn []
-                                (eduction (comp (core/tool-executor-xf (if (= "none" tool-choice) {} tools))
+               make-source    (fn [call]
+                                (eduction (comp (core/tool-executor-xf (if (= "none" tool-choice) {} tools)
+                                                                       {:llm-call-id (:id call)
+                                                                        :message-id  (:message-id tracking-opts)})
                                                 (core/lite-aisdk-xf)
                                                 (core/stamp-tool-titles-xf tools)
                                                 (report-aisdk-errors-xf tracking-opts)
+                                                (observe-llm-call-xf (:observed call))
                                                 (streamed-error-xf provider)
                                                 (report-token-usage-xf tracking-opts)
                                                 (report-tool-usage-xf tracking-opts tools))
@@ -795,12 +859,21 @@
                  ;; has seen output, replaying would duplicate it and re-execute tools. Gate retries
                  ;; on "nothing emitted yet" so a mid-stream failure surfaces instead of replaying.
                  (let [emitted? (volatile! false)
+                       stopped? (volatile! false)
                        rf*      (fn
                                   ([acc]   (rf acc))
-                                  ([acc x] (vreset! emitted? true) (rf acc x)))]
+                                  ([acc x] (vreset! emitted? true)
+                                           (u/prog1 (rf acc x)
+                                             (when (reduced? <>)
+                                               (vreset! stopped? true)))))]
                    (with-retries
                      tracking-opts
-                     #(reduce rf* init (make-source))
+                     (fn [call]
+                       (u/prog1 (reduce rf* init (make-source call))
+                         ;; A consumer that stops reading, as the web chat does when its client goes away, ends
+                         ;; the call before the provider did.
+                         (when @stopped?
+                           (vswap! (:observed call) assoc :consumer-stopped? true))))
                      (fn [_e] (not @emitted?))))))))))))
 
 (defn- json-schema->malli
@@ -915,10 +988,11 @@
                       :msg-count (count input)}
       (with-retries
         tracking-opts
-        (fn []
+        (fn [call]
           (let [parts    (into []
                                (comp (core/aisdk-xf)
                                      (report-aisdk-errors-xf tracking-opts)
+                                     (observe-llm-call-xf (:observed call))
                                      (streamed-error-xf provider)
                                      (report-token-usage-xf tracking-opts))
                                (stream-fn streaming-opts))
