@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: wtw15vt
+      author: ranquild
+      comment: Add v_worktree_table, metabase_table with the values users set in metabase_table_user_settings, which reads of Tables use in a remote sync worktree
+      dbms: postgresql
+      changes:
+        - sqlFile:
+            path: ../worktree_views/table/v1/postgres-worktree_table.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: DROP VIEW v_worktree_table
+  - changeSet:
+      id: wtw16vf
+      author: ranquild
+      comment: Add v_worktree_field, metabase_field with the values users set in metabase_field_user_settings, which reads of Fields use in a remote sync worktree
+      dbms: postgresql
+      changes:
+        - sqlFile:
+            path: ../worktree_views/field/v1/postgres-worktree_field.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: DROP VIEW v_worktree_field
+  - changeSet:
+      id: wtw16mc
+      author: ranquild
+      comment: Updated view v_metabot_conversations v9 - group by every column of metabot_conversation it selects, so that the worktree schema can define it over the view of metabot_conversation, which has no primary key
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v9/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v9/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v9/h2-metabot_conversations.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/metabot_conversations/v8/postgres-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/metabot_conversations/v8/mysql-metabot_conversations.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/metabot_conversations/v8/h2-metabot_conversations.sql
+            relativeToChangelogFile: true

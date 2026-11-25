@@ -106,3 +106,110 @@
   DELETE, unlike `t2/delete!`, does not unwrap it)."
   []
   (t2/query {:delete-from :query_cache}))
+
+;;; --------------------------------------------- Worktree schema ---------------------------------------------
+
+(mu/defn worktree-schema-exists? :- :boolean
+  "Whether the Postgres app DB has the worktree schema."
+  []
+  (boolean (t2/query-one ["SELECT 1 FROM pg_namespace WHERE nspname = 'worktree'"])))
+
+(mu/defn create-worktree-schema! :- :any
+  "Create the worktree schema of the Postgres app DB, empty, unless it exists."
+  []
+  (t2/query ["CREATE SCHEMA IF NOT EXISTS worktree"]))
+
+(mu/defn drop-worktree-schema! :- :any
+  "Drop the worktree schema of the Postgres app DB with its views, if it exists."
+  []
+  (t2/query ["DROP SCHEMA IF EXISTS worktree CASCADE"]))
+
+(mu/defn execute-statement! :- :any
+  "Run the SQL statement `statement`, which takes no parameters."
+  [statement :- :string]
+  (t2/query [statement]))
+
+(mu/defn set-search-path! :- :string
+  "Set the `search_path` of the connection to `search-path` until the transaction ends, and return the one before."
+  [search-path :- :string]
+  (let [before (:search_path (t2/query-one ["SELECT current_setting('search_path') AS search_path"]))]
+    (t2/query ["SELECT set_config('search_path', ?, true)" search-path])
+    before))
+
+(mu/defn worktree-table-view-statements :- [:sequential :string]
+  "The statements creating the view of each table of `public` with `worktree_id`, but the partitions, in the worktree
+  schema: of the rows of the connection's worktree, refusing writes of another worktree's rows."
+  []
+  (mapv :statement
+        (t2/query ["SELECT format('CREATE VIEW worktree.%1$I AS SELECT * FROM public.%1$I
+                                   WHERE worktree_id = metabase_worktree_id() WITH CASCADED CHECK OPTION', c.relname)
+                             AS statement
+                      FROM pg_class c
+                      JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = 'worktree_id' AND NOT a.attisdropped
+                     WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r', 'p') AND NOT c.relispartition
+                     ORDER BY c.relname"])))
+
+(mu/defn worktree-overlay-statements :- [:sequential :string]
+  "The statements creating the view of `table`, whose rows belong to the main app, in the worktree schema over its
+  `overlay`: the view, the defaults of the columns a statement can write, and the trigger function and trigger that
+  write an insert, an update of the columns it changes, or a delete onto the stored rows."
+  [table   :- :string
+   overlay :- :string]
+  (into []
+        (mapcat #(map :statement (t2/query %)))
+        [["SELECT format('CREATE VIEW worktree.%I AS SELECT * FROM public.%I', ?::text, ?::text) AS statement"
+          table overlay]
+         ["SELECT format('ALTER VIEW worktree.%I ALTER COLUMN %I SET DEFAULT %s', ?::text, a.attname,
+                         CASE WHEN a.attidentity <> ''
+                              THEN format('nextval(%L)', pg_get_serial_sequence(format('public.%I', ?::text), a.attname))
+                              ELSE pg_get_expr(d.adbin, d.adrelid) END) AS statement
+             FROM pg_attribute a
+             LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+            WHERE a.attrelid = format('public.%I', ?::text)::regclass AND a.attnum > 0 AND NOT a.attisdropped
+              AND a.attgenerated = '' AND (d.oid IS NOT NULL OR a.attidentity <> '')
+            ORDER BY a.attnum"
+          table table table]
+         ["SELECT format($f$CREATE FUNCTION worktree.%1$I() RETURNS trigger LANGUAGE plpgsql AS $fn$ BEGIN
+                             IF TG_OP = 'INSERT' THEN
+                               INSERT INTO public.%2$I (%3$s) VALUES (%4$s) RETURNING %5$s INTO new; RETURN new;
+                             ELSIF TG_OP = 'UPDATE' THEN
+                               UPDATE public.%2$I SET %6$s WHERE id = old.id; RETURN new;
+                             ELSE
+                               DELETE FROM public.%2$I WHERE id = old.id; RETURN old;
+                             END IF; END $fn$$f$,
+                         'write_' || ?::text, ?::text, w.listed, w.inserted, v.returned, w.updated) AS statement
+             FROM (SELECT string_agg(quote_ident(attname), ', ' ORDER BY attnum) AS listed,
+                          string_agg('new.' || quote_ident(attname), ', ' ORDER BY attnum) AS inserted,
+                          string_agg(format('%1$I = CASE WHEN new.%1$I IS DISTINCT FROM old.%1$I THEN new.%1$I ELSE %1$I END',
+                                            attname), ', ' ORDER BY attnum) AS updated
+                     FROM pg_attribute
+                    WHERE attrelid = format('public.%I', ?::text)::regclass AND attnum > 0 AND NOT attisdropped
+                      AND attgenerated = '') w,
+                  (SELECT string_agg(quote_ident(attname), ', ' ORDER BY attnum) AS returned
+                     FROM pg_attribute
+                    WHERE attrelid = format('public.%I', ?::text)::regclass AND attnum > 0 AND NOT attisdropped) v"
+          table table table overlay]
+         ["SELECT format('CREATE TRIGGER write_stored_row INSTEAD OF INSERT OR UPDATE OR DELETE ON worktree.%I
+                          FOR EACH ROW EXECUTE FUNCTION worktree.%I()', ?::text, 'write_' || ?::text) AS statement"
+          table table]]))
+
+(mu/defn worktree-public-view-statements :- [:sequential [:map [:relname :string] [:statement :string] [:reads :any]]]
+  "The views of `public` but the `overlays`, each with the statement creating it in the worktree schema from its
+  definition as `search_path` `public` prints it, and the views of `public` it reads."
+  [overlays :- [:sequential :string]]
+  (let [before (set-search-path! "public")]
+    (try
+      (t2/query ["SELECT c.relname, format('CREATE VIEW worktree.%I AS %s', c.relname, pg_get_viewdef(c.oid)) AS statement,
+                         ARRAY(SELECT DISTINCT ref.relname::text
+                                 FROM pg_rewrite rw
+                                 JOIN pg_depend d ON d.classid = 'pg_rewrite'::regclass AND d.objid = rw.oid
+                                 JOIN pg_class ref ON ref.oid = d.refobjid
+                                WHERE rw.ev_class = c.oid AND ref.oid <> c.oid AND ref.relkind = 'v'
+                                  AND ref.relnamespace = 'public'::regnamespace AND NOT ref.relname = ANY (?)) AS reads
+                    FROM pg_class c
+                   WHERE c.relnamespace = 'public'::regnamespace AND c.relkind = 'v' AND NOT c.relname = ANY (?)
+                   ORDER BY c.relname"
+                 (into-array String overlays)
+                 (into-array String overlays)])
+      (finally
+        (set-search-path! before)))))

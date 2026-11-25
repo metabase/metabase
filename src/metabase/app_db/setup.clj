@@ -21,6 +21,7 @@
    [metabase.app-db.liquibase.rollback :as rollback]
    [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.funnysql.core :as funnysql]
    [metabase.util :as u]
@@ -31,6 +32,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
+   [toucan2.core :as t2]
    [toucan2.honeysql2 :as t2.honeysql]
    [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.pipeline :as t2.pipeline]
@@ -64,6 +66,14 @@
                    "\n"))
     (throw (Exception. (trs "Database requires manual upgrade.")))))
 
+(defn- worktree-schema-stale?
+  "Whether `direction` changes the schema of an app DB with worktrees, whose worktree schema must then go before the
+  migration, since its views read the columns a migration may drop or change."
+  [^liquibase.Liquibase liquibase direction]
+  (and (mdb.connection/worktrees-supported?)
+       (or (#{:down :down-force} direction)
+           (and (#{:up :force} direction) (seq (.listUnrunChangeSets liquibase nil nil))))))
+
 (mu/defn migrate!
   "Migrate the application database specified by `data-source`.
 
@@ -95,13 +105,19 @@
         (when-not (#{:print :release-locks} direction)
           (versions/ensure-version-tracking! conn (.getDatabase liquibase)))
         (log/info "Liquibase is ready.")
-        (case direction
-          :up            (liquibase/migrate-up-if-needed! liquibase data-source)
-          :force         (liquibase/force-migrate-up-if-needed! liquibase data-source)
-          :down          (apply rollback/rollback-major-version! conn liquibase false args)
-          :down-force    (apply rollback/rollback-major-version! conn liquibase true args)
-          :print         (print-migrations-and-quit-if-needed! liquibase data-source)
-          :release-locks (liquibase/force-release-locks! liquibase))
+        (t2/with-connection [_conn conn]
+          (let [worktree-schema? (and (mdb.connection/worktrees-supported?) (mdb.worktree/worktree-schema-exists?))]
+            (when (and worktree-schema? (worktree-schema-stale? liquibase direction))
+              (mdb.worktree/drop-worktree-schema!))
+            (case direction
+              :up            (liquibase/migrate-up-if-needed! liquibase data-source)
+              :force         (liquibase/force-migrate-up-if-needed! liquibase data-source)
+              :down          (apply rollback/rollback-major-version! conn liquibase false args)
+              :down-force    (apply rollback/rollback-major-version! conn liquibase true args)
+              :print         (print-migrations-and-quit-if-needed! liquibase data-source)
+              :release-locks (liquibase/force-release-locks! liquibase))
+            (when (and worktree-schema? (#{:up :force} direction))
+              (mdb.worktree/recreate-worktree-views!))))
         ;; Migrations were successful; commit everything and re-enable auto-commit
         (.commit conn)
         (.setAutoCommit conn true)
