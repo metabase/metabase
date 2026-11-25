@@ -18,9 +18,9 @@ import type { Dataset } from "metabase-types/api";
 
 import {
   CANCEL_QUERY,
-  QUERY_COMPLETED as QUERY_COMPLETED_TYPE,
-  QUERY_ERRORED as QUERY_ERRORED_TYPE,
-  RUN_QUERY as RUN_QUERY_TYPE,
+  QUERY_COMPLETED,
+  QUERY_ERRORED,
+  RUN_QUERY,
   SET_DOCUMENT_TITLE,
   SET_DOCUMENT_TITLE_TIMEOUT_ID,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
@@ -174,7 +174,7 @@ export const runQuestionQuery = ({
       .then((queryResults) => dispatch(queryCompleted(question, queryResults)))
       .catch((error) => dispatch(queryErrored(startTime, error)));
 
-    dispatch({ type: RUN_QUERY_TYPE, payload: { cancelQueryController } });
+    dispatch({ type: RUN_QUERY, payload: { cancelQueryController } });
   };
 };
 
@@ -272,7 +272,7 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
     const wasUntouchedMetabotCard = getIsUntouchedMetabotCard(getState());
 
     dispatch({
-      type: QUERY_COMPLETED_TYPE,
+      type: QUERY_COMPLETED,
       payload: {
         card,
         queryResults,
@@ -292,7 +292,7 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
 };
 
 export const queryErrored = createThunkAction(
-  QUERY_ERRORED_TYPE,
+  QUERY_ERRORED,
   (startTime, error) => {
     return async (dispatch) => {
       if (isAbortError(error)) {
