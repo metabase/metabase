@@ -1169,6 +1169,51 @@ describe("NumberFilterValuePicker", () => {
       await userEvent.type(screen.getByLabelText("Filter value"), "25{enter}");
       expect(onChange).toHaveBeenLastCalledWith([25]);
     });
+
+    it("should search on the server when there are more values and a text search field", async () => {
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        fields: [
+          createOrdersProductIdField({
+            dimensions: [
+              createMockFieldDimension({
+                type: "external",
+                human_readable_field_id: PRODUCTS.TITLE,
+              }),
+            ],
+            has_field_values: "list",
+          }),
+        ],
+      });
+      const { query, stageIndex, findColumn } =
+        createQueryWithMetadata(metadata);
+      const { onChange } = await setupNumberPicker({
+        query,
+        stageIndex,
+        column: findColumn("ORDERS", "PRODUCT_ID"),
+        values: [],
+        fieldId: ORDERS.PRODUCT_ID,
+        searchFieldId: PRODUCTS.TITLE,
+        fieldValues: createMockFieldValues({
+          field_id: ORDERS.PRODUCT_ID,
+          values: [
+            [1, "Aerodynamic Bag"],
+            [2, "Awesome Shoes"],
+          ],
+          has_more_values: true,
+        }),
+        searchValues: {
+          z: createMockFieldValues({
+            field_id: ORDERS.PRODUCT_ID,
+            values: [[3, "Zen Table"]],
+          }),
+        },
+      });
+
+      await userEvent.type(screen.getByLabelText("Filter value"), "z");
+      await userEvent.click(await screen.findByText("Zen Table"));
+      expect(onChange).toHaveBeenLastCalledWith([3]);
+    });
   });
 
   describe("search values", () => {
