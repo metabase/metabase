@@ -351,9 +351,12 @@ export type RemoteSyncWorktreeUser = {
   common_name: string | null;
 };
 
+export type RemoteSyncWorktreeId = number;
+
 export type RemoteSyncWorktree = {
   id: RemoteSyncWorktreeId;
   branch: string;
+  is_default: boolean;
   creator_id: UserId | null;
   creator?: RemoteSyncWorktreeUser | null;
   users?: RemoteSyncWorktreeUser[];

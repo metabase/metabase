@@ -6,7 +6,7 @@ import type { RemoteSyncWorktreeId } from "metabase-types/api";
 export function getCurrentWorktreeId(
   state: State,
 ): RemoteSyncWorktreeId | null {
-  return getUser(state)?.worktree_id ?? null;
+  return getUser(state)?.current_worktree_id ?? null;
 }
 
 export function getIsRemoteSyncReadOnly(state: State): boolean {

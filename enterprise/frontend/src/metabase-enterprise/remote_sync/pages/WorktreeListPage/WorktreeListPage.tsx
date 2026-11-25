@@ -1,25 +1,21 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { getErrorMessage } from "metabase/api/utils";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
-import { useConfirmation, useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { Button, Icon, Stack, TreeTableSkeleton } from "metabase/ui";
-import {
-  useDeleteWorktreeMutation,
-  useListWorktreesQuery,
-} from "metabase-enterprise/api";
+import { useListWorktreesQuery } from "metabase-enterprise/api";
 import type { RemoteSyncWorktree } from "metabase-types/api";
 
 import { getIsWorktreesVisible } from "../../selectors";
 
 import { CreateWorktreeModal } from "./CreateWorktreeModal";
+import { DeleteWorktreeModal } from "./DeleteWorktreeModal";
 import { MainBranchSection } from "./MainBranchSection";
 import { WorktreeListEmptyState } from "./WorktreeListEmptyState";
 import { WorktreeTable } from "./WorktreeTable";
@@ -37,12 +33,11 @@ export function WorktreeListPage() {
 
 function WorktreeList() {
   const [isCreateModalOpened, setIsCreateModalOpened] = useState(false);
+  const [worktreeToDelete, setWorktreeToDelete] =
+    useState<RemoteSyncWorktree | null>(null);
   const { data: worktrees = [], isLoading, error } = useListWorktreesQuery();
-  const [deleteWorktree] = useDeleteWorktreeMutation();
-  const { currentWorktreeId, checkout, leave, modal } = useWorktreeCheckout();
-  const { show: showConfirmation, modalContent: confirmationModal } =
-    useConfirmation();
-  const [sendToast] = useToast();
+  const { currentWorktreeId, checkout, leave, checkoutModal } =
+    useWorktreeCheckout();
 
   const handleCreate = async (worktree: RemoteSyncWorktree) => {
     setIsCreateModalOpened(false);
@@ -51,24 +46,6 @@ function WorktreeList() {
 
   const handleCheckout = (worktree: RemoteSyncWorktree) =>
     checkout(worktree.id);
-
-  const handleDelete = (worktree: RemoteSyncWorktree) => {
-    showConfirmation({
-      title: t`Delete the worktree for ${worktree.branch}?`,
-      message: t`Its changes that aren’t pushed are lost. The branch stays in the repository.`,
-      confirmButtonText: t`Delete`,
-      onConfirm: async () => {
-        try {
-          await deleteWorktree(worktree.id).unwrap();
-        } catch (error) {
-          sendToast({
-            message: getErrorMessage(error, t`Couldn't delete the worktree`),
-            variant: "negative",
-          });
-        }
-      },
-    });
-  };
 
   if (error) {
     return <LoadingAndErrorWrapper loading={false} error={error} />;
@@ -109,7 +86,7 @@ function WorktreeList() {
                 worktrees={worktrees}
                 currentWorktreeId={currentWorktreeId}
                 onCheckout={handleCheckout}
-                onDelete={handleDelete}
+                onDelete={setWorktreeToDelete}
               />
             )}
           </TitleSection>
@@ -120,8 +97,14 @@ function WorktreeList() {
         onCreate={handleCreate}
         onClose={() => setIsCreateModalOpened(false)}
       />
-      {confirmationModal}
-      {modal}
+      {worktreeToDelete != null && (
+        <DeleteWorktreeModal
+          worktree={worktreeToDelete}
+          onDelete={() => setWorktreeToDelete(null)}
+          onClose={() => setWorktreeToDelete(null)}
+        />
+      )}
+      {checkoutModal}
     </PageContainer>
   );
 }

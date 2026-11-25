@@ -108,13 +108,20 @@ export const userApi = Api.injectEndpoints({
         url: `/api/user/${id}`,
         body,
       }),
-      invalidatesTags: (_, error, { id, worktree_id }) =>
+      invalidatesTags: (_, error, { id, current_worktree_id }) =>
         invalidateTags(error, [
           listTag("user"),
           idTag("user", id),
           idTag("current-user", id),
-          ...(worktree_id !== undefined
-            ? [tag("session-properties"), ...invalidateRemoteSyncContentTags()]
+          ...(current_worktree_id !== undefined
+            ? [
+                tag("session-properties"),
+                tag("remote-sync-changes"),
+                tag("remote-sync-current-task"),
+                tag("remote-sync-remote-changes"),
+                listTag("remote-sync-worktree"),
+                ...invalidateRemoteSyncContentTags(),
+              ]
             : []),
         ]),
     }),
