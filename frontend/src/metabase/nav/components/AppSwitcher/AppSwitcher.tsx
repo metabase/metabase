@@ -13,6 +13,10 @@ import { trackMonitorOpened } from "metabase/common/monitor/analytics";
 import { canAccessMonitor as canAccessMonitorSelector } from "metabase/common/monitor/selectors";
 import { prepareInitials } from "metabase/common/utils/user";
 import { getUser } from "metabase/current-user";
+import {
+  PROTOTYPE_SETTINGS,
+  PrototypeSettingsMenuItem,
+} from "metabase/prototype";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import { logout } from "metabase/redux/auth";
@@ -248,6 +252,12 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
 
           {/* Apps */}
           {appsSection}
+
+          {/* Prototype */}
+          <Divider w="100%" my="sm" />
+          <Box px="lg">
+            <PrototypeSettingsMenuItem settings={PROTOTYPE_SETTINGS} />
+          </Box>
 
           {/* Logout and Help */}
           <Divider w="100%" my="sm" />
