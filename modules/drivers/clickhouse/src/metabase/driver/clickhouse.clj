@@ -83,6 +83,7 @@
                               :expressions/float                true
                               :expressions/integer              true
                               :expressions/text                 true
+                              :describe-fields                  true
                               ;; ClickHouse uses both index lifecycles: ORDER BY is inlined into the MergeTree engine
                               ;; clause at creation, while data-skipping indexes are added as separate statements after.
                               :index/fetch                      true

@@ -246,3 +246,44 @@
       (if (.next rs)
         (primary-key-columns (.getString rs 1))
         []))))
+
+;;; ------------------------------------------- Reading the fields of many Tables -------------------------------------------
+
+(defn- in-clause
+  "` AND <column> IN (?, ...)` for `values`, and its params, or nil when `values` is nil."
+  [column values]
+  (when (some? values)
+    [(format " AND %s IN (%s)" column (str/join ", " (repeat (count values) "?")))
+     (vec values)]))
+
+(defmethod sql-jdbc.sync/describe-fields-sql :clickhouse
+  [driver & {:keys [schema-names table-names]}]
+  ;; One read of `system.columns` for all Tables, where [[driver/describe-table]] makes one JDBC metadata call for each.
+  ;; The same columns are left out as there: `AggregateFunction` columns, and the inner tables of materialized views.
+  (let [filters (keep identity [(in-clause "c.database" schema-names)
+                                (in-clause "c.table" table-names)
+                                (when (nil? schema-names)
+                                  (in-clause "c.database NOT" (sort (sql-jdbc.sync/excluded-schemas driver))))])]
+    (into [(str "SELECT c.database AS `table-schema`, c.table AS `table-name`, c.name AS `name`,"
+                " c.type AS `database-type`, toInt32(c.position) - 1 AS `database-position`,"
+                " nullIf(c.comment, '') AS `field-comment`, t.primary_key AS `primary-key`"
+                " FROM system.columns AS c"
+                " INNER JOIN system.tables AS t ON t.database = c.database AND t.name = c.table"
+                " WHERE NOT startsWith(c.type, 'AggregateFunction(') AND NOT startsWith(c.table, '.inner')"
+                (str/join (map first filters))
+                " ORDER BY c.database, c.table, c.position")]
+          (mapcat second)
+          filters)))
+
+(defmethod sql-jdbc.describe-table/describe-fields-pre-process-xf :clickhouse
+  [_driver _db & _args]
+  ;; What [[driver/describe-table]] adds to the JDBC metadata: the primary key parsed from `system.tables`, and whether
+  ;; a column is required, from its type.
+  (let [pk-columns (memoize (comp set primary-key-columns))]
+    (map (fn [{primary-key :primary-key, column :name, database-type :database-type, :as row}]
+           (cond-> (-> row
+                       (dissoc :primary-key)
+                       (assoc :database-required          (is-db-required? row)
+                              :database-is-nullable       (str/includes? database-type "Nullable(")
+                              :database-is-auto-increment false))
+             (contains? (pk-columns primary-key) column) (assoc :pk? true))))))
