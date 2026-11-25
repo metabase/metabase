@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dir=$(cd -- "$(dirname -- "$0")" && pwd)
+classpath=$(cd "$dir" && clojure -Srepro -Spath)
+exec java -Xmx4g -cp "$classpath" clojure.main "$dir/check.clj" "$@"

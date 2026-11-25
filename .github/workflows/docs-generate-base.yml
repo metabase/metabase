@@ -40,6 +40,7 @@ jobs:
             /bb.edn
             /bin/mage
             /bin/mage.bb
+            /bin/cljfmt-ci/deps.edn
             /mage/
           sparse-checkout-cone-mode: false
 
