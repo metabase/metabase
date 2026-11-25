@@ -1558,3 +1558,17 @@
               (mt/user-http-request :crowberto :get 200 "table/by-name" :db "by-name empty schema" :schema "" :table "T")))
       (is (=? {:id empty-id}
               (mt/user-http-request :crowberto :get 200 "table/by-name" :db "by-name empty schema" :table "T"))))))
+
+(deftest table-by-name-whitespace-schema-test
+  (testing "a schema of whitespace names the Table with that schema, not the one with no schema, as in serialization"
+    (mt/with-temp [:model/Database {db-id :id}         {:name "by-name whitespace schema" :engine :h2 :details {}}
+                   :model/Table    {schemaless :id}    {:db_id db-id :schema nil :name "T"}
+                   :model/Table    {whitespace :id}    {:db_id db-id :schema " " :name "T"}
+                   :model/Field    {field-id :id}      {:table_id whitespace :name "F" :base_type :type/Integer}]
+      (is (=? {:id whitespace}
+              (mt/user-http-request :crowberto :get 200 "table/by-name" :db "by-name whitespace schema" :schema " " :table "T")))
+      (is (=? {:id schemaless}
+              (mt/user-http-request :crowberto :get 200 "table/by-name" :db "by-name whitespace schema" :table "T")))
+      (is (=? {:id field-id}
+              (mt/user-http-request :crowberto :get 200 "field/by-name" :db "by-name whitespace schema" :schema " "
+                                    :table "T" :field "F"))))))

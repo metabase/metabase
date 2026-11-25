@@ -4,7 +4,6 @@
   Database name names the oldest Database with that name, as in serialization. A row the current user cannot read is
   not found, as a row that does not exist is."
   (:require
-   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
@@ -39,10 +38,11 @@
   (into [:map {:closed true}] field-entries))
 
 (defn- table-refs
-  "The refs of the Tables that `db`, `schema` and `table` may name: with a blank `schema`, the Table with no schema and
-  the one with an empty schema, of which the unique index on Tables allows only one."
+  "The refs of the Tables that `db`, `schema` and `table` may name: with no `schema` or an empty one, the Table with no
+  schema and the one with an empty schema, of which the unique index on Tables allows only one. A schema of whitespace
+  is a schema, as in serialization."
   [db schema table]
-  (if (str/blank? schema)
+  (if (contains? #{nil ""} schema)
     [[db nil table] [db "" table]]
     [[db schema table]]))
 
