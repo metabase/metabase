@@ -683,6 +683,25 @@ describe("QueryBuilder - model editor", () => {
       expect(screen.getByText("37.65")).toBeInTheDocument();
     });
 
+    it("shows the source table of a model query in the data step", async () => {
+      setupModelServer({ card: ORDERS_MODEL, runQuery: runOrdersQuery });
+      await setup({
+        card: ORDERS_MODEL,
+        initialRoute: `/model/${ORDERS_MODEL.id}/query`,
+      });
+
+      const dataStep = await screen.findByTestId("data-step-cell");
+      expect(dataStep).toHaveTextContent(/^Orders$/);
+      await userEvent.click(within(dataStep).getByText("Orders"));
+
+      const miniPicker = await screen.findByTestId("mini-picker");
+      expect(
+        await within(miniPicker).findByTestId("mini-picker-header"),
+      ).toHaveTextContent("Sample Database");
+      expect(within(miniPicker).getByText("Orders")).toBeInTheDocument();
+      expect(within(miniPicker).getByText("Products")).toBeInTheDocument();
+    });
+
     it("locks the display of a model to a table", async () => {
       setupModelServer({ card: ORDERS_MODEL, runQuery: runOrdersQuery });
       await setup({
