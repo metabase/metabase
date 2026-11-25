@@ -1719,8 +1719,8 @@ def _split_placeholder_casts(sql: str, dialect: str = None) -> str:
 
 
 def name_placeholders(sql: str, prefix: str, dialect: str = None) -> str:
-    """`sql`, with a space put between a placeholder and a `::` cast after it, and each positional placeholder `?`
-    replaced by the bare name `<prefix><i>`, `i` counting from 0 in the order the placeholders appear, as JSON
+    """`sql`, with each positional placeholder `?` replaced by the bare name `<prefix><i>` with a space on either side,
+    `i` counting from 0 in the order the placeholders appear, as JSON
     `{"sql": ..., "count": <placeholders replaced>}`. A `?` that the dialect's
     tokenizer reads inside a string literal, a quoted name or a comment is not a placeholder, and stays."""
     sql = _split_placeholder_casts(sql, dialect)
@@ -1728,7 +1728,8 @@ def name_placeholders(sql: str, prefix: str, dialect: str = None) -> str:
     for tok in sqlglot.tokenize(sql, read=dialect):
         if tok.token_type == sqlglot.TokenType.PLACEHOLDER and tok.text == "?":
             parts.append(sql[last : tok.start])
-            parts.append(f"{prefix}{count}")
+            # The spaces keep the name apart from a word written against the placeholder, as in `x=?AND y=?`.
+            parts.append(f" {prefix}{count} ")
             last, count = tok.end + 1, count + 1
     parts.append(sql[last:])
     return json.dumps({"sql": "".join(parts), "count": count})

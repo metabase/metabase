@@ -6,6 +6,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.validator :as data-testing.validator]
    [metabase.driver :as driver]
    [metabase.driver.h2]
    [metabase.driver.postgres]))
@@ -225,6 +226,10 @@
     (is (= {:query "SELECT POSITION(? IN ?) AS id" :params ["cd" "abcdef"]}
            (rewrite {:query "SELECT strpos(?, ?) AS id" :params ["abcdef" "cd"]}
                     #(str/replace % #"strpos\((\w+), (\w+)\)" "POSITION($2 IN $1)")))))
+  (testing "a placeholder with a word right after it still parses once it has a name"
+    (is (= {:query "SELECT * FROM t WHERE x = ? AND y = ?" :params ["a" "b"]}
+           (rewrite {:query "SELECT * FROM t WHERE x=?AND y=?" :params ["a" "b"]}
+                    #(data-testing.validator/ensure-single-select :postgres % nil)))))
   (testing "a ? in a string literal, a quoted name or a comment is not a placeholder"
     (is (= {:query "SELECT '?' AS \"?\", ? AS id /* ? */" :params ["x"]}
            (rewrite {:query "SELECT '?' AS \"?\", ? AS id /* ? */" :params ["x"]} identity))))

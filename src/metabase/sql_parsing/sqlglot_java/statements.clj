@@ -35,17 +35,19 @@
         sql))))
 
 (defn name-placeholders
-  "`sql` with each positional placeholder `?` replaced by the bare name `<prefix><i>`, `i` counting from 0 in the order
-  the placeholders appear, as `{:sql :count}`, `:count` the placeholders replaced. A `?` that the dialect's tokenizer
-  reads inside a string literal, a quoted name or a comment is not a placeholder, and stays.
-  Port of `name_placeholders`."
+  "`sql` with each positional placeholder `?` replaced by the bare name `<prefix><i>` with a space on either side, `i`
+  counting from 0 in the order the placeholders appear, as `{:sql :count}`, `:count` the placeholders replaced. A `?`
+  that the dialect's tokenizer reads inside a string literal, a quoted name or a comment is not a placeholder, and
+  stays. Port of `name_placeholders`."
   [dialect sql prefix]
   (let [^String sql (split-placeholder-casts sql dialect)
         sb          (StringBuilder.)
         [last-end n] (reduce (fn [[last-end n] [token-type text start]]
                                (if (and (= token-type "PLACEHOLDER") (= text "?"))
                                  (do (.append sb (subs sql last-end start))
-                                     (.append sb (str prefix n))
+                                     ;; The spaces keep the name apart from a word written against the placeholder,
+                                     ;; as in `x=?AND y=?`.
+                                     (.append sb (str " " prefix n " "))
                                      [(inc (long start)) (inc n)])
                                  [last-end n]))
                              [0 0]

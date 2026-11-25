@@ -196,11 +196,18 @@
                              ["postgres"   "SELECT E'\\'?' AS a, ? AS b"]
                              ["mysql"      "SELECT 'a\\'?' AS a, ? AS b"]
                              ["clickhouse" "SELECT 'a\\'?' AS a, ? AS b"]
-                             ["postgres"   "SELECT meta ?? ? FROM t"]]]
+                             ["postgres"   "SELECT meta ?? ? FROM t"]
+                             ;; A word right after a placeholder.
+                             ["postgres"   "SELECT * FROM t WHERE x=?AND y=?"]
+                             ["mysql"      "SELECT * FROM t WHERE x=?AND y=?"]
+                             ["tsql"       "SELECT * FROM t WHERE x=?AND y=?"]]]
         (testing (pr-str dialect sql)
           ;; Compared as the shadow parser compares them: Python writes `?::` as `p_0 ::`, Java as `p_0::`.
           (is (= (shadow/logical-value :name-placeholders (protocol/name-placeholders graal dialect sql "p_"))
-                 (shadow/logical-value :name-placeholders (protocol/name-placeholders java dialect sql "p_")))))))))
+                 (shadow/logical-value :name-placeholders (protocol/name-placeholders java dialect sql "p_"))))
+          (testing "each name has a space on either side"
+            (let [{named :sql n :count} (protocol/name-placeholders java dialect sql "p_")]
+              (is (= n (count (re-seq #" p_\d+ " named))) named))))))))
 
 (deftest add-into-clause-matches-graalpy-test
   (testing "both parsers rewrite each add_into_clause case to the same SELECT INTO"

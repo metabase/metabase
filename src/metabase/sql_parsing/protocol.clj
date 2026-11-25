@@ -39,9 +39,9 @@
     `\"rebuild-strict\"`, it must also reconstruct to itself, and the SQL must hold no form that the reconstruction
     gives another value.")
   (name-placeholders [parser dialect sql prefix]
-    "The SQL with each positional placeholder `?` replaced by the bare name `<prefix><i>`, `i` counting from 0 in the
-    order the placeholders appear, as a keywordized map of `:sql` and `:count`, the placeholders replaced. `:sql` can
-    also differ from the SQL in the space between a placeholder and a `::` cast after it.")
+    "The SQL with each positional placeholder `?` replaced by the bare name `<prefix><i>` with a space on either side,
+    `i` counting from 0 in the order the placeholders appear, as a keywordized map of `:sql` and `:count`, the
+    placeholders replaced.")
   (transpile-sql [parser sql from-dialect to-dialect]
     "Transpile the SQL from one dialect to another, as a keywordized result map."))
 

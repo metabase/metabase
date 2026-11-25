@@ -627,10 +627,9 @@
   (classify-single-stmt parser dialect sql stmt-type gate-limits))
 
 (defn name-placeholders
-  "`sql` with each positional placeholder `?` replaced by the bare name `<prefix><i>`, `i` counting from 0 in the order
-  the placeholders appear, as `{:sql :count}`, `:count` the placeholders replaced. A `?` that `dialect` reads inside
-  a string literal, a quoted name or a comment is not a placeholder, and stays. `:sql` can also differ from `sql` in
-  the space between a placeholder and a `::` cast after it."
+  "`sql` with each positional placeholder `?` replaced by the bare name `<prefix><i>` with a space on either side, `i`
+  counting from 0 in the order the placeholders appear, as `{:sql :count}`, `:count` the placeholders replaced. A `?`
+  that `dialect` reads inside a string literal, a quoted name or a comment is not a placeholder, and stays."
   [parser dialect sql prefix]
   (protocol/name-placeholders parser dialect sql prefix))
 
