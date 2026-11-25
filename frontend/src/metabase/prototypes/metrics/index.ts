@@ -31,7 +31,7 @@ export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
     id: "metric-editor-blocks",
     name: "Definition with blocks",
     description:
-      "Same as the expression bar, but the definition is built from large blocks like the Metric Tree's cards: pick operators between them, and each measure's filters show as rows in its block.",
+      "The definition is built from large blocks, one per measure or metric: pick operators between them, and each measure's filters show as rows in its block.",
     group: "Iteration 1",
     Component: MetricEditorBlocksPrototype,
   },
@@ -55,7 +55,7 @@ export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
   },
   {
     id: "metric-tree-hifi",
-    name: "Metric Tree",
+    name: "Dependencies tab",
     description:
       "On a metric's Dependencies tab: how it breaks down into measures, with values and trends, in the schema viewer's visual language. Click a card for details.",
     group: "Iteration 1",
