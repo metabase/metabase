@@ -7,6 +7,16 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- New multimethod `metabase.driver/table-random-sample` and feature flag `:table-random-sample`, false by default. A
+  driver that supports the flag gives sync a better sample of a table's rows for fingerprints than the first rows, and
+  says how it read them: `{:method :block | :row | :first-rows | :unspecified, :fraction f, :runs n, :result r}`. The
+  options are open and include `:rows` (the sample size), `:row-count` (the row count estimate) and `:truncation-size`.
+  Declare the flag for the driver itself only, as `(= driver :my-driver)`: sync chooses between this method and
+  `metabase.driver/table-rows-sample` by the flag, so a child driver that does not declare it keeps its own
+  `table-rows-sample`. `table-rows-sample` does not change and stays the fallback: sync uses it when the new method
+  throws or takes longer than its time limit, and then for the rest of the run for that database. Sync stores the
+  method with each fingerprint, in `metabase_field.fingerprint_origin`.
+
 - New driver feature `:stage-ctes/nest-single-row-aggregation`. Drivers that use `:stage-ctes` can opt in to put an
   aggregation with no breakouts over a previous stage in its own stage CTE. This is for databases like Postgres that
   do not use an index for `MIN`/`MAX` when the aggregation is in a `SELECT` that has a `WITH` clause. The default is

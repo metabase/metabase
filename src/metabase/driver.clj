@@ -30,7 +30,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [empty? mapv]]
+   [metabase.util.performance :as perf :refer [empty? mapv]]
    [potemkin :as p])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)))
@@ -1164,6 +1164,10 @@
     ;; Only applies to queries compiled with `:stage-ctes`.
     :stage-ctes/nest-single-row-aggregation
     ;;
+    ;; Does this driver read a better sample than the first rows with [[table-random-sample]]? Declare it for the driver
+    ;; itself only, as `(= driver :my-driver)`, so that a child driver keeps its own [[table-rows-sample]].
+    :table-random-sample
+    ;;
     ;; Added in 66; this can be removed in 69 when we make this the default and only supported option.
     ;;
     ;; Does this driver supporting executing native queries in the MBQL 5 shape directly, as opposed to the legacy
@@ -1805,6 +1809,32 @@
   {:arglists '([driver table fields rff opts]), :added "0.46.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti table-random-sample
+  "Reduce, with `rff`, a sample of the rows of `fields` of `table` that is better than its first rows, and return a map
+  of how the sample was read and what the reduction returned:
+
+    {:method :block | :row | :first-rows | :unspecified, :fraction 0.004, :runs 200, :result <what rff returned>}
+
+  `:method` is an open set: `:block` and `:row` are better samples, `:first-rows` is what a driver reports when it
+  falls back for a table, and `:unspecified` is what [[table-rows-sample]] gives. `:fraction` and `:runs` are optional.
+
+  `opts` is open; a driver ignores a key it does not know:
+  `:rows`: about how many rows to read.
+  `:row-count`: the row count estimate of the table, or nil.
+  `:truncation-size`: as for [[table-rows-sample]].
+
+  Sync calls this only for a driver that supports `:table-random-sample` for itself; see the feature. The default
+  reads the sample with [[table-rows-sample]], which stays the fallback: sync uses it for a driver without the feature,
+  when this method throws, and when it takes too long."
+  {:arglists '([driver table fields rff opts]), :added "0.66.0"}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod table-random-sample ::driver
+  [driver table fields rff opts]
+  {:method :unspecified
+   :result (table-rows-sample driver table fields rff (perf/select-keys opts [:truncation-size]))})
 
 ;;; TODO (Cam 2026-05-04) -- this is JDBC-specific, should be moved to [[metabase.driver.sql-jdbc]] or one of its
 ;;; sub-namespaces
