@@ -1019,7 +1019,7 @@ function setupTablesBackend({
                 name: table.name,
                 display_name: table.display_name,
                 schema: table.schema,
-                is_published: table.is_published,
+                is_published: table.collection != null,
               })
             : null,
       });
@@ -1030,14 +1030,15 @@ function setupTablesBackend({
     url: "path:/api/ee/data-studio/table/publish-tables",
     name: "stateful-tables-publish",
     response: (call) => {
+      const targetCollection = createMockCollection({
+        id: LIBRARY_DATA_COLLECTION.id,
+        name: LIBRARY_DATA_COLLECTION.name,
+      });
       resolveSelectors(getRequestBody(call)).forEach((table) => {
-        table.is_published = true;
+        table.collection = targetCollection;
       });
       return createMockPublishTablesResponse({
-        target_collection: createMockCollection({
-          id: LIBRARY_DATA_COLLECTION.id,
-          name: LIBRARY_DATA_COLLECTION.name,
-        }),
+        target_collection: targetCollection,
       });
     },
   });
@@ -1047,7 +1048,7 @@ function setupTablesBackend({
     name: "stateful-tables-unpublish",
     response: (call) => {
       resolveSelectors(getRequestBody(call)).forEach((table) => {
-        table.is_published = false;
+        table.collection = null;
       });
       return { status: 204 };
     },
@@ -1293,7 +1294,7 @@ describe("DataModel (data studio, enterprise) > bulk table editing", () => {
     expect(
       within(getTableRow(BULK_ORDERS_TABLE.id)).queryByLabelText("Published"),
     ).not.toBeInTheDocument();
-    expect(backend.getTable(BULK_ORDERS_TABLE.id).is_published).toBe(false);
+    expect(backend.getTable(BULK_ORDERS_TABLE.id).collection).toBeUndefined();
   });
 
   it("should change the owner of and publish tables selected in search results", async () => {
@@ -1624,9 +1625,7 @@ describe("DataModel (data studio, enterprise) > single table editing", () => {
     expect(getRequestBodies("stateful-tables-unpublish")).toEqual([
       expect.objectContaining({ table_ids: [REMOTE_SYNC_ORDERS_TABLE.id] }),
     ]);
-    expect(backend.getTable(REMOTE_SYNC_ORDERS_TABLE.id).is_published).toBe(
-      false,
-    );
+    expect(backend.getTable(REMOTE_SYNC_ORDERS_TABLE.id).collection).toBeNull();
 
     // rename
     const nameInput = await findTableNameInput("Orders");

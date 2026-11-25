@@ -113,7 +113,7 @@ const TOTAL_DESCRIPTION = "The total billed amount.";
 /** a table published into a collection that remote sync keeps read-only */
 const READ_ONLY_PUBLISHED_TABLE: Partial<Table> = {
   can_write: false,
-  is_published: true,
+  collection: createMockCollection({ name: "Synced library data" }),
 };
 
 function createInitialTables(): Table[] {
