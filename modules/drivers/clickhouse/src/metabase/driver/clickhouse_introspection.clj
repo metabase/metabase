@@ -176,6 +176,34 @@
                  (get-tables-in-db driver db))]
     {:tables tables}))
 
+(def ^:private type-token
+  "A string, a quoted name, one of `(),`, or the text up to the next one of these, in a ClickHouse type."
+  #"'(?:[^'\\]++|\\.)*+'|`(?:[^`\\]++|\\.)*+`|[(),]|[^'`(),]+")
+
+(defn type-arguments
+  "The arguments of `database-type` if it is a `type-name` type, or else nil. For example, the arguments of the `Map`
+  type `Map(String, Tuple(a Int32, b Int32))` are `[\"String\" \"Tuple(a Int32, b Int32)\"]`."
+  [type-name database-type]
+  (let [prefix (str type-name "(")]
+    (when (and (some-> database-type (str/starts-with? prefix))
+               (str/ends-with? database-type ")"))
+      (loop [[token & tokens] (re-seq type-token (subs database-type (count prefix) (dec (count database-type))))
+             depth            0
+             argument         []
+             arguments        []]
+        (cond
+          (nil? token)
+          (conj arguments (str/trim (str/join argument)))
+
+          (and (= token ",") (zero? depth))
+          (recur tokens depth [] (conj arguments (str/trim (str/join argument))))
+
+          :else
+          (recur tokens
+                 (case token "(" (inc depth) ")" (dec depth) depth)
+                 (conj argument token)
+                 arguments))))))
+
 (defn- ^:private is-db-required?
   [field]
   (not (str/starts-with? (get field :database-type) "Nullable")))
