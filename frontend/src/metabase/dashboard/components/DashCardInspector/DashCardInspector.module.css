@@ -1,0 +1,95 @@
+/*
+ * PROTOTYPE: the inspector, a floating panel for the selected dashboard card.
+ * Everything that styles the panel lives here.
+ */
+
+/*
+ * The panel itself: a white floating box.
+ * `top` and `right` are where it first appears. After the first drag, the
+ * component sets `left` and `top` itself.
+ */
+.panel {
+  position: fixed;
+  top: 6rem;
+  right: var(--mantine-spacing-lg);
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  height: 480px;
+
+  /* never taller than the window, with a little room above and below */
+  max-height: calc(100vh - 2 * var(--mantine-spacing-md));
+  background: var(--mb-color-background_surface-primary);
+  border-radius: var(--mantine-radius-md);
+
+  /* a large soft shadow with a hairline edge; the other sizes are xs_outline and sm_outline */
+  box-shadow: var(--mantine-shadow-lg_outline);
+  overflow: hidden;
+}
+
+/* The top bar: the card's name and the close button. Drag it to move the panel. */
+.header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-sm)
+    var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+  cursor: grab;
+  user-select: none;
+
+  /* stops the page from scrolling when the panel is dragged on a touch screen */
+  touch-action: none;
+}
+
+/* The top bar while the panel is being dragged */
+.header.isDragging {
+  cursor: grabbing;
+}
+
+/* The card's name in the top bar; long names are cut with "…" */
+.title {
+  overflow: hidden;
+  font-weight: bold;
+  color: var(--mb-color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Everything under the top bar: the Settings and Query tabs and their content */
+.tabs {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* The row with the "Settings" and "Query" tabs */
+.tabList {
+  flex: none;
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md) 0;
+}
+
+/* The content of the open tab; it fills the rest of the panel */
+.tabPanel {
+  flex: 1;
+  min-height: 0;
+}
+
+/*
+ * The settings list in the Settings tab. It is the app's own settings
+ * component (the one in the "Visualize another way" window), so its inner
+ * spacing and its "Display / Axes" row are styled in
+ * visualizations/components/ChartSettings, not here.
+ */
+.settings {
+  height: 100%;
+}
+
+/* A short note in place of a tab's content, e.g. "Loading…" */
+.message {
+  padding: var(--mantine-spacing-md);
+  color: var(--mb-color-text-secondary);
+}

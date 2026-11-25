@@ -55,8 +55,20 @@
 
 .DashEditing .DashCard:global(.react-draggable-dragging) .Card,
 .DashEditing .DashCard:global(.react-resizable-resizing) .Card {
-  background-color: var(--mb-color-background_page-tertiary) !important;
   border: 1px solid var(--mb-color-core-brand);
+}
+
+/*
+ * PROTOTYPE: in the "Click to select" card editing mode (.KeepCardBackground),
+ * a card keeps its background while it is dragged or resized.
+ */
+.DashEditing:not(.KeepCardBackground)
+  .DashCard:global(.react-draggable-dragging)
+  .Card,
+.DashEditing:not(.KeepCardBackground)
+  .DashCard:global(.react-resizable-resizing)
+  .Card {
+  background-color: var(--mb-color-background_page-tertiary) !important;
 }
 
 .DashEditing .DashCard .VisualizationSlowSpinner {

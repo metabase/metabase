@@ -1,0 +1,38 @@
+/*
+ * PROTOTYPE: click a dashboard card to select it (edit mode).
+ * Everything that styles the "Click to select" card editing mode lives here.
+ * Turn it on and off in the main menu > Prototype settings > Card editing.
+ */
+
+/*
+ * The cursor over a card in edit mode: the default arrow, not the "move" cross.
+ * The classes are doubled only to outrank the app's own `cursor: move` rule.
+ */
+.root.root .item.item {
+  cursor: default;
+}
+
+/*
+ * A selected card: blue border, same background as before.
+ * The border is 2px in total: the card's own 1px border turns blue, and the
+ * outline adds 1px around it without moving the card's content.
+ * For a 1px border, delete the two outline lines.
+ */
+.root .item.isSelected .card {
+  border-color: var(--mb-color-core-brand);
+  outline: 1px solid var(--mb-color-core-brand);
+  outline-offset: 0;
+}
+
+/*
+ * A card being dragged or resized: the same blue border as a selected card.
+ * Pressing the mouse on a card selects it, so normally the rule above already
+ * covers this. Keep the values the same as in the selected rule.
+ * (.react-draggable-dragging and .react-resizable-resizing come from the grid library.)
+ */
+.root .item:global(.react-draggable-dragging) .card,
+.root .item:global(.react-resizable-resizing) .card {
+  border-color: var(--mb-color-core-brand);
+  outline: 1px solid var(--mb-color-core-brand);
+  outline-offset: 0;
+}

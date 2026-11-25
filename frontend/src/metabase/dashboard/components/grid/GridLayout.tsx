@@ -67,6 +67,11 @@ type OwnProps<T extends { id: number | null }> = {
    * The breakpoints for the grid
    */
   margin?: Record<string, [number, number]>;
+
+  /**
+   * PROTOTYPE: false hides the grid of cells drawn behind the cards in editing mode
+   */
+  hasGridBackground?: boolean;
 };
 
 export function GridLayout<T extends { id: number | null }>(
@@ -82,6 +87,7 @@ export function GridLayout<T extends { id: number | null }>(
     margin: marginMap = {},
     rowHeight,
     isEditing,
+    hasGridBackground = true,
     onLayoutChange,
     className,
     ...otherProps
@@ -207,9 +213,9 @@ export function GridLayout<T extends { id: number | null }>(
     () => ({
       width: gridWidth,
       height,
-      background: isEditing ? background : "",
+      background: isEditing && hasGridBackground ? background : "",
     }),
-    [gridWidth, height, background, isEditing],
+    [gridWidth, height, background, isEditing, hasGridBackground],
   );
 
   const isMobile = currentBreakpoint === "mobile";

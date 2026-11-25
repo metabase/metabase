@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import cx from "classnames";
-import type { ComponentType, ForwardedRef } from "react";
+import type { ComponentType, ForwardedRef, MouseEvent } from "react";
 import { Component, forwardRef } from "react";
 import type { ConnectedProps } from "react-redux";
 import { t } from "ttag";
@@ -20,6 +20,7 @@ import { ContentViewportContext } from "metabase/common/context/ContentViewportC
 import DashboardS from "metabase/css/dashboard.module.css";
 import { getVisibleCardIds } from "metabase/dashboard/utils";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
+import { DASHCARD_EDITING_MODE, usePrototypeSetting } from "metabase/prototype";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
@@ -40,6 +41,7 @@ import type {
   BaseDashboardCard,
   Card,
   CardId,
+  DashCardId,
   Dashboard,
   DashboardCard,
   DashboardTabId,
@@ -70,6 +72,8 @@ import { getDashcardDataMap, getDashcards } from "../selectors";
 
 import { DashCard } from "./DashCard/DashCard";
 import DashCardS from "./DashCard/DashCard.module.css";
+import { DashCardInspector } from "./DashCardInspector/DashCardInspector";
+import SelectionS from "./DashCardSelection/DashCardSelection.module.css";
 import { FIXED_WIDTH } from "./Dashboard/DashboardComponents";
 import S from "./DashboardGrid.module.css";
 import { GridLayout } from "./grid/GridLayout";
@@ -89,6 +93,10 @@ interface DashboardGridInnerState {
   };
   replaceCardModalDashCard: BaseDashboardCard | null;
   isDragging: boolean;
+  /** PROTOTYPE: the card selected in the "Click to select" card editing mode */
+  selectedDashcardId: DashCardId | null;
+  /** PROTOTYPE: the inspector panel shows the selected card */
+  isInspectorOpen: boolean;
   dashcardCountByCardId: Record<CardId, number>;
   _lastProps?: LastProps;
 
@@ -161,7 +169,10 @@ type DashboardGridForwardedRefProps = Required<DashboardGridProps> &
   } & Pick<FlexProps, "className" | "style" | "p">;
 
 type DashboardGridInnerProps = DashboardGridForwardedRefProps &
-  DashboardGridContext;
+  DashboardGridContext & {
+    /** PROTOTYPE: the "Click to select" card editing mode is on */
+    isCardSelectionEnabled: boolean;
+  };
 
 class DashboardGridInner extends Component<
   DashboardGridInnerProps,
@@ -194,12 +205,24 @@ class DashboardGridInner extends Component<
       ),
       replaceCardModalDashCard: null,
       isDragging: false,
+      selectedDashcardId: null,
+      isInspectorOpen: false,
       _lastProps: {
         dashboard: props.dashboard,
         isEditing: props.isEditing,
         selectedTabId: props.selectedTabId,
       },
     };
+  }
+
+  componentDidMount() {
+    document.addEventListener("keydown", this.onDocumentKeyDown);
+    document.addEventListener("mousedown", this.onDocumentMouseDown);
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener("keydown", this.onDocumentKeyDown);
+    document.removeEventListener("mousedown", this.onDocumentMouseDown);
   }
 
   componentDidUpdate(prevProps: DashboardGridInnerProps) {
@@ -256,6 +279,8 @@ class DashboardGridInner extends Component<
     return {
       visibleCardIds,
       initialCardSizes,
+      selectedDashcardId: isEditing ? state.selectedDashcardId : null,
+      isInspectorOpen: isEditing && state.isInspectorOpen,
       layouts: getLayouts(visibleCards, state.initialCardSizes),
       _lastProps: {
         dashboard,
@@ -440,6 +465,70 @@ class DashboardGridInner extends Component<
     this.setState({ isDragging: false });
   };
 
+  /** Where the mouse was pressed on a card, to tell a click from a drag */
+  cardPressPoint: { x: number; y: number } | null = null;
+
+  selectDashcard = (dashcardId: DashCardId) => {
+    if (this.state.selectedDashcardId !== dashcardId) {
+      this.setState({ selectedDashcardId: dashcardId });
+    }
+  };
+
+  deselectDashcard = () => {
+    if (this.state.selectedDashcardId != null) {
+      this.setState({ selectedDashcardId: null, isInspectorOpen: false });
+    }
+  };
+
+  onDashCardMouseDown = (dashcardId: DashCardId, event: MouseEvent) => {
+    this.cardPressPoint = { x: event.clientX, y: event.clientY };
+    this.selectDashcard(dashcardId);
+  };
+
+  // A click opens the inspector; a press that moved the card (a drag) does not.
+  onDashCardClick = (event: MouseEvent) => {
+    const pressPoint = this.cardPressPoint;
+    const isClick =
+      pressPoint != null &&
+      Math.hypot(event.clientX - pressPoint.x, event.clientY - pressPoint.y) <
+        CLICK_MAX_DISTANCE_PX;
+    if (isClick && !this.state.isInspectorOpen) {
+      this.setState({ isInspectorOpen: true });
+    }
+  };
+
+  closeInspector = () => {
+    this.setState({ isInspectorOpen: false });
+  };
+
+  // A press on the dashboard's background deselects: anywhere in the area that
+  // holds the cards, except on a card or on a control such as a filter widget.
+  // Listening on the document covers the margins around the grid too.
+  onDocumentMouseDown = (event: globalThis.MouseEvent) => {
+    const { target } = event;
+    if (!this.isSelectingCards || !(target instanceof Element)) {
+      return;
+    }
+    const isOnBackground =
+      target.closest(DASHBOARD_BACKGROUND_SELECTOR) != null &&
+      target.closest(NOT_BACKGROUND_SELECTOR) == null;
+    if (isOnBackground) {
+      this.deselectDashcard();
+    }
+  };
+
+  // Escape deselects, unless it is typed in the inspector, a field, a menu or
+  // a popover, where it has its own meaning.
+  onDocumentKeyDown = (event: KeyboardEvent) => {
+    const { target } = event;
+    const isHandledElsewhere =
+      target instanceof Element &&
+      target.closest(ESCAPE_HANDLED_ELSEWHERE_SELECTOR) != null;
+    if (event.key === "Escape" && !isHandledElsewhere) {
+      this.deselectDashcard();
+    }
+  };
+
   onDashCardRemove = (dc: DashboardCard) => {
     this.props.removeCardFromDashboard({
       dashcardId: dc.id,
@@ -481,7 +570,7 @@ class DashboardGridInner extends Component<
   ) {
     return (
       <DashCard
-        className={S.Card}
+        className={cx(S.Card, SelectionS.card)}
         dashcard={dashcard}
         gridItemWidth={gridItemWidth}
         totalNumGridCols={totalNumGridCols}
@@ -567,6 +656,18 @@ class DashboardGridInner extends Component<
     );
   }
 
+  get isSelectingCards() {
+    return Boolean(this.props.isCardSelectionEnabled && this.isEditingLayout);
+  }
+
+  get inspectedDashcard() {
+    const { selectedDashcardId, isInspectorOpen } = this.state;
+    if (!this.isSelectingCards || !isInspectorOpen) {
+      return undefined;
+    }
+    return this.getVisibleCards().find((dc) => dc.id === selectedDashcardId);
+  }
+
   renderGridItem = ({
     item: dc,
     breakpoint,
@@ -586,6 +687,9 @@ class DashboardGridInner extends Component<
       isEditing,
     );
 
+    const isSelectable = this.isSelectingCards;
+    const isSelected = isSelectable && this.state.selectedDashcardId === dc.id;
+
     return (
       <Box
         key={String(dc.id)}
@@ -595,10 +699,20 @@ class DashboardGridInner extends Component<
           EmbedFrameS.DashCard,
           LegendS.DashCard,
           S.DashboardCardContainer,
+          SelectionS.item,
           {
             [DashboardS.BrandColorResizeHandle]: shouldChangeResizeHandle,
+            [SelectionS.isSelected]: isSelected,
           },
         )}
+        // Capture, so the press selects the card even when the card's content
+        // stops the event, and before the grid starts a drag.
+        onMouseDownCapture={
+          isSelectable
+            ? (event) => this.onDashCardMouseDown(dc.id, event)
+            : undefined
+        }
+        onClickCapture={isSelectable ? this.onDashCardClick : undefined}
       >
         {this.renderDashCard(dc, {
           isMobile: breakpoint === "mobile",
@@ -619,6 +733,8 @@ class DashboardGridInner extends Component<
       <GridLayout<DashboardCard>
         className={cx({
           [DashboardS.DashEditing]: this.isEditingLayout,
+          [DashboardS.KeepCardBackground]: this.isSelectingCards,
+          [SelectionS.root]: this.isSelectingCards,
           [DashboardS.Mobile]: width < GRID_BREAKPOINTS.mobile,
           // we use this class to hide a dashcard actions
           // panel during dragging
@@ -635,6 +751,7 @@ class DashboardGridInner extends Component<
         onDrag={this.onDrag}
         onDragStop={this.onDragStop}
         isEditing={this.isEditingLayout && !visualizerModalStatus}
+        hasGridBackground={!this.props.isCardSelectionEnabled}
         compactType="vertical"
         items={this.getVisibleCards()}
         itemRenderer={this.renderGridItem}
@@ -666,10 +783,27 @@ class DashboardGridInner extends Component<
         {width > 0 ? this.renderGrid() : <div />}
         {this.renderReplaceCardModal()}
         {this.renderVisualizerModal()}
+        <DashCardInspector
+          dashcard={this.inspectedDashcard}
+          onClose={this.closeInspector}
+        />
       </Flex>
     );
   }
 }
+
+/** PROTOTYPE: a press and release closer than this is a click, not a drag */
+const CLICK_MAX_DISTANCE_PX = 4;
+/** PROTOTYPE: the area of the dashboard page that holds the filters and the cards */
+const DASHBOARD_BACKGROUND_SELECTOR =
+  "[data-testid='dashboard-parameters-and-cards']";
+/** PROTOTYPE: things in that area that are not background */
+const NOT_BACKGROUND_SELECTOR =
+  "[data-testid='dashcard-container'], button, a, input, [role='button']";
+
+/** PROTOTYPE: places where Escape does something else than deselecting the card */
+const ESCAPE_HANDLED_ELSEWHERE_SELECTOR =
+  "[data-dashcard-inspector], input, textarea, [contenteditable='true'], [role='dialog'], [role='menu'], [role='listbox']";
 
 function isEditingTextOrHeadingCard(display: string, isEditing: boolean) {
   const isTextOrHeadingCard = display === "heading" || display === "text";
@@ -714,6 +848,7 @@ const DashboardGrid = forwardRef<
     onReplaceAllDashCardVisualizationSettings,
     onUpdateDashCardVisualizationSettings,
   } = useDashboardContext();
+  const [dashcardEditingMode] = usePrototypeSetting(DASHCARD_EDITING_MODE);
 
   if (!dashboard) {
     return null;
@@ -743,6 +878,7 @@ const DashboardGrid = forwardRef<
       }
       {...restProps}
       forwardedRef={ref}
+      isCardSelectionEnabled={dashcardEditingMode === "select"}
     />
   );
 });

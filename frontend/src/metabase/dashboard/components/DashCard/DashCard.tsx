@@ -23,6 +23,7 @@ import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { useQuestionFromCard } from "metabase/metadata-store";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { DASHCARD_EDITING_MODE, usePrototypeSetting } from "metabase/prototype";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import type { StoreDashcard } from "metabase/redux/store";
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
@@ -290,6 +291,11 @@ function DashCardInner({
     !isEditingParameter &&
     !isEditingCardContent;
 
+  // PROTOTYPE: the "Click to select" mode has no toolbar on hover
+  const [dashcardEditingMode] = usePrototypeSetting(DASHCARD_EDITING_MODE);
+  const hasActionsPanel =
+    isEditingDashboardLayout && dashcardEditingMode === "current";
+
   const isClickBehaviorSidebarOpen = !!clickBehaviorSidebarDashcard;
   const isEditingDashCardClickBehavior =
     clickBehaviorSidebarDashcard?.id === dashcard.id;
@@ -385,7 +391,7 @@ function DashCardInner({
         }}
         ref={cardRootRef}
       >
-        {isEditingDashboardLayout && (
+        {hasActionsPanel && (
           <DashCardActionsPanel
             className={S.DashCardActionsPanel}
             onMouseDown={preventDragging}
