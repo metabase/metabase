@@ -3,11 +3,14 @@ import fetchMock from "fetch-mock";
 import type {
   DagTransform,
   Dataset,
+  InspectorDiscoveryResponse,
+  InspectorLens,
   InspectorLensId,
   ListTransformGraphRunsResponse,
   ListTransformJobRunsResponse,
   ListTransformRunsResponse,
   RunTransformDagResponse,
+  RunTransformResponse,
   Transform,
   TransformDagRunId,
   TransformId,
@@ -158,13 +161,40 @@ export function setupDeleteTransformJobEndpointWithError(
   fetchMock.delete(`path:/api/transform-job/${jobId}`, 500);
 }
 
+export function setupRunTransformEndpoint(
+  transformId: TransformId,
+  response: MockResponse<RunTransformResponse>,
+) {
+  fetchMock.post(`path:/api/transform/${transformId}/run`, response);
+}
+
+export function setupInspectorDiscoveryEndpoint(
+  transformId: TransformId,
+  response: MockResponse<InspectorDiscoveryResponse>,
+) {
+  fetchMock.get(`path:/api/ee/transforms/${transformId}/inspect`, response);
+}
+
+export function setupInspectorLensEndpoint(
+  transformId: TransformId,
+  lensId: InspectorLensId,
+  response: MockResponse<InspectorLens>,
+) {
+  fetchMock.get(
+    `path:/api/ee/transforms/${transformId}/inspect/${lensId}`,
+    response,
+  );
+}
+
 export function setupRunInspectorQueryEndpoint(
   transformId: TransformId,
   lensId: InspectorLensId,
-  response: Dataset,
+  response: MockResponse<Dataset>,
+  { delayMs }: { delayMs?: number } = {},
 ) {
   fetchMock.post(
     `path:/api/ee/transforms/${transformId}/inspect/${lensId}/query`,
     response,
+    { delay: delayMs },
   );
 }
