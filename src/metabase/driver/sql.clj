@@ -349,8 +349,8 @@
              :unparseable   (tru "Unable to parse native query. There might be something wrong with your query.")
              :unvalidatable (tru "Unable to validate this native query on an impersonated database. Reduce the size of any large VALUES, IN, or ARRAY lists.")
              :invalid       (if write?
-                              (tru "Invalid impersonated native query. Must be a single insert, update, or delete statement.")
-                              (tru "Invalid impersonated native query. Must be a single select statement.")))
+                              (tru "Invalid impersonated native query. Must be a single insert, update, or delete statement that Metabase can check.")
+                              (tru "Invalid impersonated native query. Must be a single select statement that Metabase can check.")))
            (cond-> {:type                 qp.error-type/invalid-query
                     :impersonation/result result
                     :sql                  sql}
@@ -399,7 +399,7 @@
 
    Queries that cannot be parsed are always rejected. Admins are allowed to run parseable queries that
    aren't a single select/write statement (e.g. `SHOW TIMEZONE`); non-admins are restricted to a single
-   statement of the required type.
+   statement of the required type whose rebuild, which is what runs, passes the same checks.
 
    Throws a [[metabase.query-processor.error-type/invalid-query]] `ex-info` when the query is rejected —
    including when the validator refused without checking the SQL at all (a large VALUES/IN/ARRAY list it

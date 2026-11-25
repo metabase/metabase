@@ -1441,6 +1441,21 @@
       (testing "an E'' string whose rebuild moves a quote, so `set_config` runs, is still refused"
         (is (= :rejected (outcome "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$none$z$, false) --$q$ AS a")))))))
 
+(deftest ^:parallel impersonated-native-query-refused-for-its-rebuild-is-told-why-test
+  (testing "a single SELECT refused because its rebuild fails the checks is not told only that it must be one SELECT"
+    (let [message (fn [sql write?]
+                    (binding [driver.settings/*impersonation-allow-write?* write?]
+                      (try
+                        (driver.sql/validate-impersonated-query* :postgres (lib/native-query meta/metadata-provider sql))
+                        nil
+                        (catch clojure.lang.ExceptionInfo e (ex-message e)))))]
+      (testing "an E'' string whose rebuild never ends"
+        (is (= "Invalid impersonated native query. Must be a single select statement that Metabase can check."
+               (message "SELECT E'a\\\\' AS id FROM venues" false))))
+      (testing "the same in a write"
+        (is (= "Invalid impersonated native query. Must be a single insert, update, or delete statement that Metabase can check."
+               (message "UPDATE venues SET name = E'a\\\\'" true)))))))
+
 (deftest validate-impersonated-query-is-enforced-for-all-impersonation-drivers-test
   (testing "every driver that supports connection-impersonation enforces the single-statement guard (SEC-1189)"
     (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
