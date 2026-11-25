@@ -321,12 +321,13 @@
   "`x`, any form that may hold MBQL, with each query in it prepared for serialization, its ids replaced by what
   `visit` returns for their references, and only the `:lib/uuid`s that `:aggregation` refs point at kept."
   [visit x]
-  (let [x (update-queries #(-> %
-                               (rename-card-template-tags (partial card-template-tag-export-rename
-                                                                   (partial card-entity-id visit)))
-                               lib/prepare-for-serialization)
-                          x)]
-    (strip-lib-uuids (required-lib-uuids x) (walk-export-refs visit x))))
+  (let [rename (partial card-template-tag-export-rename (partial card-entity-id visit))]
+    (if (resolve/collecting? visit)
+      ;; The first walk of a bulk export only collects the ids to resolve; preparing the queries and stripping their
+      ;; uuids changes none, so it skips them, and any id it misses is resolved when the second walk meets it.
+      (walk-export-refs visit (update-queries #(rename-card-template-tags % rename) x))
+      (let [x (update-queries #(-> % (rename-card-template-tags rename) lib/prepare-for-serialization) x)]
+        (strip-lib-uuids (required-lib-uuids x) (walk-export-refs visit x))))))
 
 (defn- validate-imported-query
   "`query`, throwing when it is a full MBQL 5 query that this instance's query schema rejects. Anything else, like
