@@ -867,3 +867,22 @@
                                                                        [{:model "card" :model_id "1" :name "x"}])))
               (testing "\nthe enclosing transaction remains usable"
                 (is (true? (t2/exists? :model/User)))))))))))
+
+(deftest nullable-timestamps-stay-null-test
+  (testing "A document without timestamps stores NULL, whether or not its batch has documents with them"
+    (search.tu/with-temp-index-table
+      (let [upsert! (fn [documents]
+                      (#'specialization/batch-upsert! (search.index/active-table)
+                                                      (map (comp #'search.index/document->entry
+                                                                 #'search.ingestion/->document)
+                                                           documents)))
+            now     (t/offset-date-time)]
+        (upsert! [{:model "card", :id 1, :name "viewed", :last_viewed_at now, :last_edited_at now}
+                  {:model "card", :id 2, :name "unviewed beside viewed"}])
+        (upsert! [{:model "card", :id 3, :name "unviewed alone"}])
+        ;; JDBC reads MariaDB's zero date back as nil, so ask the database which values are NULL.
+        (is (= {:last_viewed_at #{"2" "3"}
+                :last_edited_at #{"2" "3"}}
+               (into {}
+                     (for [column [:last_viewed_at :last_edited_at]]
+                       [column (t2/select-fn-set :model_id (search.index/active-table) column nil)]))))))))

@@ -21,8 +21,16 @@
                   (= data-type :boolean)                  :bit
                   (= data-type :timestamp-with-time-zone) [:timestamp 6]
                   :else                                   data-type)]
-        (if (= column :created_at)
+        (cond
+          (= column :created_at)
           [[:default [:now [:inline 6]]] :not-null]
+
+          ;; With `explicit_defaults_for_timestamp` off, the MariaDB 10.6 default, a `TIMESTAMP` column without `NULL`
+          ;; is `NOT NULL` and stores the write time or a zero date in place of NULL.
+          (and (= data-type :timestamp-with-time-zone) (not (some #{:not-null} options)))
+          (conj (vec options) :null)
+
+          :else
           options)))
 
 (defmethod specialization/table-schema :mysql [base-schema]
