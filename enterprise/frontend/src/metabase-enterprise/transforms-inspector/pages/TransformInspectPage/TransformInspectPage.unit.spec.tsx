@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock, { type CallLog } from "fetch-mock";
+import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -16,6 +17,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -60,6 +62,8 @@ const JOINED_TABLE_ID = 13;
 const TARGET_TABLE_NAME = "inspect_target_table";
 const INSPECT_PATH = `/data-studio/transforms/${TRANSFORM_ID}/inspect`;
 const DISCOVERY_PATH = `path:/api/ee/transforms/${TRANSFORM_ID}/inspect`;
+const TRANSFORM_PATH = `path:/api/transform/${TRANSFORM_ID}`;
+const POLLING_WAIT_MS = 5000;
 
 const SUMMARY_LENS: InspectorLensMetadata = {
   id: "generic-summary",
@@ -136,12 +140,26 @@ const DISTRIBUTION_DATASET = createMockDataset({
 
 const EMPTY_DATASET = createMockDataset({ data: { rows: [], cols: [] } });
 
-/** Answers a card query with the dataset for the SQL in the request body, and with no rows for any other query. */
+const QUERY_REQUEST_KEYS = ["query", "lens_params"];
+
+/** True when the body is a `{ query, lens_params? }` envelope whose `query` is exactly the card query for `sql`. */
+function isCardQueryRequest(body: unknown, sql: string) {
+  if (typeof body !== "object" || body === null || !("query" in body)) {
+    return false;
+  }
+  const hasOnlyEnvelopeKeys = Object.keys(body).every((key) =>
+    QUERY_REQUEST_KEYS.includes(key),
+  );
+  const expectedQuery: unknown = JSON.parse(JSON.stringify(nativeQuery(sql)));
+  return hasOnlyEnvelopeKeys && _.isEqual(body.query, expectedQuery);
+}
+
+/** Answers a card query with the dataset of the card whose full query the request sends, and with no rows for any other request. */
 function queryResponder(rowsBySql: Record<string, Dataset>) {
   return (call: CallLog) => {
-    const body = String(call.options.body);
+    const body: unknown = JSON.parse(String(call.options.body));
     const match = Object.entries(rowsBySql).find(([sql]) =>
-      body.includes(JSON.stringify(sql)),
+      isCardQueryRequest(body, sql),
     );
     return match ? match[1] : EMPTY_DATASET;
   };
@@ -388,12 +406,31 @@ function setup({
   });
   setupEnterprisePlugins();
 
-  setupGetTransformEndpoint(transform, () => transform);
+  // A started run is reported once more after the run request, then succeeds on the next poll
+  let startedPollsLeft = 0;
+  setupGetTransformEndpoint(transform, () => {
+    if (transform.last_run?.status === "started") {
+      if (startedPollsLeft > 0) {
+        startedPollsLeft -= 1;
+      } else {
+        transform = {
+          ...transform,
+          last_run: createMockTransformRun({ id: 2, status: "succeeded" }),
+        };
+      }
+    }
+    return transform;
+  });
   setupRunTransformEndpoint(TRANSFORM_ID, () => {
     transform = {
       ...transform,
-      last_run: createMockTransformRun({ id: 2, status: "succeeded" }),
+      last_run: createMockTransformRun({
+        id: 2,
+        status: "started",
+        end_time: null,
+      }),
     };
+    startedPollsLeft = 1;
     return { run_id: 2 };
   });
   setupDatabaseListEndpoint([
@@ -453,7 +490,7 @@ function getCellTexts(row: HTMLElement) {
 
 describe("TransformInspectPage", () => {
   describe("pre-run state", () => {
-    it("shows an alert until the transform is run, then shows the Summary lens", async () => {
+    it("keeps the alert while the run is started and shows the Summary lens once a poll reports success", async () => {
       setup({ lastRun: null });
 
       const alert = await screen.findByRole("alert");
@@ -467,9 +504,22 @@ describe("TransformInspectPage", () => {
 
       await userEvent.click(screen.getByTestId("run-button"));
 
+      await waitFor(() =>
+        expect(fetchMock.callHistory.calls(TRANSFORM_PATH)).toHaveLength(2),
+      );
+      await act(() => fetchMock.callHistory.flush(true));
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(await screen.findByTestId("cancel-button")).toBeInTheDocument();
+      expect(fetchMock.callHistory.called(DISCOVERY_PATH)).toBe(false);
+
       expect(
-        await screen.findByRole("tab", { name: /Summary/ }),
+        await screen.findByRole(
+          "tab",
+          { name: /Summary/ },
+          { timeout: POLLING_WAIT_MS },
+        ),
       ).toBeInTheDocument();
+      expect(fetchMock.callHistory.calls(TRANSFORM_PATH)).toHaveLength(3);
       expect(fetchMock.callHistory.called(DISCOVERY_PATH)).toBe(true);
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
       expect(
@@ -493,7 +543,7 @@ describe("TransformInspectPage", () => {
       expect(
         within(outputTables).getByText(TARGET_TABLE_NAME),
       ).toBeInTheDocument();
-    });
+    }, 15000);
   });
 
   describe("generic-summary lens", () => {
