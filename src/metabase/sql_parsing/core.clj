@@ -518,6 +518,36 @@
   [parser dialect sql replacements]
   (protocol/replace-names parser dialect sql replacements))
 
+(defn swap-tables
+  "`sql` with each table reference that the `:tables` of `replacements` replace written as its replacement, and every
+  other character as given: whitespace, comments, case, functions, placeholders. `replacements` is a
+  [[replace-names]] map holding only `:tables`, and the references replaced are the ones [[replace-names]] replaces.
+
+  Returns `{:sql swapped}`, or `{:reason reason :detail detail}` when a reference cannot be replaced in the text;
+  the SQL is never reconstructed from the parsed tree instead.
+
+  What changes in the text:
+  - The whole name of a replaced reference (`orders`, `public.orders`, `\"s\".\"Orders\"`) becomes the name
+    [[replace-names]] would give it, quoted as `dialect` requires.
+  - A replaced reference in FROM or a JOIN that has no alias takes its own table name, as written, as its alias:
+    `FROM public.orders` becomes `FROM mb_tmp AS orders`. A column qualifier that names the table, `orders.id`, then
+    resolves as it did, and is not changed.
+  - A column qualifier that names a replaced table with its schema, `public.orders.id`, loses the schema.
+
+  Reasons:
+  - `\"reference-not-located\"`, `:detail` the table: the parser recorded no position for a part of the name, the
+    text at the position is not that name, a comment stands between two parts, or the reference is a T-SQL `#` temp
+    table.
+  - `\"ambiguous-table-name\"`, `:detail` the table name: two references without an alias have the same table name
+    and different replacements.
+
+  SECURITY: as for [[replace-names]], replacement values must be system-generated."
+  [parser dialect sql replacements]
+  (let [{:keys [reason reason_detail] swapped :sql} (protocol/swap-tables parser dialect sql replacements)]
+    (if reason
+      {:reason reason :detail reason_detail}
+      {:sql swapped})))
+
 ;;; --------------------------------------- Single-statement classification ----------------------------------------
 
 ;; Parsing time and memory grow with the length of the SQL, whatever it holds.

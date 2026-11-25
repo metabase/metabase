@@ -140,6 +140,8 @@
       (call #(field-references/field-references dialect sql)))
     (replace-names [_ dialect sql replacements]
       (call #(rewrite/replace-names dialect sql (json-shaped replacements))))
+    (swap-tables [_ dialect sql replacements]
+      (call #(rewrite/swap-tables dialect sql (json-shaped replacements))))
     (single-stmt-of-type [_ dialect sql stmt-type check-rebuild]
       (call #(statements/single-stmt-of-type dialect sql stmt-type check-rebuild)))
     (name-placeholders [_ dialect sql prefix]

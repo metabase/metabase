@@ -66,6 +66,8 @@
     :field-references         (results/field-references value)
     :single-stmt-of-type      (-> value (update :sql sql-tokens) (update :error some?))
     :name-placeholders        (update value :sql sql-tokens)
+    ;; Compared whole: this method's point is the characters it keeps.
+    :swap-tables              value
     :transpile-sql            (if (= "success" (:status value))
                                 (update value :transpiled_sql sql-tokens)
                                 (select-keys value [:status :reason]))))
@@ -266,6 +268,8 @@
         (run ctx :field-references dialect sql [] #(protocol/field-references % dialect sql)))
       (replace-names [_ dialect sql replacements]
         (run ctx :replace-names dialect sql [replacements] #(protocol/replace-names % dialect sql replacements)))
+      (swap-tables [_ dialect sql replacements]
+        (run ctx :swap-tables dialect sql [replacements] #(protocol/swap-tables % dialect sql replacements)))
       (single-stmt-of-type [_ dialect sql stmt-type check-rebuild]
         (run ctx :single-stmt-of-type dialect sql [stmt-type]
              #(protocol/single-stmt-of-type % dialect sql stmt-type check-rebuild)))

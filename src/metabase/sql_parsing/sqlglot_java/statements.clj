@@ -16,23 +16,32 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- split-placeholder-casts
+(defn placeholder-cast-offsets
+  "The offsets in `sql`, ascending, at which [[split-placeholder-casts]] puts a space: after the `?` of each `?::`
+  token. Empty for Databricks, which reads `?::` itself, and for `sql` that does not tokenize.
+  Port of `_placeholder_cast_offsets`."
+  [^String sql dialect]
+  (if (or (= dialect "databricks") (not (str/includes? sql "?::")))
+    []
+    (try
+      (into []
+            (keep (fn [[token-type _text start]]
+                    (when (= token-type "QDCOLON")
+                      (inc (long start)))))
+            (ast/tokenize sql dialect))
+      (catch Exception _
+        []))))
+
+(defn split-placeholder-casts
   "`sql` with `?::` written `? ::` outside Databricks. sqlglot's tokenizer reads `?::` as one token that only the
   Databricks parser consumes, so `select ?::text` fails to parse anywhere else (#81373).
   Port of `_split_placeholder_casts`."
   [^String sql dialect]
-  (if (or (= dialect "databricks") (not (str/includes? sql "?::")))
-    sql
-    (try
-      ;; Insert right to left so the earlier offsets stay valid.
-      (reduce (fn [^String sql [token-type _text start]]
-                (if (= token-type "QDCOLON")
-                  (str (subs sql 0 (inc start)) " " (subs sql (inc start)))
-                  sql))
-              sql
-              (rseq (ast/tokenize sql dialect)))
-      (catch Exception _
-        sql))))
+  ;; Insert right to left so the earlier offsets stay valid.
+  (reduce (fn [^String sql at]
+            (str (subs sql 0 at) " " (subs sql at)))
+          sql
+          (rseq (placeholder-cast-offsets sql dialect))))
 
 (defn name-placeholders
   "`sql` with each positional placeholder `?` replaced by the bare name `<prefix><i>` with a space on either side, `i`

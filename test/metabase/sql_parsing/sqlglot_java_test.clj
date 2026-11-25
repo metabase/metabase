@@ -209,6 +209,18 @@
             (let [{named :sql n :count} (protocol/name-placeholders java dialect sql "p_")]
               (is (= n (count (re-seq #" p_\d+ " named))) named))))))))
 
+(deftest swap-tables-matches-graalpy-test
+  (testing "both parsers swap the tables of each swap_tables case into the same text, or refuse it for the same reason"
+    (let [graal (sql-parsing/parser :sqlglot)
+          java  (sql-parsing/parser :sqlglot-java)]
+      (doseq [{:keys [name sql dialect replacements expected refused]} (case-files/expanded-cases "swap_tables")
+              :let [result (if refused
+                             {:reason (:reason refused) :reason_detail (:detail refused)}
+                             {:sql expected})]]
+        (testing (str name ", dialect " (pr-str dialect))
+          (is (= result (protocol/swap-tables graal dialect sql replacements)) "GraalPy")
+          (is (= result (protocol/swap-tables java dialect sql replacements)) "Java"))))))
+
 (deftest add-into-clause-matches-graalpy-test
   (testing "both parsers rewrite each add_into_clause case to the same SELECT INTO"
     (let [graal (sql-parsing/parser :sqlglot)
@@ -347,6 +359,8 @@
                "field-references"         #(sqlglot-java.field-references/field-references "postgres" sql)
                "add-into-clause"          #(sqlglot-java.rewrite/add-into-clause "postgres" sql "u")
                "replace-names"            #(sqlglot-java.rewrite/replace-names
+                                            "postgres" sql {"tables" [[{"table" "t"} {"db" nil "schema" nil "table" "u"}]]})
+               "swap-tables"              #(sqlglot-java.rewrite/swap-tables
                                             "postgres" sql {"tables" [[{"table" "t"} {"db" nil "schema" nil "table" "u"}]]})
                "transpile-sql"            #(sqlglot-java.transpile/transpile-sql sql "postgres" "mysql")}]
         (testing op-name

@@ -86,6 +86,41 @@
         (is (= expected (sql-parsing/replace-names (sql-tools/sqlglot-parser) dialect sql replacements))
             (pr-str sql))))))
 
+;;; ------------------------------------------------- swap-tables --------------------------------------------------
+
+(defn- swap-expectation
+  "What [[sql-parsing/swap-tables]] returns for a `swap_tables` case."
+  [{:keys [expected refused]}]
+  (or refused {:sql expected}))
+
+(deftest ^:parallel swap-tables-test
+  (testing "the query with only its table references rewritten, or the reason one could not be"
+    (doseq [{:keys [name sql dialect replacements] :as case} (case-files/expanded-cases "swap_tables")]
+      (testing (str name ", dialect " (pr-str dialect))
+        (is (= (swap-expectation case)
+               (sql-parsing/swap-tables (sql-tools/sqlglot-parser) dialect sql replacements))
+            (pr-str sql))))))
+
+(deftest ^:parallel swap-tables-replaces-what-replace-names-replaces-test
+  (testing "after the swap a query reads the tables it reads after replace-names"
+    (doseq [{:keys [name sql dialect replacements expected]} (case-files/expanded-cases "swap_tables")
+            :when expected
+            :let  [parser (sql-tools/sqlglot-parser)
+                   ;; Only the statement check and the swap read `?::`, which the GraalPy parser does not parse.
+                   tables #(set (sql-parsing/referenced-tables parser dialect (str/replace % "?::" "? ::")))]]
+      (testing (str name ", dialect " (pr-str dialect))
+        (is (= (tables (sql-parsing/replace-names parser dialect (str/replace sql "?::" "? ::") replacements))
+               (tables (:sql (sql-parsing/swap-tables parser dialect sql replacements))))
+            (pr-str sql))))))
+
+(deftest ^:parallel swap-tables-takes-tables-only-test
+  (testing "schema and column replacements are refused, not dropped"
+    (doseq [replacements [{:schemas {"public" "other"}}
+                          {:columns [[{:table "orders" :column "id"} "key"]]}]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"ValueError: swap_tables replaces tables only"
+                            (sql-parsing/swap-tables (sql-tools/sqlglot-parser) "postgres" "SELECT id FROM orders"
+                                                     replacements))))))
+
 ;;; ------------------------------------------------ add-into-clause -----------------------------------------------
 
 (deftest ^:parallel add-into-clause-test

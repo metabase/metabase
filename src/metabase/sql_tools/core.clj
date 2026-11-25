@@ -289,6 +289,18 @@
   [driver sql prefix]
   (sql-parsing/name-placeholders (sqlglot-parser) (sqlglot/driver->dialect driver) sql prefix))
 
+(mu/defn swap-tables :- [:or
+                         [:map {:closed true} [:sql :string]]
+                         [:map {:closed true} [:reason :string] [:detail [:maybe :string]]]]
+  "`sql` with each table reference that `tables`, a [[replace-names]] `:tables` map, replaces written as its
+  replacement, and every other character as given, as `{:sql swapped}`; or `{:reason reason :detail detail}` when a
+  reference cannot be replaced in the text. See [[metabase.sql-parsing.core/swap-tables]] for what changes and the
+  reasons."
+  [driver :- :keyword
+   sql    :- :string
+   tables :- [:map-of ::table-spec ::table-replacement-value]]
+  (sql-parsing/swap-tables (sqlglot-parser) (sqlglot/driver->dialect driver) sql {:tables (vec tables)}))
+
 (defn classify-stmt
   "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that only reads
   the verdict and never executes its `:sql`. Cheaper and more permissive about the dialect than
