@@ -126,7 +126,8 @@ export function getRequestAggregations(body: RequestBody): unknown {
   return getFirstStage(body).aggregation;
 }
 
-function getSourceTableId(body: RequestBody): number {
+/** The source table of the MBQL 5 definition in a measure request body, or -1. */
+export function getSourceTableId(body: RequestBody): number {
   const sourceTable = getFirstStage(body)["source-table"];
   return typeof sourceTable === "number" ? sourceTable : -1;
 }
@@ -159,9 +160,16 @@ type ServerOpts = {
 };
 
 function getTables(measures: Measure[], isPublished: boolean): Table[] {
-  const publishing: Partial<Table> = isPublished
-    ? { is_published: true, collection_id: LIBRARY_COLLECTION_ID }
-    : { is_published: false, collection_id: null };
+  // The branch base reads `is_published` and `collection_id`; master after
+  // #86688 reads `collection` only. Spreading both shapes keeps the fixture
+  // valid on either. Drop the first two fields once the branch is rebased.
+  const publishing = isPublished
+    ? {
+        is_published: true,
+        collection_id: LIBRARY_COLLECTION_ID,
+        collection: LIBRARY_COLLECTION,
+      }
+    : { is_published: false, collection_id: null, collection: undefined };
   return [
     createOrdersTable({
       ...publishing,
