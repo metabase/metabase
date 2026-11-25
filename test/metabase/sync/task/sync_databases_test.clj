@@ -7,8 +7,11 @@
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.conversion :as qc]
    [java-time.api :as t]
+   [metabase.driver.util :as driver.u]
+   [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.schedules :as sync.schedules]
+   [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.task.core :as task]
@@ -208,18 +211,46 @@
               (mt/with-temporary-setting-values [disable-auto-sync true]
                 (#'task.sync-databases/sync-and-analyze-database! (MockJobExecutionContext. {"db-id" db-id})))
               (is (zero? @calls))))))
-      (testing "UpdateFieldValues: field-values update is skipped when the flag is on"
-        (let [calls (atom 0)]
-          (mt/with-dynamic-fn-redefs [sync.field-values/update-field-values! (fn [_] (swap! calls inc))]
-            (testing "default (flag=false): job proceeds and calls update-field-values!"
-              (reset! calls 0)
-              (#'task.sync-databases/update-field-values! (MockJobExecutionContext. {"db-id" db-id}))
-              (is (= 1 @calls)))
-            (testing "flag=true: job returns early; update-field-values! is not called"
-              (reset! calls 0)
-              (mt/with-temporary-setting-values [disable-auto-sync true]
-                (#'task.sync-databases/update-field-values! (MockJobExecutionContext. {"db-id" db-id})))
-              (is (zero? @calls)))))))))
+      (testing "UpdateFieldValues: no scan is marked due when the flag is on"
+        (let [due? #(some? (t2/select-one-fn :field_values_scan_due_at :model/Database :id db-id))]
+          (testing "default (flag=false): the job marks the scan due"
+            (#'task.sync-databases/update-field-values! (MockJobExecutionContext. {"db-id" db-id}))
+            (is (due?)))
+          (testing "flag=true: job returns early and marks nothing"
+            (t2/update! :model/Database :id db-id {:field_values_scan_due_at nil})
+            (mt/with-temporary-setting-values [disable-auto-sync true]
+              (#'task.sync-databases/update-field-values! (MockJobExecutionContext. {"db-id" db-id})))
+            (is (not (due?)))))))))
+
+(deftest field-values-scan-runs-in-the-next-sync-test
+  (testing "the scheduled scan runs at the end of the next metadata sync, so they share one work window"
+    (mt/with-temp [:model/Database {db-id :id} {:is_full_sync true}]
+      (let [scans (atom 0)
+            due   #(t2/select-one-fn :field_values_scan_due_at :model/Database :id db-id)
+            ctx   (MockJobExecutionContext. {"db-id" db-id})]
+        (mt/with-dynamic-fn-redefs [sync.field-values/update-field-values! (fn [_] (swap! scans inc))
+                                    driver.u/can-connect-with-details?     (constantly true)
+                                    sync-metadata/sync-db-metadata!        (constantly {})
+                                    analyze/analyze-db!                    (constantly {})]
+          (testing "the UpdateFieldValues job only marks the scan due"
+            (#'task.sync-databases/update-field-values! ctx)
+            (is (zero? @scans))
+            (is (some? (due))))
+          (testing "a second mark keeps the first time"
+            (let [first-due (due)]
+              (#'task.sync-databases/update-field-values! ctx)
+              (is (= first-due (due)))))
+          (testing "the next sync runs the scan and clears the mark"
+            (#'task.sync-databases/sync-and-analyze-database! ctx)
+            (is (= 1 @scans))
+            (is (nil? (due))))
+          (testing "the sync after that does not scan again"
+            (#'task.sync-databases/sync-and-analyze-database! ctx)
+            (is (= 1 @scans))))))
+    (testing "a database that does not scan its values marks nothing"
+      (mt/with-temp [:model/Database {db-id :id} {:is_full_sync false}]
+        (#'task.sync-databases/update-field-values! (MockJobExecutionContext. {"db-id" db-id}))
+        (is (nil? (t2/select-one-fn :field_values_scan_due_at :model/Database :id db-id)))))))
 
 (deftest sync-and-analyze-database!-skips-stub-databases-test
   (testing "sync-and-analyze-database! short-circuits for stub databases — inner orchestrator never runs"

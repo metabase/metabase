@@ -96,10 +96,18 @@
               refingerprint-results (when (and (:refingerprint database)
                                                (should-refingerprint-fields? analyze-results))
                                       (tracing/with-span :sync "sync.refingerprint" {:db/id db-id}
-                                        (analyze/refingerprint-db! db-id)))]
+                                        (analyze/refingerprint-db! db-id)))
+              field-values-results  (when (and (:is_full_sync database)
+                                               (:field_values_scan_due_at database))
+                                      (try
+                                        (tracing/with-span :sync "sync.field-values" {:db/id db-id}
+                                          (sync.field-values/update-field-values! db-id))
+                                        (finally
+                                          (database/clear-field-values-scan-due! db-id))))]
           (cond-> {:metadata-results metadata-results}
             analyze-results (assoc :analyze-results analyze-results)
-            refingerprint-results (assoc :refingerprint-results refingerprint-results)))))))
+            refingerprint-results (assoc :refingerprint-results refingerprint-results)
+            field-values-results (assoc :field-values-results field-values-results)))))))
 
 (defn- sync-and-analyze-database!
   "The sync and analyze database job, as a function that can be used in a test"
@@ -132,7 +140,9 @@
   (sync-and-analyze-database! job-context))
 
 (defn- update-field-values!
-  "The update field values job, as a function that can be used in a test"
+  "The update field values job, as a function that can be used in a test. It only records that the scan is due: the
+  next run of the sync job runs it, after the metadata steps, so that a warehouse that suspends when idle is woken
+  once for both."
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
     (if (warehouses/disable-auto-sync)
@@ -144,7 +154,10 @@
                                   (sync-databases-trigger/unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
                                   (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
           (if (:is_full_sync database)
-            (sync.field-values/update-field-values! database-id)
+            (do
+              (database/mark-field-values-scan-due! database-id)
+              (log/infof "The Field values update of Database %d is due; the next sync of it runs the update."
+                         database-id))
             (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))))
 
 (task/defjob UpdateFieldValues
