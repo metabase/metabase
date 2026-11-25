@@ -365,8 +365,7 @@
 
   Throws the run's typed refusals — a current user whose connection to the database is impersonated, an untestable
   subject or driver, SQL that will not parse, a table reference that cannot be replaced in the SQL's text, SQL of an
-  input that is not one checkable SELECT or uses a form data tests do not support, placeholders that are not
-  one per parameter value, a test the validator rejects — so a caller that only wants the answer to \"could this
+  input that is not one checkable SELECT or uses a form data tests do not support, a test the validator rejects — so a caller that only wants the answer to \"could this
   run?\" gets it by asking for the plan and discarding it."
   [subject-type                         :- ::data-testing.subject/subject-type
    subject                              :- ::data-testing.subject/subject

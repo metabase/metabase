@@ -7,7 +7,6 @@
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-parsing.graal :as graal]
    [metabase.sql-parsing.protocol :as protocol]
-   [metabase.sql-parsing.shadow :as shadow]
    [metabase.sql-parsing.sqlglot-java :as sqlglot-java]
    [metabase.sql-parsing.sqlglot-java.ast :as sqlglot-java.ast]
    [metabase.sql-parsing.sqlglot-java.field-references :as sqlglot-java.field-references]
@@ -174,40 +173,6 @@
             (is (= reason (:reason result)))
             (is (= (protocol/single-stmt-of-type graal dialect sql stmt-type check-rebuild)
                    result))))))))
-
-(deftest name-placeholders-match-graalpy-test
-  (testing "both parsers name the same placeholders the same way"
-    (let [graal (sql-parsing/parser :sqlglot)
-          java  (sql-parsing/parser :sqlglot-java)]
-      (doseq [[dialect sql] [["postgres"   "SELECT strpos(?, ?) AS id FROM t OFFSET ? LIMIT ?"]
-                             ["postgres"   "SELECT ?::date AS d, '?' AS q, \"?\" AS n -- ?\n FROM t"]
-                             ["postgres"   "SELECT '\uD83D\uDE00' AS e, ? AS id"]
-                             ["postgres"   "SELECT $q$?$q$ AS a, ? AS b"]
-                             ["mysql"      "SELECT INSTR(?, ?) AS id FROM t # ?\n LIMIT ?, ?"]
-                             ["redshift"   "SELECT ? AS a /* ? */"]
-                             ["clickhouse" "SELECT position(?, ?) AS id FROM t LIMIT ?"]
-                             ["tsql"       "SELECT [?] AS a, ? AS b FROM t ORDER BY a OFFSET ? ROWS"]
-                             ;; A nested comment, which Postgres, ClickHouse and T-SQL read as one comment and MySQL
-                             ;; as two; an escaped quote before `?` in a string; and `??`.
-                             ["postgres"   "SELECT /* /* */ ? */ ? AS a"]
-                             ["clickhouse" "SELECT /* /* */ ? */ ? AS a"]
-                             ["tsql"       "SELECT /* /* */ ? */ ? AS a"]
-                             ["mysql"      "SELECT /* /* */ ? */ ? AS a"]
-                             ["postgres"   "SELECT E'\\'?' AS a, ? AS b"]
-                             ["mysql"      "SELECT 'a\\'?' AS a, ? AS b"]
-                             ["clickhouse" "SELECT 'a\\'?' AS a, ? AS b"]
-                             ["postgres"   "SELECT meta ?? ? FROM t"]
-                             ;; A word right after a placeholder.
-                             ["postgres"   "SELECT * FROM t WHERE x=?AND y=?"]
-                             ["mysql"      "SELECT * FROM t WHERE x=?AND y=?"]
-                             ["tsql"       "SELECT * FROM t WHERE x=?AND y=?"]]]
-        (testing (pr-str dialect sql)
-          ;; Compared as the shadow parser compares them: Python writes `?::` as `p_0 ::`, Java as `p_0::`.
-          (is (= (shadow/logical-value :name-placeholders (protocol/name-placeholders graal dialect sql "p_"))
-                 (shadow/logical-value :name-placeholders (protocol/name-placeholders java dialect sql "p_"))))
-          (testing "each name has a space on either side"
-            (let [{named :sql n :count} (protocol/name-placeholders java dialect sql "p_")]
-              (is (= n (count (re-seq #" p_\d+ " named))) named))))))))
 
 (deftest swap-tables-matches-graalpy-test
   (testing "both parsers swap the tables of each swap_tables case into the same text, or refuse it for the same reason"

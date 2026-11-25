@@ -282,13 +282,6 @@
   [driver sql stmt-type]
   (sql-parsing/validate-executable-stmt (sqlglot-parser) (sqlglot/driver->dialect driver) sql stmt-type))
 
-(defn name-placeholders
-  "`sql` with each positional placeholder `?` replaced by the bare name `<prefix><i>` with a space on either side, `i`
-  counting from 0 in the order the placeholders appear, as `{:sql :count}`, `:count` the placeholders replaced. A `?`
-  that `driver`'s dialect reads inside a string literal, a quoted name or a comment is not a placeholder, and stays."
-  [driver sql prefix]
-  (sql-parsing/name-placeholders (sqlglot-parser) (sqlglot/driver->dialect driver) sql prefix))
-
 (mu/defn swap-tables :- [:or
                          [:map {:closed true} [:sql :string]]
                          [:map {:closed true} [:reason :string] [:detail [:maybe :string]]]]

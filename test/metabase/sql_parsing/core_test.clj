@@ -216,53 +216,6 @@
       (let [verdict (executable-verdict "INSERT INTO t SELECT 1 AS $q$a; RESET ROLE; SELECT 1$q$" "write")]
         (is (executes-one-statement? verdict) (pr-str verdict))))))
 
-;;; ----------------------------------------------- name-placeholders ----------------------------------------------
-
-(def ^:private data-test-dialects
-  "The dialects of the drivers that run data tests."
-  ["postgres" "mysql" "redshift" "clickhouse" "tsql"])
-
-(deftest ^:parallel name-placeholders-test
-  (testing "each positional placeholder becomes a bare name between spaces, in order, and a ? the dialect reads as text stays"
-    (doseq [dialect data-test-dialects]
-      (testing dialect
-        (is (= {:sql "SELECT '?' AS a,  p_0  AS b /* ? */ FROM t WHERE c IN ( p_1 ,  p_2 )" :count 3}
-               (sql-parsing/name-placeholders (sql-tools/sqlglot-parser) dialect
-                                              "SELECT '?' AS a, ? AS b /* ? */ FROM t WHERE c IN (?, ?)" "p_")))
-        (testing "a placeholder with a word right after it does not run into the word"
-          (is (= {:sql "SELECT * FROM t WHERE x= p_0 AND y= p_1 " :count 2}
-                 (sql-parsing/name-placeholders (sql-tools/sqlglot-parser) dialect
-                                                "SELECT * FROM t WHERE x=?AND y=?" "p_"))))))))
-
-(deftest ^:parallel placeholder-names-survive-the-data-test-rewrite-test
-  ;; Each name comes through once, in whatever order the rewrite puts it: T-SQL moves LIMIT to the front as TOP.
-  (testing "the names a data test gives placeholders come through the table rewrite and the statement check unchanged"
-    (doseq [dialect data-test-dialects
-            :let    [parser (sql-tools/sqlglot-parser)
-                     {named :sql} (sql-parsing/name-placeholders
-                                   parser dialect
-                                   (str "SELECT a, CAST(? AS DATE) AS d FROM orders AS o"
-                                        " WHERE b = ? AND c IN (?, ?) AND e LIKE ? ORDER BY a LIMIT ?")
-                                   "mb_param_0a1b2c3d_")
-                     rewritten (sql-parsing/replace-names parser dialect named {:tables [[{:table "orders"} "mb_temp"]]})
-                     {:keys [verdict sql]} (sql-parsing/validate-executable-stmt parser dialect rewritten "read-only")]]
-      (testing dialect
-        (is (= :allowed verdict) (pr-str rewritten))
-        (is (= (map #(str "mb_param_0a1b2c3d_" %) (range 6))
-               (sort (re-seq #"\bmb_param_0a1b2c3d_\d+\b" sql)))
-            sql))))
-  (testing "a placeholder with a word right after it, `x=?AND y=?`, still parses once named"
-    (doseq [dialect data-test-dialects
-            :let    [parser (sql-tools/sqlglot-parser)
-                     {named :sql} (sql-parsing/name-placeholders parser dialect "SELECT a FROM orders WHERE x=?AND y=?"
-                                                                 "mb_param_0a1b2c3d_")
-                     rewritten (sql-parsing/replace-names parser dialect named {:tables [[{:table "orders"} "mb_temp"]]})
-                     {:keys [verdict sql]} (sql-parsing/validate-executable-stmt parser dialect rewritten "read-only")]]
-      (testing dialect
-        (is (= :allowed verdict) (pr-str rewritten))
-        (is (= ["mb_param_0a1b2c3d_0" "mb_param_0a1b2c3d_1"]
-               (re-seq #"\bmb_param_0a1b2c3d_\d+\b" (str sql))))))))
-
 ;;; ------------------------------------------------ referenced-fields ---------------------------------------------
 
 (deftest ^:parallel referenced-fields-test

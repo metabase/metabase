@@ -230,12 +230,9 @@
   (testing "whitespace, case, comments and functions come back as written"
     (is (= {:query "select  date_part('year', created_at)  -- the year\nFROM mb_tmp o /* orders */" :params []}
            (rewrite {:query "select  date_part('year', created_at)  -- the year\nFROM orders o /* orders */" :params []}))))
-  (testing "a ? in a string literal, a quoted name or a comment is not a placeholder"
+  (testing "a ? in a string literal, a quoted name or a comment stays too"
     (is (= {:query "SELECT '?' AS \"?\", ? AS id /* ? */" :params ["x"]}
-           (rewrite {:query "SELECT '?' AS \"?\", ? AS id /* ? */" :params ["x"]}))))
-  (testing "values that the parser reads no placeholder for are refused"
-    (is (= ::data-testing.errors/parameters-not-kept
-           (rewrite {:query "SELECT '?' AS a, ? AS b" :params ["x" "y"]})))))
+           (rewrite {:query "SELECT '?' AS \"?\", ? AS id /* ? */" :params ["x"]})))))
 
 (deftest replace-tables-refuses-a-reference-it-cannot-replace-in-the-text-test
   (let [refusal (fn [sql replacements]
