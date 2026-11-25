@@ -648,7 +648,7 @@
   (mapv (fn [{:keys [is_upload]} v]
           (if (= "authoritative" (some-> v name))
             (if is_upload :ingested :unconfigured)
-            v))
+            (some-> v keyword)))
         entities
         values))
 

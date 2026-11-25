@@ -762,12 +762,14 @@
             (BOT-2735)"
     (mt/with-temp [:model/Database {db-id :id}    {}
                    :model/Table    {upload :id}   {:db_id db-id :is_upload true}
-                   :model/Table    {regular :id}  {:db_id db-id}]
-      (doseq [table-id [upload regular]]
+                   :model/Table    {regular :id}  {:db_id db-id}
+                   :model/Table    {computed :id} {:db_id db-id}]
+      (doseq [[table-id authority] [[upload "authoritative"] [regular "authoritative"] [computed "computed"]]]
         (let [extracted (first (serialization/export-batch :model/Table [(t2/select-one :model/Table :id table-id)]))]
-          (serialization/load :model/Table [(assoc extracted :data_authority "authoritative")])))
-      (is (= {upload :ingested regular :unconfigured}
-             (t2/select-pk->fn :data_authority :model/Table :id [:in [upload regular]]))))))
+          (serialization/load :model/Table [(assoc extracted :data_authority authority)])))
+      (testing "and imports any other value as it is"
+        (is (= {upload :ingested regular :unconfigured computed :computed}
+               (t2/select-pk->fn :data_authority :model/Table :id [:in [upload regular computed]])))))))
 
 (deftest curation-column-defaults-test
   (testing "a new table gets consistent non-null data_layer and data_authority defaults"

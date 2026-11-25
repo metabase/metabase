@@ -419,7 +419,7 @@
   Older exports can hold the retired `authoritative`, which imports as not set by a user, so the Table keeps its own
   value: `ingested` for an upload, `unconfigured` otherwise."
   [_store _entities values _opts]
-  (mapv #(when-not (= "authoritative" (some-> % name)) %) values))
+  (mapv #(when-not (= "authoritative" (some-> % name)) (some-> % keyword)) values))
 
 (defmethod serialization/spec :model/TableUserSettings [_]
   {:schema              ::warehouse-schema.schema/external-table-user-settings
