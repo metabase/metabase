@@ -172,6 +172,74 @@
                            {}
                            e))))))})
 
+;;; ------------------------------------------------ Change tokens ------------------------------------------------
+
+(defn- quote-identifier
+  [s]
+  (str "`" (str/replace s "`" "``") "`"))
+
+(defn- table-catalog+schema
+  "The catalog and schema of `table`: both are in its schema with `multi-level-schema`, else the catalog is the one of
+  the connection."
+  [{:keys [catalog multi-level-schema]} {:keys [schema]}]
+  (if multi-level-schema
+    (vec (split-catalog+schema schema))
+    [catalog schema]))
+
+(defn- delta-tables-sql
+  "The managed and external Delta tables among the catalogs and schemas of `catalog+schemas`: the only tables whose
+  `DESCRIBE DETAIL` tells when they last changed."
+  [catalog+schemas]
+  (sql/format {:select [:table_catalog :table_schema :table_name]
+               :from   [[:system.information_schema.tables]]
+               :where  [:and
+                        [:in :table_type ["MANAGED" "EXTERNAL"]]
+                        [:= :data_source_format "DELTA"]
+                        [:in :table_catalog (into [] (comp (map first) (distinct)) catalog+schemas)]
+                        [:in :table_schema (into [] (comp (map second) (distinct)) catalog+schemas)]]}))
+
+(defn- change-token
+  "The change token of a Delta table from its `DESCRIBE DETAIL` row: `lastModified`, which the Databricks docs give as
+  \"When the table was last modified\", with its number of files and size."
+  [{:keys [lastmodified numfiles sizeinbytes]}]
+  (when lastmodified
+    (str/join ":" [lastmodified numfiles sizeinbytes])))
+
+(defn- delta-table-change-token
+  "The change token of the Delta table `catalog`.`schema`.`table-name`, or nil when `DESCRIBE DETAIL` fails."
+  [spec catalog schema table-name]
+  (try
+    (change-token (first (jdbc/query spec [(str "DESCRIBE DETAIL "
+                                                (str/join "." (map quote-identifier [catalog schema table-name])))])))
+    (catch Exception e
+      (log/debugf e "Cannot read the details of %s.%s.%s for its change token" catalog schema table-name)
+      nil)))
+
+;; `information_schema.tables.last_altered` covers changes to the definition of a table only, not to its data, so it
+;; cannot give a token. `DESCRIBE DETAIL` does, one table at a time, so sync asks only for tables with lists to read.
+;; Views, materialized views, streaming tables and foreign tables get no token.
+(defmethod driver/database-supports? [:databricks :table-change-tokens]
+  [driver _feat _db]
+  (= driver :databricks))
+
+(defmethod driver/table-change-tokens :databricks
+  [_driver database tables]
+  (let [details         (driver.conn/effective-details database)
+        spec            (sql-jdbc.conn/db->pooled-connection-spec database)
+        table->key      (fn [table] (conj (table-catalog+schema details table) (:name table)))
+        catalog+schemas (into [] (comp (filter :schema) (map #(table-catalog+schema details %)) (distinct)) tables)
+        delta?          (if (seq catalog+schemas)
+                          (into #{}
+                                (map (juxt :table_catalog :table_schema :table_name))
+                                (jdbc/query spec (delta-tables-sql catalog+schemas)))
+                          #{})]
+    (into {}
+          (map (fn [table]
+                 (let [[catalog schema table-name :as k] (table->key table)]
+                   [(:id table) (when (delta? k)
+                                  (delta-table-change-token spec catalog schema table-name))])))
+          tables)))
+
 (defn- schema-names-filter [schema-names multi-level-schema catalog-column schema-column]
   (when schema-names
     (if multi-level-schema
