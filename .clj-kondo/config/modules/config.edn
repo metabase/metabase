@@ -3397,7 +3397,8 @@
                     :model/TransformJob
                     :model/TransformJobRun
                     :model/TransformRun
-                    :model/TransformTag}}
+                    :model/TransformTag
+                    :model/User}}
 
   transforms.schema
   {:team "Gadget"

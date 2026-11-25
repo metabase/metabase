@@ -167,7 +167,9 @@
 
 (def ^:private transform-body-references
   "The model of the rows each column of a Transform create or update body names, by id or entity id."
-  {:collection_id :model/Collection})
+  {:collection_id :model/Collection
+   :owner_user_id :model/User
+   :tag_ids       :model/TransformTag})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -182,9 +184,10 @@
             [:source (eid-translation/structure-schema :model/Transform :source ::transforms.schema/transform-source)]
             [:target (eid-translation/structure-schema :model/Transform :target ::transforms.schema/transform-target)]
             [:run_trigger {:optional true} ::transforms.schema/run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
+            [:tag_ids {:optional true} [:sequential ms/IdOrEntityId]]
             [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]
-            [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
+            ;; a User by id or email
+            [:owner_user_id {:optional true} [:maybe [:or ms/PositiveInt ms/Email]]]
             [:owner_email {:optional true} [:maybe :string]]]]
   (let [body (eid-translation/refs->ids body transform-body-references)]
     (transforms.core/check-feature-enabled! (transforms.u/->definition body))
@@ -306,9 +309,10 @@
             [:source {:optional true} (eid-translation/structure-schema :model/Transform :source ::transforms.schema/transform-source)]
             [:target {:optional true} (eid-translation/structure-schema :model/Transform :target ::transforms.schema/transform-target)]
             [:run_trigger {:optional true} ::transforms.schema/run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
+            [:tag_ids {:optional true} [:sequential ms/IdOrEntityId]]
             [:collection_id {:optional true} [:maybe ms/IdOrEntityId]]
-            [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
+            ;; a User by id or email
+            [:owner_user_id {:optional true} [:maybe [:or ms/PositiveInt ms/Email]]]
             [:owner_email {:optional true} [:maybe :string]]]]
   (let [id (eid-translation/->id-or-404 :model/Transform id-or-entity-id)]
     (api/write-check :model/Transform id)

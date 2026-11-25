@@ -2464,7 +2464,18 @@
                                                                             :target {:type "table"
                                                                                      :name (mt/random-name)}}]
           (mt/user-http-request :crowberto :put 200 (str "transform/" transform-id) {:collection_id coll-eid})
-          (is (= coll-id (t2/select-one-fn :collection_id :model/Transform :id transform-id))))))))
+          (is (= coll-id (t2/select-one-fn :collection_id :model/Transform :id transform-id))))))
+    (testing "PUT /api/transform/:id takes entity ids for its tags, and an email for its owner"
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/with-temp [:model/TransformTag {tag-id :id tag-eid :entity_id} {:name (mt/random-name)}
+                       :model/Transform    {transform-id :id}              {:name   "Entity id transform"
+                                                                            :source {:type  :query
+                                                                                     :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                                                                            :target {:type "table"
+                                                                                     :name (mt/random-name)}}]
+          (is (=? {:tag_ids [tag-id] :owner_user_id (mt/user->id :rasta)}
+                  (mt/user-http-request :crowberto :put 200 (str "transform/" transform-id)
+                                        {:tag_ids [tag-eid] :owner_user_id "rasta@metabase.com"}))))))))
 
 (deftest transform-structures-in-entity-id-form-test
   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}

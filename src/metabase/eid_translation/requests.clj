@@ -26,15 +26,20 @@
 
 (defn refs->ids
   "`body`, a request body, with the ref in each of its `columns`, a map from a column to the model of the rows it names,
-  replaced by the id of the row it names. Numeric ids and nils stay as they are. A ref that names no row is a 404."
+  replaced by the id of the row it names. A column naming rows with entity ids may hold one ref or a list of them,
+  such as the `:tag_ids` of a Transform; a Table's or Field's ref is itself a list. Numeric ids and nils stay as they
+  are. A ref that names no row is a 404."
   [body columns]
-  (reduce-kv (fn [body column model]
-               (let [v (get body column)]
-                 (if (or (nil? v) (int? v))
-                   body
-                   (assoc body column (ref->id model v)))))
-             body
-             columns))
+  (let [->id (fn [model v]
+               (if (or (nil? v) (int? v)) v (ref->id model v)))]
+    (reduce-kv (fn [body column model]
+                 (let [v (get body column)]
+                   (cond
+                     (or (nil? v) (int? v)) body
+                     (and (sequential? v) (not (natural-key-models model))) (assoc body column (mapv #(->id model %) v))
+                     :else                  (assoc body column (->id model v)))))
+               body
+               columns)))
 
 ;;; ------------------------------------------ Bodies in entity id form ------------------------------------------
 

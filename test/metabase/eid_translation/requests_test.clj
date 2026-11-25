@@ -33,6 +33,9 @@
                                            :database_id   (:name (mt/db))
                                            :creator_id    "crowberto@metabase.com"}
                                           columns))))
+      (testing "a column holding a list has each of its refs replaced, and its numeric ids kept"
+        (is (= {:collection_id [coll-id coll-id]}
+               (eid-translation/refs->ids {:collection_id [coll-eid coll-id]} columns))))
       (testing "numeric ids, nils and absent columns stay as they are"
         (is (= {:collection_id coll-id :table_id nil}
                (eid-translation/refs->ids {:collection_id coll-id :table_id nil} columns)))))))

@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -105,31 +106,36 @@
    [:scheduled {:optional true} :boolean]
    [:creator CreatorResponse]])
 
+(def ^:private job-body-references
+  "The model of the rows each column of a transform job create or update body names, by id or entity id."
+  {:tag_ids :model/TransformTag})
+
 (api.macros/defendpoint :post "/" :- TransformJobResponse
   "Create a new transform job."
   [_route-params
    _query-params
-   {:keys [name description schedule ui_display_type tag_ids]} :- [:map {:closed true}
-                                                                   [:name ms/NonBlankString]
-                                                                   [:description {:optional true} [:maybe ms/NonBlankString]]
-                                                                   [:schedule ::transforms.schema/transform-job.schedule]
-                                                                   [:ui_display_type
-                                                                    {:default :cron/raw}
-                                                                    (ms/enum-decode-keyword ui-display-types)]
-                                                                   [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
-  (log/info "Creating transform job with schedule:" schedule)
-  (when (seq tag_ids)
-    (let [existing-tags (transforms-rest.db/existing-tag-ids tag_ids)]
-      (api/check-400 (= (set tag_ids) existing-tags)
-                     (deferred-tru "Some tag IDs do not exist"))))
-  (let [job-data {:name            name
-                  :description     description
-                  :schedule        schedule
-                  :ui_display_type ui_display_type}
-        _        (api/create-check :model/TransformJob (assoc job-data :tag_ids tag_ids))
-        job      (first (transform-job/create-transform-jobs! [(cond-> job-data (seq tag_ids) (assoc :tag_ids tag_ids))]))]
-    ;; Return with hydrated tag_ids
-    (t2/hydrate job :tag_ids)))
+   body :- [:map {:closed true}
+            [:name ms/NonBlankString]
+            [:description {:optional true} [:maybe ms/NonBlankString]]
+            [:schedule ::transforms.schema/transform-job.schedule]
+            [:ui_display_type
+             {:default :cron/raw}
+             (ms/enum-decode-keyword ui-display-types)]
+            [:tag_ids {:optional true} [:sequential ms/IdOrEntityId]]]]
+  (let [{:keys [name description schedule ui_display_type tag_ids]} (eid-translation/refs->ids body job-body-references)]
+    (log/info "Creating transform job with schedule:" schedule)
+    (when (seq tag_ids)
+      (let [existing-tags (transforms-rest.db/existing-tag-ids tag_ids)]
+        (api/check-400 (= (set tag_ids) existing-tags)
+                       (deferred-tru "Some tag IDs do not exist"))))
+    (let [job-data {:name            name
+                    :description     description
+                    :schedule        schedule
+                    :ui_display_type ui_display_type}
+          _        (api/create-check :model/TransformJob (assoc job-data :tag_ids tag_ids))
+          job      (first (transform-job/create-transform-jobs! [(cond-> job-data (seq tag_ids) (assoc :tag_ids tag_ids))]))]
+      ;; Return with hydrated tag_ids
+      (t2/hydrate job :tag_ids))))
 
 (api.macros/defendpoint :put "/active" :- [:map {:closed true}
                                            [:updated :int]
@@ -163,18 +169,19 @@
   [{:keys [job-id]} :- [:map {:closed true}
                         [:job-id ms/PositiveInt]]
    _query-params
-   {tag-ids :tag_ids
-    :keys [name description schedule ui_display_type active]} :- [:map {:closed true}
-                                                                  [:name {:optional true} ms/NonBlankString]
-                                                                  [:description {:optional true} [:maybe ms/NonBlankString]]
-                                                                  [:schedule {:optional true} ::transforms.schema/transform-job.schedule]
-                                                                  [:ui_display_type
-                                                                   {:optional true}
-                                                                   (ms/enum-decode-keyword ui-display-types)]
-                                                                  [:active {:optional true} :boolean]
-                                                                  [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+   body :- [:map {:closed true}
+            [:name {:optional true} ms/NonBlankString]
+            [:description {:optional true} [:maybe ms/NonBlankString]]
+            [:schedule {:optional true} ::transforms.schema/transform-job.schedule]
+            [:ui_display_type
+             {:optional true}
+             (ms/enum-decode-keyword ui-display-types)]
+            [:active {:optional true} :boolean]
+            [:tag_ids {:optional true} [:sequential ms/IdOrEntityId]]]]
   (log/info "Updating transform job" job-id)
-  (let [existing-job (t2/hydrate (transforms-rest.db/job job-id) :tag_ids)]
+  (let [{tag-ids :tag_ids
+         :keys   [name description schedule ui_display_type active]} (eid-translation/refs->ids body job-body-references)
+        existing-job (t2/hydrate (transforms-rest.db/job job-id) :tag_ids)]
     (api/update-check (api/check-404 existing-job) (m/assoc-some nil :tag_ids tag-ids))
     (when (seq tag-ids)
       (let [existing-tags (transforms-rest.db/existing-tag-ids tag-ids)]
