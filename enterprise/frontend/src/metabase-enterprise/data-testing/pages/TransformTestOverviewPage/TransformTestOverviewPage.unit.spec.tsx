@@ -170,7 +170,7 @@ describe("TransformTestOverviewPage", () => {
 
     expect(
       await screen.findByRole("heading", { name: "Run this test" }),
-    ).toBeInTheDocument();
+    ).toBeVisible();
     await userEvent.click(screen.getByRole("button", { name: /Run now/ }));
     expect(trackSimpleEvent).toHaveBeenCalledWith({
       event: "transform_test_trigger_manual_run",
