@@ -1033,6 +1033,12 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id {:order-by [[:position :asc] [:id :asc]]}))
 
+(mu/defn dashcard
+  "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
+  [dashboard-id :- ::lib.schema.id/dashboard
+   dashcard-id  :- ::lib.schema.id/dashcard]
+  (t2/select-one :model/DashboardCard :id [:auto/param dashcard-id] :dashboard_id [:auto/param dashboard-id]))
+
 (mu/defn dashcards
   "The ID, Card, action, tab, position, size, filter mappings, and settings of the DashboardCards of the Dashboard
   with `dashboard-id`, in grid order."

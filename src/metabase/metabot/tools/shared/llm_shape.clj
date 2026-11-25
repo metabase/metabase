@@ -750,36 +750,48 @@
   "Cap on a dashboard filter's name."
   100)
 
-(def ^:private max-dashboard-filter-default-values
-  "Cap on the values listed for a dashboard filter's default."
+(def ^:private max-dashboard-filter-values
+  "Cap on the values listed for a dashboard filter's default or current value."
   10)
 
-(def ^:private max-dashboard-filter-default-length
-  "Cap on a dashboard filter's default, as written in the prompt."
+(def ^:private max-dashboard-filter-value-length
+  "Cap on a dashboard filter's default or current value, as written in the prompt."
   500)
 
-(defn- dashboard-filter-default
-  "The text of a dashboard filter's `default`, with at most [[max-dashboard-filter-default-values]] of its values and
-  [[max-dashboard-filter-default-length]] characters, and a note of how many values were left out.
-  A string default is written as it is, anything else as JSON."
-  [default]
-  (let [shown (cond-> default (sequential? default) (->> (take max-dashboard-filter-default-values) vec))
-        more  (when (sequential? default) (- (count default) (count shown)))]
-    (str (truncate (if (string? shown) shown (json/encode shown)) max-dashboard-filter-default-length)
+(defn dashboard-filter-value
+  "The text of a dashboard filter's default or current `value`, with at most [[max-dashboard-filter-values]] of its
+  values and [[max-dashboard-filter-value-length]] characters, and a note of how many values were left out.
+  A string is written as it is, anything else as JSON."
+  [value]
+  (let [shown (cond-> value (sequential? value) (->> (take max-dashboard-filter-values) vec))
+        more  (when (sequential? value) (- (count value) (count shown)))]
+    (str (truncate (if (string? shown) shown (json/encode shown)) max-dashboard-filter-value-length)
          (when (pos-int? more) (str " (+" more " more)")))))
 
 (defn dashboard-filter->xml
   "The `<filter>` element for the dashboard filter `parameter`.
-  It shows the filter's default and the dashcards it filters (`:connected_dashcards`), when it has them."
-  [{:keys [id name type default connected_dashcards]}]
-  (str "<filter id=\"" (escape-xml id)
-       "\" name=\"" (escape-xml (truncate name max-dashboard-filter-name-length))
-       "\" type=\"" (escape-xml (u/qualified-name type)) "\""
-       (when (some? default)
-         (str " default=\"" (escape-xml (dashboard-filter-default default)) "\""))
-       (when (seq connected_dashcards)
-         (str " connected_dashcards=\"" (str/join ", " connected_dashcards) "\""))
-       "/>"))
+  It shows the filter's default and the dashcards it filters (`:connected_dashcards`), when it has them.
+  A filter on the dashboard the user is viewing can also carry `:current_value`, the value on the user's screen, where
+  nil is a cleared filter. A filter without the key says nothing about its value on screen."
+  [{:keys [id name type default connected_dashcards] :as parameter}]
+  (let [current? (contains? parameter :current_value)
+        current  (:current_value parameter)
+        ;; As the QP reads a filter value: nil, or a list of nothing but nils, applies no filter
+        current  (when-not (and (sequential? current) (every? nil? current)) current)]
+    (str "<filter id=\"" (escape-xml id)
+         "\" name=\"" (escape-xml (truncate name max-dashboard-filter-name-length))
+         "\" type=\"" (escape-xml (u/qualified-name type)) "\""
+         (when (some? default)
+           (str " default=\"" (escape-xml (dashboard-filter-value default)) "\""))
+         (cond
+           (and current? (some? current))
+           (str " current_value=\"" (escape-xml (dashboard-filter-value current)) "\"")
+
+           current?
+           " cleared=\"true\"")
+         (when (seq connected_dashcards)
+           (str " connected_dashcards=\"" (str/join ", " connected_dashcards) "\""))
+         "/>")))
 
 (defn- dashboard-filters->xml
   "The `<filters>` block for a dashboard's `parameters`, or nil when it has none.

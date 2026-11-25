@@ -456,6 +456,35 @@
         (testing "a tab of another dashboard is left out"
           (is (not (str/includes? (viewing other-tab-id) "<open_tab"))))))))
 
+(deftest format-dashboard-filter-values-test
+  (mt/with-test-user :rasta
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name       "Sales"
+                                                   :parameters [{:id "cat", :name "Category", :slug "category"
+                                                                 :type "string/=", :default ["Gizmo"]}
+                                                                {:id "date", :name "Date", :slug "date"
+                                                                 :type "date/all-options"}
+                                                                {:id "state", :name "State", :slug "state"
+                                                                 :type "string/="}]}]
+      (let [viewing (fn [item]
+                      (user-context/format-viewing-context
+                       {:user_is_viewing [(merge {:type "dashboard", :id dash-id} item)]}))]
+        (testing "each filter shows the value on the user's screen beside its default, or that it is cleared"
+          (let [output (viewing {:parameters [{:id "cat", :value ["Widget"]}
+                                              {:id "date", :value nil}
+                                              {:id "nope", :value "x"}]})]
+            (is (str/includes? output "`current_value` is the value applied to the cards on the user's screen"))
+            (is (str/includes? output (str "<filter id=\"cat\" name=\"Category\" type=\"string/=\""
+                                           " default=\"[&quot;Gizmo&quot;]\" current_value=\"[&quot;Widget&quot;]\"/>")))
+            (is (str/includes? output "<filter id=\"date\" name=\"Date\" type=\"date/all-options\" cleared=\"true\"/>"))
+            (testing "a filter the frontend sent no value for says nothing about its value"
+              (is (str/includes? output "<filter id=\"state\" name=\"State\" type=\"string/=\"/>")))
+            (testing "a value for a filter the dashboard doesn't have is dropped"
+              (is (not (str/includes? output "nope"))))))
+        (testing "without values from the frontend, the values on screen are unknown"
+          (let [output (viewing {})]
+            (is (str/includes? output "The filter values on the user's screen are unknown."))
+            (is (not (re-find #"current_value|cleared" output)))))))))
+
 (deftest format-saved-card-query-id-test
   (let [notebook-query {:database (mt/id) :type :query :query {:source-table (mt/id :orders)}}
         sql-query      (lib/native-query (mt/metadata-provider) "SELECT * FROM ORDERS")]

@@ -37,7 +37,8 @@
   (#'qp.dashboard/resolve-params-for-query (t2/select-one :model/Dashboard :id dashboard-id)
                                            (t2/select-one :model/DashboardCard :id dashcard-id)
                                            card-id
-                                           params))
+                                           params
+                                           true))
 
 (defn- count-of-orders-by-created-at-query []
   (let [mp         (mt/metadata-provider)
@@ -110,6 +111,24 @@
             (testing "known ids are still stored"
               (reset! stored [])
               (resolve-params-for-query dashboard-id card-id dashcard-id [{:id "_PRICE_", :value 4}])
+              (is (= ["_PRICE_"] (map :id @stored))))))))))
+
+(deftest save-last-used-parameters-opt-out-test
+  (testing "parameters resolved with saving off still resolve, and aren't stored as the user's last-used values"
+    (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard
+                                                     {card-id :id}      :card
+                                                     {dashcard-id :id}  :dashcard}]
+      (let [stored  (atom [])
+            resolve (fn [save?]
+                      (#'qp.dashboard/resolve-params-for-query (t2/select-one :model/Dashboard :id dashboard-id)
+                                                               (t2/select-one :model/DashboardCard :id dashcard-id)
+                                                               card-id
+                                                               [{:id "_PRICE_", :value 4}]
+                                                               save?))]
+        (mt/with-dynamic-fn-redefs [user-parameter-value/store! (fn [_user-id _dashboard-id params] (swap! stored into params))]
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (= (resolve true) (resolve false)))
+            (testing "only the resolution with saving on stored its value"
               (is (= ["_PRICE_"] (map :id @stored))))))))))
 
 (deftest ^:parallel resolve-parameters-validation-test-2

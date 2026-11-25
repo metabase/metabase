@@ -170,11 +170,12 @@
 (mu/defn- resolve-params-for-query :- [:maybe [:sequential :map]]
   "Given a sequence of parameters included in a query-processing request to run the query for a Dashboard/Card, validate
   that those parameters exist and have allowed types, and merge in default values and other info from the parameter
-  mappings."
-  [dashboard      :- ::dashboards.schema/dashboard
-   dashcard       :- ::dashboards.schema/dashboard-card
-   card-id        :- ::lib.schema.id/card
-   request-params :- [:maybe ::dashboards.schema/parameters]]
+  mappings. Store the request's values as the current user's last-used values unless `save-last-used?` is false."
+  [dashboard       :- ::dashboards.schema/dashboard
+   dashcard        :- ::dashboards.schema/dashboard-card
+   card-id         :- ::lib.schema.id/card
+   request-params  :- [:maybe ::dashboards.schema/parameters]
+   save-last-used? :- :boolean]
   (let [dashboard-id              (:id dashboard)
         dashcard-id               (:id dashcard)
         _                         (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
@@ -194,7 +195,7 @@
         request-param-id->param   (into {} (map (juxt :id #(dissoc % :default))) request-params)
         merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)
                                                request-param-id->param))]
-    (when-let [user-id api/*current-user-id*]
+    (when-let [user-id (when save-last-used? api/*current-user-id*)]
       ;; only ids the dashboard has: the rest are rejected below, and their ids are unbounded while the
       ;; `user_parameter_value.parameter_id` column is not
       (when-let [known-params (not-empty (filter #(contains? dashboard-param-id->param (:id %)) request-params))]
@@ -215,10 +216,15 @@
   [[metabase.server.streaming-response]]), but this may vary if you pass in a different `:make-run` function. Will throw an
   Exception if preconditions such as proper permissions are not met *before* returning the `StreamingResponse`.
 
+  `save-last-used-parameters?`, true by default, stores `parameters` as the current user's last-used filter values for
+  the dashboard. A run that isn't the user setting a filter, such as one an agent makes, passes false.
+
   See [[metabase.query-processor.card/process-query-for-card]] for more information about the various parameters."
-  {:arglists '([& {:keys [dashboard dashcard card export-format parameters ignore-cache constraints parameters middleware]}])}
-  [& {:keys [dashboard card dashcard parameters export-format]
-      :or   {export-format :api}
+  {:arglists '([& {:keys [dashboard dashcard card export-format parameters ignore-cache constraints parameters middleware
+                          save-last-used-parameters?]}])}
+  [& {:keys [dashboard card dashcard parameters export-format save-last-used-parameters?]
+      :or   {export-format              :api
+             save-last-used-parameters? true}
       :as   options}]
   (let [dashboard-id (:id dashboard)
         card-id      (:id card)
@@ -242,12 +248,13 @@
        (not= :blocked
              (get (perms/some-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) :perms/view-data [(:database_id card)]) (:database_id card))))
       (let [resolved-params (resolve-params-for-query dashboard dashcard card-id
-                                                      (some->> parameters not-empty (lib/normalize ::dashboards.schema/parameters)))
+                                                      (some->> parameters not-empty (lib/normalize ::dashboards.schema/parameters))
+                                                      (boolean save-last-used-parameters?))
             options         (merge
                              {:ignore-cache false
                               :constraints  (qp.constraints/default-query-constraints)
                               :context      :dashboard}
-                             (dissoc options :dashboard :card :export-format)
+                             (dissoc options :dashboard :card :export-format :save-last-used-parameters?)
                              {:parameters   resolved-params
                               :dashboard-id dashboard-id})]
         (log/tracef "Running Query for Dashboard %d, Card %d, Dashcard %d"
