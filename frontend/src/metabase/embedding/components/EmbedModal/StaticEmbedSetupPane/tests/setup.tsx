@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
@@ -7,13 +7,18 @@ import {
   setupTokenStatusEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { expectNoBadSchemaEvents } from "__support__/snowplow";
 import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
+import type * as Analytics from "metabase/analytics";
 import type {
   EmbedResource,
   EmbedResourceType,
 } from "metabase/embedding/types";
-import type { TokenFeatures } from "metabase-types/api";
+import type {
+  EmbedResourceDownloadOptions,
+  TokenFeatures,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -141,4 +146,77 @@ export function getMockResource(
   return createMockCard({
     enable_embedding: isPublished,
   });
+}
+
+export async function selectServerCodeLanguage({
+  currentLanguage = "Node.js",
+  newLanguage,
+}: {
+  currentLanguage?: string;
+  newLanguage: string;
+}) {
+  await userEvent.click(screen.getByDisplayValue(currentLanguage));
+
+  await userEvent.click(
+    within(await screen.findByRole("listbox")).getByText(newLanguage),
+  );
+}
+
+// `metabase/analytics` is auto-mocked for every test (see `__support__/mocks`).
+const { trackSchemaEvent } =
+  jest.requireMock<typeof Analytics>("metabase/analytics");
+
+export function clearTrackedEvents() {
+  jest.mocked(trackSchemaEvent).mockClear();
+}
+
+export async function copyCode(code: "backend" | "frontend") {
+  await userEvent.click(
+    within(screen.getByTestId(`embed-${code}`)).getByTestId("copy-button"),
+  );
+}
+
+type CodeCopiedEvent = {
+  artifact: EmbedResourceType;
+  language: string;
+  location: "code_overview" | "code_params" | "code_appearance";
+  code: "backend" | "view";
+  appearance?: {
+    background?: boolean;
+    bordered?: boolean;
+    titled?: boolean;
+    font?: "instance" | "custom";
+    theme?: "light" | "night";
+    enabled_download_types?: EmbedResourceDownloadOptions | null;
+  };
+};
+
+/** Checks the last `static_embed_code_copied` event against the defaults of a fresh modal. */
+export function expectCodeCopiedEvent({
+  appearance,
+  ...event
+}: CodeCopiedEvent) {
+  expect(trackSchemaEvent).toHaveBeenLastCalledWith("embed_flow", {
+    event: "static_embed_code_copied",
+    ...event,
+    appearance: {
+      background: true,
+      bordered: true,
+      titled: true,
+      font: "instance",
+      theme: "light",
+      enabled_download_types: null,
+      downloads: null,
+      ...appearance,
+    },
+  });
+}
+
+/** Checks the number of `embed_flow` events, and that each of them is valid. */
+export function expectTrackedEventCount(count: number) {
+  const { calls } = jest.mocked(trackSchemaEvent).mock;
+  expect(calls.filter(([schema]) => schema === "embed_flow")).toHaveLength(
+    count,
+  );
+  expectNoBadSchemaEvents(calls, "embed_flow", "1-0-3");
 }

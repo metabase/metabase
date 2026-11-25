@@ -8,7 +8,7 @@ import {
 } from "__support__/ui";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
-import { getMockResource, setup } from "./setup";
+import { getMockResource, selectServerCodeLanguage, setup } from "./setup";
 
 const DATE_PARAMETER_MOCK = {
   id: "5cd742ef",
@@ -720,17 +720,3 @@ describe("Static Embed Setup phase", () => {
     ).not.toBeInTheDocument();
   });
 });
-
-async function selectServerCodeLanguage({
-  currentLanguage = "Node.js",
-  newLanguage,
-}: {
-  currentLanguage?: string;
-  newLanguage: string;
-}) {
-  await userEvent.click(screen.getByDisplayValue(currentLanguage));
-
-  await userEvent.click(
-    within(await screen.findByRole("listbox")).getByText(newLanguage),
-  );
-}

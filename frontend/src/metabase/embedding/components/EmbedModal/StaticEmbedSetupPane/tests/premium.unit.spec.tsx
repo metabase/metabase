@@ -3,7 +3,16 @@ import userEvent from "@testing-library/user-event";
 import { screen, within } from "__support__/ui";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
-import { FONTS_MOCK_VALUES, getMockResource, setup } from "./setup";
+import {
+  FONTS_MOCK_VALUES,
+  clearTrackedEvents,
+  copyCode,
+  expectCodeCopiedEvent,
+  expectTrackedEventCount,
+  getMockResource,
+  selectServerCodeLanguage,
+  setup,
+} from "./setup";
 
 describe("Static Embed Setup phase - EE, with token", () => {
   describe.each([
@@ -14,6 +23,131 @@ describe("Static Embed Setup phase - EE, with token", () => {
       resourceType: "question" as const,
     },
   ])("$resourceType", ({ resourceType }) => {
+    beforeEach(() => {
+      clearTrackedEvents();
+    });
+
+    it("should track copying the embed code with the download options", async () => {
+      const resourceName =
+        resourceType === "dashboard" ? "Dashboard" : "Question";
+      const allDownloads = { pdf: true, results: true };
+      await setup({
+        props: { resourceType },
+        enterprisePlugins: ["whitelabel"],
+        tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
+      });
+
+      // Separate download options exist for dashboards only
+      if (resourceType === "dashboard") {
+        await userEvent.click(
+          screen.getByRole("tab", { name: "Look and Feel" }),
+        );
+
+        await userEvent.click(screen.getByLabelText("Export to PDF"));
+        await copyCode("backend");
+        expectCodeCopiedEvent({
+          artifact: resourceType,
+          language: "node",
+          location: "code_appearance",
+          code: "backend",
+          appearance: {
+            enabled_download_types: { pdf: false, results: true },
+          },
+        });
+
+        await userEvent.click(screen.getByLabelText("Export to PDF"));
+        await userEvent.click(
+          screen.getByLabelText("Results (csv, xlsx, json, png)"),
+        );
+        await copyCode("backend");
+        expectCodeCopiedEvent({
+          artifact: resourceType,
+          language: "node",
+          location: "code_appearance",
+          code: "backend",
+          appearance: {
+            enabled_download_types: { pdf: true, results: false },
+          },
+        });
+
+        await userEvent.click(
+          screen.getByLabelText("Results (csv, xlsx, json, png)"),
+        );
+        await userEvent.click(screen.getByRole("tab", { name: "Overview" }));
+      }
+
+      await copyCode("frontend");
+      expectCodeCopiedEvent({
+        artifact: resourceType,
+        language: "pug",
+        location: "code_overview",
+        code: "view",
+        appearance: { enabled_download_types: allDownloads },
+      });
+
+      await copyCode("backend");
+      expectCodeCopiedEvent({
+        artifact: resourceType,
+        language: "node",
+        location: "code_overview",
+        code: "backend",
+        appearance: { enabled_download_types: allDownloads },
+      });
+
+      await userEvent.click(screen.getByRole("tab", { name: "Parameters" }));
+      await selectServerCodeLanguage({ newLanguage: "Ruby" });
+      await copyCode("backend");
+      expectCodeCopiedEvent({
+        artifact: resourceType,
+        language: "ruby",
+        location: "code_params",
+        code: "backend",
+        appearance: { enabled_download_types: allDownloads },
+      });
+
+      await userEvent.click(screen.getByRole("tab", { name: "Look and Feel" }));
+      await selectServerCodeLanguage({
+        currentLanguage: "Ruby",
+        newLanguage: "Python",
+      });
+      await userEvent.click(screen.getByLabelText("Dark"));
+      await userEvent.click(screen.getByLabelText(`${resourceName} title`));
+      await userEvent.click(screen.getByLabelText(`${resourceName} border`));
+      await userEvent.click(screen.getByLabelText("Font"));
+      await userEvent.click(
+        within(await screen.findByRole("listbox", { name: "Font" })).getByText(
+          FONTS_MOCK_VALUES[1],
+        ),
+      );
+      await userEvent.click(
+        screen.getByLabelText(
+          resourceType === "dashboard"
+            ? "Results (csv, xlsx, json, png)"
+            : "Download (csv, xlsx, json, png)",
+        ),
+      );
+      // Both options have to be off for a dashboard
+      if (resourceType === "dashboard") {
+        await userEvent.click(screen.getByLabelText("Export to PDF"));
+      }
+      await copyCode("backend");
+      expectCodeCopiedEvent({
+        artifact: resourceType,
+        language: "python",
+        location: "code_appearance",
+        code: "backend",
+        appearance: {
+          theme: "night",
+          bordered: false,
+          titled: false,
+          font: "custom",
+          enabled_download_types: { pdf: false, results: false },
+        },
+      });
+
+      expectTrackedEventCount(resourceType === "dashboard" ? 6 : 4);
+    });
+
     describe("Overview tab", () => {
       it("should render content", async () => {
         await setup({
