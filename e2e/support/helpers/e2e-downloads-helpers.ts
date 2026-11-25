@@ -1,3 +1,5 @@
+import type { DashboardId } from "metabase-types/api";
+
 import {
   getDashboardCard,
   getDashboardCardMenu,
@@ -19,7 +21,7 @@ interface DownloadAndAssertParams {
   /** downloading is tested on a dashboard */
   isDashboard: boolean;
   publicUuid?: string;
-  dashboardId?: number;
+  dashboardId?: DashboardId;
   enableFormatting?: boolean;
   pivoting?: "pivoted" | "non-pivoted";
   assertStatusCode?: number;
