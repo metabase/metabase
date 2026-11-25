@@ -14,14 +14,13 @@ metadata:
 
 # Metabase docs skill
 
-If you haven't already, read [the style guide](../_shared/metabase-style-guide.md) before anything else. Paths are relative to this skill's directory. When the style guide and this skill disagree, this skill wins. When a page and a rule disagree, the rule wins.
+If you haven't already, read [the style guide](../_shared/metabase-style-guide.md) and [the style mechanics](../_shared/metabase-style-mechanics.md) before anything else. Paths are relative to this skill's directory. When the style guide and this skill disagree, this skill wins. When a page and a rule disagree, the rule wins.
 
 Read the other files only when you need them:
 
 - **To review a change**: [review.md](./review.md).
 - **To write or check product facts**: [research.md](./research.md).
 - **To add, move, or rename a page, rewrite a heading, or change links**: [pages.md](./pages.md).
-- **To write a new page, or add a code example**: [the style mechanics](../_shared/metabase-style-mechanics.md).
 
 ## State only facts that someone confirmed in the code
 
