@@ -265,6 +265,45 @@
   [error]
   (or (known-error-message error) generic-error-message))
 
+(def ^:private text-block-separator
+  "Put between two text blocks of one response, so that Slack shows them as two paragraphs."
+  "\n\n")
+
+(defn- separate-text-blocks-xf
+  "Transducer that puts a [[text-block-separator]] text part between two text blocks.
+
+  It adds none when a tool call comes between the blocks, or when the text parts have no `:id`.
+
+  Example: the parts `\"First \"` and `\"point.\"` of block `t1` and `\"Second point.\"` of block `t2` show as
+  `\"First point.\\n\\nSecond point.\"`."
+  []
+  (fn [rf]
+    (let [last-text-id (volatile! nil)]
+      (fn
+        ([] (rf))
+        ([result] (rf result))
+        ([result part]
+         (cond
+           (not= :text (:type part))
+           ;; The DM path adds its own break after a tool's task update.
+           (do (when (= :tool-input (:type part))
+                 (vreset! last-text-id nil))
+               (rf result part))
+
+           (empty? (:text part))
+           (rf result part)
+
+           :else
+           (let [prev-id @last-text-id
+                 id      (:id part)]
+             (vreset! last-text-id id)
+             (if (and prev-id id (not= prev-id id))
+               (let [result (rf result {:type :text :id id :text text-block-separator})]
+                 (if (reduced? result)
+                   result
+                   (rf result part)))
+               (rf result part)))))))))
+
 (defn- make-streaming-ai-request
   "Run the agent loop for a slackbot conversation, dispatching parts to callbacks.
 
@@ -334,6 +373,8 @@
         thrown          (volatile! nil)
         dispatch-xf     (comp
                          (u/tee-xf parts-atom)
+                         ;; After the tee, so the stored parts get no separator.
+                         (separate-text-blocks-xf)
                          (keep (fn [part]
                                  (case (:type part)
                                    :text

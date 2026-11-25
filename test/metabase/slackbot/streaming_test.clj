@@ -735,6 +735,43 @@
              :deleted      (mapv :ts @delete-calls)
              :posts        (mapv :text @post-calls)}))))))
 
+(deftest ^:synchronized slackbot-dm-separates-text-blocks-test
+  (testing "two text blocks of one response show as two paragraphs, and the deltas of one block join with nothing"
+    (let [{:keys [appended]} (dm-turn-with-parts! [{:type :text :id "t1" :text "First "}
+                                                   {:type :text :id "t1" :text "point."}
+                                                   {:type :text :id "t2" :text "Second point."}])]
+      (is (= "First point.\n\nSecond point." appended))))
+  (testing "an adapter that gives text no ids gets no separator"
+    (let [{:keys [appended]} (dm-turn-with-parts! [{:type :text :text "First "}
+                                                   {:type :text :text "point."}])]
+      (is (= "First point." appended)))))
+
+(deftest ^:synchronized slackbot-channel-separates-text-blocks-test
+  (testing "the channel reply shows two text blocks of one response as two paragraphs"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-mention-event]
+        (tu/with-slackbot-mocks
+          {}
+          (fn [{:keys [post-calls]}]
+            (mt/with-dynamic-fn-redefs [agent/run-agent-loop
+                                        (fn [_opts]
+                                          (reify clojure.lang.IReduceInit
+                                            (reduce [_ rf init]
+                                              (reduce rf init [{:type :text :id "t1" :text "First point."}
+                                                               {:type :reasoning :id "r1" :text "Next."}
+                                                               {:type :text :id "t2" :text "Second point."}]))))
+                                        metabot.persistence/start-turn!
+                                        (fn [& _] {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                        metabot.persistence/finalize-assistant-turn!
+                                        (fn [& _] nil)]
+              (mt/client :post 200 "metabot/slack/events"
+                         (tu/slack-request-options event-body)
+                         event-body)
+              (u/poll {:thunk      #(pos? (count @post-calls))
+                       :done?      true?
+                       :timeout-ms 5000})
+              (is (some #{"First point.\n\nSecond point."} (keep :text @post-calls))))))))))
+
 (defn- context-texts
   "The mrkdwn text of every `context` block in `blocks`."
   [blocks]

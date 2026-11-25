@@ -65,12 +65,16 @@
   nil)
 
 (defn- collect-text-from-parts
-  "Collect all text content from parts into a single string."
+  "The text of `parts` as one string, with the text blocks separated by a blank line.
+
+  Example: the parts `\"First \"` and `\"point.\"` of block `t1` and `\"Second point.\"` of block `t2` give
+  `\"First point.\\n\\nSecond point.\"`."
   [parts]
   (->> parts
+       (into [] (streaming/combine-text-parts-xf))
        (filter #(= :text (:type %)))
        (map :text)
-       (str/join "")))
+       (str/join "\n\n")))
 
 (defn- summarize-tool-ios
   "Summarize tool inputs and outputs from parts."
@@ -432,8 +436,9 @@
    memory
    parts))
 
+;; The docstring and its examples change in https://github.com/metabase/metabase/pull/87324.
 (defn- step-parts
-  "The `parts` of an iteration, with each run of text parts merged into one part and no text that is only whitespace.
+  "The `parts` of an iteration, with each text block merged into one part and no text that is only whitespace.
 
   Examples:
   `[{:type :text :text \"Let me \"} {:type :text :text \"check.\"} {:type :tool-input ...}]` becomes

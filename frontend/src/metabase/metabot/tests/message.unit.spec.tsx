@@ -399,3 +399,31 @@ describe("metabot > finish reason", () => {
     });
   });
 });
+
+describe("metabot > text blocks", () => {
+  // the stored turn keeps one part per text block, so a reload shows them apart
+  it("should show each text block of a response as its own part", async () => {
+    setup();
+    mockAgentEndpoint({
+      events: [
+        { type: "start", messageId: "msg_two_blocks" },
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "First " },
+        { type: "text-delta", id: "t1", delta: "point." },
+        { type: "text-end", id: "t1" },
+        { type: "text-start", id: "t2" },
+        { type: "text-delta", id: "t2", delta: "Second point." },
+        { type: "text-end", id: "t2" },
+        { type: "finish", finishReason: "stop" },
+      ],
+    });
+
+    await enterChatMessage("Tell me two things");
+
+    await assertConversation([
+      ["user", "Tell me two things"],
+      ["agent", "First point."],
+      ["agent", "Second point."],
+    ]);
+  });
+});

@@ -207,22 +207,34 @@ export const metabot = createSlice({
       },
     ),
     addAgentTextDelta: convoReducer(
-      (convo, action: ConvoPayloadAction<{ text: string; nowMs?: number }>) => {
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          text: string;
+          blockId: string;
+          nowMs?: number;
+        }>,
+      ) => {
+        const { text, blockId, nowMs } = action.payload;
         const hasToolCalls = convo.activeToolCalls.length > 0;
         const message = openAgentMessage(convo);
         const last = message.parts.at(-1);
         const canAppend =
-          !hasToolCalls && last?.role === "agent" && last.type === "text";
+          !hasToolCalls &&
+          last?.role === "agent" &&
+          last.type === "text" &&
+          last.blockId === blockId;
 
         if (canAppend) {
-          last.message = last.message + action.payload.text;
+          last.message = last.message + text;
         } else {
-          closeChain(convo, action.payload.nowMs);
+          closeChain(convo, nowMs);
           message.parts.push({
             id: createMessageId(),
             role: "agent",
             type: "text",
-            message: action.payload.text,
+            message: text,
+            blockId,
           });
         }
 

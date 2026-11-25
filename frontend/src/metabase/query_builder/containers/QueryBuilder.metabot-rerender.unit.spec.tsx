@@ -59,7 +59,9 @@ describe("QueryBuilder > Metabot stream rerenders", () => {
     // One sync `act` per update, so React cannot batch them into one render.
     _.times(STREAM_UPDATE_COUNT, () =>
       act(() => {
-        store.dispatch(addAgentTextDelta({ conversationId, text: "word " }));
+        store.dispatch(
+          addAgentTextDelta({ conversationId, text: "word ", blockId: "t1" }),
+        );
       }),
     );
 

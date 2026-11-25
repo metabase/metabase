@@ -93,6 +93,15 @@
                                   {:type :text :text "\n"}
                                   {:type :text :text "\n"}]))))))
 
+(deftest collect-text-from-parts-test
+  (testing "the deltas of one text block join with nothing, and two text blocks join as two paragraphs"
+    (is (= "First point.\n\nSecond point."
+           (#'agent/collect-text-from-parts [{:type :text :id "t1" :text "First "}
+                                             {:type :text :id "t1" :text "point."}
+                                             {:type :reasoning :id "r1" :text "Next."}
+                                             {:type :text :id "t2" :text "Second point."}
+                                             {:type :tool-input :id "c1" :function "search" :arguments {}}])))))
+
 (deftest should-continue-test
   (let [max-iter 3
         no-term  #{}]
