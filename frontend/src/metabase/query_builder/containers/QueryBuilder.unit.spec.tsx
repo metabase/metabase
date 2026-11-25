@@ -329,10 +329,14 @@ describe("QueryBuilder", () => {
           await screen.findByTestId("download-results-button"),
         );
 
-        const calls = fetchMock.callHistory.calls(
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.calls(`path:/api/dataset/${format}`),
+          ).toHaveLength(1),
+        );
+        const [lastCall] = fetchMock.callHistory.calls(
           `path:/api/dataset/${format}`,
         );
-        const lastCall = calls[calls.length - 1];
         const body = await Promise.resolve(lastCall.options?.body);
         const urlSearchParams = new URLSearchParams(String(body));
         expect(lastCall.url).toEqual(
