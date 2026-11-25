@@ -1490,7 +1490,14 @@
       (mt/with-dynamic-fn-redefs [mysql/query-row-count-estimates (fn [_conn] (throw (ex-info "no estimates" {})))]
         (let [tables (into [] (:tables (driver/describe-database :mysql (lib.metadata/database (mt/metadata-provider)))))]
           (is (seq tables))
-          (is (not-any? :estimated_row_count tables)))))))
+          (is (not-any? #(contains? % :estimated_row_count) tables)))))))
+
+(deftest with-row-count-estimates-test
+  (testing "A table with no estimate gets nil, so that sync clears a stored one"
+    (mt/with-dynamic-fn-redefs [mysql/query-row-count-estimates (constantly {"venues" 100})]
+      (is (= [{:name "venues" :estimated_row_count 100}
+              {:name "empty" :estimated_row_count nil}]
+             (into [] (#'mysql/with-row-count-estimates nil [{:name "venues"} {:name "empty"}])))))))
 
 (deftest ^:parallel row-count-estimates-test
   (testing "an empty table gets no estimate, as on Postgres, since InnoDB often gives 0 for a table it has not analyzed"

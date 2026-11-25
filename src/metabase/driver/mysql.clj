@@ -867,17 +867,18 @@
                {:timeout row-count-estimates-timeout-seconds})))
 
 (defn- with-row-count-estimates
-  "`tables` with the `:estimated_row_count` of each table. The estimate is extra information, so a failure to read it
-  is logged and the tables are returned without it."
+  "`tables` with the `:estimated_row_count` of each table, nil for a table with none. The estimate is extra
+  information, so a failure to read it is logged and the tables are returned without the key."
   [conn tables]
-  (let [estimates (try
-                    (query-row-count-estimates conn)
-                    (catch Exception e
-                      (log/warn e "Could not read the row count estimates of the tables")
-                      {}))]
+  (if-let [estimates (try
+                       (query-row-count-estimates conn)
+                       (catch Exception e
+                         (log/warn e "Could not read the row count estimates of the tables")
+                         nil))]
     (eduction (map (fn [table]
-                     (m/assoc-some table :estimated_row_count (get estimates (:name table)))))
-              tables)))
+                     (assoc table :estimated_row_count (get estimates (:name table)))))
+              tables)
+    tables))
 
 (defmethod sql-jdbc.sync/active-tables :mysql
   [driver conn & args]
