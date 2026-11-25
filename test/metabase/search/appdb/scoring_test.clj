@@ -153,6 +153,22 @@
               ["card" 2 "Sales Revenue Report"]]
              (search-results :exact "sales revenue"))))))
 
+(deftest ^:parallel title-scores-respect-accents-test
+  (when (#{:mysql :postgres} (mdb/db-type))
+    (testing "An accented title that matched only through its description scores no title match"
+      (with-index-contents
+        [{:model "card" :id 1 :name "Café" :description "cafe"}
+         {:model "card" :id 2 :name "Cafe"}]
+        (is (= [["card" 2 "Cafe"]
+                ["card" 1 "Café"]]
+               (search-results :exact "cafe"))))
+      (with-index-contents
+        [{:model "card" :id 1 :name "Cafés" :description "cafeteria"}
+         {:model "card" :id 2 :name "Cafeteria"}]
+        (is (= [["card" 2 "Cafeteria"]
+                ["card" 1 "Cafés"]]
+               (search-results :prefix "cafe")))))))
+
 (deftest ^:parallel prefix-test
   (with-index-contents
     [{:model "card" :id 1 :name "this is a prefix of something longer"}

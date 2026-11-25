@@ -1,10 +1,12 @@
 (ns metabase.search.appdb.scoring
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.config :as search.config]
-   [metabase.search.scoring :as search.scoring]))
+   [metabase.search.scoring :as search.scoring]
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (defn all-scores
   "Score stats for each scorer"
@@ -17,6 +19,14 @@
     (search.scoring/size :view_count (if (seq cases)
                                        (into (into [:case] cat cases) [:else 1])
                                        1))))
+
+;; MySQL's `name` column has the table's accent-insensitive `utf8mb4_unicode_ci` collation, while its text match is
+;; accent-sensitive. A binary collation on the lower-cased title keeps the title scorers case-insensitive only.
+(defn- normalized-title-expr []
+  (let [title (search.scoring/normalize-text-expr :search_index.name)]
+    (if (= :mysql (mdb/db-type))
+      [::h2x/collate title "utf8mb4_bin"]
+      title)))
 
 (defn base-scorers
   "The default constituents of the search ranking scores. `view-count-percentiles` maps each model to its view-count
@@ -37,12 +47,12 @@
      :mine         (search.scoring/equal :search_index.creator_id (:current-user-id search-ctx))
      :exact        (if search-string
                      ;; normalize both sides in the database, in case it behaves differently to our helper
-                     (search.scoring/equal (search.scoring/normalize-text-expr :search_index.name)
+                     (search.scoring/equal (normalized-title-expr)
                                            (search.scoring/normalize-text-expr search-string))
                      [:inline 0])
      :prefix       (if search-string
                      ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
-                     (search.scoring/prefix (search.scoring/normalize-text-expr :search_index.name)
+                     (search.scoring/prefix (normalized-title-expr)
                                             (search.scoring/normalize-text search-string))
                      [:inline 0])
      :library      (search.scoring/library-score-expr)
