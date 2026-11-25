@@ -426,12 +426,12 @@ describe("SummarizeSidebar", () => {
       }),
     });
 
-    const pinnedTotal = within(getPinnedColumnList()).getByLabelText("Total");
-    expect(pinnedTotal).toHaveAttribute("aria-selected", "true");
-    expect(screen.queryByText("Orders → Total")).not.toBeInTheDocument();
     expect(
       within(getPinnedColumnList()).getByLabelText("User → State"),
     ).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByText("Orders → Total")).not.toBeInTheDocument();
+    const pinnedTotal = within(getPinnedColumnList()).getByLabelText("Total");
+    expect(pinnedTotal).toHaveAttribute("aria-selected", "true");
     expect(
       within(getUnpinnedColumnList()).queryByText("Total"),
     ).not.toBeInTheDocument();
