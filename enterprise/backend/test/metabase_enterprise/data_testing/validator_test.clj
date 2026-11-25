@@ -281,19 +281,6 @@
             (single-select :postgres
                            "SELECT E'\\\\' || $q$' || (SELECT setval($z$s$z$, 4242))::text --$q$ AS id"
                            [:input {:schema "public" :name "orders"}]))))
-  (testing "a SELECT whose rebuild calls a function that changes the session, which the parser does not name, is refused in words that name none"
-    (is (=? {:error-type ::errors/not-a-single-select
-             :message    #".*: the SQL that Metabase rewrites it into to run reads differently: it calls a function that changes the session\. .*"
-             :reason     "rebuild-differs"
-             :detail     "session-function"}
-            (single-select :postgres
-                           "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$none$z$, false) --$q$ AS a"
-                           nil))))
-  (testing "a SELECT whose rebuild does not rebuild to itself is refused, naming a cause the author can change"
-    (is (=? {:error-type ::errors/not-a-single-select
-             :message    #".*: the SQL that Metabase rewrites it into to run does not read back as the same SQL, as when a -- comment opens the body of a CTE; .*"
-             :reason     "rebuild-differs"}
-            (single-select :postgres "WITH c AS (\n  -- note\n  SELECT 1 AS id) SELECT * FROM c" nil))))
   (testing "a SELECT whose CTE writes is refused"
     (is (=? {:error-type ::errors/not-a-single-select
              :reason     "writes-or-locks"}
@@ -331,6 +318,21 @@
       (is (or (#'validator/unsupported-form-refusal reason nil nil)
               (not= (#'validator/refusal-reason "an-unknown-reason" nil)
                     (#'validator/refusal-reason reason nil)))))))
+
+(deftest ensure-single-select-names-why-the-rebuild-is-refused-test
+  (testing "a SELECT whose rebuild calls a function that changes the session, which the parser does not name, is refused in words that name none"
+    (is (=? {:error-type ::errors/not-a-single-select
+             :message    #".*: the SQL that Metabase rewrites it into to run reads differently: it calls a function that changes the session\. .*"
+             :reason     "rebuild-differs"
+             :detail     "session-function"}
+            (single-select :postgres
+                           "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$none$z$, false) --$q$ AS a"
+                           nil))))
+  (testing "a SELECT whose rebuild does not rebuild to itself is refused, naming a cause the author can change"
+    (is (=? {:error-type ::errors/not-a-single-select
+             :message    #".*: the SQL that Metabase rewrites it into to run does not read back as the same SQL, as when a -- comment opens the body of a CTE; .*"
+             :reason     "rebuild-differs"}
+            (single-select :postgres "WITH c AS (\n  -- note\n  SELECT 1 AS id) SELECT * FROM c" nil)))))
 
 (deftest ensure-single-select-refuses-numbers-the-rewrite-changes-test
   (testing "control: a Postgres SELECT of decimal numbers runs as its rewrite"
