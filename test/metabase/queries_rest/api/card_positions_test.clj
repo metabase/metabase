@@ -131,7 +131,7 @@
       (mt/with-dynamic-fn-redefs [queries-rest.db/cards-to-move-to-collection
                                   (fn [card-ids collection-id]
                                     (reverse (sort-by :id (load-cards card-ids collection-id))))]
-        (mt/with-model-cleanup [:model/Card :model/Collection]
+        (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Pulse :model/Document :model/Collection]
           (is (=? {:dest [["x" 1] ["z" 2] ["a1" 3] ["b1" 4] ["b3" 5] ["a4" 6]]}
                   (run-scenario! :card-collections false (get scenarios "S3 two sources")))))))))
 
