@@ -546,8 +546,48 @@
    :stmt-type  "read-only"
    :expected   {:verdict :allowed :single-stmt? true}}
 
+  {:name              "a call of MySQL LOG10 is rebuilt as LOG(10, x), whose last digits can differ, and refused to a caller that executes the rebuild"
+   :dialect           "mysql"
+   :sqls              ["SELECT LOG10(x) AS a FROM t" "SELECT log10 (x) AS a FROM t" "SELECT `LOG10`(x) AS a FROM t"]
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "log10-function"}}
+
+  {:name       "LOG(10, x), a column or a schema's function named LOG10, and LOG10 in a string or a comment are allowed"
+   :dialect    "mysql"
+   :sqls       ["SELECT LOG(10, x) AS a FROM t" "SELECT log10 AS a FROM t" "SELECT s.LOG10(x) AS a FROM t"
+                "SELECT 'LOG10(1)' AS a /* LOG10(2) */"]
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed :single-stmt? true}}
+
+  {:name              "the MySQL ! operator is rebuilt as NOT, which binds less tightly, and refused to a caller that executes the rebuild"
+   :dialect           "mysql"
+   :sqls              ["SELECT !1 + 1 AS a" "SELECT ! a AS b FROM t" "SELECT !(a) AS b FROM t"]
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "exclamation-operator"}}
+
+  {:name       "NOT, !=, and ! in a string or a comment are allowed"
+   :dialect    "mysql"
+   :sqls       ["SELECT NOT a AS b FROM t" "SELECT a != b AS c FROM t" "SELECT a!=b AS c FROM t"
+                "SELECT '!' AS a /* !a */"]
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed :single-stmt? true}}
+
+  {:name       "LOG10 is refused on MySQL only"
+   :dialect    "postgres"
+   :sql        "SELECT LOG10(x) AS a FROM t"
+   :stmt-type  "read-only"
+   :expected   {:verdict :allowed :single-stmt? true}}
+
   {:name       "a read that impersonation executes may hold these forms"
    :dialect    "postgres"
    :sql        "SELECT 0x1F AS a"
+   :stmt-type  "read"
+   :expected   {:verdict :allowed :single-stmt? true}}
+
+  {:name       "a MySQL read that impersonation executes may hold these forms"
+   :dialect    "mysql"
+   :sqls       ["SELECT a DIV 3 AS q FROM t" "SELECT LOG10(x) AS a FROM t" "SELECT !a AS b FROM t"]
    :stmt-type  "read"
    :expected   {:verdict :allowed :single-stmt? true}}]}

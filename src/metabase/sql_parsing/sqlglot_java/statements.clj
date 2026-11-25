@@ -407,18 +407,31 @@
   "`[reason detail]` for the first form in `sql` that sqlglot regenerates as SQL with another value, else nil. On
   Postgres, `\"number-literal\"` with the literal as detail: a hexadecimal `0x1F` or binary `0b101` number, regenerated
   as a bit string, and a number run into a name, such as the octal `0o17` or `1_000_000`, regenerated as a number and an
-  alias. On MySQL, `\"div-operator\"`: `a DIV b`, regenerated as a cast that rounds where DIV truncates. Read from the
-  dialect's tokens, so a string or a comment holding such text is not one.
+  alias. On MySQL, `\"div-operator\"`: `a DIV b`, regenerated as a cast that rounds where DIV truncates;
+  `\"log10-function\"`: a call of `LOG10`, regenerated as `LOG(10, x)`, whose last digits can differ; and
+  `\"exclamation-operator\"`: `!a`, regenerated as `NOT a`, which binds less tightly. Read from the dialect's tokens,
+  so a string or a comment holding such text is not one.
   Port of `_value_changing_form`."
   [^String sql dialect]
-  ;; Data tests do not support these forms yet: VER-183 (Postgres numbers), VER-184 (MySQL DIV).
+  ;; Data tests do not support these forms yet: VER-183 (Postgres numbers), VER-184 (MySQL DIV, LOG10 and !).
   (when (#{"postgres" "mysql"} dialect)
     (let [tokens (ast/tokenize sql dialect)]
-      (some (fn [[[token-type ^String text start] [following-type ^String following-text following-start]]]
+      (some (fn [[[previous-type] [token-type ^String text start] [following-type ^String following-text following-start]]]
               (cond
                 (= dialect "mysql")
-                (when (= token-type "DIV")
-                  ["div-operator" nil])
+                (cond
+                  (= token-type "DIV")
+                  ["div-operator" nil]
+
+                  (and (= token-type "NOT") (= text "!"))
+                  ["exclamation-operator" nil]
+
+                  ;; After a dot, `s.LOG10(x)` calls a schema's own function, which is regenerated as written.
+                  (and (#{"VAR" "IDENTIFIER"} token-type)
+                       (= "log10" (u/lower-case-en text))
+                       (= following-type "L_PAREN")
+                       (not= previous-type "DOT"))
+                  ["log10-function" nil])
 
                 (#{"HEX_STRING" "BIT_STRING"} token-type)
                 ;; `X'1F'` and `B'101'` are bit strings to Postgres too; `0x1F` and `0b101` are numbers.
@@ -429,7 +442,7 @@
                      (= following-type "VAR")
                      (= following-start (+ (long start) (count text))))
                 ["number-literal" (subs sql start (+ (long following-start) (count following-text)))]))
-            (map vector tokens (concat (rest tokens) [nil]))))))
+            (map vector (cons nil tokens) tokens (concat (rest tokens) [nil]))))))
 
 (def ^:private read-classes [Expressions$Select Expressions$SetOperation])
 (def ^:private write-classes [Expressions$Update Expressions$Insert Expressions$Delete])

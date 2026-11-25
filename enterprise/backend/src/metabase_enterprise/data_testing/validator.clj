@@ -200,7 +200,7 @@
   or nil when `reason` names no form whose rebuild has another value."
   [reason detail source]
   (case reason
-    ;; Data tests do not support these forms yet: VER-183 (Postgres numbers), VER-184 (MySQL DIV).
+    ;; Data tests do not support these forms yet: VER-183 (Postgres numbers), VER-184 (MySQL DIV, LOG10 and !).
     "number-literal"
     (data-testing.errors/ex
      ::data-testing.errors/unsupported-sql
@@ -212,6 +212,20 @@
     (data-testing.errors/ex
      ::data-testing.errors/unsupported-sql
      (tru "The SQL of {0} uses the DIV operator, which Metabase rewrites, in the SQL it runs, as a division that rounds where DIV truncates. Data tests do not support DIV yet."
+          (sql-source-label source))
+     {:reason reason})
+
+    "log10-function"
+    (data-testing.errors/ex
+     ::data-testing.errors/unsupported-sql
+     (tru "The SQL of {0} calls LOG10, which Metabase rewrites, in the SQL it runs, as LOG(10, x), whose value can differ in the last digits. Data tests do not support LOG10 yet."
+          (sql-source-label source))
+     {:reason reason})
+
+    "exclamation-operator"
+    (data-testing.errors/ex
+     ::data-testing.errors/unsupported-sql
+     (tru "The SQL of {0} uses the ! operator, which Metabase rewrites, in the SQL it runs, as NOT, which binds less tightly. Data tests do not support the ! operator yet."
           (sql-source-label source))
      {:reason reason})
 

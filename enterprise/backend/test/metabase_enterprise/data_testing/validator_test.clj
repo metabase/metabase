@@ -356,6 +356,42 @@
                               "yet.")}
             (single-select :mysql "SELECT a DIV 3 AS q FROM t" nil)))))
 
+(deftest ensure-single-select-refuses-mysql-log10-and-exclamation-mark-test
+  (testing "control: MySQL LOG(10, x) and NOT run as their rewrite"
+    (is (= "SELECT LOG(10, a) AS l, NOT a AS n FROM t"
+           (single-select :mysql "SELECT LOG(10, a) AS l, NOT a AS n FROM t" nil))))
+  (testing "a call of MySQL LOG10, which the rewrite turns into LOG(10, x), is refused, naming the form and the source"
+    (is (=? {:error-type ::errors/unsupported-sql
+             :message    (str "The SQL of input public.orders calls LOG10, which Metabase rewrites, in the SQL it runs, "
+                              "as LOG(10, x), whose value can differ in the last digits. Data tests do not support "
+                              "LOG10 yet.")
+             :reason     "log10-function"}
+            (single-select :mysql "SELECT LOG10(a) AS l FROM t" [:input {:schema "public" :name "orders"}]))))
+  (testing "the MySQL ! operator, which the rewrite turns into NOT, is refused, naming the form and the source"
+    (is (=? {:error-type ::errors/unsupported-sql
+             :message    (str "The SQL of the query under test uses the ! operator, which Metabase rewrites, in the SQL "
+                              "it runs, as NOT, which binds less tightly. Data tests do not support the ! operator "
+                              "yet.")
+             :reason     "exclamation-operator"}
+            (single-select :mysql "SELECT !a + 1 AS n FROM t" nil)))))
+
+(deftest ensure-supported-forms-refuses-mysql-forms-in-the-authors-sql-test
+  ;; The table rewrite rebuilds the query under test, so its own check of the rewrite never sees these forms.
+  (let [refused (fn [sql]
+                  (driver/the-initialized-driver :mysql)
+                  (data-testing.test-util/refusal #(validator/ensure-supported-forms :mysql sql nil) :reason))]
+    (testing "control: SQL without the forms is accepted"
+      (is (nil? (refused "SELECT LOG(10, a) AS l, NOT a AS n, a / 3 AS q FROM t"))))
+    (testing "each form is refused in the query under test as its author wrote it"
+      (is (=? {:error-type ::errors/unsupported-sql :reason "div-operator"}
+              (refused "SELECT a DIV 3 AS q FROM t")))
+      (is (=? {:error-type ::errors/unsupported-sql :reason "log10-function"
+               :message    #"^The SQL of the query under test calls LOG10, .*"}
+              (refused "SELECT LOG10(a) AS l FROM t")))
+      (is (=? {:error-type ::errors/unsupported-sql :reason "exclamation-operator"
+               :message    #"^The SQL of the query under test uses the ! operator, .*"}
+              (refused "SELECT !a + 1 AS n FROM t"))))))
+
 (deftest validate-refuses-forms-the-rewrite-changes-in-expectation-sql-test
   (let [refused (fn [driver sql]
                   (driver/the-initialized-driver driver)
@@ -370,7 +406,13 @@
               (refused :postgres "SELECT * FROM PEOPLE WHERE ID > 0x1F")))
       (is (=? {:error-type ::errors/unsupported-sql
                :message    #"^The SQL of expectation \"check\" uses the DIV operator.*"}
-              (refused :mysql "SELECT * FROM PEOPLE WHERE ID DIV 2 = 1"))))))
+              (refused :mysql "SELECT * FROM PEOPLE WHERE ID DIV 2 = 1")))
+      (is (=? {:error-type ::errors/unsupported-sql
+               :message    #"^The SQL of expectation \"check\" calls LOG10, .*"}
+              (refused :mysql "SELECT * FROM PEOPLE WHERE LOG10(ID) = 1")))
+      (is (=? {:error-type ::errors/unsupported-sql
+               :message    #"^The SQL of expectation \"check\" uses the ! operator, .*"}
+              (refused :mysql "SELECT * FROM PEOPLE WHERE !ID + 1 = 1"))))))
 
 (deftest ensure-single-select-without-a-dialect-test
   (testing "a driver with no SQLGlot dialect is refused: the check cannot read its SQL"

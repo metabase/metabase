@@ -611,7 +611,8 @@
   also reconstruct to itself (else `:reason \"rebuild-differs\"`), and `sql` must hold no form that the
   reconstruction gives another value: on Postgres a hexadecimal, binary or octal number or one with underscores
   (`:reason \"number-literal\"`, the literal as `:detail`), on MySQL the `DIV` operator (`:reason
-  \"div-operator\"`). Such a form is refused even in `sql` that does not parse."
+  \"div-operator\"`), a call of `LOG10` (`:reason \"log10-function\"`) and the `!` operator (`:reason
+  \"exclamation-operator\"`). Such a form is refused even in `sql` that does not parse."
   [parser dialect sql stmt-type]
   (classify-single-stmt parser dialect sql stmt-type executable-limits))
 

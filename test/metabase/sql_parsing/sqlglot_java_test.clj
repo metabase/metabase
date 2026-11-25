@@ -142,6 +142,19 @@
                ;; The MySQL DIV operator, whose rebuild rounds (VER-184).
                ["mysql"    "read-only" "rebuild-strict" "SELECT a DIV 3 AS q FROM t"                                     "div-operator"]
                ["mysql"    "read-only" "rebuild-strict" "SELECT 'DIV' AS a /* a DIV 3 */"                                nil]
+               ;; MySQL LOG10, whose rebuild is LOG(10, x), and `!`, whose rebuild is NOT (VER-184).
+               ["mysql"    "read-only" "rebuild-strict" "SELECT LOG10(x) AS a FROM t"                                    "log10-function"]
+               ["mysql"    "read-only" "rebuild-strict" "SELECT log10 (x) AS a FROM t"                                   "log10-function"]
+               ["mysql"    "read-only" "rebuild-strict" "SELECT `LOG10`(x) AS a FROM t"                                  "log10-function"]
+               ["mysql"    "read-only" "rebuild-strict" "SELECT '\uD83D\uDE00' AS e, LOG10(x) AS a FROM t"               "log10-function"]
+               ["mysql"    "read-only" "rebuild-strict" "SELECT LOG(10, x) AS a, log10 AS b, s.LOG10(x) AS c FROM t"     nil]
+               ["mysql"    "read-only" "rebuild-strict" "SELECT 'LOG10(1)' AS a /* LOG10(2) */"                          nil]
+               ["mysql"    "read-only" "rebuild-strict" "SELECT !1 + 1 AS a"                                             "exclamation-operator"]
+               ["mysql"    "read-only" "rebuild-strict" "SELECT ! a AS b FROM t"                                         "exclamation-operator"]
+               ["mysql"    "read-only" "rebuild-strict" "SELECT !(a) AS b FROM t"                                        "exclamation-operator"]
+               ["mysql"    "read-only" "rebuild-strict" "SELECT NOT a AS b, a != c AS d, a!=c AS e, '!' AS f /* !a */ FROM t" nil]
+               ["mysql"    "read"      "rebuild"        "SELECT LOG10(x) AS a, !a AS b FROM t"                           nil]
+               ["postgres" "read-only" "rebuild-strict" "SELECT LOG10(x) AS a FROM t"                                    nil]
                ;; "rebuild" counts the statements under either setting too.
                ["postgres" "read"      "rebuild"        "SELECT 'a\\''; DELETE FROM orders; --' AS note"                       "backslash-quote"]
                ["postgres" "read"      "rebuild"        "SELECT 'a\\'' ; RESET ROLE; INSERT INTO public.orders VALUES (87670); SELECT current_user --'" "backslash-quote"]

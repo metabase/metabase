@@ -2098,16 +2098,29 @@ def _value_changing_form(sql: str, dialect: str):
     On Postgres, reason "number-literal" with the literal as detail: a hexadecimal `0x1F` or binary `0b101` number,
     reconstructed as a bit string, and a number run into a name, such as the octal `0o17` or `1_000_000`, reconstructed
     as a number and an alias. On MySQL, reason "div-operator": `a DIV b`, reconstructed as a cast that rounds where DIV
-    truncates. Read from the dialect's tokens, so a string or a comment holding such text is not one.
+    truncates; reason "log10-function": a call of `LOG10`, reconstructed as `LOG(10, x)`, whose last digits can differ;
+    and reason "exclamation-operator": `!a`, reconstructed as `NOT a`, which binds less tightly. Read from the
+    dialect's tokens, so a string or a comment holding such text is not one.
     """
-    # Data tests do not support these forms yet: VER-183 (Postgres numbers), VER-184 (MySQL DIV).
+    # Data tests do not support these forms yet: VER-183 (Postgres numbers), VER-184 (MySQL DIV, LOG10 and !).
     if dialect not in ("postgres", "mysql"):
         return None
     tokens = sqlglot.tokenize(sql, read=dialect)
-    for tok, following in zip(tokens, tokens[1:] + [None]):
+    for previous, tok, following in zip([None] + tokens, tokens, tokens[1:] + [None]):
         if dialect == "mysql":
             if tok.token_type == sqlglot.TokenType.DIV:
                 return ("div-operator", None)
+            if tok.token_type == sqlglot.TokenType.NOT and tok.text == "!":
+                return ("exclamation-operator", None)
+            # After a dot, `s.LOG10(x)` calls a schema's own function, which is reconstructed as written.
+            if (
+                tok.token_type in (sqlglot.TokenType.VAR, sqlglot.TokenType.IDENTIFIER)
+                and tok.text.lower() == "log10"
+                and following is not None
+                and following.token_type == sqlglot.TokenType.L_PAREN
+                and (previous is None or previous.token_type != sqlglot.TokenType.DOT)
+            ):
+                return ("log10-function", None)
         elif tok.token_type in (sqlglot.TokenType.HEX_STRING, sqlglot.TokenType.BIT_STRING):
             # `X'1F'` and `B'101'` are bit strings to Postgres too; `0x1F` and `0b101` are numbers.
             if sql[tok.start : tok.start + 2].lower() in ("0x", "0b"):
