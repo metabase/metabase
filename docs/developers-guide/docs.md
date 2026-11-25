@@ -77,4 +77,6 @@ clojure -M:ee:doc api-documentation
 
 ## Style guide
 
-Follow the [Metabase documentation style guide](https://github.com/metabase/metabase/blob/master/.claude/skills/_shared/metabase-style-guide.md).
+Follow the [Metabase writing style guide](https://github.com/metabase/metabase/blob/master/.claude/skills/_shared/metabase-style-guide.md), and the [`docs-write` skill](https://github.com/metabase/metabase/blob/master/.claude/skills/docs-write/SKILL.md) for the rules that only the docs need.
+
+Existing docs break the rules in places. When you find a break on a page you're working on, like a "user" that needs to be a "person," fix it. Leave breaks on other pages for later.

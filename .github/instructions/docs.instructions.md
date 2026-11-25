@@ -6,4 +6,5 @@ applyTo: "docs/**/*.md"
 
 When reviewing documentation, apply the guidelines in these files:
 - `.claude/skills/_shared/metabase-style-guide.md`
+- `.claude/skills/docs-write/SKILL.md`
 - `.claude/skills/docs-review/SKILL.md`

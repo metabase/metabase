@@ -37,9 +37,8 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 
 ## Documentation
 
-- **[docs-research](.claude/skills/docs-research/SKILL.md)** - Confirm docs facts in the source code, with links to the lines
-- **[docs-write](.claude/skills/docs-write/SKILL.md)** - Documentation writing with Metabase style guide
-- **[docs-review](.claude/skills/docs-review/SKILL.md)** - Documentation review with Metabase style guide
+- **[docs-write](.claude/skills/docs-write/SKILL.md)** - Documentation writing with Metabase style guide, and confirming product facts in the source code
+- **[docs-review](.claude/skills/docs-review/SKILL.md)** - Documentation review for accuracy, clarity, and Metabase style
 
 ## Serialization
 
