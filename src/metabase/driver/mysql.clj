@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -145,7 +146,7 @@
     (= driver :mysql)))
 
 (mu/defn- database-flavor :- [:maybe :string]
-  ^String [database :- [:maybe [:or driver-api/schema.metadata.database ::warehouses.schema/database ::warehouses.schema/database.update]]]
+  ^String [database :- [:maybe [:or driver-api/schema.metadata.database ::warehouses.schema/database (mut/dissoc ::warehouses.schema/database.update :id)]]]
   ;; avoid trying `:dbms_version` if `:dbms-version` is present but `nil`; this will cause snake-hating-map warnings
   (when-let [k (some #(when (contains? database %)
                         %)
@@ -234,7 +235,20 @@
 (defmethod driver/disallowed-connection-parameters :mysql
   [driver]
   (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
-        ["allowLocalInfile" "allowLoadLocalInfile" "allowUrlInLocalInfile" "autoDeserialize" "serverRSAPublicKeyFile" "allowLoadLocalInfileInPath"]))
+        [;; Lets the server read local files with `LOAD DATA LOCAL INFILE`
+         "allowLocalInfile"
+         ;; Lets the server read local files with `LOAD DATA LOCAL INFILE`
+         "allowLoadLocalInfile"
+         ;; Lets `LOAD DATA LOCAL INFILE` fetch URLs
+         "allowUrlInLocalInfile"
+         ;; Deserializes Java objects sent by the server
+         "autoDeserialize"
+         ;; Reads a local file
+         "serverRSAPublicKeyFile"
+         ;; Lets the server read local files under a chosen path with `LOAD DATA LOCAL INFILE`
+         "allowLoadLocalInfileInPath"
+         ;; Sends environment variables
+         "credentialType"]))
 
 (defmethod driver/can-connect? :mysql
   [driver details]

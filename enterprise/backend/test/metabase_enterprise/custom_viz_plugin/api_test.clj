@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase-enterprise.custom-viz-plugin.test-util :as cvp.tu]
    [metabase.config.core :as config]
@@ -36,6 +37,19 @@
   (mt/user-http-request user method status path
                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
                         {:file bundle-bytes}))
+
+(defn- do-with-legacy-plugins
+  "Inserts `rows` into the table directly, as plugins registered before identifiers were checked, and calls `f` with
+  their ids."
+  [rows f]
+  (let [now (java.time.OffsetDateTime/now)
+        ids (mapv #(t2/insert-returning-pk! (t2/table-name :model/CustomVizPlugin)
+                                            (merge {:created_at now :updated_at now :status "active" :enabled true} %))
+                  rows)]
+    (try
+      (f ids)
+      (finally
+        (t2/delete! :model/CustomVizPlugin :id [:in ids])))))
 
 ;;; ------------------------------------------------ Auth & Permissions ------------------------------------------------
 
@@ -116,13 +130,13 @@
           (is (not (contains? identifiers "disabled-viz")))
           (is (not (contains? identifiers "error-viz"))))))
     (testing "/list skips a legacy plugin whose identifier contains \":\""
-      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "colon:viz"
-                                               :display_name "Colon Viz"
-                                               :status       :active
-                                               :enabled      true
-                                               :bundle_hash  "colon-hash"}]
-        (let [identifiers (set (map :identifier (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")))]
-          (is (not (contains? identifiers "colon:viz"))))))
+      (do-with-legacy-plugins
+       [{:identifier   "colon:viz"
+         :display_name "Colon Viz"
+         :bundle_hash  "colon-hash"}]
+       (fn [_ids]
+         (let [identifiers (set (map :identifier (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")))]
+           (is (not (contains? identifiers "colon:viz")))))))
     (testing "/list does not expose the raw bundle blob"
       (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "bundle-viz"
                                                :display_name "Bundle Viz"
@@ -145,27 +159,25 @@
 (deftest admin-listing-flags-invalid-identifier-test
   (mt/with-premium-features #{:custom-viz}
     (testing "GET / flags a legacy plugin whose identifier contains \":\" with an invalid-identifier warning"
-      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "colon:viz"
-                                               :display_name "Colon Viz"
-                                               :status       :active
-                                               :enabled      true
-                                               :bundle_hash  "colon-hash"}
-                     :model/CustomVizPlugin _ {:identifier     "colon:dev-viz"
-                                               :display_name   "Colon Dev Viz"
-                                               :status         :active
-                                               :enabled        true
-                                               :dev_bundle_url "http://localhost:5174"}]
-        (let [plugins    (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/")
-              warn-types (fn [identifier]
-                           (->> plugins
-                                (filter #(= identifier (:identifier %)))
-                                first
-                                :warnings
-                                (map :type)
-                                set))]
-          (is (contains? (warn-types "colon:viz") "invalid-identifier"))
-          (is (contains? (warn-types "colon:dev-viz") "invalid-identifier")
-              "dev-only plugins are exempt from version warnings but not from this one"))))))
+      (do-with-legacy-plugins
+       [{:identifier   "colon:viz"
+         :display_name "Colon Viz"
+         :bundle_hash  "colon-hash"}
+        {:identifier     "colon:dev-viz"
+         :display_name   "Colon Dev Viz"
+         :dev_bundle_url "http://localhost:5174"}]
+       (fn [_ids]
+         (let [plugins    (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/")
+               warn-types (fn [identifier]
+                            (->> plugins
+                                 (filter #(= identifier (:identifier %)))
+                                 first
+                                 :warnings
+                                 (map :type)
+                                 set))]
+           (is (contains? (warn-types "colon:viz") "invalid-identifier"))
+           (is (contains? (warn-types "colon:dev-viz") "invalid-identifier")
+               "dev-only plugins are exempt from version warnings but not from this one")))))))
 
 (deftest bundle-bytes-not-exposed-test
   (mt/with-premium-features #{:custom-viz}
@@ -236,14 +248,14 @@
                  (:status-code
                   (ex-data
                    (try
-                     (cache/set-or-clear-dev-bundle! id "file:///etc/passwd")
+                     (custom-viz-plugin/set-or-clear-dev-bundle! id "file:///etc/passwd")
                      (catch Exception e e)))))))
         (testing "SECURITY: rejects ftp:// dev URL via API"
           (is (= 400
                  (:status-code
                   (ex-data
                    (try
-                     (cache/set-or-clear-dev-bundle! id "ftp://evil.com/bundle")
+                     (custom-viz-plugin/set-or-clear-dev-bundle! id "ftp://evil.com/bundle")
                      (catch Exception e e)))))))
         (testing "admin can set valid http dev URL"
           (let [resp (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id "/dev-url")
@@ -387,7 +399,7 @@
           (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "dev-chart"
                                                                             :icon "icon.svg"
                                                                             :sdk  {:version "2.0.0"}})
-                                      cache/set-or-clear-dev-bundle! (constantly nil)]
+                                      custom-viz-plugin/set-or-clear-dev-bundle! (constantly nil)]
             (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
               (is (= "dev-chart" (:identifier resp)))
@@ -401,7 +413,7 @@
                   "the dev manifest, including any sdk.version stamp, is persisted"))))
         (testing "dev plugin registration with explicit identifier overrides manifest"
           (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "manifest-name"})
-                                      cache/set-or-clear-dev-bundle! (constantly nil)]
+                                      custom-viz-plugin/set-or-clear-dev-bundle! (constantly nil)]
             (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"
                                               :identifier     "my-override"})]
@@ -467,15 +479,16 @@
 (deftest replace-bundle-legacy-colon-identifier-test
   (mt/with-premium-features #{:custom-viz}
     (testing "PUT /:id/bundle refuses a legacy colon-identifier plugin with a delete-and-recreate hint"
-      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "colon:replace-viz"
-                                                      :display_name "Colon Replace Viz"
-                                                      :status       :active
-                                                      :bundle_hash  "abc"}]
-        (let [zip  (cvp.tu/valid-bundle-bytes "colon:replace-viz")
-              resp (multipart-upload! :crowberto 400
-                                      (str "ee/custom-viz-plugin/" id "/bundle") zip
-                                      :method :put)]
-          (is (re-find #"contains \":\", which is no longer allowed" (or (:message resp) (str resp)))))))))
+      (do-with-legacy-plugins
+       [{:identifier   "colon:replace-viz"
+         :display_name "Colon Replace Viz"
+         :bundle_hash  "abc"}]
+       (fn [[id]]
+         (let [zip  (cvp.tu/valid-bundle-bytes "colon:replace-viz")
+               resp (multipart-upload! :crowberto 400
+                                       (str "ee/custom-viz-plugin/" id "/bundle") zip
+                                       :method :put)]
+           (is (re-find #"contains \":\", which is no longer allowed" (or (:message resp) (str resp))))))))))
 
 ;;; ------------------------------------------------ Update / Refresh ------------------------------------------------
 
@@ -618,7 +631,7 @@
       (mt/with-model-cleanup [:model/CustomVizPlugin]
         (testing "registering a dev plugin records a custom-viz-plugin-create audit event"
           (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest    (constantly {:name "audit-dev-chart" :icon "icon.svg"})
-                                      cache/set-or-clear-dev-bundle! (constantly nil)]
+                                      custom-viz-plugin/set-or-clear-dev-bundle! (constantly nil)]
             (let [resp  (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                                               {:dev_bundle_url "http://localhost:5174"})
                   entry (mt/latest-audit-log-entry "custom-viz-plugin-create" (:id resp))]
@@ -689,6 +702,22 @@
           (is (not= (cache/bytes-hash (.getBytes "old" "UTF-8")) (get-in entry [:details :new :bundle_hash]))
               "new bundle_hash differs from the old one"))))))
 
+(deftest audit-log-update-of-any-column-test
+  (mt/with-premium-features #{:custom-viz :audit-app}
+    (with-dev-mode-enabled
+      (testing "setting the dev url of a plugin records a custom-viz-plugin-update audit event"
+        (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "audit-dev-url-viz"
+                                                        :display_name "audit-dev-url-viz"
+                                                        :status       :active}]
+          (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id "/dev-url")
+                                {:dev_bundle_url "http://localhost:5174"})
+          (is (partial=
+               {:topic    :custom-viz-plugin-update
+                :user_id  (mt/user->id :crowberto)
+                :model    "CustomVizPlugin"
+                :model_id id}
+               (mt/latest-audit-log-entry "custom-viz-plugin-update" id))))))))
+
 ;;; ------------------------------------------------ Dev Mode Gating ------------------------------------------------
 
 (deftest dev-mode-gating-test
@@ -714,7 +743,7 @@
       (with-dev-mode-enabled
         (mt/with-model-cleanup [:model/CustomVizPlugin]
           (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest    (constantly {:name "gated-dev" :icon "icon.svg"})
-                                      cache/set-or-clear-dev-bundle! (constantly nil)]
+                                      custom-viz-plugin/set-or-clear-dev-bundle! (constantly nil)]
             (let [resp (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
               (is (= "gated-dev" (:identifier resp))))))))))

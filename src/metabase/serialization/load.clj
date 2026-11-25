@@ -3,14 +3,13 @@
   (:refer-clojure :exclude [import load])
   (:require
    [clojure.walk :as walk]
-   [metabase.dependencies.hooks :as dependencies.hooks]
-   [metabase.models.interface :as mi]
    [metabase.serialization.dependencies :as serialization.dependencies]
    [metabase.serialization.entity :as serialization.entity]
    [metabase.serialization.protocol :as protocol]
    [metabase.serialization.protocol.app-db :as protocol.app-db]
    [metabase.serialization.spec :as serialization.spec]
    [metabase.serialization.util :as serialization.util]
+   [metabase.serialization.writes :as serialization.writes]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log])
   (:import
@@ -18,23 +17,32 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti before-load
+(defn before-load
   "The load `items` of `model`, each `{:entity entity :row row :local local}`: the entity, the row it deserializes to,
   and the row of the store it updates, or nil when it is new. Returns the items to load, so a model can leave items
   out, adjust their `:row` against their `:local` row, adjust the `:entity` whose after-insert columns it imports, or
-  throw to refuse them, much like a t2 `before-update`. By default, the items."
-  {:arglists '([model items])}
-  (fn [model _items] model))
+  throw to refuse them, much like a t2 `before-update`, by the `:before-load` of the spec of `model`. By default, the
+  items."
+  [model items]
+  (if-let [f (:before-load (serialization.spec/spec model))]
+    (f items)
+    items))
 
-(defmethod before-load :default [_ items] items)
+(defn loaded-entities
+  "The `entities` of `model` an import loads, before they are checked against the schema of its spec, so that a model
+  can leave out the shapes of older exports it no longer loads, by the `:loaded-entities` of the spec of `model`, by
+  default all of them."
+  [model entities]
+  (if-let [f (:loaded-entities (serialization.spec/spec model))]
+    (f entities)
+    entities))
 
-(defmulti after-load
+(defn after-load
   "Runs the side effects of loading `items` of `model`, each a load item (see [[before-load]]) with the loaded
-  `:instance`. By default, none."
-  {:arglists '([model items])}
-  (fn [model _items] model))
-
-(defmethod after-load :default [_ _items] nil)
+  `:instance`, by the `:after-load` of the spec of `model`. By default, none."
+  [model items]
+  (when-let [f (:after-load (serialization.spec/spec model))]
+    (f items)))
 
 (def ^:private import-opts
   "The options of an import into the app DB, which creates the Users, Databases, Tables and Fields it lacks."
@@ -84,24 +92,41 @@
   (into {} (remove (fn [[k v]] (same? v (get local k)))) row))
 
 (defn- write!
-  "Inserts the `items` with no row of the store, without their nil columns, and updates the others with the columns of
-  their `:row` that changed, but those their entity loads without to break a cycle, returning each with its loaded
-  `:instance`."
-  [store model items]
+  "Inserts the `items` with no row of the app DB, without their nil columns, and updates the others with the columns
+  of their `:row` that changed, but those their entity loads without to break a cycle, by the write functions of
+  `model` (see [[metabase.serialization.writes]]). Returns the items that were loaded, each with its `:instance` and
+  whether it was `:written?`, inserted or updated: an item its write function left out is not among them."
+  [model items]
   (let [pk       (serialization.spec/primary-key model)
         new-idxs (into [] (keep-indexed (fn [i {:keys [local]}] (when-not local i))) items)
         inserted (when (seq new-idxs)
-                   (zipmap new-idxs (protocol/insert-rows! store model (mapv #(into {} (filter (comp some? val)) (:row (items %)))
-                                                                             new-idxs))))]
-    (vec (map-indexed (fn [i {:keys [row local entity] :as item}]
-                        (if local
-                          (let [row     (apply dissoc row (:serdes/stripped entity))
-                                changed (changes row local)]
-                            (when (seq changed)
-                              (protocol/update-row! store model (get local pk) changed))
-                            (assoc item :instance (merge local row)))
-                          (assoc item :instance (get inserted i))))
-                      items))))
+                   (zipmap new-idxs
+                           (serialization.writes/insert-matched!
+                            model (mapv #(into {} (filter (comp some? val)) (:row (items %))) new-idxs))))
+        updates  (into {}
+                       (keep (fn [{:keys [row local entity]}]
+                               (when local
+                                 (let [changed (changes (apply dissoc row (:serdes/stripped entity)) local)]
+                                   (when (seq changed)
+                                     [(get local pk) changed])))))
+                       items)
+        updated  (into #{}
+                       (map #(get % pk))
+                       (when (seq updates)
+                         (serialization.writes/update! model (mapv (fn [[id changed]] (assoc changed pk id)) updates))))]
+    (into []
+          (comp (map-indexed (fn [i {:keys [row local entity] :as item}]
+                               (cond
+                                 (not local)
+                                 (assoc item :instance (get inserted i) :written? true)
+
+                                 (contains? updated (get local pk))
+                                 (assoc item :instance (merge local (apply dissoc row (:serdes/stripped entity))) :written? true)
+
+                                 (not (contains? updates (get local pk)))
+                                 (assoc item :instance (merge local (apply dissoc row (:serdes/stripped entity)))))))
+                (filter :instance))
+          items)))
 
 (defn- prepare-items
   "The load items of `entities` of `model` (see [[before-load]]): deserialized in `store` with `opts`, each with the
@@ -114,19 +139,26 @@
 (declare ^:private load-children!)
 
 (defn- load-items!
-  "Writes the load `items` of `model`, loads their child entities (see [[metabase.serialization.spec]]), and passes
-  them to [[after-load]], in `store` with `opts`. Returns the loaded instances."
+  "Writes the load `items` of `model`, loads their child entities (see [[metabase.serialization.spec]]), calls the
+  `:update!` of `model`, when it has one, with the rows `{pk id}` of the items whose children it inserted, updated or
+  deleted, and passes the items to [[after-load]], in `store` with `opts`. Returns the loaded items, each with whether
+  it or a child of it was `:written?`."
   [model store items opts]
-  (let [items (write! store model items)]
-    (doseq [[k child-model] (serialization.spec/children model)]
-      (load-children! child-model store items k opts))
+  (let [pk      (serialization.spec/primary-key model)
+        items   (write! model items)
+        changed (into #{}
+                      (mapcat (fn [[k child-model]] (load-children! child-model store items k opts)))
+                      (serialization.spec/children model))]
+    (when (and (seq changed) (:update! (serialization.spec/spec model)))
+      (serialization.writes/update! model (mapv (fn [id] {pk id}) changed)))
     (after-load model items)
-    (mapv :instance items)))
+    (mapv #(cond-> % (contains? changed (get-in % [:instance pk])) (assoc :written? true)) items)))
 
 (defn- load-children!
   "Loads the entities under `k` in the entities of the loaded parent `items` as rows of `model` that hold their parent's
   primary key, deleting first the children of these parents that none matches on the identity of `model`. A parent
-  whose entity lacks `k`, like one loading without the keys that close a dependency cycle, keeps its children."
+  whose entity lacks `k`, like one loading without the keys that close a dependency cycle, keeps its children. Returns
+  the primary keys of the parents whose children it inserted, updated or deleted, at any depth."
   [model store items k opts]
   (let [parent-key (:key (serialization.spec/parent model))
         items      (filter #(contains? (:entity %) k) items)
@@ -137,12 +169,14 @@
     (when (seq parent-pks)
       (let [pk       (serialization.spec/primary-key model)
             existing (protocol/select-by-parent-pks store model parent-pks nil)
-            prepared (prepare-items model store entities opts #(rows-by-identity model existing %))
+            prepared (prepare-items model store entities (assoc opts :nested? true)
+                                    #(rows-by-identity model existing %))
             kept     (into #{} (keep #(some-> (:local %) (get pk))) prepared)
-            stale    (into #{} (comp (map #(get % pk)) (remove kept)) existing)]
-        (when (seq stale)
-          (protocol/delete-rows! store model stale))
-        (load-items! model store prepared opts)))))
+            stale    (into [] (remove #(contains? kept (get % pk))) existing)]
+        (serialization.writes/delete! model (into #{} (map #(get % pk)) stale))
+        (into (into #{} (map #(get % parent-key)) stale)
+              (keep #(when (:written? %) (get-in % [:row parent-key])))
+              (load-items! model store prepared opts))))))
 
 (defn load
   "Loads `entities` of `model` into `store`, the app DB by default, with `opts`, creating the rows they refer to by
@@ -151,10 +185,10 @@
   ([model entities]
    (load model protocol.app-db/store entities import-opts))
   ([model store entities opts]
-   (binding [mi/*deserializing?* true]
-     (let [entities (vec entities)]
-       (load-items! model store (prepare-items model store entities opts (fn [_] (rows-by-refs store model entities)))
-                    opts)))))
+   (let [entities (vec (loaded-entities model entities))]
+     (mapv :instance
+           (load-items! model store (prepare-items model store entities opts (fn [_] (rows-by-refs store model entities)))
+                        opts)))))
 
 (defn import
   "The rows that `entities` of `model` import to, with their references resolved at once in the app DB."
@@ -284,7 +318,7 @@
   "Calls `thunk`, which should do the whole import, in one transaction of the app DB (see [[with-import-transaction]]),
   marking the dependents of what it changes once at its end, and retrying it on a transient DB error."
   [thunk]
-  (protocol/transact protocol.app-db/store {:retries 3} #(dependencies.hooks/with-batched-marks (thunk))))
+  (protocol/transact protocol.app-db/store {:retries 3} thunk))
 
 (defmacro with-import-transaction
   "Runs `body`, which should do the whole import, in one transaction of the app DB, so it lands whole or not at all."
@@ -296,8 +330,8 @@
   depends on. `read-batch` is a fn of a batch of keys returning their entities, called a batch at a
   time so that the whole import need not fit in memory. Retries the whole import on a transient DB error. With
   `continue-on-error`, an entity that fails to load is left out and its error returned; otherwise the first failure
-  rolls the whole import back. With `skip-schema-validation`, queries load even when this instance's query schema
-  rejects them. With `store`, it loads into that store rather than the app DB. Returns the errors."
+  rolls the whole import back. With `skip-schema-validation`, entities are only normalized, not checked against their spec
+  schema, and queries load even when this instance's query schema rejects them. With `store`, it loads into that store rather than the app DB. Returns the errors."
   [ks read-batch & {:keys [continue-on-error skip-schema-validation store] :or {store protocol.app-db/store}}]
   (let [order (load-order ks read-batch)
         opts  {:create-missing?         true

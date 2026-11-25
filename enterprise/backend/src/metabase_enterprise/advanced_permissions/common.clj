@@ -3,23 +3,9 @@
    [metabase-enterprise.advanced-permissions.db :as advanced-permissions.db]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
-   [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util :as u]
-   [metabase.warehouses.models.database :as database]))
-
-(defenterprise current-user-can-write-field?
-  "Enterprise version: whether the current user can manage the metadata of the table of the field `instance`, which
-  nobody can when a read-only instance syncs the table."
-  :feature :advanced-permissions
-  [instance]
-  (let [table (or (:table instance)
-                  (advanced-permissions.db/table (:table_id instance)))]
-    (and (collection/remote-sync-writable-table? table)
-         (let [db-id (or (:db_id table)
-                         (database/table-id->database-id (:table_id instance)))]
-           (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/manage-table-metadata :yes {(:table_id instance) db-id})))))
+   [metabase.util :as u]))
 
 (defenterprise current-user-can-manage-schema-metadata?
   "Enterprise version. Returns a boolean whether the current user has permission to edit table metadata for any tables
@@ -28,19 +14,26 @@
   [db-id schema-name]
   (perms/at-least-as-permissive? :perms/manage-table-metadata (perms/some-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/manage-table-metadata db-id schema-name) :yes))
 
-(defenterprise current-user-can-write-db?
-  "Enterprise version. Returns a boolean whether the current user can write the given db"
+(defenterprise current-user-managed-database-ids
+  "The ids among `db-ids` of the Databases the current user manages, from one bulk question."
   :feature :advanced-permissions
-  [db-id]
-  (perms/user-has-permission-for-databases? (perms/user-info api/*current-user-id*) :perms/manage-database :yes [db-id]))
+  [db-ids]
+  (let [values (perms/database-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                    :perms/manage-database
+                                                    (vec db-ids))]
+    (into #{} (filter #(= :yes (get values %))) db-ids)))
 
-(defenterprise current-user-can-write-table?
-  "Enterprise version: whether the current user can manage the metadata of `table`, which nobody can when a read-only
-  instance syncs it."
+(defenterprise table-ids-with-writable-metadata
+  "Enterprise version: the ids of those of `tables` whose metadata the current user manages, from one bulk question."
   :feature :advanced-permissions
-  [table]
-  (and (collection/remote-sync-writable-table? table)
-       (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/manage-table-metadata :yes {(:id table) (:db_id table)})))
+  [tables]
+  (let [values (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                 :perms/manage-table-metadata
+                                                 (into {} (map (juxt :id :db_id)) tables))]
+    (into #{}
+          (comp (map :id)
+                (filter #(perms/at-least-as-permissive? :perms/manage-table-metadata (get values %) :yes)))
+          tables)))
 
 (defn with-advanced-permissions
   "Adds to `user` a set of boolean flags indicating whether or not current user has access to advanced permissions.
@@ -85,10 +78,12 @@
   [tables]
   (if api/*is-superuser?*
     tables
-    (filter
-     (fn [{table-id :id db-id :db_id}]
-       (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/manage-table-metadata :yes {table-id db-id}))
-     tables)))
+    (let [values (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                   :perms/manage-table-metadata
+                                                   (into {} (map (juxt :id :db_id)) tables))]
+      (filter (fn [{table-id :id}]
+                (perms/at-least-as-permissive? :perms/manage-table-metadata (get values table-id) :yes))
+              tables))))
 
 (defenterprise filter-schema-by-data-model-perms
   "Given a list of schema, remove the ones for which `*current-user*` does not have data model editing permissions."
@@ -96,10 +91,12 @@
   [schema]
   (if api/*is-superuser?*
     schema
-    (filter
-     (fn [{db-id :db_id schema :schema}]
-       (perms/at-least-as-permissive? :perms/manage-table-metadata (perms/some-table-in-schema-permission-for-user (perms/user-info api/*current-user-id*) :perms/manage-table-metadata db-id schema) :yes))
-     schema)))
+    (let [values (perms/some-table-in-schemas-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                                   :perms/manage-table-metadata
+                                                                   (mapv (juxt :db_id :schema) schema))]
+      (filter (fn [{db-id :db_id schema :schema}]
+                (perms/at-least-as-permissive? :perms/manage-table-metadata (get values [db-id schema]) :yes))
+              schema))))
 
 (defenterprise filter-databases-by-data-model-perms
   "Given a list of databases, removes the ones for which `*current-user*` has no data model editing permissions.
@@ -109,16 +106,16 @@
   [dbs]
   (if api/*is-superuser?*
     dbs
-    (reduce
-     (fn [result {db-id :id tables :tables :as db}]
-       (if (= (get (perms/some-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) :perms/manage-table-metadata [db-id]) db-id)
-              :yes)
-         (if tables
-           (conj result (update db :tables filter-tables-by-data-model-perms))
-           (conj result db))
-         result))
-     []
-     dbs)))
+    (let [values       (perms/some-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                                          :perms/manage-table-metadata
+                                                                          (mapv :id dbs))
+          kept         (filterv #(= :yes (get values (:id %))) dbs)
+          editable-ids (into #{} (map :id) (filter-tables-by-data-model-perms (into [] (mapcat :tables) kept)))]
+      (mapv (fn [{tables :tables :as db}]
+              (if tables
+                (assoc db :tables (filter (comp editable-ids :id) tables))
+                db))
+            kept))))
 
 (defenterprise new-group-view-data-permission-levels
   "Returns a map of {db-id → permission-level} for multiple databases."

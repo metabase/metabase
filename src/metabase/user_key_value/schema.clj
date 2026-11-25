@@ -22,3 +22,7 @@
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:expires_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::value.object
+  "A JSON object a client stores under a user key, kept as it arrived."
+  [:map {:closed false, :description "a JSON object user key value"}])

@@ -402,7 +402,8 @@
                                                                      :tenant_id tenant-a}
                    :model/User                       {user-b :id}   {:email     "metabot-analytics-filters-b@metabase.com"
                                                                      :tenant_id tenant-b}
-                   :model/PermissionsGroup           {group-id :id} {:name "Metabot analytics filters"}
+                   :model/PermissionsGroup           {group-id :id} {:name            "Metabot analytics filters"
+                                                                     :is_tenant_group true}
                    :model/PermissionsGroupMembership _              {:user_id user-a :group_id group-id}]
       (let [convo-1 (str (random-uuid))
             convo-2 (str (random-uuid))

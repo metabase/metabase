@@ -29,7 +29,7 @@ describe(
       H.expectNoBadSnowplowEvents();
     });
 
-    it("runs a test from the Tests tab, its overview, and its runs", () => {
+    it("runs a test from the Tests tab and shows its runs", () => {
       cy.log("run the test from its row menu in the Tests tab");
       cy.get<number>("@transformId").then((transformId) =>
         cy.visit(`/data-studio/transforms/${transformId}/tests`),
@@ -45,36 +45,25 @@ describe(
         triggered_from: "test_list",
       });
 
-      cy.log("run the test from its overview");
+      cy.log("run the test again from its runs and see both runs");
       H.main().findByText(TEST_NAME).click();
-      H.main()
-        .findByRole("heading", { name: "Run this test" })
-        .should("be.visible");
-      H.main()
-        .findByRole("button", { name: /Ran successfully|Run now/ })
-        .click();
-      cy.wait("@runTest");
-      H.expectUnstructuredSnowplowEvent({
-        event: "transform_test_trigger_manual_run",
-        triggered_from: "test_overview",
-      });
-
-      cy.log("run the test from its runs");
       H.main().findByRole("tab", { name: "Runs" }).click();
       H.main()
         .findAllByRole("row", { name: /Passed/ })
-        .should("have.length", 2);
+        .should("have.length", 1);
       H.main()
         .findByRole("button", { name: /Ran successfully|Run now/ })
         .click();
       cy.wait("@runTest");
       H.main()
         .findAllByRole("row", { name: /Passed/ })
-        .should("have.length", 3);
-      H.expectUnstructuredSnowplowEvent({
-        event: "transform_test_trigger_manual_run",
-        triggered_from: "test_runs",
-      });
+        .should("have.length", 2);
+
+      cy.log("the runs are stored by the backend");
+      cy.reload();
+      H.main()
+        .findAllByRole("row", { name: /Passed/ })
+        .should("have.length", 2);
     });
   },
 );

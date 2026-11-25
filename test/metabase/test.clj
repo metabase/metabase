@@ -168,7 +168,8 @@
  [metabase.util.log.capture
   with-log-messages-for-level]
  [mdb.test-util
-  with-app-db-timezone-id!]
+  with-app-db-timezone-id!
+  with-partition-size]
  [metabase.model-persistence.test-util
   with-persistence-enabled!]
  [metabase.request.core

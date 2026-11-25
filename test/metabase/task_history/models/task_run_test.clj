@@ -3,6 +3,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
+   [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
@@ -10,7 +12,9 @@
    [metabase.sync.util :as sync-util]
    [metabase.task-history.core :as task-history]
    [metabase.task-history.models.task-run :as task-run]
+   [metabase.task-history.schema :as task-history.schema]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -431,3 +435,24 @@
       (is (nil? (notification.send/notification->task-run-info
                  {:payload_type :notification/testing
                   :payload      {}}))))))
+
+(deftest status-must-be-known-test
+  (testing "the schema refuses an unknown status and takes a known one, as a keyword or a string"
+    (is (not (mr/validate ::task-history.schema/task-run.update {:status :bogus})))
+    (is (mr/validate ::task-history.schema/task-run.update {:status :abandoned}))
+    (is (= {:status :abandoned} (lib/normalize ::task-history.schema/task-run.update {:status "abandoned"})))))
+
+(deftest permission-hydration-statements-do-not-grow-with-rows-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [hydrate (fn [n]
+                      (t2/with-call-count [call-count]
+                        (let [rows (doall (t2/hydrate (mapv #(t2/instance :model/TaskRun {:id %}) (range 1 (inc n)))
+                                                      :can_read :can_write))]
+                          {:statements (call-count)
+                           :values     (mapv (juxt mi/can-read? :can_write) rows)})))]
+        (hydrate 1)
+        (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))
+        (testing "each row gets the answer the per-row check gave"
+          (let [answer (boolean (#'task-run/can-access?))]
+            (is (= (repeat 6 [answer answer]) (:values (hydrate 6))))))))))

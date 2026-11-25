@@ -46,6 +46,22 @@
   ["proxy_password" "proxy_port" "proxy_type" "proxy_user" "server_time_zone" "server_version"
    "socket_tcp_nodelay" "use_server_time_zone" "use_server_time_zone_for_dates"])
 
+(defmethod driver/disallowed-connection-parameters :clickhouse
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        [;; Loads arbitrary classes
+         "typeMappings"
+         ;; Loads arbitrary classes
+         "type_hint_mapping"
+         ;; Instantiates an arbitrary class
+         "jdbc_json_parser_factory"
+         ;; Instantiates an arbitrary class
+         "jdbc_metrics_recorder"
+         ;; Instantiates an arbitrary class (legacy v1 driver)
+         "dialect"
+         ;; Loads arbitrary classes (legacy v1 driver)
+         "load_balancing_policy"]))
+
 (defn- quote-schema [s] (sql.u/quote-name :clickhouse :schema s))
 (defn- quote-field  [s] (sql.u/quote-name :clickhouse :field s))
 
@@ -913,6 +929,15 @@
     (catch SQLException e
       e)))
 
+(defn- execute-kill-for-error
+  "Like [[execute-for-error]], for a KILL QUERY. When no query matches, ClickHouse 26.11 and later throw
+  NOTHING_TO_KILL, and older versions return no rows. Both mean that no query is left to end, so this returns nil."
+  [^Statement stmt ^String sql]
+  (let [e (execute-for-error stmt sql)]
+    ;; 785 is NOTHING_TO_KILL
+    (when-not (= 785 (some-> ^SQLException e .getErrorCode))
+      e)))
+
 (defn- destroy-workspace!
   "Runs [[destroy-workspace-sqls]] one at a time. A failed ALTER USER or KILL QUERY does not stop the statements after
   it. A failed DROP DATABASE stops DROP USER: a view in the database may have the user as its definer. The second
@@ -932,11 +957,11 @@
   [^Statement stmt db-name user]
   (let [[lock kill drop-db drop-user kill-again] (destroy-workspace-sqls db-name user)
         lock-error                     (execute-for-error stmt lock)
-        kill-error                     (execute-for-error stmt kill)
+        kill-error                     (execute-kill-for-error stmt kill)
         drop-db-error                  (execute-for-error stmt drop-db)
         drop-user-error                (when-not drop-db-error
                                          (execute-for-error stmt drop-user))
-        kill-again-error               (execute-for-error stmt kill-again)
+        kill-again-error               (execute-kill-for-error stmt kill-again)
         drop-error                     (or drop-db-error drop-user-error)
         ;; 497 is ACCESS_DENIED: ClickHouse's own message for it can be unreadable
         denied?                        #(= 497 (some-> ^SQLException % .getErrorCode))

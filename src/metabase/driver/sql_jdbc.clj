@@ -58,14 +58,24 @@
 ;; JDBC connection properties that are not needed to connect to a warehouse and are rejected for every SQL-JDBC driver.
 ;; Matched as substrings, so a token here also catches its longer spellings (`socketFactory` covers
 ;; `socketFactoryClass`, `socketfactoryname`, `sslsocketfactoryname`; `hostnameverifier` covers `sslhostnameverifier`).
-;;
-;; These are all properties whose value a JDBC driver loads and instantiates as a Java class -- a no-arg constructor
-;; and/or static initializer runs inside the Metabase process -- which is arbitrary-class-instantiation leading to code
-;; execution when a gadget is on the classpath. None is needed to reach a data warehouse.
 (defmethod driver/disallowed-connection-parameters :sql-jdbc
   [_driver]
-  ["socketFactory" "sslfactory" "hostnameverifier" "sslpasswordcallback" "xmlFactoryFactory" "loggerFile"
-   "queryInterceptors" "dnsResolver"])
+  [;; Instantiates an arbitrary class
+   "socketFactory"
+   ;; Instantiates an arbitrary class
+   "sslfactory"
+   ;; Instantiates an arbitrary class
+   "hostnameverifier"
+   ;; Instantiates an arbitrary class
+   "sslpasswordcallback"
+   ;; Instantiates an arbitrary class
+   "xmlFactoryFactory"
+   ;; Writes the driver log to a chosen local file (older pgjdbc; current versions ignore it)
+   "loggerFile"
+   ;; Instantiates an arbitrary class
+   "queryInterceptors"
+   ;; Instantiates an arbitrary class
+   "dnsResolver"])
 
 (defmethod driver/validate-db-details! :sql-jdbc
   [driver details]
@@ -94,6 +104,7 @@
 
 (doseq [feature [:jdbc/statements
                  :jdbc/set-query-timeout
+                 :jdbc/set-max-rows
                  :mbql-5-native-query-execution]]
   (defmethod driver/database-supports? [:sql-jdbc feature]
     [_driver _feature _db]
@@ -385,6 +396,22 @@
    driver
    (sql-jdbc.conn/db->pooled-connection-spec database)
    args))
+
+(defn do-with-unpooled-default-connection
+  "Calls `f` with a new `java.sql.Connection` opened from the primary `:details` of `database`, outside the connection
+  pools, and returns what `f` returns. `database` needs `:engine` and `:details`. Ignores the connection type and
+  workspace swaps, and skips routing: a router connects to itself, and a destination passes with no
+  [[driver-api/check-allowed-access!]]. Throws before it connects when the network policy does not allow a host of the
+  details. `f` must realize its result: the connection closes when `f` returns."
+  [{driver :engine, :keys [details], :as database} f]
+  ;; a pooled connection gets this check when its pool is created, and a connection test before it connects; the
+  ;; details of a stored database can come from an import, or be older than the policy
+  (driver.u/with-database-network-policy database
+    (driver.u/validate-connection-hosts! driver details))
+  (sql-jdbc.conn/do-with-unpooled-connection-spec
+   driver details
+   (fn [spec]
+     (sql-jdbc.execute/do-with-connection-with-options driver spec nil f))))
 
 (defmethod driver/query-result-metadata :sql-jdbc
   [driver query]

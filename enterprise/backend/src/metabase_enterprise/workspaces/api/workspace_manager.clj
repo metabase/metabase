@@ -8,7 +8,7 @@
    [medley.core :as m]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
-   [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase.api-scope.workspace-manager :as api-scope.workspace-manager]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -17,8 +17,7 @@
    [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
@@ -104,9 +103,7 @@
   {:scope api-scope.workspace-manager/workspace-manager}
   []
   (api/check-superuser)
-  (into [] (comp (filter mi/can-read?)
-                 (map present-workspace))
-        (t2/hydrate (ws/list-workspaces) :can_read)))
+  (into [] (map present-workspace) (mi/readable (ws/list-workspaces))))
 
 (api.macros/defendpoint :get "/:id" :- WorkspaceResponse
   "Get a single Workspace by id."
@@ -161,7 +158,7 @@
    params :- UpdateWorkspaceParams]
   (api/write-check :model/Workspace id)
   (when (:name params)
-    (ws.db/update-workspace-name! id (:name params)))
+    (workspace/update-workspace! id {:name (:name params)}))
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil

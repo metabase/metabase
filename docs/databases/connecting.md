@@ -11,8 +11,6 @@ redirect_from:
 
 # Adding and managing databases
 
-Connect Metabase to your data sources.
-
 ## Adding a database connection
 
 To add a database connection:
@@ -46,6 +44,8 @@ The databases listed below have official drivers maintained by the Metabase team
 - [SQLite](./connections/sqlite.md)
 - [Starburst](./connections/starburst.md)
 - [Vertica](./connections/vertica.md)
+
+To check which Metabase features each of these databases supports, see [Database feature support](./feature-support.md).
 
 If you don't see your database listed here, see [Community drivers](../developers-guide/community-drivers.md).
 

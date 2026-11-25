@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.search.config
     :as search.config
     :refer [SearchContext SearchableModel]]
@@ -227,7 +228,9 @@
                                  ;; Skip collection filtering to avoid blocking tables where the user
                                  ;; has data permissions but no collection access.
                                  [:= [:inline 1] [:inline 1]]
-                                 (search.permissions/permitted-collections-clause search-ctx collection-id-col))
+                                 (search.permissions/permitted-collections-clause
+                                  search-ctx collection-id-col
+                                  (if (= model "search-index") :search_index.model (h2x/literal (or model "")))))
         personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
     (-> honeysql-query
         (sql.helpers/where permitted-clause)
@@ -268,8 +271,10 @@
       (replace-select :last_edited_at :r.timestamp)
       (sql.helpers/left-join [:revision :r]
                              [:and [:= :r.model_id (search.config/column-with-model-alias model :id)]
-                              [:= :r.most_recent true]
-                              [:= :r.model (search-model/search-model->revision-model model)]])))
+                              [:= :r.model (search-model/search-model->revision-model model)]
+                              (revisions.sql/newest-revision-clause :r
+                                                                    (search-model/search-model->revision-model model)
+                                                                    (search.config/column-with-model-alias model :id))])))
 
 (mu/defn- with-moderated-status :- :map
   [query :- HoneySQLQuery
@@ -439,8 +444,8 @@
    [:table.schema :table_schema]
    [:table.name :table_name]
    [:table.description :table_description]
-   [:table.collection_id :collection_id]
-   [[:case [:and [:= :table.collection_id nil] [:= :table.is_published true]]
+   [:table_settings.collection_id :collection_id]
+   [[:case [:and [:= :table_settings.collection_id nil] [:= :table_settings.is_published true]]
      "Our analytics"
      :else
      :collection.name] :collection_name]
@@ -615,19 +620,26 @@
 (defmethod search-query-for-model "measure"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :measure.table_id :table.id])))
+      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :measure.table_id :table.id])
+      (sql.helpers/left-join [(t2/table-name :model/TableUserSettings) :table_settings]
+                             [:= :table_settings.table_id :measure.table_id])))
 
 (defmethod search-query-for-model "segment"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :segment.table_id :table.id])))
+      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :segment.table_id :table.id])
+      (sql.helpers/left-join [(t2/table-name :model/TableUserSettings) :table_settings]
+                             [:= :table_settings.table_id :segment.table_id])))
 
 (defmethod search-query-for-model "table"
   [model {:keys [table-db-id], :as search-ctx}]
   (-> (base-query-for-model model search-ctx)
       (add-table-db-id-clause table-db-id)
       (add-table-where-clauses model search-ctx)
-      (sql.helpers/left-join [:collection :collection] [:and :table.is_published [:= :table.collection_id :collection.id]])
+      (sql.helpers/left-join [(t2/table-name :model/TableUserSettings) :table_settings]
+                             [:= :table_settings.table_id :table.id])
+      (sql.helpers/left-join [:collection :collection]
+                             [:and :table_settings.is_published [:= :table_settings.collection_id :collection.id]])
       (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id])))
 
 (defn- extract-and-hoist-ctes

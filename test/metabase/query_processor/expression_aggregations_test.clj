@@ -274,6 +274,20 @@
                  {:aggregation [[:aggregation-options [:- [:sum $price] 41] {:name "sum_41"}]]
                   :breakout    [$price]}))))))))
 
+(deftest ^:parallel named-aggregation-multiplying-an-aggregation-test
+  (testing "a named custom aggregation that multiplies an aggregation (#12899, #13306)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+      (mt/dataset test-data
+        (let [mp     (mt/metadata-provider)
+              total  (lib.metadata/field mp (mt/id :orders :total))
+              query  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                         (lib/aggregate (lib/with-expression-name (lib/* 2 (lib/max total)) "twice max total")))
+              result (qp/process-query query)]
+          (is (= ["twice max total"]
+                 (map :display_name (mt/cols result))))
+          (is (= [[318.7]]
+                 (mt/formatted-rows [2.0] result))))))))
+
 (defn- metrics-test-metadata-provider []
   (lib.tu/mock-metadata-provider
    (mt/metadata-provider)

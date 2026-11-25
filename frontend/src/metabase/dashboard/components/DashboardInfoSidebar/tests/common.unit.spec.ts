@@ -66,6 +66,15 @@ describe("DashboardInfoSidebar", () => {
     ).toBeInTheDocument();
   });
 
+  it("should never show an Insights link in OSS, even to admins", async () => {
+    await setup({ user: { is_superuser: true } });
+
+    expect(await screen.findByText("Details")).toBeVisible();
+    expect(
+      screen.queryByRole("link", { name: /Insights/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("should list the dashboard's cards under Contents", async () => {
     const card = createMockCard({ id: 1, name: "Orders by month" });
     await setup({

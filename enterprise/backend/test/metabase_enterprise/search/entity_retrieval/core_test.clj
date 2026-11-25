@@ -395,8 +395,9 @@
                 (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
                                :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
                                :model/Database   {db-id :id}    {}
-                               :model/Table      _              {:db_id db-id :collection_id data-id :is_published true
-                                                                 :active true :name "t" :display_name "T"}]
+                               :model/Table      {table-id :id} {:db_id db-id
+                                                                 :active true :name "t" :display_name "T"}
+                               :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id data-id}]
                   (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
                   (testing "after a reconcile populates the index -> available"
                     (is (true? (entity-retrieval.core/entity-retrieval-available?))))
@@ -433,10 +434,12 @@
                 (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
                                :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
                                :model/Database   {db-id :id}    {}
-                               :model/Table      {near-id :id}  {:db_id db-id :collection_id data-id :is_published true
+                               :model/Table      {near-id :id}  {:db_id db-id
                                                                  :active true :name "near" :display_name "near"}
-                               :model/Table      {far-id :id}   {:db_id db-id :collection_id data-id :is_published true
-                                                                 :active true :name "far" :display_name "far"}]
+                               :model/TableUserSettings _ {:table_id near-id :is_published true :collection_id data-id}
+                               :model/Table      {far-id :id}   {:db_id db-id
+                                                                 :active true :name "far" :display_name "far"}
+                               :model/TableUserSettings _ {:table_id far-id :is_published true :collection_id data-id}]
                   (try
                     (reconcile/reconcile! ds (constantly model))
                     (testing "the nearer table ranks first; each hit carries the entity ref + matched doc"
@@ -484,8 +487,9 @@
                 (mt/with-temp [:model/Collection {lib-id :id}   {:type "library" :location "/"}
                                :model/Collection {data-id :id}  {:type "library-data" :location (str "/" lib-id "/")}
                                :model/Database   {db-id :id}     {}
-                               :model/Table      {table-id :id}  {:db_id db-id :collection_id data-id :is_published true
-                                                                  :active true :name "orders" :display_name "orders"}]
+                               :model/Table      {table-id :id}  {:db_id db-id
+                                                                  :active true :name "orders" :display_name "orders"}
+                               :model/TableUserSettings {settings-id :id} {:table_id table-id :is_published true :collection_id data-id}]
                   (try
                     (let [_ (put-ai-context! "table" table-id
                                              {:instructions "Group by month." :synonyms [synonym]})]
@@ -497,7 +501,7 @@
                       (testing "an entity that has left the library is post-filtered out before the index catches up"
                         ;; unpublish without reconciling: the index still holds the docs, but the tool drops
                         ;; the hit because the table is no longer a current library member.
-                        (mt/with-temp-vals-in-db :model/Table table-id {:is_published false}
+                        (mt/with-temp-vals-in-db :model/TableUserSettings settings-id {:is_published false, :collection_id nil}
                           (is (empty? (search!)))))
                       (testing "deleting the ai_context via the CRUD API + reconcile drops the synonym doc"
                         (mt/user-http-request :crowberto :delete 204 (format "osi/ai-context/table/%d" table-id))
@@ -532,10 +536,12 @@
                 (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
                                :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
                                :model/Database   {db-id :id}    {}
-                               :model/Table      {alpha :id}    {:db_id db-id :collection_id data-id :is_published true
+                               :model/Table      {alpha :id}    {:db_id db-id
                                                                  :active true :name "alpha" :display_name "alpha"}
-                               :model/Table      {beta :id}     {:db_id db-id :collection_id data-id :is_published true
-                                                                 :active true :name "beta" :display_name "beta"}]
+                               :model/TableUserSettings _ {:table_id alpha :is_published true :collection_id data-id}
+                               :model/Table      {beta :id}     {:db_id db-id
+                                                                 :active true :name "beta" :display_name "beta"}
+                               :model/TableUserSettings _ {:table_id beta :is_published true :collection_id data-id}]
                   (try
                     (put-ai-context! "table" beta {:synonyms [synonym]})
                     (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model))
@@ -561,8 +567,9 @@
               (mt/with-temp [:model/Collection {lib-id :id}  {:type "library" :location "/"}
                              :model/Collection {data-id :id} {:type "library-data" :location (str "/" lib-id "/")}
                              :model/Database   {db-id :id}    {}
-                             :model/Table      {table-id :id} {:db_id db-id :collection_id data-id :is_published true
-                                                               :active true :name "orders" :display_name "orders"}]
+                             :model/Table      {table-id :id} {:db_id db-id
+                                                               :active true :name "orders" :display_name "orders"}
+                             :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id data-id}]
                 (try
                   (semantic.tu/with-mock-embeddings {"orders" [1.0 0.0 0.0 0.0]}
                     (reconcile/reconcile! ds (constantly semantic.tu/mock-embedding-model)))

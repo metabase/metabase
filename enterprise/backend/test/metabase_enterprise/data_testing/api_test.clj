@@ -1,6 +1,9 @@
 (ns metabase-enterprise.data-testing.api-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
+   [medley.core :as m]
+   [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -8,13 +11,14 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
    [metabase.test :as mt]
+   [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))
 
 (def ^:private inputs
   [{:table   {:schema "PUBLIC" :name "PEOPLE"}
     :format  "rows"
-    :columns [{:name "ID" :cast_type "INTEGER"}]
-    :rows    [{"ID" 1}]}])
+    :columns [{:name "ID" :cast_type "INTEGER"} {:name "NAME" :cast_type "VARCHAR"}]
+    :rows    [{"ID" 1 "NAME" "abc"}]}])
 
 (def ^:private expectations
   [{:type "empty" :name "no rows" :sql "SELECT * FROM PUBLIC.PEOPLE_SUMMARY WHERE ID IS NULL"}])
@@ -52,6 +56,37 @@
                      :model/TransformTest {test-id :id}      {:transform_id transform-id}]
         (mt/user-http-request :crowberto :get 404 (str "ee/transform-test/" test-id "/run"))))))
 
+(deftest now-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform {mbql-id :id}   (data-testing.test-util/id-transform :people)
+                   :model/Transform {native-id :id} (transform)]
+      (mt/with-model-cleanup [:model/TransformTest]
+        (let [body    (fn [transform-id]
+                        {:transform_id transform-id :name "My test" :inputs inputs :expectations expectations
+                         :now          "2026-10-13T09:00:00+09:00"})
+              created (mt/user-http-request :crowberto :post 200 "ee/transform-test" (body mbql-id))]
+          (testing "POST saves `now` as the moment it names"
+            (is (= (t/instant "2026-10-13T00:00:00Z") (t/instant (:now created)))))
+          (testing "`now` on a test of a native transform is refused"
+            (is (= "transform-test.now-on-native-sql"
+                   (:error-code (mt/user-http-request :crowberto :post 501 "ee/transform-test" (body native-id)))))))))))
+
+(deftest put-now-on-native-transform-test-is-refused-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform     {mbql-id :id}        (data-testing.test-util/id-transform :people)
+                   :model/Transform     {native-id :id}      (transform)
+                   :model/TransformTest {mbql-test-id :id}   {:transform_id mbql-id :inputs inputs :expectations expectations}
+                   :model/TransformTest {native-test-id :id} {:transform_id native-id :inputs inputs :expectations expectations}]
+      (testing "a PUT that sets only `now` on a test of a native transform is refused, and `now` is not saved"
+        (is (= "transform-test.now-on-native-sql"
+               (:error-code (mt/user-http-request :crowberto :put 501 (str "ee/transform-test/" native-test-id)
+                                                  {:now "2026-10-13T00:00:00Z"}))))
+        (is (nil? (t2/select-one-fn :now :model/TransformTest :id native-test-id))))
+      (testing "control: the same PUT on a test of an MBQL transform saves `now`"
+        (is (= (t/instant "2026-10-13T00:00:00Z")
+               (t/instant (:now (mt/user-http-request :crowberto :put 200 (str "ee/transform-test/" mbql-test-id)
+                                                      {:now "2026-10-13T00:00:00Z"})))))))))
+
 (deftest crud-test
   (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
     (mt/with-temp [:model/Transform {transform-id :id} (transform)
@@ -71,7 +106,9 @@
                      :creator_id   (mt/user->id :crowberto)
                      :name         "My test"
                      :description  "abc"
-                     :inputs       [{:format "rows" :columns [{:name "ID" :cast_type "INTEGER"}] :rows [{:ID 1}]}]
+                     :inputs       [{:format  "rows"
+                                     :columns [{:name "ID" :cast_type "INTEGER"} {:name "NAME" :cast_type "VARCHAR"}]
+                                     :rows    [{:ID 1 :NAME "abc"}]}]
                      :expectations expectations}
                     created)))
           (testing "GET returns the test"
@@ -93,7 +130,7 @@
 (deftest rows-cells-keep-request-values-test
   (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
     (mt/with-temp [:model/Transform {transform-id :id} (transform)]
-      (let [cells   {"ID" 1 "CODE" "0001" "FLAG" "true" "AMOUNT" "1.50" "RATE" 1.5 "ACTIVE" false "NOTE" nil}
+      (let [cells   {"ID" 1 "NAME" "abc" "CODE" "0001" "FLAG" "true" "AMOUNT" "1.50" "RATE" 1.5 "ACTIVE" false "NOTE" nil}
             columns (mapv (fn [column] {:name column :cast_type "VARCHAR"}) (keys cells))
             created (mt/user-http-request :crowberto :post 200 "ee/transform-test"
                                           {:transform_id transform-id
@@ -279,21 +316,23 @@
                                                                             :perms/create-queries :query-builder}
                 (is (some #{test-id} (map :id (mt/user-http-request :lucky :get 200 "ee/transform-test"))))
                 (mt/user-http-request :lucky :get 200 path)
-                (testing "but running them needs native access to source database"
+                (testing "and run them without native access to source database"
                   (let [runs-before (t2/count :model/DataTestRun :test_type "transform" :test_id test-id)]
-                    (mt/user-http-request :lucky :post 403 (str path "/run"))
-                    (is (= runs-before (t2/count :model/DataTestRun :test_type "transform" :test_id test-id)))))))
+                    (is (= "passed" (:status (mt/user-http-request :lucky :post 200 (str path "/run")))))
+                    (is (= (inc runs-before) (t2/count :model/DataTestRun :test_type "transform" :test_id test-id)))))))
             (testing "data analysts who can read transform and write native queries on its source database can run its tests"
               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
                                                                             :perms/create-queries :query-builder-and-native}
                 (is (= "passed" (:status (mt/user-http-request :lucky :post 200 (str path "/run")))))))
-            (testing "saving or deleting tests needs transforms permission on source database"
+            (testing "creating a test needs native access and permission to run the transform, editing or deleting one needs transforms permission"
               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
                                                                             :perms/create-queries :query-builder-and-native}
-                (refused-writes :lucky)))
-            (testing "saving or deleting tests needs native access to source database"
-              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
-                                                                            :perms/create-queries :query-builder}
+                (mt/with-model-cleanup [:model/TransformTest]
+                  (mt/user-http-request :lucky :post 200 "ee/transform-test" body))
+                (mt/user-http-request :lucky :put 403 path {:name "nope"})
+                (mt/user-http-request :lucky :delete 403 path)))
+            (testing "saving or deleting tests needs native access to source database, which transforms permission needs"
+              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/create-queries :query-builder}
                 (refused-writes :lucky)))
             (testing "with both, data analysts can change tests"
               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
@@ -367,3 +406,112 @@
       (testing "a single test carries its newest run"
         (is (=? {:id test-id :last_run {:id new-id}}
                 (mt/user-http-request :crowberto :get 200 (str "ee/transform-test/" test-id))))))))
+
+(deftest a-test-whose-input-lacks-a-column-the-transform-reads-is-refused-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform     {transform-id :id} (transform)
+                   :model/TransformTest {saved-id :id}     {:transform_id transform-id
+                                                            :inputs       [(assoc (first inputs)
+                                                                                  :columns [{:name "ID" :cast_type "INTEGER"}]
+                                                                                  :rows    [{"ID" 1}])]
+                                                            :expectations expectations}]
+      (let [id-only [(assoc (first inputs) :columns [{:name "ID" :cast_type "INTEGER"}] :rows [{"ID" 1}])]]
+        (testing "create refuses an input lacking a column the transform reads, naming it"
+          (is (=? {:error-code "transform-test.missing-input-columns"
+                   :columns    {:PUBLIC.PEOPLE ["NAME"]}}
+                  (mt/user-http-request :crowberto :post 400 "ee/transform-test"
+                                        {:transform_id transform-id :name "id only" :inputs id-only
+                                         :expectations expectations})))
+          (is (not (t2/exists? :model/TransformTest :name "id only"))))
+        (testing "a saved test with such an input is refused when it runs"
+          (is (= "transform-test.missing-input-columns"
+                 (:error-code (mt/user-http-request :crowberto :post 400 (str "ee/transform-test/" saved-id "/run"))))))
+        (testing "control: an input declaring every column the transform reads is saved"
+          (let [created (mt/user-http-request :crowberto :post 200 "ee/transform-test"
+                                              {:transform_id transform-id :name "complete" :inputs inputs
+                                               :expectations expectations})]
+            (t2/delete! :model/TransformTest :id (:id created))))))))
+
+(deftest an-input-without-a-schema-is-checked-against-the-table-in-the-default-schema-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform {transform-id :id} (assoc-in (transform) [:source :query]
+                                                                 (lib/native-query (mt/metadata-provider)
+                                                                                   "SELECT ID, NAME FROM PEOPLE"))]
+      (let [no-schema (fn [& column-names]
+                        [{:table   {:name "PEOPLE"}
+                          :format  "rows"
+                          :columns (mapv (fn [n] {:name n :cast_type "VARCHAR"}) column-names)
+                          :rows    []}])
+            create    (fn [status test-name test-inputs]
+                        (mt/user-http-request :crowberto :post status "ee/transform-test"
+                                              {:transform_id transform-id :name test-name :inputs test-inputs
+                                               :expectations expectations}))]
+        (testing "an input naming its table without a schema, lacking a column the transform reads, is refused, naming the column"
+          (is (=? {:error-code "transform-test.missing-input-columns"
+                   :columns    {:PEOPLE ["NAME"]}}
+                  (create 400 "id only" (no-schema "ID"))))
+          (is (not (t2/exists? :model/TransformTest :name "id only"))))
+        (testing "control: the same input declaring every column the transform reads is saved"
+          (t2/delete! :model/TransformTest :id (:id (create 200 "complete" (no-schema "ID" "NAME")))))))))
+
+(deftest a-revert-to-a-state-that-an-edit-would-refuse-is-refused-transform-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform {subject-id :id} (transform)]
+      ;; Created through the model, which does not validate, so that its creation revision has no inputs. A revision is
+      ;; recorded only under a current user.
+      (let [test-id     (mt/with-current-user (mt/user->id :crowberto)
+                          (:id (first (data-testing.models/create-transform-tests! [{:transform_id subject-id
+                                                                                     :name         "No inputs"
+                                                                                     :inputs       []
+                                                                                     :expectations (mapv #(update % :type keyword) expectations)
+                                                                                     :creator_id   (mt/user->id :crowberto)}]))))
+            path        (str "ee/transform-test/" test-id)
+            creation-id (->> (mt/user-http-request :crowberto :get 200 (str "revision/transform-test/" test-id))
+                             (m/find-first :is_creation)
+                             :id)]
+        (try
+          (is (pos-int? creation-id) "premise: the test has a creation revision")
+          (mt/user-http-request :crowberto :put 200 path {:inputs inputs})
+          (testing "control: an edit back to no inputs is refused"
+            (is (=? {:error-code "transform-test.missing-inputs"}
+                    (mt/user-http-request :crowberto :put 400 path {:inputs []}))))
+          (testing "a revert to the creation revision is refused the same way, and leaves the inputs"
+            (is (=? {:error-code "transform-test.missing-inputs"}
+                    (mt/user-http-request :crowberto :post 400 "revision/revert"
+                                          {:entity "transform-test" :id test-id :revision_id creation-id})))
+            (is (= 1 (count (:inputs (t2/select-one :model/TransformTest :id test-id))))))
+          (testing "a revert of the name alone is not validated, so it succeeds where an edit of the inputs is refused"
+            (let [revision-id (-> (mt/user-http-request :crowberto :get 200 (str "revision/transform-test/" test-id))
+                                  first
+                                  :id)]
+              (mt/user-http-request :crowberto :put 200 path {:name "Renamed"})
+              ;; The transform now reads a column that the inputs lack.
+              (t2/update! :model/Transform :id subject-id
+                          {:source {:type  :query
+                                    :query (lib/native-query (mt/metadata-provider)
+                                                             "SELECT ID, NAME, EMAIL FROM PUBLIC.PEOPLE")}})
+              (testing "premise: an edit of the inputs is refused"
+                (is (=? {:error-code "transform-test.missing-input-columns"}
+                        (mt/user-http-request :crowberto :put 400 path {:inputs inputs}))))
+              (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                    {:entity "transform-test" :id test-id :revision_id revision-id})
+              (is (= "No inputs" (t2/select-one-fn :name :model/TransformTest :id test-id)))))
+          (finally
+            (t2/delete! :model/TransformTest :id test-id)))))))
+
+(deftest list-transform-tests-statement-count-test
+  (data-testing.test-util/with-transforms-enabled #{:transforms-testing :transforms :transforms-basic :advanced-permissions}
+    (mt/with-model-cleanup [:model/Transform :model/TransformTest]
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                      :perms/create-queries :query-builder-and-native}
+          (doseq [user [:crowberto :lucky]]
+            (testing (str "as " (name user))
+              (let [[few many] (transforms.tu/statements-at-two-sizes
+                                (fn [n]
+                                  (doseq [transform-id (transforms.tu/create-count-test-transforms! n)]
+                                    (t2/insert! :model/TransformTest
+                                                (merge (mt/with-temp-defaults :model/TransformTest)
+                                                       {:transform_id transform-id})))
+                                  #(mt/user-http-request user :get 200 "ee/transform-test")))]
+                (is (= few many))))))))))

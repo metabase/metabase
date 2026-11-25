@@ -8,7 +8,7 @@ redirect_from:
 
 # Running Metabase as a systemd service
 
-For those people who don't (or can't) use Docker in their infrastructure, you can register Metabase as a [systemd](https://wiki.debian.org/systemd) service that can be started/stopped/uninstalled.
+If you don't (or can't) use Docker in your infrastructure, you can register Metabase as a [systemd](https://wiki.debian.org/systemd) service.
 
 We'll use Debian as an example in this guide, but the steps should apply to most Linux distributions that use systemd. This is a _bare-bones recipe_ to get you started. Anyone can take it from here to do what they need to do on their systems, and should follow best practices for setting up and securing the rest of their server.
 
@@ -109,7 +109,7 @@ The best part of setting up Metabase as a systemd service is that it will start 
 
 ## Ensure your database is ready
 
-If you're running a PostgreSQL application database, make sure you've created a database for Metabase, as well as a user that can access that database. These values should match what you've set in your Metabase config for the `MB_DB_TYPE`, `MB_DB_DBNAME`, `MB_DB_USER`, and `MB_DB_PASS` environment variables. If you don't have your database properly configured, Metabase won't be able to start.
+If you're running a PostgreSQL application database, make sure you've created a database for Metabase, as well as a user that can access that database. These values should match what you've set in your Metabase config for the [`MB_DB_TYPE`](../configuring-metabase/environment-variables.md#mb_db_type), [`MB_DB_DBNAME`](../configuring-metabase/environment-variables.md#mb_db_dbname), [`MB_DB_USER`](../configuring-metabase/environment-variables.md#mb_db_user), and [`MB_DB_PASS`](../configuring-metabase/environment-variables.md#mb_db_pass) environment variables. If you don't have your database properly configured, Metabase won't be able to start.
 
 ## Ensure Nginx proxies requests to Metabase
 

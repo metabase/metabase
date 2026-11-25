@@ -133,7 +133,7 @@
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git" remote-sync-type :read-only]
               (mt/with-test-user :rasta
-                (is (false? (mi/can-update? snippet {:name "New Name"}))
+                (is (false? (mi/can-update? (t2/hydrate snippet :can_write) {:name "New Name"}))
                     "Snippet should NOT be updatable in read-only mode when library is synced")))))))))
 
 (deftest remote-sync-read-only-read-perms-still-allowed-test
@@ -204,3 +204,25 @@
                   (testing "all snippets should have :can_write = true in read-write mode"
                     (is (every? :can_write hydrated)
                         "Snippets should be writable in read-write mode")))))))))))
+
+(deftest can-update-each-test
+  (testing "a batch of Snippets is refused when one is in a Collection rasta cannot write, or when the move target is"
+    (mt/with-premium-features #{:snippet-collections}
+      (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+        (mt/with-temp [:model/Collection         writable  {:namespace "snippets"}
+                       :model/Collection         readable  {:namespace "snippets"}
+                       :model/NativeQuerySnippet snippet-1 {:collection_id (:id writable)}
+                       :model/NativeQuerySnippet snippet-2 {:collection_id (:id writable)}
+                       :model/NativeQuerySnippet snippet-3 {:collection_id (:id readable)}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
+          (mt/with-dynamic-fn-redefs [snippet.perms/has-any-native-permissions? (constantly true)]
+            (mt/with-test-user :rasta
+              (let [update-each? (fn [snippets changes]
+                                   (mi/can-update-each? :model/NativeQuerySnippet
+                                                        (t2/select :model/NativeQuerySnippet :id [:in (map :id snippets)])
+                                                        changes))]
+                (is (true? (update-each? [snippet-1 snippet-2] {:name "Renamed"})))
+                (is (false? (update-each? [snippet-1 snippet-2 snippet-3] {:name "Renamed"})))
+                (is (true? (update-each? [snippet-1 snippet-2] {:collection_id (:id writable)})))
+                (is (false? (update-each? [snippet-1 snippet-2] {:collection_id (:id readable)})))))))))))

@@ -14,19 +14,6 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(def ^:private PersonalUserChanges
-  "The keys callers pass to [[update-personal-user!]]."
-  [:map {:closed true}
-   [:is_active      {:optional true} :boolean]
-   [:is_qbnewb      {:optional true} :boolean]
-   [:is_datasetnewb {:optional true} :boolean]])
-
-(mu/defn rename-collection!
-  "Set the name of the Collection with `collection-id`."
-  [collection-id   :- ::lib.schema.id/collection
-   collection-name :- :string]
-  (t2/update! :model/Collection :id collection-id {:name collection-name}))
-
 (mu/defn users-with-columns
   "The `columns` of the Users matching `filters` (see [[metabase.users.schema/user-filters]])."
   [columns :- [:sequential :keyword]
@@ -61,7 +48,7 @@
               {:where (into [:and
                              [:= :archived false]
                              (perms/visible-collections-filter-clause :report_card.collection_id user-info {:root-namespace nil})
-                             (mi/exclude-internal-content-hsql :model/Card)]
+                             (mi/non-internal-filter-clause :model/Card :report_card)]
                             (when card-type [[:= :type card-type]]))}))
 
 (mu/defn has-visible-dashboard?
@@ -71,7 +58,7 @@
               {:where [:and
                        [:= :archived false]
                        (perms/visible-collections-filter-clause :report_dashboard.collection_id user-info {:root-namespace nil})
-                       (mi/exclude-internal-content-hsql :model/Dashboard)]}))
+                       (mi/non-internal-filter-clause :model/Dashboard :report_dashboard)]}))
 
 (mu/defn first-login
   "The timestamp of the earliest LoginHistory of the User with `user-id`, or nil."
@@ -90,12 +77,6 @@
   [email   :- :string
    user-id :- ::lib.schema.id/user]
   (t2/exists? :model/User, :%lower.email (u/lower-case-en email), :id [:not= user-id]))
-
-(mu/defn update-user!
-  "Apply `changes` to the User with `user-id`."
-  [user-id :- ::lib.schema.id/user
-   changes :- ::users.schema/user.update]
-  (t2/update! :model/User :id user-id changes))
 
 (mu/defn user
   "The User with `user-id`, or nil."
@@ -118,17 +99,6 @@
   "The id, email, active flag, type, and sso_source of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :email :is_active :type :sso_source] :id user-id))
-
-(mu/defn user-exists?
-  "Whether a User with `user-id` exists."
-  [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User :id user-id))
-
-(mu/defn update-personal-user!
-  "Apply `changes` to the personal User with `user-id`, returning the number of rows updated."
-  [user-id :- ::lib.schema.id/user
-   changes :- PersonalUserChanges]
-  (t2/update! :model/User user-id {:type :personal} changes))
 
 (mu/defn mfa-auth-identity-id-from-hashed-key
   "Fetches the `mfa_auth_identity_id` from the session with the given hashed key"

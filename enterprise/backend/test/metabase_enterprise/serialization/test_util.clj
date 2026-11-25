@@ -7,7 +7,10 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -55,7 +58,15 @@
      (mt/with-temp ~model-bindings ~@body)))
 
 (defn create! [model & {:as properties}]
-  (first (t2/insert-returning-instances! model (merge (mt/with-temp-defaults model) properties))))
+  (let [row (merge (mt/with-temp-defaults model) properties)
+        row (cond-> row
+              (and (= :model/NativeQuerySnippet model) (not (contains? properties :template_tags)))
+              (assoc :template_tags (#'native-query-snippet/snippet-template-tags
+                                     row (#'native-query-snippet/name->id [row])))
+
+              (and (= :model/Action model) (:model_id row) (not (contains? properties :collection_id)))
+              (assoc :collection_id (t2/select-one-fn :collection_id :model/Card :id (:model_id row))))]
+    (first (t2/insert-returning-instances! model row))))
 
 (defn -data-source-url [^metabase.app_db.data_source.DataSource data-source]
   (.url data-source))
@@ -170,9 +181,9 @@
                                                                :location
                                                                (format "/%d/%d/" (crowberto-pc-id) pc-nested-id)}
                   :model/Segment    {segment-id :id} {:name "My Segment"
-                                                      :table_id table-id
-                                                      :definition {:source-table table-id
-                                                                   :filter [:!= [:field category-field-id nil] nil]}}
+                                                      :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                    (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                        (lib/filter (lib/not-null (lib.metadata/field mp category-field-id)))))}
                   :model/Dashboard  {dashboard-id :id} {:name "My Dashboard"
                                                         :collection_id collection-id}
                   :model/Dashboard  {root-dashboard-id :id} {:name "Root Dashboard"}

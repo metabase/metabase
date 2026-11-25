@@ -73,7 +73,7 @@ export class BundleErrorBoundary extends Component<
 /**
  * Fetches + sandboxes the bundle (via `useDataAppBundle`), then wraps the
  * resulting component with `DataAppProvider` (host-realm Redux store, SDK
- * theme, portal container, Emotion cache).
+ * theme, portal container).
  *
  * `DataAppProvider` lives here in host code (not inside the bundle), so the
  * SDK's `setState`-via-listener paths (drill popups, plugin init, etc.) run in

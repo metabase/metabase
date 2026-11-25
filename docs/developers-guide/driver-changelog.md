@@ -7,6 +7,33 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- New driver feature `:stage-ctes/nest-single-row-aggregation`. Drivers that use `:stage-ctes` can opt in to put an
+  aggregation with no breakouts over a previous stage in its own stage CTE. This is for databases like Postgres that
+  do not use an index for `MIN`/`MAX` when the aggregation is in a `SELECT` that has a `WITH` clause. The default is
+  `false`.
+
+- While a data test pins the clock (`metabase.query-processor.timezone/with-pinned-now`),
+  `metabase.driver.sql.query-processor/current-datetime-honeysql-form` dispatches to one method for every driver. It
+  calls the driver's own method to learn the type of its current-time form, and returns a literal of the pinned moment
+  with that type: a wall-clock time in the results timezone when the form is untyped or typed `timestamp` or
+  `datetime`, and an instant otherwise.
+
+- The `:sql-jdbc` implementation of `metabase.driver/do-with-test-connection` sets the session timezone to the report
+  timezone when the database supports `:set-timezone`. A driver that overrides the method without calling the
+  `:sql-jdbc` one should set it too, or a data test reads dates in whatever timezone its pooled connection last had.
+
+- Added new driver feature flag `:jdbc/set-max-rows`, which says whether `metabase.driver/query-on-connection` may cap
+  a query's rows with `Statement.setMaxRows`. It is true for every `:sql-jdbc` driver except Redshift, where a capped
+  query in a data-test run left the transaction aborted. Without it, the query streams and the reader stops at the cap.
+  Return false for a driver where a capped query breaks the transaction it runs in.
+
+- New test-only features `:test/python-transforms-without-atomic-renames` and `:test/python-transforms-without-renames`.
+  A driver with `:transforms/python` but not `:atomic-renames` replaces a Python transform's target non-atomically,
+  and `metabase.transforms.execute-test/python-transform-replace-strategy-test` now fails unless the driver's test
+  extensions acknowledge that. Support `:test/python-transforms-without-atomic-renames` if the driver supports
+  `:rename`, and `:test/python-transforms-without-renames` if it doesn't. Better, implement
+  `metabase.driver/rename-tables!*` and support `:atomic-renames`.
+
 - `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
   values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
   `;` or `#`, even percent-encoded. Defaults to `[:host :port :db :dbname :catalog :account]`; override it if one of
@@ -34,6 +61,13 @@ summary: Changes to the Metabase driver interface, listed by release.
 - Various legacy MBQL utility functions that were deprecated in 57 have been removed from `driver-api`:
   `aggregation-at-index`, `assoc-field-options`, `expression-with-name`, `field-options`, `normalize-token`,
   `query->source-table-id`, and `update-field-options`.
+
+- `->legacy-MBQL` has been removed from the `driver-api`. Converting queries to Legacy MBQL is no longer supported.
+
+- `driver-api/add-alias-info` now only supports MBQL 5 queries.
+
+- `metabase.driver/disallowed-connection-parameters` now has a `:postgres` method, which Redshift extends.
+  If your driver derives from `:postgres` and overrides the method, extend `:postgres`'s list rather than `:sql-jdbc`'s.
 
 ## Metabase 0.65.3
 
@@ -79,9 +113,9 @@ summary: Changes to the Metabase driver interface, listed by release.
     (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) ["someClassNameProperty"]))
   ```
 
-- New driver features `:stage-ctes` and `:stage-ctes/nested`. These let drivers opt in to compiling multi-stage queries
-  with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria in the
-  comment for these features in `metabase.driver/features`.
+- New driver feature `:stage-ctes`. It lets drivers opt in to compiling multi-stage queries with CTEs instead of nested
+  subselects. Drivers should only do this if they satisfy all of the criteria in the comment for this feature in
+  `metabase.driver/features`.
 
 - `driver/native-query-table-refs` has been removed. Nothing calls it anymore, so drivers that implement it should
   delete their `defmethod`, which no longer compiles.

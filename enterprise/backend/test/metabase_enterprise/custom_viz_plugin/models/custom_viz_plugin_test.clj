@@ -4,12 +4,16 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
+   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase-enterprise.custom-viz-plugin.test-util :as cv.tu]
    [metabase.api.common :as api]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -207,3 +211,44 @@
                    :status        :error
                    :error_message #(str/includes? % "does not match")}
                   (t2/select-one :model/CustomVizPlugin :id id))))))))
+
+(deftest identifier-must-not-contain-colon-test
+  (is (not (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.create {:identifier "colon:insert"})))
+  (is (not (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.create {:identifier " "})))
+  (is (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.create {:identifier "plain-identifier"})))
+
+(deftest bulk-write-statement-counts-do-not-grow-with-rows-test
+  (let [created  (atom [])
+        create!  (fn [n]
+                   (events.tu/statement-count!
+                    (fn []
+                      (swap! created into
+                             (map :id (custom-viz-plugin/create-custom-viz-plugins!
+                                       (vec (repeatedly n #(let [identifier (str "bulk-" (random-uuid))]
+                                                             {:identifier identifier :display_name identifier :status :active})))))))))]
+    (try
+      (testing "creating plugins"
+        (create! 1)
+        (is (= (create! 2) (create! 6))))
+      (let [[warm-up & ids] @created
+            update!         (fn [ids]
+                              (events.tu/statement-count!
+                               #(custom-viz-plugin/update-custom-viz-plugins! (mapv (fn [id] {:id id :enabled false}) (vec ids)))))
+            delete!         (fn [ids]
+                              (events.tu/statement-count! #(custom-viz-plugin/delete-custom-viz-plugins! ids)))]
+        (testing "updating plugins takes the same number of statements for any number of them"
+          (update! [warm-up])
+          (is (= (update! (take 2 ids)) (update! (take 6 (drop 2 ids))))))
+        (testing "deleting plugins"
+          (delete! [warm-up])
+          (is (= (delete! (take 2 ids)) (delete! (take 6 (drop 2 ids)))))))
+      (finally
+        (t2/delete! :model/CustomVizPlugin :id [:in @created])))))
+
+(deftest create-custom-viz-plugins-with-different-key-sets-test
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (let [[plain described] (custom-viz-plugin/create-custom-viz-plugins! [{:identifier "plain-plugin" :display_name "Plain" :status :active}
+                                                                           {:identifier "described-plugin" :display_name "Described" :status :active
+                                                                            :enabled true}])]
+      (is (some? (t2/select-one-fn :enabled :model/CustomVizPlugin :id (:id plain))))
+      (is (=? {:display_name "Described" :enabled true} (t2/select-one :model/CustomVizPlugin :id (:id described)))))))

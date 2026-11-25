@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.test-util :as events.tu]
+   [metabase.explorations.models.exploration :as exploration]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -14,7 +16,8 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -168,7 +171,7 @@
   ;; The wiring assertions run unconditionally so this test can never silently pass
   ;; with zero assertions; only the index round-trip below is gated on engine support.
   (testing "the exploration search-model is wired up"
-    (is (= :model/Exploration (:model (search.spec/spec "exploration"))))
+    (is (= :model/Exploration (:model (search.spec/search-model-spec "exploration"))))
     (is (contains? search.config/all-models "exploration")))
   (testing "an exploration is indexed and returned from the default search"
     (when (search/supports-index?)
@@ -199,3 +202,159 @@
     (let [hydrated (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :threads)]
       (is (= 2 (count (:threads hydrated))))
       (is (= [0 1] (mapv :position (:threads hydrated)))))))
+
+(deftest create-explorations-with-different-columns-test
+  (mt/with-model-cleanup [:model/Exploration]
+    (let [creator-id   (mt/user->id :rasta)
+          explorations (exploration/create-explorations! [{:name "Plain" :creator_id creator-id}
+                                                          {:name "Archived" :creator_id creator-id :archived true}])]
+      (is (= ["Plain" "Archived"] (map :name explorations)))
+      (is (= [false true] (map #(t2/select-one-fn :archived :model/Exploration :id (:id %)) explorations))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Collection {live :id}  {}
+                 :model/Collection {other :id} {}]
+    (mt/with-model-cleanup [:model/Document :model/Exploration]
+      (let [user-id (mt/user->id :rasta)
+            rows    (fn [n] (mapv (fn [_] {:name (mt/random-name) :creator_id user-id :collection_id live}) (range n)))
+            fresh!  (fn [n]
+                      (let [ids (mapv :id (exploration/create-explorations! (rows n)))]
+                        (doseq [id ids]
+                          (t2/insert! :model/Document (assoc (mt/with-temp-defaults :model/Document) :exploration_id id :collection_id live)))
+                        ids))
+            update! (fn [prepare changes n]
+                      (let [ids (fresh! n)]
+                        (prepare (take-nth 2 ids))
+                        (events.tu/statement-count! #(exploration/update-explorations! (mapv (fn [id] (assoc changes :id id)) ids)))))
+            counted (fn [f]
+                      (f 1)
+                      (is (= (f 2) (f 6))))]
+        (testing "creating explorations"
+          (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(exploration/create-explorations! rows))))))
+        (testing "updating columns, some already holding the new value"
+          (counted (partial update!
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :description "Same"}) ids)))
+                            {:description "Same"})))
+        (testing "archiving explorations and their summary documents, some already archived"
+          (counted (partial update!
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
+                            {:archived true})))
+        (testing "restoring explorations and their summary documents, some already live"
+          (counted (partial update!
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :archived true}) ids)))
+                            {:archived false})))
+        (testing "moving explorations, some already in the Collection"
+          (counted (partial update!
+                            (fn [ids] (exploration/update-explorations! (mapv (fn [id] {:id id :collection_id other}) ids)))
+                            {:collection_id other})))
+        (testing "deleting explorations"
+          (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(exploration/delete-explorations! ids))))))))))
+
+(deftest archived-directly-follows-collection-through-plain-update-test
+  (testing "a plain t2/update! of archived derives archived_directly in the statement from the Collection"
+    (mt/with-temp [:model/Collection {live :id}     {}
+                   :model/Collection {archived :id} {:archived true}
+                   :model/Exploration {a :id} {:collection_id live}
+                   :model/Exploration {b :id} {:collection_id archived}]
+      (t2/update! :model/Exploration :id [:in [a b]] {:archived true})
+      (is (= [true false] (mapv #(t2/select-one-fn :archived_directly :model/Exploration :id %) [a b])))
+      (t2/update! :model/Exploration :id [:in [a b]] {:archived false})
+      (is (= [false false] (mapv #(t2/select-one-fn :archived_directly :model/Exploration :id %) [a b]))))))
+
+(deftest unarchived-exploration-in-archived-collection-is-refused-test
+  (mt/with-temp [:model/Collection {archived-id :id} {:archived true}
+                 :model/Collection {live-id :id}     {}
+                 :model/Exploration {id :id}         {:collection_id live-id}]
+    (let [creator-id (mt/user->id :rasta)
+          stored     #(t2/select-one-fn :collection_id :model/Exploration :id id)]
+      (testing "creating one unarchived in an archived Collection throws a 400 and writes nothing"
+        (let [before (t2/count :model/Exploration)]
+          (is (= 400 (try (exploration/create-explorations! [{:name "Refused" :creator_id creator-id :collection_id archived-id}])
+                          (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))
+          (is (= before (t2/count :model/Exploration)))))
+      (testing "moving one into an archived Collection throws a 400 and leaves it where it is"
+        (is (= 400 (try (exploration/update-explorations! [{:id id :collection_id archived-id}])
+                        (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))
+        (is (= live-id (stored))))
+      (testing "an archived Exploration may go into an archived Collection"
+        (exploration/update-explorations! [{:id id :archived true :collection_id archived-id}])
+        (is (= archived-id (stored)))))))
+
+(defn- archive-call-count
+  "The number of statements it takes to ask whether rasta may archive `explorations`, which must be allowed."
+  [explorations]
+  (mt/with-current-user (mt/user->id :rasta)
+    (t2/with-call-count [call-count]
+      (is (true? (mi/can-update-each? :model/Exploration explorations {:archived true})))
+      (call-count))))
+
+(deftest can-update-each-archive-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-model-cleanup [:model/Collection :model/Exploration]
+      (let [coll-ids        (t2/insert-returning-pks! :model/Collection
+                                                      (repeatedly 41 #(t2.with-temp/with-temp-defaults :model/Collection)))
+            _               (doseq [coll-id (butlast coll-ids)]
+                              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id))
+            exploration-ids (t2/insert-returning-pks! :model/Exploration
+                                                      (for [coll-id coll-ids]
+                                                        (assoc (t2.with-temp/with-temp-defaults :model/Exploration)
+                                                               :collection_id coll-id)))
+            explorations    (t2/select :model/Exploration :id [:in exploration-ids] {:order-by [[:id :asc]]})
+            writable        (vec (butlast explorations))]
+        (testing "a batch with one Exploration rasta cannot write is refused"
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (false? (mi/can-update-each? :model/Exploration (conj (subvec writable 0 3) (last explorations))
+                                             {:archived true})))))
+        (testing "the question takes as many statements for 40 Explorations as for 10"
+          (archive-call-count (subvec writable 0 2))
+          (is (= (archive-call-count (subvec writable 0 10))
+                 (archive-call-count writable))))))))
+
+(defn- per-row-can-read?
+  "The answer the per-row `:can_read` hydration gave: the parent row loaded alone and asked."
+  [parent-model parent-id]
+  (boolean (some-> (t2/select-one parent-model :id parent-id) (t2/hydrate :can_read) mi/can-read?)))
+
+(deftest child-can-read-statements-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Collection open   {}
+                 :model/Collection closed {}
+                 :model/Card       metric {:type :metric, :dataset_query (venues-count-query)}]
+    (mt/with-non-admin-groups-no-collection-perms open
+      (mt/with-non-admin-groups-no-collection-perms closed
+        (perms/grant-collection-read-permissions! (perms-group/all-users) open)
+        (mt/with-model-cleanup [:model/Exploration]
+          (let [user-id      (mt/user->id :crowberto)
+                explorations (t2/insert-returning-instances! :model/Exploration
+                                                             (for [i (range 6)]
+                                                               {:name          (str "x" i)
+                                                                :creator_id    user-id
+                                                                :collection_id (:id (if (even? i) open closed))}))
+                threads      (t2/insert-returning-instances! :model/ExplorationThread
+                                                             (for [e explorations] {:exploration_id (:id e)}))
+                blocks       (t2/insert-returning-instances! :model/ExplorationBlock
+                                                             (for [t threads] {:exploration_thread_id (:id t)}))
+                pages        (t2/insert-returning-instances! :model/ExplorationPage
+                                                             (for [b blocks]
+                                                               {:exploration_block_id (:id b), :card_id (:id metric)
+                                                                :dimension_id "d1", :query_type "default"}))
+                queries      (t2/insert-returning-instances! :model/ExplorationQuery
+                                                             (for [[t p] (map vector threads pages)]
+                                                               {:exploration_thread_id (:id t), :page_id (:id p)
+                                                                :card_id (:id metric), :dimension_id "d1", :database_id (mt/id)
+                                                                :dataset_query (venues-count-query)}))]
+            (mt/with-test-user :rasta
+              (doseq [[model rows parent-model parent-key] [[:model/ExplorationThread threads :model/Exploration :exploration_id]
+                                                            [:model/ExplorationBlock blocks :model/ExplorationThread :exploration_thread_id]
+                                                            [:model/ExplorationPage pages :model/ExplorationBlock :exploration_block_id]
+                                                            [:model/ExplorationQuery queries :model/ExplorationThread :exploration_thread_id]]]
+                (testing model
+                  (let [hydrate (fn [n]
+                                  (t2/with-call-count [call-count]
+                                    (let [hydrated (doall (t2/hydrate (vec (take n rows)) :can_read))]
+                                      {:statements (call-count)
+                                       :values     (mapv mi/can-read? hydrated)})))]
+                    (hydrate 1)
+                    (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))
+                    (is (= [true false true false true false] (:values (hydrate 6))))
+                    (is (= (mapv #(per-row-can-read? parent-model (parent-key %)) rows)
+                           (:values (hydrate 6))))))))))))))

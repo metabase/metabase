@@ -10,16 +10,18 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
-   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.models.table :as table]
-   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]))
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -104,7 +106,7 @@
       (traverse-graph downstream-table-ids initial-ids))))
 
 (mr/def ::data-sources
-  (into [:enum {:decode/string keyword}] table/data-sources))
+  (into [:enum {:decode/string keyword}] table/writable-data-sources))
 
 (mr/def ::data-authorities
   (into [:enum {:decode/string keyword}] table/writable-data-authority-types))
@@ -128,31 +130,24 @@
    [:published_downstream_tables [:sequential ::bulk-table-info]]
    [:unpublished_upstream_tables [:sequential ::bulk-table-info]]])
 
-(defn- sync-unhidden-tables
-  "Function to call on newly unhidden tables. Starts a thread to sync all tables. Groups tables by database to
-  efficiently sync tables from different databases."
-  [newly-unhidden]
-  (when (seq newly-unhidden)
-    (u.jvm/in-virtual-thread*
-     (fn []
-       (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
-         (let [database (data-studio.db/database db-id)]
-           ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
-           ;; purposes of creating a new H2 database.
-           (if (binding [driver.settings/*allow-testing-h2-connections* true
-                         driver.settings/*allow-testing-sqlite-connections* true]
-                 (driver.u/can-connect-with-details? (:engine database) (:details database)))
-             (doseq [table tables]
-               (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
-               (sync/sync-table! table))
-             (log/warn (u/format-color :red "Cannot connect to database %s in order to sync unhidden tables"
-                                       (:id database))))))))))
+(defn- bulk-table-info
+  "`table`, a row of selection columns, as a `::bulk-table-info`: its published flag, nil when not set, becomes a
+  boolean."
+  [table]
+  (update table :is_published boolean))
+
+(defn- writable-tables
+  "`tables`, or a 403 unless the current user can change the metadata of every one of them."
+  [tables]
+  (let [tables (t2/hydrate tables :can_write)]
+    (api/check-403 (every? mi/can-write? tables))
+    tables))
 
 (defn- maybe-sync-unhidden-tables!
   [existing-tables {:keys [data_layer] :as body}]
   ;; sync any tables that are changed from hidden to something else
-  (sync-unhidden-tables (when (and (contains? body :data_layer) (not= :hidden data_layer))
-                          (filter #(= :hidden (:data_layer %)) existing-tables))))
+  (sync/sync-tables-in-background! (when (and (contains? body :data_layer) (not= :hidden data_layer))
+                                     (filter #(= :hidden (:data_layer %)) existing-tables))))
 
 (api.macros/defendpoint :post "/edit" :- [:map {:closed true}]
   "Bulk updating tables."
@@ -176,17 +171,13 @@
                          :owner_email
                          :owner_user_id
                          :entity_type]
-        existing-tables (data-studio.db/tables-matching-selectors selectors)
+        existing-tables (writable-tables (data-studio.db/tables-matching-selectors selectors))
         table-ids       (set (map :id existing-tables))
         set-map         (select-keys body set-ks)]
     (when (seq set-map)
       (schema.table-user-settings/upsert-table-user-settings-for-tables! table-ids set-map)
       (maybe-sync-unhidden-tables! existing-tables set-map)
-      ;; Publish update events for remote sync tracking
-      (let [updated-tables (data-studio.db/tables table-ids)]
-        (doseq [table updated-tables]
-          (events/publish-event! :event/table-update {:object  table
-                                                      :user-id api/*current-user-id*}))))
+      nil)
     {}))
 
 (api.macros/defendpoint :post "/selection" :- ::bulk-table-selection-info
@@ -205,14 +196,9 @@
                             (data-studio.db/selection-columns-for-tables upstream-ids))
         downstream-tables (when (seq downstream-ids)
                             (data-studio.db/selection-columns-for-tables downstream-ids))]
-    {:selected_table              selected-table
-     :published_downstream_tables (filterv :is_published downstream-tables)
-     :unpublished_upstream_tables (filterv (complement :is_published) upstream-tables)}))
-
-(defn- sync-schema-async!
-  [table user-id]
-  (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
-  (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))
+    {:selected_table              (some-> selected-table bulk-table-info)
+     :published_downstream_tables (into [] (comp (filter :is_published) (map bulk-table-info)) downstream-tables)
+     :unpublished_upstream_tables (into [] (comp (remove :is_published) (map bulk-table-info)) upstream-tables)}))
 
 (api.macros/defendpoint :post "/sync-schema" :- :nil
   "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.
@@ -222,7 +208,7 @@
    _
    body :- ::table-selectors]
   (api/check-data-studio-access)
-  (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)
+  (let [tables (writable-tables (data-studio.db/tables-matching-selectors-in-id-order body))
         db-ids (sort (set (map :db_id tables)))]
     (doseq [database (data-studio.db/databases db-ids)]
       (try
@@ -233,8 +219,9 @@
         (catch Throwable e
           (log/warn (u/format-color :red "Cannot connect to database %s in order to sync tables" (:id database)))
           (throw (ex-info (ex-message e) {:status-code 422})))))
+    (events/publish-event! :event/table-manual-sync {:objects tables :user-id api/*current-user-id*})
     (doseq [table tables]
-      (sync-schema-async! table api/*current-user-id*))))
+      (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))))
 
 (api.macros/defendpoint :post "/rescan-values" :- :nil
   "Batch version of /table/:id/rescan_values. Takes an abstract table selection as /table/edit does."
@@ -242,11 +229,11 @@
    _
    body :- ::table-selectors]
   (api/check-data-studio-access)
-  (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)]
+  (let [tables (writable-tables (data-studio.db/tables-matching-selectors-in-id-order body))]
     ;; same permission skip as the single-table api, see comment in /:id/rescan_values
-    (doseq [table tables]
-      (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
-      (request/as-admin
+    (events/publish-event! :event/table-manual-scan {:objects tables :user-id api/*current-user-id*})
+    (request/as-admin
+      (doseq [table tables]
         (quick-task/submit-task! #(sync/update-field-values-for-table! table))))))
 
 (api.macros/defendpoint :post "/discard-values" :- :nil
@@ -255,8 +242,8 @@
    _
    body :- ::table-selectors]
   (api/check-data-studio-access)
-  (let [tables (data-studio.db/tables-matching-selectors-in-id-order body)]
-    (data-studio.db/delete-field-values-for-tables! (map :id tables))
+  (let [tables (writable-tables (data-studio.db/tables-matching-selectors-in-id-order body))]
+    (field-values/delete-field-values! (field-values/ids-of-tables (mapv :id tables)))
     nil))
 
 (def ^{:arglists '([request respond raise])} routes

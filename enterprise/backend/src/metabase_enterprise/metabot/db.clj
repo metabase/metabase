@@ -2,8 +2,9 @@
   "Application database queries for the metabot module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [metabase-enterprise.metabot.schema :as metabot-ee.schema]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.usage-controls :as usage-controls]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -32,27 +33,23 @@
                         :where  [:= :user_id user-id]}]
                       (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
-(mu/defn permission-exists?
-  "Whether the group with `group-id` has a MetabotPermissions row of `perm-type`."
-  [group-id  :- ms/PositiveInt
-   perm-type :- :keyword]
-  (t2/exists? :model/MetabotPermissions :group_id group-id :perm_type perm-type))
+(mu/defn permissions-of-groups :- [:sequential ::metabot-ee.schema/metabot-permissions]
+  "The MetabotPermissions rows of the groups with `group-ids`."
+  [group-ids :- [:sequential ms/PositiveInt]]
+  (mdb/select-batched #(t2/select :model/MetabotPermissions :group_id [:in [:auto/param %]]) group-ids))
 
-(mu/defn update-permission-value!
-  "Set the value of the MetabotPermissions row of `perm-type` for the group with `group-id`."
-  [group-id   :- ms/PositiveInt
-   perm-type  :- :keyword
-   perm-value :- :keyword]
-  (t2/update! :model/MetabotPermissions {:group_id group-id :perm_type perm-type} {:perm_value perm-value}))
+(mu/defn update-permission-values!
+  "Apply `updates`, each the `:id` of a MetabotPermissions row and its new `:perm_value`, one statement per value and
+  partition of rows."
+  [updates :- [:sequential [:map {:closed true}
+                            [:id ms/PositiveInt]
+                            [:perm_value ::metabot-ee.schema/metabot-permissions.perm-value]]]]
+  (mdb/update-grouped! :model/MetabotPermissions updates))
 
-(mu/defn insert-permission!
-  "Insert the MetabotPermissions `row`."
-  [row :- [:map {:closed true}
-           [:id         {:optional true} ms/PositiveInt]
-           [:group_id   {:optional true} [:maybe ms/PositiveInt]]
-           [:perm_type  {:optional true} [:maybe [:or :keyword :string]]]
-           [:perm_value {:optional true} [:maybe [:or :keyword :string]]]]]
-  (t2/insert! :model/MetabotPermissions row))
+(mu/defn insert-permissions!
+  "Insert the MetabotPermissions `rows`."
+  [rows :- [:sequential ::metabot-ee.schema/metabot-permissions.update]]
+  (t2/insert! :model/MetabotPermissions rows))
 
 (mu/defn delete-hidden-group-permissions!
   "Delete the MetabotPermissions rows of the groups the mode selected by `advanced?` hides."
@@ -87,13 +84,13 @@
   [row :- [:map {:closed true}
            [:id        {:optional true} ms/PositiveInt]
            [:group_id  {:optional true} [:maybe ms/PositiveInt]]
-           [:max_usage {:optional true} [:maybe :int]]]]
+           [:max_usage {:optional true} ::metabot-ee.schema/metabot-limit.max-usage]]]
   (t2/insert! :model/MetabotGroupLimit row))
 
 (mu/defn update-group-limit!
   "Set the maximum usage of the MetabotGroupLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
-   max-usage :- [:maybe :int]]
+   max-usage :- ::metabot-ee.schema/metabot-limit.max-usage]
   (t2/update! :model/MetabotGroupLimit :id limit-id {:max_usage max-usage}))
 
 (mu/defn delete-group-limit!
@@ -116,24 +113,19 @@
   [row :- [:map {:closed true}
            [:id        {:optional true} ms/PositiveInt]
            [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
-           [:max_usage {:optional true} [:maybe :int]]]]
+           [:max_usage {:optional true} ::metabot-ee.schema/metabot-limit.max-usage]]]
   (t2/insert! :model/MetabotInstanceLimit row))
 
 (mu/defn update-instance-limit!
   "Set the maximum usage of the MetabotInstanceLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
-   max-usage :- [:maybe :int]]
+   max-usage :- ::metabot-ee.schema/metabot-limit.max-usage]
   (t2/update! :model/MetabotInstanceLimit :id limit-id {:max_usage max-usage}))
 
 (mu/defn delete-instance-limit!
   "Delete the MetabotInstanceLimit of the Tenant with `tenant-id`."
   [tenant-id :- [:maybe ms/PositiveInt]]
   (t2/delete! :model/MetabotInstanceLimit :tenant_id tenant-id))
-
-(mu/defn insert-usage-log!
-  "Insert the AiUsageLog `row`."
-  [row :- ::metabot.schema/ai-usage-log.update]
-  (t2/insert! :model/AiUsageLog row))
 
 (defn- usage-window-expr
   [period-start user-id tenant-id]
@@ -143,11 +135,14 @@
    (when tenant-id [:= :tenant_id tenant-id])])
 
 (mu/defn usage-token-sum
-  "The `:sum` row of tokens logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`."
+  "The `:sum` row of tokens logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`.
+  Tokens read from the provider prompt cache do not count, and tokens written to it do."
   [period-start :- ms/TemporalInstant
    user-id      :- [:maybe ::lib.schema.id/user]
    tenant-id    :- [:maybe ms/PositiveInt]]
-  (t2/query-one {:select [[[:sum :total_tokens] :sum]]
+  ;; An agent loop reads the same conversation prefix from the cache on every call, so counting cache reads would
+  ;; make the sum grow with the number of calls rather than with the work done.
+  (t2/query-one {:select [[[:sum [:- :total_tokens [:coalesce :cache_read_tokens 0]]] :sum]]
                  :from   [:ai_usage_log]
                  :where  (usage-window-expr period-start user-id tenant-id)}))
 
@@ -168,8 +163,3 @@
                  :where  (cond-> (usage-window-expr period-start user-id tenant-id)
                            (seq sources) (conj [:in :source sources])
                            request-id    (conj [:not= :request_id request-id]))}))
-
-(mu/defn delete-usage-logs-created-before!
-  "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."
-  [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/AiUsageLog {:where [:< :created_at cutoff]}))

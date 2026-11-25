@@ -75,10 +75,9 @@
 ;;; ---------------------------------------- Phase 1: Resolve focal tables ----------------------------------------
 
 (def ^:private table-select-columns
-  "Columns we read from Table: the perm columns needed for `mi/can-read?`
-   (`:db_id`, `:is_published`, `:collection_id`) plus the display columns the
+  "Columns we read from Table: the perm column needed for `mi/can-read?` (`:db_id`) plus the display columns the
    ERD response surfaces (`:description`, owner fields hydrated below)."
-  [:id :db_id :name :display_name :schema :is_published :collection_id
+  [:id :db_id :name :display_name :schema
    :description :owner_user_id :owner_email :visibility_type])
 
 (defn- index-by-id [xs]
@@ -91,8 +90,7 @@
   [database-id & {:keys [table-ids] :as opts}]
   (if (and (contains? opts :table-ids) (empty? table-ids))
     []
-    (filter mi/can-read? (t2/hydrate (erd.db/active-tables-in-database table-select-columns database-id opts)
-                                     :can_read))))
+    (mi/readable (erd.db/active-tables-in-database table-select-columns database-id opts))))
 
 (defn- readable-table-ids
   [database-id & opts]

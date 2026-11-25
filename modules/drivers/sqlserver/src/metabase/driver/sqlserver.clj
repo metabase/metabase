@@ -86,8 +86,7 @@
                               :describe-is-generated                  true
                               :workspace                              true
                               :table-privileges                       true
-                              :stage-ctes                             true
-                              :stage-ctes/nested                      false}]
+                              :stage-ctes                             true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :sqlserver
@@ -303,7 +302,15 @@
         (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon))))
 
 (def ^:private sqlserver-disallowed-parameters
-  ["socketFactoryClass" "socketFactoryConstructorArg" "trustManagerClass" "trustManagerConstructorArg"
+  [;; Instantiates an arbitrary class
+   "socketFactoryClass"
+   ;; The constructor argument for `socketFactoryClass`
+   "socketFactoryConstructorArg"
+   ;; Instantiates an arbitrary class
+   "trustManagerClass"
+   ;; The constructor argument for `trustManagerClass`
+   "trustManagerConstructorArg"
+   ;; Instantiates an arbitrary class
    "accessTokenCallbackClass"])
 
 (defmethod driver/disallowed-connection-parameters :sqlserver

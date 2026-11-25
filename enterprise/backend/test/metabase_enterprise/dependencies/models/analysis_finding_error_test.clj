@@ -5,7 +5,7 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(deftest replace-errors-for-entity!-test
+(deftest replace-errors-for-entities!-test
   (mt/with-premium-features #{:dependencies}
     (testing "Can insert errors for an entity"
       (mt/with-empty-h2-app-db!
@@ -17,7 +17,7 @@
                        :error-detail "PRICE"
                        :source-entity-type :table
                        :source-entity-id 100}]]
-          (deps.analysis-finding-error/replace-errors-for-entity! :card 1 errors)
+          (deps.analysis-finding-error/replace-errors-for-entities! :card {1 errors})
           (let [stored (t2/select :model/AnalysisFindingError
                                   :analyzed_entity_type :card
                                   :analyzed_entity_id 1)]
@@ -36,11 +36,11 @@
                            :error-detail nil
                            :source-entity-type nil
                            :source-entity-id nil}]]
-          (deps.analysis-finding-error/replace-errors-for-entity! :card 1 old-errors)
+          (deps.analysis-finding-error/replace-errors-for-entities! :card {1 old-errors})
           (is (= 1 (t2/count :model/AnalysisFindingError
                              :analyzed_entity_type :card
                              :analyzed_entity_id 1)))
-          (deps.analysis-finding-error/replace-errors-for-entity! :card 1 new-errors)
+          (deps.analysis-finding-error/replace-errors-for-entities! :card {1 new-errors})
           (let [stored (t2/select-one :model/AnalysisFindingError
                                       :analyzed_entity_type :card
                                       :analyzed_entity_id 1)]
@@ -54,11 +54,11 @@
                        :error-detail "CATEGORY"
                        :source-entity-type :table
                        :source-entity-id 100}]]
-          (deps.analysis-finding-error/replace-errors-for-entity! :card 1 errors)
+          (deps.analysis-finding-error/replace-errors-for-entities! :card {1 errors})
           (is (= 1 (t2/count :model/AnalysisFindingError
                              :analyzed_entity_type :card
                              :analyzed_entity_id 1)))
-          (deps.analysis-finding-error/replace-errors-for-entity! :card 1 [])
+          (deps.analysis-finding-error/replace-errors-for-entities! :card {1 []})
           (is (= 0 (t2/count :model/AnalysisFindingError
                              :analyzed_entity_type :card
                              :analyzed_entity_id 1))))))))
@@ -79,8 +79,7 @@
                               :error-detail "NAME"
                               :source-entity-type :table
                               :source-entity-id 200}]]
-          (deps.analysis-finding-error/replace-errors-for-entity! :card 1 errors-card-1)
-          (deps.analysis-finding-error/replace-errors-for-entity! :card 2 errors-card-2)
+          (deps.analysis-finding-error/replace-errors-for-entities! :card {1 errors-card-1 2 errors-card-2})
           (let [errors-from-100 (deps.analysis-finding-error/errors-by-source :table 100)]
             (is (= 2 (count errors-from-100)))
             (is (= #{1 2} (set (map :analyzed_entity_id errors-from-100)))))
@@ -100,7 +99,7 @@
                        :error-detail "PRICE"
                        :source-entity-type :card
                        :source-entity-id 50}]]
-          (deps.analysis-finding-error/replace-errors-for-entity! :card 1 errors)
+          (deps.analysis-finding-error/replace-errors-for-entities! :card {1 errors})
           (let [entity-errors (deps.analysis-finding-error/errors-for-entity :card 1)]
             (is (= 2 (count entity-errors)))
             (is (= #{"CATEGORY" "PRICE"} (set (map :error_detail entity-errors))))))))))

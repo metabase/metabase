@@ -97,7 +97,7 @@
     (mt/dataset test-data
       (let [orders-product-id-field-id (mt/id :orders :product_id)
             reviews-product-id-field-id (mt/id :reviews :product_id)]
-        (field-values/clear-field-values-for-field! (mt/id :products :id))
+        (field-values/delete-field-values! (field-values/ids-of-fields [(mt/id :products :id)]))
         ;; Create dashboard with parameter mapped to both fields
         (mt/with-temp [:model/Card {orders-card-id :id} {:dataset_query (mt/mbql-query orders)}
                        :model/Card {reviews-card-id :id} {:dataset_query (mt/mbql-query reviews)}
@@ -808,7 +808,7 @@
                                               :card_id            card-id
                                               :parameter_mappings [{:card_id      card-id
                                                                     :parameter_id "p1"
-                                                                    :target       [:dimension (lib.convert/->legacy-MBQL
+                                                                    :target       [:dimension (lib.convert/->legacy-MBQL-ref
                                                                                                (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :products :category))))]}]}]
         (perms.test-util/with-perms-for-group-and-tables!
           (perms-group/all-users)
@@ -836,7 +836,7 @@
                                               :card_id            model-id
                                               :parameter_mappings [{:card_id      model-id
                                                                     :parameter_id "p1"
-                                                                    :target       [:dimension (lib.convert/->legacy-MBQL
+                                                                    :target       [:dimension (lib.convert/->legacy-MBQL-ref
                                                                                                (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :product_id))))]}]}]
         (mt/with-column-remappings [orders.product_id products.title]
           (mt/with-full-data-perms-for-all-users!
@@ -868,7 +868,7 @@
                                                 :card_id            card-id
                                                 :parameter_mappings [{:card_id      card-id
                                                                       :parameter_id "p1"
-                                                                      :target       [:dimension (lib.convert/->legacy-MBQL
+                                                                      :target       [:dimension (lib.convert/->legacy-MBQL-ref
                                                                                                  (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :user_id))))]}]}]
           (mt/with-full-data-perms-for-all-users!
             (binding [api/*current-user-id*         (mt/user->id :rasta)

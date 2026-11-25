@@ -23,17 +23,26 @@
   [message]
   (ex-info message {:status-code 400}))
 
+(defn live-app-by-slug
+  "The app with `slug`, read-checked. A disabled app is a 404 to non-superusers, like a missing one, so the app says it
+  isn't live rather than that the user lacks access."
+  [slug]
+  (let [app (api/check-404 (some-> slug data-apps.db/data-app-by-slug))]
+    (api/check-404 (or api/*is-superuser?* (:enabled app)))
+    (api/read-check app)))
+
 (defenterprise request-data-app
-  "What a data-app `request` is checked as: the app its slug names by [[data-apps/data-app-slug]], read-checked, so a
-  missing app is a 404 and an unreadable one a 403, or, for a dev preview's request, a preview of the app its slug
-  names, whether the app exists or not; nil for a request that is not a data app's."
+  "What a data-app `request` is checked as: the app its slug names by [[data-apps/data-app-slug]], checked by
+  [[live-app-by-slug]], so a missing or disabled app is a 404 and an unreadable one a 403, or, for a dev preview's
+  request, a preview of the app its slug names, whether the app exists or not; nil for a request that is not a data
+  app's."
   :feature :data-apps
   [request]
   (when (data-apps/data-app-request? request)
     (let [slug (data-apps/data-app-slug request)]
       (if (data-apps/data-app-dev-request? request)
         {:slug (api/check-404 slug)}
-        (api/read-check (some-> slug data-apps.db/data-app-by-slug))))))
+        (live-app-by-slug slug)))))
 
 (defn- app-collection-id
   "The ID of the collection of the app `data-app`, or nil for a dev preview or an app without one."

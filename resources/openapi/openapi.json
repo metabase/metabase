@@ -3261,6 +3261,114 @@
         } ],
         "description" : "A check that the output of the query under test holds exactly the declared rows, over exactly the declared columns."
       },
+      "metabase-enterprise.data-testing.schema..segment-test.create" : {
+        "additionalProperties" : false,
+        "description" : "What a client sends to create a segment test.",
+        "properties" : {
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "segment_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.segment"
+          }
+        },
+        "required" : [ "segment_id", "name", "inputs", "expectations" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..segment-test.response" : {
+        "additionalProperties" : false,
+        "description" : "A segment test as the read endpoints return it, with its newest run.",
+        "properties" : {
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "last_run" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.data-test-run"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "segment_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.segment"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "last_run" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..segment-test.update" : {
+        "additionalProperties" : false,
+        "description" : "What a client sends to update a segment test. Omitted fields are left unchanged.",
+        "properties" : {
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "segment_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.segment"
+          }
+        },
+        "type" : "object"
+      },
       "metabase-enterprise.data-testing.schema..test.definition" : {
         "additionalProperties" : false,
         "description" : "A test as a client writes it, without the subject it covers.",
@@ -3668,6 +3776,54 @@
         "enum" : [ "started", "passed", "failed", "error", "timeout" ],
         "type" : "string"
       },
+      "metabase-enterprise.data-testing.schema.segment-test" : {
+        "additionalProperties" : false,
+        "description" : "A saved segment test.",
+        "properties" : {
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "segment_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.segment"
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "id" ],
+        "type" : "object"
+      },
       "metabase-enterprise.data-testing.schema.sql-data" : {
         "additionalProperties" : false,
         "description" : "Test data returned by a SQL query run against the Database of the query under test.",
@@ -3707,7 +3863,7 @@
       },
       "metabase-enterprise.data-testing.schema.test-type" : {
         "description" : "The kind of test a run ran. It selects the table that `test_id` points into.",
-        "enum" : [ "transform", "card" ],
+        "enum" : [ "transform", "card", "segment" ],
         "type" : "string"
       },
       "metabase-enterprise.data-testing.schema.transform-test" : {
@@ -8523,100 +8679,6 @@
         "minLength" : 7,
         "type" : "string"
       },
-      "metabase.cache.api..cache-strategy.ee" : {
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.nocache"
-        }, {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.ttl"
-        }, {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.ee.duration"
-        }, {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.ee.schedule"
-        } ],
-        "description" : "cache strategy :type must be one of :nocache, :ttl, :duration, :schedule"
-      },
-      "metabase.cache.api..cache-strategy.ee.duration" : {
-        "additionalProperties" : false,
-        "description" : "[[::lib.schema/cache-strategy.duration]] as it may be configured: a whole number of units.",
-        "properties" : {
-          "duration" : {
-            "description" : "value must be an integer greater than zero.",
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "refresh_automatically" : {
-            "anyOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "const" : "duration"
-          },
-          "unit" : {
-            "enum" : [ "hours", "minutes", "seconds", "days" ],
-            "type" : "string"
-          }
-        },
-        "required" : [ "type", "duration", "unit" ],
-        "type" : "object"
-      },
-      "metabase.cache.api..cache-strategy.ee.schedule" : {
-        "additionalProperties" : false,
-        "description" : "[[::lib.schema/cache-strategy.schedule]] as it may be configured: a valid cron schedule.",
-        "properties" : {
-          "refresh_automatically" : {
-            "anyOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "schedule" : {
-            "description" : "value must be a non-blank string.",
-            "minLength" : 1,
-            "type" : "string"
-          },
-          "type" : {
-            "const" : "schedule"
-          }
-        },
-        "required" : [ "type", "schedule" ],
-        "type" : "object"
-      },
-      "metabase.cache.api..cache-strategy.nocache" : {
-        "$ref" : "#/components/schemas/metabase.lib.schema..cache-strategy.nocache"
-      },
-      "metabase.cache.api..cache-strategy.oss" : {
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.nocache"
-        }, {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.ttl"
-        } ],
-        "description" : "cache strategy :type must be one of :nocache, :ttl"
-      },
-      "metabase.cache.api..cache-strategy.ttl" : {
-        "additionalProperties" : false,
-        "description" : "[[::lib.schema/cache-strategy.ttl]] as it may be configured: whole numbers.",
-        "properties" : {
-          "min_duration_ms" : {
-            "description" : "value must be an integer greater or equal to than zero.",
-            "minimum" : 0,
-            "type" : "integer"
-          },
-          "multiplier" : {
-            "description" : "value must be an integer greater than zero.",
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "type" : {
-            "const" : "ttl"
-          }
-        },
-        "required" : [ "type", "multiplier", "min_duration_ms" ],
-        "type" : "object"
-      },
       "metabase.cache.api.cache-config-item" : {
         "properties" : {
           "collection" : {
@@ -8753,10 +8815,104 @@
       },
       "metabase.cache.api.cache-strategy" : {
         "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.ee"
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.ee"
         }, {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.oss"
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.oss"
         } ]
+      },
+      "metabase.cache.schema..cache-strategy.ee" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.nocache"
+        }, {
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.ttl"
+        }, {
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.ee.duration"
+        }, {
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.ee.schedule"
+        } ],
+        "description" : "cache strategy :type must be one of :nocache, :ttl, :duration, :schedule"
+      },
+      "metabase.cache.schema..cache-strategy.ee.duration" : {
+        "additionalProperties" : false,
+        "description" : "[[::lib.schema/cache-strategy.duration]] as it may be configured: a whole number of units.",
+        "properties" : {
+          "duration" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "refresh_automatically" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "const" : "duration"
+          },
+          "unit" : {
+            "enum" : [ "hours", "minutes", "seconds", "days" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "type", "duration", "unit" ],
+        "type" : "object"
+      },
+      "metabase.cache.schema..cache-strategy.ee.schedule" : {
+        "additionalProperties" : false,
+        "description" : "[[::lib.schema/cache-strategy.schedule]] as it may be configured: a valid cron schedule.",
+        "properties" : {
+          "refresh_automatically" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "schedule" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "schedule"
+          }
+        },
+        "required" : [ "type", "schedule" ],
+        "type" : "object"
+      },
+      "metabase.cache.schema..cache-strategy.nocache" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema..cache-strategy.nocache"
+      },
+      "metabase.cache.schema..cache-strategy.oss" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.nocache"
+        }, {
+          "$ref" : "#/components/schemas/metabase.cache.schema..cache-strategy.ttl"
+        } ],
+        "description" : "cache strategy :type must be one of :nocache, :ttl"
+      },
+      "metabase.cache.schema..cache-strategy.ttl" : {
+        "additionalProperties" : false,
+        "description" : "[[::lib.schema/cache-strategy.ttl]] as it may be configured: whole numbers.",
+        "properties" : {
+          "min_duration_ms" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "minimum" : 0,
+            "type" : "integer"
+          },
+          "multiplier" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "ttl"
+          }
+        },
+        "required" : [ "type", "multiplier", "min_duration_ms" ],
+        "type" : "object"
       },
       "metabase.channel.models.channel.Channel" : {
         "anyOf" : [ {
@@ -20243,7 +20399,7 @@
             "description" : "Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,\n  although the functions that ultimately power most API endpoints tend to set this to `true`. See\n  `add-constraints` middleware for more details."
           },
           "card-reference?" : {
-            "description" : "Whether this query is a card that a native query references, e.g. with `{{#123}}`. The compiled query goes inside\n  the native query, so SQL drivers without the `:stage-ctes/nested` feature compile it without stage CTEs.",
+            "description" : "Whether this query is a card that a native query references, e.g. with `{{#123}}`. The compiled query goes inside\n  the native query, so SQL drivers compile it without stage CTEs.",
             "type" : "boolean"
           },
           "csv-include-bom?" : {
@@ -31767,6 +31923,607 @@
         "description" : "An identity provider's groups mapped to the Metabase group IDs that membership in them grants. The keys are the\n  provider's -- LDAP group DNs, SAML and JWT group names -- so the map is string-keyed on its way in; it is stored as a\n  JSON setting and read back through that setting's own decoder.",
         "type" : "object"
       },
+      "metabase.sync.api.metadata-sync.answer" : {
+        "description" : "the other Metabase's answer, which the receiver checks",
+        "properties" : { },
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.links.field-path" : {
+        "description" : "A Field's name, after the names of its parents. Always one name today.",
+        "items" : {
+          "description" : "value must be a non-blank string.",
+          "minLength" : 1,
+          "type" : "string"
+        },
+        "minItems" : 1,
+        "type" : "array"
+      },
+      "metabase.sync.metadata-sync.links.fk-link" : {
+        "properties" : {
+          "field" : {
+            "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.field-path"
+          },
+          "kind" : {
+            "const" : "fk"
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.target"
+          },
+          "user_set" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "kind", "field", "target" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.links.link" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.fk-link"
+        }, {
+          "description" : "a link of a kind that only a newer version knows",
+          "properties" : {
+            "kind" : {
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
+              "type" : "string"
+            }
+          },
+          "required" : [ "kind" ],
+          "type" : "object"
+        } ],
+        "description" : "A link. This version sends and applies the kind `fk`; a receiver leaves out a link of another kind, which a newer\n  sender sends."
+      },
+      "metabase.sync.metadata-sync.links.target" : {
+        "properties" : {
+          "field" : {
+            "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.field-path"
+          },
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          }
+        },
+        "required" : [ "table", "field" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.receive.counts" : {
+        "additionalProperties" : false,
+        "description" : "What an apply did. The keys are snake_case: the counts are part of an API response.",
+        "properties" : {
+          "database_updated" : {
+            "type" : "integer"
+          },
+          "field_values_inserted" : {
+            "type" : "integer"
+          },
+          "fields_inserted" : {
+            "type" : "integer"
+          },
+          "fks_set" : {
+            "type" : "integer"
+          },
+          "left_out" : {
+            "type" : "integer"
+          },
+          "row_counts_set" : {
+            "type" : "integer"
+          },
+          "tables_existing" : {
+            "type" : "integer"
+          },
+          "tables_inserted" : {
+            "type" : "integer"
+          },
+          "tables_skipped" : {
+            "type" : "integer"
+          },
+          "values_dropped" : {
+            "type" : "integer"
+          }
+        },
+        "required" : [ "values_dropped", "tables_skipped", "left_out", "database_updated", "tables_inserted", "tables_existing", "fields_inserted", "fks_set", "row_counts_set", "field_values_inserted" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.receive.result" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "counts" : {
+            "$ref" : "#/components/schemas/metabase.sync.metadata-sync.receive.counts"
+          },
+          "next" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.cursor"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "counts" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.stats.entry" : {
+        "properties" : {
+          "estimated_row_count" : {
+            "anyOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "field_values" : {
+            "anyOf" : [ {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.sync.metadata-sync.stats.field-values"
+              },
+              "type" : "array"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.stats.field-values" : {
+        "properties" : {
+          "field" : {
+            "items" : {
+              "type" : "string"
+            },
+            "minItems" : 1,
+            "type" : "array"
+          },
+          "has_more_values" : {
+            "anyOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "values" : {
+            "items" : {
+              "anyOf" : [ {
+                "anyOf" : [ {
+                  "type" : "string"
+                }, {
+                  "type" : "number"
+                }, {
+                  "type" : "boolean"
+                }, {
+                  "format" : "uuid",
+                  "type" : "string"
+                }, {
+                  "type" : "string"
+                }, {
+                  "format" : "date-time",
+                  "type" : "string"
+                } ]
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "field", "values" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.tables.field" : {
+        "description" : "a Field's entry: its name path, and each of `field-columns` that has a value",
+        "properties" : {
+          "base_type" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "database_type" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "last_analyzed" : {
+            "anyOf" : [ {
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "path" : {
+            "items" : {
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
+              "type" : "string"
+            },
+            "maxItems" : 50,
+            "minItems" : 1,
+            "type" : "array"
+          },
+          "user_set" : {
+            "anyOf" : [ {
+              "items" : {
+                "description" : "value must be a non-blank string.",
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "type" : "array"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "path", "base_type", "database_type" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.tables.schema-filter" : {
+        "additionalProperties" : false,
+        "description" : "Which schemas of a Database to send, in the form of a Database's own schema filters.",
+        "properties" : {
+          "patterns" : {
+            "type" : "string"
+          },
+          "type" : {
+            "enum" : [ "inclusion", "exclusion" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "type", "patterns" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.tables.table" : {
+        "description" : "a Table's entry: each of `table-columns` that has a value, and its Fields",
+        "properties" : {
+          "data_source" : {
+            "anyOf" : [ {
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "fields" : {
+            "anyOf" : [ {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.sync.metadata-sync.tables.field"
+              },
+              "type" : "array"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "user_set" : {
+            "anyOf" : [ {
+              "items" : {
+                "description" : "value must be a non-blank string.",
+                "minLength" : 1,
+                "type" : "string"
+              },
+              "type" : "array"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.batch" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.database-batch"
+        }, {
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.tables-batch"
+        }, {
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.links-batch"
+        }, {
+          "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.stats-batch"
+        }, {
+          "description" : "a batch of a type that only a newer version knows",
+          "properties" : {
+            "type" : {
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
+              "type" : "string"
+            }
+          },
+          "required" : [ "type" ],
+          "type" : "object"
+        } ]
+      },
+      "metabase.sync.metadata-sync.wire.cursor" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.common.open-json",
+        "description" : "the cursor of an answer, which only the sender that wrote it reads"
+      },
+      "metabase.sync.metadata-sync.wire.database" : {
+        "properties" : {
+          "dbms_version" : {
+            "anyOf" : [ {
+              "description" : "the version a driver reports, in its shape",
+              "properties" : { },
+              "type" : "object"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "timezone" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.database-batch" : {
+        "properties" : {
+          "dbms_version" : {
+            "anyOf" : [ {
+              "description" : "the version a driver reports, in its shape",
+              "properties" : { },
+              "type" : "object"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "timezone" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "const" : "database"
+          }
+        },
+        "required" : [ "type" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.envelope" : {
+        "description" : "What a receiver needs of an answer before it reads its entries: the format version, the Database it is for, a type\n  for each batch, and the cursor. It refuses an answer without them.",
+        "properties" : {
+          "batches" : {
+            "items" : {
+              "properties" : {
+                "type" : {
+                  "description" : "value must be a non-blank string.",
+                  "minLength" : 1,
+                  "type" : "string"
+                }
+              },
+              "required" : [ "type" ],
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "database" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "engine" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "format_version" : {
+            "type" : "integer"
+          },
+          "next" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.cursor"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "format_version", "database", "engine", "batches" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.links-batch" : {
+        "properties" : {
+          "tables" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.links-table"
+            },
+            "type" : "array"
+          },
+          "type" : {
+            "const" : "links"
+          }
+        },
+        "required" : [ "type", "tables" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.links-table" : {
+        "properties" : {
+          "links" : {
+            "anyOf" : [ {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.sync.metadata-sync.links.link"
+              },
+              "type" : "array"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.request" : {
+        "description" : "a request for the metadata of one Database; a key that this version does not know is ignored, so that a newer receiver is not refused",
+        "properties" : {
+          "after" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.cursor"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "engine" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "format_versions" : {
+            "items" : {
+              "type" : "integer"
+            },
+            "minItems" : 1,
+            "type" : "array"
+          },
+          "schema_filters" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.tables.schema-filter"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "database", "engine" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.response" : {
+        "description" : "An answer. It names the Database of its request, by `database` and `engine`, so that a receiver can refuse an\n  answer that is for another Database.",
+        "properties" : {
+          "batches" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.batch"
+            },
+            "type" : "array"
+          },
+          "database" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "engine" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "format_version" : {
+            "type" : "integer"
+          },
+          "next" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.cursor"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "format_version", "database", "engine", "batches" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.stats-batch" : {
+        "properties" : {
+          "tables" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.stats-table"
+            },
+            "type" : "array"
+          },
+          "type" : {
+            "const" : "stats"
+          }
+        },
+        "required" : [ "type", "tables" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.stats-table" : {
+        "properties" : {
+          "estimated_row_count" : {
+            "anyOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "field_values" : {
+            "anyOf" : [ {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.sync.metadata-sync.stats.field-values"
+              },
+              "type" : "array"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "description" : "value must be a non-blank string.",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "schema" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "name" ],
+        "type" : "object"
+      },
+      "metabase.sync.metadata-sync.wire.tables-batch" : {
+        "properties" : {
+          "tables" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.sync.metadata-sync.tables.table"
+            },
+            "type" : "array"
+          },
+          "type" : {
+            "const" : "tables"
+          }
+        },
+        "required" : [ "type", "tables" ],
+        "type" : "object"
+      },
       "metabase.sync.schedules.ExpandedSchedulesMap" : {
         "additionalProperties" : false,
         "description" : "value must be a valid map of schedule maps for a DB.",
@@ -42496,13 +43253,6 @@
                     "minLength" : 1,
                     "type" : "string"
                   },
-                  "provider_name" : {
-                    "anyOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
                   "schedules" : {
                     "anyOf" : [ {
                       "$ref" : "#/components/schemas/metabase.sync.schedules.ExpandedSchedulesMap"
@@ -42794,13 +43544,6 @@
                     } ]
                   },
                   "points_of_interest" : {
-                    "anyOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "provider_name" : {
                     "anyOf" : [ {
                       "type" : "string"
                     }, {
@@ -47274,7 +48017,7 @@
         "tags" : [ "/api/ee/card-test" ]
       },
       "post" : {
-        "description" : "Create a card test. Its expectations read the result of the card's query without remapped columns and without the\n  default row limit. Expectation SQL names that result `{{output}}`, spaces inside the braces allowed; any other\n  `{{...}}` is refused.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.",
+        "description" : "Create a card test. Its expectations read the result of the card's query without remapped columns and without the\n  default row limit. Expectation SQL names that result `{{output}}`, spaces inside the braces allowed; any other\n  `{{...}}` is refused.\n\n  A card with a parameter that needs a value and has no default cannot be tested: a test cannot set parameter values.\n  A run is refused when the card's result has two columns of one name, since the run stores the result in a table.\n  On a database that ignores case in column names, two names that differ only in case are one name.\n\n  An input that gives rows must declare every column that the card's query reads from the input's table. A test\n  whose input lacks such a column is refused, naming the table and the columns. The check covers only the columns that\n  the SQL parser places on one table. It skips the tables that Metabase hides, and the columns marked sensitive or\n  retired. A test that it accepts can still fail when it runs. On a database that keeps the case of column names, a\n  declared name that differs from the table's only in case does not match it.",
         "operationId" : "post-api-ee-card-test",
         "parameters" : [ ],
         "requestBody" : {
@@ -55960,6 +56703,232 @@
         "tags" : [ "/api/ee/security-center" ]
       }
     },
+    "/api/ee/segment-test" : {
+      "get" : {
+        "description" : "List the segment tests the caller can read, with their newest runs, optionally only those of one segment. Needs Data\n  Studio access.\n\n  A segment test, with its inputs and expectations, is readable by every user who can read its segment.",
+        "operationId" : "get-api-ee-segment-test",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "segment-id",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..segment-test.response"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/segment-test",
+        "tags" : [ "/api/ee/segment-test" ]
+      },
+      "post" : {
+        "description" : "Create a segment test. Its expectations read the output: the rows of the segment's table that match the segment's\n  filter. Expectation SQL names the output `{{output}}`, spaces inside the braces allowed; any other `{{...}}` is\n  refused. The test needs an input for the segment's table, and one for each table that the filter reads through a\n  foreign key.\n\n  The output has the columns of the segment's table that its input declares. When that input is SQL, the output has\n  every column of the table.\n\n  An input that gives rows must declare every column that the segment's query reads from the input's table: for the\n  segment's table, the output's columns and the filter's; for a table read through a foreign key, every column. A test\n  whose input lacks such a column is refused, naming the table and the columns. The check covers only the columns that\n  the SQL parser places on one table. It skips the tables that Metabase hides, and the columns marked sensitive or\n  retired. A test that it accepts can still fail when it runs. On a database that keeps the case of column names, a\n  declared name that differs from the table's only in case does not match it.",
+        "operationId" : "post-api-ee-segment-test",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..segment-test.create"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.segment-test"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/segment-test",
+        "tags" : [ "/api/ee/segment-test" ]
+      }
+    },
+    "/api/ee/segment-test/{id}" : {
+      "delete" : {
+        "description" : "Delete a segment test.",
+        "operationId" : "delete-api-ee-segment-test-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "DELETE /api/ee/segment-test/{id}",
+        "tags" : [ "/api/ee/segment-test" ]
+      },
+      "get" : {
+        "description" : "Get a segment test with its newest run.\n\n  A segment test, with its inputs and expectations, is readable by every user who can read its segment.",
+        "operationId" : "get-api-ee-segment-test-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..segment-test.response"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/segment-test/{id}",
+        "tags" : [ "/api/ee/segment-test" ]
+      },
+      "put" : {
+        "description" : "Update a segment test.",
+        "operationId" : "put-api-ee-segment-test-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..segment-test.update"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.segment-test"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/ee/segment-test/{id}",
+        "tags" : [ "/api/ee/segment-test" ]
+      }
+    },
+    "/api/ee/segment-test/{id}/run" : {
+      "post" : {
+        "description" : "Run a segment test. Needs read access to the test, permission to run its segment's definition, and native query\n  access to the segment's database.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,\n  including one that could not be evaluated, which comes back as that expectation's own `:error`.\n\n  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the\n  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)\n  carries none.",
+        "operationId" : "post-api-ee-segment-test-id-run",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.run-result"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/segment-test/{id}/run",
+        "tags" : [ "/api/ee/segment-test" ]
+      }
+    },
     "/api/ee/semantic-search/status" : {
       "get" : {
         "description" : "Fetch the indexing status of the currently active semantic search index table.\n\n  Returns a map with keys:\n   :indexed_count <number of indexed items>\n   :total_est     <estimated total number of items to index>\n\n  If no index is active, or no pgvector database is configured, returns an empty map.",
@@ -56970,7 +57939,7 @@
         "tags" : [ "/api/ee/transform-test" ]
       },
       "post" : {
-        "description" : "Create a transform test.",
+        "description" : "Create a transform test.\n\n  An input that gives rows must declare every column that the transform's query reads from the input's table. A test\n  whose input lacks such a column is refused, naming the table and the columns. The check covers only the columns that\n  the SQL parser places on one table. It skips the tables that Metabase hides, and the columns marked sensitive or\n  retired. A test that it accepts can still fail when it runs. On a database that keeps the case of column names, a\n  declared name that differs from the table's only in case does not match it.",
         "operationId" : "post-api-ee-transform-test",
         "parameters" : [ ],
         "requestBody" : {
@@ -72013,7 +72982,7 @@
           "name" : "entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test" ],
+            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test", "segment-test" ],
             "type" : "string"
           }
         } ],
@@ -72044,7 +73013,7 @@
                 "additionalProperties" : false,
                 "properties" : {
                   "entity" : {
-                    "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test" ],
+                    "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test", "segment-test" ],
                     "type" : "string"
                   },
                   "id" : {
@@ -72088,7 +73057,7 @@
           "name" : "entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test" ],
+            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test", "segment-test" ],
             "type" : "string"
           }
         }, {
@@ -77541,7 +78510,7 @@
                   "items" : {
                     "additionalProperties" : false,
                     "properties" : {
-                      "can_execute" : {
+                      "can_query" : {
                         "type" : "boolean"
                       },
                       "can_read" : {
@@ -77974,7 +78943,7 @@
                 "schema" : {
                   "additionalProperties" : false,
                   "properties" : {
-                    "can_execute" : {
+                    "can_query" : {
                       "type" : "boolean"
                     },
                     "can_read" : {
@@ -78599,6 +79568,9 @@
                           "type" : "null"
                         } ]
                       },
+                      "can_query" : {
+                        "type" : "boolean"
+                      },
                       "created_at" : { },
                       "description" : {
                         "anyOf" : [ {
@@ -78799,6 +79771,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_query" : {
+                      "type" : "boolean"
                     },
                     "created_at" : { },
                     "description" : {
@@ -79045,6 +80020,9 @@
                         "type" : "null"
                       } ]
                     },
+                    "can_query" : {
+                      "type" : "boolean"
+                    },
                     "created_at" : { },
                     "description" : {
                       "anyOf" : [ {
@@ -79253,6 +80231,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_query" : {
+                      "type" : "boolean"
                     },
                     "created_at" : { },
                     "description" : {
@@ -81042,7 +82023,7 @@
                 "schema" : {
                   "additionalProperties" : false,
                   "properties" : {
-                    "can_execute" : {
+                    "can_query" : {
                       "type" : "boolean"
                     },
                     "can_read" : {
@@ -81481,7 +82462,7 @@
                 "schema" : {
                   "additionalProperties" : false,
                   "properties" : {
-                    "can_execute" : {
+                    "can_query" : {
                       "type" : "boolean"
                     },
                     "can_read" : {
@@ -81953,7 +82934,7 @@
                   "items" : {
                     "additionalProperties" : false,
                     "properties" : {
-                      "can_execute" : {
+                      "can_query" : {
                         "type" : "boolean"
                       },
                       "can_read" : {
@@ -83489,6 +84470,138 @@
         },
         "summary" : "GET /api/util/random_token",
         "tags" : [ "/api/util" ]
+      }
+    },
+    "/api/warehouse/metadata/apply" : {
+      "post" : {
+        "description" : "Apply `response`, the other Metabase's answer to a request from `POST /api/warehouse/metadata/request`, to the\n  Database with `database_id`, which has no Tables before the seed. It inserts the Tables the Database has no row\n  for, with their Fields, and fills FK targets, row counts and field values that are empty. Returns the cursor of the\n  next request, `next`, when there is one, and counts of what it did. Each inserted Table counts as synced at once,\n  and after the last answer the Database does too, also when that answer has no batches. Needs a superuser.\n\n  An answer is applied in one transaction, so a refused answer writes nothing and can be sent again. An answer\n  applied again writes nothing.\n\n  What only a newer sender sends is left out: a key, a batch type or a link kind that this version does not know, a\n  value it does not take, such as a type that only a newer Metabase knows or a name longer than its column, and an\n  entry it cannot read. A null is a key left out. The counts say how many values (`values_dropped`), Tables\n  (`tables_skipped`), and batches, links and stats entries (`left_out`) it left out.\n\n  Errors: the ones of `POST /api/warehouse/metadata/request`, and 422 for an answer it does not apply. Before any\n  write:\n\n  - `metadata-sync-format-version-differs`: the answer has a format version that this version does not read.\n  - `metadata-sync-malformed-response`: the answer has no format version, Database, engine, or list of batches with\n    a type each.\n  - `metadata-sync-answer-of-another-database`: the answer names another Database or engine than this one.\n\n  And `metadata-sync-apply-failed` for a write that failed. No message holds a value of the answer.",
+        "operationId" : "post-api-warehouse-metadata-apply",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "additionalProperties" : false,
+                "properties" : {
+                  "database_id" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                  },
+                  "response" : {
+                    "$ref" : "#/components/schemas/metabase.sync.api.metadata-sync.answer"
+                  }
+                },
+                "required" : [ "database_id", "response" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.sync.metadata-sync.receive.result"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/warehouse/metadata/apply",
+        "tags" : [ "/api/warehouse" ]
+      }
+    },
+    "/api/warehouse/metadata/changes" : {
+      "post" : {
+        "description" : "The next page of the warehouse metadata of the Database named `database`, with the engine `engine`, from the\n  cursor `after`, or from the start without one, in a format version that `format_versions` names (version 1 when it\n  names none). The first answer holds the database values, then the tables (each\n  Table with its Fields), the links (FK targets) and the stats (row counts and field values) follow, in that order, a\n  page at a time. Every answer names the `database` and `engine` of its request. Ask again with the answer's `next`\n  while it has one. Needs a superuser.\n\n  Errors, each with an `error-code` in the body, so that a caller can tell them from a 404 of a Metabase without this\n  endpoint:\n\n  - 400 `metadata-sync-format-version-not-read`: `format_versions` does not name the version this Metabase writes.\n  - 400 `metadata-sync-bad-cursor`: `after` is not a cursor this Metabase writes, such as one of another version.\n  - 404 `metadata-sync-database-not-found`: no Database has exactly this name and engine. Stub Databases, the audit\n    Database and the destination Databases of database routing are left out.\n  - 409 `metadata-sync-database-ambiguous`: several Databases have this name and engine.\n  - 422 `metadata-sync-database-not-ready`: the Database's first sync is not complete.",
+        "operationId" : "post-api-warehouse-metadata-changes",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.request"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.response"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/warehouse/metadata/changes",
+        "tags" : [ "/api/warehouse" ]
+      }
+    },
+    "/api/warehouse/metadata/request" : {
+      "post" : {
+        "description" : "The request to send to the other Metabase's `POST /api/warehouse/metadata/changes` for the metadata of the Database\n  with `database_id`, from the cursor `after`. Needs a superuser. No sync of the Database may run until the seed\n  ends: the caller sees to that, for example with `disable-auto-sync` on.\n\n  Errors, each with an `error-code` in the body:\n\n  - 404 `metadata-sync-no-database`: there is no Database with this id.\n  - 400 `metadata-sync-database-not-loadable`: a stub Database, the audit Database, or a destination Database of\n    database routing.",
+        "operationId" : "post-api-warehouse-metadata-request",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "additionalProperties" : false,
+                "properties" : {
+                  "after" : {
+                    "anyOf" : [ {
+                      "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.cursor"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "database_id" : {
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                  }
+                },
+                "required" : [ "database_id" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.sync.metadata-sync.wire.request"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/warehouse/metadata/request",
+        "tags" : [ "/api/warehouse" ]
       }
     }
   },

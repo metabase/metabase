@@ -2,7 +2,6 @@
   "Application database queries for the embedding REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
-   [malli.util :as mut]
    [metabase.embedding.schema :as embedding.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -65,28 +64,6 @@
   "The EmbeddingTheme with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/EmbeddingTheme :id id))
-
-(mu/defn insert-embedding-theme!
-  "Insert the EmbeddingTheme `row` and return the inserted instance."
-  [row :- (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings])]
-  (t2/insert-returning-instance! :model/EmbeddingTheme row))
-
-(mu/defn insert-embedding-themes!
-  "Insert the EmbeddingTheme `rows`. Only seeding - the Light/Dark themes written on the first visit
-  to the embedding hub - sets `is_default`, so the single-row insert above leaves it out."
-  [rows :- [:sequential (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings :is_default])]]
-  (t2/insert! :model/EmbeddingTheme rows))
-
-(mu/defn update-embedding-theme!
-  "Apply `changes` to the EmbeddingTheme with `id`."
-  [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings])]
-  (t2/update! :model/EmbeddingTheme :id id changes))
-
-(mu/defn delete-embedding-theme!
-  "Delete the EmbeddingTheme with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/EmbeddingTheme :id id))
 
 (mu/defn sdk-react-18-hosts-last-seen-after :- [:sequential ::embedding.schema/sdk-react-18-host]
   "The EmbeddingSdkReact18Hosts last seen after `cutoff`, newest first, at most `limit`."

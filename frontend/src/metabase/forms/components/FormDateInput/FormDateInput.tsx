@@ -53,7 +53,6 @@ export const FormDateInput = forwardRef(function FormDateInput(
 
   return (
     <DateInput
-      fw="bold"
       onChange={handleChange}
       {...props}
       id={id}

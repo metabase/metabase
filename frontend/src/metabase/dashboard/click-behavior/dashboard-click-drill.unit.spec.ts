@@ -16,6 +16,9 @@ import {
   createMockVisualizerDashboardCard,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
   PRODUCTS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -139,6 +142,13 @@ describe("getClickBehavior", () => {
 
 const stateColumn = createMockColumn({ name: "STATE" });
 
+const createdAtMonthColumn = createMockColumn({
+  name: "CREATED_AT",
+  base_type: "type/DateTime",
+  effective_type: "type/DateTime",
+  unit: "month",
+});
+
 const targetDashboard = createMockDashboard({
   id: 2,
   parameters: [
@@ -242,6 +252,23 @@ describe("getDashboardDrillType", () => {
 
     expect(type).toBeNull();
   });
+
+  it("resolves no drill when the question link target is not loaded in extraData", () => {
+    // Static embedding loads no link targets, so these links must not open
+    const type = getDashboardDrillType({
+      settings: buildSettings({
+        root: {
+          type: "link",
+          linkType: "question",
+          targetId: 5,
+          parameterMapping: {},
+        },
+      }),
+      extraData: { dashboard: createMockDashboard({ id: 1 }), questions: {} },
+    });
+
+    expect(type).toBeNull();
+  });
 });
 
 describe("getDashboardDrillTab", () => {
@@ -286,6 +313,59 @@ describe("getDashboardDrillParameters", () => {
 
     expect(pairs).toEqual([["current-param", "CA"]]);
   });
+
+  it("updates every mapped filter at once, formatting each value for its parameter", () => {
+    const pairs = getDashboardDrillParameters({
+      settings: buildSettings({
+        root: {
+          type: "crossfilter",
+          parameterMapping: {
+            "text-param": {
+              id: "text-param",
+              source: { type: "column", id: "count", name: "Count" },
+              target: { type: "parameter", id: "text-param" },
+            },
+            "date-param": {
+              id: "date-param",
+              source: {
+                type: "column",
+                id: "CREATED_AT",
+                name: "Created At: Month",
+              },
+              target: { type: "parameter", id: "date-param" },
+            },
+          },
+        },
+      }),
+      data: [
+        { col: createMockColumn({ name: "count" }), value: 64 },
+        {
+          col: createdAtMonthColumn,
+          value: "2025-07-01T00:00:00Z",
+        },
+      ],
+      extraData: {
+        dashboard: createMockDashboard({ id: 1 }),
+        parameters: [
+          createMockParameter({
+            id: "text-param",
+            slug: "filter-text",
+            type: "string/=",
+          }),
+          createMockParameter({
+            id: "date-param",
+            slug: "filter-time",
+            type: "date/month-year",
+          }),
+        ],
+      },
+    });
+
+    expect(pairs).toEqual([
+      ["text-param", 64],
+      ["date-param", "2025-07"],
+    ]);
+  });
 });
 
 describe("getDashboardDrillUrl", () => {
@@ -297,6 +377,37 @@ describe("getDashboardDrillUrl", () => {
     });
 
     expect(url).toBe("/dashboard/2?state=CA&size=L&tab=7");
+  });
+
+  it("uses the tab of the clicked table dashcard's column click behavior (metabase#34447)", () => {
+    const tableDashcard = createMockDashboardCard({
+      card: createMockCard({ display: "table" }),
+    });
+    const productIdColumn = createMockColumn({ name: "PRODUCT_ID" });
+    const getUrlForTab = (tabId: number) =>
+      getDashboardDrillUrl({
+        column: productIdColumn,
+        settings: buildSettings({
+          columns: {
+            PRODUCT_ID: {
+              type: "link",
+              linkType: "dashboard",
+              targetId: 3,
+              tabId,
+              parameterMapping: {},
+            },
+          },
+        }),
+        data: [{ col: productIdColumn, value: 14 }],
+        extraData: {
+          dashboard: createMockDashboard({ id: 1 }),
+          dashcard: tableDashcard,
+          dashboards: { 3: createMockDashboard({ id: 3, parameters: [] }) },
+        },
+      });
+
+    expect(getUrlForTab(11)).toBe("/dashboard/3?tab=11");
+    expect(getUrlForTab(12)).toBe("/dashboard/3?tab=12");
   });
 
   it("omits the tab and filter params when the link has no tab and the target has no filters", () => {
@@ -420,6 +531,223 @@ describe("DashboardClickAction with a question link", () => {
   });
 });
 
+describe("DashboardClickAction with a question link from a metric", () => {
+  it("opens the target question filtered by the clicked metric value of a chart point", () => {
+    const metadata = createMockMetadata({
+      databases: [createSampleDatabase()],
+    });
+    const provider = createMetadataProvider({ metadata });
+    const targetCard = createMockCard({
+      id: 5,
+      name: "Orders",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(provider, {
+          stages: [{ source: { type: "table", id: ORDERS_ID } }],
+        }),
+      ),
+    });
+    const target = getTargetsForQuestion(
+      new Question(targetCard, metadata),
+    ).find(({ name }) => name === "User ID");
+    if (target == null) {
+      throw new Error("User ID target not found");
+    }
+    const metricCard = createMockCard({
+      id: 1,
+      type: "metric",
+      display: "line",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(provider, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count", args: [] }],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "month" },
+              ],
+            },
+          ],
+        }),
+      ),
+    });
+    const createdAtColumn = createMockColumn({
+      id: ORDERS.CREATED_AT,
+      name: "CREATED_AT",
+      display_name: "Created At: Month",
+      base_type: "type/DateTime",
+      effective_type: "type/DateTime",
+      source: "breakout",
+    });
+    const countColumn = createMockColumn({
+      name: "count",
+      display_name: "Count",
+      base_type: "type/Integer",
+      effective_type: "type/Integer",
+      source: "aggregation",
+    });
+
+    const actions = DashboardClickAction({
+      question: new Question(metricCard, metadata),
+      clicked: {
+        column: countColumn,
+        value: 92,
+        dimensions: [
+          { column: createdAtColumn, value: "2025-02-01T00:00:00Z" },
+        ],
+        data: [
+          { col: createdAtColumn, value: "2025-02-01T00:00:00Z" },
+          { col: countColumn, value: 92 },
+        ],
+        settings: buildSettings({
+          root: {
+            type: "link",
+            linkType: "question",
+            targetId: targetCard.id,
+            parameterMapping: {
+              [target.id]: {
+                id: target.id,
+                source: { type: "column", id: "count", name: "Count" },
+                target: target.target,
+              },
+            },
+          },
+        }),
+        extraData: {
+          dashboard: createMockDashboard({ id: 1 }),
+          dashcard: createMockDashboardCard({
+            card_id: metricCard.id,
+            card: metricCard,
+          }),
+          questions: { [targetCard.id]: targetCard },
+        },
+      },
+    });
+
+    expect(actions).toHaveLength(1);
+    const [action] = actions;
+    const url =
+      isAlwaysDefaultClickAction(action) && "url" in action
+        ? action.url?.()
+        : undefined;
+    expect(url).toMatch(/^\/question#/);
+    const drilledQuestion = new Question(
+      deserializeCardFromUrl(url?.split("#")[1] ?? ""),
+      metadata,
+    );
+    const drilledQuery = drilledQuestion.query();
+    expect(drilledQuestion.card().original_card_id).toBe(targetCard.id);
+    expect(
+      Lib.filters(drilledQuery, 0).map(
+        (filter) => Lib.displayInfo(drilledQuery, 0, filter).displayName,
+      ),
+    ).toEqual(["User ID is 92"]);
+  });
+});
+
+describe("DashboardClickAction with a question link from a table column", () => {
+  it("opens the saved question filtered by the clicked text value (metabase#48829)", () => {
+    const metadata = createMockMetadata({
+      databases: [createSampleDatabase()],
+    });
+    const questionCard = createMockCard({
+      id: 48829,
+      name: "Issue 48829",
+      display: "table",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(createMetadataProvider({ metadata }), {
+          stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+        }),
+      ),
+    });
+    const target = getTargetsForQuestion(
+      new Question(questionCard, metadata),
+    ).find(({ name }) => name === "Title");
+    if (target == null) {
+      throw new Error("Title target not found");
+    }
+    const idColumn = createMockColumn({
+      id: PRODUCTS.ID,
+      name: "ID",
+      display_name: "ID",
+      base_type: "type/BigInteger",
+      effective_type: "type/BigInteger",
+      semantic_type: "type/PK",
+    });
+    const titleColumn = createMockColumn({
+      id: PRODUCTS.TITLE,
+      name: "TITLE",
+      display_name: "Title",
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      semantic_type: "type/Title",
+    });
+    const categoryColumn = createMockColumn({
+      id: PRODUCTS.CATEGORY,
+      name: "CATEGORY",
+      display_name: "Category",
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      semantic_type: "type/Category",
+    });
+
+    const actions = DashboardClickAction({
+      question: new Question(questionCard, metadata),
+      clicked: {
+        column: titleColumn,
+        value: "Rustic Paper Wallet",
+        data: [
+          { col: idColumn, value: 1 },
+          { col: titleColumn, value: "Rustic Paper Wallet" },
+          { col: categoryColumn, value: "Gizmo" },
+        ],
+        settings: buildSettings({
+          columns: {
+            TITLE: {
+              type: "link",
+              linkType: "question",
+              targetId: questionCard.id,
+              parameterMapping: {
+                [target.id]: {
+                  id: target.id,
+                  source: { type: "column", id: "TITLE", name: "Title" },
+                  target: target.target,
+                },
+              },
+            },
+          },
+        }),
+        extraData: {
+          dashboard: createMockDashboard({ id: 1 }),
+          dashcard: createMockDashboardCard({
+            card_id: questionCard.id,
+            card: questionCard,
+          }),
+          questions: { [questionCard.id]: questionCard },
+        },
+      },
+    });
+
+    expect(actions).toHaveLength(1);
+    const [action] = actions;
+    const url =
+      isAlwaysDefaultClickAction(action) && "url" in action
+        ? action.url?.()
+        : undefined;
+    expect(url).toMatch(/^\/question#/);
+    const drilledQuestion = new Question(
+      deserializeCardFromUrl(url?.split("#")[1] ?? ""),
+      metadata,
+    );
+    const drilledQuery = drilledQuestion.query();
+    expect(drilledQuestion.card().original_card_id).toBe(questionCard.id);
+    expect(
+      Lib.filters(drilledQuery, -1).map(
+        (filter) => Lib.displayInfo(drilledQuery, -1, filter).displayName,
+      ),
+    ).toEqual(["Title is Rustic Paper Wallet"]);
+  });
+});
+
 describe("getDashboardDrillLinkUrl", () => {
   it("renders the link template with clicked values", () => {
     const url = getDashboardDrillLinkUrl({
@@ -434,6 +762,37 @@ describe("getDashboardDrillLinkUrl", () => {
     });
 
     expect(url).toBe("https://metabase.test/42");
+  });
+
+  it("fills dashboard filter values and clicked column values into the link template", () => {
+    const url = getDashboardDrillLinkUrl({
+      settings: buildSettings({
+        root: {
+          type: "link",
+          linkType: "url",
+          linkTemplate:
+            "https://metabase.com/{{filter-text}}/{{count}}/{{CREATED_AT}}",
+        },
+      }),
+      data: [
+        { col: createdAtMonthColumn, value: "2026-10-01T00:00:00Z" },
+        { col: createMockColumn({ name: "count" }), value: 1 },
+      ],
+      extraData: {
+        dashboard: createMockDashboard({
+          parameters: [
+            createMockParameter({
+              id: "text-param",
+              name: "Text filter",
+              slug: "filter-text",
+            }),
+          ],
+        }),
+        parameterValuesBySlug: { "filter-text": "Dell Adams" },
+      },
+    });
+
+    expect(url).toBe("https://metabase.com/Dell%20Adams/1/2026-10");
   });
 });
 

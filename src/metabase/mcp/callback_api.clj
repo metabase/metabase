@@ -12,7 +12,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.mcp.db :as mcp.db]
+   [metabase.mcp.models.mcp-feedback :as mcp-feedback]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.validation :as mcp.validation]
    [metabase.metabot.config :as metabot.config]
@@ -108,7 +108,7 @@
 
 (defn- persist-mcp-feedback!
   [{:keys [feedback conversation_data]}]
-  (mcp.db/insert-feedback!
+  (mcp-feedback/create-mcp-feedback!
    {:user_id           api/*current-user-id*
     :positive          (:positive feedback)
     :issue_type        (:issue_type feedback)

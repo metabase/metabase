@@ -1,7 +1,6 @@
 (ns metabase.usage-metadata.insights
   "Read-side helpers over usage-metadata rollups — consumer of the batch pipeline."
   (:require
-   [clojure.core.memoize :as memoize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.usage-metadata.db :as usage-metadata.db]
@@ -141,11 +140,10 @@
         (log/debugf "Failed to extract usage facts for usage-metadata insights: %s" (ex-message e))
         nil))))
 
-(def ^:private cache-ttl-ms
-  (* 60 1000))
-
-(defn- existing-segment-predicates*
-  [[source-type source-id]]
+(defn- existing-segment-predicates
+  "Set of `[source-type source-id predicate-json]` tuples for non-archived Segments whose
+  atomic filter clauses would collide with stored implicit segment predicates."
+  [{:keys [source-type source-id]}]
   (let [table-id  (when (and (= source-type :table) source-id) source-id)
         segments  (usage-metadata.db/unarchived-segments table-id)
         table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
@@ -164,16 +162,9 @@
                               [:table table_id predicate]))))))
             segments))))
 
-(def ^:private existing-segment-predicates*-memo
-  (memoize/ttl existing-segment-predicates* :ttl/threshold cache-ttl-ms))
-
-(defn- existing-segment-predicates
-  "Set of `[source-type source-id predicate-json]` tuples for non-archived Segments whose
-  atomic filter clauses would collide with stored implicit segment predicates."
-  [{:keys [source-type source-id]}]
-  (existing-segment-predicates*-memo [source-type source-id]))
-
-(defn- existing-metric-signatures*
+(defn- existing-metric-signatures
+  "Set of `[source-type source-id agg-type agg-field-id temporal-field-id temporal-unit]`
+  tuples for non-archived Metric cards (Cards of type `metric`), read on every call."
   []
   (let [cards (usage-metadata.db/unarchived-metric-cards)]
     (lib-be/with-metadata-provider-cache
@@ -187,16 +178,6 @@
                                 :when (and source-type (= ownership-mode :direct))]
                             [source-type source-id agg agg-field-id temporal-field-id temporal-unit])))))
             cards))))
-
-(def ^:private existing-metric-signatures*-memo
-  (memoize/ttl (fn [_] (existing-metric-signatures*)) :ttl/threshold cache-ttl-ms))
-
-(defn- existing-metric-signatures
-  "Set of `[source-type source-id agg-type agg-field-id temporal-field-id temporal-unit]`
-  tuples for non-archived Metric cards (Cards of type `metric`). Scan is independent of opts;
-  TTL-memoized with a singleton key."
-  []
-  (existing-metric-signatures*-memo ::all))
 
 (mu/defn implicit-segments :- [:sequential ::usage-metadata.schema/implicit-segment]
   "Top implicit segments recorded across usage-metadata rollups.
@@ -404,8 +385,10 @@
     (when (>= (count atoms) fim-k-min)
       (lib/simplify-compound-filter (apply lib/and atoms)))))
 
-(defn- existing-composite-atomsets*
-  [[source-type source-id]]
+(defn- existing-composite-atomsets
+  "Set of `[source-type source-id #{atom-fingerprint ...}]` tuples for non-archived Segments whose
+  definitions are whole-:and baskets. Used to filter out suggestions that already exist as saved Segments."
+  [{:keys [source-type source-id]}]
   (let [table-id  (when (and (= source-type :table) source-id) source-id)
         segments  (usage-metadata.db/unarchived-segments table-id)
         table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
@@ -424,15 +407,6 @@
                               [:table table_id (set atom-fingerprints)]))))))
             segments))))
 
-(def ^:private existing-composite-atomsets*-memo
-  (memoize/ttl existing-composite-atomsets* :ttl/threshold cache-ttl-ms))
-
-(defn- existing-composite-atomsets
-  "Set of `[source-type source-id #{atom-fingerprint ...}]` tuples for non-archived Segments whose
-  definitions are whole-:and baskets. Used to filter out suggestions that already exist as saved Segments."
-  [{:keys [source-type source-id]}]
-  (existing-composite-atomsets*-memo [source-type source-id]))
-
 (mu/defn suggested-segments-for-owner :- [:sequential ::usage-metadata.schema/suggested-segment]
   "Suggest composite (`:and`) segment definitions that recur across a source's query history but
   have not been saved as Segments yet. Implemented as Apriori FIM over composite rollup baskets:
@@ -450,12 +424,11 @@
    (let [rows          (grouped-composite-rows opts)
          by-source     (group-by (juxt :source_type :source_id) rows)
          source-idx    (build-source-index (keys by-source))
+         existing      (if (seq by-source) (existing-composite-atomsets opts) #{})
          candidates    (into []
                              (mapcat (fn [[[source-type source-id] source-rows]]
                                        (when-let [source (source-idx [source-type source-id])]
                                          (let [baskets  (rows->baskets source-rows)
-                                               existing (existing-composite-atomsets {:source-type source-type
-                                                                                      :source-id   source-id})
                                                mined    (closed-only (mine-itemsets baskets))]
                                            (for [[itemset-vec support] mined
                                                  :let  [itemset (set itemset-vec)]

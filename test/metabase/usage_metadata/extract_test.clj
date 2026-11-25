@@ -1,7 +1,6 @@
 (ns metabase.usage-metadata.extract-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -194,16 +193,14 @@
              :database-id   (meta/id)
              :table-id      (meta/id :orders)
              :dataset-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                                (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
-                                lib.convert/->legacy-MBQL)}
+                                (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal))))}
             {:id            metric-id-2
              :name          "Sum Tax"
              :type          :metric
              :database-id   (meta/id)
              :table-id      (meta/id :orders)
              :dataset-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                                (lib/aggregate (lib/sum (meta/field-metadata :orders :tax)))
-                                lib.convert/->legacy-MBQL)}]}))
+                                (lib/aggregate (lib/sum (meta/field-metadata :orders :tax))))}]}))
 
 (deftest ^:parallel metric-extraction-only-records-primitive-aggregations-test
   (testing "primitive Sum(field) aggregation emits a row"

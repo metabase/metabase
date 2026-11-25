@@ -15,6 +15,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
@@ -368,6 +369,57 @@
                                :source-table (mt/id :venues)
                                :aggregation  [["count" {:lib/uuid string?}]]}]}
                   (-> response :dashcards first :card :dataset_query))))))))
+
+(defn- count-query-on
+  "A query that counts the rows of `table-kw`."
+  [table-kw]
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
+        (lib/aggregate (lib/count)))))
+
+(defn- fetch-public-dashboard-on-tables!
+  "The response of `GET /api/public/dashboard/:uuid` and its statement count, for a dashboard with one Card on each of
+  `table-kws`, fetched with no user."
+  [table-kws]
+  (mt/with-model-cleanup [:model/Card]
+    (with-temp-public-dashboard [dash]
+      (doseq [table-kw table-kws]
+        (add-card-to-dashboard! (t2/insert-returning-instance! :model/Card
+                                                               {:name                   "Count"
+                                                                :type                   :question
+                                                                :creator_id             (mt/user->id :crowberto)
+                                                                :database_id            (mt/id)
+                                                                :dataset_query          (count-query-on table-kw)
+                                                                :display                "table"
+                                                                :visualization_settings {}})
+                                dash))
+      (let [url      (str "public/dashboard/" (:public_uuid dash))
+            response (atom nil)
+            n        (events.tu/real-statement-count! #(reset! response (client/client :get 200 url)))]
+        {:response @response :statements n}))))
+
+(deftest fetch-dashboard-statement-count-test
+  (testing "GET /api/public/dashboard/:uuid costs the same number of statements for cards on more tables"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (fetch-public-dashboard-on-tables! [:venues :users])
+      (is (= 4 (count (:dashcards (:response (fetch-public-dashboard-on-tables! [:venues :users :checkins :categories]))))))
+      (is (= (:statements (fetch-public-dashboard-on-tables! [:venues]))
+             (:statements (fetch-public-dashboard-on-tables! [:venues :users :checkins :categories])))))))
+
+(deftest fetch-dashboard-blank-queries-on-several-tables-test
+  (testing "GET /api/public/dashboard/:uuid blanks each Card's query to its own source table and keeps the same keys"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [table-kws [:venues :users :checkins]
+            {:keys [response]} (fetch-public-dashboard-on-tables! table-kws)
+            stage-of  #(:source-table (first (get-in % [:card :dataset_query :stages])))
+            dashcards (sort-by stage-of (:dashcards response))]
+        (is (= (sort (map #(mt/id %) table-kws))
+               (map stage-of dashcards)))
+        (doseq [dashcard dashcards]
+          (is (= #{:id :name :description :display :visualization_settings :parameters :entity_id :dataset_query}
+                 (set (keys (:card dashcard)))))
+          (is (=? [["count" {:lib/uuid string?}]]
+                  (:aggregation (first (get-in dashcard [:card :dataset_query :stages]))))))))))
 
 (deftest public-queries-are-counted-test
   (testing "GET /api/public/card/:uuid/query counts as a public query"
@@ -2604,7 +2656,7 @@
                      :model/TimelineEvent _archived    {:timeline_id (:id first-timeline) :archived true}
                      :model/TimelineEvent second-event {:timeline_id (:id second-timeline)}
                      :model/TimelineEvent _unrelated   {:timeline_id (:id unrelated)}
-                     :model/TimelineEvent _on-archived {:timeline_id (:id archived)}
+                     :model/TimelineEvent _on-archived {:timeline_id (:id archived) :archived true}
                      :model/Dashboard dashboard (public-dashboard-properties)
                      :model/Card first-card
                      {:display "line"

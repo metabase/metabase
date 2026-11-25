@@ -34,7 +34,7 @@
 (defn- generate-nonce
   "Generates a random nonce of 10 characters to add to the `Content-Security-Policy` header so that only
    style elements with the same nonce will be allowed to apply. The app document hands this value to page
-   JS, which needs it to inject styles at runtime (Emotion, CodeMirror, ECharts). The server generates a
+   JS, which needs it to inject styles at runtime (global style sheets, CodeMirror, ECharts). The server generates a
    unique nonce value each time it sends a response. `script-src` only carries the nonce for responses that
    set [[script-nonce-response-key]]. For more information see
    https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/style-src."
@@ -520,7 +520,7 @@
            "Vary"                        "Origin"})
         {"Access-Control-Allow-Headers"  "*"
          "Access-Control-Allow-Methods"  "*"
-         "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version, Mcp-Session-Id"
+         "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version, X-Metabase-Workspaces-Version, Mcp-Session-Id"
          ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
          "Access-Control-Max-Age"  "60"})))))
 

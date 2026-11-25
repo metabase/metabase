@@ -30,14 +30,6 @@ export function dataSource(dataSourceName: string) {
     .parents("[data-testid='data-source-list-item']");
 }
 
-export function showUnderlyingQuestion(index: number, title: string) {
-  getDashboardCard(index).findByTestId("legend-caption-title").click();
-
-  cy.findByTestId("legend-caption-menu").within(() => {
-    cy.findByText(title).click();
-  });
-}
-
 /**
  * Unselects a data source.
  * Only works in "ColumnList" mode, despite the name...
@@ -67,18 +59,6 @@ export function removeDataSource(
       .first()
       .click({ force: true });
   }
-}
-
-export function resetDataSourceButton(dataSourceName: string) {
-  dataSource(dataSourceName)
-    .realHover()
-    .findByLabelText("Datasource actions")
-    .click({ force: true });
-  return cy
-    .document()
-    .its("body")
-    .findByTestId("datasource-actions-dropdown")
-    .findByLabelText("Reset data source");
 }
 
 export function dataSourceColumn(dataSourceName: string, columnName: string) {
@@ -137,16 +117,6 @@ export function selectDataset(
   cy.wait("@cardQuery");
 }
 
-export function deselectDataset(datasetName: string) {
-  cy.findByPlaceholderText("Search for something").clear().type(datasetName);
-  cy.findAllByText(datasetName)
-    .first()
-    .closest("[data-testid='swap-dataset-button']")
-    .should("have.attr", "aria-pressed", "true")
-    .click({ force: true });
-  cy.wait("@cardQuery");
-}
-
 export function assertCurrentVisualization(name: VisualizationDisplay) {
   cy.findByTestId("viz-picker-main")
     .findByDisplayValue(name)
@@ -167,10 +137,6 @@ export function switchToColumnsList() {
   cy.button("Done").click();
 }
 
-export function ensureDisplayIsSelected(display: VisualizationDisplay) {
-  cy.findByDisplayValue(display).should("be.checked");
-}
-
 export function selectColumnFromColumnsList(
   datasetName: string,
   columnName: string,
@@ -187,35 +153,6 @@ export function deselectColumnFromColumnsList(
 
 export function verticalWell() {
   return cy.findByTestId("vertical-well");
-}
-
-export function assertWellItemsCount(items: {
-  horizontal?: number;
-  vertical?: number;
-  pieMetric?: number;
-  pieDimensions?: number;
-}) {
-  const { horizontal, vertical, pieMetric, pieDimensions } = items;
-  if (horizontal) {
-    horizontalWell().within(() => {
-      cy.findAllByTestId("well-item").should("have.length", horizontal);
-    });
-  }
-  if (vertical) {
-    verticalWell().within(() => {
-      cy.findAllByTestId("well-item").should("have.length", vertical);
-    });
-  }
-  if (pieMetric) {
-    pieMetricWell().within(() => {
-      cy.findAllByTestId("well-item").should("have.length", pieMetric);
-    });
-  }
-  if (pieDimensions) {
-    pieDimensionWell().within(() => {
-      cy.findAllByTestId("well-item").should("have.length", pieDimensions);
-    });
-  }
 }
 
 export function assertWellItems(items: {
@@ -344,18 +281,8 @@ export function saveDashcardVisualizerModal(
   cy.wait(waitMs); // Wait for the modal to close and the dashboard to update
 }
 
-export function closeDashcardVisualizerModal() {
-  return modal().within(() => {
-    cy.findByTestId("visualizer-close-button").click();
-  });
-}
-
 export function saveDashcardVisualizerModalSettings() {
   return saveDashcardVisualizerModal();
-}
-
-export function clickUndoButton() {
-  cy.findByLabelText("Undo").click();
 }
 
 export function clickRedoButton() {

@@ -534,13 +534,31 @@
   [driver prepared-statement i t]
   (set-parameter driver prepared-statement i (t/offset-date-time t)))
 
+(def ^:private ^java.util.Set test-connections
+  "The connections inside [[driver/do-with-test-connection]], where a data test's statements share one transaction,
+  compared by identity."
+  ;; Not autocommit: streamed Postgres queries turn it off too.
+  (java.util.Collections/synchronizedSet (java.util.Collections/newSetFromMap (java.util.IdentityHashMap.))))
+
+(defn- in-test-transaction?
+  "Whether the prepared statement `stmt` belongs to a connection in [[test-connections]]."
+  [^PreparedStatement stmt]
+  (try
+    (.contains test-connections (.getConnection stmt))
+    (catch Throwable _ false)))
+
 (defn set-parameters!
   "Set parameters for the prepared statement by calling `set-parameter` for each parameter."
   {:added "0.35.0"}
   [driver stmt params]
   ;; `getParameterMetaData` costs a server round trip on some drivers -- Snowflake describes the statement -- so only
   ;; ask when there are parameters that could outnumber the placeholders.
+  ;; Nor on a data test's connection: on Postgres and Redshift the describe runs on the server, and a failed describe
+  ;; aborts the open transaction, so the statement's own execution would report "current transaction is aborted"
+  ;; instead of its error. `execute-raw-queries!` also runs its statements in one transaction and keeps the check: no
+  ;; caller of it sends a parameterized statement after another statement, the only case in which that abort happens.
   (when (and (seq params)
+             (not (in-test-transaction? stmt))
              (< (try (.. ^PreparedStatement stmt getParameterMetaData getParameterCount)
                      (catch Throwable _ (count params)))
                 (count params)))
@@ -1044,12 +1062,19 @@
   (do-with-connection-with-options
    driver
    database
-   {:write? true}
+   ;; The session reads dates in the report timezone, as a query run does; without the option it keeps whatever
+   ;; timezone the pooled connection last had.
+   {:write?           true
+    :session-timezone (driver-api/report-timezone-id-if-supported
+                       driver (cond-> database (integer? database) driver.u/lib-database))}
    (fn [^Connection conn]
      (.setAutoCommit conn false)
+     (.add test-connections conn)
      (try
        (f conn)
        (finally
+         ;; Before the connection goes back to the pool, where the next borrower is not running a data test.
+         (.remove test-connections conn)
          ;; Neither may throw past the body's own exception, and the connection goes back to the pool either way:
          ;; leaving it inside a transaction hands the next borrower a session that answers every statement with
          ;; "current transaction is aborted" on Postgres and Redshift.
@@ -1069,10 +1094,10 @@
 (defmethod driver/query-on-connection :sql-jdbc
   [driver conn [sql params] {:keys [max-rows]}]
   (with-open [stmt (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))]
-    (when (and max-rows (pos? max-rows))
-      ;; The cap is the statement's only bound. Every statement otherwise carries the streaming fetch size, and
-      ;; Redshift aborts the transaction when a row cap is asked of a cursor; `setMaxRows` bounds the memory a
-      ;; cursor would have bounded anyway.
+    (when (and max-rows (pos? max-rows) (driver/database-supports? driver :jdbc/set-max-rows nil))
+      ;; With the fetch size cleared, `setMaxRows` is the statement's only bound, and it bounds the memory a cursor's
+      ;; fetch size would have bounded. A driver without `:jdbc/set-max-rows` keeps its cursor, and the loop below stops
+      ;; reading at the cap.
       (try
         (.setFetchSize stmt 0)
         (catch Throwable e

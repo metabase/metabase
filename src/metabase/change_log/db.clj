@@ -1,11 +1,10 @@
 (ns metabase.change-log.db
   "Application database queries for the change-log module."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline])
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection)))
 
@@ -31,13 +30,7 @@
   [ids       :- [:sequential ms/PositiveInt]
    start     :- ms/PositiveInt
    lowest-id :- ms/PositiveInt]
-  (t2/query-one {:update :change_log, :set {:position [:+ start [:- :id lowest-id]]}, :where [:in :id ids]}))
-
-(mu/defn mariadb? :- :boolean
-  "Whether the app DB is MariaDB, whose app DB type is `:mysql` too. The driver answers without a query."
-  []
-  (t2/with-connection [^Connection conn]
-    (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+  (mdb/sum-batched mdb/update-partition-size #(t2/query-one {:update :change_log, :set {:position [:+ start [:- :id lowest-id]]}, :where [:in :id %]}) ids))
 
 (mu/defn foreign-keys
   "The foreign keys of the app DB's tables, as JDBC's `DatabaseMetaData.getImportedKeys` reports them."
@@ -56,8 +49,7 @@
 (mu/defn matching-pks
   "The primary keys of the rows of `model` that match `conditions`."
   [model      :- :keyword
-   conditions :- [:schema {::mr/deliberately-open true, :description "what `t2/select` takes after the model"}
-                  [:sequential :any]]]
+   conditions :- [:sequential [:maybe [:fn {:description "what `t2/select` takes after the model"} some?]]]]
   (apply t2/select-pks-vec model conditions))
 
 (mu/defn rows-where
@@ -66,21 +58,7 @@
    column     :- :keyword
    values     :- [:sequential [:or :int :string]]
    columns    :- [:sequential :keyword]]
-  (t2/query {:select (vec (distinct columns)), :from [(keyword table-name)], :where [:in column values]}))
-
-(mu/defn rows-to-change
-  "The `columns` of the rows that a Toucan write to `model` will change, selected with the write's own `parsed-args`
-  and `resolved-query`."
-  [model             :- :keyword
-   select-query-type :- :keyword
-   parsed-args       :- [:schema {::mr/deliberately-open true, :description "the write's Toucan parsed args"} :map]
-   resolved-query    :- [:schema {::mr/deliberately-open true, :description "the write's Toucan resolved query"} :any]
-   columns           :- [:sequential :keyword]]
-  (t2.pipeline/transduce-query (t2.pipeline/default-rf select-query-type)
-                               select-query-type
-                               model
-                               (assoc (dissoc parsed-args :queryable :changes) :columns (vec (distinct columns)))
-                               resolved-query))
+  (mdb/select-batched #(t2/query {:select (vec (distinct columns)), :from [(keyword table-name)], :where [:in column %]}) values))
 
 (mu/defn delete-before-by-id-subquery!
   "Deletes up to `batch-size` entries created before `cutoff`, lowest ids first, and returns how many."

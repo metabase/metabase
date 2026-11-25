@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupMockIntersectionObserver } from "__support__/intersection-observer";
 import {
@@ -8,18 +9,33 @@ import {
   setupPublicDocumentCardQueryEndpoint,
   setupPublicDocumentEndpoints,
   setupPublicDocumentErrorEndpoint,
+  setupTimelinesEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  act,
+  mockGetBoundingClientRect,
+  queryIcon,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
+import * as embeddingConfig from "metabase/embedding/config";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { DocumentContent } from "metabase-types/api";
+import type { Card, Dataset, DocumentContent } from "metabase-types/api";
 import {
   createMockCard,
   createMockDataset,
+  createMockDatasetData,
+  createMockDatetimeColumn,
   createMockDocument,
   createMockDocumentContent,
+  createMockNumericColumn,
+  createMockTimeline,
+  createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 import { createMockComment } from "metabase-types/api/mocks/comment";
 
@@ -67,26 +83,83 @@ const CARD_CONTENT = createMockDocumentContent({
   ],
 });
 
+const TIMELINE_ID = 10;
+
+const RELEASES = createMockTimeline({
+  id: TIMELINE_ID,
+  name: "Releases",
+  events: [
+    createMockTimelineEvent({
+      id: 100,
+      timeline_id: TIMELINE_ID,
+      name: "RC1",
+      timestamp: "2027-10-20T00:00:00Z",
+    }),
+  ],
+});
+
+// same id as CARD, so CARD_CONTENT embeds it
+const TIME_SERIES_CARD = createMockCard({
+  id: CARD.id,
+  name: "Orders by month",
+  display: "line",
+  visualization_settings: {
+    "timeline.selected_timeline_ids": [TIMELINE_ID],
+  },
+});
+
+const TIME_SERIES_DATASET = createMockDataset({
+  data: createMockDatasetData({
+    cols: [
+      createMockDatetimeColumn({
+        name: "CREATED_AT",
+        display_name: "Created At: Month",
+        unit: "month",
+      }),
+      createMockNumericColumn({ name: "count", display_name: "Count" }),
+    ],
+    rows: [
+      ["2027-08-01T00:00:00Z", 1],
+      ["2027-09-01T00:00:00Z", 2],
+      ["2027-10-01T00:00:00Z", 3],
+      ["2027-11-01T00:00:00Z", 4],
+      ["2027-12-01T00:00:00Z", 5],
+    ],
+  }),
+});
+
+// public routes send `/api/timeline` requests to `/api/public/timeline`, so match any prefix
+const TIMELINE_API_PATH = /^\/api\/([a-z_]+\/)?timeline/;
+
+const getTimelineRequests = () =>
+  fetchMock.callHistory
+    .calls()
+    .map((call) => call.url)
+    .filter((url) => TIMELINE_API_PATH.test(new URL(url).pathname));
+
 interface SetupOpts {
   content: DocumentContent;
   hideEmbedBranding?: boolean;
+  card?: Card;
+  dataset?: Dataset;
 }
 
-const setup = ({ content, hideEmbedBranding = false }: SetupOpts) => {
+const setup = ({
+  content,
+  hideEmbedBranding = false,
+  card = CARD,
+  dataset = createMockDataset(),
+}: SetupOpts) => {
   setupPublicDocumentEndpoints(
     PUBLIC_UUID,
     createMockDocument({
       id: DOCUMENT_ID,
       name: "Public Document",
       document: content,
-      cards: { [CARD.id]: CARD },
+      cards: { [card.id]: card },
     }),
   );
-  setupPublicDocumentCardQueryEndpoint(
-    PUBLIC_UUID,
-    CARD.id,
-    createMockDataset(),
-  );
+  setupPublicDocumentCardQueryEndpoint(PUBLIC_UUID, card.id, dataset);
   // Gives the absence checks something to hide. The public route never requests comments; the
   // comment UI only shows if it rendered `DocumentHeader`, or `DocumentBlockShell` with a current
   // document set, as the authenticated editor does
@@ -233,4 +306,64 @@ describe("PublicDocument", () => {
       expect(screen.queryByTestId("document-content")).not.toBeInTheDocument();
     },
   );
+
+  describe("timeline events", () => {
+    const setupTimeSeriesDocument = () => {
+      mockGetBoundingClientRect({ width: 800, height: 400 });
+      // requests the document must not make; answered so that making one would show the event
+      setupTimelinesEndpoints([RELEASES]);
+      fetchMock.get("path:/api/public/timeline", [RELEASES]);
+      setup({
+        content: CARD_CONTENT,
+        card: TIME_SERIES_CARD,
+        dataset: TIME_SERIES_DATASET,
+      });
+    };
+
+    // cards render their chart once they scroll into view
+    const showCard = async () => {
+      expect(
+        await within(await getDocumentContent()).findByTestId(
+          "card-embed-title",
+        ),
+      ).toHaveTextContent(TIME_SERIES_CARD.name);
+      setAllIntersecting(true);
+    };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("does not show or request the events of a chart", async () => {
+      jest.spyOn(embeddingConfig, "isPublicEmbedding").mockReturnValue(true);
+      setupTimeSeriesDocument();
+      await showCard();
+
+      // the chart redraws its axis labels and detaches the found node, so only wait for it
+      await within(await getDocumentContent()).findByText("Created At: Month");
+      await act(async () => {
+        await fetchMock.callHistory.flush();
+      });
+
+      expect(
+        screen.queryByTestId("timeline-event-chip"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Events" }),
+      ).not.toBeInTheDocument();
+      expect(queryIcon("calendar")).not.toBeInTheDocument();
+      expect(getTimelineRequests()).toEqual([]);
+    });
+
+    // the fixture can show the event: only the public surface keeps it off the chart
+    it("shows the saved events of the same chart when the surface allows loading them", async () => {
+      setupTimeSeriesDocument();
+      await showCard();
+
+      expect(
+        await screen.findByRole("button", { name: "RC1" }),
+      ).toBeInTheDocument();
+      expect(getTimelineRequests()).toHaveLength(1);
+    });
+  });
 });

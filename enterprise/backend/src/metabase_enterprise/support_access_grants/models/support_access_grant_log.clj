@@ -2,11 +2,18 @@
   "Model for support access grant log entries. Tracks temporary access grants for customer support."
   (:require
    [metabase-enterprise.support-access-grants.db :as support-access-grants.db]
+   [metabase-enterprise.support-access-grants.schema :as support-access-grants.schema]
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.auth-identity.models.auth-identity :as models.auth-identity]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.session.core :as session]
+   [metabase.session.models.session :as models.session]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -28,12 +35,12 @@
   []
   (if-let [user (support-access-grants.db/user-by-email (sag.settings/support-access-grant-email))]
     (do
-      (support-access-grants.db/update-user! (:id user) {:is_active true :is_superuser true})
+      (user/update-users! [{:id (:id user) :is_active true :is_superuser true}])
       (assoc user :is_active true :is_superuser true))
-    (support-access-grants.db/insert-user! {:email (sag.settings/support-access-grant-email)
-                                            :first_name (sag.settings/support-access-grant-first-name)
-                                            :last_name (sag.settings/support-access-grant-last-name)
-                                            :is_superuser true})))
+    (first (user/create-users! [{:email        (sag.settings/support-access-grant-email)
+                                 :first_name   (sag.settings/support-access-grant-first-name)
+                                 :last_name    (sag.settings/support-access-grant-last-name)
+                                 :is_superuser true}]))))
 
 (methodical/defmethod t2/batched-hydrate [:model/SupportAccessGrantLog :user_info]
   [_model _k grants]
@@ -49,22 +56,40 @@
 (defn revoke-support-user-access!
   "Tear down the support user's access as of `ended-at`: drop superuser, expire every AuthIdentity so the
   time-limited password can't be used again, and end their sessions, recorded as ended by `ended-by` (the revoking
-  user, or nil when the grant simply ran out). Called both when a grant is explicitly revoked and when one runs out."
+  user, or nil when the grant simply ran out). Called both when a grant is explicitly revoked and when one runs out. A
+  support user who is the last admin keeps superuser, and the expired AuthIdentities and ended sessions still end the
+  access."
   [support-user-id ended-at ended-by]
   (let [auth-identity-ids (support-access-grants.db/auth-identity-ids-of-user support-user-id)]
     (try
-      (support-access-grants.db/update-user! support-user-id {:is_superuser false})
+      (user/update-users! [{:id support-user-id :is_superuser false}])
       (catch Exception e
-        ;; If the support user is somehow the last admin, we can't remove superuser via model hooks.
-        ;; Sessions and auth identities are still cleaned up below, preventing further access.
         (log/warnf "Could not remove superuser from support user %d: %s" support-user-id (ex-message e))))
     (when (seq auth-identity-ids)
-      (support-access-grants.db/expire-auth-identities! auth-identity-ids ended-at))
-    (session/end-sessions! {:user_id support-user-id} "support-grant-revoked" ended-by)))
+      (models.auth-identity/update-auth-identities! (mapv #(hash-map :id % :expires_at ended-at) auth-identity-ids)))
+    (models.session/end-sessions-for-users! [support-user-id] "support-grant-revoked" ended-by)))
 
-(t2/define-after-update :model/SupportAccessGrantLog
-  [{revoked-at :revoked_at, revoked-by :revoked_by_user_id, :as grant}]
-  (u/prog1 grant
-    (when revoked-at
-      (when-let [support-user (support-access-grants.db/user-by-email (sag.settings/support-access-grant-email))]
-        (revoke-support-user-access! (:id support-user) revoked-at revoked-by)))))
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-support-access-grant! :- ::support-access-grants.schema/support-access-grant-log
+  "Insert the support access grant `grant` and return it."
+  [grant :- ::support-access-grants.schema/support-access-grant-log.create]
+  (support-access-grants.db/insert-grant! grant))
+
+(mu/defn revoke-support-access-grant! :- :int
+  "Record the grant with `grant-id` as revoked at `revoked-at` by the User with `revoked-by`, tear down the support
+  user's access as of then, and return the number of grants updated."
+  [grant-id   :- ms/PositiveInt
+   revoked-at :- ms/TemporalInstant
+   revoked-by :- [:maybe ::lib.schema.id/user]]
+  (t2/with-transaction [_conn]
+    (u/prog1 (support-access-grants.db/update-grant! grant-id {:revoked_at         revoked-at
+                                                               :revoked_by_user_id revoked-by})
+      (when (pos? <>)
+        (when-let [support-user (support-access-grants.db/user-by-email (sag.settings/support-access-grant-email))]
+          (revoke-support-user-access! (:id support-user) revoked-at revoked-by))))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SupportAccessGrantLog [_model]
+  {:skip? true})

@@ -1,0 +1,29 @@
+## Adds now to card_test and transform_test: the moment a test's subject reads as the current time when it compiles,
+## so that a relative date filter selects the same rows on every run. Null means the real clock.
+
+databaseChangeLog:
+  - changeSet:
+      id: d190qw
+      author: galdre
+      comment: Add card_test.now
+      changes:
+        - addColumn:
+            tableName: card_test
+            columns:
+              - column:
+                  name: now
+                  type: ${timestamp_type}
+                  remarks: The moment the card reads as the current time when the test compiles it, or null for the real clock
+
+  - changeSet:
+      id: h7xy4u
+      author: galdre
+      comment: Add transform_test.now
+      changes:
+        - addColumn:
+            tableName: transform_test
+            columns:
+              - column:
+                  name: now
+                  type: ${timestamp_type}
+                  remarks: The moment the transform reads as the current time when the test compiles it, or null for the real clock

@@ -146,6 +146,26 @@
                       {:statuses refused})))))
 
 (defrecord GitRepository [^Git git url token]
+  protocol/Source
+  (has-version? [_ version]
+    (some? (object-id (.getRepository git) version)))
+
+  (list-files [_ version]
+    (let [repo (.getRepository git)]
+      (with-open [walk      (RevWalk. repo)
+                  tree-walk (TreeWalk. repo)]
+        (.addTree tree-walk (.getTree (.parseCommit walk (object-id repo version))))
+        (.setRecursive tree-walk true)
+        (loop [paths []]
+          (if (.next tree-walk)
+            (recur (conj paths (.getPathString tree-walk)))
+            paths)))))
+
+  (read-file [_ version path]
+    (let [repo (.getRepository git)]
+      (when-let [id (.resolve repo (str version ":" path))]
+        (String. (.getBytes (.open repo id)) "UTF-8"))))
+
   protocol/Repository
   (fetch! [_]
     (call-remote (-> (.fetch git) (.setRemoveDeletedRefs true) (.setRefSpecs ^"[Lorg.eclipse.jgit.transport.RefSpec;" (into-array RefSpec [(RefSpec. "+refs/heads/*:refs/heads/*")])))
@@ -166,25 +186,6 @@
 
   (version [_ branch]
     (some-> (object-id (.getRepository git) (branch-ref branch)) .name))
-
-  (has-version? [_ version]
-    (some? (object-id (.getRepository git) version)))
-
-  (list-files [_ version]
-    (let [repo (.getRepository git)]
-      (with-open [walk      (RevWalk. repo)
-                  tree-walk (TreeWalk. repo)]
-        (.addTree tree-walk (.getTree (.parseCommit walk (object-id repo version))))
-        (.setRecursive tree-walk true)
-        (loop [paths []]
-          (if (.next tree-walk)
-            (recur (conj paths (.getPathString tree-walk)))
-            paths)))))
-
-  (read-file [_ version path]
-    (let [repo (.getRepository git)]
-      (when-let [id (.resolve repo (str version ":" path))]
-        (String. (.getBytes (.open repo id)) "UTF-8"))))
 
   (commit! [_ branch parent changes message]
     (let [repo (.getRepository git)]
