@@ -5,7 +5,6 @@
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.data-testing.validator :as data-testing.validator]
-   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib-be.core :as lib-be]
@@ -20,12 +19,6 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
-
-(defn- table-ref
-  "The `{:schema :name}` of a test-data table, as the transform's compiled SQL will reference it."
-  [table-key]
-  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id table-key))]
-    {:schema schema :name name}))
 
 (defn- with-people-transform
   "Call `f` with the schema and name of the people table and a transform selecting `id, name` from it into
@@ -125,11 +118,8 @@
                          (:status (run-test! schema table transform input
                                              [{:type :empty :name "check"
                                                :sql  (str "SELECT * FROM " schema ".people_summary WHERE " where)}])))]
-            (testing "premise: the run executes the check's rewrite, which differs from the input, except on H2"
-              (let [executed (data-testing.validator/ensure-single-select driver/*driver* input nil)]
-                (if (= :h2 driver/*driver*)
-                  (is (= input executed))
-                  (is (not= input executed)))))
+            (testing "premise: the run executes the check's rewrite, which differs from the input"
+              (is (not= input (data-testing.validator/ensure-single-select driver/*driver* input nil))))
             (testing "the output holds the input's row"
               (is (= :passed (status "NOT (id = 1 AND name = 'abc')"))))
             (testing "control: an expectation that the input's row violates fails"
@@ -172,8 +162,7 @@
                   :expectations [{:type :empty
                                   :name "check"
                                   :sql  (str "SELECT * FROM " schema ".people_summary WHERE " where)}]}]
-    (binding [api/*current-user-id* (mt/user->id :crowberto)]
-      (is (= expected (:status (data-testing.runner/run-test! :transform transform transform-test)))))
+    (is (= expected (:status (data-testing.test-util/run-as-admin! :transform transform transform-test))))
     (let [run (t2/select-one :model/DataTestRun :test_type :transform :test_id transform-test-id)]
       (is (= expected (:status run)))
       (is (= (mt/user->id :crowberto) (:initiated_by run)))
@@ -313,8 +302,8 @@
     (mt/test-drivers (data-testing.test-util/data-test-drivers)
       ;; reads orders and people; declares only orders → people would fall through to the real table.
       (let [mp                              (mt/metadata-provider)
-            {pschema :schema, people :name} (table-ref :people)
-            {oschema :schema, orders :name} (table-ref :orders)]
+            {pschema :schema, people :name} (data-testing.test-util/table-ref :people)
+            {oschema :schema, orders :name} (data-testing.test-util/table-ref :orders)]
         (mt/with-temp [:model/Transform transform
                        {:source {:type  :query
                                  :query (lib/native-query
@@ -348,9 +337,9 @@
                         :target {:type "table" :schema schema :name "people_summary" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id (:id transform)
-                        :inputs       [{:table (table-ref :people) :format :sql
+                        :inputs       [{:table (data-testing.test-util/table-ref :people) :format :sql
                                         :sql "SELECT 1 AS id, 'x' AS name"}
-                                       {:table (table-ref :orders) :format :sql
+                                       {:table (data-testing.test-util/table-ref :orders) :format :sql
                                         :sql "SELECT 1 AS id"}]
                         :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " schema ".people_summary")}]}]
           (let [ex (try (data-testing.test-util/run-as-admin! :transform transform transform-test)
@@ -374,8 +363,8 @@
                         :target {:type "table" :schema schema :name "people_summary" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id (:id transform)
-                        :inputs       [{:table (table-ref :people) :format :sql :sql "SELECT 1 AS id, 'a' AS name"}
-                                       {:table (table-ref :people) :format :sql :sql "SELECT 2 AS id, 'b' AS name"}]
+                        :inputs       [{:table (data-testing.test-util/table-ref :people) :format :sql :sql "SELECT 1 AS id, 'a' AS name"}
+                                       {:table (data-testing.test-util/table-ref :people) :format :sql :sql "SELECT 2 AS id, 'b' AS name"}]
                         :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " schema ".people_summary")}]}]
           (let [ex (try (data-testing.test-util/run-as-admin! :transform transform transform-test)
                         nil
@@ -415,7 +404,7 @@
                         :target {:type "table" :schema schema :name "people_qualified" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id (:id transform)
-                        :inputs       [{:table (table-ref :people) :format :sql
+                        :inputs       [{:table (data-testing.test-util/table-ref :people) :format :sql
                                         :sql "SELECT 1 AS id, 'x' AS name"}]
                         :expectations [{:type :empty :name "only the input row"
                                         :sql (str "SELECT * FROM " schema ".people_qualified WHERE id <> 1")}]}]
@@ -561,7 +550,13 @@
                        :model/Segment segment (data-testing.test-util/from-google-segment)
                        :model/CardTest card-test {:card_id card-id
                                                   :inputs (:inputs definition)
-                                                  :expectations (:expectations definition)}]
+                                                  :expectations (:expectations definition)}
+                       :model/TransformTest transform-test {:transform_id (:id transform)
+                                                            :inputs (:inputs definition)
+                                                            :expectations (:expectations definition)}
+                       :model/SegmentTest segment-test {:segment_id (:id segment)
+                                                        :inputs (:inputs definition)
+                                                        :expectations (:expectations definition)}]
           (let [card (t2/select-one :model/Card :id card-id)]
             (testing "saving a card test"
               (is (= expected (refusal #(data-testing.runner/validate-test :card card definition)))))
@@ -569,8 +564,12 @@
               (is (= expected (refusal #(data-testing.runner/run-test! :card card card-test)))))
             (testing "saving a transform test"
               (is (= expected (refusal #(data-testing.runner/validate-test :transform transform definition)))))
+            (testing "running a transform test"
+              (is (= expected (refusal #(data-testing.runner/run-test! :transform transform transform-test)))))
             (testing "saving a segment test"
-              (is (= expected (refusal #(data-testing.runner/validate-test :segment segment definition)))))))))))
+              (is (= expected (refusal #(data-testing.runner/validate-test :segment segment definition)))))
+            (testing "running a segment test"
+              (is (= expected (refusal #(data-testing.runner/run-test! :segment segment segment-test)))))))))))
 
 (defn- execute-on-test-data!
   "Executes `sql` on the Postgres test-data database, outside any data test, and returns its rows."

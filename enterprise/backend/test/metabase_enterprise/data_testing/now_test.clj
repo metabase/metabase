@@ -76,14 +76,13 @@
   "Run the saved test `test-id`, a `test-model` row, of `subject`, a `subject-type`, as crowberto. Returns the status of
   its one expectation (`:error` when that expectation could not run), or the error type of the run's refusal."
   [subject-type subject test-model test-id]
-  (binding [api/*current-user-id* (mt/user->id :crowberto)]
-    (try
-      (let [[expectation & more] (:expectations (data-testing.runner/run-test! subject-type subject
-                                                                               (t2/select-one test-model :id test-id)))]
-        (assert (empty? more))
-        (:status expectation))
-      (catch ExceptionInfo e
-        (:error-type (ex-data e))))))
+  (try
+    (let [[expectation & more] (:expectations (data-testing.test-util/run-as-admin! subject-type subject
+                                                                                    (t2/select-one test-model :id test-id)))]
+      (assert (empty? more))
+      (:status expectation))
+    (catch ExceptionInfo e
+      (:error-type (ex-data e)))))
 
 (defn- run-card-test!
   "Save a card with the query `query` and a test of it with `inputs`, one expectation and the further `test-fields`,

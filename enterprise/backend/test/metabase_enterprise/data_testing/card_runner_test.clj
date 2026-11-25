@@ -7,9 +7,7 @@
    [medley.core :as m]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.executor :as data-testing.executor]
-   [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
-   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
@@ -23,16 +21,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- table-ref
-  "The `{:schema :name}` of a test-data table, as compiled SQL references it."
-  [table-key]
-  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id table-key))]
-    {:schema schema :name name}))
-
 (defn- qualified
   "`schema.name` of the test-data table `table-key`, for native SQL."
   [table-key]
-  (let [{:keys [schema name]} (table-ref table-key)]
+  (let [{:keys [schema name]} (data-testing.test-util/table-ref table-key)]
     (str schema "." name)))
 
 (defn- table-query
@@ -63,7 +55,7 @@
 (defn- people-input
   "An input standing in for the people table with the rows of `sql`."
   [sql]
-  {:table (table-ref :people) :format :sql :sql sql})
+  {:table (data-testing.test-util/table-ref :people) :format :sql :sql sql})
 
 (defn- id+name
   "The `id` and `name` columns of the output, typed as the current driver spells those types."
@@ -79,7 +71,7 @@
   (let [[int-type] (data-testing.test-util/cast-types)
         mp         (mt/metadata-provider)
         names      (mapv #(:name (lib.metadata/field mp (mt/id :orders %))) field-keys)]
-    {:table   (table-ref :orders)
+    {:table   (data-testing.test-util/table-ref :orders)
      :format  :rows
      :columns (mapv (fn [column-name] {:name column-name :cast_type int-type}) names)
      :rows    (mapv #(zipmap names %) rows)}))
@@ -109,10 +101,9 @@
                  :model/CardTest {test-id :id} {:card_id      card-id
                                                 :inputs       inputs
                                                 :expectations expectations}]
-    (binding [api/*current-user-id* (mt/user->id :crowberto)]
-      (data-testing.runner/run-test! :card
-                                     (t2/select-one :model/Card :id card-id)
-                                     (t2/select-one :model/CardTest :id test-id)))))
+    (data-testing.test-util/run-as-admin! :card
+                                          (t2/select-one :model/Card :id card-id)
+                                          (t2/select-one :model/CardTest :id test-id))))
 
 (defn- outcome!
   "The `:status` of the run of `card`'s test, or the `:error-type` of its refusal."
@@ -322,12 +313,12 @@
       (testing "passes with every column of the joined table in its input"
         (is (= {"two widgets" :passed}
                (outcomes (run-card-test! (category-count-card)
-                                         [orders-input {:table (table-ref :products) :format :sql :sql every-product-column}]
+                                         [orders-input {:table (data-testing.test-util/table-ref :products) :format :sql :sql every-product-column}]
                                          [by-category])))))
       (testing "an input with only the columns the card names cannot stand in for the joined table"
         (let [{:keys [error-type message]}
               (data-testing.test-util/refusal #(run-card-test! (category-count-card)
-                                                               [orders-input {:table  (table-ref :products) :format :sql
+                                                               [orders-input {:table  (data-testing.test-util/table-ref :products) :format :sql
                                                                               :sql    "SELECT 1 AS id, 'Widget' AS category"}]
                                                                [by-category]))]
           (is (= ::data-testing.errors/query-failed error-type))
@@ -336,7 +327,7 @@
       (testing "an expectation naming a column the output lacks lists the compiled column names"
         (let [[expectation] (:expectations
                              (run-card-test! (category-count-card)
-                                             [orders-input {:table (table-ref :products) :format :sql :sql every-product-column}]
+                                             [orders-input {:table (data-testing.test-util/table-ref :products) :format :sql :sql every-product-column}]
                                              [{:type :equals :name "by display name" :format :rows
                                                :columns [{:name "Category" :cast_type text-type}
                                                          {:name "count" :cast_type (count-type)}]
@@ -355,7 +346,7 @@
                                                                                           [(two-orders-of-product-1)]
                                                                                           [{:type :empty :name "e" :sql "SELECT * FROM {{output}}"}]))]
         (is (= ::data-testing.errors/missing-inputs error-type))
-        (is (re-find (re-pattern (str "(?i)" (:name (table-ref :products)))) message))
+        (is (re-find (re-pattern (str "(?i)" (:name (data-testing.test-util/table-ref :products)))) message))
         (is (= runs-before (card-run-ids)))))
     (testing "Guard B: an expectation reading a real table is refused"
       (is (= ::data-testing.errors/unremapped-reference
@@ -373,7 +364,7 @@
                                                                (column orders :orders :created_at)])}
             timestamp (sql.qp/inline-value driver/*driver* (t/local-date-time 2024 1 2 23 30))
             result    (run-card-test! card
-                                      [{:table  (table-ref :orders) :format :sql
+                                      [{:table  (data-testing.test-util/table-ref :orders) :format :sql
                                         :sql    (str "SELECT 1 AS id, " timestamp " AS created_at")}]
                                       [{:type :empty :name "the input timestamp is unchanged"
                                         :sql  (str "SELECT * FROM {{output}} WHERE created_at <> " timestamp)}
@@ -400,8 +391,7 @@
                                                                       :expectations expectations}]
                           (let [runs-before (card-run-ids)
                                 result      (try
-                                              (binding [api/*current-user-id* (mt/user->id :crowberto)]
-                                                (data-testing.runner/run-test! :card card (t2/select-one :model/CardTest :id test-id)))
+                                              (data-testing.test-util/run-as-admin! :card card (t2/select-one :model/CardTest :id test-id))
                                               (catch ExceptionInfo e
                                                 (:error-type (ex-data e))))]
                             [test-id result (new-card-run runs-before)])))]

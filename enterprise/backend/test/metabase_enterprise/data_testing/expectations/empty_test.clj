@@ -88,7 +88,6 @@
                                 {:driver            :postgres
                                  :output-table      "TMP_OUT"
                                  :output-columns    ["ID"]
-                                 :replacements      {}
                                  :expectation-query checked-query}))
 
 (deftest probes-shape-test

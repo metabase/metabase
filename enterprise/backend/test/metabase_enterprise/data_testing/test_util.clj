@@ -20,6 +20,12 @@
     :bigquery-cloud-sdk ["INT64" "STRING"]
     ["INTEGER" "VARCHAR(50)"]))
 
+(defn table-ref
+  "The `{:schema :name}` of the test-data table `table-key` of the current driver, as compiled SQL references it."
+  [table-key]
+  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id table-key))]
+    {:schema schema :name name}))
+
 (defn data-test-drivers
   "The test drivers that run data tests: every driver with `:transforms/testing` but H2, which data tests refuse until
   VER-182."

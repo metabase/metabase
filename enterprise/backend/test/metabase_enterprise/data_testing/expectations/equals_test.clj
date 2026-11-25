@@ -242,8 +242,6 @@
   the output `tmp_output`, and the expected table spelling its columns as H2 folds them."
   {:driver             :h2
    :output-table       "tmp_output"
-   :output-token       "{{output}}"
-   :replacements       {{:table "orders"} {:db nil :schema nil :table "tmp_orders"}}
    :expectation-query  "SELECT o.id, o.name FROM tmp_orders AS o JOIN __mb_output AS x ON o.id = x.id"
    :output-columns     output-columns
    :temp-tables        {"expected" "tmp_expected"}
