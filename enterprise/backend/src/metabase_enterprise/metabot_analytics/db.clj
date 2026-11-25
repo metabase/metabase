@@ -87,36 +87,39 @@
    0])
 
 (defn- uncached-tokens-expr
-  "The tokens that were not served from the provider cache: the input tokens (`prompt-sum` minus `cache-read-sum`)
-  plus the output tokens (`completion-sum`). `prompt_tokens` holds the cache read tokens for every provider; the
-  clamp only guards against a row that breaks that rule."
-  [prompt-sum cache-read-sum completion-sum]
-  [:+ [:greatest [:- prompt-sum cache-read-sum] 0] completion-sum])
+  "The tokens of one `ai_usage_log` row that were not served from the provider cache: the input tokens
+  (`prompt-col` minus `cache-read-col`) plus the output tokens (`completion-col`). `prompt_tokens` holds the cache
+  read tokens for every provider; the clamp only guards against a row that breaks that rule."
+  [prompt-col cache-read-col completion-col]
+  [:+ [:greatest [:- prompt-col [:coalesce cache-read-col 0]] 0] completion-col])
+
+(def ^:private token-usage-columns
+  "The uncached and cache read token columns of a conversation aliased `:c`."
+  [[(usage-sum-expr (uncached-tokens-expr :aul.prompt_tokens :aul.cache_read_tokens :aul.completion_tokens))
+    :uncached_tokens]
+   [(usage-sum-expr :aul.cache_read_tokens) :cache_read_tokens]])
 
 (def ^:private conversation-list-select
   "Conversation rows with aggregate stats, including deleted attempts. Messages
    a fork copied in from its origin are counted here — the list describes the
    thread as the reader sees it. `v_metabot_conversations.new_message_count` is
    the usage-metric counterpart that leaves them out."
-  {:select    [:c.*
-               [[:count :m.id] :message_count]
-               [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
-               [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
-               [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
-               [[:max :m.created_at] :last_message_at]
-               [^:allow-subquery {:select   [:mm.profile_id]
-                                  :from     [[:metabot_message :mm]]
-                                  :where    [:and
-                                             [:= :mm.conversation_id :c.id]
-                                             [:= :mm.role "assistant"]]
-                                  :order-by [[:mm.created_at :asc] [:mm.id :asc]]
-                                  :limit    1}
-                :profile_id]
-               [(uncached-tokens-expr (usage-sum-expr :aul.prompt_tokens)
-                                      (usage-sum-expr :aul.cache_read_tokens)
-                                      (usage-sum-expr :aul.completion_tokens))
-                :uncached_tokens]
-               [(usage-sum-expr :aul.cache_read_tokens) :cache_read_tokens]]
+  {:select    (into
+               [:c.*
+                [[:count :m.id] :message_count]
+                [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
+                [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
+                [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
+                [[:max :m.created_at] :last_message_at]
+                [^:allow-subquery {:select   [:mm.profile_id]
+                                   :from     [[:metabot_message :mm]]
+                                   :where    [:and
+                                              [:= :mm.conversation_id :c.id]
+                                              [:= :mm.role "assistant"]]
+                                   :order-by [[:mm.created_at :asc] [:mm.id :asc]]
+                                   :limit    1}
+                 :profile_id]]
+               token-usage-columns)
    :from      [[:metabot_conversation :c]]
    :left-join [[:metabot_message :m] [:= :m.conversation_id :c.id]
                [:core_user :u]       [:= :u.id :c.user_id]]
@@ -165,18 +168,12 @@
                                           [:uncached_tokens   ms/IntGreaterThanOrEqualToZero]
                                           [:cache_read_tokens ms/IntGreaterThanOrEqualToZero]]
   "The token sums of the LLM calls of the MetabotConversation with `conversation-id`: the input and output tokens
-  not served from the provider cache, and the cache read tokens. The same split as the columns of
-  [[conversation-list-select]]."
+  not served from the provider cache, and the cache read tokens. The list reads the same [[token-usage-columns]]."
   [conversation-id :- :string]
-  (let [sum-expr (fn [col] [:coalesce [:sum col] 0])
-        row      (t2/query-one {:select [[(uncached-tokens-expr (sum-expr :prompt_tokens)
-                                                                (sum-expr :cache_read_tokens)
-                                                                (sum-expr :completion_tokens))
-                                          :uncached_tokens]
-                                         [(sum-expr :cache_read_tokens) :cache_read_tokens]]
-                                :from   [:ai_usage_log]
-                                :where  [:= :conversation_id conversation-id]})]
-    (update-vals (select-keys row [:uncached_tokens :cache_read_tokens]) long)))
+  (update-vals (t2/query-one {:select token-usage-columns
+                              :from   [[:metabot_conversation :c]]
+                              :where  [:= :c.id conversation-id]})
+               long))
 
 (mu/defn messages-for-conversation
   "The MetabotMessages of the MetabotConversation with `conversation-id`, oldest first."

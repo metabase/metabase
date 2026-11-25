@@ -150,6 +150,8 @@
           (insert-usage! {:conversation-id convo-1 :prompt-tokens 50 :cache-read-tokens 25 :completion-tokens 7})
           (insert-usage! {:conversation-id convo-2 :prompt-tokens 90 :cache-read-tokens 40 :completion-tokens 5})
           (insert-usage! {:conversation-id convo-2 :prompt-tokens 10 :completion-tokens 3})
+          ;; more cache reads than prompt tokens: the row adds 0 uncached tokens, it does not reduce the other rows
+          (insert-usage! {:conversation-id convo-2 :prompt-tokens 5 :cache-read-tokens 9 :completion-tokens 0})
           (thunk {:test-user-id  test-user-id
                   :response-path response-path
                   :convo-1       convo-1
@@ -209,7 +211,7 @@
                 :assistant_message_count 2
                 :total_tokens            26
                 :uncached_tokens         68
-                :cache_read_tokens       40
+                :cache_read_tokens       49
                 :profile_id              "internal"}
                (select-keys convo-2-response [:conversation_id :message_count :user_message_count
                                               :assistant_message_count :total_tokens :uncached_tokens
