@@ -241,6 +241,26 @@
         (testing "multiple source tables detected"
           (is (>= (count (:sources ctx)) 2)))))))
 
+(deftest build-context-native-refused-joins-test
+  (mt/test-driver :h2
+    (testing "a native comma join under WHERE keeps its joins without step queries, and matches columns"
+      (let [products-table (t2/select-one :model/Table :id (mt/id :products))
+            transform      {:id     1
+                            :source {:type  :query
+                                     :query (lib/native-query
+                                             (mt/metadata-provider)
+                                             "SELECT p.* FROM ORDERS o, PRODUCTS p WHERE p.ID = o.PRODUCT_ID")}
+                            :target {:schema (:schema products-table)
+                                     :name   (:name products-table)
+                                     :type   "table"}
+                            :name   "test"}
+            ctx            (context/build-context transform)]
+        (is (=? {:has-joins?          true
+                 :has-column-matches? true
+                 :native-context      {:from-count-sql nil
+                                       :join-structure [{:strategy :cross-join, :alias "P", :step-sql nil}]}}
+                ctx))))))
+
 (deftest build-context-column-matches-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "build-context populates column-matches when target exists"

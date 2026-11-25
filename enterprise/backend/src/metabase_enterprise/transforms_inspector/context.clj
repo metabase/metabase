@@ -212,7 +212,7 @@
    [:alias          {:optional true} [:maybe :string]]
    [:source-table   {:optional true} [:maybe ::lib.schema.id/table]]
    [:conditions     {:optional true} ::lib.schema.join/conditions]
-   [:step-sql       {:optional true} :string]])
+   [:step-sql       {:optional true} [:maybe :string]]])
 
 (def ^:private QueryInfo
   [:map {:closed true}

@@ -72,7 +72,8 @@
                                 (-> value
                                     (update :base_sql sql-tokens)
                                     (update :steps (partial mapv #(update % :sql sql-tokens))))
-                                (select-keys value [:status :reason]))))
+                                ;; A refusal can still describe the sources, which the inspector matches columns by.
+                                (select-keys value [:status :reason :from :steps]))))
 
 (defn classify
   "Compare the `primary` and `shadow` [[outcome]]s of `method`. Returns `:match`, `:mismatch` (different

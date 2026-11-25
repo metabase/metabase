@@ -215,6 +215,16 @@
     (is (= :primary-only-error (shadow/classify :simple-query (thrown "ParseError: x") (outcome {:is_simple true}))))
     (is (= :shadow-only-error (shadow/classify :simple-query (outcome {:is_simple true}) (thrown "ParseError: x"))))))
 
+(deftest classify-join-steps-refusal-test
+  (testing "join-steps: refusals that describe their sources differently are mismatches"
+    (let [refused (fn [alias]
+                    (outcome {:status "unsupported"
+                              :reason "comma-join"
+                              :from   {:source "table", :table [nil nil "a"], :alias "a"}
+                              :steps  [{:source "table", :table [nil nil "b"], :alias alias, :strategy "cross"}]}))]
+      (is (= :match (shadow/classify :join-steps (refused "b") (refused "b"))))
+      (is (= :mismatch (shadow/classify :join-steps (refused "b") (refused "c")))))))
+
 (deftest classify-logical-value-test
   (testing "differences callers do not see are not mismatches"
     (testing "field-references: the order of used fields, at every level"

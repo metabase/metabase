@@ -5,8 +5,8 @@
    - Join structure (strategy, alias, source table, conditions)
    - Visited fields (fields used in WHERE, JOIN, GROUP BY, ORDER BY)
 
-   For native queries, each join comes with the SQL of its step query, which [[metabase.sql-tools.core/join-steps]]
-   generates, so no parser structure leaves sql-tools."
+   For native queries whose joins can be counted, each join comes with the SQL of its step query, which
+   [[metabase.sql-tools.core/join-steps]] generates, so no parser structure leaves sql-tools."
   (:require
    [metabase-enterprise.transforms-inspector.db :as transforms-inspector.db]
    [metabase.driver.sql.normalize :as sql.normalize]
