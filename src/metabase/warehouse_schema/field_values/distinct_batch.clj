@@ -91,9 +91,15 @@
                        (h2x/identifier :table name))))
 
 (defn- cast-to-text-honeysql
-  "Driver-correct HoneySQL fragment for `CAST(col AS <driver's text type>)`."
-  [driver col-name]
-  (sql.qp/->honeysql driver [::sql.qp/cast-to-text {} (h2x/identifier :field col-name)]))
+  "Driver-correct HoneySQL fragment for `CAST(col AS <driver's text type>)`. The clause's options carry the
+  field's database type, so a driver can cast a type whose plain text form does not work, such as MySQL's `BIT`.
+  `col-name` is the column to cast, the field's own by default."
+  ([driver field]
+   (cast-to-text-honeysql driver field (:name field)))
+  ([driver field col-name]
+   (sql.qp/->honeysql driver [::sql.qp/cast-to-text
+                              {:database-type (:database_type field)}
+                              (h2x/identifier :field col-name)])))
 
 (defn- query-form
   "The form of the arms of a query for `database` of `driver`, by its feature flags: `:distinct?` for
@@ -111,14 +117,14 @@
   [driver table field idx {:keys [distinct? plain-column?]}]
   (let [column    (if plain-column?
                     (h2x/identifier :field (:name field))
-                    (cast-to-text-honeysql driver (:name field)))
+                    (cast-to-text-honeysql driver field))
         inner     (cond-> {:from [[(table-honeysql driver table)]]}
                     distinct?       (assoc :select-distinct [[column :value_raw]])
                     (not distinct?) (assoc :select [[column :value_raw]] :group-by [column]))
         limited   (sql.qp/apply-top-level-clause driver :limit inner {:limit field-values/*distinct-limit*})]
     {:select [[[:inline idx] :field_idx]
               [(if plain-column?
-                 (cast-to-text-honeysql driver "value_raw")
+                 (cast-to-text-honeysql driver field "value_raw")
                  (h2x/identifier :field "value_raw"))
                :value_out]]
      :from   [[limited :_arm]]}))
@@ -126,7 +132,7 @@
 (defn- build-arm
   "HoneySQL for one UNION arm. `idx` is the field's position in the batch and becomes the arm's tag."
   [driver table field idx]
-  (let [cast-expr (cast-to-text-honeysql driver (:name field))
+  (let [cast-expr (cast-to-text-honeysql driver field)
         inner     {:select   [[[:inline idx] :field_idx]
                               [cast-expr :value_out]]
                    ;; `:from` wraps the identifier expression in an extra vector — `[[expr]]` so HoneySQL
