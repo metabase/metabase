@@ -19,7 +19,7 @@ export const cacheDirectory = path.join(
 
 // The cache is keyed on content, not on modification time, so it survives a
 // fresh checkout. Bump this whenever the transform options change.
-const TRANSFORM_VERSION = "2";
+const TRANSFORM_VERSION = "3";
 const MAX_PROJECT_FRAMES = 5;
 // What @swc/jest sets. `hidden.jest` hoists jest.mock calls above the imports,
 // and swc's published types do not know it.
@@ -95,10 +95,7 @@ function transformWithCache(file: string, source: string): string {
         : { syntax: "ecmascript", jsx: true },
       transform: JEST_TRANSFORM_OPTIONS,
       experimental: {
-        plugins: [
-          ["@swc-contrib/mut-cjs-exports", {}],
-          ["@swc/plugin-emotion", { sourceMap: false }],
-        ],
+        plugins: [["@swc-contrib/mut-cjs-exports", {}]],
       },
     },
     module: { type: "commonjs", lazy: true },

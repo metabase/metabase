@@ -20,10 +20,7 @@ const swcJestTransform = [
         },
       },
       experimental: {
-        plugins: [
-          ["@swc-contrib/mut-cjs-exports", {}],
-          ["@swc/plugin-emotion", { sourceMap: false }],
-        ],
+        plugins: [["@swc-contrib/mut-cjs-exports", {}]],
       },
     },
     module: {
@@ -131,7 +128,6 @@ const baseConfig = {
   collectCoverageFrom: [
     "frontend/src/**/*.{js,jsx,ts,tsx}",
     "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
-    "!<rootDir>/**/*.styled.{js,jsx,ts,tsx}",
     "!<rootDir>/**/*.story.{js,jsx,ts,tsx}",
     "!<rootDir>/**/*.info.{js,jsx,ts,tsx}",
     "!<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}",

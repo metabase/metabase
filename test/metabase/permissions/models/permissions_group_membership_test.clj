@@ -301,6 +301,24 @@
                               {:user admin-id :group group-id :is-group-manager? true}])))
       (is (not (t2/exists? :model/PermissionsGroupMembership :group_id group-id))))))
 
+(deftest adding-admin-and-group-manager-together-is-refused-test
+  (testing "one call cannot add a User to Administrators and make them a group manager, in either order"
+    (mt/with-temp [:model/User             {user-id :id} {}
+                   :model/PermissionsGroup {group-id :id} {}]
+      (let [admin   {:user user-id, :group (admin-group-id)}
+            manager {:user user-id, :group group-id, :is-group-manager? true}]
+        (doseq [pgms [[admin manager] [manager admin]]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Admin cannot be a group manager"
+                                (perms-group-membership/add-users-to-groups! pgms)))
+          (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)))
+          (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id (admin-group-id)))))
+        (testing "with the two rows in different batches"
+          (with-redefs [app-db.query/create-partition-size 1]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Admin cannot be a group manager"
+                                  (perms-group-membership/add-users-to-groups! [admin manager])))
+            (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)))
+            (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id (admin-group-id))))))))))
+
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
     (mt/with-model-cleanup [:model/User]

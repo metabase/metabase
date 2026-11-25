@@ -225,24 +225,11 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
-  "Get `Card` with ID.
-
-  As of v57, returns the MBQL query (`dataset_query`) as MBQL 5; to return the query as MBQL 4 (aka legacy MBQL)
-  instead, you can specify `?legacy-mbql=true`."
+  "Get `Card` with ID. Returns the MBQL query (`dataset_query`) as MBQL 5."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {legacy-mbql? :legacy-mbql
-    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)
-        card (get-card resolved-id)]
-    (cond-> card
-      legacy-mbql?
-      (update :dataset_query (fn [query]
-                               ;; ?legacy-mbql=true promises MBQL 4; conversion is the endpoint contract
-                               #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
-                               (cond-> query
-                                 (seq query) lib/->legacy-MBQL))))))
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (get-card (eid-translation/->id-or-404 :card id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
