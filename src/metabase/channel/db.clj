@@ -26,7 +26,7 @@
 (mu/defn channel
   "The Channel with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Channel :id [:auto/param id]))
+  (t2/select-one :model/Channel :id id))
 
 (defn- text-type
   "The SQL type to cast a text parameter to, for the app DB."
@@ -43,7 +43,7 @@
   [new-name :- [:maybe :string]]
   [:substring
    [:concat "DEACTIVATED_" :id " " (if new-name
-                                     [:cast [:auto/param new-name] (text-type)]
+                                     [:cast new-name (text-type)]
                                      :name)]
    1 254])
 

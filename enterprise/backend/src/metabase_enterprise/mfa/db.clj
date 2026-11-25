@@ -73,21 +73,29 @@
 (mu/defn lock-user
   "The `:id` row of the User with `user-id`, locked for update."
   [user-id :- ::lib.schema.id/user]
+  (when-not (pos-int? user-id)
+    (throw (ex-info "user-id must be a positive integer" {:user-id user-id})))
   (t2/select-one [:model/User :id] :id user-id {:for :update}))
 
 (mu/defn totp-identity
   "The TOTP AuthIdentity of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
+  (when-not (pos-int? user-id)
+    (throw (ex-info "user-id must be a positive integer" {:user-id user-id})))
   (t2/select-one :model/AuthIdentity :user_id user-id :provider totp-provider))
 
 (mu/defn totp-identity-ids :- [:sequential ms/PositiveInt]
   "The ids of every TOTP AuthIdentity of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
+  (when-not (pos-int? user-id)
+    (throw (ex-info "user-id must be a positive integer" {:user-id user-id})))
   (vec (t2/select-pks-vec :model/AuthIdentity :user_id user-id :provider totp-provider)))
 
 (mu/defn lock-totp-identity
   "The TOTP AuthIdentity of the User with `user-id`, locked for update, or nil."
   [user-id :- ::lib.schema.id/user]
+  (when-not (pos-int? user-id)
+    (throw (ex-info "user-id must be a positive integer" {:user-id user-id})))
   (t2/select-one :model/AuthIdentity :user_id user-id :provider totp-provider {:for :update}))
 
 (mu/defn password-credentials

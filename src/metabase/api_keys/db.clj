@@ -36,7 +36,7 @@
 (mu/defn api-key
   "The ApiKey with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/ApiKey :id [:auto/param id]))
+  (t2/select-one :model/ApiKey :id id))
 
 (mu/defn api-key-exists?
   "Whether an ApiKey with `id` exists."
@@ -83,7 +83,7 @@
 (mu/defn api-key-usage-log-ids-occurred-before :- [:sequential ms/PositiveInt]
   "The ids of the ApiKeyUsageLogs whose `occurred_at` is before `cutoff`."
   [cutoff :- (ms/InstanceOfClass java.time.OffsetDateTime)]
-  (vec (t2/select-pks-vec :model/ApiKeyUsageLog {:where [:< :occurred_at [:auto/param cutoff]]})))
+  (vec (t2/select-pks-vec :model/ApiKeyUsageLog {:where [:< :occurred_at cutoff]})))
 
 (defn lock-available-key-ids
   "The subset of `ids` not currently locked by another writer, locked for update (`SKIP LOCKED` outside

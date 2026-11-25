@@ -240,8 +240,8 @@
                 :from            [[(t2/table-name :model/DataPermissions) :p]]
                 :where           [:and
                                   [:= :p.perm_type (u/qualified-name perm-type)]
-                                  [:in :p.table_id [:auto/param ids]]
-                                  [:in :p.group_id [:auto/param (vec (distinct group-ids))]]]}))
+                                  [:in :p.table_id ids]
+                                  [:in :p.group_id (vec (distinct group-ids))]]}))
    table-ids))
 
 (mu/defn user-data-permissions
@@ -278,7 +278,7 @@
    database-id :- ::lib.schema.id/database]
   (t2/select-one :model/DataPermissions
                  {:where [:and
-                          [:= :perm_type perm-type]
+                          [:= :perm_type (u/qualified-name perm-type)]
                           [:= :group_id  group-id]
                           [:= :db_id     database-id]
                           [:= :table_id  nil]]}))
@@ -290,7 +290,7 @@
    perm-types  :- [:sequential [:or :keyword :string]]]
   (mdb/select-batched #(t2/select :model/DataPermissions
                                   {:where [:and [:= :db_id database-id] [:= :table_id nil]
-                                           [:in :group_id %] [:in :perm_type perm-types]]})
+                                           [:in :group_id %] [:in :perm_type (mapv u/qualified-name perm-types)]]})
                       group-ids))
 
 (mu/defn database-level-values-of-groups :- [:sequential [:map {:closed true}
@@ -307,10 +307,10 @@
    (fn [ids]
      (t2/select [:model/DataPermissions :group_id :db_id :perm_type :perm_value]
                 {:where [:and
-                         [:in :group_id [:auto/param (vec (distinct group-ids))]]
-                         [:in :db_id [:auto/param ids]]
+                         [:in :group_id (vec (distinct group-ids))]
+                         [:in :db_id ids]
                          [:= :table_id nil]
-                         [:in :perm_type [:auto/param (vec perm-types)]]]}))
+                         [:in :perm_type (vec perm-types)]]}))
    database-ids))
 
 (mu/defn distinct-table-level-permission-values
@@ -608,12 +608,12 @@
 (mu/defn collection-permission-ids
   "The ids of the Permissions rows of the Collection with `collection-id`."
   [collection-id :- ms/PositiveInt]
-  (t2/select-pks-vec :model/Permissions :collection_id [:auto/param collection-id]))
+  (t2/select-pks-vec :model/Permissions :collection_id collection-id))
 
 (mu/defn database-permission-ids
   "The ids of the Permissions rows whose object is a path under the Database with `database-id`."
   [database-id :- ms/PositiveInt]
-  (t2/select-pks-vec :model/Permissions {:where [:like :object [:auto/param (str "%/db/" database-id "/%")]]}))
+  (t2/select-pks-vec :model/Permissions {:where [:like :object (str "%/db/" database-id "/%")]}))
 
 (mu/defn delete-permissions-with-objects!
   "Delete the Permissions rows for `objects` with raw statements, which run no Permissions hook, returning the number
@@ -669,13 +669,13 @@
           (comp (remove (comp excluded :id))
                 (map (comp u/lower-case-en :name)))
           (mdb/select-batched #(t2/select [:model/PermissionsGroup :id :name]
-                                          {:where [:in :%lower.name [:auto/param %]]})
+                                          {:where [:in :%lower.name %]})
                               (distinct lower-names)))))
 
 (mu/defn group-exists-with-lower-names? :- :boolean
   "Whether a PermissionsGroup exists whose lower-cased name is one of `lower-names`."
   [lower-names :- [:sequential {:min 1} :string]]
-  (boolean (some #(t2/exists? :model/PermissionsGroup :%lower.name [:in [:auto/param %]])
+  (boolean (some #(t2/exists? :model/PermissionsGroup :%lower.name [:in %])
                  (mdb/select-partitions (distinct lower-names)))))
 
 (mu/defn groups-except-magic-type
@@ -825,7 +825,7 @@
 (mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection (ms/InstanceOf :model/Collection)]
   "The Collections with `collection-ids`, by id."
   [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
-  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Collection :id [:in [:auto/param %]]) collection-ids))
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Collection :id [:in %]) collection-ids))
 
 (mu/defn personal-or-descendant-collection-ids
   "The IDs among `collection-ids` that are personal Collections, or descendants of one."
@@ -1282,7 +1282,7 @@
   "The ids among `database-ids` of the Databases that are routing destinations."
   [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
   (into #{} (mdb/select-batched #(t2/select-pks-set :model/Database
-                                                    :id                 [:in [:auto/param %]]
+                                                    :id                 [:in %]
                                                     :router_database_id [:not= nil])
                                 database-ids)))
 

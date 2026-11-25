@@ -36,7 +36,7 @@
 (mu/defn permissions-of-groups :- [:sequential ::metabot-ee.schema/metabot-permissions]
   "The MetabotPermissions rows of the groups with `group-ids`."
   [group-ids :- [:sequential ms/PositiveInt]]
-  (mdb/select-batched #(t2/select :model/MetabotPermissions :group_id [:in [:auto/param %]]) group-ids))
+  (mdb/select-batched #(t2/select :model/MetabotPermissions :group_id [:in %]) group-ids))
 
 (mu/defn update-permission-values!
   "Apply `updates`, each the `:id` of a MetabotPermissions row and its new `:perm_value`, one statement per value and

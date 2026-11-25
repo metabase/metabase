@@ -526,7 +526,7 @@
      [:= ^:allow-subquery {:select [:parent.archived]
                            :from   [[(t2/table-name :model/Collection) :parent]]
                            :where  [:= :parent.id (if (contains? changes :collection_id)
-                                                    (when-some [id (:collection_id changes)] [:auto/param id])
+                                                    (when-some [id (:collection_id changes)] id)
                                                     (u/qualified-key (t2/table-name model) :collection_id))]}
       [:inline true]]
      [:inline false]

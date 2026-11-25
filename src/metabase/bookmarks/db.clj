@@ -120,7 +120,7 @@
     (run! #(t2/delete! bookmark-model
                        {:where (into [:or]
                                      (map (fn [{:keys [item_id user_id]}]
-                                            [:and [:= item-key [:auto/param item_id]] [:= :user_id [:auto/param user_id]]]))
+                                            [:and [:= item-key item_id] [:= :user_id user_id]]))
                                      %)})
           (partition-all mdb/delete-partition-size (distinct group)))))
 

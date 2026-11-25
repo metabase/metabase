@@ -18,6 +18,16 @@
   "Insert the Session `row` and return the inserted instance."
   [{:keys [id user_id auth_identity_id session_key expires_at mfa_auth_identity_id
            saml_session_index saml_name_id saml_name_id_format]} :- ::session.schema/session.create]
+  (when-not (string? id)
+    (throw (ex-info "id must be a string" {:id id})))
+  (when-not (string? session_key)
+    (throw (ex-info "session_key must be a string" {:session_key session_key})))
+  (when-not (or (nil? expires_at) (instance? java.time.temporal.Temporal expires_at))
+    (throw (ex-info "expires_at must be a temporal value" {:expires_at expires_at})))
+  (when-not (every? #(or (nil? %) (string? %)) [saml_session_index saml_name_id saml_name_id_format])
+    (throw (ex-info "SAML values must be strings" {:saml_session_index  saml_session_index
+                                                   :saml_name_id        saml_name_id
+                                                   :saml_name_id_format saml_name_id_format})))
   ;; `:id` and `:session_key` stay unmarked: the before-insert hook checks the id is not a UUID and hashes the key,
   ;; and both need the plain string. The key itself never reaches SQL, only its hash.
   (t2/insert-returning-instance! :model/Session
@@ -26,17 +36,19 @@
                                  :user_id (long user_id)
                                  :auth_identity_id (some-> auth_identity_id long)
                                  :session_key session_key
-                                 :expires_at [:auto/param expires_at]
+                                 :expires_at expires_at
                                  :mfa_auth_identity_id (some-> mfa_auth_identity_id long)
-                                 :saml_session_index [:auto/param saml_session_index]
-                                 :saml_name_id [:auto/param saml_name_id]
-                                 :saml_name_id_format [:auto/param saml_name_id_format]))
+                                 :saml_session_index saml_session_index
+                                 :saml_name_id saml_name_id
+                                 :saml_name_id_format saml_name_id_format))
 
 (mu/defn mcp-session
   "The `core_session` row with `key-hashed` of the User with `user-id`, or nil."
   [key-hashed :- :string
    user-id    :- ::lib.schema.id/user]
-  (t2/select-one (t2/table-name :model/Session) :key_hashed [:auto/param key-hashed] :user_id [:auto/param user-id]))
+  (when-not (string? key-hashed)
+    (throw (ex-info "key-hashed must be a string" {:key-hashed key-hashed})))
+  (t2/select-one (t2/table-name :model/Session) :key_hashed key-hashed :user_id user-id))
 
 (mu/defn insert-mcp-session!
   "Insert the MCP-backed `core_session` `row` into the table rather than through `:model/Session`, so that it gets no
@@ -64,7 +76,7 @@
   [ids      :- [:sequential {:min 1} :string]
    reason   :- ::session.schema/end-reason
    ended-by :- [:maybe [:or ::lib.schema.id/user [:= :user_id]]]]
-  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/Session :id [:in [:auto/param %]] :ended_at nil (session-ending reason ended-by)) ids))
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/Session :id [:in %] :ended_at nil (session-ending reason ended-by)) ids))
 
 (mu/defn end-sessions-for-users! :- ms/IntGreaterThanOrEqualToZero
   "Record that every live Session of the Users with `user-ids` has ended with `reason`, ended by `ended-by`, clearing
@@ -72,7 +84,7 @@
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]
    reason   :- ::session.schema/end-reason
    ended-by :- [:maybe [:or ::lib.schema.id/user [:= :user_id]]]]
-  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/Session :user_id [:in [:auto/param %]] :ended_at nil
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/Session :user_id [:in %] :ended_at nil
                                                           (session-ending reason ended-by)) user-ids))
 
 (mu/defn end-session-for-key! :- ms/IntGreaterThanOrEqualToZero
@@ -81,12 +93,16 @@
   [key-hashed :- :string
    reason     :- ::session.schema/end-reason
    ended-by   :- [:maybe [:or ::lib.schema.id/user [:= :user_id]]]]
-  (t2/update! :model/Session :key_hashed [:auto/param key-hashed] :ended_at nil (session-ending reason ended-by)))
+  (when-not (string? key-hashed)
+    (throw (ex-info "key-hashed must be a string" {:key-hashed key-hashed})))
+  (t2/update! :model/Session :key_hashed key-hashed :ended_at nil (session-ending reason ended-by)))
 
 (mu/defn delete-session-of-user!
   "Delete the `core_session` with `key-hashed` if it belongs to the User with `user-id`."
   [key-hashed :- :string
    user-id    :- ::lib.schema.id/user]
+  (when-not (string? key-hashed)
+    (throw (ex-info "key-hashed must be a string" {:key-hashed key-hashed})))
   (t2/query {:delete-from (t2/table-name :model/Session)
              :where       [:and
                            [:= :key_hashed key-hashed]
@@ -96,6 +112,8 @@
   "Set `last_active_at` of the Session with `key-hashed` to now, writing the table rather than `:model/Session`, whose
   update hook allows only the columns that record an ending."
   [key-hashed :- :string]
+  (when-not (string? key-hashed)
+    (throw (ex-info "key-hashed must be a string" {:key-hashed key-hashed})))
   (t2/query-one {:update (t2/table-name :model/Session)
                  :set    {:last_active_at :%now}
                  :where  [:= :key_hashed key-hashed]}))
@@ -131,7 +149,7 @@
   "Delete the Sessions whose recorded ending is before `cutoff`, which leaves every live session whatever its age, and
   return the number deleted."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/Session :ended_at [:< [:auto/param cutoff]]))
+  (t2/delete! :model/Session :ended_at [:< cutoff]))
 
 (mu/defn delete-sessions-for-mcp-cleanup! :- ms/IntGreaterThanOrEqualToZero
   "Delete the MCP-backed `core_session` rows, which are no sessions and so are not kept on record like an ended one
@@ -179,6 +197,8 @@
 (mu/defn user-by-email
   "The id, SSO source, and active flag of the User whose email matches `email` case-insensitively, or nil."
   [email :- :string]
+  (when-not (string? email)
+    (throw (ex-info "email must be a string" {:email email})))
   (t2/select-one [:model/User :id :sso_source :is_active] :%lower.email (u/lower-case-en email)))
 
 (mu/defn user
@@ -189,6 +209,8 @@
 (mu/defn user-sso-source
   "The `sso_source` of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
+  (when-not (pos-int? user-id)
+    (throw (ex-info "user-id must be a positive integer" {:user-id user-id})))
   (t2/select-one-fn :sso_source :model/User :id user-id))
 
 (mu/defn user-login-status

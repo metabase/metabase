@@ -91,7 +91,7 @@
 (mu/defn notification
   "The Notification with `notification-id`, or nil."
   [notification-id :- ms/PositiveInt]
-  (t2/select-one :model/Notification :id [:auto/param notification-id]))
+  (t2/select-one :model/Notification :id notification-id))
 
 (mu/defn notification-by-internal-id
   "The seeded Notification with `internal-id`, or nil."
@@ -101,6 +101,8 @@
 (mu/defn notification-for-handler
   "The Notification owning the NotificationHandler with `handler-id`, or nil."
   [handler-id :- ms/PositiveInt]
+  (when-not (pos-int? handler-id)
+    (throw (ex-info "handler-id must be a positive integer" {:handler-id handler-id})))
   (t2/select-one :model/Notification
                  :id [:in ^:allow-subquery {:select [:notification_id]
                                             :from   (t2/table-name :model/NotificationHandler)
@@ -190,7 +192,7 @@
                                                                      :from   [[(t2/table-name :model/NotificationCard) :nc]]
                                                                      :where  [:and
                                                                               [:= :nc.id (u/qualified-key (t2/table-name :model/Notification) :payload_id)]
-                                                                              [:in :nc.card_id [:auto/param %]]]}]})
+                                                                              [:in :nc.card_id %]]}]})
                       card-ids))
 
 (mu/defn active-system-event-notifications
@@ -236,7 +238,7 @@
   [model :- PartModel
    ids   :- [:sequential {:min 1} ms/PositiveInt]]
   (doseq [chunk (partition-all mdb/delete-partition-size ids)]
-    (t2/delete! model :id [:in [:auto/param (vec chunk)]]))
+    (t2/delete! model :id [:in (vec chunk)]))
   nil)
 
 ;;; ------------------------------------------- NotificationCard -------------------------------------------
@@ -271,7 +273,7 @@
                                                (let [payload-ids [:in ^:allow-subquery {:select [:payload_id]
                                                                                         :from   [(t2/table-name :model/Notification)]
                                                                                         :where  [:and
-                                                                                                 [:in :id [:auto/param (vec chunk)]]
+                                                                                                 [:in :id (vec chunk)]
                                                                                                  [:= :payload_type "notification/card"]]}]]
                                                  (change-log/log-rows! :model/NotificationCard :delete :id payload-ids)
                                                  (t2/delete! :model/NotificationCard :id payload-ids))) notification-ids))
@@ -281,7 +283,7 @@
 (mu/defn subscription
   "The NotificationSubscription with `subscription-id`, or nil."
   [subscription-id :- ms/PositiveInt]
-  (t2/select-one :model/NotificationSubscription :id [:auto/param subscription-id]))
+  (t2/select-one :model/NotificationSubscription :id subscription-id))
 
 (mu/defn subscriptions-for-notifications
   "The NotificationSubscriptions of the Notifications with `notification-ids` (nil entries are ignored)."
@@ -348,6 +350,8 @@
 (mu/defn raw-value-recipients-for-handler
   "The raw-value NotificationRecipients of the NotificationHandler with `handler-id`."
   [handler-id :- ms/PositiveInt]
+  (when-not (pos-int? handler-id)
+    (throw (ex-info "handler-id must be a positive integer" {:handler-id handler-id})))
   (t2/select :model/NotificationRecipient
              :notification_handler_id handler-id
              :type :notification-recipient/raw-value))
@@ -700,12 +704,12 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- [:maybe ::lib.schema.id/card]]
-  (t2/select-one :model/Card :id [:auto/param card-id]))
+  (t2/select-one :model/Card :id card-id))
 
 (mu/defn cards
   "The Cards with `card-ids`, a non-empty collection."
   [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
-  (mdb/select-batched #(t2/select :model/Card :id [:in [:auto/param %]]) card-ids))
+  (mdb/select-batched #(t2/select :model/Card :id [:in %]) card-ids))
 
 (mu/defn unarchived-card
   "The Card with `card-id` if it is not archived, or nil."
@@ -715,17 +719,17 @@
 (mu/defn card-name
   "The name of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :name :model/Card :id [:auto/param card-id]))
+  (t2/select-one-fn :name :model/Card :id card-id))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
+  (t2/select-one :model/Dashboard :id dashboard-id))
 
 (mu/defn dashboard-name
   "The name of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :name :model/Dashboard :id [:auto/param dashboard-id]))
+  (t2/select-one-fn :name :model/Dashboard :id dashboard-id))
 
 (mu/defn dashboard-tabs
   "The DashboardTabs of the Dashboard with `dashboard-id`."
@@ -745,13 +749,13 @@
 (mu/defn user-email
   "The email of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :email [:model/User :email] :id [:auto/param user-id]))
+  (t2/select-one-fn :email [:model/User :email] :id user-id))
 
 (mu/defn user-summary
   "The ID, names, email, and derived common name of the User with `user-id`, or nil (also for a nil `user-id`, e.g.
   a system-created notification without a creator)."
   [user-id :- [:maybe ::lib.schema.id/user]]
-  (t2/select-one [:model/User :id :first_name :last_name :email] :id [:auto/param user-id]))
+  (t2/select-one [:model/User :id :first_name :last_name :email] :id user-id))
 
 (mu/defn active-users-by-id
   "A map of ID to active User for `user-ids`."

@@ -121,7 +121,7 @@
 (mu/defn prompt-ids-for-metabots :- [:sequential ms/PositiveInt]
   "The ids of the MetabotPrompts of the Metabots with `metabot-ids`."
   [metabot-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (mdb/select-batched #(t2/select-pks-vec :model/MetabotPrompt :metabot_id [:in [:auto/param %]]) metabot-ids))
+  (mdb/select-batched #(t2/select-pks-vec :model/MetabotPrompt :metabot_id [:in %]) metabot-ids))
 
 ;;; ----------------------------------------------- Conversations -----------------------------------------------
 
@@ -351,7 +351,7 @@
   it is given, returning the number of rows updated."
   [message-ids        :- [:sequential {:min 1} ms/PositiveInt]
    deleted-by-user-id :- [:maybe ::lib.schema.id/user]]
-  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/MetabotMessage :id [:in [:auto/param %]]
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/MetabotMessage :id [:in %]
                                                           (cond-> {:deleted_at [:now]}
                                                             deleted-by-user-id (assoc :deleted_by_user_id deleted-by-user-id))) message-ids))
 
@@ -365,7 +365,7 @@
 (mu/defn usage-log-ids-created-before :- [:sequential ms/PositiveInt]
   "The ids of the AiUsageLogs created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (vec (t2/select-pks-vec :model/AiUsageLog {:where [:< :created_at [:auto/param cutoff]]})))
+  (vec (t2/select-pks-vec :model/AiUsageLog {:where [:< :created_at cutoff]})))
 
 ;;; --------------------------------------------------- Feedback ---------------------------------------------------
 
@@ -405,7 +405,7 @@
 (mu/defn database-summary
   "The ID, name, description, and engine of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one [:model/Database :id :name :description :engine] :id [:auto/param database-id]))
+  (t2/select-one [:model/Database :id :name :description :engine] :id database-id))
 
 (mu/defn database-with-columns
   "The `columns` of the Database with `database-id`."
@@ -744,7 +744,7 @@
 (mu/defn card-types :- [:map-of ::lib.schema.id/card :keyword]
   "The map from each of `card-ids` that is the ID of a Card to its type."
   [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
-  (mdb/select-batched-map #(t2/select-pk->fn :type :model/Card :id [:in [:auto/param %]]) card-ids))
+  (mdb/select-batched-map #(t2/select-pk->fn :type :model/Card :id [:in %]) card-ids))
 
 (mu/defn card-type-row
   "The ID and type of the Card with `card-id`, or nil."
@@ -946,7 +946,7 @@
   (some-> (t2/select-one [:model/Collection
                           :id :name :location :namespace :personal_owner_id :type :archived :archived_directly
                           :authority_level]
-                         :id [:auto/param collection-id])
+                         :id collection-id)
           (t2/hydrate :effective_ancestors)))
 
 (mu/defn collection-name
@@ -1002,7 +1002,7 @@
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
+  (t2/select-one :model/Dashboard :id dashboard-id))
 
 (mu/defn dashboard-summary
   "The ID, description, name, Collection ID, parameters, creator ID, creation time and archived flag of the Dashboard
@@ -1010,7 +1010,7 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters :creator_id :created_at
                   :archived]
-                 :id [:auto/param dashboard-id]))
+                 :id dashboard-id))
 
 (mu/defn dashboard-name
   "The name of the Dashboard with `dashboard-id`."
@@ -1104,8 +1104,8 @@
   [item-ids :- [:sequential ms/PositiveInt]
    item-type :- :string]
   (mdb/select-batched #(t2/select [:model/ModerationReview :id :moderated_item_id :status]
-                                  :moderated_item_id [:in [:auto/param %]]
-                                  :moderated_item_type [:auto/param item-type]
+                                  :moderated_item_id [:in %]
+                                  :moderated_item_type item-type
                                   :most_recent true)
                       item-ids))
 
@@ -1126,7 +1126,7 @@
   "The ID, email, and names of the User with `user-id`, or nil if `user-id` is nil or matches no User."
   [user-id :- [:maybe ::lib.schema.id/user]]
   (when user-id
-    (t2/select-one [:model/User :id :email :first_name :last_name] :id [:auto/param user-id])))
+    (t2/select-one [:model/User :id :email :first_name :last_name] :id user-id)))
 
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
@@ -1155,7 +1155,7 @@
   hydration reads."
   [database-id :- ::lib.schema.id/database
    ids         :- [:sequential ms/PositiveInt]]
-  (mdb/select-batched #(t2/select [:model/Card :id :collection_id :document_id] :id [:in %] :database_id [:auto/param database-id])
+  (mdb/select-batched #(t2/select [:model/Card :id :collection_id :document_id] :id [:in %] :database_id database-id)
                       ids))
 
 (mu/defn snippet-read-rows
@@ -1169,7 +1169,7 @@
   [database-id :- ::lib.schema.id/database
    table-names :- [:sequential :string]]
   (mdb/select-batched #(t2/select [:model/Table :schema :name]
-                                  :db_id [:auto/param database-id]
+                                  :db_id database-id
                                   :active true
                                   {:where [:in [:lower :name] %]})
                       (into #{} (map u/lower-case-en) table-names)))
@@ -1183,11 +1183,11 @@
   (into []
         (distinct)
         (mdb/select-batched #(t2/select [:model/Table :schema :name]
-                                        :db_id [:auto/param database-id]
+                                        :db_id database-id
                                         :active true
                                         {:where (into [:or]
                                                       (map (fn [prefix]
-                                                             [:like [:lower :name] [:auto/param (str (u/lower-case-en prefix) "%")]]))
+                                                             [:like [:lower :name] (str (u/lower-case-en prefix) "%")]))
                                                       %)})
                             prefixes)))
 

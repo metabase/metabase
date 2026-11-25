@@ -91,7 +91,7 @@
 (mu/defn group-member-ids :- [:sequential ms/PositiveInt]
   "The ids of the Users with a membership in the PermissionsGroup with `group-id`, active or not."
   [group-id :- ms/PositiveInt]
-  (t2/select-fn-vec :user_id :model/PermissionsGroupMembership :group_id [:auto/param group-id]))
+  (t2/select-fn-vec :user_id :model/PermissionsGroupMembership :group_id group-id))
 
 (mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, excluding `excluded-database-id` (nil for no

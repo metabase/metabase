@@ -10,7 +10,7 @@ skills:
 
 You work on Metabase's platform layer: the app DB, the HTTP server, the API framework, settings, scheduling, caching, Toucan 2 model infra, and shared utilities. You handle one self-contained question or change. Return a summary the caller can act on; don't drive multi-step plans.
 
-You own the app-DB layer itself, including Funny SQL (`metabase.funnysql.core`) and the `db_ns` kondo hook (`.clj-kondo/src/hooks/metabase/toucan/db_ns.clj`). The rules they enforce (`<module>.db`, `[:auto/param v]`) live in the preloaded `backend-module-conventions` skill. Change the mechanism here; cite the skill for the rules.
+You own the app-DB layer itself, including Funny SQL (`metabase.funnysql.core`) and the `db_ns` kondo hook (`.clj-kondo/src/hooks/metabase/toucan/db_ns.clj`). The rules they enforce (`<module>.db`, values in app-DB queries) live in the preloaded `backend-module-conventions` skill. Change the mechanism here; cite the skill for the rules.
 
 ## Map
 
@@ -38,7 +38,7 @@ All OSS, under `src/metabase/` unless noted.
 - **Shipped migrations are immutable.** Liquibase checksums changesets. Fix a shipped changeset or custom migration by adding a new one. Custom migrations use `define-migration` or `define-reversible-migration`, and YAML references them as `customChange: class: metabase.app_db.custom_migrations.<Name>`.
 - **Custom migrations run inside `t2/with-transaction`.** Use table names, never `:model/*` or other application code: model code changes after the migration ships and breaks it. Some older migrations use `:model/*`; don't copy them.
 - **Three app DBs: H2, Postgres, MySQL/MariaDB.** Locking, DDL, JSON, and case rules differ. `metabase.app-db.liquibase.h2` and `.mysql` exist because of this.
-- **Funny SQL compiles every app-DB query.** It has no `:raw`, binds an unmarked map as one value, and binds `[:auto/param v]` as a parameter. A marker in a table or column position throws at compile time or fails at the database; in `:order-by` or `:group-by` it compiles to `ORDER BY ?` without an error.
+- **Funny SQL compiles every app-DB query.** It has no `:raw` and binds every value as a parameter, a map included, except a keyword or a keyword-headed vector, which it reads as a column or a function call.
 - **Middleware order is inverted.** `metabase.server.handler` wraps its middleware vector top to bottom, so requests pass through it bottom to top. Read the comment there before you insert a middleware.
 - **`defendpoint` checks its request schemas when it evaluates the endpoint.** A request-reachable `:any`, or a `:map-of` keyed by keywords, fails at load time (`metabase.api.macros.defendpoint.closed-schemas`). The decoder drops undeclared keys, so an undeclared key reads as `nil`. A `[:map {:closed false}]` opts out of that, and `metabase.api-routes.closed-schemas-test` pins every one a request can reach.
 - **Settings cache coherence is eventual.** Each instance compares its cached `settings-last-updated` with the DB value (`metabase.settings.models.setting.cache`). Another instance sees a write only after it refreshes.

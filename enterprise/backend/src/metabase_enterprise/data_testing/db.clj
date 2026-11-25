@@ -71,12 +71,12 @@
 (mu/defn test-suites-by-ids :- [:sequential ::data-testing.schema/test-suite]
   "The TestSuites with `ids`."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (app-db/select-batched #(t2/select :model/TestSuite :id [:in [:auto/param %]]) ids))
+  (app-db/select-batched #(t2/select :model/TestSuite :id [:in %]) ids))
 
 (mu/defn test-suites-for-update :- [:sequential ::data-testing.schema/test-suite]
   "The TestSuites with `ids`, their rows locked in the order of their ids until the transaction ends."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (app-db/select-batched #(t2/select :model/TestSuite :id [:in [:auto/param %]]
+  (app-db/select-batched #(t2/select :model/TestSuite :id [:in %]
                                      {:order-by [[:id :asc]] :for :update})
                          (sort (distinct ids))))
 
@@ -88,12 +88,12 @@
 (mu/defn touch-test-suites!
   "Set the update time of the TestSuites with `ids` to the database's current time."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/TestSuite :id [:in [:auto/param %]] {:updated_at :%now}) ids))
+  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/TestSuite :id [:in %] {:updated_at :%now}) ids))
 
 (mu/defn delete-members-of-suites!
   "Delete the members of the TestSuites with `suite-ids`."
   [suite-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/TestSuiteMember :suite_id [:in [:auto/param %]]) suite-ids))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/TestSuiteMember :suite_id [:in %]) suite-ids))
 
 (mu/defn insert-suite-members! :- [:sequential ::data-testing.schema/test-suite.member]
   "Insert the TestSuiteMember `rows` and return the inserted instances."
@@ -104,12 +104,12 @@
   "Apply `changes` to the TestSuiteMembers with `ids`."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]
    changes :- (mut/dissoc ::data-testing.schema/test-suite-member.update :id)]
-  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/TestSuiteMember :id [:in [:auto/param %]] changes) ids))
+  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/TestSuiteMember :id [:in %] changes) ids))
 
 (mu/defn delete-suite-members!
   "Delete the TestSuiteMembers with `ids`."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/TestSuiteMember :id [:in [:auto/param %]]) ids))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/TestSuiteMember :id [:in %]) ids))
 
 (mu/defn suite-members-of-tests :- [:sequential ::data-testing.schema/test-suite.member]
   "The members of the TestSuites that name the `test-type` tests with `entity-ids`."
@@ -117,7 +117,7 @@
    entity-ids :- [:sequential {:min 1} :string]]
   (app-db/select-batched #(t2/select :model/TestSuiteMember
                                      :test_type (name test-type)
-                                     :test_entity_id [:in [:auto/param %]])
+                                     :test_entity_id [:in %])
                          entity-ids))
 
 (mu/defn suite-members :- [:sequential ::data-testing.schema/test-suite.member]
@@ -188,14 +188,14 @@
   [model          :- saved-test-model
    subject-column :- :keyword
    subject-ids    :- [:sequential ms/PositiveInt]]
-  (app-db/select-batched #(t2/select-pks-vec model subject-column [:in [:auto/param %]]) subject-ids))
+  (app-db/select-batched #(t2/select-pks-vec model subject-column [:in %]) subject-ids))
 
 (mu/defn delete-suite-members-of-tests! :- :nil
   "Remove the `test-type` tests with `entity-ids` from every TestSuite."
   [test-type  :- ::data-testing.schema/test-type
    entity-ids :- [:sequential {:min 1} :string]]
   (doseq [batch (partition-all app-db/delete-partition-size entity-ids)]
-    (t2/delete! :model/TestSuiteMember :test_type (name test-type) :test_entity_id [:in [:auto/param (vec batch)]]))
+    (t2/delete! :model/TestSuiteMember :test_type (name test-type) :test_entity_id [:in (vec batch)]))
   nil)
 
 (mu/defn clear-test-ids-of-runs! :- :nil
@@ -204,7 +204,7 @@
   [test-type :- ::data-testing.schema/test-type
    test-ids  :- [:sequential {:min 1} ms/PositiveInt]]
   (doseq [batch (partition-all app-db/update-partition-size test-ids)]
-    (t2/update! :model/DataTestRun :test_type (name test-type) :test_id [:in [:auto/param (vec batch)]] {:test_id nil}))
+    (t2/update! :model/DataTestRun :test_type (name test-type) :test_id [:in (vec batch)] {:test_id nil}))
   nil)
 
 (mu/defn insert-test-run! :- ::data-testing.schema/data-test-run

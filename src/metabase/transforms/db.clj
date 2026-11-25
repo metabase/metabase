@@ -61,7 +61,7 @@
 (mu/defn transforms-by-ids
   "A map from id to the Transform for each of `ids` that exists."
   [ids :- [:sequential ::lib.schema.id/transform]]
-  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Transform :id [:in [:auto/param %]]) ids))
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Transform :id [:in %]) ids))
 
 (mu/defn transforms
   "The Transforms with `transform-ids`."
@@ -102,7 +102,7 @@
   "The last checkpoint value of each of the Transforms with `transform-ids`, by id."
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (mdb/select-batched-map #(t2/select-pk->fn :last_checkpoint_value [:model/Transform :id :last_checkpoint_value]
-                                             :id [:in [:auto/param %]])
+                                             :id [:in %])
                           transform-ids))
 
 (mu/defn insert-transforms! :- [:sequential ::transforms.schema/transform]
@@ -118,17 +118,17 @@
 (mu/defn transform-ids-for-source-databases :- [:sequential ::lib.schema.id/transform]
   "The ids of the Transforms reading from the Databases with `database-ids`."
   [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
-  (mdb/select-batched #(t2/select-pks-vec :model/Transform :source_database_id [:in [:auto/param %]]) database-ids))
+  (mdb/select-batched #(t2/select-pks-vec :model/Transform :source_database_id [:in %]) database-ids))
 
 (mu/defn transforms-in-collections
   "The Transforms in the Collections with `collection-ids`."
   [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
-  (mdb/select-batched #(t2/select :model/Transform :collection_id [:in [:auto/param %]]) collection-ids))
+  (mdb/select-batched #(t2/select :model/Transform :collection_id [:in %]) collection-ids))
 
 (mu/defn collections-by-ids
   "The Collections with `collection-ids`."
   [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
-  (mdb/select-batched #(t2/select :model/Collection :id [:in [:auto/param %]]) collection-ids))
+  (mdb/select-batched #(t2/select :model/Collection :id [:in %]) collection-ids))
 
 ;;; ---------------------------------------------- Transform tags ----------------------------------------------
 
@@ -218,10 +218,10 @@
    positions    :- [:map-of {:min 1} ms/PositiveInt :int]]
   (t2/update! :model/TransformTransformTag
               :transform_id transform-id
-              :tag_id       [:in [:auto/param (vec (keys positions))]]
+              :tag_id       [:in (vec (keys positions))]
               {:position (into [:case]
                                (mapcat (fn [[tag-id position]]
-                                         [[:= :tag_id [:auto/param tag-id]] [:auto/param position]]))
+                                         [[:= :tag_id tag-id] position]))
                                positions)})
   nil)
 
@@ -299,10 +299,10 @@
    positions :- [:map-of {:min 1} ms/PositiveInt :int]]
   (t2/update! :model/TransformJobTransformTag
               :job_id job-id
-              :tag_id [:in [:auto/param (vec (keys positions))]]
+              :tag_id [:in (vec (keys positions))]
               {:position (into [:case]
                                (mapcat (fn [[tag-id position]]
-                                         [[:= :tag_id [:auto/param tag-id]] [:auto/param position]]))
+                                         [[:= :tag_id tag-id] position]))
                                positions)})
   nil)
 
@@ -584,7 +584,7 @@
   partition of its ids that publishes no event."
   [id->dependencies-json :- [:map-of ::lib.schema.id/transform :string]]
   (transduce (map (fn [[dependencies-json ids]]
-                    (mdb/sum-batched mdb/update-partition-size #(t2/update! (t2/table-name :model/Transform) :id [:in [:auto/param %]]
+                    (mdb/sum-batched mdb/update-partition-size #(t2/update! (t2/table-name :model/Transform) :id [:in %]
                                                                             {:table_dependencies dependencies-json}) ids)))
              +
              0
@@ -954,7 +954,7 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id [:auto/param database-id]))
+  (t2/select-one :model/Database :id database-id))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
@@ -990,7 +990,7 @@
 (mu/defn databases-by-ids :- [:sequential :map]
   "The Databases with `database-ids`."
   [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
-  (mdb/select-batched #(t2/select :model/Database :id [:in [:auto/param %]]) database-ids))
+  (mdb/select-batched #(t2/select :model/Database :id [:in %]) database-ids))
 
 (mu/defn active-field-ids-by-names :- [:map-of ::lib.schema.id/table [:map-of :string ::lib.schema.id/field]]
   "A map of Table id to a map of name to ID for the active Fields of the Tables with `table-ids`."
@@ -998,7 +998,7 @@
   (reduce (fn [acc {:keys [table_id id], field-name :name}]
             (assoc-in acc [table_id field-name] id))
           {}
-          (mdb/select-batched #(t2/select [:model/Field :table_id :name :id] :table_id [:in [:auto/param %]] :active true)
+          (mdb/select-batched #(t2/select [:model/Field :table_id :name :id] :table_id [:in %] :active true)
                               table-ids)))
 
 (mu/defn active-users

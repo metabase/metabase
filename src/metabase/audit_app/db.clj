@@ -22,7 +22,7 @@
 (mu/defn collection-ids-by-entity-id :- [:map-of :string ::lib.schema.id/collection]
   "The ids of the Collections with `entity-ids`, by entity id."
   [entity-ids :- [:sequential :string]]
-  (app-db/select-batched-map #(t2/select-fn->pk :entity_id :model/Collection :entity_id [:in [:auto/param %]]) entity-ids))
+  (app-db/select-batched-map #(t2/select-fn->pk :entity_id :model/Collection :entity_id [:in %]) entity-ids))
 
 (mu/defn dashboard-with-entity-id
   "The Dashboard with `entity-id`, or nil."
@@ -56,7 +56,7 @@
   [time-column :- :keyword
    cutoff      :- ms/TemporalInstant
    batch-size  :- ms/PositiveInt]
-  (vec (t2/select-pks-vec :model/AuditLog {:where    [:<= time-column [:auto/param cutoff]]
+  (vec (t2/select-pks-vec :model/AuditLog {:where    [:<= time-column cutoff]
                                            :order-by [[:id :asc]]
                                            :limit    batch-size})))
 

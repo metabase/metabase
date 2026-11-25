@@ -129,7 +129,7 @@
    default-icon :- :string]
   [:coalesce ^:allow-subquery {:select [(u/qualified-key (t2/table-name :model/Timeline) :icon)]
                                :from   [(t2/table-name :model/Timeline)]
-                               :where  [:= (u/qualified-key (t2/table-name :model/Timeline) :id) [:auto/param timeline-id]]}
+                               :where  [:= (u/qualified-key (t2/table-name :model/Timeline) :id) timeline-id]}
    default-icon])
 
 (mu/defn synced-timeline-items :- [:sequential ::timeline.schema/timeline]

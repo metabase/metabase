@@ -106,7 +106,7 @@
 (mu/defn dashcard
   "The DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one :model/DashboardCard :id [:auto/param dashcard-id]))
+  (t2/select-one :model/DashboardCard :id dashcard-id))
 
 (mu/defn dashcard-in-dashboard
   "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."

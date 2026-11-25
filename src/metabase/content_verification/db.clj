@@ -47,8 +47,8 @@
   (into [:or]
         (map (fn [[item-type group]]
                [:and
-                [:= :moderated_item_type [:auto/param (name item-type)]]
-                [:in :moderated_item_id [:auto/param (mapv second group)]]]))
+                [:= :moderated_item_type (name item-type)]
+                [:in :moderated_item_id (mapv second group)]]))
         (group-by first items)))
 
 (mu/defn moderation-reviews-beyond-newest

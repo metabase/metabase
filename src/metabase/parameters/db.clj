@@ -86,7 +86,7 @@
 (mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
   "The Database id of each of the Tables with `table-ids`, by Table id."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (mdb/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in [:auto/param %]]) table-ids))
+  (mdb/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in %]) table-ids))
 
 (mu/defn fields-fk-info
   "The id, FK target, and semantic type of the Fields with `field-ids`."

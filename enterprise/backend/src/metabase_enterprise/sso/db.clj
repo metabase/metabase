@@ -15,6 +15,8 @@
   The `saml_*` columns are NULL for non-SAML sessions and for SAML sessions created before we
   started recording them."
   [session-key-hashed :- :string]
+  (when-not (string? session-key-hashed)
+    (throw (ex-info "session-key-hashed must be a string" {:session-key-hashed session-key-hashed})))
   (t2/query-one {:select [:u.email :u.sso_source :session.saml_session_index
                           :session.saml_name_id :session.saml_name_id_format]
                  :from   [[(t2/table-name :model/User) :u]]
@@ -24,6 +26,8 @@
 (mu/defn group-ids-by-name
   "The IDs of the PermissionsGroups named one of `group-names`."
   [group-names :- [:set :string]]
+  (when-not (every? string? group-names)
+    (throw (ex-info "group names must be strings" {:group-names group-names})))
   (mdb/select-batched-set #(t2/select-pks-set :model/PermissionsGroup :name [:in %]) group-names))
 
 (mu/defn expires-at-clause
@@ -40,16 +44,23 @@
            [:origin       [:maybe :string]]
            [:embedding    :boolean]
            [:expires_at   {:optional true} ms/TemporalInstant]]]
+  (when-not (and (string? (:id row))
+                 (every? #(or (nil? %) (string? %)) (map row [:continue_url :origin])))
+    (throw (ex-info "relay state values must be strings" {:row row})))
   (t2/insert! :model/SsoRelayState row))
 
 (mu/defn unexpired-relay-state
   "The SsoRelayState with `hashed-key` expiring after the database's now, the clock its expiry is set by, or nil."
   [hashed-key :- :string]
+  (when-not (string? hashed-key)
+    (throw (ex-info "hashed-key must be a string" {:hashed-key hashed-key})))
   (t2/select-one :model/SsoRelayState :id hashed-key :expires_at [:> (h2x/current-datetime-honeysql-form (mdb/db-type))]))
 
 (mu/defn delete-relay-state!
   "Delete the SsoRelayState with `hashed-key`, returning the number deleted."
   [hashed-key :- :string]
+  (when-not (string? hashed-key)
+    (throw (ex-info "hashed-key must be a string" {:hashed-key hashed-key})))
   (t2/delete! :model/SsoRelayState :id hashed-key))
 
 (mu/defn delete-relay-states-expired-at!

@@ -91,6 +91,10 @@
    enable-tenants?              :- :boolean
    session-timeout-seconds      :- [:maybe :int]
    mfa-required?                :- :boolean]
+  (when-not (string? session-key-hash)
+    (throw (ex-info "session-key-hash must be a string" {:session-key-hash session-key-hash})))
+  (when-not (or (nil? anti-csrf-token) (string? anti-csrf-token))
+    (throw (ex-info "anti-csrf-token must be a string" {:anti-csrf-token anti-csrf-token})))
   (query-one-compiled (compiled-session-query max-age-minutes
                                               (boolean (seq anti-csrf-token))
                                               enable-advanced-permissions?
@@ -136,6 +140,8 @@
   flags, and locale for the active User whose ApiKey starts with `key-prefix`, or nil if there is none."
   [key-prefix                   :- :string
    enable-advanced-permissions? :- :boolean]
+  (when-not (string? key-prefix)
+    (throw (ex-info "key-prefix must be a string" {:key-prefix key-prefix})))
   (query-one-compiled (compiled-api-key-query enable-advanced-permissions?) [key-prefix]))
 
 (mu/defn oauth-user-info
@@ -143,4 +149,6 @@
   there is none."
   [user-id                      :- ::lib.schema.id/user
    enable-advanced-permissions? :- :boolean]
+  (when-not (pos-int? user-id)
+    (throw (ex-info "user-id must be a positive integer" {:user-id user-id})))
   (query-one-compiled (compiled-oauth-query enable-advanced-permissions?) [user-id]))

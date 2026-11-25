@@ -133,7 +133,7 @@
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id [:auto/param dashboard-id]))
+  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id dashboard-id))
 
 (mu/defn max-collection-position
   "The `:max_position` of the Cards in the Collection with `collection-id` (nil for the root)."

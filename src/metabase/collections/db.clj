@@ -46,7 +46,7 @@
 (mu/defn collection-for-content-checks
   "The ID, namespace, type and `archived` flag of the ::collections.schema/collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one [:model/Collection :id :namespace :type :archived] :id [:auto/param collection-id]))
+  (t2/select-one [:model/Collection :id :namespace :type :archived] :id collection-id))
 
 (mu/defn collections-for-content-checks
   "A map of ID to the ID, namespace, type and `archived` flag of the Collections with `collection-ids`."
@@ -93,7 +93,7 @@
 (mu/defn collection-locations :- [:map-of ::lib.schema.id/collection :string]
   "The map from id to location of the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (app-db/select-batched-map #(t2/select-fn->fn :id :location :model/Collection :id [:in [:auto/param %]]) collection-ids))
+  (app-db/select-batched-map #(t2/select-fn->fn :id :location :model/Collection :id [:in %]) collection-ids))
 
 (defn collection-location-columns
   "The location, id, and type of the Collection with `collection-id`, or nil."
@@ -103,7 +103,7 @@
 (mu/defn root-collection-types-by-ids :- [:map-of ::lib.schema.id/collection [:maybe :string]]
   "The type of each of the top-level Collections among those with `collection-ids`, by id."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (app-db/select-batched-map #(t2/select-pk->fn :type :model/Collection :id [:in [:auto/param %]] :location "/") collection-ids))
+  (app-db/select-batched-map #(t2/select-pk->fn :type :model/Collection :id [:in %] :location "/") collection-ids))
 
 ;;; ---------------------------------------------- ::collections.schema/collection sets ----------------------------------------------
 
@@ -383,9 +383,9 @@
                                   {:where [:and [:not= :is_remote_synced remote-synced?] clause]}))]
     (into []
           (distinct)
-          (concat (app-db/select-batched #(select-where [:in :id [:auto/param %]]) collection-ids)
+          (concat (app-db/select-batched #(select-where [:in :id %]) collection-ids)
                   (app-db/select-batched #(select-where (into [:or]
-                                                              (map (fn [location] [:like :location [:auto/param (str location "%")]]))
+                                                              (map (fn [location] [:like :location (str location "%")]))
                                                               %))
                                          children-locations)))))
 

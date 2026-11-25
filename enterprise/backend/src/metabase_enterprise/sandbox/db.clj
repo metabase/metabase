@@ -39,7 +39,7 @@
   some."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (if (seq card-ids)
-    (group-by :card_id (mdb/select-batched #(t2/select [:model/Sandbox :id :table_id :card_id] :card_id [:in [:auto/param %]])
+    (group-by :card_id (mdb/select-batched #(t2/select [:model/Sandbox :id :table_id :card_id] :card_id [:in %])
                                            card-ids))
     {}))
 
@@ -100,7 +100,7 @@
 (mu/defn sandboxes-by-ids :- [:map-of ::lib.schema.id/sandbox ::sandbox.schema/sandbox]
   "The map from id to Sandbox of the Sandboxes with `sandbox-ids`."
   [sandbox-ids :- [:sequential {:min 1} ::lib.schema.id/sandbox]]
-  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Sandbox :id [:in [:auto/param %]])
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Sandbox :id [:in %])
                           sandbox-ids))
 
 (mu/defn impersonations-for-groups
@@ -152,7 +152,7 @@
 (mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
   "The Database id of each Table with an id among `table-ids`, by Table id."
   [table-ids :- [:sequential {:min 1} ::lib.schema.id/table]]
-  (mdb/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in [:auto/param %]]) table-ids))
+  (mdb/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in %]) table-ids))
 
 (mu/defn database-of-table
   "The Database of the Table with `table-id`, or nil."
@@ -176,7 +176,7 @@
 (mu/defn cards-result-metadata :- [:map-of ::lib.schema.id/card [:maybe ::queries.schema/card.result-metadata]]
   "The result metadata of each Card with an id among `card-ids`, by Card id."
   [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
-  (mdb/select-batched-map #(t2/select-pk->fn :result_metadata :model/Card :id [:in [:auto/param %]])
+  (mdb/select-batched-map #(t2/select-pk->fn :result_metadata :model/Card :id [:in %])
                           card-ids))
 
 (mu/defn sandboxing-cards

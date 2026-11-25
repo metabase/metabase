@@ -2447,8 +2447,8 @@
   (let [ids (into [] (remove nil?) collection-ids)]
     (cond
       (empty? ids)                        [:= :collection_id nil]
-      (not-any? nil? collection-ids)      [:in :collection_id [:auto/param ids]]
-      :else                               [:or [:= :collection_id nil] [:in :collection_id [:auto/param ids]]])))
+      (not-any? nil? collection-ids)      [:in :collection_id ids]
+      :else                               [:or [:= :collection_id nil] [:in :collection_id ids]])))
 
 (defn- shift-after-move
   "`state`, the Collection and position of the positioned rows by `[model id]`, after the Card `card-key` leaves the

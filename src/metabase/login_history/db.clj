@@ -31,6 +31,8 @@
 (mu/defn insert-login-history!
   "Insert the LoginHistory `row`, returning the number of rows inserted."
   [row :- ::login-history.schema/login-history.create]
+  (when-not (every? string? (map row [:session_id :device_id :device_description :ip_address]))
+    (throw (ex-info "login history values must be strings" {:row row})))
   (t2/insert! :model/LoginHistory row))
 
 (mu/defn login-history-ids-for-user
@@ -44,6 +46,8 @@
   [user-id   :- ::lib.schema.id/user
    device-id :- :string
    limit     :- ms/PositiveInt]
+  (when-not (string? device-id)
+    (throw (ex-info "device-id must be a string" {:device-id device-id})))
   (t2/select [:model/LoginHistory :id] :user_id user-id, :device_id device-id, {:limit limit}))
 
 (mu/defn first-device-login-count-since

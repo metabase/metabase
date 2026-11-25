@@ -23,6 +23,14 @@
   (update-in (next-method query-type model parsed-args resolved-query)
              [:select 0 0 1] vary-meta assoc :allow-subquery true))
 
+(methodical/defmethod t2.pipeline/build :before [:default :default String]
+  "Throw on a lone string queried through a model, which Toucan runs as SQL text, as `(t2/select-one :model/X id)` does with a string `id`."
+  [_query-type model _parsed-args sql]
+  (when model
+    (throw (ex-info "A lone string queried through a model would run as SQL; filter by column instead, e.g. :id id"
+                    {:model model, :query sql})))
+  sql)
+
 (def ^:private NamespacedKeyword
   [:and :keyword [:fn (comp seq namespace)]])
 

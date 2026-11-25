@@ -66,7 +66,7 @@
 (mu/defn cache-config
   "The CacheConfig with primary key `pk`, or nil."
   [pk :- ms/PositiveInt]
-  (t2/select-one :model/CacheConfig :id [:auto/param pk]))
+  (t2/select-one :model/CacheConfig :id pk))
 
 (mu/defn root-ttl-cache-config
   "The root TTL CacheConfig, or nil."

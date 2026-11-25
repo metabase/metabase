@@ -19,7 +19,7 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id [:auto/param card-id]))
+  (t2/select-one :model/Card :id card-id))
 
 (mu/defn cards
   "The Cards with `card-ids`."
@@ -40,7 +40,7 @@
   (app-db/select-batched-map #(t2/select-pk->fn :dataset_query
                                                 [:model/Card :id :dataset_query :card_schema :type :entity_id
                                                  :result_metadata :dimensions :dimension_mappings]
-                                                :id [:in [:auto/param %]])
+                                                :id [:in %])
                              card-ids))
 
 (mu/defn dashboard
@@ -129,7 +129,7 @@
 (mu/defn pulse-id-of-channel
   "The id of the Pulse of the PulseChannel with `pulse-channel-id`, or nil."
   [pulse-channel-id :- ms/PositiveInt]
-  (t2/select-one-fn :pulse_id :model/PulseChannel :id [:auto/param pulse-channel-id]))
+  (t2/select-one-fn :pulse_id :model/PulseChannel :id pulse-channel-id))
 
 (mu/defn unarchived-pulse
   "The unarchived Pulse with `pulse-id`, or nil."
@@ -250,7 +250,7 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   ^:allow-subquery {:select [:d.collection_id]
                     :from   [[(t2/table-name :model/Dashboard) :d]]
-                    :where  [:= :d.id [:auto/param dashboard-id]]})
+                    :where  [:= :d.id dashboard-id]})
 
 (mu/defn update-pulse!
   "Apply `changes` to the Pulse with `pulse-id`."
@@ -329,7 +329,7 @@
     ^:allow-subquery {:select [:last.position]
                       :from   [[^:allow-subquery {:select [[[:max :pc.position] :position]]
                                                   :from   [[(t2/table-name :model/PulseCard) :pc]]
-                                                  :where  [:= :pc.pulse_id [:auto/param pulse-id]]}
+                                                  :where  [:= :pc.pulse_id pulse-id]}
                                 :last]]}
     [:inline -1]]
    [:inline 1]])
@@ -375,6 +375,8 @@
 (mu/defn email-pulse-channel
   "The email PulseChannel of the Pulse with `pulse-id`, or nil."
   [pulse-id :- ::lib.schema.id/pulse]
+  (when-not (pos-int? pulse-id)
+    (throw (ex-info "pulse-id must be a positive integer" {:pulse-id pulse-id})))
   (t2/select-one :model/PulseChannel :pulse_id pulse-id :channel_type "email"))
 
 (mu/defn email-pulse-channel-id
@@ -449,7 +451,7 @@
 (mu/defn pulse-channel
   "The PulseChannel with `channel-id`, or nil."
   [channel-id :- ms/PositiveInt]
-  (t2/select-one :model/PulseChannel :id [:auto/param channel-id]))
+  (t2/select-one :model/PulseChannel :id channel-id))
 
 (mu/defn pulse-channels-with-ids
   "The PulseChannels with `channel-ids`."
@@ -547,12 +549,12 @@
 (defn dashboard-parameters
   "The id and parameters of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id]
-  (t2/select-one [:model/Dashboard :id :parameters] :id [:auto/param dashboard-id]))
+  (t2/select-one [:model/Dashboard :id :parameters] :id dashboard-id))
 
 (defn dashboard-name-description-creator
   "The name, description, and creator id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id]
-  (t2/select-one [:model/Dashboard :name :description :creator_id] :id [:auto/param dashboard-id]))
+  (t2/select-one [:model/Dashboard :name :description :creator_id] :id dashboard-id))
 
 (defn unarchived-pulses-for-dashboard
   "The unarchived Pulses of the Dashboard with `dashboard-id`, in id order."

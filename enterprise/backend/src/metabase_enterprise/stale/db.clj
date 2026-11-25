@@ -10,7 +10,7 @@
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id [:auto/param collection-id]))
+  (t2/select-one :model/Collection :id collection-id))
 
 (defn- stale-content-union
   "The union of `union-queries` (per-model SELECTs from the `:candidates` of the staleness specs),

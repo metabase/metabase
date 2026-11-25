@@ -291,5 +291,5 @@
 (deftest exists-test
   (testing "`t2/exists?` wraps its query in `[:exists ...]`, which compiles because that subquery is marked"
     (mt/with-temp [:model/ContentTranslation _ {:locale "de" :msgid "x" :msgstr "ex"}]
-      (is (t2/exists? :model/ContentTranslation :locale [:auto/param "de"]))
-      (is (not (t2/exists? :model/ContentTranslation :locale [:auto/param "xx"]))))))
+      (is (t2/exists? :model/ContentTranslation :locale "de"))
+      (is (not (t2/exists? :model/ContentTranslation :locale "xx"))))))

@@ -187,13 +187,13 @@
 (mu/defn questions-archived-with-dashboards
   "The unarchived Cards internal to the Dashboards with `dashboard-ids`, which archiving them archives along with them."
   [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
-  (mdb/select-batched #(t2/select :model/Card :dashboard_id [:in [:auto/param %]] :archived false) dashboard-ids))
+  (mdb/select-batched #(t2/select :model/Card :dashboard_id [:in %] :archived false) dashboard-ids))
 
 (mu/defn questions-restored-with-dashboards
   "The Cards internal to the Dashboards with `dashboard-ids` that were archived along with them, which restoring them
   restores."
   [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
-  (mdb/select-batched #(t2/select :model/Card :dashboard_id [:in [:auto/param %]] :archived true :archived_directly false)
+  (mdb/select-batched #(t2/select :model/Card :dashboard_id [:in %] :archived true :archived_directly false)
                       dashboard-ids))
 
 (mu/defn question-ids-archived-with-dashboards
@@ -563,7 +563,7 @@
   Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (mdb/select-batched #(t2/select [:model/DashboardCard :id :dashboard_id :card_id :action_id :parameter_mappings :visualization_settings]
-                                  :dashboard_id [:in [:auto/param %]])
+                                  :dashboard_id [:in %])
                       dashboard-ids))
 
 (mu/defn synced-dashboard-items :- [:sequential ::dashboards.schema/dashboard]

@@ -107,4 +107,4 @@
 (mu/defn score-ids-created-before :- [:sequential ms/PositiveInt]
   "The ids of the DataComplexityScores created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (vec (t2/select-pks-vec :model/DataComplexityScore {:where [:< :created_at [:auto/param cutoff]]})))
+  (vec (t2/select-pks-vec :model/DataComplexityScore {:where [:< :created_at cutoff]})))

@@ -59,6 +59,8 @@
 (mu/defn active-user-exists?
   "Whether an active User with `user-id` exists."
   [user-id :- ::lib.schema.id/user]
+  (when-not (pos-int? user-id)
+    (throw (ex-info "user-id must be a positive integer" {:user-id user-id})))
   (t2/exists? :model/User :id user-id :is_active true))
 
 (mu/defn personal-user?
@@ -69,6 +71,8 @@
 (mu/defn oauth-client-exists?
   "Whether an OAuthClient with `client-id` exists."
   [client-id :- :string]
+  (when-not (string? client-id)
+    (throw (ex-info "client-id must be a string" {:client-id client-id})))
   (t2/exists? :model/OAuthClient :client_id client-id))
 
 (mu/defn revoke-access-tokens-for-users!
@@ -89,6 +93,8 @@
 (mu/defn oauth-client-pk
   "The primary key of the OAuthClient with `client-id`, or nil."
   [client-id :- :string]
+  (when-not (string? client-id)
+    (throw (ex-info "client-id must be a string" {:client-id client-id})))
   (t2/select-one-pk :model/OAuthClient :client_id client-id))
 
 (mu/defn insert-client-event!
@@ -99,11 +105,16 @@
 (mu/defn oauth-client
   "The OAuthClient with `client-id`, or nil."
   [client-id :- :string]
+  (when-not (string? client-id)
+    (throw (ex-info "client-id must be a string" {:client-id client-id})))
   (t2/select-one :model/OAuthClient :client_id client-id))
 
 (mu/defn insert-oauth-client!
   "Insert the OAuthClient `row`, returning the number inserted."
   [row :- ::oauth-server.schema/oauth-client.create]
+  (when-not (every? #(or (nil? %) (string? %))
+                    (map row [:client_id :client_secret_hash :client_name :client_uri :logo_uri :registration_access_token_hash]))
+    (throw (ex-info "OAuth client values must be strings" {:row row})))
   (t2/insert! :model/OAuthClient row))
 
 (mu/defn insert-authorization-code!
@@ -114,16 +125,22 @@
 (mu/defn authorization-code
   "The OAuthAuthorizationCode `code`, or nil."
   [code :- :string]
+  (when-not (string? code)
+    (throw (ex-info "code must be a string" {:code code})))
   (t2/select-one :model/OAuthAuthorizationCode :code code))
 
 (mu/defn lock-authorization-code
   "The OAuthAuthorizationCode `code` locked for update, or nil."
   [code :- :string]
+  (when-not (string? code)
+    (throw (ex-info "code must be a string" {:code code})))
   (t2/select-one :model/OAuthAuthorizationCode :code code {:for :update}))
 
 (mu/defn authorization-code-ids-with-code :- [:sequential ms/PositiveInt]
   "The ids of every OAuthAuthorizationCode `code`."
   [code :- :string]
+  (when-not (string? code)
+    (throw (ex-info "code must be a string" {:code code})))
   (vec (t2/select-pks-vec :model/OAuthAuthorizationCode :code code)))
 
 (mu/defn insert-access-token!
@@ -134,6 +151,8 @@
 (mu/defn unrevoked-access-token
   "The unrevoked OAuthAccessToken `token`, or nil."
   [token :- :string]
+  (when-not (string? token)
+    (throw (ex-info "token must be a string" {:token token})))
   (t2/select-one :model/OAuthAccessToken :token token :revoked_at nil))
 
 (mu/defn insert-refresh-token!
@@ -144,16 +163,22 @@
 (mu/defn unrevoked-refresh-token
   "The unrevoked OAuthRefreshToken `token`, or nil."
   [token :- :string]
+  (when-not (string? token)
+    (throw (ex-info "token must be a string" {:token token})))
   (t2/select-one :model/OAuthRefreshToken :token token :revoked_at nil))
 
 (mu/defn revoke-access-token!
   "Revoke the OAuthAccessToken `token`, returning the number revoked."
   [token :- :string]
+  (when-not (string? token)
+    (throw (ex-info "token must be a string" {:token token})))
   (t2/update! :model/OAuthAccessToken {:token token} {:revoked_at :%now}))
 
 (mu/defn revoke-refresh-token!
   "Revoke the OAuthRefreshToken `token`, returning the number revoked."
   [token :- :string]
+  (when-not (string? token)
+    (throw (ex-info "token must be a string" {:token token})))
   (t2/update! :model/OAuthRefreshToken {:token token} {:revoked_at :%now}))
 
 (mu/defn authorization-code-ids-expired-before :- [:sequential ms/PositiveInt]

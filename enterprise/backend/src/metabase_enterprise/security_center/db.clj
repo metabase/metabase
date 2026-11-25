@@ -60,13 +60,13 @@
 (mu/defn advisories-by-ids
   "The SecurityAdvisories with `ids`, in any order."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (mdb/select-batched #(t2/select :model/SecurityAdvisory :id [:in [:auto/param %]]) ids))
+  (mdb/select-batched #(t2/select :model/SecurityAdvisory :id [:in %]) ids))
 
 (mu/defn update-advisories!
   "Apply `changes` to the SecurityAdvisories with `ids`, returning the number updated."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]
    changes :- (mut/select-keys ::security-center.schema/security-advisory.update [:acknowledged_by])]
-  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/SecurityAdvisory :id [:in [:auto/param %]] changes) ids))
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/SecurityAdvisory :id [:in %] changes) ids))
 
 (mu/defn record-advisory-evaluation!
   "Apply `changes` to the SecurityAdvisory with `id` and stamp `last_evaluated_at` with now, returning the number

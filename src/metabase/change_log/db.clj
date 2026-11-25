@@ -67,7 +67,7 @@
   (t2/query-one {:delete-from (t2/table-name :model/ChangeLog)
                  :where       [:in :id ^:allow-subquery {:select   [:id]
                                                          :from     (t2/table-name :model/ChangeLog)
-                                                         :where    [:< :created_at [:auto/param cutoff]]
+                                                         :where    [:< :created_at cutoff]
                                                          :order-by [[:id :asc]]
                                                          :limit    batch-size}]}))
 
@@ -76,5 +76,5 @@
   [cutoff     :- ms/TemporalInstant
    batch-size :- ms/PositiveInt]
   (t2/query-one {:delete-from (t2/table-name :model/ChangeLog)
-                 :where       [:< :created_at [:auto/param cutoff]]
+                 :where       [:< :created_at cutoff]
                  :limit       batch-size}))

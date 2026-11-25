@@ -17,30 +17,30 @@
    started-before :- ms/TemporalInstant]
   (t2/select [:model/QueryExecution :hash [:%count.* :n]]
              {:where    [:and
-                         [:>= :started_at [:auto/param started-at]]
-                         [:<  :started_at [:auto/param started-before]]]
+                         [:>= :started_at started-at]
+                         [:<  :started_at started-before]]
               :group-by [:hash]}))
 
 (mu/defn raw-field-fingerprints
   "The stored fingerprints of the Fields with `field-ids`, as they sit in the table, by Field id."
   [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
-  (app-db/select-batched-map #(t2/select-fn->fn :id :fingerprint (t2/table-name :model/Field) :id [:in [:auto/param %]]) field-ids))
+  (app-db/select-batched-map #(t2/select-fn->fn :id :fingerprint (t2/table-name :model/Field) :id [:in %]) field-ids))
 
 (mu/defn queries-reducible
   "A reducible over `conn` of the hash and query of the Queries with `query-hashes`."
   [conn         :- (ms/InstanceOfClass java.sql.Connection)
    query-hashes :- [:sequential {:min 1} bytes?]]
-  (app-db/select-batched-reducible #(t2/reducible-select :conn conn [:model/Query :query_hash :query] :query_hash [:in [:auto/param %]]) query-hashes))
+  (app-db/select-batched-reducible #(t2/reducible-select :conn conn [:model/Query :query_hash :query] :query_hash [:in %]) query-hashes))
 
 (mu/defn delete-segment-rollups-before!
   "Delete the SourceSegmentDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceSegmentDaily :bucket_date [:< [:auto/param bucket-date]]))
+  (t2/delete! :model/SourceSegmentDaily :bucket_date [:< bucket-date]))
 
 (mu/defn delete-segment-rollups-for-day!
   "Delete the SourceSegmentDaily rollup rows bucketed on `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceSegmentDaily :bucket_date [:auto/param bucket-date]))
+  (t2/delete! :model/SourceSegmentDaily :bucket_date bucket-date))
 
 (mu/defn insert-segment-rollups!
   "Insert `rows` into SourceSegmentDaily."
@@ -51,12 +51,12 @@
 (mu/defn delete-segment-composite-rollups-before!
   "Delete the SourceSegmentCompositeDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date [:< [:auto/param bucket-date]]))
+  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date [:< bucket-date]))
 
 (mu/defn delete-segment-composite-rollups-for-day!
   "Delete the SourceSegmentCompositeDaily rollup rows bucketed on `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date [:auto/param bucket-date]))
+  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date bucket-date))
 
 (mu/defn insert-segment-composite-rollups!
   "Insert `rows` into SourceSegmentCompositeDaily."
@@ -67,12 +67,12 @@
 (mu/defn delete-metric-rollups-before!
   "Delete the SourceMetricDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceMetricDaily :bucket_date [:< [:auto/param bucket-date]]))
+  (t2/delete! :model/SourceMetricDaily :bucket_date [:< bucket-date]))
 
 (mu/defn delete-metric-rollups-for-day!
   "Delete the SourceMetricDaily rollup rows bucketed on `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceMetricDaily :bucket_date [:auto/param bucket-date]))
+  (t2/delete! :model/SourceMetricDaily :bucket_date bucket-date))
 
 (mu/defn insert-metric-rollups!
   "Insert `rows` into SourceMetricDaily."
@@ -83,12 +83,12 @@
 (mu/defn delete-dimension-rollups-before!
   "Delete the SourceDimensionDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceDimensionDaily :bucket_date [:< [:auto/param bucket-date]]))
+  (t2/delete! :model/SourceDimensionDaily :bucket_date [:< bucket-date]))
 
 (mu/defn delete-dimension-rollups-for-day!
   "Delete the SourceDimensionDaily rollup rows bucketed on `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceDimensionDaily :bucket_date [:auto/param bucket-date]))
+  (t2/delete! :model/SourceDimensionDaily :bucket_date bucket-date))
 
 (mu/defn insert-dimension-rollups!
   "Insert `rows` into SourceDimensionDaily."
@@ -99,12 +99,12 @@
 (mu/defn delete-dimension-profile-rollups-before!
   "Delete the SourceDimensionProfileDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceDimensionProfileDaily :bucket_date [:< [:auto/param bucket-date]]))
+  (t2/delete! :model/SourceDimensionProfileDaily :bucket_date [:< bucket-date]))
 
 (mu/defn delete-dimension-profile-rollups-for-day!
   "Delete the SourceDimensionProfileDaily rollup rows bucketed on `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceDimensionProfileDaily :bucket_date [:auto/param bucket-date]))
+  (t2/delete! :model/SourceDimensionProfileDaily :bucket_date bucket-date))
 
 (mu/defn insert-dimension-profile-rollups!
   "Insert `rows` into SourceDimensionProfileDaily."
@@ -137,8 +137,8 @@
   (cond-> [:and [:in :ownership_mode ["direct" "projected"]]]
     source-type  (conj [:= :source_type (name source-type)])
     source-id    (conj [:= :source_id (long source-id)])
-    bucket-start (conj [:>= :bucket_date [:auto/param bucket-start]])
-    bucket-end   (conj [:<= :bucket_date [:auto/param bucket-end]])))
+    bucket-start (conj [:>= :bucket_date bucket-start])
+    bucket-end   (conj [:<= :bucket_date bucket-end])))
 
 (mu/defn grouped-segment-rows
   "The summed `source_segment_daily` counts optionally narrowed to `source-type`, `source-id`, and bucketed between
@@ -230,8 +230,8 @@
              {:where    (cond-> [:and]
                           source-type  (conj [:= :source_type (name source-type)])
                           source-id    (conj [:= :source_id (long source-id)])
-                          bucket-start (conj [:>= :bucket_date [:auto/param bucket-start]])
-                          bucket-end   (conj [:<= :bucket_date [:auto/param bucket-end]]))
+                          bucket-start (conj [:>= :bucket_date bucket-start])
+                          bucket-end   (conj [:<= :bucket_date bucket-end]))
               :group-by [:source_type :source_id :field_id :source_basis :observation_type :observation_value]
               :order-by [[:total_count :desc]]}))
 

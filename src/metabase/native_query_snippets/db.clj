@@ -72,7 +72,7 @@
   (into []
         (distinct)
         (mdb/select-batched #(t2/select [:model/NativeQuerySnippet :name :entity_id]
-                                        {:where (into [:or] (map (fn [n] [:like :name [:auto/param (str n "%")]])) %)})
+                                        {:where (into [:or] (map (fn [n] [:like :name (str n "%")])) %)})
                             snippet-names)))
 
 (mu/defn synced-snippet-items :- [:sequential ::native-query-snippets.schema/native-query-snippet]

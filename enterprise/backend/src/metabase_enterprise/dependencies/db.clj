@@ -472,7 +472,7 @@
   [model  :- :keyword
    column :- :keyword
    id     :- ms/PositiveInt]
-  (t2/select-one-fn column [model column] :id [:auto/param id]))
+  (t2/select-one-fn column [model column] :id id))
 
 (mu/defn column-values :- [:map-of ms/PositiveInt [:maybe ms/PositiveInt]]
   "The `column` of each of the rows of `model` with `ids`, by id."
@@ -495,7 +495,7 @@
    entity-ids  :- [:sequential ms/PositiveInt]]
   (mdb/select-batched #(t2/select [:model/Dependency :id :from_entity_id :to_entity_type :to_entity_id]
                                   :from_entity_type entity-type
-                                  :from_entity_id [:in [:auto/param %]])
+                                  :from_entity_id [:in %])
                       entity-ids))
 
 (mu/defn dependencies-on-entities
@@ -505,7 +505,7 @@
    entity-ids  :- [:sequential ms/PositiveInt]]
   (mdb/select-batched #(t2/select [:model/Dependency :id :from_entity_type :from_entity_id :to_entity_id]
                                   :to_entity_type entity-type
-                                  :to_entity_id [:in [:auto/param %]])
+                                  :to_entity_id [:in %])
                       entity-ids))
 
 (mu/defn insert-dependencies!

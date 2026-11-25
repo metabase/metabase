@@ -154,7 +154,7 @@
                                        {:select    [:rv.id :rv.user_id :rv.context :rv.model :rv.model_id [:rc.type :card_type] :rv.timestamp]
                                         :from      [[(t2/table-name :model/RecentViews) :rv]]
                                         :where     [:and
-                                                    [:in :rv.user_id [:auto/param %]]
+                                                    [:in :rv.user_id %]
                                                     [:in :rv.context (mapv h2x/literal contexts)]]
                                         :left-join [[(t2/table-name :model/Card) :rc]
                                                     [:and

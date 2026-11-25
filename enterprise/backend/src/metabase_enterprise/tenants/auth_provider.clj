@@ -75,6 +75,15 @@
 
 (defn- create-tenant-if-not-exists!
   [{:as request :keys [user tenant-slug tenant-attributes user-provisioning-enabled?]} existing-tenant]
+  (when-not (or (nil? tenant-slug) (string? tenant-slug))
+    (throw (ex-info "tenant slug must be a string" {:tenant-slug tenant-slug})))
+  (when-not (or (nil? tenant-attributes)
+                (and (map? tenant-attributes)
+                     (every? (fn [[attr-key attr-value]]
+                               (and (or (string? attr-key) (keyword? attr-key))
+                                    (or (nil? attr-value) (string? attr-value) (number? attr-value) (boolean? attr-value))))
+                             tenant-attributes)))
+    (throw (ex-info "tenant attributes must map names to scalar values" {:tenant-attributes tenant-attributes})))
   (if-not (setting/get :use-tenants)
     (do (validate-with-tenants-disabled! request)
         request)

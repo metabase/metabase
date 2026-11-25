@@ -45,7 +45,7 @@
                                                :from   [(t2/table-name :model/Field)]
                                                :where  (where-fn %)}
                                               :ranked]
-                                             [:and [:= :ranked.id :f.id] [:<= :ranked.row_num [:auto/param limit]]]]
+                                             [:and [:= :ranked.id :f.id] [:<= :ranked.row_num limit]]]
                                   :order-by [[:f.id :asc]]})
                      table-ids))))
 
@@ -111,7 +111,7 @@
    refingerprint?      :- :boolean
    version->base-types :- ::version->base-types]
   (field-counts-by-table table-ids #(vector :and
-                                            [:in :table_id [:auto/param %]]
+                                            [:in :table_id %]
                                             (needs-fingerprint-update-clause refingerprint? version->base-types))))
 
 (mu/defn fields-to-fingerprint :- [:sequential (ms/InstanceOf :model/Field)]
@@ -123,7 +123,7 @@
    limit               :- ms/PositiveInt]
   (first-fields-by-table table-ids
                          #(vector :and
-                                  [:in :table_id [:auto/param %]]
+                                  [:in :table_id %]
                                   (needs-fingerprint-update-clause refingerprint? version->base-types))
                          limit))
 
@@ -136,12 +136,12 @@
    limit               :- ms/PositiveInt]
   (first-fields-after #(t2/select :model/Field
                                   {:where    [:and
-                                              [:in :table_id [:auto/param %]]
+                                              [:in :table_id %]
                                               [:= :active true]
                                               [:not-in :visibility_type ["sensitive" "retired"]]
-                                              [:= :fingerprint_version [:auto/param fingerprint-version]]
+                                              [:= :fingerprint_version fingerprint-version]
                                               [:= :last_analyzed nil]
-                                              [:> :id [:auto/param after-id]]]
+                                              [:> :id after-id]]
                                    :order-by [[:id :asc]]
                                    :limit    limit})
                       table-ids
@@ -152,7 +152,7 @@
   has any."
   [table-ids :- ::table-ids]
   (field-counts-by-table table-ids #(vector :and
-                                            [:in :table_id [:auto/param %]]
+                                            [:in :table_id %]
                                             [:= :active true]
                                             [:not-in :visibility_type ["sensitive" "retired"]]
                                             [:= :semantic_type (u/qualified-name :type/Name)])))
@@ -161,7 +161,7 @@
   "HoneySQL clause matching the active, normal-visibility Fields of the Tables with `table-ids`."
   [table-ids]
   [:and
-   [:in :table_id [:auto/param table-ids]]
+   [:in :table_id table-ids]
    [:= :active true]
    [:= :visibility_type "normal"]])
 
@@ -186,7 +186,7 @@
    limit          :- ms/PositiveInt]
   (first-fields-after #(t2/select :model/Field
                                   {:where    [:and
-                                              [:in :table_id [:auto/param %]]
+                                              [:in :table_id %]
                                               [:= :active true]
                                               [:not= :visibility_type "retired"]
                                               (if rescan-public?
@@ -197,7 +197,7 @@
                                                                                :where  [:and
                                                                                         [:= :s.field_id (u/qualified-key (t2/table-name :model/Field) :id)]
                                                                                         [:not= :s.data_sensitivity nil]]}]]
-                                              [:> :id [:auto/param after-id]]]
+                                              [:> :id after-id]]
                                    :order-by [[:id :asc]]
                                    :limit    limit})
                       table-ids

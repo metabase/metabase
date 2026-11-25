@@ -786,13 +786,6 @@
   [x context]
   ((if (infix-call? x) parens! compile!) x context))
 
-(defn- marked-value
-  "The value of an `[:auto/param v]` marker, or `x` itself when `x` is not one."
-  [x]
-  (if (and (fn-call-of-type? x :auto/param) (= 2 (count x)))
-    (second x)
-    x))
-
 (defn- equals! [sql nil-sql [x y :as args] context]
   (when-not (= (count args) 2)
     (throw (ex-info "Wrong number of args to :=/:!=/:<>/:not= (expected 2 args)" {:args args})))
@@ -805,9 +798,9 @@
             ;; the unparsable `x IS NULL = y`. (A scalar subquery gets the same treatment, but [[compile!]] already
             ;; parenthesizes those.)
             ((if (predicate-call? v) parens! compile!) v context))]
-    (if (or (nil? (marked-value x)) (nil? (marked-value y)))
+    (if (or (nil? x) (nil? y))
       (do
-        (operand! (if (nil? (marked-value x)) y x))
+        (operand! (if (nil? x) y x))
         (append-sql! context nil-sql))
       (do
         (operand! x)
@@ -865,12 +858,12 @@
   value slot. A scalar is not a list of values, and a map must stay one bound value rather than
   become a list of its entries."
   [vs context]
-  (let [v (cond
-            (fn-call-of-type? vs :param)      (lift-value (param-value (second vs) context))
-            (fn-call-of-type? vs :auto/param) (lift-value (second vs)))]
-    (if (or (sequential? v) (set? v))
-      v
-      vs)))
+  (if (fn-call-of-type? vs :param)
+    (let [v (lift-value (param-value (second vs) context))]
+      (if (or (sequential? v) (set? v))
+        v
+        vs))
+    vs))
 
 (defn- in! [f [lhs vs] context]
   (let [vs (in-values vs context)]
@@ -1005,14 +998,6 @@
 
 (defn- param! [k context]
   (object! (param-value k context) context))
-
-(defn- auto-param!
-  "Bind the value of an `[:auto/param v]` marker, or compile the `[:auto/param column v]` that Toucan builds from a marked kv-arg as `column = v`."
-  [[x y :as args] context]
-  (case (count args)
-    1 (object! x context)
-    2 (compile! [:= x [:auto/param y]] context)
-    (throw (ex-info "Malformed [:auto/param ...] marker; write it as [:auto/param value]" {:args args}))))
 
 (defn- unary-binary-operator! [f x context]
   (case f
@@ -1177,7 +1162,6 @@
     :or                (compound! " OR " false args context)
     :over              (over! (first args) context)
     :param             (param! (first args) context)
-    :auto/param        (auto-param! args context)
     :position          (position! args context)
     :timestampdiff     (timestamp-diff! args context)
 

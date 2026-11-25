@@ -30,6 +30,8 @@
 (mu/defn data-app-by-slug
   "The DataApp named `slug` without its bundle, or nil."
   [slug :- :string]
+  (when-not (string? slug)
+    (throw (ex-info "slug must be a string" {:slug slug})))
   (t2/select-one non-blob-model :slug slug))
 
 (mu/defn data-app-bundle
@@ -70,13 +72,13 @@
             (update collection-id->ids resource_collection_id (fnil conj #{}) id))
           {}
           (mdb/select-batched #(t2/select [:model/DataApp :id :resource_collection_id]
-                                          :resource_collection_id [:in [:auto/param %]])
+                                          :resource_collection_id [:in %])
                               collection-ids)))
 
 (mu/defn resource-collections-by-ids :- [:map-of ms/PositiveInt :map]
   "The Collections with `collection-ids`, by id."
   [collection-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Collection :id [:in [:auto/param %]])
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Collection :id [:in %])
                           collection-ids))
 
 (defn resource-collection-ids
@@ -230,7 +232,7 @@
   "The query-relevant columns (`:dimensions` and `:dimension_mappings` among them) of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (if (seq card-ids)
-    (mdb/select-batched #(t2/select (queries.card-schema/selection) :id [:in [:auto/param %]]) card-ids)
+    (mdb/select-batched #(t2/select (queries.card-schema/selection) :id [:in %]) card-ids)
     []))
 
 (mu/defn table-names

@@ -113,7 +113,7 @@
         (mdb/select-batched #(t2/query {:select [:id]
                                         :from   [(t2/table-name :model/Card)]
                                         :where  [:and
-                                                 [:in :id [:auto/param %]]
+                                                 [:in :id %]
                                                  [:not= :dimensions nil]]})
                             card-ids)))
 
@@ -366,7 +366,7 @@
   (mdb/select-batched #(t2/query {:select [[:dcs.id :id] [:dcs.card_id :card_id] [:dc.dashboard_id :dashboard_id]]
                                   :from   [[(t2/table-name :model/DashboardCardSeries) :dcs]]
                                   :join   [[(t2/table-name :model/DashboardCard) :dc] [:= :dc.id :dcs.dashboardcard_id]]
-                                  :where  [:in :dcs.card_id [:auto/param %]]})
+                                  :where  [:in :dcs.card_id %]})
                       card-ids))
 
 (mu/defn implicit-action-ids-for-model

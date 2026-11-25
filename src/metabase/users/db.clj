@@ -116,7 +116,7 @@
   "Store `settings-json` as the user-local settings of the User with `user-id`, returning the number updated."
   [user-id       :- ::lib.schema.id/user
    settings-json :- :string]
-  (t2/update! :model/User :id [:auto/param user-id] {:settings settings-json}))
+  (t2/update! :model/User :id user-id {:settings settings-json}))
 
 (mu/defn user-settings
   "The `:settings` of the User with `user-id`, or nil."
@@ -174,7 +174,7 @@
   "The Users with `user-ids`, with every column of `:core_user` that an event may carry."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (mapv #(dissoc % :password :password_salt :reset_token :reset_triggered :settings)
-        (app-db/select-batched #(t2/select [:model/User :*] :id [:in [:auto/param %]]) user-ids)))
+        (app-db/select-batched #(t2/select [:model/User :*] :id [:in %]) user-ids)))
 
 (mu/defn users-by-ids :- [:map-of ::lib.schema.id/user :map]
   "A map from id to the User, as [[users-with-all-columns]] reads it, for each of the Users with `user-ids`."
@@ -206,7 +206,7 @@
   [user-ids  :- [:sequential ::lib.schema.id/user]
    user-type :- :keyword]
   (if (seq user-ids)
-    (app-db/select-batched #(t2/select-pks-vec :model/User :id [:in %] :type [:auto/param user-type]) user-ids)
+    (app-db/select-batched #(t2/select-pks-vec :model/User :id [:in %] :type user-type) user-ids)
     []))
 
 (mu/defn deactivated-with-tenant-user-ids
@@ -214,14 +214,14 @@
   [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (app-db/select-batched #(t2/select-pks-vec :model/User
                                              :is_active false
-                                             :tenant_id [:in [:auto/param %]]
+                                             :tenant_id [:in %]
                                              :deactivated_with_tenant true)
                          tenant-ids))
 
 (mu/defn active-user-ids-of-tenant
   "The ids of the active Users of the Tenants with `tenant-ids`."
   [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (app-db/select-batched #(t2/select-pks-vec :model/User :is_active true :tenant_id [:in [:auto/param %]]) tenant-ids))
+  (app-db/select-batched #(t2/select-pks-vec :model/User :is_active true :tenant_id [:in %]) tenant-ids))
 
 (mu/defn active-tenant-user-ids
   "The ids of the active Users of every Tenant."

@@ -239,7 +239,7 @@
         (m/distinct-by :id)
         (app-db/select-batched #(t2/select :model/Field {:where (into [:or]
                                                                       (map (fn [[table-id pattern]]
-                                                                             [:and [:= :table_id [:auto/param table-id]] [:like :nfc_path [:auto/param pattern]]]))
+                                                                             [:and [:= :table_id table-id] [:like :nfc_path pattern]]))
                                                                       %)})
                                table-id+patterns)))
 
@@ -248,7 +248,7 @@
   [database-id :- ::lib.schema.id/database]
   (set (t2/select-pks-set :model/Field :table_id [:in ^:allow-subquery {:select [:id]
                                                                         :from   [(t2/table-name :model/Table)]
-                                                                        :where  [:= :db_id [:auto/param database-id]]}])))
+                                                                        :where  [:= :db_id database-id]}])))
 
 (mu/defn change-fields-case!
   "Set each of `columns` of the Fields with `field-ids` to its value in `kase`, `:lower` or `:upper` case, returning the
@@ -611,7 +611,7 @@
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (app-db/select-batched-map
    #(t2/select-fn->fn :field_id :max-last-used-at [:model/FieldValues :field_id [[:max :last_used_at] :max-last-used-at]]
-                      {:where    [:in :field_id [:auto/param %]]
+                      {:where    [:in :field_id %]
                        :group-by [:field_id]})
    field-ids))
 
@@ -630,7 +630,7 @@
   "The `dimension-type` Dimensions of the Field with `field-id`."
   [field-id       :- ::lib.schema.id/field
    dimension-type :- ::warehouse-schema.schema/dimension.type]
-  (t2/select :model/Dimension :field_id [:auto/param field-id] :type dimension-type))
+  (t2/select :model/Dimension :field_id field-id :type dimension-type))
 
 (mu/defn dimensions-reading-fields
   "The Dimensions whose human-readable values come from the Fields with `field-ids`."
@@ -680,13 +680,13 @@
 (mu/defn full-field-values
   "The full FieldValues of the ::warehouse-schema.schema/field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/FieldValues :field_id [:auto/param field-id] :type :full))
+  (t2/select-one :model/FieldValues :field_id field-id :type :full))
 
 (mu/defn advanced-field-values
   "The advanced FieldValues of the ::warehouse-schema.schema/field with `field-id` and `hash-key`, or nil."
   [field-id :- ::lib.schema.id/field
    hash-key :- :string]
-  (t2/select-one :model/FieldValues :field_id [:auto/param field-id] :type :advanced :hash_key [:auto/param hash-key]))
+  (t2/select-one :model/FieldValues :field_id field-id :type :advanced :hash_key hash-key))
 
 (mu/defn insert-field-values-row! :- ::warehouse-schema.schema/field-values
   "Insert the FieldValues `row` in a savepoint, so that a duplicate key leaves the enclosing transaction usable, returning the inserted instance."
@@ -722,7 +722,7 @@
   [:field_id [:in ^:allow-subquery {:select     [:f.id]
                                     :from       [[(t2/table-name :model/Field) :f]]
                                     :right-join [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
-                                    :where      [:= :t.db_id [:auto/param database-id]]}]])
+                                    :where      [:= :t.db_id database-id]}]])
 
 (mu/defn field-values-ids-of-fields :- [:sequential ms/PositiveInt]
   "The ids of every FieldValues of the Fields with `field-ids`."
@@ -748,7 +748,7 @@
 (mu/defn field-values-ids-and-field-ids :- [:sequential [:map [:id ms/PositiveInt] [:field_id ::lib.schema.id/field]]]
   "The id and Field id of every FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
-  (app-db/select-batched #(t2/select [:model/FieldValues :id :field_id] :field_id [:in [:auto/param %]]) field-ids))
+  (app-db/select-batched #(t2/select [:model/FieldValues :id :field_id] :field_id [:in %]) field-ids))
 
 (mu/defn expired-field-values-ids-of-database :- [:sequential ms/PositiveInt]
   "The ids of the FieldValues of `types` of the active, normal-visibility Fields of the synced Tables of the Database
@@ -769,7 +769,7 @@
                                               [:= :f.id (u/qualified-key (t2/table-name :model/FieldValues) :field_id)]
                                               [:= :f.active true]
                                               [:= :f.visibility_type "normal"]
-                                              [:= :t.db_id [:auto/param database-id]]
+                                              [:= :t.db_id database-id]
                                               [:= :t.active true]
                                               [:= :t.visibility_type nil]]}]]})))
 
@@ -803,7 +803,7 @@
 (mu/defn table-ids-of-database :- [:set ::lib.schema.id/table]
   "The ids of the Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (set (t2/select-pks-set :model/Table :db_id [:auto/param database-id])))
+  (set (t2/select-pks-set :model/Table :db_id database-id)))
 
 (mu/defn change-tables-case!
   "Set each of `columns` of the Tables with `table-ids` to its value in `kase`, `:lower` or `:upper` case, returning the

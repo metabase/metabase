@@ -11,12 +11,12 @@
   [setting-key :- [:or :keyword :string]]
   ;; The key is bound by its name: a keyword left bare compiles to a column, and bound as-is the driver cannot
   ;; convert it.
-  (t2/select-one-fn :value :model/Setting :key [:auto/param (name setting-key)]))
+  (t2/select-one-fn :value :model/Setting :key (name setting-key)))
 
 (mu/defn setting-exists? :- :boolean
   "Whether a Setting row with `setting-key` is stored."
   [setting-key :- [:or :keyword :string]]
-  (t2/exists? :model/Setting :key [:auto/param (name setting-key)]))
+  (t2/exists? :model/Setting :key (name setting-key)))
 
 (mu/defn setting-values-by-key
   "A map of key to stored value for every Setting."
@@ -34,12 +34,12 @@
   [setting-key :- [:or :keyword :string]
    value       :- :string]
   ;; `value` is written, not filtered on, so it stays unmarked: the before-update hook encrypts it.
-  (t2/update! :model/Setting :key [:auto/param (name setting-key)] {:value value}))
+  (t2/update! :model/Setting :key (name setting-key) {:value value}))
 
 (mu/defn delete-setting!
   "Delete the Setting with `setting-key`, returning the number deleted."
   [setting-key :- [:or :keyword :string]]
-  (t2/delete! :model/Setting :key [:auto/param (name setting-key)]))
+  (t2/delete! :model/Setting :key (name setting-key)))
 
 (mu/defn update-raw-setting-row!
   "Set the raw `value` and `value-with-aad` of the Setting row with `setting-key`, returning the number of rows
@@ -47,7 +47,7 @@
   [setting-key    :- [:or :keyword :string]
    value          :- [:maybe :string]
    value-with-aad :- [:maybe :string]]
-  (t2/update! (t2/table-name :model/Setting) {:key [:auto/param (name setting-key)]} {:value value, :value_with_aad value-with-aad}))
+  (t2/update! (t2/table-name :model/Setting) {:key (name setting-key)} {:value value, :value_with_aad value-with-aad}))
 
 (mu/defn insert-raw-setting-row!
   "Insert a raw Setting row for `setting-key` holding `value` and `value-with-aad`, returning the number inserted."

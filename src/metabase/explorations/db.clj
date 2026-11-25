@@ -28,7 +28,7 @@
   ^:allow-subquery {:select [[[:+ [:coalesce [:max :last.position] 0] 1]]]
                     :from   [[^:allow-subquery {:select [:position]
                                                 :from   [(t2/table-name :model/ExplorationThread)]
-                                                :where  [:= :exploration_id [:auto/param exploration-id]]}
+                                                :where  [:= :exploration_id exploration-id]}
                               :last]]})
 
 (mu/defn exploration
@@ -172,7 +172,7 @@
   [exploration-ids :- [:set ms/PositiveInt]]
   (reduce (fn [m {:keys [id exploration_id]}] (update m exploration_id (fnil conj #{}) id))
           {}
-          (mdb/select-batched #(t2/select [:model/ExplorationThread :id :exploration_id] :exploration_id [:in [:auto/param %]])
+          (mdb/select-batched #(t2/select [:model/ExplorationThread :id :exploration_id] :exploration_id [:in %])
                               exploration-ids)))
 
 (mu/defn exploration-ids-by-document-id
@@ -180,7 +180,7 @@
   [document-ids :- [:sequential ms/PositiveInt]]
   (into {}
         (map (juxt :id :exploration_id))
-        (mdb/select-batched #(t2/select [:model/Document :id :exploration_id] :id [:in [:auto/param %]]) document-ids)))
+        (mdb/select-batched #(t2/select [:model/Document :id :exploration_id] :id [:in %]) document-ids)))
 
 (mu/defn lens-stamped-threads
   "The ExplorationThreads among `thread-ids` that carry a data-access token, with what the content gate reads."
@@ -359,7 +359,7 @@
 (mu/defn queries-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/ExplorationQuery)]
   "The ExplorationQueries with `query-ids`, by id."
   [query-ids :- [:sequential ms/PositiveInt]]
-  (mdb/select-batched-map #(t2/select-pk->fn identity :model/ExplorationQuery :id [:in [:auto/param %]]) query-ids))
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/ExplorationQuery :id [:in %]) query-ids))
 
 (mu/defn query-thread-id-row
   "The `:exploration_thread_id` row of the ExplorationQuery with `query-id`, or nil."
@@ -511,7 +511,7 @@
   "The ExplorationQueryResults of the ExplorationQueries with `query-ids`, by query id."
   [query-ids :- [:sequential ms/PositiveInt]]
   (mdb/select-batched-map #(t2/select-fn->fn :exploration_query_id identity :model/ExplorationQueryResult
-                                             :exploration_query_id [:in [:auto/param %]])
+                                             :exploration_query_id [:in %])
                           query-ids))
 
 (mu/defn query-result-stored-result-id
@@ -558,7 +558,7 @@
 (mu/defn stored-results-by-id :- [:map-of ms/PositiveInt (ms/InstanceOf :model/StoredResult)]
   "The StoredResults with `stored-result-ids`, by id."
   [stored-result-ids :- [:sequential ms/PositiveInt]]
-  (mdb/select-batched-map #(t2/select-pk->fn identity :model/StoredResult :id [:in [:auto/param %]]) stored-result-ids))
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/StoredResult :id [:in %]) stored-result-ids))
 
 (mu/defn orphaned-stored-result-ids
   "Up to `limit` `:id` rows of the StoredResults created before `created-before` that no ExplorationQueryResult or

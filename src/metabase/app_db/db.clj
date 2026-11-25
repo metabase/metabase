@@ -18,7 +18,8 @@
    [toucan2.core :as t2]
    [toucan2.jdbc.options :as t2.jdbc.options])
   (:import
-   (java.sql Connection)))
+   (clojure.lang ExceptionInfo)
+   (java.sql Connection SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -153,7 +154,7 @@
       (let [pk (first pk-columns)]
         (doseq [[changes pks] (grouped-updates updates pk #(dissoc % pk))
                 pks           (partition-all mdb.query/update-partition-size pks)]
-          (t2/update! model pk [:in [:auto/param (vec pks)]] changes)))
+          (t2/update! model pk [:in (vec pks)] changes)))
       (doseq [[changes pks] (grouped-updates updates (apply juxt pk-columns) #(apply dissoc % pk-columns))
               pk            pks]
         (t2/update! model :toucan/pk pk changes)))))
@@ -200,14 +201,14 @@
   stored before and, with `reread?`, after."
   [model pk updates {:keys [before-update reread?]}]
   (let [pks        (mapv pk updates)
-        id->stored (t2/select-pk->fn identity model pk [:in [:auto/param pks]])
+        id->stored (t2/select-pk->fn identity model pk [:in pks])
         updates    (or (when before-update (before-update updates id->stored))
                        updates)]
     (update-grouped! model updates)
     {:updates     updates
      :id->stored  id->stored
      :id->updated (when reread?
-                    (t2/select-pk->fn identity model pk [:in [:auto/param pks]]))}))
+                    (t2/select-pk->fn identity model pk [:in pks]))}))
 
 (defn update-batched!
   "Apply `updates`, each the primary key of a row of `model` and the columns to change, in batches in one transaction:
@@ -237,11 +238,11 @@
     (t2/with-transaction [_conn]
       (let [batches (mapv vec (partition-all mdb.query/delete-partition-size pks))
             rows    (when (or before-delete after-delete)
-                      (into [] (mapcat #(t2/select model pk [:in [:auto/param %]])) batches))]
+                      (into [] (mapcat #(t2/select model pk [:in %])) batches))]
         (when (or (nil? rows) (seq rows))
           (when before-delete
             (before-delete rows))
-          (run! #(t2/delete! model pk [:in [:auto/param %]]) batches)
+          (run! #(t2/delete! model pk [:in %]) batches)
           (when after-delete
             (after-delete rows)))))
     nil))
@@ -387,11 +388,20 @@
 
 ;;; ---------------------------------------------- Liquibase changelog -----------------------------------------------
 
+(defn- run-statement!
+  "Run `statement` on the Liquibase connection `conn`, throwing the `SQLException` of a failure rather than Toucan's wrapper, since callers catch that."
+  [conn statement]
+  (try
+    (t2/query conn statement)
+    (catch ExceptionInfo e
+      (throw (or (first (filter #(instance? SQLException %) (take-while some? (iterate ex-cause e))))
+                 e)))))
+
 (defn- write!
   "Run the write `statement` on the Liquibase connection `conn` in a transaction of its own, which commits it even though Liquibase turns autocommit off."
   [conn statement]
   (t2/with-transaction [tx-conn conn]
-    (t2/query tx-conn statement)))
+    (run-statement! tx-conn statement)))
 
 (def ^:private JdbcConnection
   (ms/InstanceOfClass Connection))
@@ -550,7 +560,7 @@
   caller's savepoint."
   [conn :- JdbcConnection
    ddl  :- :string]
-  (write! conn [ddl]))
+  (run-statement! conn [ddl]))
 
 ;;; ------------------------------------------------ Version tracking ------------------------------------------------
 

@@ -30,7 +30,7 @@
   ^:allow-subquery {:select [:parent.archived]
                     :from   [[table :parent]]
                     :where  [:= :parent.id (if (contains? changes k)
-                                             [:auto/param (get changes k)]
+                                             (get changes k)
                                              (keyword (str "document." (name k))))]})
 
 (mu/defn archived-directly-clause :- :any
@@ -107,7 +107,7 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id [:auto/param card-id]))
+  (t2/select-one :model/Card :id card-id))
 
 (mu/defn cards-by-ids
   "The Cards with `card-ids`."
@@ -152,12 +152,12 @@
 (mu/defn cards-archived-with-documents
   "The unarchived Cards in the Documents with `document-ids`, which archiving them archives along with them."
   [document-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (mdb/select-batched #(t2/select :model/Card :document_id [:in [:auto/param %]] :archived false) document-ids))
+  (mdb/select-batched #(t2/select :model/Card :document_id [:in %] :archived false) document-ids))
 
 (mu/defn cards-restored-with-documents
   "The Cards in the Documents with `document-ids` that were archived along with them, which restoring them restores."
   [document-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (mdb/select-batched #(t2/select :model/Card :document_id [:in [:auto/param %]] :archived true :archived_directly false)
+  (mdb/select-batched #(t2/select :model/Card :document_id [:in %] :archived true :archived_directly false)
                       document-ids))
 
 (mu/defn card-ids-archived-with-documents
