@@ -1497,3 +1497,51 @@
                  (mt/with-test-user :crowberto
                    (set (get-in (distinct-batch/run-distinct-batch :mysql table [field])
                                 [(:id field) :values]))))))))))
+
+(tx/defdataset value-list-column-types
+  [["typed"
+    [{:field-name "t_varchar",  :base-type {:native "VARCHAR(20)"}}
+     {:field-name "t_char",     :base-type {:native "CHAR(5)"}}
+     {:field-name "t_enum",     :base-type {:native "ENUM('small','big')"}}
+     {:field-name "t_set",      :base-type {:native "SET('x','y')"}}
+     {:field-name "t_year",     :base-type {:native "YEAR"}}
+     {:field-name "t_bool",     :base-type {:native "TINYINT(1)"}}
+     {:field-name "t_bit",      :base-type {:native "BIT(1)"}}
+     {:field-name "t_bigint",   :base-type {:native "BIGINT UNSIGNED"}}
+     {:field-name "t_decimal",  :base-type {:native "DECIMAL(10,2)"}}
+     {:field-name "t_double",   :base-type {:native "DOUBLE"}}
+     {:field-name "t_float",    :base-type {:native "FLOAT"}}
+     {:field-name "t_date",     :base-type {:native "DATE"}}
+     {:field-name "t_datetime", :base-type {:native "DATETIME"}}
+     {:field-name "t_time",     :base-type {:native "TIME"}}]
+    [["abc"  "ab" "small" "x"   2001 true  true  18446744073709551615 1.50  0.1  0.5  #t "2024-01-02" #t "2024-01-02T03:04:05" #t "03:04:05"]
+     ["ABC"  "ab " "big"  "x,y" 2002 false false 1                    -2.25 1e20 1.25 #t "1999-12-31" #t "1999-12-31T23:59:59" #t "23:59:59"]
+     ["abc " "Ab" "small" ""    2001 true  true  0                    1.50  0.1  0.5  #t "2024-01-02" #t "2024-01-02T03:04:05" #t "03:04:05"]
+     [nil    nil  nil     nil   nil  nil   nil   nil                  nil   nil  nil  nil           nil                     nil]]]])
+
+(deftest value-list-scan-of-plain-columns-test
+  (mt/test-driver :mysql
+    (mt/dataset value-list-column-types
+      (let [table  (t2/select-one :model/Table :id (mt/id :typed))
+            fields (t2/select :model/Field :table_id (mt/id :typed) :name [:not= "id"])
+            scan   (fn [form]
+                     (mt/with-test-user :crowberto
+                       (into {}
+                             (map (fn [{:keys [id name]}]
+                                    [name (sort-by str (get-in (#'distinct-batch/run-distinct-batch* :mysql table fields form)
+                                                               [id :values]))]))
+                             fields)))
+            today  (scan {})]
+        (is (= 14 (count fields)))
+        (doseq [form [{:plain-column? true} {:plain-column? true :distinct? true}]]
+          (testing (str "form " form)
+            (let [plain (scan form)]
+              (testing "gives the same values as casting in the GROUP BY, for every type but VARCHAR"
+                (is (= (dissoc today "t_varchar") (dissoc plain "t_varchar"))))
+              (testing "keeps a VARCHAR value with a trailing space apart, as the column's NO PAD collation does"
+                (is (= [nil "abc"] (today "t_varchar")))
+                (is (= [nil "abc" "abc "] (plain "t_varchar")))))))
+        (testing "the MySQL driver asks for it, but not for MariaDB, which reads every row in both forms"
+          (is (true? (driver.u/supports? :mysql :field-values/group-by-plain-column (mt/db))))
+          (is (false? (driver/database-supports? :mysql :field-values/group-by-plain-column
+                                                 (assoc (mt/db) :dbms_version {:flavor "MariaDB"})))))))))

@@ -198,6 +198,15 @@
   (and (= driver :mysql)
        (not (mariadb? db))))
 
+;; MySQL can read the groups of a plain column from an index on it, but must compute and sort a cast of the column
+;; for every row. MariaDB reads every row in both forms, so it keeps the cast. The column's collation then decides
+;; which values are equal: for most text columns it is NO PAD, so `'abc'` and `'abc '` are two values, where the
+;; cast to `CHAR` made them one.
+(defmethod driver/database-supports? [:mysql :field-values/group-by-plain-column]
+  [driver _feat db]
+  (and (= driver :mysql)
+       (not (mariadb? db))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
