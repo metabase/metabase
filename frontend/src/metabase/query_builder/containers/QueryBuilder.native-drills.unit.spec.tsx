@@ -25,6 +25,13 @@ import {
 
 import { setup } from "./test-utils";
 
+type SetupOpts = Parameters<typeof setup>[0];
+
+/** The e2e instance has x-rays on, which enables the automatic insights drill */
+function setupNativeDrills(opts: SetupOpts) {
+  return setup({ ...opts, settings: { "enable-xrays": true } });
+}
+
 registerVisualizations();
 
 const CARD_ID = 1;
@@ -281,7 +288,7 @@ describe("QueryBuilder > native query drills", () => {
     );
 
     it("should extract a part of a date column from its header", async () => {
-      await setup({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
+      await setupNativeDrills({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
       const expectedBody = setupDrillRun(EXTRACT_STAGE, EXTRACT_DATASET);
 
       const popover = await clickColumnHeader("CREATED_AT");
@@ -296,7 +303,7 @@ describe("QueryBuilder > native query drills", () => {
     });
 
     it("should extract a part of a date column from the add column button", async () => {
-      await setup({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
+      await setupNativeDrills({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
       const expectedBody = setupDrillRun(EXTRACT_STAGE, EXTRACT_DATASET);
 
       await userEvent.click(
@@ -317,7 +324,7 @@ describe("QueryBuilder > native query drills", () => {
   });
 
   it("should filter a numeric column from its header", async () => {
-    await setup({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
+    await setupNativeDrills({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
     expect(await screen.findByText("Showing 10 rows")).toBeInTheDocument();
     const expectedBody = setupDrillRun(
       {
@@ -348,7 +355,7 @@ describe("QueryBuilder > native query drills", () => {
   });
 
   it("should show the distribution of a numeric column from its header", async () => {
-    await setup({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
+    await setupNativeDrills({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
     const binnedQuantity = createNativeColumn("QUANTITY", "type/Integer", {
       display_name: "QUANTITY: 8 bins",
       source: "breakout",
@@ -405,7 +412,7 @@ describe("QueryBuilder > native query drills", () => {
   ])(
     "should sort a column from its header ($direction)",
     async ({ direction, icon, firstRowId }) => {
-      await setup({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
+      await setupNativeDrills({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
       const sign = direction === "asc" ? 1 : -1;
       // ties come back in descending id order, so the first row is not the
       // first row of the unsorted results
@@ -457,7 +464,7 @@ describe("QueryBuilder > native query drills", () => {
   ])(
     "should summarize a column from its header ($operator)",
     async ({ action, operator, columnName, value }) => {
-      await setup({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
+      await setupNativeDrills({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
       const expectedBody = setupDrillRun(
         {
           aggregation: [
@@ -492,7 +499,7 @@ describe("QueryBuilder > native query drills", () => {
   );
 
   it("should summarize a column over time from its header", async () => {
-    await setup({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
+    await setupNativeDrills({ card: ORDERS_CARD, dataset: ORDERS_DATASET });
     const expectedBody = setupDrillRun(
       {
         aggregation: [
@@ -548,7 +555,7 @@ describe("QueryBuilder > native query drills", () => {
     }
 
     it("should combine the clicked column with another one from its header", async () => {
-      await setup({ card: PEOPLE_CARD, dataset: PEOPLE_DATASET });
+      await setupNativeDrills({ card: PEOPLE_CARD, dataset: PEOPLE_DATASET });
       const name = "Combined EMAIL, ID";
       const expectedBody = setupDrillRun(
         {
@@ -580,7 +587,7 @@ describe("QueryBuilder > native query drills", () => {
     });
 
     it("should combine columns from the add column button", async () => {
-      await setup({ card: PEOPLE_CARD, dataset: PEOPLE_DATASET });
+      await setupNativeDrills({ card: PEOPLE_CARD, dataset: PEOPLE_DATASET });
       const name = "Combined ID, EMAIL";
       const expectedBody = setupDrillRun(
         {
@@ -615,7 +622,10 @@ describe("QueryBuilder > native query drills", () => {
   });
 
   it("should only offer the quick filter drill on a chart point", async () => {
-    await setup({ card: TIMESERIES_CARD, dataset: TIMESERIES_DATASET });
+    await setupNativeDrills({
+      card: TIMESERIES_CARD,
+      dataset: TIMESERIES_DATASET,
+    });
 
     await clickChartPoint(["2027-05-15T00:00:00", 3]);
 
@@ -660,18 +670,23 @@ describe("QueryBuilder > native query drills", () => {
     }
 
     it("should not open drills on a saved native question", async () => {
-      await setup({ card: CATEGORY_CARD, dataset: CATEGORY_DATASET });
+      await setupNativeDrills({
+        card: CATEGORY_CARD,
+        dataset: CATEGORY_DATASET,
+      });
 
       await clickLegendItem("Gadget");
 
-      expect(
-        screen.queryByTestId("click-actions-view"),
-      ).not.toBeInTheDocument();
+      // the popover opens after the click is handled, so wait for it to have
+      // had the chance to open
+      await expect(
+        screen.findByTestId("click-actions-view", {}, { timeout: 2000 }),
+      ).rejects.toThrow();
     });
 
     it("should offer to save an unsaved native question", async () => {
       const { id, ...unsavedCard } = CATEGORY_CARD;
-      await setup({
+      await setupNativeDrills({
         card: createMockUnsavedCard(unsavedCard),
         dataset: CATEGORY_DATASET,
       });
