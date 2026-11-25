@@ -20085,6 +20085,10 @@
             } ],
             "description" : "Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,\n  although the functions that ultimately power most API endpoints tend to set this to `true`. See\n  `add-constraints` middleware for more details."
           },
+          "card-reference?" : {
+            "description" : "Whether this query is a card that a native query references, e.g. with `{{#123}}`. The compiled query goes inside\n  the native query, so SQL drivers compile it without stage CTEs.",
+            "type" : "boolean"
+          },
           "csv-include-bom?" : {
             "anyOf" : [ {
               "type" : "boolean"

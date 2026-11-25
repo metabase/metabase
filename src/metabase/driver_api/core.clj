@@ -167,6 +167,7 @@
  qp.util.transformations.nest-breakouts/finest-temporal-breakout-index
  qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation
  qp.util.transformations.nest-breakouts/nest-pivot-joins
+ qp.util.transformations.nest-breakouts/nest-single-row-aggregation
  qp.util/default-query->remark
  qp.util/query->remark
  qp.wrap-value-literals/wrap-value-literals-in-mbql5

@@ -1076,7 +1076,12 @@
     ;; Does this driver natively support pivot queries via a single `GROUP BY GROUPING SETS (...)` query, instead of
     ;; the legacy multi-query path? Drivers that opt in must also derive from `:sql` (which provides the
     ;; `:pivot` clause compiler).
-    :native-pivot-tables})
+    :native-pivot-tables
+    ;;
+    ;; Should an aggregation with no breakouts over a previous stage go in its own stage CTE? This is for databases
+    ;; like Postgres that do not use an index for MIN/MAX when the aggregation is in a SELECT that has a WITH clause.
+    ;; Only applies to queries compiled with stage CTEs, see `metabase.driver.sql.query-processor/use-ctes-for-stages?`.
+    :stage-ctes/nest-single-row-aggregation})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
