@@ -2497,7 +2497,11 @@
       (is (re-find #"FROM \"PUBLIC\"\.\"VENUES\" SAMPLE BLOCK \(2\.5\) LIMIT 10"
                    (:query (qp.compile/compile (-> (lib/query mp venues)
                                                    (lib/limit 10)
-                                                   (assoc-in [:stages 0 :table-sample] {:percent 2.5})))))))))
+                                                   (assoc-in [:stages 0 :table-sample] {:percent 2.5})))))))
+    (testing "a very small percent is a plain decimal"
+      (is (re-find #"SAMPLE BLOCK \(0\.00005\)"
+                   (:query (qp.compile/compile (-> (lib/query mp venues)
+                                                   (assoc-in [:stages 0 :table-sample] {:percent 5.0E-5})))))))))
 
 (deftest ^:parallel table-random-sample-feature-test
   (testing "Only :snowflake itself declares the better sample, so that a child driver keeps its own table-rows-sample"
@@ -2519,7 +2523,7 @@
         (let [{:keys [method fraction result sqls]} (sample {:rows 100 :row-count 100})]
           (is (= :block method))
           (is (= 1.0 fraction))
-          (is (=? [#"(?s).*SAMPLE BLOCK \(100\.0\) LIMIT 200"] sqls))
+          (is (=? [#"(?s).*SAMPLE BLOCK \(100\) LIMIT 200"] sqls))
           (is (= 100 (count result)))))
       (testing "the driver declines, so that sync reads the first rows, when there is no row count estimate"
         (is (= {:method :first-rows :sqls []} (sample {:rows 100 :row-count nil})))))))

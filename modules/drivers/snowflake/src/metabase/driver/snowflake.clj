@@ -1392,7 +1392,8 @@
 (defmethod sql.qp/table-sample->honeysql :snowflake
   [driver table-expr {:keys [percent] :as table-sample}]
   (if percent
-    [:raw [table-expr " SAMPLE BLOCK (" [:inline percent] ")"]]
+    ;; a plain decimal: the docs show only that form, and Java prints a double below 0.001 as 1.0E-4
+    [:raw [table-expr " SAMPLE BLOCK (" (.toPlainString (.stripTrailingZeros ^BigDecimal (bigdec percent))) ")"]]
     ((get-method sql.qp/table-sample->honeysql :sql) driver table-expr table-sample)))
 
 ;; Only for `:snowflake` itself, so that a child driver keeps its own `table-rows-sample`.
@@ -1400,8 +1401,8 @@
   [driver _feature _db]
   (= driver :snowflake))
 
-;; Sync gives a table a row count estimate only from `SHOW TABLES`, which has no views, and no count for external
-;; tables, so the block sample declines for those.
+;; Views and external tables have no count in `SHOW TABLES`, so sync gives them no row count estimate, and the block
+;; sample declines for them.
 (defmethod driver/table-random-sample :snowflake
   [_driver table fields rff opts]
   (table-rows-sample/block-sample table fields rff opts))
