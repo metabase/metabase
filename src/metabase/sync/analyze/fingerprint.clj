@@ -151,19 +151,24 @@
   2)
 
 (defn- grown-table-ids
-  "The ids of the Tables among `table-ids` that grew [[resample-growth-factor]] times since their fingerprints, whose
-  fingerprinted Fields sync fingerprints again. None in a refingerprint run, which takes all Fields anyway."
-  [table-ids]
-  (if *refingerprint?*
+  "The ids of the Tables of the Database `database-id` among `table-ids` that grew [[resample-growth-factor]] times
+  since their fingerprints, whose fingerprinted Fields sync fingerprints again. When the driver reads no better sample
+  than the first rows, only Tables whose fingerprints came from all of their rows: for a larger one, a new sample would
+  read the same first rows. None in a refingerprint run, which takes all Fields anyway."
+  [database-id table-ids]
+  (if (or *refingerprint?* (empty? table-ids))
     #{}
-    (analyze/grown-table-ids (vec table-ids) resample-growth-factor)))
+    (analyze/grown-table-ids (vec table-ids)
+                             resample-growth-factor
+                             (when-not (sample/better-sample-supported? (driver.u/database->driver database-id) database-id)
+                               sample/sample-rows))))
 
 (defn- fingerprint-field-counts
-  "The number of Fields to fingerprint of each of the Tables with `table-ids`, by Table id: all fingerprinted Fields of
-  a Table that grew a lot since its fingerprints."
-  [table-ids]
+  "The number of Fields to fingerprint of each of the Tables with `table-ids` of the Database `database-id`, by Table
+  id: all fingerprinted Fields of a Table that grew a lot since its fingerprints."
+  [database-id table-ids]
   (let [versions i/*fingerprint-version->types-that-should-be-re-fingerprinted*
-        grown    (grown-table-ids table-ids)]
+        grown    (grown-table-ids database-id table-ids)]
     (cond-> (analyze/fingerprint-field-counts table-ids *refingerprint?* versions)
       (seq grown) (merge (analyze/fingerprint-field-counts (vec grown) true versions)))))
 
@@ -174,7 +179,7 @@
   [tables :- [:sequential i/TableInstance]
    limit  :- ms/PositiveInt]
   (let [versions i/*fingerprint-version->types-that-should-be-re-fingerprinted*
-        grown    (grown-table-ids (map :id tables))]
+        grown    (grown-table-ids (:db_id (first tables)) (map :id tables))]
     (doseq [table tables
             :when (contains? grown (:id table))]
       (log/infof "Table %s grew to about %d rows since its fingerprints; sampling it again"
@@ -297,7 +302,7 @@
                   (sync-util/refingerprint-reducible-sync-tables database)
                   (sync-util/reducible-sync-tables database))
          groups (table-chunks/groups tables
-                                     fingerprint-field-counts
+                                     (partial fingerprint-field-counts (:id database))
                                      (inc (sync.settings/fingerprint-max-fields-per-table)))]
      (reduce (fn [acc group] (fingerprint-group! acc group log-progress-fn continue?))
              (empty-stats-map 0)

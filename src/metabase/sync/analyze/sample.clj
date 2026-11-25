@@ -31,7 +31,7 @@
     (binding [*databases-without-better-sample* (atom #{})]
       (thunk))))
 
-(def ^:private sample-rows
+(def sample-rows
   "About how many rows a sample reads: as many as the first-rows sample of `table-rows-sample` reads."
   10000)
 
@@ -42,6 +42,13 @@
    :result (driver/table-rows-sample (driver.u/database->driver (:db_id table)) table fields rff
                                      (perf/select-keys opts [:truncation-size]))})
 
+(defn better-sample-supported?
+  "Whether the `driver` of the Database `database-id` reads a better sample than the first rows: it supports
+  `:table-random-sample` for itself, with a [[driver/table-random-sample]] of its own. Reads the Database."
+  [driver database-id]
+  (and (contains? (methods driver/table-random-sample) driver)
+       (driver.u/supports? driver :table-random-sample (driver.u/lib-database database-id))))
+
 (defn- better-sample-allowed?
   "Whether sync asks the driver of `table` for a better sample: the table has more rows than the sample would read,
   the better sample did not fail for this Database in this run, and the driver supports it for itself, with a
@@ -49,8 +56,7 @@
   [driver table opts]
   (and (not (some-> (:row-count opts) (<= (:rows opts))))
        (not (some-> *databases-without-better-sample* deref (contains? (:db_id table))))
-       (contains? (methods driver/table-random-sample) driver)
-       (driver.u/supports? driver :table-random-sample (driver.u/lib-database (:db_id table)))))
+       (better-sample-supported? driver (:db_id table))))
 
 (defn- turn-off-better-sample!
   "Stop asking for a better sample of the tables of the Database of `table` for the rest of this run."

@@ -128,32 +128,41 @@
                          limit))
 
 (mu/defn grown-table-ids :- [:set ::lib.schema.id/table]
-  "The ids of the Tables among `table-ids` whose row count estimate is at least `factor` times the row count recorded
-  in the fingerprint origin of their first fingerprinted Field, which has the oldest fingerprint of the Table: a
-  new sample gives all of a Table's Fields the same origin. A Table with no estimate, or whose fingerprints recorded no
-  row count, is not among them."
-  [table-ids :- ::table-ids
-   factor    :- pos?]
-  (into #{}
-        (keep (fn [{:keys [table_id fingerprint_origin estimated_row_count]}]
-                (when-let [then (some-> fingerprint_origin :row-count)]
-                  (when (and (pos? then) (>= estimated_row_count (* factor then)))
-                    table_id))))
-        (app-db/select-batched
-         #(t2/select :model/Field
-                     {:select [:f.table_id :f.fingerprint_origin :t.estimated_row_count]
-                      :from  [[(t2/table-name :model/Field) :f]]
-                      :join  [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                      :where [:and
-                              [:> :t.estimated_row_count 0]
-                              [:in :f.id ^:allow-subquery {:select   [[:%min.id :id]]
-                                                           :from     [(t2/table-name :model/Field)]
-                                                           :where    [:and
-                                                                      [:in :table_id [:auto/param %]]
-                                                                      [:= :active true]
-                                                                      [:not= :fingerprint_origin nil]]
-                                                           :group-by [:table_id]}]]})
-         table-ids)))
+  "The ids of the Tables among `table-ids` whose row count estimate is at least `factor` times the row count of their
+  newest fingerprints: the largest row count recorded in the fingerprint origins of the Fields that sync fingerprints.
+  A Field that sync no longer fingerprints, such as one that became a PK, does not count, since a new sample would not
+  update it. With `max-baseline`, only Tables whose newest fingerprints are from fewer rows than that count. A Table
+  with no estimate, or whose fingerprints recorded no row count, is not among them."
+  [table-ids    :- ::table-ids
+   factor       :- pos?
+   max-baseline :- [:maybe pos-int?]]
+  (let [estimates (into {}
+                        (map (juxt :id :estimated_row_count))
+                        (app-db/select-batched
+                         #(t2/select [:model/Table :id :estimated_row_count]
+                                     {:where [:and [:in :id [:auto/param %]] [:> :estimated_row_count 0]]})
+                         table-ids))
+        origins   (when (seq estimates)
+                    (app-db/select-batched
+                     #(t2/select [:model/Field :table_id :fingerprint_origin]
+                                 {:where [:and
+                                          [:in :table_id [:auto/param %]]
+                                          [:not= :fingerprint_origin nil]
+                                          fields-to-fingerprint-base-clause]})
+                     (vec (keys estimates))))
+        baselines (reduce (fn [acc {:keys [table_id fingerprint_origin]}]
+                            (if-let [row-count (:row-count fingerprint_origin)]
+                              (update acc table_id (fnil max 0) row-count)
+                              acc))
+                          {}
+                          origins)]
+    (into #{}
+          (keep (fn [[table-id then]]
+                  (when (and (pos? then)
+                             (>= (estimates table-id) (* factor then))
+                             (or (nil? max-baseline) (< then max-baseline)))
+                    table-id)))
+          baselines)))
 
 (mu/defn incomplete-analysis-fields :- [:sequential (ms/InstanceOf :model/Field)]
   "Up to `limit` active, visible Fields of the Tables with `table-ids` fingerprinted at `fingerprint-version` but not
