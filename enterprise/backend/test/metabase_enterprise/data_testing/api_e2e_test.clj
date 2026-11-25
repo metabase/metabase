@@ -19,7 +19,7 @@
         {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
     (mt/with-temp [:model/Transform {transform-id :id}
                    {:source {:type  :query
-                             :query (lib/native-query mp (str "SELECT id, name FROM " schema "." table))}
+                             :query (lib/native-query mp (str "SELECT id, name FROM " (data-testing.test-util/qualified schema table)))}
                     :target {:type     "table"
                              :schema   schema
                              :name     "people_summary"
@@ -42,7 +42,7 @@
                            :sql    "SELECT 1 AS id, 'abc' AS name"}
                   passing {:type "empty"
                            :name "no null ids"
-                           :sql  (str "SELECT * FROM " schema ".people_summary WHERE id IS NULL")}
+                           :sql  (str "SELECT * FROM " (data-testing.test-util/qualified schema "people_summary") " WHERE id IS NULL")}
                   ;; The output row is (1, 'abc'), so this one differs in a single cell.
                   [int-type text-type] (data-testing.test-util/cast-types)
                   failing {:type    "equals"

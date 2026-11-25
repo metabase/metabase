@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-testing.test-util
   "Helpers shared by the data-testing tests."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
@@ -26,6 +27,13 @@
   [table-key]
   (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id table-key))]
     {:schema schema :name name}))
+
+(defn qualified
+  "`schema.name` for native SQL, or `name` alone when `schema` is blank (a MySQL table has none)."
+  [schema name]
+  (if (str/blank? schema)
+    name
+    (str schema "." name)))
 
 (defn data-test-drivers
   "The test drivers that run data tests: every driver with `:transforms/testing` but H2, which data tests refuse until

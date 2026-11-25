@@ -25,7 +25,7 @@
   "`schema.name` of the test-data table `table-key`, for native SQL."
   [table-key]
   (let [{:keys [schema name]} (data-testing.test-util/table-ref table-key)]
-    (str schema "." name)))
+    (data-testing.test-util/qualified schema name)))
 
 (defn- table-query
   "An MBQL query of the test-data table `table-key`."

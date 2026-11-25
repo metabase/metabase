@@ -329,7 +329,7 @@
         (mt/with-temp [:model/Transform {transform-id :id :as transform}
                        {:source {:type  :query
                                  :query (lib/native-query
-                                         mp (str "SELECT id, name FROM " schema "." (u/lower-case-en table)))}
+                                         mp (str "SELECT id, name FROM " (data-testing.test-util/qualified schema (u/lower-case-en table))))}
                         :target {:type     "table"
                                  :schema   schema
                                  :name     target
@@ -341,7 +341,7 @@
                                           :sql    "SELECT -1 AS id, 'fixture' AS name"}]
                           :expectations [{:type :empty
                                           :name "the output holds only the fixture row"
-                                          :sql  (str "SELECT * FROM " schema "." target " WHERE id <> -1")}]}]
+                                          :sql  (str "SELECT * FROM " (data-testing.test-util/qualified schema target) " WHERE id <> -1")}]}]
             ;; The declared input names the table as sync reports it; the transform names it in
             ;; lower case. Refusing the run is a fine answer. Reporting :failed is not — it means
             ;; the fixture was ignored and the expectation was measured against real rows.
@@ -360,7 +360,7 @@
             target                        "mb_remapping_probe_target"]
         (mt/with-temp [:model/Transform {transform-id :id :as transform}
                        {:source {:type  :query
-                                 :query (lib/native-query mp (str "SELECT id, name FROM " schema "." table))}
+                                 :query (lib/native-query mp (str "SELECT id, name FROM " (data-testing.test-util/qualified schema table)))}
                         :target {:type     "table"
                                  :schema   schema
                                  :name     target
@@ -372,6 +372,6 @@
                                         :sql    "SELECT -1 AS id, 'fixture' AS name"}]
                         :expectations [{:type :empty
                                         :name "the output holds only the fixture row"
-                                        :sql  (str "SELECT * FROM " schema "." target " WHERE id <> -1")}]}]
+                                        :sql  (str "SELECT * FROM " (data-testing.test-util/qualified schema target) " WHERE id <> -1")}]}]
           (is (= :passed (:status (data-testing.test-util/run-as-admin! :transform transform transform-test))))
           (is (not (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:schema schema :name target}))))))))
