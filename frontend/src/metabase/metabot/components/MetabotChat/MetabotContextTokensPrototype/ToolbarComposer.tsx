@@ -13,6 +13,7 @@ import {
   ComposerShell,
   type ContextComposerProps,
   TokenRemoveButton,
+  useComposerBridge,
 } from "./ContextComposerParts";
 import S from "./ContextTokens.module.css";
 import {
@@ -31,6 +32,7 @@ export function ToolbarComposer(props: ContextComposerProps) {
     () => mergeTokens(viewingToken, getMentionTokens(prompt)),
     [viewingToken, prompt],
   );
+  useComposerBridge(props, tokens, props.onSubmit);
 
   const handleRemove = (token: ContextToken) => {
     if (token.source === "viewing") {

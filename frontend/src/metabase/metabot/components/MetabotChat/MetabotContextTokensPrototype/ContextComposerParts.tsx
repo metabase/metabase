@@ -1,6 +1,12 @@
 // PROTOTYPE: metabot context tokens
 import cx from "classnames";
-import type { ReactNode, RefObject } from "react";
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useEffect,
+  useImperativeHandle,
+} from "react";
 import { t } from "ttag";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
@@ -12,6 +18,7 @@ import { ActionIcon, Icon, Paper, Tooltip } from "metabase/ui";
 import type { MentionProps } from "../../editor-extensions/MetabotMention/MetabotMentionExtension";
 
 import S from "./ContextTokens.module.css";
+import type { ContextToken } from "./tokens";
 
 export type ContextComposerProps = {
   prompt: string;
@@ -21,7 +28,29 @@ export type ContextComposerProps = {
   onSubmit: (message: string) => void;
   onStop: () => void;
   suggestionModels: SuggestionModel[];
+  /** Reports the first token, which prompt suggestions are about. */
+  onPrimaryTokenChange: (token: ContextToken | null) => void;
+  /** Lets prompt suggestions submit through the composer, with its context. */
+  controllerRef: Ref<ContextComposerController>;
 };
+
+export type ContextComposerController = {
+  submit: (message: string) => void;
+};
+
+/** Wires a variant's tokens and submit handler up to the chat around it. */
+export function useComposerBridge(
+  { onPrimaryTokenChange, controllerRef }: ContextComposerProps,
+  tokens: ContextToken[],
+  submit: (message: string) => void,
+) {
+  const primaryToken = tokens[0] ?? null;
+  useEffect(() => {
+    onPrimaryTokenChange(primaryToken);
+  }, [onPrimaryTokenChange, primaryToken]);
+
+  useImperativeHandle(controllerRef, () => ({ submit }), [submit]);
+}
 
 export function ComposerShell({
   isResponding,

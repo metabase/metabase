@@ -16,6 +16,7 @@ import {
   ComposerShell,
   type ContextComposerProps,
   TokenRemoveButton,
+  useComposerBridge,
 } from "./ContextComposerParts";
 import S from "./ContextTokens.module.css";
 import {
@@ -63,6 +64,7 @@ export function AttachmentsComposer(props: ContextComposerProps) {
     onSubmit(links.length > 0 ? `${message}\n\n${links.join(" ")}` : message);
     setAttachments([]);
   };
+  useComposerBridge(props, tokens, handleSubmit);
 
   const composerProps = { ...props, onSubmit: handleSubmit };
 

@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
@@ -22,7 +22,10 @@ import { METABOT_HOVER_CARD_BOUNDARY_ATTR } from "../MetabotHoverCard";
 
 import Styles from "./MetabotChat.module.css";
 import { Messages } from "./MetabotChatMessage";
+import type { ContextComposerController } from "./MetabotContextTokensPrototype/ContextComposerParts";
 import { MetabotContextComposerPrototype } from "./MetabotContextTokensPrototype/MetabotContextComposerPrototype";
+import type { ContextToken } from "./MetabotContextTokensPrototype/tokens";
+import { useContextualSuggestions } from "./MetabotContextTokensPrototype/use-contextual-suggestions";
 import { MetabotContextUsageRing } from "./MetabotContextUsageRing";
 import { useScrollManager } from "./hooks";
 
@@ -85,9 +88,25 @@ export const MetabotChat = ({
     },
     { skip: !isConfigured },
   );
-  const suggestedPrompts = useMemo(() => {
-    return suggestedPromptsReq.currentData?.prompts ?? [];
+  const apiSuggestedPrompts = useMemo(() => {
+    return (suggestedPromptsReq.currentData?.prompts ?? []).map(
+      ({ prompt }) => prompt,
+    );
   }, [suggestedPromptsReq.currentData?.prompts]);
+
+  // PROTOTYPE: metabot context tokens — suggestions follow the first token
+  const [primaryToken, setPrimaryToken] = useState<ContextToken | null>(null);
+  const composerControllerRef = useRef<ContextComposerController>(null);
+  const contextualSuggestions = useContextualSuggestions(primaryToken);
+  const suggestedPrompts = contextualSuggestions ?? apiSuggestedPrompts;
+
+  const handleSuggestionClick = (prompt: string) => {
+    if (composerControllerRef.current) {
+      composerControllerRef.current.submit(prompt);
+    } else {
+      metabot.submitInput(prompt);
+    }
+  };
 
   const untitledLabel = metabot.forkedFromConversationId
     ? t`Forked conversation`
@@ -167,11 +186,11 @@ export const MetabotChat = ({
                   data-testid="metabot-prompt-suggestions"
                 >
                   <>
-                    {suggestedPrompts.map(({ prompt }, index) => (
+                    {suggestedPrompts.map((prompt) => (
                       <UnstyledButton
-                        key={index}
+                        key={prompt}
                         fz="sm"
-                        onClick={() => metabot.submitInput(prompt)}
+                        onClick={() => handleSuggestionClick(prompt)}
                         className={Styles.promptSuggestionButton}
                         bg="background_surface-brand-subtle"
                         bdrs="sm"
@@ -179,7 +198,7 @@ export const MetabotChat = ({
                       >
                         <Flex gap="sm">
                           <Icon
-                            name="bolt"
+                            name="ai"
                             size={16}
                             c="icon-brand"
                             flex="0 0 auto"
@@ -242,6 +261,8 @@ export const MetabotChat = ({
                 onSubmit={(message) => metabot.submitInput(message)}
                 onStop={metabot.cancelRequest}
                 suggestionModels={config.suggestionModels}
+                onPrimaryTokenChange={setPrimaryToken}
+                controllerRef={composerControllerRef}
               />
             )}
           </Box>
