@@ -304,6 +304,8 @@ describe("QuestionSharingMenu", () => {
     it("invites with a temporary password and shares the question link when email is not set up", async () => {
       const QUESTION_ID = 42;
       const EMAIL = "newbie@metabase.com";
+      // Differs from the typed email, so the success copy must use the response.
+      const RETURNED_EMAIL = "returned@metabase.com";
       fetchMock.get("path:/api/permissions/group", []);
       fetchMock.get("path:/api/permissions/invite-group-ids", []);
       fetchMock.post("path:/api/user", async ({ options }) => {
@@ -313,7 +315,7 @@ describe("QuestionSharingMenu", () => {
         );
         return body.invite_target?.type === "question" &&
           body.invite_target.id === QUESTION_ID
-          ? createMockUser({ id: 99, email: body.email })
+          ? createMockUser({ id: 99, email: RETURNED_EMAIL })
           : { status: 400 };
       });
       await setupQuestionSharingMenu({
@@ -332,8 +334,8 @@ describe("QuestionSharingMenu", () => {
       const modal = await screen.findByRole("dialog");
       expect(
         await within(modal).findByText(/We couldn't send an email invitation/),
-      ).toBeInTheDocument();
-      expect(within(modal).getByText(EMAIL)).toBeInTheDocument();
+      ).toBeVisible();
+      expect(within(modal).getByText(RETURNED_EMAIL)).toBeVisible();
 
       const call = fetchMock.callHistory.lastCall("path:/api/user", {
         method: "POST",
