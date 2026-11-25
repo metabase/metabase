@@ -374,6 +374,7 @@
         (subject-plan subject-type subject inputs now)
         _              (check-not-impersonated database)
         driver         (keyword (:engine database))
+        _              (data-testing.validator/ensure-supported-forms driver (:query compiled) nil)
         source-tables  (source-tables driver (:query compiled))
         input->table   (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
         output-table   (driver/temp-table-name driver)

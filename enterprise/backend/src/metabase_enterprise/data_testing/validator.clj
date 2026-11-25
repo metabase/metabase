@@ -188,6 +188,41 @@
                                (tru "the rewrite of it that a run executes changes when it is rewritten again"))
     (tru "it holds something the check refuses")))
 
+(defn- unsupported-form-refusal
+  "The `::data-testing.errors/unsupported-sql` refusal of the SQL of `source` for the parser's `reason` and `detail`,
+  or nil when `reason` names no form whose rebuild has another value."
+  [reason detail source]
+  (case reason
+    ;; Data tests do not support these forms yet: VER-183 (Postgres numbers), VER-184 (MySQL DIV).
+    "number-literal"
+    (data-testing.errors/ex
+     ::data-testing.errors/unsupported-sql
+     (tru "The SQL of {0} holds the number {1}. Data tests do not support numbers written in hexadecimal, binary or octal, or with underscores, yet."
+          (sql-source-label source) detail)
+     {:reason reason :detail detail})
+
+    "div-operator"
+    (data-testing.errors/ex
+     ::data-testing.errors/unsupported-sql
+     (tru "The SQL of {0} uses the DIV operator, which the SQL check rewrites as a division that rounds where DIV truncates. Data tests do not support DIV yet."
+          (sql-source-label source))
+     {:reason reason})
+
+    nil))
+
+(mu/defn ensure-supported-forms :- :nil
+  "Throws `::data-testing.errors/unsupported-sql` when `sql`, the SQL of `source` as its author wrote it, uses a form
+  whose rebuild has another value. [[ensure-single-select]] refuses these forms too, but a table rewrite rebuilds the
+  SQL it is given, so the rewrite of `sql` no longer holds them. A form in SQL that the check refuses for another
+  reason first is left to [[ensure-single-select]], which reads the rewrite."
+  [driver :- :keyword
+   sql    :- :string
+   source :- ::sql-source]
+  (let [{:keys [verdict reason detail]} (sql-tools/validate-executable-stmt driver sql "read-only")]
+    (when-let [refusal (when (= :disallowed verdict)
+                         (unsupported-form-refusal reason detail source))]
+      (throw refusal))))
+
 (mu/defn ensure-single-select :- :string
   "Returns the SQL a run executes for `sql`: SQLGlot's rebuild of `sql` in `driver`'s dialect. `sql` must be one
   SELECT that passes the read-only statement check, which refuses anything that writes or locks (a data-modifying CTE,
@@ -207,29 +242,14 @@
       rebuilt
 
       :disallowed
-      (throw (case reason
-               ;; Data tests do not support these forms yet: VER-183 (Postgres numbers), VER-184 (MySQL DIV).
-               "number-literal"
-               (data-testing.errors/ex
-                ::data-testing.errors/unsupported-sql
-                (tru "The SQL of {0} holds the number {1}. Data tests do not support numbers written in hexadecimal, binary or octal, or with underscores, yet."
-                     (sql-source-label source) detail)
-                {:reason reason :detail detail})
-
-               "div-operator"
-               (data-testing.errors/ex
-                ::data-testing.errors/unsupported-sql
-                (tru "The SQL of {0} uses the DIV operator, which the SQL check rewrites as a division that rounds where DIV truncates. Data tests do not support DIV yet."
-                     (sql-source-label source))
-                {:reason reason})
-
-               (data-testing.errors/ex
-                ::data-testing.errors/not-a-single-select
-                (tru "The SQL of {0} must be one SELECT statement, and the SQL check refuses it: {1}."
-                     (sql-source-label source) (refusal-reason reason detail))
-                (cond-> {}
-                  reason (assoc :reason reason)
-                  detail (assoc :detail detail)))))
+      (throw (or (unsupported-form-refusal reason detail source)
+                 (data-testing.errors/ex
+                  ::data-testing.errors/not-a-single-select
+                  (tru "The SQL of {0} must be one SELECT statement, and the SQL check refuses it: {1}."
+                       (sql-source-label source) (refusal-reason reason detail))
+                  (cond-> {}
+                    reason (assoc :reason reason)
+                    detail (assoc :detail detail)))))
 
       :unknown
       (if error
@@ -258,6 +278,9 @@
    replacements     :- ::data-testing.compile/table-replacements
    output-token     :- [:maybe ::data-testing.compile/output-token]
    temp-tables      :- [:set :string]]
+  (ensure-supported-forms driver
+                          (cond-> sql output-token (data-testing.compile/replace-output-token output-token))
+                          [:expectation expectation-name])
   (try
     (let [query (ensure-single-select driver
                                       (data-testing.compile/replace-tables driver sql replacements output-token)

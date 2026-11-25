@@ -114,7 +114,7 @@
   "A placeholder SQL may write for the output, such as `{{output}}`: a name in double braces."
   [:re #"^\{\{\s*[^{}\s]+\s*\}\}$"])
 
-(mu/defn- replace-output-token :- :string
+(mu/defn replace-output-token :- :string
   "`sql` with every occurrence of `output-token`, whitespace inside its braces allowed, replaced by [[output-name]]."
   [sql          :- :string
    output-token :- ::output-token]

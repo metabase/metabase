@@ -618,3 +618,44 @@
                   (is (= 7 (last-value)))))
               (finally
                 (execute-on-test-data! (str "DROP SEQUENCE " sequence-name))))))))))
+
+(deftest forms-the-rewrite-changes-are-refused-in-the-query-under-test-and-expectations-test
+  (testing "a Postgres number whose rewrite has another value is refused where the author wrote it, before the table rewrite rebuilds it"
+    (mt/test-driver :postgres
+      (let [input   {:table {:schema "public" :name "people"} :format :sql :sql "SELECT 1 AS id"}
+            refusal (fn [card-sql expectation-sql]
+                      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                                 card-sql)}]
+                        (data-testing.test-util/refusal
+                         #(mt/with-test-user :crowberto
+                            (data-testing.runner/validate-test
+                             :card (t2/select-one :model/Card :id card-id)
+                             {:inputs       [input]
+                              :expectations [{:type :empty :name "check" :sql expectation-sql}]})))))]
+        (testing "control: decimal numbers are accepted"
+          (is (nil? (refusal "SELECT 31 AS id FROM public.people" "SELECT * FROM {{output}} WHERE 31::text = '31'"))))
+        (testing "in the query under test"
+          (is (=? {:error-type ::data-testing.errors/unsupported-sql
+                   :message    #"^The SQL of the query under test holds the number 0x1F\..*"}
+                  (refusal "SELECT 0x1F AS id FROM public.people" "SELECT * FROM {{output}} WHERE 1 = 0"))))
+        (testing "in the query under test, followed by an alias, which SQLGlot cannot parse"
+          (is (=? {:error-type ::data-testing.errors/unsupported-sql
+                   :message    #"^The SQL of the query under test holds the number 0o17\..*"}
+                  (refusal "SELECT 0o17 AS id FROM public.people" "SELECT * FROM {{output}} WHERE 1 = 0"))))
+        (testing "in the query under test, which has parameters"
+          (is (=? {:error-type ::data-testing.errors/unsupported-sql
+                   :message    #"^The SQL of the query under test holds the number 1_000\..*"}
+                  (mt/with-temp [:model/Card {card-id :id}
+                                 {:dataset_query (as-> (lib/native-query (mt/metadata-provider)
+                                                                         "SELECT 1_000 + id AS id FROM public.people WHERE name <> {{a}}") q
+                                                   (lib/with-template-tags q (mapv #(assoc % :default "x") (lib/template-tags q))))}]
+                    (data-testing.test-util/refusal
+                     #(mt/with-test-user :crowberto
+                        (data-testing.runner/validate-test
+                         :card (t2/select-one :model/Card :id card-id)
+                         {:inputs       [input]
+                          :expectations [{:type :empty :name "check" :sql "SELECT * FROM {{output}} WHERE 1 = 0"}]})))))))
+        (testing "in an expectation"
+          (is (=? {:error-type ::data-testing.errors/unsupported-sql
+                   :message    #"^The SQL of expectation \"check\" holds the number 0x1F\..*"}
+                  (refusal "SELECT id FROM public.people" "SELECT * FROM {{output}} WHERE 0x1F::text = '00011111'"))))))))

@@ -320,6 +320,22 @@
                               "division that rounds where DIV truncates. Data tests do not support DIV yet.")}
             (single-select :mysql "SELECT a DIV 3 AS q FROM t" nil)))))
 
+(deftest validate-refuses-forms-the-rewrite-changes-in-expectation-sql-test
+  (let [refused (fn [driver sql]
+                  (driver/the-initialized-driver driver)
+                  (data-testing.test-util/refusal
+                   #(validator/validate driver (assoc complete-test :expectations [{:type :empty :name "check" :sql sql}]))))]
+    (testing "control: an expectation of decimal numbers and division is accepted"
+      (is (nil? (refused :postgres "SELECT * FROM PEOPLE WHERE ID > 31")))
+      (is (nil? (refused :mysql "SELECT * FROM PEOPLE WHERE ID / 2 = 1"))))
+    (testing "a form the table rewrite rebuilds with another value is refused where the author wrote it"
+      (is (=? {:error-type ::errors/unsupported-sql
+               :message    #"^The SQL of expectation \"check\" holds the number 0x1F\..*"}
+              (refused :postgres "SELECT * FROM PEOPLE WHERE ID > 0x1F")))
+      (is (=? {:error-type ::errors/unsupported-sql
+               :message    #"^The SQL of expectation \"check\" uses the DIV operator.*"}
+              (refused :mysql "SELECT * FROM PEOPLE WHERE ID DIV 2 = 1"))))))
+
 (deftest ensure-single-select-without-a-dialect-test
   (testing "a driver with no SQLGlot dialect is refused: the check cannot read its SQL"
     (is (=? {:error-type ::errors/uncheckable-sql
