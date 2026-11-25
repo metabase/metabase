@@ -113,95 +113,6 @@
        (testing "a value for a filter the dashboard doesn't have is dropped rather than failing the run"
          (is (= 22 (count-shown (:output (run [{:id "price", :value [1]} {:id "gone", :value "x"}]))))))))))
 
-(deftest leaves-user-state-alone-test
-  (testing "Metabot's run stores no last-used filter values and adds no recent view of the card"
-    (do-with-venues-dashboard
-     (fn [{:keys [dashboard-id dashcard-id card-id]}]
-       (t2/delete! :model/RecentViews :user_id (mt/user->id :rasta))
-       (let [stored (atom [])]
-         (mt/with-dynamic-fn-redefs [user-parameter-value/store! (fn [& args] (swap! stored conj args))]
-           (is (= 22 (count-shown (:output (run-card! [{:type "dashboard", :id dashboard-id
-                                                        :parameters [{:id "price", :value [1]}]}]
-                                                      {:dashcard_id dashcard-id})))))
-           (is (= [] @stored))
-           (is (not (t2/exists? :model/RecentViews
-                                :user_id  (mt/user->id :rasta)
-                                :model    "card"
-                                :model_id card-id)))))))))
-
-(deftest refusals-test
-  (do-with-venues-dashboard
-   (fn [{:keys [dashboard-id dashcard-id text-dashcard-id]}]
-     (testing "the user is not viewing a dashboard"
-       (is (=? {:error {:code ::dashboard-card/no-viewed-dashboard}}
-               (run-card! [{:type "table", :id (mt/id :venues)}] {:dashcard_id dashcard-id}))))
-     (testing "a dashcard of another dashboard"
-       (mt/with-temp [:model/Dashboard {other-id :id} {}]
-         (is (=? {:error  {:code ::dashboard-card/dashcard-not-found}
-                  :output (str "Dashcard " dashcard-id " was not found on dashboard " other-id ".")}
-                 (run-card! [{:type "dashboard", :id other-id}] {:dashcard_id dashcard-id})))))
-     (testing "a text card"
-       (is (=? {:error {:code ::dashboard-card/dashcard-not-runnable}}
-               (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id text-dashcard-id}))))
-     (testing "query execution is off"
-       (is (=? {:error {:code :metabase.metabot.tools.run-query/query-execution-off}}
-               (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id}
-                          :query-execution? false)))))))
-
-(deftest action-dashcard-not-runnable-test
-  (testing "an action button on a model's card holds no question to run"
-    (mt/with-actions-enabled
-      (mt/with-actions [{:keys [action-id model-id]} {:type :query, :visualization_settings {}}]
-        (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
-                       :model/DashboardCard {dashcard-id :id}  {:dashboard_id           dashboard-id
-                                                                :card_id                model-id
-                                                                :action_id              action-id
-                                                                :visualization_settings {}}]
-          (is (=? {:error {:code ::dashboard-card/dashcard-not-runnable}}
-                  (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id}))))))))
-
-(deftest unreadable-dashboard-not-found-test
-  (testing "a card on a dashboard the user can't read is not found"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection    {closed-id :id}    {}
-                     :model/Card          {card-id :id}      {:dataset_query (venues-count)}
-                     :model/Dashboard     {dashboard-id :id} {:collection_id closed-id}
-                     :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id card-id}]
-        (is (=? {:error {:code ::dashboard-card/dashcard-not-found}}
-                (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id})))))))
-
-(deftest unreadable-card-not-found-test
-  (testing "a card the user can't read, on a dashboard they can, is not found"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection    {open-id :id}      {}
-                     :model/Collection    {closed-id :id}    {}
-                     :model/Card          {card-id :id}      {:collection_id closed-id, :dataset_query (venues-count)}
-                     :model/Dashboard     {dashboard-id :id} {:collection_id open-id}
-                     :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id card-id}]
-        (perms/grant-collection-read-permissions! (perms-group/all-users) open-id)
-        (is (=? {:error {:code ::dashboard-card/dashcard-not-found}}
-                (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id})))))))
-
-(deftest blocked-data-refused-test
-  (testing "a card the user can read, on a database whose data they are blocked from, is refused"
-    (do-with-venues-dashboard
-     (fn [{:keys [dashboard-id dashcard-id]}]
-       (mt/with-no-data-perms-for-all-users!
-         (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
-         (is (=? {:error {:code ::dashboard-card/no-permission}}
-                 (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id}))))))))
-
-(deftest metabot-sql-card-refused-test
-  (testing "a question holding SQL that Metabot saved doesn't run with filter values"
-    (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}
-                   :model/Card                {card-id :id}         {:dataset_query
-                                                                     (mt/native-query {:query "SELECT 1"})
-                                                                     :metabot_conversation_id conversation-id}
-                   :model/Dashboard           {dashboard-id :id}    {}
-                   :model/DashboardCard       {dashcard-id :id}     {:dashboard_id dashboard-id, :card_id card-id}]
-      (is (=? {:error {:code ::dashboard-card/metabot-sql-card}}
-              (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id}))))))
-
 (deftest text-filter-ignores-case-test
   (testing "a contains filter matches as the dashboard runs it, ignoring case"
     (let [name-target (mt/$ids venues [:dimension $name])]
@@ -264,10 +175,81 @@
         (is (=? {:structured-output {:returned 2, :truncated? true}}
                 (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id, :row_limit 2})))))))
 
+(deftest leaves-user-state-alone-test
+  (testing "Metabot's run stores no last-used filter values and adds no recent view of the card"
+    (do-with-venues-dashboard
+     (fn [{:keys [dashboard-id dashcard-id card-id]}]
+       (t2/delete! :model/RecentViews :user_id (mt/user->id :rasta))
+       (let [stored (atom [])]
+         (mt/with-dynamic-fn-redefs [user-parameter-value/store! (fn [& args] (swap! stored conj args))]
+           (is (= 22 (count-shown (:output (run-card! [{:type "dashboard", :id dashboard-id
+                                                        :parameters [{:id "price", :value [1]}]}]
+                                                      {:dashcard_id dashcard-id})))))
+           (is (= [] @stored))
+           (is (not (t2/exists? :model/RecentViews
+                                :user_id  (mt/user->id :rasta)
+                                :model    "card"
+                                :model_id card-id)))))))))
+
+(deftest refusals-test
+  (do-with-venues-dashboard
+   (fn [{:keys [dashboard-id dashcard-id text-dashcard-id]}]
+     (testing "the user is not viewing a dashboard"
+       (is (=? {:error {:code ::dashboard-card/no-viewed-dashboard}}
+               (run-card! [{:type "table", :id (mt/id :venues)}] {:dashcard_id dashcard-id}))))
+     (testing "a dashcard of another dashboard"
+       (mt/with-temp [:model/Dashboard {other-id :id} {}]
+         (is (=? {:error  {:code ::dashboard-card/dashcard-not-found}
+                  :output (str "Dashcard " dashcard-id " was not found on dashboard " other-id ".")}
+                 (run-card! [{:type "dashboard", :id other-id}] {:dashcard_id dashcard-id})))))
+     (testing "a text card"
+       (is (=? {:error {:code ::dashboard-card/dashcard-not-runnable}}
+               (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id text-dashcard-id}))))
+     (testing "query execution is off"
+       (is (=? {:error {:code :metabase.metabot.tools.run-query/query-execution-off}}
+               (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id}
+                          :query-execution? false)))))))
+
 (deftest automatic-dashboard-test
   (testing "an automatically generated dashboard is refused as one, not as no dashboard"
     (is (=? {:error {:code ::dashboard-card/automatic-dashboard}}
             (run-card! [{:type "dashboard", :id "/auto/dashboard/table/1"}] {:dashcard_id 1})))))
+
+(deftest action-dashcard-not-runnable-test
+  (testing "an action button on a model's card holds no question to run"
+    (mt/with-actions-enabled
+      (mt/with-actions [{:keys [action-id model-id]} {:type :query, :visualization_settings {}}]
+        (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                       :model/DashboardCard {dashcard-id :id}  {:dashboard_id           dashboard-id
+                                                                :card_id                model-id
+                                                                :action_id              action-id
+                                                                :visualization_settings {}}]
+          (is (=? {:error {:code ::dashboard-card/dashcard-not-runnable}}
+                  (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id}))))))))
+
+(deftest unreadable-dashboard-not-found-test
+  (testing "a card on a dashboard the user can't read is not found"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection    {open-id :id}      {}
+                     :model/Collection    {closed-id :id}    {}
+                     :model/Card          {card-id :id}      {:collection_id open-id, :dataset_query (venues-count)}
+                     :model/Dashboard     {dashboard-id :id} {:collection_id closed-id}
+                     :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) open-id)
+        (is (=? {:error {:code ::dashboard-card/dashcard-not-found}}
+                (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id})))))))
+
+(deftest unreadable-card-not-found-test
+  (testing "a card the user can't read, on a dashboard they can, is not found"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection    {open-id :id}      {}
+                     :model/Collection    {closed-id :id}    {}
+                     :model/Card          {card-id :id}      {:collection_id closed-id, :dataset_query (venues-count)}
+                     :model/Dashboard     {dashboard-id :id} {:collection_id open-id}
+                     :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) open-id)
+        (is (=? {:error {:code ::dashboard-card/dashcard-not-found}}
+                (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id})))))))
 
 (deftest unreadable-nested-question-refused-test
   (testing "a question reading one the user can't read is refused for permission, whatever that question holds"
@@ -288,3 +270,23 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) open-id)
         (is (=? {:error {:code ::dashboard-card/no-permission}}
                 (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id})))))))
+
+(deftest blocked-data-refused-test
+  (testing "a card the user can read, on a database whose data they are blocked from, is refused"
+    (do-with-venues-dashboard
+     (fn [{:keys [dashboard-id dashcard-id]}]
+       (mt/with-no-data-perms-for-all-users!
+         (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+         (is (=? {:error {:code ::dashboard-card/no-permission}}
+                 (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id}))))))))
+
+(deftest metabot-sql-card-refused-test
+  (testing "a question holding SQL that Metabot saved doesn't run with filter values"
+    (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}
+                   :model/Card                {card-id :id}         {:dataset_query
+                                                                     (mt/native-query {:query "SELECT 1"})
+                                                                     :metabot_conversation_id conversation-id}
+                   :model/Dashboard           {dashboard-id :id}    {}
+                   :model/DashboardCard       {dashcard-id :id}     {:dashboard_id dashboard-id, :card_id card-id}]
+      (is (=? {:error {:code ::dashboard-card/metabot-sql-card}}
+              (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id}))))))
