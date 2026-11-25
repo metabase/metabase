@@ -120,13 +120,11 @@ describe("PreviewContent", () => {
     expect(screen.queryByText("Save")).not.toBeInTheDocument();
   });
 
-  it("offers Back to collections over an item that is open from the start, and goes to All collections", async () => {
+  it("offers Back over an item that is open from the start, and goes to All collections", async () => {
     const { onNavigate } = await setup({ initialItem: "question/7" });
     await waitForLoaderToBeRemoved();
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /Back to collections/ }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: /Back$/ }));
 
     expect(onNavigate).toHaveBeenCalledWith("collection/all");
   });

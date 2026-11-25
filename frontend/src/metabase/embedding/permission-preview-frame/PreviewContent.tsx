@@ -49,7 +49,7 @@ export function PreviewContent({
             leftSection={<Icon name="chevronleft" />}
             onClick={handleBack}
           >
-            {t`Back to collections`}
+            {t`Back`}
           </Button>
         </Box>
       )}
