@@ -1528,7 +1528,61 @@
                       {:data         [(v1-input "c1") (v1-input "c2") (v1-output "c1") (v1-output "c2")]
                        :data_version 1})
           (is (= [(call "c1") (result "c1") (call "c2") (result "c2")]
-                 (rest (metabot-persistence/history (metabot-persistence/live-messages conversation-id))))))))))
+                 (rest (metabot-persistence/history (metabot-persistence/live-messages conversation-id)))))))
+      (testing (str "the message of a terminal error, which the agent adds after the results of the turn's last step, "
+                    "replays after those results")
+        (is (= [{:role :assistant :content "on it"}
+                (call "c1") (result "c1")
+                {:role :assistant :tool_calls [{:id "c2" :name "search" :arguments (json/encode {:q "c2"})}]}
+                {:role :tool :tool_call_id "c2" :content "You don't have access to that table." :is_error true}
+                {:role :assistant :content "You don't have permission to see that table."}]
+               (replay (concat [{:type :start} {:type :text :text "on it"}]
+                               (parts "c1")
+                               [{:type :start}
+                                {:type :tool-input :id "c2" :function "search" :arguments {:q "c2"}}
+                                {:type   :tool-output :id "c2"
+                                 :result {:output "You don't have access to that table."
+                                          :error  {:class        :unrecoverable
+                                                   :code         :permission-denied
+                                                   :user-message "You don't have permission to see that table."}}}
+                                {:type :text :text "You don't have permission to see that table."}])))))
+      (testing (str "the notice that the agent adds after the results of the last step of a turn at its step limit "
+                    "replays after those results, and the calls of that step replay before their results")
+        (is (= [(call "c1") (call "c2") (result "c1") (result "c2")
+                {:role :assistant :content "I stopped at the step limit."}]
+               (replay (concat [{:type :start}]
+                               (map first [(parts "c1") (parts "c2")])
+                               (map second [(parts "c1") (parts "c2")])
+                               [{:type :text :text "I stopped at the step limit."}
+                                {:type :finish :finish-reason :max-iterations}]))))))))
+
+(deftest history-replays-a-step-limit-turn-as-its-reply-call-sent-it-test
+  (with-rasta-tx
+    (let [replay (fn [parts]
+                   (let [conversation-id (str (random-uuid))]
+                     (seed-turn! conversation-id "look it up" parts)
+                     (rest (metabot-persistence/history (metabot-persistence/live-messages conversation-id)))))
+          call   {:role :assistant :tool_calls [{:id "c1" :name "search" :arguments (json/encode {:q "c1"})}]}
+          result {:role :tool :tool_call_id "c1" :content "found c1"}
+          text   {:role :assistant :content "This may take a moment."}
+          notice {:role :assistant :content "I stopped at the step limit."}
+          ;; the model writes text after its call, and the agent adds the notice after the result
+          step   [{:type :start}
+                  {:type :tool-input :id "c1" :function "search" :arguments {:q "c1"}}
+                  {:type :text :text "This may take a moment."}
+                  {:type :tool-output :id "c1" :result {:output "found c1"}}
+                  {:type :text :text "I stopped at the step limit."}]]
+      (testing (str "text that the model writes after a call in the last step of a turn at its step limit replays "
+                    "before the result, as the reply call sent it, and only the notice moves after the result")
+        (is (= [call text result notice]
+               (replay (conj step {:type :finish :finish-reason :max-iterations})))))
+      (testing (str "known gap: when the reply call is cut short at its output limit, the row stores the finish reason "
+                    "`length`, so the turn replays in step order and the notice stays before the result")
+        (let [cut-short (conj step (usage-part "length") {:type :finish :finish-reason :max-iterations})]
+          (is (=? {:finish_reason "length"}
+                  (t2/select-one :model/MetabotMessage :id (seed-turn! (str (random-uuid)) "look it up" cut-short))))
+          (is (= [call text notice result]
+                 (replay cut-short))))))))
 
 (deftest history-tool-output-shapes-test
   (testing "bare-scalar, nil, and errored tool outputs each coerce to a string tool result"

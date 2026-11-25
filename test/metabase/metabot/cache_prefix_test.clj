@@ -6,10 +6,12 @@
 
   They cover the `<context>` block sent before each user message, assistant text streamed in deltas, a turn with one
   successful tool call, a tool call that fails with a failure the runtime declares, text written after a tool call,
-  and tool calls that run in parallel. The history does not replay some other parts of a turn as they were sent: the
-  SQL dialect preload, thinking and the text of a failure that no tool declared. No conversation here has those parts,
-  except DeepSeek's thinking directive, which the tests with tool calls leave out: after a tool call with no signed
-  thinking, it differs between the two turns."
+  tool calls that run in parallel, and a turn that ends at its step limit. The history does not replay some other
+  parts of a turn as they were sent: the SQL dialect preload, thinking and the text of a failure that no tool
+  declared. No conversation here has those parts, except DeepSeek's thinking directive, which the tests with tool
+  calls leave out: after a tool call with no signed thinking, it differs between the two turns. One test has a failed
+  call that ends its turn. It does not check the prefix: it checks where the history replays the message that ends
+  the turn."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -18,6 +20,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.llm.test-util :as llm.tu]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.deepseek :as deepseek]
@@ -29,7 +32,9 @@
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.xai :as xai]
    [metabase.metabot.self.zai :as zai]
+   [metabase.metabot.skills :as skills]
    [metabase.metabot.test-util :as mut]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]))
@@ -221,15 +226,21 @@
     :else
     {:path path :turn-n (abbreviate a) :next-turn (abbreviate b)}))
 
+(defn- history-break
+  "Where the history of the request body `turn-n`, under `history-key`, stops being a prefix of the history of the
+  request body `next-turn`, or nil when it is one. The other keys of the bodies are not compared."
+  [history-key turn-n next-turn]
+  (let [history (vec (get turn-n history-key))]
+    (divergence [history-key] history (vec (take (count history) (get next-turn history-key))))))
+
 (defn- prefix-break
   "Where the request body `turn-n` stops being a prefix of the request body `next-turn`, or nil when it is one.
   `history-key` holds the conversation, which `next-turn` may extend. Every other key must be equal."
   [history-key turn-n next-turn]
   (let [turn-n    (strip-cache-control turn-n)
-        next-turn (strip-cache-control next-turn)
-        history   (vec (get turn-n history-key))]
+        next-turn (strip-cache-control next-turn)]
     (or (divergence [] (dissoc turn-n history-key) (dissoc next-turn history-key))
-        (divergence [history-key] history (vec (take (count history) (get next-turn history-key)))))))
+        (history-break history-key turn-n next-turn))))
 
 (def ^:private adapters
   "One entry per request-body builder, with the key that holds the conversation history. The builders other than
@@ -471,6 +482,47 @@
     ;; DeepSeek's thinking directive is left out, for the reason in [[streamed-text-replays-as-one-part-test]].
     (check-turn-edge last-of-turn-1 turn-2 {"deepseek" [:thinking]})))
 
+(def ^:private denied-skill-message
+  "The `:user-message` of the call that fails in [[terminal-error-turns]]."
+  "You can't load the chart instructions here.")
+
+(def ^:private terminal-error-turns
+  "Two turns. The one LLM call of the first turn calls `load_skill` twice, in parallel. The second call fails with an
+  unrecoverable error, so the turn ends after that call with [[denied-skill-message]] as its text."
+  [{:message  "How many orders do we have?"
+    :context  {:current_time_with_timezone "2026-10-20T10:00:00+00:00"}
+    :response (mut/mock-llm-response [{:type :start :id "msg-1"}
+                                      {:type :tool-input :id "msg-1-call-1" :function "load_skill"
+                                       :arguments {:ids ["read-resource"]}}
+                                      {:type :tool-input :id "msg-1-call-2" :function "load_skill"
+                                       :arguments {:ids ["edit-chart"]}}])}
+   {:message  "And last month?"
+    :context  {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
+    :response (answer "msg-2" "Last month there were 1,412.")}])
+
+(deftest terminal-error-message-replays-after-the-results-of-its-step-test
+  ;; `check-turn-edge` cannot see this order: turn 1's last request ends before the step that failed.
+  (let [get-skill  (mt/original-fn #'skills/get-skill-by-id-string)
+        requests   (mt/with-dynamic-fn-redefs [skills/get-skill-by-id-string
+                                               (fn [id]
+                                                 (if (= "edit-chart" id)
+                                                   (tools/unrecoverable! ::denied {:user-message denied-skill-message})
+                                                   (get-skill id)))]
+                     (run-turns! terminal-error-turns))
+        input      (vec (:input (second requests)))
+        index-of   (fn [pred] (first (keep-indexed #(when (pred %2) %1) input)))
+        result-at  (fn [id] (index-of #(and (= :tool-output (:type %)) (= id (:id %)))))
+        message-at (index-of #(= denied-skill-message (:text %)))]
+    (testing "the failed call ends turn 1 after its one LLM call"
+      (is (= 2 (count requests))))
+    (testing "turn 2 replays both results of the failed step and the message once"
+      (is (some? (result-at "msg-1-call-1")))
+      (is (some? (result-at "msg-1-call-2")))
+      (is (= 1 (count (filter #(= denied-skill-message (:text %)) input)))))
+    (testing "the message replays after both results, where the agent loop added it"
+      (is (< (result-at "msg-1-call-1") message-at))
+      (is (< (result-at "msg-1-call-2") message-at)))))
+
 (deftest text-after-a-tool-call-replays-before-its-result-test
   (let [requests                  (run-turns! text-after-call-turns)
         [_ last-of-turn-1 turn-2] requests
@@ -510,3 +562,47 @@
       (is (get-in (tool-output turn-2) [:result :error])))
     ;; DeepSeek's thinking directive is left out, for the reason in [[streamed-text-replays-as-one-part-test]].
     (check-turn-edge last-of-turn-1 turn-2 {"deepseek" [:thinking]})))
+
+(def ^:private step-limit-turns
+  "Two turns of the `sql` profile, which must call a tool on each loop call. With a step limit of 1, the first LLM call
+  of the first turn calls `list_snippets` twice, in parallel, and reaches the limit. The last call of the turn, which
+  can call no tool, answers with no text, so the agent adds its step-limit notice after the results."
+  [{:message    "Which snippets can I use?"
+    :context    {:current_time_with_timezone "2026-10-20T10:00:00+00:00"}
+    :profile-id "sql"
+    :responses  [(mut/mock-llm-response [{:type :start :id "msg-1"}
+                                         {:type :tool-input :id "msg-1-call-1" :function "list_snippets" :arguments {}}
+                                         {:type :tool-input :id "msg-1-call-2" :function "list_snippets" :arguments {}}])
+                 (mut/mock-llm-response [])]}
+   {:message    "And now?"
+    :context    {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
+    :profile-id "sql"
+    :response   (answer "msg-2" "There are no snippets.")}])
+
+(deftest step-limit-tool-step-replays-as-the-reply-call-sent-it-test
+  (let [get-profile      (mt/original-fn #'profiles/get-profile)
+        requests         (mt/with-dynamic-fn-redefs [profiles/get-profile
+                                                     (comp #(assoc % :max-iterations 1) get-profile)]
+                           (run-turns! step-limit-turns))
+        [_ reply turn-2] requests
+        kinds            (fn [opts] (mapv #(or (:type %) (:role %)) (:input opts)))
+        ;; what the reply call sent before the step-limit instruction, its last input
+        sent             (update reply :input #(vec (butlast %)))]
+    (testing "turn 1 makes the tool call and the reply call, turn 2 makes one"
+      (is (= 3 (count requests))))
+    (testing "the reply call sends the calls of the step before their results, then the step-limit instruction"
+      (is (=? {:tool_choice "none"} reply))
+      (is (= [:user :tool-input :tool-input :tool-output :tool-output :user]
+             (kinds reply)))
+      (is (=? {:role :user :content #(str/includes? % "step limit")} (last (:input reply))))
+      (is (not-any? #(get-in % [:result :error]) (filter #(= :tool-output (:type %)) (:input reply)))))
+    (testing "the reply has no text, so turn 2 replays the step-limit notice after the results"
+      (is (= [:user :tool-input :tool-input :tool-output :tool-output :text :user]
+             (kinds turn-2))))
+    ;; `check-turn-edge` cannot compare these requests: the step-limit instruction is never stored, and the tool
+    ;; choice of the reply call is `none`, while the next turn's is `required`.
+    (doseq [{:keys [adapter history render]} adapters]
+      (testing (str adapter ": turn 2 replays the tool step as the reply call sent it, up to the step-limit instruction")
+        (is (nil? (history-break history
+                                 (strip-cache-control (render sent))
+                                 (strip-cache-control (render turn-2)))))))))
