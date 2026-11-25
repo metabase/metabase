@@ -358,13 +358,23 @@
     :include-editable-data-model? include_editable_data_model
     :exclude-uneditable-details? exclude_uneditable_details}))
 
+(defn- visible-by-name?
+  "Whether the current user may know that `database` exists, when asking for it by name: they can read it, and, for a
+  routing destination, which a reader of its router can read too, they can also write it, as `GET /api/database/:id`
+  requires."
+  [database]
+  (let [database (t2/hydrate database :can_read :can_write)]
+    (and (mi/can-read? database)
+         (or (nil? (:router_database_id database))
+             (mi/can-write? database)))))
+
 (defn- database-id-by-name
   "The id of the Database named `db-name`, the oldest one when several share the name, as serialization resolves it;
-  throws a 404 when none has it or when the current user cannot read it: a name is easy to guess, so a 403 would tell
-  the user that the Database exists."
+  throws a 404 when none has it or when the current user may not know of it (see [[visible-by-name?]]): a name is easy
+  to guess, so a 403 would tell the user that the Database exists."
   [db-name]
   (let [id (get (serialization.resolve/row-ids serialization/app-db-store :model/Database #{db-name} {}) db-name)]
-    (api/check-404 (when (some-> id warehouses-rest.db/database (t2/hydrate :can_read) mi/can-read?) id))))
+    (api/check-404 (when (some-> id warehouses-rest.db/database visible-by-name?) id))))
 
 (def ^:private by-name-entry
   "The entry of the query param naming a Database by its name."

@@ -436,3 +436,16 @@
         (testing "a database that is not a router reports no grant"
           (is (contains? by-id plain-id))
           (is (nil? (get-in by-id [plain-id :router_anonymous_access_granted]))))))))
+
+(deftest destination-databases-are-not-found-by-name-test
+  (testing "GET /api/database/by-name gives a reader of a router the same 404 for its destination as for a missing name"
+    (mt/with-temp [:model/Database {db-id :id}               {}
+                   :model/DatabaseRouter _                   {:database_id db-id :user_attribute "foo"}
+                   :model/Database {destination-db-id :id
+                                    destination-name  :name} {:router_database_id db-id}]
+      (testing "Superusers can get destination DBs by name"
+        (is (=? {:id destination-db-id}
+                (mt/user-http-request :crowberto :get 200 "database/by-name" :db destination-name))))
+      (testing "Regular users get a 404, as for a name no Database has"
+        (is (= (mt/user-http-request :rasta :get 404 "database/by-name" :db (str destination-name " missing"))
+               (mt/user-http-request :rasta :get 404 "database/by-name" :db destination-name)))))))
