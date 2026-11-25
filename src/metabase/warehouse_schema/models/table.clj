@@ -640,13 +640,18 @@
         values
         (serialization/column-ids store :model/User (map #(when-not (int? %) %) values) opts)))
 
+(defn retired-data-authority?
+  "Whether `data-authority`, a string or keyword, is the retired `authoritative`, which older exports can hold."
+  [data-authority]
+  (= "authoritative" (some-> data-authority name)))
+
 (defn- import-data-authorities
   "A transform fn importing data authorities.
   Older exports can hold the retired `authoritative`, which becomes `ingested` for an upload and `unconfigured`
   otherwise, as in the app DB migration that retired it."
   [_store entities values _opts]
   (mapv (fn [{:keys [is_upload]} v]
-          (if (= "authoritative" (some-> v name))
+          (if (retired-data-authority? v)
             (if is_upload :ingested :unconfigured)
             (some-> v keyword)))
         entities
