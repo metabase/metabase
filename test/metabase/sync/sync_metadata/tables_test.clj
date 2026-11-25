@@ -370,6 +370,28 @@
           (is (= 999
                  (t2/select-one-fn :estimated_row_count :model/Table :id (:id tbl)))))))))
 
+(deftest stored-estimated-row-count-without-a-new-one-test
+  (testing "sync keeps the stored row count estimate when the driver gives no :estimated_row_count key"
+    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}
+                   :model/Table    tbl {:name                "counted_table"
+                                        :db_id               (u/the-id db)
+                                        :estimated_row_count 100
+                                        :initial_sync_status "complete"}]
+      (let [select-cols (into [:model/Table :id :name :schema :data_authority]
+                              @#'sync-tables/keys-to-update)
+            sync!       (fn [table-metadata]
+                          (#'sync-tables/update-tables-metadata-if-needed!
+                           #{(merge {:name "counted_table", :schema nil} table-metadata)}
+                           #{(t2/select-one select-cols :id (:id tbl))}
+                           (driver.u/lib-database (:id db)))
+                          (t2/select-one-fn :estimated_row_count :model/Table :id (:id tbl)))]
+        (testing "for example a driver that cannot read the estimates in this sync, or has none"
+          (is (= 100 (sync! {}))))
+        (testing "a new estimate replaces it"
+          (is (= 200 (sync! {:estimated_row_count 200}))))
+        (testing "an explicit nil clears it"
+          (is (nil? (sync! {:estimated_row_count nil}))))))))
+
 (deftest create-or-reactivate-tables-deterministic-id-order-test
   (testing "new tables are inserted sorted by [schema name] so auto-increment ids are assigned deterministically"
     (let [metadatas #{{:schema "public" :name "zebra"}

@@ -314,6 +314,12 @@
                                    (= (:visibility_type new-table) (:visibility_type old-table)))
                                   (dissoc changes :visibility_type)
 
+                                  ;; keep the stored row count estimate when the driver gives none for this sync, for
+                                  ;; example when it could not read the estimates; a driver clears it with an
+                                  ;; explicit nil
+                                  (not (contains? table-metadata :estimated_row_count))
+                                  (dissoc :estimated_row_count)
+
                                   ;; don't mark computed tables as writable — they are derived
                                   ;; and should never be editable, regardless of what the driver reports
                                   (= :computed (:data_authority metabase-table))
