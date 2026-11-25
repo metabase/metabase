@@ -1,9 +1,9 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, screen } from "__support__/ui";
+import { fireEvent, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+import { ORDERS_ID, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import {
   STAGE_INDEX,
@@ -26,6 +26,33 @@ describe("SummarySidebar", () => {
     expect(getChipLabels("values")).toEqual([]);
     expect(getChipLabels("columns")).toEqual([]);
     expect(onQueryChange).not.toHaveBeenCalled();
+  });
+
+  it("lists the column of a binned grouping without the binning in its name (metabase#57697)", () => {
+    setup({
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+            breakouts: [
+              { type: "column", name: "CATEGORY" },
+              {
+                type: "column",
+                name: "PRICE",
+                binning: { strategy: "default" },
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    const fieldList = screen.getByTestId("summary-field-list");
+    expect(within(fieldList).getByText("Price")).toBeInTheDocument();
+    expect(
+      within(fieldList).queryByText("Price: Auto binned"),
+    ).not.toBeInTheDocument();
   });
 
   it("counts the rows once a grouping is added to a summary without values", async () => {

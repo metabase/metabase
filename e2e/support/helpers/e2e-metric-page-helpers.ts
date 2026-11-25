@@ -7,8 +7,6 @@ export const MetricPage = {
   overviewPage: metricOverviewPage,
   queryEditor: metricQueryEditor,
   saveButton: () => metricQueryEditor().findByRole("button", { name: "Save" }),
-  cancelButton: () =>
-    metricQueryEditor().findByRole("button", { name: "Cancel" }),
   header: () => cy.findByTestId("metric-header"),
   moreMenu: () => cy.findByLabelText("More options"),
   aboutTab: () => MetricPage.header().findByText("About"),
@@ -17,7 +15,5 @@ export const MetricPage = {
   dimensionsTab: () => MetricPage.header().findByText("Dimensions"),
   dependenciesTab: () => MetricPage.header().findByText("Dependencies"),
   historyTab: () => MetricPage.header().findByText("History"),
-  aboutPageDescriptionSidebar: () =>
-    metricAboutPage().findByTestId("metric-description-sidebar"),
   exploreLink: () => cy.findByTestId("explore-link"),
 };

@@ -435,10 +435,15 @@ describe("PaletteResults", () => {
   });
 
   it("should start a new metric", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
     const { router } = setup({ query: "new met" });
 
     await userEvent.click(await screen.findByText("New metric"));
 
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "metric_create_started",
+      triggered_from: "command_palette",
+    });
     await waitFor(() => expect(router?.location.pathname).toBe("/metric/new"));
   });
 

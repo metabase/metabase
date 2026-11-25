@@ -40,9 +40,11 @@ import {
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  PEOPLE_ID,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
   createOrdersTable,
+  createPeopleTable,
   createProductsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -154,6 +156,37 @@ const FILTERED_MULTI_STAGE_GUI_QUESTION: Partial<Card> = {
                   { type: "literal", value: 1234 },
                 ],
               },
+            },
+          ],
+        },
+      ],
+    }),
+  ),
+};
+
+const POST_AGGREGATION_FILTER_GUI_QUESTION: Partial<Card> = {
+  display: "table",
+  visualization_settings: {},
+  dataset_query: Lib.toJsQuery(
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: PEOPLE_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+          breakouts: [
+            { type: "column", name: "LATITUDE" },
+            { type: "column", name: "LONGITUDE" },
+          ],
+        },
+        {
+          filters: [
+            {
+              type: "operator",
+              operator: ">",
+              args: [
+                { type: "column", name: "count" },
+                { type: "literal", value: 2 },
+              ],
             },
           ],
         },
@@ -829,6 +862,17 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
 });
 
 describe("View Header | Saved GUI question", () => {
+  it("shows the source table breadcrumb for a question with a post-aggregation filter (metabase#30056)", async () => {
+    setupTableEndpoints(createPeopleTable());
+    setup({
+      card: getSavedGUIQuestionCard(POST_AGGREGATION_FILTER_GUI_QUESTION),
+      queryBuilderMode: "view",
+    });
+
+    const header = screen.getByTestId("qb-header-left-side");
+    expect(await within(header).findByText("People")).toBeInTheDocument();
+  });
+
   describe("filters", () => {
     const card = getSavedGUIQuestionCard(FILTERED_GUI_QUESTION);
 
