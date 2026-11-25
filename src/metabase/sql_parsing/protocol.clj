@@ -38,11 +38,9 @@
     must ensure they are system-generated.")
   (single-stmt-of-type [parser dialect sql stmt-type check-rebuild]
     "Whether the SQL is a single statement of `stmt-type`, as a keywordized map that includes the SQL
-    reconstructed from the parsed AST. `check-rebuild` is nil, `\"rebuild\"` or `\"rebuild-strict\"`. With
-    either string, the reconstruction of a statement of the allowed type must also pass the same checks, and for
-    Postgres read as one statement with `standard_conforming_strings` on and with it off; with
-    `\"rebuild-strict\"`, it must also reconstruct to itself, and the SQL must hold no form that the reconstruction
-    gives another value.")
+    reconstructed from the parsed AST. `check-rebuild` is nil or `\"rebuild\"`. With `\"rebuild\"`, the
+    reconstruction of a statement of the allowed type must also pass the same checks, and for Postgres read as one
+    statement with `standard_conforming_strings` on and with it off.")
   (transpile-sql [parser sql from-dialect to-dialect]
     "Transpile the SQL from one dialect to another, as a keywordized result map."))
 

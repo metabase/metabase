@@ -567,10 +567,8 @@
   {:max-sql-chars        nil
    :literal-list-ceiling executable-literal-list-ceiling
    :require-dialect?     true
-   ;; The caller runs the rebuild, so every type has it checked. Two parts refuse ordinary SQL and are kept to
-   ;; "read-only", which only data tests send: the rule that the rebuild rebuilds to itself (a `--` comment opening a
-   ;; CTE's body), and the refusal of forms the rebuild gives another value.
-   :check-rebuild        {"read-only" "rebuild-strict"
+   ;; The caller runs the rebuild, so every type has it checked.
+   :check-rebuild        {"read-only" "rebuild"
                           "read"      "rebuild"
                           "write"     "rebuild"}})
 
@@ -637,12 +635,7 @@
   The `:sql` must itself pass the same checks; otherwise the verdict is `:disallowed` with `:reason
   \"rebuild-differs\"` and the reconstruction's own reason as `:detail`. On Postgres, it must also read as one
   statement with `standard_conforming_strings` on (else `:reason \"rebuild-differs\"` with `:detail
-  \"multiple-statements\"`) and with it off (else `:reason \"backslash-quote\"`). For `\"read-only\"`, it must
-  also reconstruct to itself (else `:reason \"rebuild-differs\"`), and `sql` must hold no form that the
-  reconstruction gives another value: on Postgres a hexadecimal, binary or octal number or one with underscores
-  (`:reason \"number-literal\"`, the literal as `:detail`), on MySQL the `DIV` operator (`:reason
-  \"div-operator\"`), a call of `LOG10` (`:reason \"log10-function\"`) and the `!` operator (`:reason
-  \"exclamation-operator\"`). Such a form is refused even in `sql` that does not parse."
+  \"multiple-statements\"`) and with it off (else `:reason \"backslash-quote\"`)."
   [parser dialect sql stmt-type]
   (classify-single-stmt parser dialect sql stmt-type executable-limits))
 

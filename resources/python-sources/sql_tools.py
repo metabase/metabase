@@ -2231,49 +2231,6 @@ def _postgres_statement_count(sql: str, standard_conforming_strings: bool) -> in
     return count + content
 
 
-def _value_changing_form(sql: str, dialect: str):
-    """`(reason, detail)` for the first form in `sql` that SQLGlot reconstructs as SQL with another value, else None.
-
-    On Postgres, reason "number-literal" with the literal as detail: a hexadecimal `0x1F` or binary `0b101` number,
-    reconstructed as a bit string, and a number run into a name, such as the octal `0o17` or `1_000_000`, reconstructed
-    as a number and an alias. On MySQL, reason "div-operator": `a DIV b`, reconstructed as a cast that rounds where DIV
-    truncates; reason "log10-function": a call of `LOG10`, reconstructed as `LOG(10, x)`, whose last digits can differ;
-    and reason "exclamation-operator": `!a`, reconstructed as `NOT a`, which binds less tightly. Read from the
-    dialect's tokens, so a string or a comment holding such text is not one.
-    """
-    # Data tests do not support these forms yet: VER-183 (Postgres numbers), VER-184 (MySQL DIV, LOG10 and !).
-    if dialect not in ("postgres", "mysql"):
-        return None
-    tokens = sqlglot.tokenize(sql, read=dialect)
-    for previous, tok, following in zip([None] + tokens, tokens, tokens[1:] + [None]):
-        if dialect == "mysql":
-            if tok.token_type == sqlglot.TokenType.DIV:
-                return ("div-operator", None)
-            if tok.token_type == sqlglot.TokenType.NOT and tok.text == "!":
-                return ("exclamation-operator", None)
-            # After a dot, `s.LOG10(x)` calls a schema's own function, which is reconstructed as written.
-            if (
-                tok.token_type in (sqlglot.TokenType.VAR, sqlglot.TokenType.IDENTIFIER)
-                and tok.text.lower() == "log10"
-                and following is not None
-                and following.token_type == sqlglot.TokenType.L_PAREN
-                and (previous is None or previous.token_type != sqlglot.TokenType.DOT)
-            ):
-                return ("log10-function", None)
-        elif tok.token_type in (sqlglot.TokenType.HEX_STRING, sqlglot.TokenType.BIT_STRING):
-            # `X'1F'` and `B'101'` are bit strings to Postgres too; `0x1F` and `0b101` are numbers.
-            if sql[tok.start : tok.start + 2].lower() in ("0x", "0b"):
-                return ("number-literal", sql[tok.start : tok.start + 2 + len(tok.text)])
-        elif (
-            tok.token_type == sqlglot.TokenType.NUMBER
-            and following is not None
-            and following.token_type == sqlglot.TokenType.VAR
-            and following.start == tok.start + len(tok.text)
-        ):
-            return ("number-literal", sql[tok.start : following.start + len(following.text)])
-    return None
-
-
 def _unbracketed(stmt: exp.Expression) -> exp.Expression:
     """`stmt` without the brackets around the whole query: `(SELECT 1)` parses as a subquery with no alias."""
     while isinstance(stmt, exp.Subquery) and not stmt.alias:
@@ -2309,21 +2266,16 @@ def _not_read_only_reason(stmts, sql: str, dialect: str):
     return _statement_reason(stmts[0], sql, dialect)
 
 
-def _rebuild_problem(sql: str, rebuilt: str, stmt_type: str, dialect: str, check_rebuild: str):
+def _rebuild_problem(sql: str, rebuilt: str, stmt_type: str, dialect: str):
     """`(reason, detail)` for why `rebuilt`, SQLGlot's reconstruction of the statement `sql` of `stmt_type`, fails the
-    checks of `check_rebuild`, "rebuild" or "rebuild-strict", else None."""
+    checks of a rebuild, else None."""
     # The checks of `sql` read `sql`, and the caller runs `rebuilt`. SQLGlot's writer does not always produce text that
     # reads back as the tree it wrote: an E'' string holding `\\` comes back with one backslash, so its quote moves,
     # and a dollar-quoted alias comes back bare.
-    strict = check_rebuild == "rebuild-strict"
-    if strict:
-        changed = _value_changing_form(sql, dialect)
-        if changed is not None:
-            return changed
     # A rebuild equal to `sql` reads as `sql` did, so it is not parsed again.
     if rebuilt != sql:
         again = json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect))
-        if not again.get("allowed_stmt_type?") or (strict and again.get("sql") != rebuilt):
+        if not again.get("allowed_stmt_type?"):
             return ("rebuild-differs", again.get("reason"))
     if dialect == "postgres" and _postgres_statement_count(rebuilt, True) > 1:
         return ("rebuild-differs", "multiple-statements")
@@ -2341,13 +2293,10 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     its tree, and statements holding only a comment after the last semicolon are not counted. When the statement is
     refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
 
-    `check_rebuild` is None, "rebuild" or "rebuild-strict". With either value, the reconstruction of a statement
-    of the allowed type must also pass the same checks (reason "rebuild-differs", with the reconstruction's own reason
-    as `reason_detail`), and for "postgres", Postgres must read it as one statement with `standard_conforming_strings`
-    on (reason "rebuild-differs", detail "multiple-statements") and with it off (reason "backslash-quote"). With
-    "rebuild-strict", it must also reconstruct to itself (reason "rebuild-differs"), and `sql` must hold no form that
-    the reconstruction gives another value (see `_value_changing_form`), which is the reason even when `sql` does not
-    parse.
+    `check_rebuild` is None or "rebuild". With "rebuild", the reconstruction of a statement of the allowed type must
+    also pass the same checks (reason "rebuild-differs", with the reconstruction's own reason as `reason_detail`), and
+    for "postgres", Postgres must read it as one statement with `standard_conforming_strings` on (reason
+    "rebuild-differs", detail "multiple-statements") and with it off (reason "backslash-quote").
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
@@ -2368,7 +2317,7 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             rebuilt = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
             allowed = isinstance(_unbracketed(stmts[0]), allowed_types)
             if problem is None and check_rebuild and allowed:
-                problem = _rebuild_problem(sql, rebuilt, stmt_type, dialect, check_rebuild)
+                problem = _rebuild_problem(sql, rebuilt, stmt_type, dialect)
         if problem is not None:
             result["reason"], result["reason_detail"] = problem
         if rebuilt is not None:
@@ -2377,18 +2326,7 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
                 result["allowed_stmt_type?"] = True
             result["sql"] = rebuilt
     except Exception as e:
-        # SQLGlot cannot parse some of these forms at all: it reads `0o17 AS n` as `0 AS o17 AS n`. The form is what
-        # the author must change, so it is the reason.
-        changed = None
-        if check_rebuild == "rebuild-strict":
-            try:
-                changed = _value_changing_form(sql, dialect)
-            except Exception:
-                pass
-        if changed is None:
-            result["error"] = str(e)
-        else:
-            result["reason"], result["reason_detail"] = changed
+        result["error"] = str(e)
     if stmt_type == "read-only" and "error" in result:
         result["reason"] = "unparseable"
     return json.dumps(result)

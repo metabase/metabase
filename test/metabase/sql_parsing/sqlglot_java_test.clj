@@ -96,65 +96,11 @@
     (let [graal (sql-parsing/parser :sqlglot)
           java  (sql-parsing/parser :sqlglot-java)]
       (doseq [[dialect stmt-type check-rebuild sql reason]
-              [;; With standard_conforming_strings on, a quote after a backslash ends the literal; with it off, the
-               ;; backslash escapes the quote.
-               ["postgres" "read-only" "rebuild-strict" "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"          "backslash-quote"]
-               ["postgres" "read-only" "rebuild-strict" "SELECT 'a\\''; DELETE FROM orders; --' AS note"                       "backslash-quote"]
-               ["postgres" "read-only" "rebuild-strict" "SELECT $q$a\\$q$ || $q$; DELETE FROM orders; --$q$ AS note"           "backslash-quote"]
-               ["postgres" "read"      "rebuild-strict" "SELECT 'a\\''; DELETE FROM orders; --' AS note"                       "backslash-quote"]
-               ;; The rebuild reads as more than one statement whatever the setting.
-               ["postgres" "read-only" "rebuild-strict" "SELECT E'a\\\\' || $q$; RESET ROLE; DELETE FROM orders; --$q$ AS note" "rebuild-differs"]
-               ["postgres" "read-only" "rebuild-strict" "SELECT 1 AS $q$a;SELECT 2$q$"                                          "rebuild-differs"]
-               ;; A rebuilt `E'\\'` ends one quote later, so the rebuild fails the checks or does not rebuild to itself.
-               ["postgres" "read-only" "rebuild-strict" "SELECT E'\\\\' || $q$' || (SELECT setval($z$s$z$, 4242))::text --$q$ AS id" "rebuild-differs"]
-               ["postgres" "read-only" "rebuild-strict" "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$postgres$z$, false) --$q$ AS id" "rebuild-differs"]
-               ["postgres" "read-only" "rebuild-strict" "SELECT E'a\\\\' AS id"                                                "rebuild-differs"]
-               ["postgres" "write"     "rebuild-strict" "UPDATE t SET a = E'a\\\\'"                                            "rebuild-differs"]
-               ;; One statement under either setting.
-               ["postgres" "read-only" "rebuild-strict" "SELECT 'it''s' AS note"                                               nil]
-               ["postgres" "read-only" "rebuild-strict" "SELECT $q$it's; DELETE FROM orders$q$ AS note"                        nil]
-               ["postgres" "read-only" "rebuild-strict" "SELECT 'C:\\temp' AS note"                                            nil]
-               ["postgres" "read-only" "rebuild-strict" "SELECT E'it\\'s' AS id"                                               nil]
-               ["postgres" "read-only" "rebuild-strict" "SELECT 'x' AS \"a\\'\" /* b\\' /* c' */ ; */"                         nil]
-               ["postgres" "read-only" "rebuild-strict" "SELECT X'1F' AS x, B'1' AS y, N'z\\' AS z -- ;\n"                     nil]
-               ["postgres" "read-only" "rebuild-strict" "SELECT 1 AS a$q$ FROM t WHERE b = 'c'"                                nil]
-               ["redshift" "read-only" "rebuild-strict" "SELECT 'it\\'s' AS note"                                              nil]
-               ;; A statement of another type than the one checked for is refused for its type, not its rebuild.
-               ["postgres" "read"      "rebuild-strict" "DELETE FROM orders"                                                    nil]
-               ;; A Postgres number whose rebuild has another value (VER-183).
-               ["postgres" "read-only" "rebuild-strict" "SELECT 0x1F AS a, 1 AS b"                                       "number-literal"]
-               ["postgres" "read-only" "rebuild-strict" "SELECT 0b101 AS a"                                              "number-literal"]
-               ["postgres" "read-only" "rebuild-strict" "SELECT 0o17"                                                    "number-literal"]
-               ["postgres" "read-only" "rebuild-strict" "SELECT 1_000_000"                                               "number-literal"]
-               ;; Upper-case prefixes, a signed number, and a character outside the Basic Multilingual Plane before the
-               ;; number, after which each parser cuts the detail from the text at its own offsets.
-               ["postgres" "read-only" "rebuild-strict" "SELECT 0X1F AS a"                                               "number-literal"]
-               ["postgres" "read-only" "rebuild-strict" "SELECT 0B101 AS a"                                              "number-literal"]
-               ["postgres" "read-only" "rebuild-strict" "SELECT -0x10 AS a"                                              "number-literal"]
-               ["postgres" "read-only" "rebuild-strict" "SELECT '\uD83D\uDE00' AS e, 0x1F AS a"                        "number-literal"]
-               ["postgres" "read-only" "rebuild-strict" "SELECT '\uD83D\uDE00' AS e, 1_000"                            "number-literal"]
-               ;; Followed by an alias, these do not parse; the number is still the reason.
-               ["postgres" "read-only" "rebuild-strict" "SELECT 0o17 AS n"                                               "number-literal"]
-               ["postgres" "read-only" "rebuild-strict" "SELECT 1_000_000 AS n"                                          "number-literal"]
-               ["postgres" "read-only" "rebuild-strict" "SELECT X'1F' AS a, '0x1F' AS b /* 1_000 */"                     nil]
+              [;; Forms the rebuild writes with another value are allowed.
                ["postgres" "read"      "rebuild"        "SELECT 0x1F AS a"                                               nil]
-               ;; The MySQL DIV operator, whose rebuild rounds (VER-184).
-               ["mysql"    "read-only" "rebuild-strict" "SELECT a DIV 3 AS q FROM t"                                     "div-operator"]
-               ["mysql"    "read-only" "rebuild-strict" "SELECT 'DIV' AS a /* a DIV 3 */"                                nil]
-               ;; MySQL LOG10, whose rebuild is LOG(10, x), and `!`, whose rebuild is NOT (VER-184).
-               ["mysql"    "read-only" "rebuild-strict" "SELECT LOG10(x) AS a FROM t"                                    "log10-function"]
-               ["mysql"    "read-only" "rebuild-strict" "SELECT log10 (x) AS a FROM t"                                   "log10-function"]
-               ["mysql"    "read-only" "rebuild-strict" "SELECT `LOG10`(x) AS a FROM t"                                  "log10-function"]
-               ["mysql"    "read-only" "rebuild-strict" "SELECT '\uD83D\uDE00' AS e, LOG10(x) AS a FROM t"               "log10-function"]
-               ["mysql"    "read-only" "rebuild-strict" "SELECT LOG(10, x) AS a, log10 AS b, s.LOG10(x) AS c FROM t"     nil]
-               ["mysql"    "read-only" "rebuild-strict" "SELECT 'LOG10(1)' AS a /* LOG10(2) */"                          nil]
-               ["mysql"    "read-only" "rebuild-strict" "SELECT !1 + 1 AS a"                                             "exclamation-operator"]
-               ["mysql"    "read-only" "rebuild-strict" "SELECT ! a AS b FROM t"                                         "exclamation-operator"]
-               ["mysql"    "read-only" "rebuild-strict" "SELECT !(a) AS b FROM t"                                        "exclamation-operator"]
-               ["mysql"    "read-only" "rebuild-strict" "SELECT NOT a AS b, a != c AS d, a!=c AS e, '!' AS f /* !a */ FROM t" nil]
                ["mysql"    "read"      "rebuild"        "SELECT LOG10(x) AS a, !a AS b FROM t"                           nil]
-               ["postgres" "read-only" "rebuild-strict" "SELECT LOG10(x) AS a FROM t"                                    nil]
-               ;; "rebuild" counts the statements under either setting too.
+               ;; With standard_conforming_strings on, a quote after a backslash ends the literal; with it off, the
+               ;; backslash escapes the quote. The statements are counted under either setting.
                ["postgres" "read"      "rebuild"        "SELECT 'a\\''; DELETE FROM orders; --' AS note"                       "backslash-quote"]
                ["postgres" "read"      "rebuild"        "SELECT 'a\\'' ; RESET ROLE; INSERT INTO public.orders VALUES (87670); SELECT current_user --'" "backslash-quote"]
                ["postgres" "write"     "rebuild"        "INSERT INTO public.t VALUES ('a\\'' ); RESET ROLE; INSERT INTO public.orders VALUES (2) --')" "backslash-quote"]
@@ -164,10 +110,8 @@
                ["postgres" "write"     "rebuild"               "INSERT INTO t SELECT 1 AS $q$a;SELECT 2$q$"                            "rebuild-differs"]
                ["postgres" "write"     "rebuild"               "UPDATE t SET a = E'a\\\\'"                                            "rebuild-differs"]
                ["postgres" "read"      "rebuild"        "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$none$z$, false) --$q$ AS a" "rebuild-differs"]
-               ;; Only "rebuild-strict" requires the rebuild to rebuild to itself: a `--` comment opening a CTE's body
-               ;; comes back as `/* */`, which a second parse drops.
-               ["postgres" "read"      "rebuild"        "WITH c AS (\n  -- note\n  SELECT id FROM t) SELECT * FROM c"        nil]
-               ["postgres" "read-only" "rebuild-strict" "WITH c AS (\n  -- note\n  SELECT id FROM t) SELECT * FROM c"        "rebuild-differs"]]]
+               ;; A `--` comment opening a CTE's body comes back as `/* */`, which is allowed.
+               ["postgres" "read"      "rebuild"        "WITH c AS (\n  -- note\n  SELECT id FROM t) SELECT * FROM c"        nil]]]
         (testing (pr-str dialect stmt-type check-rebuild sql)
           (let [result (protocol/single-stmt-of-type java dialect sql stmt-type check-rebuild)]
             (is (= reason (:reason result)))

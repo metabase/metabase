@@ -367,20 +367,13 @@
    :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs"}}
 
   ;; SQLGlot moves a `--` comment that opens a CTE's body into a `/* */` comment, which a second parse drops, so the
-  ;; rebuild does not rebuild to itself. Only "read-only" requires that it does.
+  ;; rebuild does not rebuild to itself. No caller requires that it does.
   {:name              "an executed read whose CTE body opens with a -- comment is allowed: its rebuild need not rebuild to itself"
    :dialect           "postgres"
    :sql               "WITH c AS (\n  -- note\n  SELECT id FROM t) SELECT * FROM c"
    :stmt-type         "read"
    :expected          {:verdict :allowed :single-stmt? true}
    :validate-expected {:verdict :allowed :single-stmt? true :sql "WITH c AS (/* note */ SELECT id FROM t) SELECT * FROM c"}}
-
-  {:name              "an executed read-only statement whose CTE body opens with a -- comment is refused: its rebuild does not rebuild to itself"
-   :dialect           "postgres"
-   :sql               "WITH c AS (\n  -- note\n  SELECT id FROM t) SELECT * FROM c"
-   :stmt-type         "read-only"
-   :expected          {:verdict :allowed :single-stmt? true}
-   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs"}}
 
   {:name              "an executed read whose rebuilt E'' string moves a quote, so `set_config` runs, is refused"
    :dialect           "postgres"
@@ -475,8 +468,8 @@
 
   ;; SQLGlot reads `\\` in an E'' string as one backslash and writes it back undoubled, so Postgres reads the rebuilt
   ;; literal as ending one quote later than SQLGlot did. A caller that executes the rebuild of a "read-only" statement
-  ;; is refused a rebuild that fails the checks or does not rebuild to itself. A caller that only reads the verdict
-  ;; runs the original, which Postgres reads as SQLGlot did.
+  ;; is refused a rebuild that fails the checks. A caller that only reads the verdict runs the original, which
+  ;; Postgres reads as SQLGlot did.
   {:name              "control: a read-only E'' string with an escaped quote rebuilds to text that reads the same"
    :dialect           "postgres"
    :sql               "SELECT E'it\\'s' AS id"
@@ -504,89 +497,13 @@
    :expected          {:verdict :allowed :single-stmt? true}
    :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "unparseable"}}
 
-  ;; SQLGlot rebuilds these forms as SQL with another value, so a caller that executes the rebuild of a "read-only"
-  ;; statement is refused them (VER-183, VER-184). The original runs as written for the other callers.
-  {:name              "Postgres hexadecimal and binary numbers are rebuilt as bit strings, and refused to a caller that executes the rebuild"
-   :dialect           "postgres"
-   :sqls              ["SELECT 0x1F AS a" "SELECT 0b101 AS a" "SELECT 0X1f AS a"]
-   :stmt-type         "read-only"
-   :expected          {:verdict :allowed :single-stmt? true}
-   :validate-expected {:verdict :disallowed :single-stmt? true :reason "number-literal"}}
-
-  {:name              "Postgres octal numbers and numbers with underscores are rebuilt as a number and an alias, and refused to a caller that executes the rebuild"
-   :dialect           "postgres"
-   :sqls              ["SELECT 0o17" "SELECT 1_000_000" "SELECT 1e1_0"]
-   :stmt-type         "read-only"
-   :expected          {:verdict :allowed :single-stmt? true}
-   :validate-expected {:verdict :disallowed :single-stmt? true :reason "number-literal"}}
-
-  {:name              "Postgres octal numbers and numbers with underscores followed by an alias do not parse, and are refused for the number to a caller that executes the rebuild"
-   :dialect           "postgres"
-   :sqls              ["SELECT 0o17 AS n" "SELECT 1_000_000 AS n"]
-   :stmt-type         "read-only"
-   :expected          {:verdict :unknown :reason "unparseable"}
-   :validate-expected {:verdict :disallowed :single-stmt? false :reason "number-literal"}}
-
-  {:name       "Postgres bit strings, decimal numbers, and number forms inside strings and comments are allowed"
-   :dialect    "postgres"
-   :sqls       ["SELECT X'1F' AS a, B'101' AS b" "SELECT 1.5e3 AS a, 10 AS b, 1 AS c" "SELECT '0x1F' AS a /* 1_000 */"]
-   :stmt-type  "read-only"
-   :expected   {:verdict :allowed :single-stmt? true}}
-
-  {:name              "the MySQL DIV operator is rebuilt as a cast that rounds, and refused to a caller that executes the rebuild"
-   :dialect           "mysql"
-   :sqls              ["SELECT a DIV 3 AS q FROM t" "SELECT a div 3 AS q FROM t"]
-   :stmt-type         "read-only"
-   :expected          {:verdict :allowed :single-stmt? true}
-   :validate-expected {:verdict :disallowed :single-stmt? true :reason "div-operator"}}
-
-  {:name       "DIV in a string or a comment is allowed"
-   :dialects   ["mysql" "postgres"]
-   :sqls       ["SELECT 'DIV' AS a /* a DIV 3 */"]
-   :stmt-type  "read-only"
-   :expected   {:verdict :allowed :single-stmt? true}}
-
-  {:name              "a call of MySQL LOG10 is rebuilt as LOG(10, x), whose last digits can differ, and refused to a caller that executes the rebuild"
-   :dialect           "mysql"
-   :sqls              ["SELECT LOG10(x) AS a FROM t" "SELECT log10 (x) AS a FROM t" "SELECT `LOG10`(x) AS a FROM t"]
-   :stmt-type         "read-only"
-   :expected          {:verdict :allowed :single-stmt? true}
-   :validate-expected {:verdict :disallowed :single-stmt? true :reason "log10-function"}}
-
-  {:name       "LOG(10, x), a column or a schema's function named LOG10, and LOG10 in a string or a comment are allowed"
-   :dialect    "mysql"
-   :sqls       ["SELECT LOG(10, x) AS a FROM t" "SELECT log10 AS a FROM t" "SELECT s.LOG10(x) AS a FROM t"
-                "SELECT 'LOG10(1)' AS a /* LOG10(2) */"]
-   :stmt-type  "read-only"
-   :expected   {:verdict :allowed :single-stmt? true}}
-
-  {:name              "the MySQL ! operator is rebuilt as NOT, which binds less tightly, and refused to a caller that executes the rebuild"
-   :dialect           "mysql"
-   :sqls              ["SELECT !1 + 1 AS a" "SELECT ! a AS b FROM t" "SELECT !(a) AS b FROM t"]
-   :stmt-type         "read-only"
-   :expected          {:verdict :allowed :single-stmt? true}
-   :validate-expected {:verdict :disallowed :single-stmt? true :reason "exclamation-operator"}}
-
-  {:name       "NOT, !=, and ! in a string or a comment are allowed"
-   :dialect    "mysql"
-   :sqls       ["SELECT NOT a AS b FROM t" "SELECT a != b AS c FROM t" "SELECT a!=b AS c FROM t"
-                "SELECT '!' AS a /* !a */"]
-   :stmt-type  "read-only"
-   :expected   {:verdict :allowed :single-stmt? true}}
-
-  {:name       "LOG10 is refused on MySQL only"
-   :dialect    "postgres"
-   :sql        "SELECT LOG10(x) AS a FROM t"
-   :stmt-type  "read-only"
-   :expected   {:verdict :allowed :single-stmt? true}}
-
-  {:name       "a read that impersonation executes may hold these forms"
+  {:name       "a read that impersonation executes may hold a number its rebuild writes another way"
    :dialect    "postgres"
    :sql        "SELECT 0x1F AS a"
    :stmt-type  "read"
    :expected   {:verdict :allowed :single-stmt? true}}
 
-  {:name       "a MySQL read that impersonation executes may hold these forms"
+  {:name       "a MySQL read that impersonation executes may hold DIV, LOG10 and !"
    :dialect    "mysql"
    :sqls       ["SELECT a DIV 3 AS q FROM t" "SELECT LOG10(x) AS a FROM t" "SELECT !a AS b FROM t"]
    :stmt-type  "read"
