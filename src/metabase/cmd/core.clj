@@ -22,8 +22,9 @@
    [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
-   [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log]))
+   [metabase.util.i18n :refer [trs]])
+  (:import
+   (java.io PrintWriter Writer)))
 
 (set! *warn-on-reflection* true)
 
@@ -34,6 +35,21 @@
   [return-code]
   (flush)
   (System/exit return-code))
+
+(defn- print-error!
+  "Print `messages` to stderr, one per line. Why a command failed goes here rather than to the log, which the log
+  config can turn off."
+  [& messages]
+  (binding [*out* *err*]
+    (run! println messages)
+    (flush)))
+
+(defn- print-exception!
+  "Print the stack trace of `e` to stderr, then `message`."
+  [^Throwable e message]
+  (binding [*out* *err*]
+    (.printStackTrace e (PrintWriter. ^Writer *out* true)))
+  (print-error! message))
 
 (defn- cmd->var
   "Looks up a command var by name"
@@ -74,7 +90,8 @@
    (load-from-h2 nil))
   ([h2-connection-string]
    (classloader/require 'metabase.cmd.load-from-h2)
-   ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string)))
+   ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string)
+   (println "Load complete")))
 
 (defn ^:command dump-to-h2
   {:doc "Transfer data from existing database to newly created H2 DB with specified filename.
@@ -92,7 +109,7 @@
       (println "Dump complete")
       (system-exit! 0))
     (catch Throwable e
-      (log/error e "Failed to dump application database to H2 file")
+      (print-exception! e "Failed to dump application database to H2 file")
       (system-exit! 1))))
 
 (defn ^:command reset-password
@@ -255,10 +272,10 @@
   (classloader/require 'metabase.cmd.rotate-encryption-key)
   (try
     ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) new-key)
-    (log/info "Encryption key rotation OK.")
+    (println "Encryption key rotation OK.")
     (system-exit! 0)
     (catch Throwable e
-      (log/error e "ERROR ROTATING KEY.")
+      (print-exception! e "ERROR ROTATING KEY.")
       (system-exit! 1))))
 
 (defn ^:command enable-encryption
@@ -268,14 +285,14 @@
   []
   (classloader/require 'metabase.cmd.enable-encryption)
   (when-not (encryption/default-encryption-enabled?)
-    (log/error "MB_ENCRYPTION_SECRET_KEY environment variable has not been set")
+    (print-error! "MB_ENCRYPTION_SECRET_KEY environment variable has not been set")
     (system-exit! 1))
   (try
     ((resolve 'metabase.cmd.enable-encryption/enable-encryption!))
-    (log/info "Encryption enabled OK.")
+    (println "Encryption enabled OK.")
     (system-exit! 0)
     (catch Throwable e
-      (log/errorf "ERROR ENABLING ENCRYPTION: %s" (ex-message e))
+      (print-error! (format "ERROR ENABLING ENCRYPTION: %s" (ex-message e)))
       (system-exit! 1))))
 
 (defn ^:command remove-encryption
@@ -284,14 +301,14 @@
   []
   (classloader/require 'metabase.cmd.remove-encryption)
   (when-not (encryption/default-encryption-enabled?)
-    (log/error "MB_ENCRYPTION_SECRET_KEY environment variable has not been set")
+    (print-error! "MB_ENCRYPTION_SECRET_KEY environment variable has not been set")
     (system-exit! 1))
   (try
     ((resolve 'metabase.cmd.remove-encryption/remove-encryption!))
-    (log/info "Encryption removed OK.")
+    (println "Encryption removed OK.")
     (system-exit! 0)
     (catch Throwable e
-      (log/error e "ERROR REMOVING ENCRYPTION.")
+      (print-exception! e "ERROR REMOVING ENCRYPTION.")
       (system-exit! 1))))
 
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------
@@ -338,10 +355,8 @@
 
 (defn- fail!
   [& messages]
-  (doseq [msg messages]
-    (println (u/format-color 'red msg)))
-  (flush)
-  (System/exit 1))
+  (apply print-error! (map #(u/colorize 'red %) messages))
+  (system-exit! 1))
 
 (defn run-cmd
   "Run `cmd` with `args`. This is a function above. e.g. `clojure -M:run metabase migrate force` becomes
@@ -350,15 +365,16 @@
   (if-let [errors (validate command-name args)]
     (do
       (when (cmd->var command-name)
-        (println "Usage:")
-        (help command-name))
+        (binding [*out* *err*]
+          (println "Usage:")
+          (help command-name)))
       (apply fail! errors))
     (try
       (when (requires-init? command-name)
         (init-fn))
       (apply @(cmd->var command-name) args)
       (catch Throwable e
-        (when (:cmd/exit (ex-data e)) ;; fast-track for commands that have their own error handling
+        (when (:cmd/exit (ex-data e)) ;; fast-track for commands that have printed their own error to stderr
           (flush)
           (System/exit 1))
         (.printStackTrace e)

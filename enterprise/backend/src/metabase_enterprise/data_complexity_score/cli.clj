@@ -45,17 +45,11 @@
 
 (set! *warn-on-reflection* true)
 
-;; CLI entry point: stdout/stderr is the user interface
-#_{:clj-kondo/ignore [:discouraged-var]}
-(def ^:private output!
-  "Alias for println so the lint suppression stays in one place."
-  println)
-
 (defn- fail!
   "Print an error to stderr and exit 1."
   [& messages]
   (binding [*out* *err*]
-    (doseq [msg messages] (output! msg)))
+    (doseq [msg messages] (println msg)))
   (flush)
   (System/exit 1))
 
@@ -105,7 +99,7 @@
   (if output-path
     (spit output-path (json/encode result {:pretty true}))
     (do
-      (output! (json/encode result))
+      (println (json/encode result))
       (flush))))
 
 (defn- resolve-write?
@@ -188,7 +182,7 @@
   [args]
   (let [{:keys [options errors summary]} (cli/parse-opts args cli-options)]
     (cond
-      (:help options) (do (output! (usage summary)) (System/exit 0))
+      (:help options) (do (println (usage summary)) (System/exit 0))
       (seq errors)    (apply fail! errors)
       :else           (try
                         (write-result! (run-cli options) (:output options))

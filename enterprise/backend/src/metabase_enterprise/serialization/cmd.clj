@@ -1,6 +1,7 @@
 (ns metabase-enterprise.serialization.cmd
   (:require
    [clojure.java.io :as io]
+   [clojure.stacktrace :as stacktrace]
    [clojure.string :as str]
    [metabase-enterprise.serialization.db :as serialization.db]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
@@ -22,6 +23,24 @@
    (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
+
+(defn- print-error!
+  "Print why the command failed to stderr, where the log config cannot turn it off."
+  [e message full-stacktrace?]
+  (binding [*out* *err*]
+    (println (if full-stacktrace?
+               (str message "\n" (with-out-str (stacktrace/print-cause-trace e)))
+               (u/strip-error e message)))
+    (flush)))
+
+(defn- print-result!
+  "Print what the command did, and to stderr how many entities it could not do it to (`--continue-on-error`)."
+  [message errors]
+  (println message)
+  (when (seq errors)
+    (binding [*out* *err*]
+      (println (format "%d entities failed" (count errors)))
+      (flush))))
 
 (defn- check-premium-token! []
   (premium-features/assert-has-feature :serialization (trs "Serialization")))
@@ -85,10 +104,9 @@
                              :error_message (when @err
                                               (u/strip-error @err nil))})
     (when @err
-      (if (:full-stacktrace opts)
-        (log/error @err "Error during deserialization")
-        (log/error (u/strip-error @err "Error during deserialization")))
+      (print-error! @err "Error during deserialization" (:full-stacktrace opts))
       (throw (ex-info (ex-message @err) {:cmd/exit true})))
+    (print-result! (format "Import from '%s' complete: %d entities" path (count (:seen report))) (:errors report))
     imported))
 
 (defn v2-dump!
@@ -131,11 +149,10 @@
                              :error_message   (when @err
                                                 (u/strip-error @err nil))})
     (when @err
-      (if (:full-stacktrace opts)
-        (log/error @err "Error during serialization export")
-        (log/error (u/strip-error @err "Error during serialization export")))
+      (print-error! @err "Error during serialization export" (:full-stacktrace opts))
       (throw (ex-info (ex-message @err) {:cmd/exit true})))
-    (log/info (format "Export to '%s' complete!" path) (u/emoji "🚛💨 📦"))
+    (print-result! (format "Export to '%s' complete: %d entities" path (reduce + 0 (vals (:entity-counts report))))
+                   (:errors report))
     report))
 
 (comment

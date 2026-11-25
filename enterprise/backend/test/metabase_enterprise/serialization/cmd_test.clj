@@ -9,11 +9,26 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.cmd.core :as cmd]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures])
+  (:import
+   (clojure.lang ExceptionInfo)
+   (java.io StringWriter)))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
+
+(defn- captured-output!
+  "What `thunk` printed, swallowing the exception a failed command throws."
+  [thunk]
+  (let [out (StringWriter.), err (StringWriter.)]
+    (binding [*out* out, *err* err]
+      (try
+        (thunk)
+        (catch ExceptionInfo e
+          (when-not (:cmd/exit (ex-data e))
+            (throw e)))))
+    {:out (str out), :err (str err)}))
 
 (deftest dump-readonly-dir-test
   (testing "command exits early when destination is not writable"
@@ -34,7 +49,9 @@
           (ts/with-random-dump-dir [dump-dir "serdesv2-"]
             (let [coll (ts/create! :model/Collection :name "coll")
                   _card (ts/create! :model/Card :name "card" :collection_id (:id coll))]
-              (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")
+              (testing "the result is on stdout"
+                (is (=? {:out #"Export to '.*' complete: \d+ entities\n", :err ""}
+                        (captured-output! #(cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")))))
               (testing "Snowplow export event was sent"
                 (is (=? {"event"           "serialization"
                          "direction"       "export"
@@ -53,7 +70,8 @@
                              (filter #(= "serialization" (get % "event")))
                              first))))
               (testing "Snowplow import event was sent"
-                (cmd/import dump-dir)
+                (is (=? {:out #"Import from '.*' complete: \d+ entities\n", :err ""}
+                        (captured-output! #(cmd/import dump-dir))))
                 (is (=? {"event"         "serialization"
                          "direction"     "import"
                          "duration_ms"   pos?
@@ -65,8 +83,9 @@
                         (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
               (mt/with-dynamic-fn-redefs [v2.storage/store! (fn [_stream _backend]
                                                               (throw (Exception. "Cannot load settings")))]
-                (is (thrown? Exception
-                             (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")))
+                (testing "why it failed is on stderr"
+                  (is (=? {:out "", :err #"(?s)Error during serialization export: Cannot load settings.*"}
+                          (captured-output! #(cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")))))
                 (testing "Snowplow export event about error was sent"
                   (is (=? {"event"           "serialization"
                            "direction"       "export"
@@ -91,8 +110,8 @@
                                                                     (cond-> (ingest-file file)
                                                                       (= (.getName file) "card.yaml")
                                                                       (assoc :collection_id "DoesNotExist")))]
-                  (is (thrown? Exception
-                               (cmd/import dump-dir)))
+                  (is (=? {:out "", :err #"(?s)Error during deserialization: .*DoesNotExist.*"}
+                          (captured-output! #(cmd/import dump-dir))))
                   (testing "Snowplow import event about error was sent"
                     (is (=? {"event"         "serialization"
                              "direction"     "import"

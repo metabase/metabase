@@ -37,12 +37,6 @@
 ;;;   java -jar metabase.jar --mode complexity-score [scorer-specific args...]
 ;;; ===========================================================================
 
-;; standalone-mode CLI output: stdout is the user interface, not the log
-#_{:clj-kondo/ignore [:discouraged-var]}
-(def output!
-  "Alias for println so can suppress warning in one place"
-  println)
-
 (defn- run-standalone-mode
   "Errors if --mode is specified but not recognized.
    The mode's -main function is responsible for calling System/exit."
@@ -55,8 +49,8 @@
       #_{:clj-kondo/ignore [:metabase/modules]}
       ((requiring-resolve startup) args)
       (do (binding [*out* *err*]
-            (output! (str "Unknown mode: " mode))
-            (output! "Available modes: complexity-score"))
+            (println (str "Unknown mode: " mode))
+            (println "Available modes: complexity-score"))
           (System/exit 1)))))
 
 (defn -main

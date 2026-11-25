@@ -29,5 +29,6 @@
     (println (trs "OK [[[{0}]]]" (set-reset-token! email-address)))
     (System/exit 0)
     (catch Throwable e
-      (println (trs "FAIL [[[{0}]]]" (.getMessage e)))
+      (binding [*out* *err*]
+        (println (trs "FAIL [[[{0}]]]" (.getMessage e))))
       (System/exit -1))))
