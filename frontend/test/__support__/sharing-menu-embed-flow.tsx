@@ -213,6 +213,11 @@ export function setupSharingMenuEmbedFlow({
     createMockCardQueryMetadata({ databases: [database] }),
   );
   fetchMock.get(`path:/api/card/${CARD_ID}/series`, []);
+  // Any other resource is missing, so a flow that loads the wrong one fails
+  fetchMock.get("express:/api/dashboard/:id", 404);
+  fetchMock.get("express:/api/dashboard/:id/query_metadata", 404);
+  fetchMock.get("express:/api/card/:id", 404);
+  fetchMock.get("express:/api/card/:id/query_metadata", 404);
   setupPublicLinkRefusalEndpoint(
     resourceType === "dashboard"
       ? { model: "dashboard", id: DASHBOARD_ID }
@@ -318,15 +323,36 @@ export async function setParameterVisibility(
   );
 }
 
-export async function clickStatusBarButton(
-  name: string,
-  expectedPutCount: number,
-) {
-  await userEvent.click(screen.getByRole("button", { name }));
+const STATUS_TEXT = {
+  published: (resourceType: ResourceType) =>
+    `This ${resourceType} is published and ready to be embedded.`,
+  unpublished: (resourceType: ResourceType) =>
+    `You will need to publish this ${resourceType} before you can embed it in another application.`,
+};
+
+/** Clicks a status bar button and waits for the stored resource to come back. */
+export async function clickStatusBarButton({
+  name,
+  expectedPutCount,
+  resourceType,
+  expectedStatus,
+}: {
+  name: string;
+  expectedPutCount: number;
+  resourceType: ResourceType;
+  expectedStatus: keyof typeof STATUS_TEXT;
+}) {
+  // The status bar buttons wait for the resource to load again after a write
+  const button = await screen.findByRole("button", { name });
+  await waitFor(() => expect(button).toBeEnabled());
+  await userEvent.click(button);
   await waitFor(() =>
     expect(getResourceRequests("PUT")).toHaveLength(expectedPutCount),
   );
   await waitForRequestsToSettle();
+  expect(
+    await screen.findByText(STATUS_TEXT[expectedStatus](resourceType)),
+  ).toBeInTheDocument();
 }
 
 export const STATIC_LEGACY_RESOURCE: Partial<ResourceState> = {
@@ -474,10 +500,20 @@ export function describeEmbedFlowFromSharingMenu(
           resource: STATIC_LEGACY_RESOURCE,
         });
         await openLegacyStaticEmbedding();
-        await clickStatusBarButton("Unpublish", 1);
+        await clickStatusBarButton({
+          name: "Unpublish",
+          expectedPutCount: 1,
+          resourceType,
+          expectedStatus: "unpublished",
+        });
 
         await userEvent.click(screen.getByRole("tab", { name: "Parameters" }));
-        await clickStatusBarButton("Publish", 3);
+        await clickStatusBarButton({
+          name: "Publish",
+          expectedPutCount: 3,
+          resourceType,
+          expectedStatus: "published",
+        });
 
         await setParameterVisibility("Price", "Editable");
         await userEvent.click(
@@ -489,10 +525,20 @@ export function describeEmbedFlowFromSharingMenu(
         });
 
         await setParameterVisibility("Price", "Editable");
-        await clickStatusBarButton("Publish changes", 4);
+        await clickStatusBarButton({
+          name: "Publish changes",
+          expectedPutCount: 4,
+          resourceType,
+          expectedStatus: "published",
+        });
 
         dateNowSpy.mockReturnValue(NOW + HOUR_MS);
-        await clickStatusBarButton("Unpublish", 5);
+        await clickStatusBarButton({
+          name: "Unpublish",
+          expectedPutCount: 5,
+          resourceType,
+          expectedStatus: "unpublished",
+        });
         expect(trackSchemaEvent).toHaveBeenLastCalledWith("embed_flow", {
           event: "static_embed_unpublished",
           artifact: resourceType,
@@ -535,9 +581,19 @@ export function describeEmbedFlowFromSharingMenu(
           resource: STATIC_LEGACY_RESOURCE,
         });
         await openLegacyStaticEmbedding();
-        await clickStatusBarButton("Unpublish", 1);
+        await clickStatusBarButton({
+          name: "Unpublish",
+          expectedPutCount: 1,
+          resourceType,
+          expectedStatus: "unpublished",
+        });
 
-        await clickStatusBarButton("Publish", 3);
+        await clickStatusBarButton({
+          name: "Publish",
+          expectedPutCount: 3,
+          resourceType,
+          expectedStatus: "published",
+        });
         expect(trackSchemaEvent).toHaveBeenLastCalledWith("embed_flow", {
           event: "static_embed_published",
           artifact: resourceType,
@@ -548,13 +604,23 @@ export function describeEmbedFlowFromSharingMenu(
           is_example_dashboard: false,
         });
 
-        await clickStatusBarButton("Unpublish", 4);
+        await clickStatusBarButton({
+          name: "Unpublish",
+          expectedPutCount: 4,
+          resourceType,
+          expectedStatus: "unpublished",
+        });
         await userEvent.click(screen.getByRole("tab", { name: "Parameters" }));
         await setParameterVisibility("Price", "Editable");
         await setParameterVisibility("Category", "Locked");
 
         dateNowSpy.mockReturnValue(NOW + HOUR_MS);
-        await clickStatusBarButton("Publish", 6);
+        await clickStatusBarButton({
+          name: "Publish",
+          expectedPutCount: 6,
+          resourceType,
+          expectedStatus: "published",
+        });
         expect(trackSchemaEvent).toHaveBeenLastCalledWith("embed_flow", {
           event: "static_embed_published",
           artifact: resourceType,
