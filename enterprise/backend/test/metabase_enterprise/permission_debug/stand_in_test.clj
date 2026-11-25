@@ -1,6 +1,8 @@
 (ns metabase-enterprise.permission-debug.stand-in-test
   (:require
+   [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]
+   [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
@@ -180,6 +182,42 @@
         (as-preview token :get 200 "collection/root/items")
         (is (nil? (collection/user->personal-collection stand-in-id)))
         (is (not (t2/exists? :model/Collection :personal_owner_id stand-in-id)))))))
+
+(defn- account
+  "What a sign-in can change of the user with `user-id`: the user row, its groups, sign-in identities and sessions."
+  [user-id]
+  {:user            (t2/select-one [:model/User :email :first_name :last_name :type :is_active :is_superuser :tenant_id
+                                    :sso_source :login_attributes :jwt_attributes :last_login]
+                                   :id user-id)
+   :group-ids       (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)
+   :auth-identities (t2/count :model/AuthIdentity :user_id user-id)
+   :sessions        (t2/count :model/Session :user_id user-id)})
+
+(defn- jwt-sign-in
+  "Sign in over JWT SSO with `email`, under another name and with an attribute, expecting `status`."
+  [status email]
+  (binding [client/*url-prefix* ""]
+    (client/client-real-response :get status "/auth/sso" {:request-options {:redirect-strategy :none}}
+                                 :return_to "/"
+                                 :jwt (jwt/sign {:email email :first_name "Renamed" :last_name "by SSO" :region "south"}
+                                                sso.test-setup/default-jwt-secret))))
+
+(deftest stand-in-cannot-sign-in-through-sso-test
+  (sso.test-setup/with-jwt-default-setup!
+    (mt/with-additional-premium-features #{:advanced-permissions}
+      (mt/with-temporary-setting-values [jwt-user-provisioning-enabled? true]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+          (let [stand-in (stand-in-of (:id (start-group-preview! (admin-session-key) group-id {"region" "north"})))
+                before   (account (:id stand-in))]
+            (testing "a JWT with the stand-in's email is refused, with user provisioning on"
+              (is (= "Your account is disabled. Please contact your administrator."
+                     (:body (jwt-sign-in 401 (:email stand-in))))))
+            (testing "nothing about the stand-in changes: its user row, groups, sign-in identities and sessions"
+              (is (= before (account (:id stand-in)))))
+            (testing "guard: the same sign-in reactivates an ordinary deactivated user"
+              (mt/with-temp [:model/User {user-id :id email :email} {:is_active false}]
+                (jwt-sign-in 302 email)
+                (is (true? (t2/select-one-fn :is_active :model/User :id user-id)))))))))))
 
 (defn- audit-rows-but-starts
   "The number of Activity log rows, not counting the one that each preview's start records."
