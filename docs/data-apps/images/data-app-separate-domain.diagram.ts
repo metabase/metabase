@@ -9,7 +9,7 @@ import {
   right,
   tile,
   top,
-} from "./lib";
+} from "../../../bin/docs-diagram/lib";
 
 const MAIN_Y = 270;
 const APP_Y = 72;

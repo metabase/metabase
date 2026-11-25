@@ -12,7 +12,7 @@ import {
   right,
   tile,
   top,
-} from "./lib";
+} from "../../../bin/docs-diagram/lib";
 
 const AGENT_X = 112;
 const GIT_X = 316;

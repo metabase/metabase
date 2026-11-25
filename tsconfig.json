@@ -58,7 +58,7 @@
     "enterprise/frontend/test/**/*",
     ".github/scripts/**/*",
     "bin/verify-doc-links/**/*",
-    ".claude/skills/docs-write/diagrams/**/*"
+    "bin/docs-diagram/**/*"
   ],
   "exclude": [
     "node_modules",

@@ -41,8 +41,8 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 
 ## Documentation
 
-- **[docs-write](.claude/skills/docs-write/SKILL.md)** - Documentation writing with Metabase style guide, and confirming product facts in the source code
-- **[docs-review](.claude/skills/docs-review/SKILL.md)** - Documentation review for accuracy, clarity, and Metabase style
+- **[metabase-docs](.claude/skills/metabase-docs/SKILL.md)** - Write, review, and fact-check documentation in Metabase style
+- **[docs-diagram](.claude/skills/docs-diagram/SKILL.md)** - Draw or change a docs diagram, only when asked
 
 ## Serialization
 

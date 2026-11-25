@@ -69,4 +69,4 @@ clojure -M:ee:doc api-documentation
 
 ## Style guide
 
-Follow the [Metabase writing style guide](https://github.com/metabase/metabase/blob/master/.claude/skills/_shared/metabase-style-guide.md), and the [`docs-write` skill](https://github.com/metabase/metabase/blob/master/.claude/skills/docs-write/SKILL.md) for the rules that only the docs need.
+Follow the [Metabase writing style guide](https://github.com/metabase/metabase/blob/master/.claude/skills/_shared/metabase-style-guide.md) and its [mechanics](https://github.com/metabase/metabase/blob/master/.claude/skills/_shared/metabase-style-mechanics.md), and the [`metabase-docs` skill](https://github.com/metabase/metabase/blob/master/.claude/skills/metabase-docs/SKILL.md) for the rules that only the docs need.

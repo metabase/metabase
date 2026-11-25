@@ -1,4 +1,4 @@
-// Draws and renders the diagrams in docs/. See ../diagrams.md.
+// Draws and renders the diagrams in docs/. See .claude/skills/docs-diagram/SKILL.md.
 // The PNGs don't follow the app's theme, so they can't use its colors.
 /* eslint-disable no-console, metabase/no-color-literals */
 import { execFileSync } from "node:child_process";
@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-const REPO_ROOT = path.resolve(import.meta.dirname, "../../../..");
+const REPO_ROOT = path.resolve(import.meta.dirname, "../..");
 
 const CANVAS_WIDTH = 980;
 const PREVIEW_WIDTH = 750;
@@ -653,7 +653,7 @@ function outputPaths(out: string) {
 
 /**
  * Renders the parts to a PNG, at 2x. To leave the PNG in docs/ alone, pass a folder:
- * bun data-app-flow.ts /tmp/diagrams
+ * bun docs/data-apps/images/data-app-flow.diagram.ts /tmp/docs-diagrams
  */
 export function render({
   out,
