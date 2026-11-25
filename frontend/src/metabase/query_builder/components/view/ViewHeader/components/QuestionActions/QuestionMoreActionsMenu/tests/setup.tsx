@@ -4,7 +4,10 @@ import { useState } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
-import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks";
+import {
+  setupGetUserKeyValueEndpoint,
+  setupNotificationChannelsEndpoints,
+} from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { mockSettings } from "__support__/settings";
@@ -14,16 +17,20 @@ import { QuestionAlertListModal } from "metabase/notifications/modals";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
+  CardType,
+  DashboardId,
   ModerationReview,
   Notification,
   User,
 } from "metabase-types/api";
 import {
   createMockCard,
+  createMockNotification,
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { isObject } from "metabase-types/guards";
 
 import { QuestionMoreActionsMenu } from "../QuestionMoreActionsMenu";
 
@@ -34,6 +41,10 @@ type SetupOpts = {
   isEmailSetup: boolean;
   isEnterprise: boolean;
   moderationReviews?: ModerationReview[];
+  cardType?: CardType;
+  dashboardId?: DashboardId;
+  /** Stores alerts created through `POST /api/notification` and lists them back */
+  withCreateAlertEndpoint?: boolean;
 };
 
 export function setup({
@@ -43,10 +54,16 @@ export function setup({
   isEmailSetup = false,
   isEnterprise = false,
   moderationReviews,
+  cardType = "question",
+  dashboardId,
+  withCreateAlertEndpoint = false,
 }: SetupOpts) {
-  const card = createMockCard(
-    isEnterprise ? { moderation_reviews: moderationReviews ?? [] } : {},
-  );
+  const card = createMockCard({
+    id: 12,
+    type: cardType,
+    dashboard_id: dashboardId ?? null,
+    ...(isEnterprise ? { moderation_reviews: moderationReviews ?? [] } : {}),
+  });
 
   const tokenFeatures = createMockTokenFeatures({
     advanced_permissions: isEnterprise,
@@ -78,7 +95,33 @@ export function setup({
 
   fetchMock.get("path:/api/user/recipients", { data: [] });
   setupWebhookChannelsEndpoint();
-  setupListNotificationEndpoints({ card_id: card.id }, alerts);
+  setupNotificationChannelsEndpoints({
+    email: { configured: isEmailSetup },
+    slack: { configured: false },
+    http: { configured: false },
+  });
+  const storedAlerts = [...alerts];
+  setupListNotificationEndpoints({ card_id: card.id }, () => storedAlerts);
+  if (withCreateAlertEndpoint) {
+    fetchMock.post("path:/api/notification", ({ options }) => {
+      const body: unknown = JSON.parse(String(options.body));
+      const requestedCardId =
+        isObject(body) && isObject(body.payload) ? body.payload.card_id : null;
+      if (requestedCardId !== card.id) {
+        return { status: 400 };
+      }
+      const defaultAlert = createMockNotification();
+      const created = createMockNotification({
+        id: 99,
+        payload: defaultAlert.payload && {
+          ...defaultAlert.payload,
+          card_id: card.id,
+        },
+      });
+      storedAlerts.push(created);
+      return created;
+    });
+  }
   setupGetUserKeyValueEndpoint({
     namespace: "user_acknowledgement",
     key: "turn_into_model_modal",
@@ -92,6 +135,8 @@ export function setup({
   renderWithProviders(<TestComponent card={card} />, {
     storeInitialState: state,
   });
+
+  return { card };
 }
 
 interface Props {
@@ -120,8 +165,6 @@ const TestComponent = ({ card }: Props) => {
   );
 };
 
-export function openMenu() {
-  return userEvent.click(
-    screen.getByRole("button", { name: /Move, trash, and more/ }),
-  );
+export function openMenu(name: RegExp = /Move, trash, and more/) {
+  return userEvent.click(screen.getByRole("button", { name }));
 }

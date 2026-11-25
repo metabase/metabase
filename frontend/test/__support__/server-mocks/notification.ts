@@ -30,7 +30,7 @@ export const setupUndoUnsubscribeFromNotificationByEmailEndpoint = (
 
 export const setupListNotificationEndpoints = (
   { card_id }: Partial<ListNotificationsRequest>,
-  notifications: Notification[],
+  notifications: Notification[] | (() => Notification[]),
 ) => {
   fetchMock.get("path:/api/notification", notifications, {
     query: {
