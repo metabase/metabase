@@ -328,8 +328,22 @@ describe("published table pages", () => {
   });
 
   describe("dependencies", () => {
-    it("shows the dependency graph of the table and its dependent questions", async () => {
-      setup(`${overviewUrl(ORDERS_ID)}/dependencies`);
+    it("opens the dependency graph of the table from its Dependencies tab", async () => {
+      const { router } = setup(overviewUrl(ORDERS_ID));
+
+      const tab = within(
+        await screen.findByTestId("table-pane-header"),
+      ).getByRole("tab", { name: "Dependencies" });
+      expect(tab).toHaveAttribute(
+        "href",
+        Urls.dataStudioTableDependencies(ORDERS_ID),
+      );
+      await userEvent.click(tab);
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe(
+          Urls.dataStudioTableDependencies(ORDERS_ID),
+        ),
+      );
 
       const graph = within(await screen.findByTestId("dependency-graph"));
       const tableNode = await waitFor(() => {
