@@ -8,6 +8,7 @@
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.performance :as perf])
   (:import (java.util UUID)))
@@ -50,6 +51,34 @@
         (assoc-in [1 :source-field] (:lib/original-fk-field-id column)))
       ref)))
 
+(defn- field-natural-key
+  "A fn of a Field id giving the Field's `[db-name schema table-name & field-names]`, its name on every instance with
+  its Database, from `mp`, the provider of the query's Database, or the id itself when `mp` cannot give it."
+  [mp]
+  (memoize
+   (fn [field-id]
+     (or (try
+           (when-let [field (lib.metadata/field mp field-id)]
+             (let [table       (lib.metadata/table mp (:table-id field))
+                   field-names (loop [field field, names ()]
+                                 (let [names (conj names (:name field))]
+                                   (if-let [parent (some->> (:parent-id field) (lib.metadata/field mp))]
+                                     (recur parent names)
+                                     names)))]
+               (into [(:name (lib.metadata/database mp)) (:schema table) (:name table)] field-names)))
+           (catch Exception _ nil))
+         field-id))))
+
+(defn- portable-target-key
+  "The [[lib-metric.dimension/field-ref->key]] of `target` with each Field id in it, its own and its `:source-field`,
+  replaced by what `natural-key` gives for it."
+  [natural-key target]
+  (let [[clause-type opts id-or-name] (lib-metric.dimension/field-ref->key target)
+        natural                       #(cond-> % (pos-int? %) natural-key)]
+    [clause-type
+     (cond-> opts (contains? opts :source-field) (update :source-field natural))
+     (natural id-or-name)]))
+
 (defn- dimension-id
   "Id for a computed dimension, derived from the entity it belongs to and the column it maps to rather than
    generated.
@@ -75,11 +104,11 @@
    would share an id, and since dimensions resolve by id, editing one would rewrite its twin. The deduplicated
    column name (`PRICE` vs `PRICE_2`) is what survives to tell them apart.
 
-   This is a stable local seed, not a portable identity — `owner-key` and the target's field ids are both
-   instance-local, so two instances derive different ids for the same logical dimension. Nothing depends on them
-   agreeing: `dimensions` and `dimension_mappings` are serialized and imported as a unit."
-  ^String [owner-key column-name target]
-  (-> [owner-key column-name (lib-metric.dimension/field-ref->key target)]
+   The seed is portable: `owner-key` is the entity's entity id, and `target-key` names its Fields by natural keys
+   (see [[portable-target-key]]), so an instance and its git-sync restore, whose rows have other numeric ids, derive
+   the same id for the same dimension."
+  ^String [owner-key column-name target-key]
+  (-> [owner-key column-name target-key]
       pr-str
       (.getBytes "UTF-8")
       UUID/nameUUIDFromBytes
@@ -87,15 +116,15 @@
 
 (defn- column->computed-pair
   "Convert a column to a dimension/mapping pair. The dimension id is derived from `owner-key` and the mapping
-   target; reconciliation replaces it with the persisted id when the column is already curated.
-   The table-id is extracted from the column's metadata.
+   target, its Fields named by `natural-key`; reconciliation replaces it with the persisted id when the column is
+   already curated. The table-id is extracted from the column's metadata.
    When `group` is provided, it is attached to the dimension."
-  ([owner-key column]
-   (column->computed-pair owner-key column nil))
-  ([owner-key column group]
+  ([owner-key natural-key column]
+   (column->computed-pair owner-key natural-key column nil))
+  ([owner-key natural-key column group]
    (let [target (field-id-ref column)
          has-field-values (lib/infer-has-field-values column)]
-     {:dimension (cond-> {:id             (dimension-id owner-key (:name column) target)
+     {:dimension (cond-> {:id             (dimension-id owner-key (:name column) (portable-target-key natural-key target))
                           :name           (:name column)
                           :effective-type (or (:effective-type column)
                                               (:base-type column))}
@@ -158,9 +187,9 @@
    Dimensions are annotated with their source group (main table vs connected tables).
    Columns are enriched with `:has-field-values` from the database.
 
-   `owner-key` is an opaque salt identifying the entity these dimensions belong to; see [[dimension-id]], which
-   derives each dimension's id from it. It only has to be stable for the entity's lifetime on this instance, and
-   callers that discard the ids (comparing targets only) may pass anything."
+   `owner-key` is a salt identifying the entity these dimensions belong to; see [[dimension-id]], which derives each
+   dimension's id from it. For the ids to be the same on an instance and its restore it must be too, such as an
+   entity id; callers that discard the ids (comparing targets only) may pass anything."
   [metadata-providerable owner-key query]
   (let [mp            (lib/->metadata-provider metadata-providerable)
         query-with-mp (lib/query mp query)
@@ -172,7 +201,8 @@
                                {:include-implicitly-joinable?                 (boolean db-mp)
                                 :include-implicitly-joinable-for-source-card? false})
                         true enrich-columns-with-has-field-values)
-        col-groups    (lib/group-columns columns)]
+        col-groups    (lib/group-columns columns)
+        natural-key   (field-natural-key (or db-mp mp))]
     (into []
           (mapcat
            (fn [col-group]
@@ -190,5 +220,5 @@
                    group-cols  (lib/columns-group-columns col-group)]
                (->> group-cols
                     (remove #(= :source/expressions (:lib/source %)))
-                    (perf/mapv #(column->computed-pair owner-key % group-desc))))))
+                    (perf/mapv #(column->computed-pair owner-key natural-key % group-desc))))))
           col-groups)))

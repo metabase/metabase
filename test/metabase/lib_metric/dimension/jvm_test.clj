@@ -138,3 +138,19 @@
         (is (= (count pairs)
                (count (into #{} (map #(get-in % [:dimension :id])) pairs)))
             "every dimension should have its own id")))))
+
+(deftest compute-dimension-pairs-portable-ids-test
+  (testing "the dimension ids of a query are the same on every instance with its Database, whatever its Fields' ids"
+    (let [dimension-ids (fn []
+                          (let [mp    (mt/metadata-provider)
+                                query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                          (lib/aggregate (lib/count)))]
+                            (into #{}
+                                  (map (comp :id :dimension))
+                                  (dimension.jvm/compute-dimension-pairs (lib-metric.metadata.jvm/metadata-provider)
+                                                                         "owner" query))))
+          venues-id     (mt/id :venues)
+          original      (dimension-ids)]
+      (mt/with-temp-copy-of-db
+        (is (not= venues-id (mt/id :venues)))
+        (is (= original (dimension-ids)))))))

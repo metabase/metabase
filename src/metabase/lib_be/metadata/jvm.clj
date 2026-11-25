@@ -481,6 +481,7 @@
   (merge
    (next-method query-type model parsed-args honeysql)
    {:select    [:measure/id
+                :measure/entity_id
                 :measure/table_id
                 :measure/name
                 :measure/description

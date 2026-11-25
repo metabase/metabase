@@ -424,11 +424,10 @@
             urls     {:segment  (str "segment/" (:entity_id segment))
                       :measure  (str "measure/" (:entity_id measure))
                       :document (str "document/" (:entity_id document))}
-            ;; a restore counts views anew, and makes a Measure's dimensions anew, as serialization skips them
+            ;; a restore counts views anew
             fetch    (fn []
                        (update-vals urls #(without-timestamps
-                                           (dissoc (get-with-entity-ids :crowberto %)
-                                                   :last-edit-info :view_count :dimensions :dimension_mappings))))
+                                           (dissoc (get-with-entity-ids :crowberto %) :last-edit-info :view_count))))
             before   (fetch)]
         (restore! [[:model/Collection [coll]]
                    [:model/Card [(t2/select-one :model/Card :id (:id card))]]
@@ -695,3 +694,20 @@
         (is (=? {:link {:entity {:id card-id :collection_id coll-id}}}
                 (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)))
         (is (= dashcard-eid (t2/select-one-fn :entity_id :model/DashboardCard :id dashcard-id)))))))
+
+(deftest restored-measure-dimensions-test
+  (testing "a Measure's dimensions and their mappings are the same on an instance and on its restore"
+    (mt/with-model-cleanup [:model/Measure]
+      (let [mp      (mt/metadata-provider)
+            measure (mt/user-http-request :crowberto :post 200 "measure"
+                                          {:name       "eid restored dimensions measure"
+                                           :definition (lib/aggregate (venues-query)
+                                                                      (lib/sum (lib.metadata/field mp (mt/id :venues :price))))})
+            fetch   (fn []
+                      (select-keys (get-with-entity-ids :crowberto (str "measure/" (id-of :model/Measure (:entity_id measure))))
+                                   [:dimensions :dimension_mappings]))
+            before  (fetch)]
+        (is (seq (:dimensions before)))
+        (restore! [[:model/Measure [(t2/select-one :model/Measure :id (:id measure))]]])
+        (is (not= (:id measure) (id-of :model/Measure (:entity_id measure))))
+        (is (= before (fetch)))))))
