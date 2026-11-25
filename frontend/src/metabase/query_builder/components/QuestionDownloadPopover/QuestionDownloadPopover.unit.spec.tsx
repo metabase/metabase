@@ -185,8 +185,62 @@ describe("QuestionDownloadPopover", () => {
     });
   });
 
+  describe("unsaved pivot table csv export", () => {
+    const card = createMockCard({
+      ...TEST_CARD,
+      id: undefined,
+      name: "Pivot Table",
+      display: "pivot",
+    });
+    // The API sends the row-limit constraints back in json_query, but its type
+    // does not declare them; the export must drop them.
+    const jsonQueryWithConstraints = {
+      ...TEST_CARD.dataset_query,
+      constraints: { "max-results": 10000, "max-results-bare-rows": 2000 },
+    };
+    const result = createMockDataset({ json_query: jsonQueryWithConstraints });
+    const downloadPath = "path:/api/dataset/csv";
+
+    beforeEach(() => {
+      fetchMock.post(downloadPath, {});
+    });
+
+    it.each([
+      { keepPivoted: true, expected: "true" },
+      { keepPivoted: false, expected: "false" },
+    ])(
+      "sends the query, display and pivot_results=$expected to the dataset endpoint",
+      async ({ keepPivoted, expected }) => {
+        setup({ card, result });
+
+        await userEvent.click(
+          screen.getByRole("button", { name: "Download results" }),
+        );
+        await userEvent.click(await screen.findByLabelText(".csv"));
+        if (!keepPivoted) {
+          await userEvent.click(screen.getByLabelText("Keep the data pivoted"));
+        }
+        await userEvent.click(screen.getByTestId("download-results-button"));
+
+        await waitFor(() =>
+          expect(fetchMock.callHistory.calls(downloadPath)).toHaveLength(1),
+        );
+        const body = await getDownloadRequestBody(downloadPath);
+        expect(body.get("pivot_results")).toBe(expected);
+        expect(body.get("format_rows")).toBe("true");
+        expect(body.get("display")).toBe(JSON.stringify("pivot"));
+        const query: unknown = JSON.parse(body.get("query") ?? "null");
+        expect(query).toEqual(TEST_CARD.dataset_query);
+      },
+    );
+  });
+
   describe("download format preference (metabase#16108)", () => {
-    const setupStoredFormatPreference = () => {
+    const setupStoredFormatPreference = ({
+      putDelayMs,
+    }: {
+      putDelayMs: number;
+    }) => {
       let storedValue: unknown = {
         last_download_format: "csv",
         last_table_download_format: "csv",
@@ -195,25 +249,30 @@ describe("QuestionDownloadPopover", () => {
         status: 200,
         body: storedValue,
       }));
-      fetchMock.put(FORMAT_PREFERENCE_PATH, ({ options }) => {
-        const body: unknown = JSON.parse(String(options.body));
-        if (typeof body === "object" && body != null && "value" in body) {
-          storedValue = body.value;
-        }
-        return { status: 200 };
-      });
+      fetchMock.put(
+        FORMAT_PREFERENCE_PATH,
+        ({ options }) => {
+          const body: unknown = JSON.parse(String(options.body));
+          if (typeof body === "object" && body != null && "value" in body) {
+            storedValue = body.value;
+          }
+          return { status: 200 };
+        },
+        { delay: putDelayMs },
+      );
     };
 
     it.each([
-      { display: "table", hasPng: false },
-      { display: "line", hasPng: true },
+      { display: "table", hasPng: false, putDelayMs: 0 },
+      { display: "line", hasPng: true, putDelayMs: 0 },
+      { display: "table", hasPng: false, putDelayMs: 700 },
     ] as const)(
-      "remembers the downloaded format after a reload ($display)",
-      async ({ display, hasPng }) => {
+      "remembers the downloaded format after a reload ($display, PUT delay $putDelayMs ms)",
+      async ({ display, hasPng, putDelayMs }) => {
         const card = createMockCard({ ...TEST_CARD, id: 44, display });
         const downloadPath = `path:/api/card/${card.id}/query/xlsx`;
         fetchMock.post(downloadPath, {});
-        setupStoredFormatPreference();
+        setupStoredFormatPreference({ putDelayMs });
 
         const { unmount } = setup({ card, setupFormatPreference: false });
 
@@ -246,6 +305,8 @@ describe("QuestionDownloadPopover", () => {
         await waitFor(() =>
           expect(fetchMock.callHistory.calls(downloadPath)).toHaveLength(1),
         );
+        // A reload only sees the preference once the write has finished
+        await fetchMock.callHistory.flush(true);
 
         unmount();
         setup({ card, setupFormatPreference: false });
