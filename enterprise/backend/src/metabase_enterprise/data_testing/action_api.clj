@@ -72,9 +72,9 @@
   refused. The action's SQL then runs against the test's inputs, and the expectations read the tables after it, by
   their real names.
 
-  Only query actions can be tested, on a database with actions enabled. The action's SQL must be one INSERT, UPDATE or
-  DELETE statement, with no RETURNING clause (OUTPUT in SQL Server) and no call of a function the write check refuses,
-  such as `nextval`. An `equals` expectation is refused: an action has no output to compare."
+  Only query actions can be tested, on a database with actions enabled. A run sends the action's SQL to the database
+  as written, with the test's tables in place of the tables it names. An `equals` expectation is refused: an action
+  has no output to compare."
   [_route-params
    _query-params
    {:keys [action_id] :as body} :- ::create-request]
@@ -107,19 +107,17 @@
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result
   "Run an action test. Needs read access to the test, permission to run the action's query with the test's parameter
   values, and native query access to the database of that query.
-  The action's SQL runs on the test's temp tables, in a transaction that is rolled back, so the tables the SQL names do
-  not change. The rollback does not undo what is not transactional or not on the run's connection, such as an advanced
-  sequence or the work of a function that commits on a connection of its own. The run refuses the functions the write
-  check knows to do this, such as `nextval` and `setval`; one it does not know passes. A persisted model that the
-  action's SQL includes runs as its query, not from its cache table. The run is recorded in the test's run history and
-  in the audit log as an action-test run, not as an execution of the action.
+  The action's SQL runs as written against the test's tables, in a transaction that is rolled back, on the database's
+  default connection. A persisted model that the action's SQL includes runs as its query, not from its cache table.
+  The run is recorded in the test's run history and in the audit log as an action-test run, not as an execution of the
+  action.
 
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,
   including one that could not be evaluated, which comes back as that expectation's own `:error`.
 
   Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the
-  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)
-  carries none."
+  `:error-code` naming which refusal it was, including the 403 for a user whose connection to the database is
+  impersonated; a missing test (404), missing permission (403) or missing feature (402) carries none."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [action-test (api/read-check :model/ActionTest id)]
