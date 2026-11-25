@@ -2,6 +2,7 @@
   "The checks of [[validator/validate]]: declared and unused inputs, leftover references after the rewrite, table labels
   and the required expectation. Pure — no warehouse."
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
@@ -312,6 +313,24 @@
             (single-select :postgres
                            (str "SELECT 1 AS id WHERE 1 IN (" (str/join ", " (range 3000)) ")")
                            nil)))))
+
+(defn- parser-reasons
+  "Every reason the Python statement check gives a refusal: the reasons its functions return, and \"unparseable\"."
+  []
+  (conj (into (sorted-set)
+              (map second)
+              (re-seq #"return \(\"([a-z][a-z-]+)\","
+                      (slurp (io/resource "python-sources/sql_tools.py"))))
+        "unparseable"))
+
+(deftest every-reason-the-check-gives-has-words-test
+  (testing "premise: the reasons are read from the parser"
+    (is (every? (parser-reasons) ["multiple-statements" "statement-word" "number-literal" "rebuild-differs"])))
+  (doseq [reason (parser-reasons)]
+    (testing reason
+      (is (or (#'validator/unsupported-form-refusal reason nil nil)
+              (not= (#'validator/refusal-reason "an-unknown-reason" nil)
+                    (#'validator/refusal-reason reason nil)))))))
 
 (deftest ensure-single-select-refuses-numbers-the-rewrite-changes-test
   (testing "control: a Postgres SELECT of decimal numbers runs as its rewrite"
