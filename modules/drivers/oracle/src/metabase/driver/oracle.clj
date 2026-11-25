@@ -814,6 +814,52 @@
     "XDB"
     "XS$NULL"})
 
+(defn- row-count-estimates
+  "A map of `[schema name]` to row count estimate, from `rows` of the row count estimate query. A table with no
+  statistics or an estimate of 0 is left out, as on Postgres and MySQL."
+  [rows]
+  (into {}
+        (keep (fn [{:keys [owner table_name num_rows]}]
+                (when (some-> num_rows pos?)
+                  [[owner table_name] (long num_rows)])))
+        rows))
+
+(def ^:private row-count-estimates-timeout-seconds
+  "The time limit of the row count estimate query."
+  15)
+
+(defn- query-row-count-estimates
+  "The row count estimates of the tables that the user of `conn` can see: `NUM_ROWS` of `ALL_TABLES`, which Oracle
+  fills only when it collects statistics on the table. Views are not in `ALL_TABLES`. The excluded system schemas are
+  left out, to keep the query small."
+  [^Connection conn]
+  (let [excluded (vec (sql-jdbc.sync/excluded-schemas :oracle))]
+    (row-count-estimates
+     (jdbc/query {:connection conn}
+                 (into [(str "SELECT owner, table_name, num_rows FROM all_tables"
+                             " WHERE num_rows > 0"
+                             " AND owner NOT IN (" (str/join ", " (repeat (count excluded) "?")) ")")]
+                       excluded)
+                 {:timeout row-count-estimates-timeout-seconds}))))
+
+(defn- with-row-count-estimates
+  "`tables` with the `:estimated_row_count` of each table, nil for a table with none. The estimate is extra
+  information, so a failure to read it is logged and the tables are returned without the key."
+  [conn tables]
+  (if-let [estimates (try
+                       (query-row-count-estimates conn)
+                       (catch Exception e
+                         (log/warn e "Could not read the row count estimates of the tables")
+                         nil))]
+    (eduction (map (fn [{:keys [schema name] :as table}]
+                     (assoc table :estimated_row_count (get estimates [schema name]))))
+              tables)
+    tables))
+
+(defmethod sql-jdbc.sync/active-tables :oracle
+  [driver conn & args]
+  (with-row-count-estimates conn (apply (get-method sql-jdbc.sync/active-tables :sql-jdbc) driver conn args)))
+
 (defmethod driver/escape-entity-name-for-metadata :oracle
   [_ entity-name]
   (str/replace entity-name "/" "//"))
