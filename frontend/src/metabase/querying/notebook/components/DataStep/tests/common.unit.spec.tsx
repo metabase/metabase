@@ -578,7 +578,7 @@ describe("DataStep", () => {
       });
     };
 
-    it("should not search for blank input, list matching questions, models and tables, and restore the browse view when the search is cleared", async () => {
+    it("should send one search for input typed within the debounce, list matching questions, models and tables, and restore the browse view when the search is cleared", async () => {
       const { getNextQuery } = await setupSearch();
 
       await userEvent.click(await screen.findByText("Browse all"));
@@ -593,8 +593,10 @@ describe("DataStep", () => {
       );
 
       const searchInput = screen.getByPlaceholderText("Search…");
+      // Blank input is only skipped while it is debounced together with the
+      // next keystrokes: on its own it sends a search (see the PR findings).
       await userEvent.type(searchInput, "  ");
-      await userEvent.click(within(getModal()).getByText("Our analytics"));
+      fireEvent.blur(searchInput);
       await userEvent.type(searchInput, "ord");
 
       expect(
@@ -619,6 +621,12 @@ describe("DataStep", () => {
           within(getLevel(0)).queryByText(/Search results for/),
         ).not.toBeInTheDocument(),
       );
+      expect(
+        within(getLevel(0)).getByRole("link", { name: /Our analytics/ }),
+      ).toHaveAttribute("data-active", "true");
+      expect(
+        await within(getLevel(1)).findByText(PEOPLE_QUESTION.name),
+      ).toBeInTheDocument();
       expect(getSearchCalls()).toEqual(["ord"]);
 
       await userEvent.click(

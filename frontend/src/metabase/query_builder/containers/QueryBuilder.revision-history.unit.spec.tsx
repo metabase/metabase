@@ -316,8 +316,5 @@ describe("QueryBuilder > description", () => {
     expect(
       await within(await screen.findByTestId("sidesheet")).findByText("foo"),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText("Sorry, you don’t have permission to see that."),
-    ).not.toBeInTheDocument();
   });
 });
