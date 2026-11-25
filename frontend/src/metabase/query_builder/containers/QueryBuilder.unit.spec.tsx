@@ -10,6 +10,7 @@ import {
   setupCollectionItemsEndpoint,
   setupFieldValuesEndpoint,
   setupLastDownloadFormatEndpoints,
+  setupMostRecentlyViewedDashboard,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -37,8 +38,10 @@ import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockCollection,
+  createMockCollectionItem,
   createMockCollectionItemFromCollection,
   createMockColumn,
+  createMockDashboard,
   createMockDataset,
   createMockDatasetData,
   createMockUnsavedCard,
@@ -442,6 +445,130 @@ describe("QueryBuilder", () => {
         collection_id: firstCollection.id,
       });
       expect(await screen.findByDisplayValue("Custom")).toBeInTheDocument();
+    });
+
+    it("should not show the 'add to a dashboard' modal again after it was canceled and the user navigated away", async () => {
+      const rootCollection = createMockCollection({
+        id: "root",
+        name: "Our analytics",
+        can_write: true,
+      });
+      const dashboardId = 10;
+      const dashboard = createMockDashboard({
+        id: dashboardId,
+        name: "Orders in a dashboard",
+      });
+      const { router } = await setup({
+        card: TEST_UNSAVED_STRUCTURED_CARD,
+        collections: [rootCollection, TEST_COLLECTION],
+        withUndos: true,
+      });
+      setupCollectionItemsEndpoint({
+        collection: { id: "root" },
+        collectionItems: [
+          createMockCollectionItemFromCollection({
+            ...TEST_COLLECTION,
+            can_write: true,
+            here: ["collection"],
+          }),
+          createMockCollectionItem({
+            id: dashboardId,
+            name: dashboard.name,
+            model: "dashboard",
+            can_write: true,
+          }),
+        ],
+      });
+      setupCollectionItemsEndpoint({
+        collection: TEST_COLLECTION,
+        collectionItems: [],
+      });
+      fetchMock.get(`path:/api/dashboard/${dashboard.id}`, dashboard);
+      setupMostRecentlyViewedDashboard();
+      const savedCard = createMockCard({
+        id: 1,
+        name: "Orders",
+        collection_id: null,
+        dataset_query: TEST_UNSAVED_STRUCTURED_CARD.dataset_query,
+      });
+      setupCardsEndpoints([savedCard]);
+      setupCardQueryMetadataEndpoint(
+        savedCard,
+        createMockCardQueryMetadata({ databases: [createSampleDatabase()] }),
+      );
+
+      await waitForSaveToBeEnabled();
+      await userEvent.click(screen.getByText("Save"));
+      const saveModal = await screen.findByTestId("save-question-modal");
+      await userEvent.click(
+        within(saveModal).getByLabelText(/Where do you want to save this/),
+      );
+      const collectionPicker = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(
+        await within(collectionPicker).findByText("Our analytics"),
+      );
+      await userEvent.click(
+        within(collectionPicker).getByRole("button", {
+          name: "Select this collection",
+        }),
+      );
+      await userEvent.click(
+        within(saveModal).getByRole("button", { name: "Save" }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("save-question-modal"),
+        ).not.toBeInTheDocument(),
+      );
+      const createCall = checkNotNull(
+        fetchMock.callHistory.lastCall("card-create"),
+      );
+      expect(JSON.parse(String(createCall.options.body))).toMatchObject({
+        name: "Orders",
+        collection_id: null,
+      });
+
+      const toast = await screen.findByTestId("toast-undo");
+      expect(within(toast).getByText("Saved")).toBeInTheDocument();
+      await userEvent.click(
+        within(toast).getByRole("button", { name: /Add this to a dashboard/ }),
+      );
+      const dashboardPicker = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(
+        await within(dashboardPicker).findByText("Our analytics"),
+      );
+      await userEvent.click(
+        await within(dashboardPicker).findByText("Orders in a dashboard"),
+      );
+      await userEvent.click(
+        within(dashboardPicker).getByRole("button", { name: "Cancel" }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("entity-picker-modal"),
+        ).not.toBeInTheDocument(),
+      );
+
+      act(() => router.navigate("/redirect"));
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("query-builder-root"),
+        ).not.toBeInTheDocument(),
+      );
+      act(() =>
+        router.navigate(
+          `/question#${serializeCardForUrl(TEST_UNSAVED_STRUCTURED_CARD)}`,
+        ),
+      );
+      expect(
+        await screen.findByTestId("query-visualization-root"),
+      ).toBeInTheDocument();
+      // a new question, not the saved one
+      expect(screen.getByTestId("qb-save-button")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("entity-picker-modal"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
   });
 
