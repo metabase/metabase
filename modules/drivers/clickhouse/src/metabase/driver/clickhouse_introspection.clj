@@ -168,13 +168,58 @@
        (tables-set)
        (set)))
 
+(defn- row-count-estimates
+  "A map of `[database name]` to row count, from `rows` of `system.tables`. A table with no count, such as a view, or a
+  count of 0 is left out, as on Postgres and MySQL."
+  [rows]
+  (into {}
+        (keep (fn [{:keys [database name total_rows]}]
+                (when (some-> total_rows pos?)
+                  [[database name] (long total_rows)])))
+        rows))
+
+(def ^:private row-count-estimates-timeout-seconds
+  "The time limit of the row count query."
+  15)
+
+(defn- query-row-count-estimates
+  "The row counts of the tables of the databases `schemas` from `system.tables`. `total_rows` is the exact count when
+  ClickHouse can tell it quickly, as for the MergeTree family, and NULL otherwise."
+  [driver db schemas]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver db nil
+   (fn [^Connection conn]
+     (row-count-estimates
+      (jdbc/query {:connection conn}
+                  (into [(str "SELECT database, name, total_rows FROM system.tables"
+                              " WHERE total_rows > 0 AND database IN ("
+                              (str/join ", " (repeat (count schemas) "?")) ")")]
+                        schemas)
+                  {:timeout row-count-estimates-timeout-seconds})))))
+
+(defn- with-row-count-estimates
+  "`tables` with the `:estimated_row_count` of each table, nil for a table with none. The estimate is extra
+  information, so a failure to read it is logged and the tables are returned without the key."
+  [driver db tables]
+  (let [schemas (into [] (comp (keep :schema) (distinct)) tables)]
+    (if-let [estimates (when (seq schemas)
+                         (try
+                           (query-row-count-estimates driver db schemas)
+                           (catch Exception e
+                             (log/warn e "Could not read the row count estimates of the tables")
+                             nil)))]
+      (into #{} (map (fn [{:keys [schema name] :as table}]
+                       (assoc table :estimated_row_count (get estimates [schema name]))))
+            tables)
+      tables)))
+
 (defmethod driver/describe-database* :clickhouse
   [driver db]
   (let [{:keys [enable-multiple-db]} (driver.conn/effective-details db)
         tables (if (boolean enable-multiple-db)
                  (get-all-tables-in-all-dbs driver db)
                  (get-tables-in-db driver db))]
-    {:tables tables}))
+    {:tables (with-row-count-estimates driver db tables)}))
 
 (defn- ^:private is-db-required?
   [field]
