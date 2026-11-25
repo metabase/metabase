@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ComponentPropsWithoutRef } from "react";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupAdhocQueryMetadataEndpoint,
   setupAlertsEndpoints,
@@ -259,6 +260,7 @@ interface SetupOpts {
    * `afterEach` with `window.history.replaceState(null, "", "/")`.
    */
   syncWindowLocation?: boolean;
+  hasEnterprisePlugins?: boolean;
 }
 
 export const setup = async ({
@@ -289,7 +291,18 @@ export const setup = async ({
   collections = [TEST_COLLECTION],
   tokenFeatures,
   syncWindowLocation = false,
+  hasEnterprisePlugins = false,
 }: SetupOpts) => {
+  const settings = mockSettings({
+    "site-url": "http://localhost:3000",
+    ...(tokenFeatures && {
+      "token-features": createMockTokenFeatures(tokenFeatures),
+    }),
+  });
+  if (hasEnterprisePlugins) {
+    setupEnterprisePlugins();
+  }
+
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([database]);
   setupCardDataset({ dataset });
@@ -363,12 +376,7 @@ export const setup = async ({
       initialRoute,
       storeInitialState: createMockState({
         currentUser,
-        settings: mockSettings({
-          "site-url": "http://localhost:3000",
-          ...(tokenFeatures && {
-            "token-features": createMockTokenFeatures(tokenFeatures),
-          }),
-        }),
+        settings,
       }),
     },
   );
