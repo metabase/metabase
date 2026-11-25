@@ -15,6 +15,7 @@
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.test :as qp]
@@ -307,3 +308,58 @@
                   (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
                 (testing "Query returns rows"
                   (is (= 3 (count (mt/rows results)))))))))))))
+
+(defn- column-named
+  "The column in `cols` with the name `col-name`."
+  [col-name cols]
+  (m/find-first (comp #{col-name} :name) cols))
+
+(defn- queries-on-model
+  "A sum of the `count` column of `model`, and categories inner joined to `model` on `price` with a count, with a new
+  metadata provider so that they see the latest persisted state of `model`."
+  [model]
+  (let [mp         (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        model-meta (lib.metadata/card mp (:id model))
+        sum-query  (as-> (lib/query mp model-meta) $q
+                     (lib/aggregate $q (lib/sum (column-named "count" (lib/aggregable-columns $q nil)))))
+        join-query (as-> (lib/query mp (lib.metadata/table mp (mt/id :categories))) $q
+                     (lib/join $q (-> (lib/join-clause model-meta
+                                                       [(lib/= (lib.metadata/field mp (mt/id :categories :id))
+                                                               (column-named "price" (lib/join-condition-rhs-columns
+                                                                                      $q model-meta nil nil)))])
+                                      (lib/with-join-strategy :inner-join)))
+                     (lib/aggregate $q (lib/count)))]
+    [sum-query join-query]))
+
+(deftest persisted-multi-stage-model-omits-model-stages-test
+  (testing "A query on a persisted multi-stage model reads only the cache, not the stages of the model"
+    (mt/test-drivers (mt/normal-driver-select {:+parent   :sql
+                                               :+features [:persist-models]
+                                               :+fns      [sql.qp/use-ctes-for-stages?]})
+      (mt/dataset test-data
+        (mt/with-persistence-enabled! [persist-models!]
+          (let [mp          (mt/metadata-provider)
+                model-query (as-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) $q
+                              (lib/aggregate $q (lib/count))
+                              (lib/breakout $q (lib.metadata/field mp (mt/id :venues :price)))
+                              (lib/append-stage $q)
+                              (lib/filter $q (lib/> (column-named "count" (lib/filterable-columns $q)) 1)))]
+            (mt/with-temp [:model/Card model {:name          "Price counts"
+                                              :type          :model
+                                              :database_id   (mt/id)
+                                              :dataset_query model-query}]
+              (let [persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))
+                    venues-table     (:name (lib.metadata/table mp (mt/id :venues)))
+                    compiled-sql     (comp :query qp.compile/compile)
+                    rows             (comp (partial mt/formatted-rows [int]) qp/process-query)]
+                (testing "without a cache, the queries read the source table of the model"
+                  (doseq [[query expected] (map vector (queries-on-model model) [[[100]] [[4]]])]
+                    (is (str/includes? (compiled-sql query) venues-table))
+                    (is (not (str/includes? (compiled-sql query) persisted-schema)))
+                    (is (= expected (rows query)))))
+                (persist-models!)
+                (testing "with a cache, the queries read only the cache"
+                  (doseq [[query expected] (map vector (queries-on-model model) [[[100]] [[4]]])]
+                    (is (str/includes? (compiled-sql query) persisted-schema))
+                    (is (not (str/includes? (compiled-sql query) venues-table)))
+                    (is (= expected (rows query)))))))))))))

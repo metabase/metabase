@@ -646,6 +646,27 @@
           (is (=? {:from [[[::h2x/identifier :table-alias ["__mb_stage_1"]] some?]]}
                   join-source)))))))
 
+(deftest ^:parallel single-row-aggregation-stage-cte-test
+  (testing "A last stage that aggregates without breakouts goes in its own stage CTE, so Postgres can use its MIN/MAX
+            index optimization, which it skips in a query level with a WITH list"
+    (let [mp     (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :postgres}})
+          query  (lib/append-stage (lib/query mp (lib.metadata/table mp (meta/id :venues))))
+          id-col (m/find-first #(= (:name %) "ID") (lib/visible-columns query))
+          query  (lib/aggregate query (lib/max id-col))]
+      (qp.store/with-metadata-provider mp
+        (driver/with-driver :postgres
+          (testing "without breakouts, a stage that selects the aggregation goes after it"
+            (is (=? [{:source-table (meta/id :venues)}
+                     {:aggregation [[:max {} [:field {} "ID"]]]}
+                     {:fields [[:field {} "max"]]}]
+                    (sql.qp/preprocess :postgres query))))
+          (testing "with a breakout, no stage goes after the aggregation"
+            (is (=? [{:source-table (meta/id :venues)}
+                     {:aggregation [[:max {} [:field {} "ID"]]]
+                      :breakout    [some?]}]
+                    (sql.qp/preprocess :postgres (lib/breakout query (m/find-first #(= (:name %) "NAME")
+                                                                                   (lib/breakoutable-columns query))))))))))))
+
 (deftest ^:parallel nested-field-pivot-compile-test
   (mt/test-driver :postgres
     (testing "Pivot with a nested-field (JSON-unfolded) breakout compiles to a derived table that pre-computes the JSON path expression and references plain identifiers in GROUPING SETS / GROUPING"
@@ -1853,7 +1874,7 @@
                  (mt/formatted-rows [int str int 4.0 4.0 int int int] (qp/process-query query)))))))))
 
 (deftest ^:parallel native-source-stage-test
-  (testing "a native first stage that has its own WITH, compiled as the body of a stage CTE on Postgres, runs"
+  (testing "a native first stage that has its own WITH runs on Postgres"
     (mt/test-driver :postgres
       (mt/dataset test-data
         (let [mp    (mt/metadata-provider)
@@ -1866,15 +1887,32 @@
           (is (= [[4]]
                  (mt/formatted-rows [int] (qp/process-query query)))))))))
 
+(defn- compile-honeysql
+  "The HoneySQL form that the SQL QP compiles for `query`."
+  [query]
+  (mt/with-metadata-provider (mt/id)
+    (sql.qp/mbql->honeysql :postgres (qp.preprocess/preprocess query))))
+
 (deftest ^:parallel multi-stage-card-referenced-from-native-query-test
-  (testing "a multi-stage card spliced into a native query via {{#id}}, with its CTEs inside the subquery parens, runs"
-    (mt/test-driver :postgres
-      (mt/dataset test-data
-        (let [mp (mt/metadata-provider)]
-          (mt/with-temp [:model/Card card {:dataset_query (count-by-price-over-1-query mp)}]
-            (let [tag   (format "#%d" (:id card))
-                  query (-> (lib/native-query mp (format "SELECT SUM(c.count) FROM {{%s}} AS c" tag))
-                            (lib/with-template-tags {tag {:name tag, :display-name tag, :type :card, :card-id (:id card)}}))]
+  (mt/test-driver :postgres
+    (mt/dataset test-data
+      (let [mp         (mt/metadata-provider)
+            card-query (count-by-price-over-1-query mp)
+            ref-query  (assoc-in card-query [:middleware :card-reference?] true)]
+        (testing "a multi-stage card uses stage CTEs on its own, and subselects when a native query references it"
+          (is (seq (:with (compile-honeysql card-query))))
+          (is (nil? (:with (compile-honeysql ref-query)))))
+        (mt/with-temp [:model/Card card {:dataset_query card-query}]
+          (let [tag   (format "#%d" (:id card))
+                query (-> (lib/native-query mp (format "SELECT SUM(c.count) FROM {{%s}} AS c" tag))
+                          (lib/with-template-tags {tag {:name         tag
+                                                        :display-name tag
+                                                        :type         :card
+                                                        :card-id      (:id card)}}))]
+            (testing "the native query has the card compiled with subselects"
+              (is (str/includes? (:query (qp.compile/compile query))
+                                 (:query (qp.compile/compile ref-query)))))
+            (testing "the native query runs"
               (is (= [[100]]
                      (mt/formatted-rows [int] (qp/process-query query)))))))))))
 

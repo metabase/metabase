@@ -17,6 +17,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
@@ -422,6 +423,18 @@
              (mt/first-row
               (qp/process-query
                (mt/native-query {:query "select interval '5 days'"}))))))))
+
+(deftest ^:parallel single-row-aggregation-stays-at-top-level-test
+  (testing "Redshift keeps a single-row aggregation at the top level, not in its own stage CTE, because Redshift fails
+            with an internal assert when it projects a numeric aggregate again from a CTE"
+    (let [mp    (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :redshift}})
+          query (lib/append-stage (lib/query mp (lib.metadata/table mp (meta/id :venues))))
+          query (lib/aggregate query (lib/count))]
+      (qp.store/with-metadata-provider mp
+        (driver/with-driver :redshift
+          (is (=? [{:source-table (meta/id :venues)}
+                   {:aggregation [[:count {}]]}]
+                  (sql.qp/preprocess :redshift query))))))))
 
 ;; Cal 2024-04-10: Commented this out instead of deleting it. We used to use this for `driver/describe-database` (see metabase#37439)
 ;; We might use it again in the future for getting privileges for actions.

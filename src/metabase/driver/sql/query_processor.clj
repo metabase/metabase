@@ -2226,6 +2226,15 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(declare use-stage-ctes?)
+
+(defn- nest-single-row-aggregation?
+  [driver query]
+  (and (use-stage-ctes? driver (:stages query) query)
+       (driver/database-supports? driver
+                                  :stage-ctes/nest-single-row-aggregation
+                                  (driver-api/database (driver-api/metadata-provider)))))
+
 (defmethod preprocess :sql
   [driver mbql5-query]
   ;; Nest a pivot stage's joins into a prior stage only for drivers that opt into the UA CTE hoist —
@@ -2236,6 +2245,8 @@
       driver-api/nest-breakouts-in-stages-with-window-aggregation
       (cond-> (apply-cte-hoist? driver) driver-api/nest-pivot-joins)
       driver-api/nest-expressions
+      ;; Put a single-row aggregation in its own stage CTE, see [[driver-api/nest-single-row-aggregation]].
+      (cond-> (nest-single-row-aggregation? driver mbql5-query) driver-api/nest-single-row-aggregation)
       driver-api/add-alias-info
       :stages))
 
@@ -2267,6 +2278,13 @@
 (defn- desired-col-alias-ident [col]
   (h2x/identifier :field (:lib/desired-column-alias col)))
 
+(defn- cte-binding
+  "A `WITH` binding of `hsql` as `cte-name`. Renames the columns if their names are ambiguous."
+  [cte-name hsql columns-metadata]
+  (if (needs-cte-for-duplicate-cols? columns-metadata)
+    [[cte-name {:columns (mapv desired-col-alias-ident columns-metadata)}] hsql]
+    [cte-name hsql]))
+
 (defn- stage-source-form
   [driver hsql stage]
   (let [table-alias      (->honeysql driver (h2x/identifier :table-alias source-query-alias))
@@ -2276,8 +2294,7 @@
       {}
 
       (needs-cte-for-duplicate-cols? columns-metadata)
-      {:with [[[source-query-alias {:columns (mapv desired-col-alias-ident columns-metadata)}]
-               hsql]]
+      {:with [(cte-binding source-query-alias hsql columns-metadata)]
        :from [[table-alias]]}
 
       :else
@@ -2315,29 +2332,34 @@
            [(->honeysql driver (h2x/identifier :table-alias source-query-alias))]]]})
 
 (defn- stage-cte
-  "Adds the CTE name to the CTE body, e.g. \"SELECT a FROM t\" becomes \"__mb_stage_N AS (SELECT a FROM t)\".
-  Applies the fix for duplicate column names similar to `stage-source-form`."
+  "Adds the CTE name to the CTE body, e.g. \"SELECT a FROM t\" becomes \"__mb_stage_N AS (SELECT a FROM t)\"."
   [hsql stage]
-  (let [cte-name         (::cte-name stage)
-        columns-metadata (get-in stage [:lib/stage-metadata :columns])]
-    (if (needs-cte-for-duplicate-cols? columns-metadata)
-      [[cte-name {:columns (mapv desired-col-alias-ident columns-metadata)}] hsql]
-      [cte-name hsql])))
+  (cte-binding (::cte-name stage) hsql (get-in stage [:lib/stage-metadata :columns])))
+
+(defn- first-compiled-stage-index
+  "The index of the last stage that reads a persisted model cache, or 0. That stage does not read the stages before
+  it, so they do not have to be compiled."
+  [stages]
+  (or (last (keep-indexed (fn [idx stage] (when (:persisted-info/native stage) idx)) stages))
+      0))
 
 (defn- stages->honeysql-ctes
   "Compile `stages` to a HoneySQL CTE, putting each stage in a CTE that the next stage selects from."
   [driver stages]
-  (let [stages   (vec stages)
-        last-idx (dec (count stages))
-        cte-body (fn [idx]
-                   (let [prev-from (if (zero? idx) {} (cte-stage-source-form driver (::cte-name (stages (dec idx)))))]
-                     (stage->honeysql driver prev-from (stages idx))))
-        ctes     (mapv #(stage-cte (cte-body %) (stages %)) (range last-idx))]
+  (let [stages    (vec stages)
+        first-idx (first-compiled-stage-index stages)
+        last-idx  (dec (count stages))
+        cte-body  (fn [idx]
+                    (let [prev-from (if (= idx first-idx)
+                                      {}
+                                      (cte-stage-source-form driver (::cte-name (stages (dec idx)))))]
+                      (stage->honeysql driver prev-from (stages idx))))
+        ctes      (mapv #(stage-cte (cte-body %) (stages %)) (range first-idx last-idx))]
     (update (cte-body last-idx) :with #(into ctes %))))
 
 (defn- stages->honeysql*
   [driver stages]
-  (if (::cte-name (first stages))
+  (if (some ::cte-name stages)
     (stages->honeysql-ctes driver stages)
     (stages->honeysql-subselects driver stages)))
 
@@ -2363,50 +2385,44 @@
     (cond-> hsql
       (and (map? hsql) (seq @ctes)) (assoc :with @ctes))))
 
-(defn- stage-raw-sql
-  "The raw SQL that `stage->honeysql` compiles for `stage`, if any."
+(defn- assign-cte-names
+  "Gives each stage that compiles to a CTE a unique `::cte-name`. These are the stages of a query or join from the one
+  that [[first-compiled-stage-index]] returns, except the last one."
+  [stages]
+  (let [n (volatile! 0)]
+    (letfn [(name-stage [stage]
+              (let [cte-name (str stage-cte-prefix @n)]
+                (vswap! n inc)
+                (assoc stage ::cte-name cte-name)))
+            (name-stages [stages]
+              (let [first-idx (first-compiled-stage-index stages)
+                    last-idx  (dec (count stages))]
+                (-> (subvec stages 0 first-idx)
+                    (into (map name-stage) (subvec stages first-idx last-idx))
+                    (into (subvec stages last-idx)))))]
+      (:stages (perf/postwalk (fn [form]
+                                (cond-> form
+                                  (and (map? form) (vector? (:stages form))) (update :stages name-stages)))
+                              {:stages stages})))))
+
+(defn- native-stage-has-cte?
+  "Whether the raw SQL of `stage` contains `WITH`. A false positive only makes the query use subselects."
   [stage]
   (let [sql (or (:persisted-info/native stage)
                 (when (= (:lib/type stage) :mbql.stage/native) (:native stage)))]
-    (when (string? sql) sql)))
+    (boolean (and (string? sql) (re-find #"(?i)\bwith\b" sql)))))
 
-(defn- native-sql-max-cte-number
-  [stage]
-  (when-let [sql (stage-raw-sql stage)]
-    (some->> (re-seq (re-pattern (str stage-cte-prefix #"(\d+)")) sql)
-             (map (comp parse-long second))
-             (apply max))))
-
-(defn- first-cte-number
-  "The number of the first stage CTE. Normally 0, but if the native SQL of any stage already has stage CTEs, we start
-  above them to avoid name collisions."
-  [stages]
-  (inc (reduce max -1 (keep native-sql-max-cte-number (all-stages stages)))))
-
-(defn- assign-cte-names*
-  "Gives each stage that compiles to a CTE a unique `::cte-name`, starting at `__mb_stage_<n>`."
-  [stages n]
-  (let [last-idx (dec (count stages))]
-    (reduce (fn [[stages n] [idx stage]]
-              (let [[joins n] (reduce (fn [[joins n] join]
-                                        (let [[join-stages n] (assign-cte-names* (:stages join) n)]
-                                          [(conj joins (assoc join :stages join-stages)) n]))
-                                      [[] n]
-                                      (:joins stage))
-                    stage     (cond-> stage
-                                (seq joins)      (assoc :joins joins)
-                                (< idx last-idx) (assoc ::cte-name (str stage-cte-prefix n)))]
-                [(conj stages stage) (cond-> n (< idx last-idx) inc)]))
-            [[] n]
-            (map-indexed vector stages))))
-
-(defn- assign-cte-names
-  [stages]
-  (first (assign-cte-names* stages (first-cte-number stages))))
+(defn- use-stage-ctes?
+  [driver stages query]
+  (and (use-ctes-for-stages? driver)
+       ;; A card reference like {{#123}} is compiled into a subquery of the native query, and a native stage with a
+       ;; CTE would be in the body of a stage CTE. Use subselects for both, so we never put a `WITH` inside a query.
+       (not (get-in query [:middleware :card-reference?]))
+       (not-any? native-stage-has-cte? (all-stages stages))))
 
 (defn- stages->honeysql
-  [driver stages]
-  (if (use-ctes-for-stages? driver)
+  [driver stages query]
+  (if (use-stage-ctes? driver stages query)
     (hoist-ctes (stages->honeysql* driver (assign-cte-names stages)))
     (stages->honeysql* driver stages)))
 
@@ -2418,7 +2434,7 @@
     (binding [driver/*driver* driver]
       (let [stages (preprocess driver query)]
         (log/trace "Compiling MBQL query")
-        (u/prog1 (stages->honeysql driver stages)
+        (u/prog1 (stages->honeysql driver stages query)
           (log/debug "Compiled HoneySQL form")
           (driver-api/debug> (list '🍯 <>)))))
     (let [metadata-provider (driver-api/metadata-provider)
