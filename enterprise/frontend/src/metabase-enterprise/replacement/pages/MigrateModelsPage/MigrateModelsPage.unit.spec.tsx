@@ -119,13 +119,17 @@ async function selectModel(name: string) {
   await userEvent.click(
     await screen.findByRole("row", { name: new RegExp(name) }),
   );
-  const header = await screen.findByTestId("model-sidebar-header");
-  expect(within(header).getByText(name)).toBeInTheDocument();
+  // the sidebar of the previous model stays until the new card loads
+  await waitFor(() => {
+    expect(
+      within(screen.getByTestId("model-sidebar-header")).getByText(name),
+    ).toBeInTheDocument();
+  });
   return screen.getByTestId("model-sidebar");
 }
 
 describe("MigrateModelsPage", () => {
-  it("disables the conversion of a model in a database without transforms", async () => {
+  it("disables the conversion of a model in the Sample Database", async () => {
     setup();
 
     expect(
