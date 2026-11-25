@@ -27,6 +27,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -2001,3 +2002,37 @@
               "teardown ended the holder's session, so its commit fails")
           (finally
             (driver/destroy-workspace-isolation! :sqlserver database ws)))))))
+
+(deftest table-sample-compile-test
+  (mt/test-driver :sqlserver
+    (testing "a stage with :table-sample reads the source table with TABLESAMPLE SYSTEM"
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                      (lib/limit 10)
+                      (assoc-in [:stages 0 :table-sample] {:percent 2.5}))]
+        (is (re-find #"FROM \"dbo\"\.\"venues\" TABLESAMPLE SYSTEM \(2\.5 PERCENT\)"
+                     (:query (qp.compile/compile query))))))))
+
+(deftest table-random-sample-test
+  (mt/test-driver :sqlserver
+    ;; sync reads samples with no user; the namespace fixture may bind a user who is not an admin
+    (mt/with-test-user :crowberto
+      (let [table  (t2/select-one :model/Table :id (mt/id :venues))
+            fields [(t2/select-one :model/Field :id (mt/id :venues :name))]
+            sample (fn [opts]
+                     (let [sqls    (atom [])
+                           execute qp.pipeline/*execute*]
+                       (binding [qp.pipeline/*execute* (fn [driver query respond]
+                                                         (swap! sqls conj (get-in query [:stages 0 :native]))
+                                                         (execute driver query respond))]
+                         (assoc (driver/table-random-sample :sqlserver table fields (constantly conj) opts)
+                                :sqls @sqls))))]
+        (testing "the driver reads a block sample of about the sample size, with a limit it does not usually reach"
+          (is (driver.u/supports? :sqlserver :table-random-sample (mt/db)))
+          (let [{:keys [method fraction result sqls]} (sample {:rows 100 :row-count 100})]
+            (is (= :block method))
+            (is (= 1.0 fraction))
+            (is (=? [#"(?s)SELECT TOP\(200\) .*TABLESAMPLE SYSTEM \(100\.0 PERCENT\).*"] sqls))
+            (is (= 100 (count result)))))
+        (testing "the driver declines, so that sync reads the first rows, when there is no row count estimate"
+          (is (= {:method :first-rows :sqls []} (sample {:rows 100 :row-count nil}))))))))
