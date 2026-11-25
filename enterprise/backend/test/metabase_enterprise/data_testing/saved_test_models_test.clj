@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-testing.saved-test-models-test
   "What the four saved-test models share and where they differ: reading and writing a test through its subject, the
   remote-sync rule only transform tests follow, which revisions a user may read, a test's newest run, the topics of
-  their lifecycle events, and the run cleanup of their delete hook."
+  their lifecycle events, and the run cleanup of their delete."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.models :as data-testing.models]
@@ -10,16 +10,15 @@
    [metabase-enterprise.data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.models.segment-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
-   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.test-util :as perms.tu]
    [metabase.revisions.models.revision :as revision]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
-   [metabase.transforms.models.transform :as transform]
-   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -70,18 +69,10 @@
   (mt/with-test-user user
     (boolean (mi/can-update? (t2/hydrate saved-test :can_write) changes))))
 
-(deftest every-saved-test-spec-matches-its-schema-test
-  (testing "premise: each saved-test model, and no other, has a saved-test spec"
-    (is (= (set (map :model test-types))
-           (set (keys (methods data-testing.models/saved-test-spec))))))
-  (doseq [{:keys [model test-type subject-key]} test-types]
+(deftest every-test-type-names-its-model-test
+  (doseq [{:keys [model test-type]} test-types]
     (testing model
-      (let [spec (data-testing.models/saved-test-spec model)]
-        (is (nil? (mr/explain ::data-testing.models/saved-test-spec spec)))
-        (is (= {:test-type test-type :subject-key subject-key} (select-keys spec [:test-type :subject-key]))))))
-  (testing "control: a spec with a key the schema does not declare does not match it"
-    (is (some? (mr/explain ::data-testing.models/saved-test-spec
-                           (assoc (data-testing.models/saved-test-spec :model/CardTest) :remote-sync-gaurd? true))))))
+      (is (= model (:model (data-testing.test-type/spec test-type)))))))
 
 (deftest a-test-is-read-and-written-through-its-subject-test
   (do-with-each-test-type!
@@ -163,30 +154,6 @@
              (testing "the subject is not synced, so an admin may rename the test"
                (is (true? (can-update? :crowberto saved-test {:name "Renamed"})))))))))))
 
-(deftest transform-tests-follow-the-read-only-rule-on-their-own-test
-  (testing "with the transform's own write check allowing everything, a read-only instance still refuses an admin"
-    (mt/with-premium-features #{:transforms-basic :transforms-testing}
-      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
-        (mt/with-temp [:model/Transform     {transform-id :id} {}
-                       :model/TransformTest {test-id :id}      {:transform_id transform-id :name "A test"}]
-          (mt/with-dynamic-fn-redefs [transform/transform-deletable? (constantly true)]
-            (let [saved-test (t2/select-one :model/TransformTest :id test-id)]
-              (remote-sync.tu/with-remote-sync ["file:///nonexistent/saved-test-models-test" :read-only]
-                (testing "premise: the transform may be written"
-                  (is (true? (mt/with-test-user :crowberto
-                               (boolean (mi/can-write? (t2/hydrate (t2/select-one :model/Transform :id transform-id)
-                                                                   :can_write)))))))
-                (testing "an admin may not write the test"
-                  (is (false? (hydrated? :crowberto :model/TransformTest test-id :can_write mi/can-write?))))
-                (testing "an admin may not change a column that remote sync exports"
-                  (is (false? (can-update? :crowberto saved-test {:name "Renamed"}))))
-                (testing "control: an update that changes no exported column is allowed"
-                  (is (true? (can-update? :crowberto saved-test {:name (:name saved-test)})))))
-              (remote-sync.tu/with-remote-sync ["file:///nonexistent/saved-test-models-test" :read-write]
-                (testing "control: on a read-write instance an admin may write and rename the test"
-                  (is (true? (hydrated? :crowberto :model/TransformTest test-id :can_write mi/can-write?)))
-                  (is (true? (can-update? :crowberto saved-test {:name "Renamed"}))))))))))))
-
 (deftest a-test-is-writable-on-a-read-write-instance-test
   (do-with-each-test-type!
    (fn [{:keys [model test-id]}]
@@ -240,7 +207,7 @@
       (testing model
         (testing "a write publishes the lifecycle event named after the test type"
           (is (= {:create (topic "create") :update (topic "update") :delete (topic "delete")}
-                 (events/spec model))))
+                 (get @#'data-testing.models/saved-test-topics model))))
         (do-with-subject!
          test-type
          (fn [subject-id]
@@ -251,8 +218,8 @@
                                                          :expectations []})
                  run-id  (:id (data-testing.run-tracking/start-run! test-type test-id creator))]
              (try
-               (testing "a delete clears the test id of the test's runs"
-                 (t2/delete! model :id test-id)
+               (testing "a delete through the model's write function clears the test id of the test's runs"
+                 ((:delete! (serialization/spec model)) [test-id])
                  (is (= {:test_type test-type :test_id nil}
                         (t2/select-one [:model/DataTestRun :test_type :test_id] :id run-id))))
                (finally

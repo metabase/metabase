@@ -9,7 +9,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
-   [metabase.actions.core :as actions]
+   [metabase.actions.models :as actions.models]
    [metabase.actions.schema :as actions.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -27,6 +27,11 @@
 (def ^:private expectations
   [{:type :empty :name "order 1 is refunded" :sql "SELECT * FROM PUBLIC.ORDERS WHERE STATUS <> 'refunded'"}])
 
+(defn- create-action!
+  "Insert the Action `row` through its write function and return its id."
+  [row]
+  (:id (first (actions.models/create-actions! [row]))))
+
 (defn- create-action-with-test!
   "Create, in the current app DB, a model in `coll` on `db`, a query action of it named `Refund` with one parameter, and
   a test of the action by `creator`. Returns the action's id."
@@ -35,7 +40,7 @@
         model     (ts/create! :model/Card
                               :name "Orders" :type :model :database_id (:id db) :collection_id (:id coll)
                               :creator_id (:id creator) :dataset_query (lib/native-query mp "SELECT 1 AS ID"))
-        action-id (actions/insert!
+        action-id (create-action!
                    (lib/normalize ::actions.schema/action.for-insert
                                   {:type          :query
                                    :name          "Refund"

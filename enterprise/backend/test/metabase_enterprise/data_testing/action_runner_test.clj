@@ -31,7 +31,7 @@
                                                 :parameters   parameters
                                                 :inputs       [(data-testing.test-util/categories-input)]
                                                 :expectations expectations}]
-    (data-testing.runner/run-test! :action (data-testing.db/action action-id) action-test)))
+    (data-testing.test-util/run-as-admin! :action (data-testing.db/action action-id) action-test)))
 
 (defn- refusal!
   "The `:error-type` of the refusal of a run of `action-id` with `parameters`, or nil when it runs."
@@ -98,11 +98,13 @@
   given as a decoded test has it, with keywords for its formats and types."
   [subject-type subject input parameters]
   (data-testing.test-util/refusal
-   #(data-testing.runner/validate-test subject-type subject
-                                       (cond-> {:inputs       [input]
-                                                :expectations [(update (data-testing.test-util/categories-named "Toy" "Food")
-                                                                       :type keyword)]}
-                                         parameters (assoc :parameters parameters)))
+   ;; Validating checks whether the current user's connection is impersonated, so it needs a current user.
+   #(mt/with-test-user :crowberto
+      (data-testing.runner/validate-test subject-type subject
+                                         (cond-> {:inputs       [input]
+                                                  :expectations [(update (data-testing.test-util/categories-named "Toy" "Food")
+                                                                         :type keyword)]}
+                                           parameters (assoc :parameters parameters))))
    :columns))
 
 (deftest write-columns-are-not-checked-against-inputs-test
@@ -137,4 +139,4 @@
                                                                       :parameters   parameters
                                                                       :inputs       [(categories-input-with present)]
                                                                       :expectations [(data-testing.test-util/categories-named "Toy" "Food")]}]
-                          (data-testing.runner/run-test! :action action action-test))))))))))))
+                          (data-testing.test-util/run-as-admin! :action action action-test))))))))))))

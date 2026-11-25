@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-testing.models.action-test :as data-testing.models.action-test]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.remote-sync.content :as content]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
@@ -67,7 +68,7 @@
               (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
                                                             {:branch "main" :message "Push"})]
                 (is (=? {:status "successful"} (remote-sync.tu/wait-for-task! task_id))))
-              (t2/update! :model/ActionTest :id (:id t) {:description "changed"})
+              (data-testing.models.action-test/update-action-tests! [{:id (:id t) :description "changed"}])
               (testing "a changed action test is listed with its action, the action's model, and the model's collection"
                 (is (=? {:id          (:id t)
                          :model       "actiontest"

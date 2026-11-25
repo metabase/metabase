@@ -5,6 +5,7 @@
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
+   [metabase.actions.models :as actions.models]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
@@ -357,8 +358,8 @@
                            (let [{test-id :id} (t2/insert-returning-instance! :model/ActionTest (assoc (body action-id)
                                                                                                        :creator_id (mt/user->id :crowberto)))]
                              (mt/with-temp [:model/DataTestRun {run-id :id} {:test_type :action :test_id test-id}]
-                               (t2/delete! :model/Action :id action-id)
+                               (actions.models/delete-actions! [action-id])
                                (testing "premise: the action's tests are deleted with it"
                                  (is (not (t2/exists? :model/ActionTest :id test-id))))
-                               (testing "through the test's own delete hook, which keeps no run naming the deleted test"
+                               (testing "through the tests' write function, which keeps no run naming the deleted test"
                                  (is (nil? (t2/select-one-fn :test_id :model/DataTestRun :id run-id))))))))))

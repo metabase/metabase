@@ -3,6 +3,9 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase.actions.models :as actions.models]
+   [metabase.collections.models.collection :as collection]
+   [metabase.queries.models.card :as queries.card]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -28,11 +31,11 @@
 
 (deftest deleting-an-action-or-its-model-clears-the-test-id-of-its-action-tests-runs-test
   (doseq [[description delete!] [["deleting the action"
-                                  (fn [_coll-id _model-id action-id] (t2/delete! :model/Action :id action-id))]
+                                  (fn [_coll-id _model-id action-id] (actions.models/delete-actions! [action-id]))]
                                  ["deleting the model, not archived"
-                                  (fn [_coll-id model-id _action-id] (t2/delete! :model/Card :id model-id))]
+                                  (fn [_coll-id model-id _action-id] (queries.card/delete-cards! [model-id]))]
                                  ["deleting the model's collection"
-                                  (fn [coll-id _model-id _action-id] (t2/delete! :model/Collection :id coll-id))]]]
+                                  (fn [coll-id _model-id _action-id] (collection/delete-collections! [coll-id]))]]]
     (testing description
       (mt/with-temp [:model/Collection {coll-id :id} {}]
         (mt/with-actions [{model-id :id}      {:type :model :dataset_query (data-testing.test-util/table-query :categories)
@@ -49,9 +52,9 @@
 
 (deftest deleting-a-model-clears-the-test-id-of-runs-of-tests-of-each-of-its-actions-test
   (doseq [[description delete!] [["deleting the model, not archived"
-                                  (fn [_coll-id model-id] (t2/delete! :model/Card :id model-id))]
+                                  (fn [_coll-id model-id] (queries.card/delete-cards! [model-id]))]
                                  ["deleting the model's collection"
-                                  (fn [coll-id _model-id] (t2/delete! :model/Collection :id coll-id))]]]
+                                  (fn [coll-id _model-id] (collection/delete-collections! [coll-id]))]]]
     (testing description
       (mt/with-temp [:model/Collection {coll-id :id} {}]
         (mt/with-actions [{model-id :id}         {:type :model :dataset_query (data-testing.test-util/table-query :categories)
