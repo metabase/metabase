@@ -203,6 +203,23 @@
             (merge default-metadata {:database-partitioned false})
             (merge default-metadata {:database-partitioned true :id 9999999}))))))
 
+(deftest update-visibility-type-test
+  (testing "a visibility type from the warehouse that the Field already has is not written again"
+    (is (= []
+           (updates-that-will-be-performed!
+            (merge default-metadata {:visibility-type :details-only})
+            (merge default-metadata {:visibility-type :details-only :id 9999999})))))
+  (testing "metadata with no visibility type leaves the Field's visibility type as it is"
+    (is (= []
+           (updates-that-will-be-performed!
+            default-metadata
+            (merge default-metadata {:visibility-type :details-only :id 9999999})))))
+  (testing "a different visibility type from the warehouse is written"
+    (is (= [["Field" 9999999 {:visibility_type :details-only}]]
+           (updates-that-will-be-performed!
+            (merge default-metadata {:visibility-type :details-only})
+            (merge default-metadata {:visibility-type :normal :id 9999999}))))))
+
 (deftest update-nfc-path-test
   (testing "nil -> vector"
     (is (= [["Field" 9999999 {:nfc_path ["payload" "user"]}]]

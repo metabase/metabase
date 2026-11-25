@@ -110,7 +110,9 @@
         new-db-nullable?         (not= old-database-is-nullable new-database-is-nullable)
         new-db-partitioned?      (not= new-db-partitioned old-db-partitioned)
         new-db-required?           (not= old-db-required new-db-required)
-        new-visibility-type?       (not= old-visibility-type new-visibility-type)
+        ;; metadata with no visibility type, as for most columns, has no opinion on it
+        new-visibility-type?       (and (some? new-visibility-type)
+                                        (not= old-visibility-type new-visibility-type))
         new-nfc-path?              (not= (normalize-nfc-path old-nfc-path)
                                          (normalize-nfc-path new-nfc-path))
         ;; set preview_display=false for crufty fields (prevents FieldValues from being created)

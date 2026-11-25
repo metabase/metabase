@@ -252,7 +252,7 @@
               :parent_id :id :description :database_position :nfc_path
               :database_is_auto_increment :database_required
               :database_default :database_is_generated :database_is_nullable :database_is_pk
-              :database_partitioned :json_unfolding :position :preview_display]
+              :database_partitioned :json_unfolding :position :preview_display :visibility_type]
              :table_id table-id
              :active true
              {:order-by [[:position :asc] [:%lower.name :asc]]}))
@@ -265,7 +265,7 @@
                 :parent_id :id :description :database_position :nfc_path
                 :database_is_auto_increment :database_required
                 :database_default :database_is_generated :database_is_nullable :database_is_pk
-                :database_partitioned :json_unfolding :position :preview_display]
+                :database_partitioned :json_unfolding :position :preview_display :visibility_type]
                {:where [:and
                         [:in :table_id [:auto/param %]]
                         [:= :active true]]})

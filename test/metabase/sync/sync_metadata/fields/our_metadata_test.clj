@@ -25,7 +25,8 @@
                 :database-required false
                 :database-is-auto-increment true
                 :json-unfolding    false
-                :preview-display   true}
+                :preview-display   true
+                :visibility-type   :normal}
                {:name              "buyer"
                 :database-type     "OBJECT"
                 :base-type         :type/Dictionary
@@ -35,6 +36,7 @@
                 :database-is-auto-increment false
                 :json-unfolding    false
                 :preview-display   true
+                :visibility-type   :normal
                 :nested-fields     #{{:name              "name"
                                       :database-type     "VARCHAR"
                                       :base-type         :type/Text
@@ -43,7 +45,8 @@
                                       :database-required false
                                       :json-unfolding    false
                                       :database-is-auto-increment false
-                                      :preview-display   true}
+                                      :preview-display   true
+                                      :visibility-type   :normal}
                                      {:name              "cc"
                                       :database-type     "VARCHAR"
                                       :base-type         :type/Text
@@ -52,7 +55,8 @@
                                       :database-required false
                                       :json-unfolding    false
                                       :database-is-auto-increment false
-                                      :preview-display   true}}}
+                                      :preview-display   true
+                                      :visibility-type   :normal}}}
                {:name              "ts"
                 :database-type     "BIGINT"
                 :base-type         :type/BigInteger
@@ -62,7 +66,8 @@
                 :database-is-auto-increment false
                 :json-unfolding    false
                 :database-required false
-                :preview-display   true}
+                :preview-display   true
+                :visibility-type   :normal}
                {:name              "toucan"
                 :database-type     "OBJECT"
                 :base-type         :type/Dictionary
@@ -72,6 +77,7 @@
                 :database-is-auto-increment false
                 :json-unfolding    false
                 :preview-display   true
+                :visibility-type   :normal
                 :nested-fields     #{{:name              "name"
                                       :database-type     "VARCHAR"
                                       :base-type         :type/Text
@@ -80,7 +86,8 @@
                                       :database-required false
                                       :json-unfolding    false
                                       :database-is-auto-increment false
-                                      :preview-display   true}
+                                      :preview-display   true
+                                      :visibility-type   :normal}
                                      {:name              "details"
                                       :database-type     "OBJECT"
                                       :base-type         :type/Dictionary
@@ -90,6 +97,7 @@
                                       :json-unfolding    false
                                       :database-is-auto-increment false
                                       :preview-display   true
+                                      :visibility-type   :normal
                                       :nested-fields     #{{:name              "weight"
                                                             :database-type     "DECIMAL"
                                                             :base-type         :type/Decimal
@@ -99,7 +107,8 @@
                                                             :database-required false
                                                             :json-unfolding    false
                                                             :database-is-auto-increment false
-                                                            :preview-display   true}
+                                                            :preview-display   true
+                                                            :visibility-type   :normal}
                                                            {:name              "age"
                                                             :database-type     "INT"
                                                             :base-type         :type/Integer
@@ -108,7 +117,8 @@
                                                             :database-required false
                                                             :json-unfolding    false
                                                             :database-is-auto-increment false
-                                                            :preview-display   true}}}}}}
+                                                            :preview-display   true
+                                                            :visibility-type   :normal}}}}}}
              (let [transactions-table-id   (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
                    remove-ids-and-nil-vals #(match/replace-all %
                                               ;; database-position isn't stable since they are
@@ -119,3 +129,14 @@
       (finally
         (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
           (database/delete-databases! [(:id db)]))))))
+
+(deftest our-metadata-has-visibility-type-test
+  (testing "both readers of the stored Fields return their visibility type, which sync compares with the warehouse's"
+    (mt/with-temp [:model/Database db    {}
+                   :model/Table    table {:db_id (u/the-id db)}
+                   :model/Field    _     {:table_id (u/the-id table) :name "doc" :visibility_type :details-only}]
+      (is (= [:details-only]
+             (map :visibility-type (fields.our-metadata/our-metadata table))))
+      (is (= [:details-only]
+             (map :visibility-type (get (fields.our-metadata/our-metadata-by-table-id [(u/the-id table)])
+                                        (u/the-id table))))))))
