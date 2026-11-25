@@ -18,23 +18,23 @@ import { DataAppFrame } from "./DataAppFrame";
 /** @category DataApp */
 export interface DataAppProps {
   /**
-   * The page the app opens first: the app slug and optional route/query, such as `my-store/orders?active=true`.
+   * The page the app opens first. It is the app slug with an optional route and query, such as `my-store/orders?active=true`.
    *
-   * Later changes are ignored, including a new app slug. To show another app, change the component's `key`.
+   * `DataApp` ignores later changes, including a new app slug. To show another app, change the component's `key`.
    *
-   * Use {@link DataAppProps.path | path} instead to navigate the app from the host.
+   * To navigate the app from the host, use {@link DataAppProps.path | path} instead.
    **/
   initialPath?: string;
 
   /**
-   * Controlled path: the app slug and optional route/query, such as `my-store/orders?active=true`.
+   * The page the host shows in the app. It is the app slug with an optional route and query, such as `my-store/orders?active=true`.
    *
    * Changing only the route or query navigates within the app.
    * Changing the app slug remounts the iframe.
    * The user can still navigate inside the app, for example with a `DataAppLink`.
    *
-   * Pair with {@link DataAppProps.onPathChange | onPathChange} to stay in sync with that navigation,
-   * so the host can always navigate, including back to an earlier page.
+   * Pair it with {@link DataAppProps.onPathChange | onPathChange} so `path` follows that navigation.
+   * Otherwise, setting `path` back to an earlier page does nothing, because the prop does not change.
    **/
   path?: string;
 
@@ -46,8 +46,9 @@ export interface DataAppProps {
    *
    * It is not called when the host changes the `path` prop.
    *
-   * With `path`, pass each reported path back to it unchanged, directly or through your router. A reported path
-   * that comes back later is treated as that report, not as a request to navigate.
+   * With `path`, pass each reported path back to it unchanged, directly or through your router.
+   * `DataApp` does not navigate the app when a reported path comes back, even late.
+   * A changed path, such as one with a re-encoded query, navigates the app.
    *
    * @example
    * ```tsx

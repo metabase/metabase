@@ -34,7 +34,7 @@ export function useDataAppFrameNavigation({
 }: Options) {
   const stateRef = useRef(createDataAppFrameNavigation(initialPath));
 
-  // Latest values, so an inline callback does not re-send the settings on every render.
+  // Read through a ref, so an inline `onPathChange` does not resend the settings on every render.
   const latestRef = useLatest({ origin, slug, isPathControlled, onPathChange });
 
   const dispatch = useCallback(

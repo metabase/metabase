@@ -50,7 +50,7 @@ export function useSdkIframeEmbedEventBus({
           .with({ type: "metabase.embed.setSettings" }, ({ data }) => {
             const settingsPath = "path" in data ? data.path : undefined;
 
-            // A new data app path in the settings is newer than an earlier navigation request.
+            // Settings with a new data app path replace an earlier navigation request.
             if (settingsPath !== settingsPathRef.current) {
               settingsPathRef.current = settingsPath;
               setDataAppPathNavigationRequest(null);

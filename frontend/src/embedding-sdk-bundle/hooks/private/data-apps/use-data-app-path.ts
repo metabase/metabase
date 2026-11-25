@@ -6,7 +6,7 @@ type Options = {
 };
 
 /**
- * The path `DataApp` shows: `path` when set, otherwise the first `initialPath`.
+ * Returns the path `DataApp` shows. That is `path` when set, otherwise the first `initialPath`.
  * When `path` is removed, the app stays on the last `path`. Warns when both are set.
  */
 export const useDataAppPath = ({ initialPath, path }: Options): string => {

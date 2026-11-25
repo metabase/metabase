@@ -6,7 +6,7 @@ export interface DataAppFrameNavigation {
   /** Settings always carry this path, so resending them never moves the app. */
   initialPath: string;
 
-  /** Requests sent before the iframe is ready are lost, so the iframe is navigated once it is. */
+  /** The iframe drops requests that arrive before it is ready, so the host navigates it once it is. */
   isReady: boolean;
 
   /** The last path the iframe reported or was asked to show. */
@@ -19,8 +19,8 @@ export interface DataAppFrameNavigation {
   reportedPaths: string[];
 
   /**
-   * Navigation requests are numbered, and the iframe reports the last one it handled.
-   * A report with another number was sent before the iframe handled the latest request, which moves it away.
+   * The host numbers its navigation requests, and the iframe reports the number of the last one it handled.
+   * A report with another number was sent before the iframe handled the latest request, and that request moves the iframe to another page.
    * The count keeps going up across iframes, so a report from an earlier iframe never matches.
    */
   navigationCount: number;
@@ -124,13 +124,13 @@ const handlePathReport = (
     hasOnPathChange,
   }: Extract<DataAppFrameNavigationEvent, { type: "pathReported" }>,
 ): Transition => {
-  // The iframe handles the latest request next, so this page is already left behind.
+  // The iframe has not handled the latest request yet, and that request moves it off this page.
   if (navigationId !== state.expectedNavigationId) {
     return { state, command: null };
   }
 
-  // `path` cannot name this page, so `onPathChange={setPath}` would break the embed. Send the app
-  // back to the host's path instead, or the host could not navigate to that path again.
+  // `path` cannot name this page, so the host's `path` cannot follow it. Send the app back to the host's path.
+  // Otherwise the host could not navigate the app to that path, because setting `path` to its current value does nothing.
   if (getEmbeddedAppSlugFromPath(path) !== slug) {
     return isPathControlled
       ? navigateIframe(state, hostPath)
@@ -160,7 +160,7 @@ const handleHostPathChange = (
   isPathControlled: boolean,
 ): Transition => {
   if (!isPathControlled) {
-    // Reports are only queued while the host passes `path`, so none of these can come back as an echo.
+    // Reports are queued only while the host passes `path`, so none of these can come back as an echo.
     return { state: { ...state, reportedPaths: [] }, command: null };
   }
 
@@ -170,7 +170,7 @@ const handleHostPathChange = (
 
   const reportedIndex = state.reportedPaths.indexOf(hostPath);
 
-  // The host applied a path the iframe reported, so it is an echo, along with every report before it.
+  // The host applied a path the iframe reported. That path and every report before it are echoes.
   if (reportedIndex !== -1) {
     return {
       state: {

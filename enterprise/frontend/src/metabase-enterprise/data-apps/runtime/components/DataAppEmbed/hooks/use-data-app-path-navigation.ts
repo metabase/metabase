@@ -18,7 +18,7 @@ type NavigationRequest = SdkIframeEmbedNavigateToDataAppPathMessage["data"];
 
 /**
  * Navigates the router to `navigationRequest` when set, otherwise to `path`.
- * Calls `onPathChange` for every other change of the app's page, with the ID of the last navigation request it handled.
+ * Calls `onPathChange` for every other change of the app's page, with the ID of the last navigation request the hook handled.
  **/
 export function useDataAppPathNavigation({
   slug,
@@ -71,9 +71,9 @@ export function useDataAppPathNavigation({
   }, [slug, path, navigationRequest]);
 }
 
-// A request is cleared when a newer `path` arrives, so the latest of the two wins.
-// embed.js does not validate the path of a repeated write, so a request for another app or an unsafe route
-// only navigates to `path` again.
+// The event bus clears a request when a newer `path` arrives, so the latest of the two wins.
+// embed.js does not check the path of a repeated write, so a request for another app or an unsafe route
+// navigates to `path` instead.
 function getRequestedPath(
   slug: string,
   path: string,
@@ -122,7 +122,7 @@ function getCurrentUrl(): URL {
 
   // Added by embed.js for loading iframes in parallel.
   // It is not part of the app's path. `delete` re-encodes the whole query,
-  // so only call it when the parameter is there.
+  // so call it only when the parameter is there.
   if (url.searchParams.has(EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME)) {
     url.searchParams.delete(EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME);
   }
