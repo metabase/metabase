@@ -1003,8 +1003,11 @@
                                    (driver-api/field (driver-api/metadata-provider) id-or-name))
           ;; For fields with parent-id (struct-type nested fields), include parent field names
           ;; in the identifier so e.g. `result.tag_name` is rendered instead of just `tag_name`.
-          parent-names           (when-let [parent-id (:parent-id field-metadata)]
-                                   (parent-id->ancestor-names parent-id))
+          ;; A join or an earlier stage already selects the nested field as a column, so there the alias is enough.
+          source-table           (driver-api/qp.add.source-table options)
+          parent-names           (when-not (or (string? source-table)
+                                               (= source-table driver-api/qp.add.source))
+                                   (some-> (:parent-id field-metadata) parent-id->ancestor-names))
           allow-casting?         (and (or (:qp/native-sandbox-column.force-coercion-strategy options)
                                           (and field-metadata
                                                (or (pos-int? (driver-api/qp.add.source-table options))
