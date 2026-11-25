@@ -119,15 +119,12 @@ try {
 
   const assets = readdirSync(join(appDir, "dist/assets"));
   for (const weight of ["regular", "700", "900"]) {
-    for (const ext of ["woff2", "woff"]) {
-      assert(
-        assets.some(
-          (f) =>
-            f.startsWith(`lato-v16-latin-${weight}`) && f.endsWith(`.${ext}`),
-        ),
-        `built output is missing Lato ${weight} .${ext}`,
-      );
-    }
+    assert(
+      assets.some(
+        (f) => f.startsWith(`lato-v16-latin-${weight}`) && f.endsWith(".woff2"),
+      ),
+      `built output is missing Lato ${weight} .woff2`,
+    );
   }
   assert(
     existsSync(

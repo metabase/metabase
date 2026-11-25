@@ -8,8 +8,7 @@
   src:
     local("Lato Regular"),
     local("Lato-Regular"),
-    url("./fonts/Lato/lato-v16-latin-regular.woff2") format("woff2"),
-    url("./fonts/Lato/lato-v16-latin-regular.woff") format("woff");
+    url("./fonts/Lato/lato-v16-latin-regular.woff2") format("woff2");
 }
 
 @font-face {
@@ -20,8 +19,7 @@
   src:
     local("Lato Bold"),
     local("Lato-Bold"),
-    url("./fonts/Lato/lato-v16-latin-700.woff2") format("woff2"),
-    url("./fonts/Lato/lato-v16-latin-700.woff") format("woff");
+    url("./fonts/Lato/lato-v16-latin-700.woff2") format("woff2");
 }
 
 @font-face {
@@ -32,6 +30,5 @@
   src:
     local("Lato Black"),
     local("Lato-Black"),
-    url("./fonts/Lato/lato-v16-latin-900.woff2") format("woff2"),
-    url("./fonts/Lato/lato-v16-latin-900.woff") format("woff");
+    url("./fonts/Lato/lato-v16-latin-900.woff2") format("woff2");
 }
