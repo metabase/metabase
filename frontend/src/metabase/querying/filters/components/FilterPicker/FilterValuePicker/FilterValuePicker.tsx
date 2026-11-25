@@ -69,6 +69,7 @@ function FilterValuePicker({
 
   const canListValues = canListFieldValues(fieldInfo);
   const canSearchValues = canSearchFieldValues(fieldInfo);
+  const canFetchSearchValues = fieldInfo.searchFieldId != null;
   const canRemapValues = canRemapFieldValues(fieldInfo);
 
   const useGetFieldValues = ({ skip }: UseGetFieldValuesArgs) => {
@@ -124,6 +125,7 @@ function FilterValuePicker({
       autoFocus={autoFocus}
       canListValues={canListValues}
       canSearchValues={canSearchValues}
+      canFetchSearchValues={canFetchSearchValues}
       canRemapValues={canRemapValues}
       comboboxProps={comboboxProps}
       parseValue={parseValue}
