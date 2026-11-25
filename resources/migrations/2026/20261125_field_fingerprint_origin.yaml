@@ -1,0 +1,18 @@
+## Where the fingerprint of a Field came from: the source, the sample method, the row count of the table and the time,
+## so that sync can later tell a weak fingerprint from a good one and take a new one when the table grew.
+
+databaseChangeLog:
+  - changeSet:
+      id: u0ns2h
+      author: nvoxland
+      comment: Add metabase_field.fingerprint_origin
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: fingerprint_origin
+                  type: ${text.type}
+                  remarks: JSON map of where the fingerprint came from; null for fingerprints from before it was recorded
+                  constraints:
+                    nullable: true

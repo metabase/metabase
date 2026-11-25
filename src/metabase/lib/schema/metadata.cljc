@@ -598,6 +598,9 @@
    [:remapped-from-index {:optional true} [:maybe :int]]
    [:remapping           {:optional true} [:maybe [:map-of [:ref ::lib.schema.literal/literal] [:ref ::lib.schema.literal/literal]]]]
    [:dimension-interestingness {:optional true} [:maybe number?]]
+   ;;
+   ;; Where the fingerprint came from, as sync records it in the app DB. Sync reads it; Lib does not.
+   [:fingerprint-origin {:optional true} [:maybe :map]]
    [:options             {:optional true} [:maybe [:ref ::column.options]]]
    [:lib/options                 {:optional true} [:maybe [:ref ::column.lib-options]]]
    [:lib/original-fk-field-id    {:optional true} [:maybe ::lib.schema.id/field]]

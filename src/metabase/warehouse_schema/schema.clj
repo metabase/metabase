@@ -73,6 +73,19 @@
     [:target                     {:optional true} [:maybe [:ref ::field]]]
     [:table                      {:optional true} [:maybe [:ref ::table]]]]])
 
+(mr/def ::field.fingerprint-origin
+  "Where the fingerprint of a Field came from. `:source` is `:sample` for a fingerprint from a sample of rows.
+  `:method` is how the sample was read: `:unspecified` when the driver's `table-rows-sample` read it, since sync cannot
+  know how. `:row-count` is the row count estimate of the Table at that time, and `:collected-at` the time. More keys
+  can come later, so the map is open."
+  [:map
+   [:source       ::lib.schema.common/keyword]
+   [:method       {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:fraction     {:optional true} [:maybe number?]]
+   [:runs         {:optional true} [:maybe :int]]
+   [:row-count    {:optional true} [:maybe :int]]
+   [:collected-at {:optional true} [:maybe :string]]])
+
 (mr/def ::field.update
   "What an update of a Field takes: its `:id` and the columns of `:metabase_field` to change, each optional."
   [:map {:closed true}
@@ -96,6 +109,7 @@
    [:caveats                    {:optional true} [:maybe :string]]
    [:fingerprint                {:optional true} [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
    [:fingerprint_version        {:optional true} [:maybe :int]]
+   [:fingerprint_origin         {:optional true} [:maybe ::field.fingerprint-origin]]
    [:database_type              {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:has_field_values           {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:settings                   {:optional true} [:maybe ::field.settings]]

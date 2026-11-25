@@ -480,3 +480,17 @@
             (is (thrown? StackOverflowError
                          (fingerprint-db! (driver.u/lib-database (u/the-id db))))))
           (is (= 1 @saves)))))))
+
+(deftest fingerprint-records-its-origin-test
+  (testing "each fingerprint sync saves records where it came from"
+    (mt/with-temp-copy-of-db
+      (t2/update! :model/Table :id (mt/id :venues) {:estimated_row_count 100})
+      (binding [sync.fingerprint/*refingerprint?* true]
+        (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (mt/id :venues))))
+      (let [origin (t2/select-one-fn :fingerprint_origin :model/Field :id (mt/id :venues :name))]
+        (testing "a sample read with table-rows-sample, whose method sync cannot know"
+          (is (=? {:source :sample, :method :unspecified} origin)))
+        (testing "with the row count estimate of the table at that time"
+          (is (= 100 (:row-count origin))))
+        (testing "and the time"
+          (is (string? (:collected-at origin))))))))
