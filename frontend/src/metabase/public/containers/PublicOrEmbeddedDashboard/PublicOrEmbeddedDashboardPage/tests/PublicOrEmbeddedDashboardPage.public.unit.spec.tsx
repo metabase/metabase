@@ -248,14 +248,23 @@ describe("PublicOrEmbeddedDashboardPage (public link)", () => {
 
     it("should keep a filter value starting with '0' from the URL (metabase#41483)", async () => {
       setupFilteredCountEndpoint();
-      await setupFilteredDashboard({ queryString: "?text=002" });
+      const { router } = await setupFilteredDashboard({
+        queryString: "?text=002",
+      });
 
       expect(screen.getByTestId("parameter-widget")).toHaveTextContent("002");
-      expect(window.location.search).toContain("text=002");
       await waitFor(() =>
         expect(getDashcardQueryParameters().at(-1)).toEqual([
           expect.objectContaining({ id: TEXT_FILTER.id, value: ["002"] }),
         ]),
+      );
+      await waitFor(() =>
+        expect(new URLSearchParams(router?.location.search).get("tab")).toBe(
+          "1-tab-1",
+        ),
+      );
+      expect(new URLSearchParams(router?.location.search).get("text")).toBe(
+        "002",
       );
     });
   });

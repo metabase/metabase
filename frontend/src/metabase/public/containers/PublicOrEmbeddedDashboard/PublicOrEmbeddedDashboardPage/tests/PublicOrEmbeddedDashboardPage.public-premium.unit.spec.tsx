@@ -2,18 +2,49 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
-import { act, screen, waitFor, within } from "__support__/ui";
-import { refetchSiteSettings } from "metabase/settings";
+import { screen, waitFor, within } from "__support__/ui";
 import * as localization from "metabase/utils/localization";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import { registerVisualizations } from "metabase/visualizations/register";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
-import { type SetupOpts, setup } from "./setup";
+import { MOCK_UUID, type SetupOpts, setup } from "./setup";
+
+// the dashcards render with the interactive visualizations, as on a real public dashboard
+jest.mock("metabase/static-viz/register", () => ({
+  registerStaticVisualizations: jest.fn(),
+}));
+registerVisualizations();
 
 const DASHBOARD_TITLE = "Test Dashboard";
 
 // The public route registers request interceptors for the whole module and the
 // enterprise plugins stay installed once set up, so the public link with a
 // premium token gets its own spec file.
+const ROW_COUNT = 200;
+
+/** A scalar dashcard, so the test can tell when its results have rendered. */
+function setupScalarDashcardResults() {
+  fetchMock.get(
+    `path:/api/public/dashboard/${MOCK_UUID}/dashcard/1/card/1`,
+    createMockDataset({
+      data: createMockDatasetData({
+        cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
+        rows: [[ROW_COUNT]],
+      }),
+    }),
+  );
+}
+
+const getScalarDashcard = (tabId: number) => ({
+  card: createMockCard({ id: tabId, display: "scalar", can_write: false }),
+});
+
 const setupPublicPremium = (opts: Partial<SetupOpts> = {}) =>
   setup({
     dashboardTitle: DASHBOARD_TITLE,
@@ -58,9 +89,13 @@ describe("PublicOrEmbeddedDashboardPage (public link, premium)", () => {
     it.each(["", "downloads=results", "downloads=results,%20pdf"])(
       "with #%s allows downloading the dashcard results",
       async (hash) => {
-        await setupPublicPremium({ hash });
+        setupScalarDashcardResults();
+        await setupPublicPremium({ hash, getTabDashcard: getScalarDashcard });
 
         const dashcard = screen.getByTestId("dashcard");
+        expect(
+          await within(dashcard).findByText(String(ROW_COUNT)),
+        ).toBeInTheDocument();
         await userEvent.click(
           within(dashcard).getByTestId("public-or-embedded-dashcard-menu"),
         );
@@ -74,12 +109,13 @@ describe("PublicOrEmbeddedDashboardPage (public link, premium)", () => {
     it.each(["downloads=false", "downloads=pdf"])(
       "with #%s does not allow downloading the dashcard results",
       async (hash) => {
-        await setupPublicPremium({ hash });
+        setupScalarDashcardResults();
+        await setupPublicPremium({ hash, getTabDashcard: getScalarDashcard });
 
         const dashcard = screen.getByTestId("dashcard");
         // the dashcard rendered its results, so the menu had its chance to show up
         expect(
-          await within(dashcard).findByTestId("visualization-root"),
+          await within(dashcard).findByText(String(ROW_COUNT)),
         ).toBeInTheDocument();
         expect(
           within(dashcard).queryByTestId("public-or-embedded-dashcard-menu"),
@@ -109,33 +145,5 @@ describe("PublicOrEmbeddedDashboardPage (public link, premium)", () => {
 
     expect(loadLocalizationSpy).toHaveBeenCalledWith("de");
     expect(loadLocalizationSpy).not.toHaveBeenCalledWith("de-CH");
-  });
-
-  it("should render when /api/session/properties answers with HTML (metabase#62501)", async () => {
-    fetchMock.get("path:/api/session/properties", {
-      status: 200,
-      headers: { "Content-Type": "text/html" },
-      body: "<html><body><h1>Those aren't the droids you're looking for</h1></body></html>",
-    });
-    const { store } = await setupPublicPremium({ withPublicApp: true });
-    expect(
-      await within(screen.getByTestId("dashcard")).findByTestId(
-        "visualization-root",
-      ),
-    ).toBeInTheDocument();
-
-    await act(async () => {
-      await store.dispatch(refetchSiteSettings());
-    });
-
-    expect(fetchMock.callHistory.called("path:/api/session/properties")).toBe(
-      true,
-    );
-    expect(
-      within(screen.getByTestId("embed-frame")).getByText(DASHBOARD_TITLE),
-    ).toBeInTheDocument();
-    expect(
-      within(screen.getByTestId("dashcard")).getByTestId("visualization-root"),
-    ).toBeInTheDocument();
   });
 });

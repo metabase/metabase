@@ -204,7 +204,7 @@ describe("scenarios [EE] > public > dashboard", () => {
     H.activateToken("pro-self-hosted");
   });
 
-  // The app requests the settings while it boots, before the dashcards load, which a unit test cannot reproduce
+  // The settings request is sent by the app entry point while it boots, which the unit tests do not run
   it("should handle /api/session/properties incorrect response (metabase#62501)", () => {
     cy.intercept("/api/session/properties", {
       statusCode: 200,

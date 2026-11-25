@@ -122,7 +122,13 @@ describe("PublicApp", () => {
   });
 
   describe("page background (metabase#62391)", () => {
-    const TRANSPARENT_BACKGROUND = "background-color: transparent";
+    // jsdom has no stylesheet to give the page its background, so the test sets one
+    const PAGE_BACKGROUND = "rgb(255, 255, 255)";
+    const TRANSPARENT = "rgba(0, 0, 0, 0)";
+
+    beforeEach(() => {
+      document.body.style.backgroundColor = PAGE_BACKGROUND;
+    });
 
     afterEach(() => {
       delete window.overrideIsWithinIframe;
@@ -133,10 +139,7 @@ describe("PublicApp", () => {
       setup({ hash: "#background=false" });
 
       expect(screen.getByTestId("embed-frame")).toBeInTheDocument();
-      expect(document.body).not.toHaveAttribute(
-        "style",
-        expect.stringContaining(TRANSPARENT_BACKGROUND),
-      );
+      expect(document.body).toHaveStyle({ backgroundColor: PAGE_BACKGROUND });
     });
 
     it("makes the page background transparent inside an iframe", () => {
@@ -144,9 +147,7 @@ describe("PublicApp", () => {
       setup({ hash: "#background=false" });
 
       expect(screen.getByTestId("embed-frame")).toBeInTheDocument();
-      expect(document.body).toHaveStyle({
-        backgroundColor: "rgba(0, 0, 0, 0)",
-      });
+      expect(document.body).toHaveStyle({ backgroundColor: TRANSPARENT });
     });
   });
 
