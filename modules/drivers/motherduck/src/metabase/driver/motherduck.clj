@@ -778,7 +778,7 @@
   (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id)))
 
 (defn- execute-ddl!
-  "Run `sqls` in order on `db-id`, in one transaction. DDL is transactional on the endpoint."
+  "Run `sqls` in order on `db-id`, in one transaction. DDL is transactional on MotherDuck's Postgres endpoint."
   [db-id sqls]
   (jdbc/with-db-transaction [conn (connection-spec db-id)]
     (doseq [sql sqls]
@@ -794,14 +794,6 @@
         (if b
           [a b]
           [nil a])))))
-
-(defn- qualified-table
-  "`table-name` as a keyword HoneySQL quotes part by part: `:schema.table`.
-
-  Not `(keyword table-name)` straight through: HoneySQL munges dashes to underscores in a keyword's namespace but
-  not in its name, so a `:test-data/t` keyword would reach the database as `test_data.t`."
-  [table-name]
-  (sql-jdbc.quoting/dot-qualified table-name))
 
 (defn- pk-sequence-name
   "The quoted, schema-qualified name of the sequence that feeds `column` of `table-name`: `schema.table_column_seq`.
@@ -836,7 +828,7 @@
 ;; after the table, not with CASCADE: a cascading DROP SEQUENCE drops the table that depends on it.
 (defmethod driver/drop-table! :motherduck
   [driver db-id table-name]
-  (let [[drop-table-sql] (sql/format {:drop-table [:if-exists (qualified-table table-name)]}
+  (let [[drop-table-sql] (sql/format {:drop-table [:if-exists (sql-jdbc.quoting/dot-qualified table-name)]}
                                      :quoted  true
                                      :dialect (sql.qp/quote-style driver))]
     (jdbc/with-db-transaction [conn (connection-spec db-id)]
@@ -856,15 +848,15 @@
 
 (def ^:private auto-incrementing-pk-type
   "The column type an upload's auto-incrementing primary key gets from `upload-type->database-type`. DuckDB has no
-  `BIGSERIAL`, and the endpoint doesn't implement `GENERATED ... AS IDENTITY`, so `create-table!` turns the column
-  into a `BIGINT` that defaults to a sequence of its own, as MotherDuck recommends."
+  `BIGSERIAL`, and MotherDuck's Postgres endpoint doesn't implement `GENERATED ... AS IDENTITY`, so `create-table!`
+  turns the column into a `BIGINT` that defaults to a sequence of its own, as MotherDuck recommends."
   [::auto-incrementing-pk])
 
 (defmethod driver/upload-type->database-type :motherduck
   [driver upload-type]
   (case upload-type
     :metabase.upload/auto-incrementing-int-pk auto-incrementing-pk-type
-    ;; Postgres's `float` is `double precision`; through the endpoint it's DuckDB's 4-byte FLOAT.
+    ;; Postgres's `float` is `double precision`; through MotherDuck's Postgres endpoint it's DuckDB's 4-byte FLOAT.
     :metabase.upload/float                    [:double-precision]
     ;; DuckDB's VARCHAR(255) is plain VARCHAR; the length isn't enforced. Say so, rather than promise a limit that
     ;; an upload longer than 255 characters would show to be hollow.
@@ -888,29 +880,40 @@
     [(persistent! @*sequences)
      columns]))
 
+(defn- drop-sequences!
+  "Drop `sequences` after `create-table!` failed to make the table that would use them. A failure to drop them is
+  added to `e` as suppressed, so `e` stays the error the caller sees."
+  [db-id sequences ^Throwable e]
+  (try
+    (execute-ddl! db-id (map #(str "DROP SEQUENCE IF EXISTS " %) sequences))
+    (catch Throwable drop-error
+      (.addSuppressed e drop-error))))
+
+;; The sequences are made in a transaction of their own, before the table, since the inherited method opens its own
+;; transaction for the table. If the table can't be made, drop them again rather than leave them behind: upload
+;; table names carry a timestamp, so nothing retries under the same name.
 (defmethod driver/create-table! :motherduck
   [driver db-id table-name column-definitions & {:as opts}]
-  (let [[sequences column-definitions] (with-pk-sequences driver table-name column-definitions)]
-    ;; Separately from the table, since the inherited method opens its own transaction. `IF NOT EXISTS` lets a
-    ;; retry find the sequence an earlier attempt left behind.
+  (let [[sequences column-definitions] (with-pk-sequences driver table-name column-definitions)
+        create-table!                  (get-method driver/create-table! :sql-jdbc)]
     (when (seq sequences)
-      (execute-ddl! db-id (map #(str "CREATE SEQUENCE IF NOT EXISTS " %) sequences)))
-    (apply (get-method driver/create-table! :sql-jdbc)
-           driver db-id table-name column-definitions
-           (mapcat identity opts))))
+      (execute-ddl! db-id (map #(str "CREATE SEQUENCE " %) sequences)))
+    (try
+      (apply create-table! driver db-id table-name column-definitions (mapcat identity opts))
+      (catch Throwable e
+        (when (seq sequences)
+          (drop-sequences! db-id sequences e))
+        (throw e)))))
 
-;; The endpoint takes one ALTER command per statement, so the inherited methods, which put every column in one
-;; statement, fail for two or more columns.
+;; MotherDuck's Postgres endpoint takes one ALTER command per statement, so the inherited methods, which put every
+;; column in one statement, fail for two or more columns.
 (defmethod driver/add-columns! :motherduck
-  [driver db-id table-name column-definitions & {:keys [primary-key]}]
-  (when (seq primary-key)
-    ;; The endpoint refuses `ADD COLUMN ... PRIMARY KEY` and a `DEFAULT nextval(...)` on an added column. Uploads
-    ;; only ask for this on tables made before 0.49, which predate this driver.
-    (throw (ex-info (tru "MotherDuck can''t add a primary key column to an existing table.")
-                    {:table-name table-name, :primary-key primary-key})))
+  ;; No `:primary-key`: uploads only add a key column for drivers whose `create-auto-pk-with-append-csv?` is true,
+  ;; which is for tables made before 0.49. MotherDuck inherits `false`.
+  [driver db-id table-name column-definitions & _opts]
   (->> column-definitions
        (perf/mapv (fn [[column type]]
-                    (-> {:alter-table (qualified-table table-name)
+                    (-> {:alter-table (sql-jdbc.quoting/dot-qualified table-name)
                          :add-column  [(into [(sql-jdbc.quoting/quote-identifier column)]
                                              (if (string? type)
                                                [[:raw type]]

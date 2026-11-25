@@ -336,12 +336,7 @@
     (is (= ["ALTER TABLE \"main\".\"t\" ADD COLUMN \"a\" BIGINT"
             "ALTER TABLE \"main\".\"t\" ADD COLUMN \"b\" TEXT"]
            (ddl-statements! #(driver/add-columns! :motherduck 1 "main.t" {:a [:bigint]
-                                                                          :b "TEXT"})))))
-  (testing "a primary key column is refused: the endpoint can't add a column with a constraint"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can't add a primary key column"
-                          (driver/add-columns! :motherduck 1 "main.t"
-                                               {:_mb_row_id [:bigint]}
-                                               :primary-key [:_mb_row_id])))))
+                                                                          :b "TEXT"}))))))
 
 (deftest alter-table-columns!-test
   (testing "one ALTER statement per column, keeping Postgres's USING expressions"
@@ -855,6 +850,28 @@
       (is (false? (driver/schema-exists? :motherduck (mt/id) "pg_catalog"))))
     (testing "a schema that doesn't exist"
       (is (false? (driver/schema-exists? :motherduck (mt/id) (str "no_such_schema_" (mt/random-name))))))))
+
+(deftest create-table!-drops-its-sequences-on-failure-test
+  (testing "when the table can't be made, create-table! drops the sequences it made for it"
+    (mt/test-driver :motherduck
+      (let [db-id     (mt/id)
+            table     (str "upload_ddl_" (mt/random-name))
+            sequence  (str table "__mb_row_id_seq")
+            sequences (fn []
+                        (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))
+                                    [(str "SELECT sequence_name FROM duckdb_sequences()"
+                                          " WHERE database_name = current_database() AND schema_name = 'main'"
+                                          " AND sequence_name = ?")
+                                     sequence]))]
+        (is (thrown? Exception
+                     (driver/create-table! :motherduck db-id (str "main." table)
+                                           {:_mb_row_id (driver/upload-type->database-type
+                                                         :motherduck
+                                                         :metabase.upload/auto-incrementing-int-pk)
+                                            :n          "NOT_A_TYPE"}
+                                           :primary-key [:_mb_row_id])))
+        (is (= []
+               (sequences)))))))
 
 (deftest upload-ddl-test
   (testing "the table lifecycle an upload goes through, on the endpoint"
