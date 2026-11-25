@@ -95,6 +95,36 @@ const COLUMNS: ColumnSpec[] = [
   },
   { label: "Payment", table: "Invoices", column: "Payment", kind: "number" },
   { label: "Rating", table: "Reviews", column: "Rating", kind: "number" },
+  // Columns reached through a foreign key, so other tables share them.
+  {
+    label: "Source",
+    table: "Orders",
+    via: "User",
+    column: "Source",
+    kind: "string",
+    values: ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
+  },
+  {
+    label: "Product category",
+    table: "Reviews",
+    via: "Product",
+    column: "Category",
+    kind: "string",
+    values: ["Doohickey", "Gadget", "Gizmo", "Widget"],
+  },
+  {
+    label: "Country",
+    table: "Accounts",
+    column: "Country",
+    kind: "string",
+  },
+  {
+    label: "Country",
+    table: "Invoices",
+    via: "Account",
+    column: "Country",
+    kind: "string",
+  },
 ];
 
 /** The column each measure adds up, offered first when filtering it. */
@@ -238,7 +268,18 @@ export function suggestFilters(
   exclude: string[] = [],
   measureName?: string,
 ): BarItem[] {
-  const columns = COLUMNS.filter((column) => tables.includes(column.table));
+  // Only the columns every table has, one per label: a filter on the whole
+  // metric has to apply to each of its measures.
+  const columns = COLUMNS.filter(
+    (column, index) =>
+      tables.includes(column.table) &&
+      tables.every((table) =>
+        COLUMNS.some((c) => c.table === table && c.label === column.label),
+      ) &&
+      COLUMNS.findIndex(
+        (c) => c.label === column.label && tables.includes(c.table),
+      ) === index,
+  );
   const { column, op, rest } = parseDraft(columns, query);
   const measureColumn = measureName && MEASURE_COLUMNS[measureName];
 
@@ -254,7 +295,7 @@ export function suggestFilters(
           label: c.label,
           icon: KIND_ICONS[c.kind],
           aliases: c.label === measureColumn ? [measureName ?? ""] : [],
-          section: tables.length > 1 ? c.table : undefined,
+          section: tables.length > 1 ? "Shared by all measures" : undefined,
           sectionIcon: "table",
         }),
       )

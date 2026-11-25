@@ -165,7 +165,6 @@ export function DefinitionEditor({
         description:
           term.filters.length > 0 ? `| ${term.filters.join(", ")}` : undefined,
         icon: "filter",
-        hint: term.key === before?.key ? "|" : undefined,
         aliases: ["|", "filter", "where"],
         section: "Filter",
         sectionIcon: "filter",

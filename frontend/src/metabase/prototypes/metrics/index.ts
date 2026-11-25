@@ -16,7 +16,7 @@ export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
   },
   {
     id: "metric-editor",
-    name: "Metric Explorer as editor",
+    name: "Definition with expression bar",
     description:
       "A metric's Definition tab is the Metric Explorer: its bar is the definition, math over measures with filters per measure and on the whole metric. Edit it and save. New metric opens the same page, empty.",
     group: "Iteration 1",

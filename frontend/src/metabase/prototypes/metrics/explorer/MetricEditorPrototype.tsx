@@ -96,7 +96,7 @@ function useSourceItems() {
         (measure): BarItem => ({
           id: `measure:${measure.id}`,
           label: measure.name,
-          icon: "sum",
+          icon: "ruler",
           info:
             measure.description ?? measure.definition_description ?? undefined,
           section: MEASURE_TABLES[measure.name] ?? "Measures",
@@ -119,7 +119,7 @@ function useSourceItems() {
   const nameOf = (id: string) =>
     items.find((item) => item.id === id)?.label ?? id;
   const tableOf = (id: string) =>
-    items.find((item) => item.id === id && item.icon === "sum")?.section;
+    items.find((item) => item.id === id && item.icon === "ruler")?.section;
   const idOf = (measureName: string) =>
     `measure:${measures.find((m) => m.name === measureName)?.id}`;
   /** The example's measures this instance doesn't have, by name. */

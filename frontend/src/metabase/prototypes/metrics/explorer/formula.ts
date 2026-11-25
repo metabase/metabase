@@ -223,7 +223,7 @@ export const MEASURE_ITEMS: BarItem[] = MEASURES.toSorted((a, b) =>
 ).map((measure) => ({
   id: measure.id,
   label: measure.name,
-  icon: "sum",
+  icon: "ruler",
   aliases: [measure.aggregation],
   info: describeAggregation(measure.aggregation, measure.table),
   section: measure.table,
