@@ -1,6 +1,7 @@
 import type { WritebackAction } from "./actions";
 import type { Card } from "./card";
 import type { Collection, RegularCollectionId } from "./collection";
+import type { CustomVizPlugin } from "./custom-viz-plugin";
 import type { Dashboard } from "./dashboard";
 import type { DataApp } from "./data-app";
 import type { CardTest, SegmentTest, TransformTest } from "./data-test";
@@ -38,6 +39,11 @@ export type RemoteSyncCardTestData = Pick<
 export type RemoteSyncCollectionData = Pick<
   Collection,
   "id" | "name" | "type" | "location" | "effective_ancestors"
+>;
+
+export type RemoteSyncCustomVizPluginData = Pick<
+  CustomVizPlugin,
+  "id" | "identifier" | "display_name"
 >;
 
 export type RemoteSyncDashboardData = Pick<
@@ -115,6 +121,7 @@ type RemoteSyncItemDataByModel = {
   card: RemoteSyncCardData;
   cardtest: RemoteSyncCardTestData;
   collection: RemoteSyncCollectionData;
+  customvizplugin: RemoteSyncCustomVizPluginData;
   dashboard: RemoteSyncDashboardData;
   dataapp: RemoteSyncDataAppData;
   dimension: RemoteSyncDimensionData;

@@ -45,4 +45,15 @@ describe("getCustomVizPluginWarningMessage", () => {
       `The identifier "acme:viz" contains ":", which is no longer allowed, so this visualization isn't served to viewers. Delete it and upload the bundle under a name without ":".`,
     );
   });
+
+  it("describes a legacy bitmap icon", () => {
+    expect(
+      getCustomVizPluginWarningMessage({
+        type: "invalid-icon",
+        icon: "icon.png",
+      }),
+    ).toBe(
+      `The icon "icon.png" isn't an SVG file, so the default icon is shown instead. Replace the bundle with one that has an SVG icon.`,
+    );
+  });
 });

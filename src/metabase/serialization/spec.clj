@@ -30,6 +30,8 @@
   - `:storage-paths`, `(fn [entities ctx])`, the storage path of each of `entities` (see
     [[metabase.serialization.storage/storage-paths]]), by default the one of its collection.
   - `:resource-paths`, `(fn [entity])`, the paths of the files stored next to the file of `entity`, by default none.
+  - `:after-export`, `(fn [entity])`, the exported `entity` with what no column holds, like the paths of the resource
+    files beside it, by default as it is. `:after-export-keys` lists the keys it adds, which an import reads.
   - `:export-dependencies`, `(fn [rows])`, the set of `[model id]` each of `rows` depends on, by default none.
   - `:import-dependencies`, `(fn [entities])`, the set of `[model ref]` each of `entities` depends on, by default none.
   - `:loaded-entities`, `(fn [entities])`, the entities an import loads, so a model can leave out the shapes of older
@@ -101,6 +103,8 @@
    [:parent              {:optional true} ::parent]
    [:storage-paths       {:optional true} fn?]
    [:resource-paths      {:optional true} fn?]
+   [:after-export        {:optional true} fn?]
+   [:after-export-keys   {:optional true} [:sequential :keyword]]
    [:export-dependencies {:optional true} fn?]
    [:import-dependencies {:optional true} fn?]
    [:loaded-entities     {:optional true} fn?]

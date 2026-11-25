@@ -55,10 +55,13 @@
   ::custom-viz-plugin.update)
 
 (mr/def ::external-custom-viz-plugin
-  "A CustomVizPlugin as serialization writes it, with references in place of ids."
+  "A CustomVizPlugin as serialization writes it, with portable references in place of ids, the paths of its bundle
+  files, and those files as resources."
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
-    [:select-keys ::custom-viz-plugin [:display_name :identifier :enabled :icon :manifest :metabase_version
-                                       :bundle]]
+    [:select-keys ::custom-viz-plugin [:identifier]]
     [:map {:closed true}
-     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+     [:serdes/meta      {:optional true} ::models.schema/external-meta]
+     [:files            {:optional true} [:sequential :string]]
+     ;; a file the YAML lists but its directory lacks is read as nil
+     [:serdes/resources {:optional true} [:maybe [:map-of :string [:maybe :string]]]]]]])

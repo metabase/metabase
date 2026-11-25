@@ -2,7 +2,9 @@
   "Application database queries for the custom-viz-plugin module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
+   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase.app-db.core :as app-db]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -28,30 +30,25 @@
   []
   (t2/select non-blob-columns :status :active :enabled true {:order-by [[:display_name :asc]]}))
 
-(mu/defn plugin-by-identifier
-  "The CustomVizPlugin with `identifier`, or nil."
-  [identifier :- :string]
-  (t2/select-one :model/CustomVizPlugin :identifier identifier))
-
-(mu/defn plugins-by-identifiers :- [:sequential :map]
-  "The CustomVizPlugins, with only `columns` unless nil, whose identifier is one of `identifiers`, oldest first."
-  [identifiers :- [:sequential {:min 1} :string]
-   columns     :- [:maybe [:sequential :keyword]]]
-  (let [modelable (if columns (into [:model/CustomVizPlugin] columns) :model/CustomVizPlugin)]
-    (vec (sort-by :id (app-db/select-batched #(t2/select modelable
-                                                         :identifier [:in [:auto/param %]]
-                                                         {:order-by [[:id :asc]]})
-                                             identifiers)))))
-
-(mu/defn plugin-identifier-exists?
-  "Whether a CustomVizPlugin with `identifier` exists."
-  [identifier :- :string]
-  (t2/exists? :model/CustomVizPlugin :identifier identifier))
+(mu/defn plugin-identifier-ignoring-case :- [:maybe :string]
+  "The identifier of a plugin other than `except-id` (nil for none) that equals `identifier` ignoring case, or nil."
+  [identifier :- :string
+   except-id  :- [:maybe ms/PositiveInt]]
+  (t2/select-one-fn :identifier :model/CustomVizPlugin
+                    {:where (cond-> [:and [:= [:lower :identifier] (u/lower-case-en identifier)]]
+                              except-id (conj [:not= :id except-id]))}))
 
 (mu/defn plugin-bundle
   "The bundle bytes of the CustomVizPlugin with `plugin-id`."
   [plugin-id :- ms/PositiveInt]
   (t2/select-one-fn :bundle :model/CustomVizPlugin :id plugin-id))
+
+(mu/defn plugin-bundle-hashes :- [:map-of ms/PositiveInt [:maybe :string]]
+  "The bundle hash, nil for a dev-only plugin, of each of the CustomVizPlugins with `plugin-ids`, by id."
+  [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (into {}
+        (map (juxt :id :bundle_hash))
+        (app-db/select-batched #(t2/select [:model/CustomVizPlugin :id :bundle_hash] :id [:in [:auto/param %]]) plugin-ids)))
 
 (mu/defn plugin-dev-bundle-url
   "The dev bundle URL of the CustomVizPlugin with `plugin-id`."
@@ -76,3 +73,16 @@
   "Delete the CustomVizPlugins with `plugin-ids`, returning the number deleted."
   [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/CustomVizPlugin :id [:in [:auto/param %]]) plugin-ids))
+
+(mu/defn plugins-by-lower-case-identifiers :- [:sequential :map]
+  "The plugins whose identifier in lower case is one of `identifiers`, with only `columns` unless nil."
+  [identifiers :- [:sequential {:min 1} :string]
+   columns     :- [:maybe [:sequential :keyword]]]
+  (app-db/select-batched #(t2/select (if columns (into [:model/CustomVizPlugin] columns) :model/CustomVizPlugin)
+                                     {:where [:in [:lower :identifier] [:auto/param %]]})
+                         identifiers))
+
+(mu/defn synced-custom-viz-plugin-items :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin]
+  "The CustomVizPlugins with `ids`, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (app-db/select-batched #(t2/select [:model/CustomVizPlugin :id :identifier :display_name] :id [:in [:auto/param %]]) ids))

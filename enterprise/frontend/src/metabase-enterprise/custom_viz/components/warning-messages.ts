@@ -30,5 +30,10 @@ export function getCustomVizPluginWarningMessage(
       ({ identifier }) =>
         t`The identifier "${identifier}" contains ":", which is no longer allowed, so this visualization isn't served to viewers. Delete it and upload the bundle under a name without ":".`,
     )
+    .with(
+      { type: "invalid-icon" },
+      ({ icon }) =>
+        t`The icon "${icon}" isn't an SVG file, so the default icon is shown instead. Replace the bundle with one that has an SVG icon.`,
+    )
     .exhaustive();
 }

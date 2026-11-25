@@ -91,9 +91,17 @@
              (catch Exception e
                (log/warnf "Failed to delete %s: %s" p (ex-message e))))))))
 
+(defn- check-manifest-icon!
+  "Throw a 400 ex-info unless `manifest`'s icon is an SVG file (or absent). Returns `manifest`."
+  [manifest]
+  (when-let [error (manifest/icon-error (:icon manifest))]
+    (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
+                    {:status-code 400})))
+  manifest)
+
 (defn validate-bundle!
-  "Extract an uploaded tar+gzip `bundle-bytes` into a scratch directory and
-   validate its contents against the expected layout. Returns
+  "Read an uploaded tar+gzip `bundle-bytes` and validate its contents against the
+   expected layout. Returns
    `{:bytes bundle-bytes :hash sha :manifest m :version-str v}` on success.
    Throws ex-info with `:status-code 400` for any user-facing failure. Version
    mismatches don't fail validation; they surface as soft warnings at read time
@@ -101,45 +109,57 @@
   [^bytes bundle-bytes]
   (when (or (nil? bundle-bytes) (zero? (alength bundle-bytes)))
     (throw (ex-info "Bundle is empty" {:status-code 400})))
-  (let [scratch (Files/createTempDirectory "custom-viz-validate-"
-                                           (into-array FileAttribute []))]
-    (try
-      (try
-        (u.compress/untgz bundle-bytes (.toFile scratch) untgz-opts)
-        (catch Exception e
-          (if (:status-code (ex-data e))
-            ;; tar-bomb / oversize / entry-count failures carry their own clear message — re-raise.
-            (throw e)
-            (throw (ex-info (str "Bundle is not a valid tar.gz archive: " (ex-message e))
-                            {:status-code 400}
-                            e)))))
-      (let [manifest-file (.resolve scratch ^String (manifest/manifest-path))
-            bundle-file   (.resolve scratch ^String (dist-path bundle-rel-path))
-            _             (when-not (u.files/regular-file? manifest-file)
-                            (throw (ex-info (str (manifest/manifest-path) " not found in bundle")
-                                            {:status-code 400})))
-            parsed        (or (manifest/parse-manifest (String. (Files/readAllBytes manifest-file) "UTF-8"))
-                              (throw (ex-info (str (manifest/manifest-path) " is not valid JSON")
-                                              {:status-code 400})))
-            _             (when-not (u.files/regular-file? bundle-file)
-                            (throw (ex-info (str (dist-path bundle-rel-path) " not found in bundle")
-                                            {:status-code 400})))
-            version-str   (get-in parsed [:metabase :version])]
-        (when-let [error (manifest/validation-error parsed)]
-          (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
-                          {:status-code 400})))
-        (when (str/blank? (:name parsed))
-          (throw (ex-info (str (manifest/manifest-path) " is missing a \"name\" field")
-                          {:status-code 400})))
-        (when-let [error (manifest/identifier-error (:name parsed))]
-          (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
-                          {:status-code 400})))
-        {:bytes       bundle-bytes
-         :hash        (bytes-hash bundle-bytes)
-         :manifest    parsed
-         :version-str version-str})
-      (finally
-        (delete-recursive! scratch)))))
+  ;; `untgz-files` also refuses entry paths an export can't unpack, such as `dist//index.js`
+  (let [files         (try
+                        (u.compress/untgz-files bundle-bytes untgz-opts)
+                        (catch Exception e
+                          (if (:status-code (ex-data e))
+                            ;; tar-bomb / oversize / entry-count failures carry their own clear message — re-raise.
+                            (throw e)
+                            (throw (ex-info (str "Bundle is not a valid tar.gz archive: " (ex-message e))
+                                            {:status-code 400}
+                                            e)))))
+        manifest-bytes (or (get files (manifest/manifest-path))
+                           (throw (ex-info (str (manifest/manifest-path) " not found in bundle")
+                                           {:status-code 400})))
+        parsed        (or (manifest/parse-manifest (String. ^bytes manifest-bytes "UTF-8"))
+                          (throw (ex-info (str (manifest/manifest-path) " is not valid JSON")
+                                          {:status-code 400})))
+        _             (when-not (contains? files (dist-path bundle-rel-path))
+                        (throw (ex-info (str (dist-path bundle-rel-path) " not found in bundle")
+                                        {:status-code 400})))
+        version-str   (get-in parsed [:metabase :version])]
+    (when-let [error (manifest/validation-error parsed)]
+      (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
+                      {:status-code 400})))
+    (when (str/blank? (:name parsed))
+      (throw (ex-info (str (manifest/manifest-path) " is missing a \"name\" field")
+                      {:status-code 400})))
+    (when-let [error (manifest/identifier-error (:name parsed))]
+      (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
+                      {:status-code 400})))
+    (doseq [asset (manifest/asset-paths parsed)
+            :let  [path (manifest/normalize-path (dist-path (asset-rel-path asset)))]]
+      (when-not (contains? files path)
+        (throw (ex-info (str path " not found in bundle")
+                        {:status-code 400}))))
+    {:bytes       bundle-bytes
+     :hash        (bytes-hash bundle-bytes)
+     :manifest    parsed
+     :version-str version-str}))
+
+;;; ------------------------------------------------ Files ------------------------------------------------
+
+(defn bundle->files
+  "The files in `bundle-bytes`, a tar+gzip archive as uploaded, as a map of archive path to bytes."
+  [^bytes bundle-bytes]
+  (u.compress/untgz-files bundle-bytes untgz-opts))
+
+(defn files->bundle
+  "A tar+gzip archive of `files`, a map of archive path to bytes, as [[validate-bundle!]] reads it. The archive is
+   deterministic, so the same files always make the same `bundle_hash`."
+  ^bytes [files]
+  (u.compress/tgz-bytes files))
 
 ;;; ------------------------------------------------ FS Cache ------------------------------------------------
 
@@ -226,6 +246,13 @@
 
 ;;; ------------------------------------------------ Save Bundle ------------------------------------------------
 
+(defn check-bundle-icon!
+  "Throw a 400 ex-info unless `validated`'s icon is an SVG file (or absent). Returns `validated`.
+  Upload-only, so serdes imports of older bitmap-icon plugins keep working."
+  [validated]
+  (check-manifest-icon! (:manifest validated))
+  validated)
+
 (defn check-bundle-identifier!
   "Throw a 400 ex-info unless the `name` in `validated`'s manifest equals `identifier`, the identity an existing
   plugin's questions are saved under. Returns `validated`."
@@ -236,6 +263,17 @@
                               bundle-name identifier)
                       {:status-code 400})))
     validated))
+
+(defn check-identifier-free!
+  "Throws a 400 if a plugin other than `except-id` (nil for none) already holds `identifier`, ignoring case, so
+  case-only variants can't become two plugins. `exists-message` is the error when it holds exactly `identifier`."
+  [identifier except-id exists-message]
+  (when-let [existing (custom-viz-plugin.db/plugin-identifier-ignoring-case identifier except-id)]
+    (throw (ex-info (if (= existing identifier)
+                      exists-message
+                      (format "Custom viz plugin \"%s\" differs only in case from the existing plugin \"%s\""
+                              identifier existing))
+                    {:status-code 400}))))
 
 (defn derived-columns
   "DB columns derived from a validated bundle (see [[validate-bundle!]])."
@@ -394,7 +432,7 @@
       (when-let [error (manifest/validation-error parsed)]
         (throw (ex-info (format "%s is invalid: %s" (manifest/manifest-path) (pr-str error))
                         {:status-code 400})))
-      parsed)))
+      (check-manifest-icon! parsed))))
 
 (defn fetch-dev-asset
   "Fetch a static asset from a dev base URL.

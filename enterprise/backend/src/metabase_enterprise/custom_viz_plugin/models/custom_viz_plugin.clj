@@ -10,7 +10,9 @@
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -66,13 +68,37 @@
   [_model k instance]
   (vary-meta instance assoc k (boolean (some? api/*current-user-id*))))
 
-(methodical/defmethod t2/simple-hydrate [:model/CustomVizPlugin :can_write]
-  [_model k instance]
-  (assoc instance k (boolean api/*is-superuser?*)))
+;; A bundled plugin on a read-only instance comes from the repository, so it can only change there. Dev-only plugins
+;; are never synced (see the remote-sync spec below), so existing ones stay writable, but `can-create?` refuses new
+;; ones too: a read-only instance registers no plugins.
+(methodical/defmethod t2/batched-hydrate [:model/CustomVizPlugin :can_write]
+  "Whether the current user can write each of `plugins`, the bundle hashes of those read without one loaded once."
+  [_model k plugins]
+  (let [read-only? (remote-sync/read-only?)
+        id->hash   (when (and api/*is-superuser?* read-only?)
+                     (some->> plugins
+                              (keep #(when (and % (not (contains? % :bundle_hash))) (:id %)))
+                              not-empty
+                              vec
+                              custom-viz-plugin.db/plugin-bundle-hashes))]
+    (for [plugin plugins]
+      (when plugin
+        (assoc plugin k (boolean (and api/*is-superuser?*
+                                      (or (not read-only?)
+                                          (nil? (if (contains? plugin :bundle_hash)
+                                                  (:bundle_hash plugin)
+                                                  (get id->hash (:id plugin))))))))))))
 
 (defmethod mi/can-create? :model/CustomVizPlugin
-  [_model _instance]
-  api/*is-superuser?*)
+  [_model _plugin]
+  (and api/*is-superuser?*
+       (not (remote-sync/read-only?))))
+
+(defmethod mi/can-update? :model/CustomVizPlugin
+  [plugin changes]
+  (and api/*is-superuser?*
+       (or (not (remote-sync/synced-changes? :model/CustomVizPlugin plugin changes))
+           (not (remote-sync/read-only?)))))
 
 (methodical/defmethod mi/to-json :model/CustomVizPlugin
   "Never include the raw bundle bytes in JSON."
@@ -114,14 +140,16 @@
 
 (mu/defn delete-custom-viz-plugins! :- :nil
   "Delete the CustomVizPlugins with `ids` in one transaction, publishing their delete event right before the first
-  statement, with the plugins read without their bundles."
+  statement, with the plugins read without their bundles, and evict their on-disk bundle caches."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/with-transaction [_conn]
     (let [batches (mapv vec (partition-all app-db/delete-partition-size ids))
           plugins (into [] (mapcat (comp vals custom-viz-plugin.db/non-blob-plugins-by-ids)) batches)]
       (when (seq plugins)
         (events/publish-event! :event/custom-viz-plugin-delete (events/delete-event plugins))
-        (run! custom-viz-plugin.db/delete-plugins! batches))))
+        (run! custom-viz-plugin.db/delete-plugins! batches)
+        ;; a pull deletes through here too, not only the API, so the on-disk bundle caches are evicted here
+        (run! cache/purge-plugin-cache! plugins))))
   nil)
 
 (mu/defn insert-bundle!
@@ -156,21 +184,37 @@
   {:skip? false})
 
 (defmethod serialization/spec :model/CustomVizPlugin [_]
-  {:schema        ::custom-viz-plugin.schema/external-custom-viz-plugin
-   :identity      [:identifier]
-   :copy          [:display_name :identifier :enabled :icon :manifest :metabase_version]
-   :skip          [:status :error_message :dev_bundle_url :bundle_hash]
-   :defaults      {:enabled true}
-   :transform     {:bundle custom-viz-plugin.serialization/bundle-transform}
-   :insert!       create-custom-viz-plugins!
-   :update!       #(do (update-custom-viz-plugins! %) %)
-   :delete!       delete-custom-viz-plugins!
-   :rows-by-refs  custom-viz-plugin.serialization/rows-by-refs
-   :storage-paths custom-viz-plugin.serialization/storage-paths
-   :before-load   custom-viz-plugin.serialization/before-load
-   :after-load    custom-viz-plugin.serialization/after-load})
+  {:schema            ::custom-viz-plugin.schema/external-custom-viz-plugin
+   :identity          [:identifier]
+   :copy              [:identifier]
+   :skip              [;; derived from the bundle at import time, exactly as on upload
+                       :display_name :icon :manifest :metabase_version :bundle_hash :status :error_message
+                       ;; admin-owned state of this instance
+                       :enabled
+                       ;; dev-only plugins are never served from another instance
+                       :dev_bundle_url]
+   :transform         {:bundle custom-viz-plugin.serialization/bundle-transform}
+   :after-export      custom-viz-plugin.serialization/after-export
+   :after-export-keys [:files]
+   :storage-paths     custom-viz-plugin.serialization/storage-paths
+   :resource-paths    custom-viz-plugin.serialization/resource-paths
+   :entity-ref        custom-viz-plugin.serialization/entity-ref
+   :rows-by-refs      custom-viz-plugin.serialization/rows-by-refs
+   :before-load       custom-viz-plugin.serialization/before-load
+   :after-load        custom-viz-plugin.serialization/after-load
+   :insert!           create-custom-viz-plugins!
+   :update!           #(do (update-custom-viz-plugins! %) %)
+   :delete!           delete-custom-viz-plugins!})
 
 (defmethod audit/spec :model/CustomVizPlugin [_model]
   {:track          [:identifier :display_name :status :enabled :bundle_hash]
    :track-redacted [:bundle :dev_bundle_url :error_message :icon :manifest :metabase_version]
    :skip           []})
+
+(defmethod remote-sync/spec :model/CustomVizPlugin
+  [_model]
+  ;; a dev-only plugin has no stored bundle: it is this instance's alone, a push has nothing to write for it, and a
+  ;; pull must not remove it
+  {:name                 :identifier
+   :synced-items         custom-viz-plugin.db/synced-custom-viz-plugin-items
+   :synced-filter-clause (fn [alias _opts] [:not= (u/qualified-key alias :bundle_hash) nil])})

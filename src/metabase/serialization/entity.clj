@@ -30,7 +30,8 @@
 
 (defn external-keys
   "The keys an entity of `model` holds as serialization writes it: its `:serdes/meta`, the keys of the columns its spec
-  copies or transforms, but the parent column a loader sets, and the keys its children nest under."
+  copies or transforms, but the parent column a loader sets, the keys its `:after-export` adds, and the keys its
+  children nest under."
   [model]
   (let [spec       (serialization.spec/spec-of model)
         parent-key (:key (:parent spec))]
@@ -40,6 +41,7 @@
                       (when-not (and (= k parent-key) (not (:export transform)))
                         (:as transform k))))
               (:transform spec))
+        (into (:after-export-keys spec))
         (into (keys (:children spec))))))
 
 (defn external-entity
@@ -129,13 +131,14 @@
                                :when (not (:import-only? (serialization.spec/parent child-model)))]
                            [k (serialize-children model child-model store rows)]))
         exported (fn [i row]
-                   (reduce (fn [entity [k values]]
-                             (let [v (nth values i)]
-                               (cond-> entity
-                                 (exported? defaults k v) (assoc k v))))
-                           (-> (into {} (filter (fn [[k v]] (exported? defaults k v))) (select-keys row (:copy spec)))
-                               (assoc :serdes/meta (meta-of model)))
-                           columns))]
+                   ((:after-export spec identity)
+                    (reduce (fn [entity [k values]]
+                              (let [v (nth values i)]
+                                (cond-> entity
+                                  (exported? defaults k v) (assoc k v))))
+                            (-> (into {} (filter (fn [[k v]] (exported? defaults k v))) (select-keys row (:copy spec)))
+                                (assoc :serdes/meta (meta-of model)))
+                            columns)))]
     (vec (map-indexed exported rows))))
 
 (defn deserialize-entities

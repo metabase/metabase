@@ -5,7 +5,7 @@
    [metabase.config.core :as config]
    [metabase.util.json :as json]))
 
-(deftest parse-manifest-test
+(deftest ^:parallel parse-manifest-test
   (testing "parses valid JSON"
     (is (= {:name "test-viz" :icon "icon.svg"}
            (manifest/parse-manifest "{\"name\": \"test-viz\", \"icon\": \"icon.svg\"}"))))
@@ -88,7 +88,7 @@
       (is (false? (manifest/sdk-version-tested? "1.9.9")))
       (is (false? (manifest/sdk-version-tested? "2.2.0"))))))
 
-(deftest tested-sdk-version-range-covers-current-sdk-test
+(deftest ^:parallel tested-sdk-version-range-covers-current-sdk-test
   (testing "tested-sdk-version-range includes the @metabase/custom-viz version in package.json — bump the range in the same PR as the version (see custom-viz/dev.md)"
     (let [{:keys [version]} (json/decode+kw (slurp "enterprise/frontend/src/custom-viz/package.json"))]
       (is (true? (manifest/sdk-version-tested? version))
@@ -126,7 +126,7 @@
              (map :type (manifest/warnings {:metabase_version ">=1.99"
                                             :manifest         {:sdk {:version "1.0.5"}}})))))))
 
-(deftest validation-error-test
+(deftest ^:parallel validation-error-test
   (testing "well-formed manifests produce no error, extra keys and nils included"
     (is (nil? (manifest/validation-error {:name "viz"})))
     (is (nil? (manifest/validation-error {:name     "viz"
@@ -152,7 +152,7 @@
 
 ;;; ------------------------------------------------ Path Safety ------------------------------------------------
 
-(deftest safe-relative-path?-test
+(deftest ^:parallel safe-relative-path?-test
   (testing "accepts simple filenames"
     (is (true? (manifest/safe-relative-path? "icon.svg")))
     (is (true? (manifest/safe-relative-path? "assets/icon.svg"))))
@@ -169,34 +169,64 @@
     ;; but this resolves to ../secret
     (is (false? (manifest/safe-relative-path? "foo/../../secret")))))
 
+(deftest ^:parallel normalize-path-test
+  (testing "joins with / and drops empty and . segments"
+    (is (= "dist/assets/icon.svg" (manifest/normalize-path "dist/assets/./icon.svg")))
+    (is (= "dist/assets/icon.svg" (manifest/normalize-path "./dist//assets/icon.svg"))))
+  (testing "resolves .. against the segment before it"
+    (is (= "dist/icon.svg" (manifest/normalize-path "dist/assets/../icon.svg"))))
+  (testing "keeps a leading .. it can't resolve, as Path.normalize does"
+    (is (= "../icon.svg" (manifest/normalize-path "assets/../../icon.svg")))))
+
 ;;; ------------------------------------------------ Asset Paths ------------------------------------------------
 
-(deftest asset-paths-test
-  (testing "returns the icon when it's a safe image"
+(deftest ^:parallel asset-paths-test
+  (testing "returns an icon with dot segments as written, as the frontend requests it"
+    (is (= ["./icon.svg"] (manifest/asset-paths {:icon "./icon.svg"}))))
+  (testing "returns the icon when it's a safe SVG file"
     (is (= ["icon.svg"] (manifest/asset-paths {:icon "icon.svg"})))
-    (is (= ["icon.png"] (manifest/asset-paths {:icon "icon.png"}))))
+    (is (= ["Icon.SVG"] (manifest/asset-paths {:icon "Icon.SVG"}))))
   (testing "returns nil when there is no icon"
     (is (nil? (manifest/asset-paths {})))
     (is (nil? (manifest/asset-paths {:icon nil}))))
-  (testing "rejects a non-image icon"
-    (is (nil? (manifest/asset-paths {:icon "icon.js"}))))
+  (testing "rejects an icon that is not an SVG file, bitmaps included"
+    (is (nil? (manifest/asset-paths {:icon "icon.js"})))
+    (is (nil? (manifest/asset-paths {:icon "icon.png"}))))
   (testing "rejects an icon with path traversal"
     (is (nil? (manifest/asset-paths {:icon "../secret.svg"})))
     (is (nil? (manifest/asset-paths {:icon "/etc/passwd.svg"}))))
   (testing "ignores a stray assets array — only the icon is ever served"
     (is (= ["icon.svg"]
            (manifest/asset-paths {:icon   "icon.svg"
-                                  :assets ["thumbs-up.png" "thumbs-down.png" "en.json"]})))
-    (is (nil? (manifest/asset-paths {:assets ["thumbs-up.png"]})))))
+                                  :assets ["thumbs-up.svg" "thumbs-down.svg" "en.json"]})))
+    (is (nil? (manifest/asset-paths {:assets ["thumbs-up.svg"]})))))
+
+(deftest ^:parallel servable-icon-test
+  (testing "a safe SVG icon is returned as-is"
+    (is (= "Icon.SVG" (manifest/servable-icon "Icon.SVG"))))
+  (testing "a bitmap, traversing, or missing icon is nil"
+    (is (nil? (manifest/servable-icon "icon.png")))
+    (is (nil? (manifest/servable-icon "../secret.svg")))
+    (is (nil? (manifest/servable-icon nil)))))
+
+(deftest ^:parallel icon-error-test
+  (testing "an SVG icon passes, whatever the extension's case"
+    (is (nil? (manifest/icon-error "Icon.SVG"))))
+  (testing "any other file type is named in the error"
+    (is (= "Plugin icon \"icon.png\" must be an SVG file" (manifest/icon-error "icon.png"))))
+  (testing "no icon, or a blank one, is fine"
+    (is (nil? (manifest/icon-error nil)))
+    (is (nil? (manifest/icon-error "")))))
 
 ;;; ------------------------------------------------ Content Type ------------------------------------------------
 
-(deftest asset-content-type-test
-  (testing "recognizes image types"
+(deftest ^:parallel asset-content-type-test
+  (testing "recognizes the SVG icon"
     (is (= "image/svg+xml" (manifest/asset-content-type "icon.svg")))
-    (is (= "image/png" (manifest/asset-content-type "thumb.png")))
-    (is (= "image/jpeg" (manifest/asset-content-type "photo.jpg"))))
-  (testing "returns nil for non-image types — assets (incl. JSON) are no longer served"
+    (is (= "image/svg+xml" (manifest/asset-content-type "ICON.SVG"))))
+  (testing "returns nil for every other type — bitmaps are not icons and assets (incl. JSON) are not served"
+    (is (nil? (manifest/asset-content-type "thumb.png")))
+    (is (nil? (manifest/asset-content-type "photo.jpg")))
     (is (nil? (manifest/asset-content-type "en.json")))
     (is (nil? (manifest/asset-content-type "script.js")))
     (is (nil? (manifest/asset-content-type "style.css")))
@@ -204,8 +234,13 @@
     ;; .html has MIME text/html — should be rejected
     (is (nil? (manifest/asset-content-type "page.html")))))
 
-(deftest identifier-error-test
+(deftest ^:parallel identifier-error-test
   (testing "`:` is the viz-settings key separator"
     (is (nil? (manifest/identifier-error "demo-viz")))
     (is (= "Plugin identifier \"demo:viz\" must not contain \":\""
-           (manifest/identifier-error "demo:viz")))))
+           (manifest/identifier-error "demo:viz"))))
+  (testing "any other character is allowed: a repository names the directory after the slugified identifier"
+    (doseq [identifier ["demo viz" "démo" "_demo" "demo@viz" "demo/viz"]]
+      (is (nil? (manifest/identifier-error identifier)) identifier)))
+  (testing "a non-string is someone else's problem"
+    (is (nil? (manifest/identifier-error nil)))))

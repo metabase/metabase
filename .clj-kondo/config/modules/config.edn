@@ -4091,7 +4091,7 @@
 
   enterprise/custom-viz-plugin
   {:team "Gadget"
-   :api  #{metabase-enterprise.custom-viz-plugin.api metabase-enterprise.custom-viz-plugin.init}
+   :api  #{metabase-enterprise.custom-viz-plugin.api metabase-enterprise.custom-viz-plugin.init metabase-enterprise.custom-viz-plugin.schema}
    :uses #{api
            api-scope
            app-db
@@ -4100,6 +4100,7 @@
            lib.schema
            models
            premium-features
+           remote-sync
            serialization
            server
            settings
@@ -4651,12 +4652,14 @@
            transforms.schema
            util
            warehouses.schema
+           enterprise/custom-viz-plugin
            enterprise/data-testing
            enterprise/serialization
            enterprise/transforms.python}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
+                    :model/CustomVizPlugin
                     :model/Dashboard
                     :model/DataApp
                     :model/Document
