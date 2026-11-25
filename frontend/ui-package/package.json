@@ -49,8 +49,6 @@
     "smoke": "bun run scripts/smoke.ts"
   },
   "dependencies": {
-    "@emotion/cache": "^11.14.0",
-    "@emotion/react": "^11.14.0",
     "@floating-ui/dom": "^1.7.4",
     "@juggle/resize-observer": "^3.4.0",
     "@tanstack/react-table": "^8.21.3",
