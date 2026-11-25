@@ -229,6 +229,28 @@
       (when (every? some? elements)
         elements))))
 
+(defn- tuple-nested-fields
+  "Return one nested field for each element of a named `Tuple` type, so each element is a field of its own."
+  [database-position database-type]
+  (into #{}
+        (map (fn [[element-name element-type]]
+               (let [element-elements (tuple-elements element-type)]
+                 (cond-> {:name              element-name
+                          :database-type     element-type
+                          :base-type         (if element-elements
+                                               :type/Dictionary
+                                               (sql-jdbc.sync/database-type->base-type :clickhouse element-type))
+                          :database-position database-position}
+                   element-elements (assoc :nested-fields (tuple-nested-fields database-position element-type))))))
+        (tuple-elements database-type)))
+
+(defn- with-tuple-nested-fields
+  [{:keys [database-type database-position] :as field}]
+  (cond-> field
+    (tuple-elements database-type)
+    (assoc :base-type     :type/Dictionary
+           :nested-fields (tuple-nested-fields database-position database-type))))
+
 (defn- ^:private is-db-required?
   [field]
   (not (str/starts-with? (get field :database-type) "Nullable")))
@@ -237,8 +259,9 @@
   [_driver database table]
   (let [table-metadata (sql-jdbc.sync/describe-table :clickhouse database table)
         filtered-fields (for [field (:fields table-metadata)
-                              :let [updated-field (update field :database-required
-                                                          (fn [_] (is-db-required? field)))]
+                              :let [updated-field (-> field
+                                                      (assoc :database-required (is-db-required? field))
+                                                      with-tuple-nested-fields)]
                               ;; Skip all AggregateFunction (but keeping SimpleAggregateFunction) columns
                               ;; JDBC does not support that and it crashes the data browser
                               :when (not (re-matches #"^AggregateFunction\(.+$"
