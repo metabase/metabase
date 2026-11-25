@@ -146,30 +146,24 @@ export function getPivotColumnSplit(
   return { rows: [...rows, ...missingNames], columns, values };
 }
 
-function resetDefaultGraphDimensions(
+function shouldResetDefaultGraphDimensions(
   question: Question,
   nextQuestion: Question,
-) {
-  const settings = nextQuestion.settings();
-  const dimensions = settings["graph.dimensions"];
+): boolean {
+  const dimensions = nextQuestion.settings()["graph.dimensions"];
   const query = nextQuestion.query();
   const display = nextQuestion.display();
-  if (
-    dimensions?.length !== 1 ||
-    !isCartesianChart(display) ||
-    getMaxDimensionsSupported(display) < 2 ||
-    Lib.breakouts(query, STAGE_INDEX).length !== 2 ||
-    Lib.aggregations(query, STAGE_INDEX).length !== 1
-  ) {
-    return nextQuestion;
-  }
-
-  const { breakoutNames } = getResultColumnNames(question.query(), STAGE_INDEX);
-  if (!_.isEqual(dimensions, breakoutNames)) {
-    return nextQuestion;
-  }
-
-  return nextQuestion.setSettings(_.omit(settings, "graph.dimensions"));
+  return (
+    dimensions?.length === 1 &&
+    isCartesianChart(display) &&
+    getMaxDimensionsSupported(display) >= 2 &&
+    Lib.breakouts(query, STAGE_INDEX).length === 2 &&
+    Lib.aggregations(query, STAGE_INDEX).length === 1 &&
+    _.isEqual(
+      dimensions,
+      getResultColumnNames(question.query(), STAGE_INDEX).breakoutNames,
+    )
+  );
 }
 
 export function getSummaryQuestion(
@@ -193,8 +187,14 @@ export function getSummaryQuestion(
   if (pivotChange?.type === "hide") {
     return nextQuestion.setDisplayIsLocked(false).setDefaultDisplay();
   }
-  return resetDefaultGraphDimensions(
-    question,
-    nextQuestion.setDefaultDisplay(),
-  );
+
+  const summaryQuestion = nextQuestion.setDefaultDisplay();
+
+  if (shouldResetDefaultGraphDimensions(question, summaryQuestion)) {
+    return summaryQuestion.setSettings(
+      _.omit(summaryQuestion.settings(), "graph.dimensions"),
+    );
+  }
+
+  return summaryQuestion;
 }
