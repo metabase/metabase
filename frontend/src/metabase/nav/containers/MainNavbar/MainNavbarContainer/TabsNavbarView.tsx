@@ -357,11 +357,8 @@ export function TabsNavbarView({
         {
           heading: t`Official`,
           tabs: [
-            {
-              ...sectionTabs[0],
-              label: t`Official collections`,
-              icon: "folder_bookmark",
-            },
+            // Keeps its "Collections" label; the heading says it's official.
+            { ...sectionTabs[0], icon: "folder_bookmark" },
             { id: "metrics", label: t`Metrics`, icon: "metric" },
             ...(datasetsSection
               ? [{ id: "datasets", label: t`Datasets`, icon: "table" } as const]
