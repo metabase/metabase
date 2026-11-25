@@ -42,7 +42,7 @@
       (let [{:keys [input-sql declared produced]} (get cases driver/*driver*)
             mp                            (mt/metadata-provider)
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
-            transform-sql                 (str "SELECT id AS total FROM " schema "." table)]
+            transform-sql                 (str "SELECT id AS total FROM " (data-testing.test-util/qualified schema table))]
         (mt/with-temp [:model/Transform {transform-id :id :as transform}
                        {:source {:type  :query
                                  :query (lib/native-query mp transform-sql)}

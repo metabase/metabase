@@ -308,6 +308,7 @@
   standing for one, or nil when it does not end. Port of `_pg_quoted_end`."
   [^String sql i quote backslash-escapes?]
   (let [n       (count sql)
+        quote   (char quote)
         doubled (str quote quote)]
     (loop [i i]
       (when (< i n)

@@ -17,6 +17,12 @@
    :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]]}
    :expected     "SELECT orders.id, orders.* FROM mb_tmp AS orders WHERE orders.total > 0"}
 
+  {:name         "a dot before a table name, which MariaDB reads as the current database, stays as written"
+   :dialects     ["mysql"]
+   :sql          "SELECT id FROM .orders"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]]}
+   :expected     "SELECT id FROM .mb_tmp AS orders"}
+
   {:name         "the whole schema-qualified name is replaced"
    :dialects     ["postgres" "mysql" "redshift" "clickhouse" "tsql"]
    :sql          "SELECT id FROM public.orders"

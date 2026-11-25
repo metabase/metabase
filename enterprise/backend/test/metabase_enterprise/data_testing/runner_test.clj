@@ -31,7 +31,7 @@
         {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
     (mt/with-temp [:model/Transform transform
                    {:source {:type  :query
-                             :query (lib/native-query mp (str "SELECT id, name FROM " schema "." table))}
+                             :query (lib/native-query mp (str "SELECT id, name FROM " (data-testing.test-util/qualified schema table)))}
                     :target {:type     "table"
                              :schema   schema
                              :name     "people_summary"
@@ -125,7 +125,7 @@
               id-name              (:name (lib.metadata/field mp (mt/id :people :id)))
               name-name            (:name (lib.metadata/field mp (mt/id :people :name)))
               [int-type text-type] (data-testing.test-util/cast-types)
-              output               (str schema ".people_summary")
+              output               (data-testing.test-util/qualified schema "people_summary")
               run                  (fn [rows sql]
                                      (mt/with-temp [:model/TransformTest transform-test
                                                     {:transform_id (:id transform)
@@ -148,7 +148,7 @@
   (let [result (run-test! schema table transform one-row
                           [{:type :empty
                             :name description
-                            :sql  (str "SELECT * FROM " schema ".people_summary WHERE " where)}])]
+                            :sql  (str "SELECT * FROM " (data-testing.test-util/qualified schema "people_summary") " WHERE " where)}])]
     (is (= expected (:status result)))
     (is (= [{:name description :type :empty :status expected}]
            (mapv #(select-keys % [:name :type :status]) (:expectations result))))))
@@ -169,15 +169,15 @@
     (mt/test-drivers (data-testing.test-util/data-test-drivers)
       (let [mp                            (mt/metadata-provider)
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
-            qualified                     (str schema "." table)]
-        (doseq [[form sql] {"the table's name, no alias"
-                            (str "SELECT " table ".id, " table ".name FROM " qualified " -- as written\n WHERE " table ".id > 0")
+            qualified                     (data-testing.test-util/qualified schema table)]
+        (doseq [[form sql] (cond-> {"the table's name, no alias"
+                                    (str "SELECT " table ".id, " table ".name FROM " qualified " -- as written\n WHERE " table ".id > 0")
 
-                            "the schema and the table's name, no alias"
-                            (str "SELECT " qualified ".id, " qualified ".name FROM " qualified " WHERE " qualified ".id > 0")
-
-                            "an alias"
-                            (str "SELECT p.id, p.name FROM " qualified " p WHERE p.id > 0")}]
+                                    "an alias"
+                                    (str "SELECT p.id, p.name FROM " qualified " p WHERE p.id > 0")}
+                             schema
+                             (assoc "the schema and the table's name, no alias"
+                                    (str "SELECT " qualified ".id, " qualified ".name FROM " qualified " WHERE " qualified ".id > 0")))]
           (testing form
             (mt/with-temp [:model/Transform transform
                            {:source {:type :query :query (lib/native-query mp sql)}
@@ -185,7 +185,7 @@
               (let [status (fn [expectation-sql]
                              (:status (run-test! schema table transform one-row
                                                  [{:type :empty :name "check" :sql expectation-sql}])))
-                    output (str schema ".people_summary")]
+                    output (data-testing.test-util/qualified schema "people_summary")]
                 (testing "the output holds the input's row, read through a qualifier in the expectation too"
                   (is (= :passed (status (str "SELECT * FROM " output
                                               " WHERE NOT (people_summary.id = 1 AND people_summary.name = 'abc')")))))
@@ -201,7 +201,7 @@
                 status (fn [where]
                          (:status (run-test! schema table transform input
                                              [{:type :empty :name "check"
-                                               :sql  (str "SELECT * FROM " schema ".people_summary WHERE " where)}])))]
+                                               :sql  (str "SELECT * FROM " (data-testing.test-util/qualified schema "people_summary") " WHERE " where)}])))]
             (testing "the output holds the input's row"
               (is (= :passed (status "NOT (id = 1 AND name = 'abc')"))))
             (testing "control: an expectation that the input's row violates fails"
@@ -215,7 +215,7 @@
           (is (= [:passed]
                  (mapv :status (:expectations (run-test! schema table transform one-row
                                                          [{:type :equals :name "rows" :format :sql
-                                                           :sql  (str "SELECT id, name FROM " schema ".people_summary")}]))))))))))
+                                                           :sql  (str "SELECT id, name FROM " (data-testing.test-util/qualified schema "people_summary"))}]))))))))))
 
 (deftest run-transform-test-expectation-after-a-warehouse-error-test
   (testing "an expectation whose query fails at the warehouse does not change the result of the next one"
@@ -223,7 +223,7 @@
     (mt/test-drivers (disj (data-testing.test-util/data-test-drivers) :redshift)
       (with-people-transform
         (fn [schema table transform]
-          (let [output   (str schema ".people_summary")
+          (let [output   (data-testing.test-util/qualified schema "people_summary")
                 result   (run-test! schema table transform one-row
                                     [{:type :empty :name "broken" :sql (str "SELECT no_such_column FROM " output)}
                                      {:type :empty :name "passes" :sql (str "SELECT * FROM " output " WHERE id <> 1")}])
@@ -243,7 +243,7 @@
                                   :sql    one-row}]
                   :expectations [{:type :empty
                                   :name "check"
-                                  :sql  (str "SELECT * FROM " schema ".people_summary WHERE " where)}]}]
+                                  :sql  (str "SELECT * FROM " (data-testing.test-util/qualified schema "people_summary") " WHERE " where)}]}]
     (is (= expected (:status (data-testing.test-util/run-as-admin! :transform transform transform-test))))
     (let [run (t2/select-one :model/DataTestRun :test_type :transform :test_id transform-test-id)]
       (is (= expected (:status run)))
@@ -274,7 +274,7 @@
                                         :sql    "SELECT * FROM transform_test_input_that_does_not_exist"}]
                         :expectations [{:type :empty
                                         :name "never reached"
-                                        :sql  (str "SELECT * FROM " schema ".people_summary")}]}]
+                                        :sql  (str "SELECT * FROM " (data-testing.test-util/qualified schema "people_summary"))}]}]
           (is (thrown? ExceptionInfo
                        (data-testing.test-util/run-as-admin! :transform transform transform-test)))
           (let [run (t2/select-one :model/DataTestRun :test_type :transform :test_id transform-test-id)]
@@ -360,12 +360,12 @@
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
         (mt/with-temp [:model/Transform transform
                        {:source {:type  :query
-                                 :query (lib/native-query mp (str "SELECT id, name FROM " schema "." table))}
+                                 :query (lib/native-query mp (str "SELECT id, name FROM " (data-testing.test-util/qualified schema table)))}
                         :target {:type "table" :schema schema :name "people_summary" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id (:id transform)
                         :inputs       []
-                        :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " schema ".people_summary")}]}]
+                        :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " (data-testing.test-util/qualified schema "people_summary"))}]}]
           (let [ex (try (data-testing.test-util/run-as-admin! :transform transform transform-test)
                         nil
                         (catch ExceptionInfo e e))]
@@ -390,14 +390,14 @@
                        {:source {:type  :query
                                  :query (lib/native-query
                                          mp (str "SELECT o.id, p.name"
-                                                 " FROM " oschema "." orders " o"
-                                                 " JOIN " pschema "." people " p ON o.user_id = p.id"))}
+                                                 " FROM " (data-testing.test-util/qualified oschema orders) " o"
+                                                 " JOIN " (data-testing.test-util/qualified pschema people) " p ON o.user_id = p.id"))}
                         :target {:type "table" :schema oschema :name "order_owners" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id (:id transform)
                         :inputs       [{:table {:schema oschema :name orders} :format :sql
                                         :sql "SELECT 1 AS id, 1 AS user_id"}]
-                        :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " oschema ".order_owners")}]}]
+                        :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " (data-testing.test-util/qualified oschema "order_owners"))}]}]
           (let [ex (try (data-testing.test-util/run-as-admin! :transform transform transform-test)
                         nil
                         (catch ExceptionInfo e e))]
@@ -415,7 +415,7 @@
             orders                        (:name (lib.metadata/table mp (mt/id :orders)))]
         (mt/with-temp [:model/Transform transform
                        {:source {:type  :query
-                                 :query (lib/native-query mp (str "SELECT id, name FROM " schema "." people))}
+                                 :query (lib/native-query mp (str "SELECT id, name FROM " (data-testing.test-util/qualified schema people)))}
                         :target {:type "table" :schema schema :name "people_summary" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id (:id transform)
@@ -423,7 +423,7 @@
                                         :sql "SELECT 1 AS id, 'x' AS name"}
                                        {:table (data-testing.test-util/table-ref :orders) :format :sql
                                         :sql "SELECT 1 AS id"}]
-                        :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " schema ".people_summary")}]}]
+                        :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " (data-testing.test-util/qualified schema "people_summary"))}]}]
           (let [ex (try (data-testing.test-util/run-as-admin! :transform transform transform-test)
                         nil
                         (catch ExceptionInfo e e))]
@@ -441,13 +441,13 @@
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
         (mt/with-temp [:model/Transform transform
                        {:source {:type  :query
-                                 :query (lib/native-query mp (str "SELECT id, name FROM " schema "." table))}
+                                 :query (lib/native-query mp (str "SELECT id, name FROM " (data-testing.test-util/qualified schema table)))}
                         :target {:type "table" :schema schema :name "people_summary" :database (mt/id)}}
                        :model/TransformTest transform-test
                        {:transform_id (:id transform)
                         :inputs       [{:table (data-testing.test-util/table-ref :people) :format :sql :sql "SELECT 1 AS id, 'a' AS name"}
                                        {:table (data-testing.test-util/table-ref :people) :format :sql :sql "SELECT 2 AS id, 'b' AS name"}]
-                        :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " schema ".people_summary")}]}]
+                        :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " (data-testing.test-util/qualified schema "people_summary"))}]}]
           (let [ex (try (data-testing.test-util/run-as-admin! :transform transform transform-test)
                         nil
                         (catch ExceptionInfo e e))]
@@ -489,7 +489,7 @@
                         :inputs       [{:table (data-testing.test-util/table-ref :people) :format :sql
                                         :sql "SELECT 1 AS id, 'x' AS name"}]
                         :expectations [{:type :empty :name "only the input row"
-                                        :sql (str "SELECT * FROM " schema ".people_qualified WHERE id <> 1")}]}]
+                                        :sql (str "SELECT * FROM " (data-testing.test-util/qualified schema "people_qualified") " WHERE id <> 1")}]}]
           (is (=? {:status :passed}
                   (data-testing.test-util/run-as-admin! :transform transform transform-test))))))))
 
@@ -499,11 +499,11 @@
           {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))]
       (mt/with-temp [:model/Transform transform
                      {:source {:type  :query
-                               :query (lib/native-query mp (str "SELECT id, id FROM " schema "." table))}
+                               :query (lib/native-query mp (str "SELECT id, id FROM " (data-testing.test-util/qualified schema table)))}
                       :target {:type "table" :schema schema :name "people_summary" :database (mt/id)}}]
         (testing "a transform whose output repeats a column name is refused before its output table is created"
           (let [e (try (run-test! schema table transform one-row
-                                  [{:type :empty :name "none" :sql (str "SELECT * FROM " schema ".people_summary")}])
+                                  [{:type :empty :name "none" :sql (str "SELECT * FROM " (data-testing.test-util/qualified schema "people_summary"))}])
                        nil
                        (catch ExceptionInfo e e))]
             (is (= ::data-testing.errors/duplicate-output-columns (:error-type (ex-data e))))
@@ -518,14 +518,14 @@
                                             (mt/with-temp [:model/Transform transform
                                                            {:name   "t"
                                                             :source {:type  :query
-                                                                     :query (lib/native-query mp (str "SELECT id FROM " schema "." table))}
+                                                                     :query (lib/native-query mp (str "SELECT id FROM " (data-testing.test-util/qualified schema table)))}
                                                             :target {:type "table" :schema schema :name target-name :database (mt/id)}}]
                                               (try (mt/with-current-user (mt/user->id :crowberto)
                                                      (data-testing.runner/validate-test
                                                       :transform
                                                       transform
                                                       {:inputs       []
-                                                       :expectations [{:type :empty :name "e" :sql (str "SELECT * FROM " schema ".people_summary")}]}))
+                                                       :expectations [{:type :empty :name "e" :sql (str "SELECT * FROM " (data-testing.test-util/qualified schema "people_summary"))}]}))
                                                    nil
                                                    (catch ExceptionInfo e
                                                      (select-keys (ex-data e) [:error-type :type])))))]
