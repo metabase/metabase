@@ -186,22 +186,25 @@
                                (fn [response]
                                  (dissoc response :json_query :context :cached :average_execution_time))))))))))
 
-(defn- check-known-keys
-  "Returns `definition`, the value of `column`, or throws a 400 when it is a map with a key that `allowed` does not
-  hold. Runs before the request decoder drops the keys a closed map does not list."
+(defn- check-definition-request
+  "Returns `definition`, or throws a 400 when it has a key outside `allowed` or a value that is not an integer or null.
+  It runs before the request decoder, which would drop an unknown key and turn a Field name into null."
   [column allowed definition]
-  (when (and (map? definition)
-             (not-every? allowed (keys definition)))
-    (let [message (tru "{0} may only have the keys {1}" (name column) (str/join ", " (sort (map name allowed))))]
-      (throw (ex-info message {:status-code 400 :errors {column message}}))))
+  (when (map? definition)
+    (let [throw-invalid (fn [message]
+                          (throw (ex-info message {:status-code 400 :errors {column message}})))]
+      (when-not (every? allowed (keys definition))
+        (throw-invalid (tru "{0} may only have the keys {1}" (name column) (str/join ", " (sort (map name allowed))))))
+      (when-some [k (some (fn [[k v]] (when-not (or (nil? v) (int? v)) k)) definition)]
+        (throw-invalid (tru "{0} {1} must be an id" (name column) (name k))))))
   definition)
 
 (defn- definition-request-schema
   "The registered closed `:map` `schema`, the value of `column`, as a request schema that refuses a key it does not
-  list rather than dropping it."
+  list rather than dropping it, and a value that is not an integer or null."
   [column schema]
   (let [schema (mc/deref-all (mr/schema schema))]
-    (mut/update-properties schema assoc :decode/api (partial check-known-keys column (set (mut/keys schema))))))
+    (mut/update-properties schema assoc :decode/api (partial check-definition-request column (set (mut/keys schema))))))
 
 (def ^:private HistoryDefinition
   "Schema for a Table's `history_definition` in a request."

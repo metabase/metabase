@@ -1777,11 +1777,23 @@
                               [:history_definition {:durable_key true}]
                               [:history_definition [1 2]]
                               [:eav_definition {:entity_key 1 :property_key 2}]
-                              [:eav_definition {:definition_table -1}]]]
+                              [:eav_definition {:definition_table -1}]
+                              [:history_definition {:valid_from "updated_at"}]
+                              [:history_definition {:durable_key "12"}]
+                              [:eav_definition {:entity_key "entity_id"}]
+                              [:eav_definition {:definition_table "9"}]]]
         (testing (pr-str column value)
           (is (=? {:errors {column some?}}
                   (mt/user-http-request :crowberto :put 400 (format "table/%d" table-id) {column value})))
           (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id))))))))
+
+(deftest structural-metadata-put-rejects-field-name-in-definition-test
+  (testing "a Field name in a definition gets a 400, not a NULL that sync would then skip"
+    (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id)}]
+      (is (= {:history_definition "history_definition valid_from must be an id"}
+             (:errors (mt/user-http-request :crowberto :put 400 (format "table/%d" table-id)
+                                            {:history_definition {:valid_from "updated_at"}}))))
+      (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id))))))
 
 (deftest structural-metadata-put-accepts-longest-grain-test
   (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id)}]
