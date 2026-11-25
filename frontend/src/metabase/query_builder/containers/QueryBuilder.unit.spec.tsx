@@ -383,7 +383,7 @@ describe("QueryBuilder", () => {
         await within(visualization).findByText(
           "Sorry, you don't have permission to run this query.",
         ),
-      ).toBeInTheDocument();
+      ).toBeVisible();
       const runCall = checkNotNull(
         fetchMock.callHistory.lastCall("path:/api/dataset", { method: "POST" }),
       );
