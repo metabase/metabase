@@ -876,20 +876,21 @@ describe("formula modes of the wells", () => {
     expect(getChipLabels("columns")).toEqual([]);
     expect(onQueryChange).toHaveBeenCalledTimes(1);
     const [query] = onQueryChange.mock.calls[0];
-    expect(Lib.toLegacyQuery(query)).toMatchObject({
-      query: {
-        aggregation: [
-          [
-            "aggregation-options",
+    expect(Lib.toJsQuery(query)).toMatchObject({
+      stages: [
+        {
+          aggregation: [
             [
               "/",
-              ["metric", REVENUE_METRIC.id],
-              ["measure", ORDER_COUNT_MEASURE.id],
+              expect.objectContaining({
+                "display-name": "Revenue / Order count",
+              }),
+              ["metric", expect.anything(), REVENUE_METRIC.id],
+              ["measure", expect.anything(), ORDER_COUNT_MEASURE.id],
             ],
-            expect.anything(),
           ],
-        ],
-      },
+        },
+      ],
     });
   });
 });
