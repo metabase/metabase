@@ -113,7 +113,6 @@ export const DataStudio = {
     segmentsPage: () => cy.findByTestId("table-segments-page"),
     measuresPage: () => cy.findByTestId("table-measures-page"),
     header: () => cy.findByTestId("table-pane-header"),
-    nameInput: () => cy.findByTestId("table-name-input"),
     moreMenu: () => DataStudio.Tables.header().icon("ellipsis"),
     overviewTab: () => DataStudio.Tables.header().findByText("Overview"),
     fieldsTab: () => DataStudio.Tables.header().findByText("Fields"),
@@ -143,18 +142,6 @@ export const DataStudio = {
         .invoke("removeAttr", "target")
         .click(),
 
-    Overview: {
-      descriptionSidebar: () => cy.findByTestId("table-description-sidebar"),
-
-      descriptionText: () =>
-        cy
-          .findByTestId("table-description-section")
-          .findByTestId("editable-text"),
-      descriptionInput: () =>
-        cy
-          .findByTestId("table-description-section")
-          .findByPlaceholderText("No description"),
-    },
     openFilterPopover: () => {
       cy.findByRole("button", { name: "Filter" }).click();
       H.popover();
@@ -188,10 +175,6 @@ export const DataStudio = {
     expandCollection: (name: string) =>
       DataStudio.Library.result(name)
         .findByRole("button", { name: "Expand" })
-        .click(),
-    collapseCollection: (name: string) =>
-      DataStudio.Library.result(name)
-        .findByRole("button", { name: "Collapse" })
         .click(),
     emptyStateRow: (description: string | RegExp) =>
       libraryPage().contains('[data-testid="empty-state-row"]', description),
