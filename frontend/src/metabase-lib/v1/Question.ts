@@ -572,7 +572,7 @@ class Question {
         return true;
       }
 
-      return !Lib.areLegacyQueriesEqual(
+      return !Lib.areQueriesEqual(
         this.datasetQuery(),
         originalQuestion.datasetQuery(),
       );
@@ -597,7 +597,7 @@ class Question {
   }
 
   isQueryDirtyComparedTo(originalQuestion: Question) {
-    return !Lib.areLegacyQueriesEqual(
+    return !Lib.areQueriesEqual(
       this.datasetQuery(),
       originalQuestion.datasetQuery(),
     );

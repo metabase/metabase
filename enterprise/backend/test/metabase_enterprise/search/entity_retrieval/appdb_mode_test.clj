@@ -108,11 +108,10 @@
                                                                 :location (str "/" lib-id "/")}
                                :model/Database   {db-id :id}   {}
                                :model/Table      {table-id :id} {:db_id        db-id
-                                                                 :collection_id data-id
-                                                                 :is_published true
                                                                  :active       true
                                                                  :name         "dog_training_guide"
-                                                                 :display_name "Dog Training Guide"}]
+                                                                 :display_name "Dog Training Guide"}
+                               :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id data-id}]
                   (index-table/ensure-tables! ds semantic.tu/mock-embedding-model)
                   (testing "an application table sharing the index's old bare name is left where it is"
                     (is (= 1 (:count (jdbc/execute-one!

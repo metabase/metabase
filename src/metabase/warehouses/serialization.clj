@@ -34,14 +34,15 @@
   "Imports the `:settings` of Databases normalized by their schema, keeping the [[instance-local-settings]] of the
   Databases they update, and the raw ciphertext of settings the model could not decrypt as it is."
   [_store entities values _opts]
-  (mapv (fn [{db-name :name} settings]
-          (let [settings (lib/normalize [:maybe ::warehouses.schema/database.settings] settings)
-                target   (warehouses.db/database-settings-by-name db-name)
-                kept     (when (map? target) (select-keys target instance-local-settings))]
-            (if (map? settings)
-              (not-empty (merge (apply dissoc settings instance-local-settings) kept))
-              settings)))
-        entities values))
+  (let [name->target (warehouses.db/database-settings-by-name (into [] (keep :name) entities))]
+    (mapv (fn [{db-name :name} settings]
+            (let [settings (lib/normalize [:maybe ::warehouses.schema/database.settings] settings)
+                  target   (name->target db-name)
+                  kept     (when (map? target) (select-keys target instance-local-settings))]
+              (if (map? settings)
+                (not-empty (merge (apply dissoc settings instance-local-settings) kept))
+                settings)))
+          entities values)))
 
 (def settings-transform
   "The serialization transform of the `:settings` of Databases, which leaves out [[instance-local-settings]]."
@@ -81,17 +82,21 @@
     (update item :row #(apply dissoc % (remove (set (keys entity)) (keys %))))
     item))
 
+(defn check-imported-row
+  "Refuse the Database `row` of an import when it is H2, or SQLite on a hosted instance."
+  [row]
+  (assert-not-h2! row)
+  (assert-sqlite-not-hosted! row))
+
+(defn sanitized-row
+  "The Database `row` of an import with its connection details sanitized by its driver."
+  [row]
+  (cond-> row
+    (:details row)            (update :details driver/sanitize-db-details)
+    (:write_data_details row) (update :write_data_details driver/sanitize-db-details)
+    (:admin_details row)      (update :admin_details driver/sanitize-db-details)))
+
 (defn before-load
-  "The Database load `items`, refusing H2 and hosted SQLite, with sanitized details."
+  "The Database load `items`, keeping the local values of the internal analytics Database's instance columns."
   [items]
-  (doseq [{:keys [row]} items]
-    (assert-not-h2! row)
-    (assert-sqlite-not-hosted! row))
-  (mapv (fn [item]
-          (-> item
-              keep-local-audit-columns
-              (update :row #(cond-> %
-                              (:details %)            (update :details driver/sanitize-db-details)
-                              (:write_data_details %) (update :write_data_details driver/sanitize-db-details)
-                              (:admin_details %)      (update :admin_details driver/sanitize-db-details)))))
-        items))
+  (mapv keep-local-audit-columns items))

@@ -68,13 +68,17 @@
 
 (api.macros/defendpoint :get "/advisories" :- [:map
                                                [:last_checked_at [:maybe ms/TemporalInstant]]
+                                               [:last_sync_attempted_at [:maybe ms/TemporalInstant]]
+                                               [:last_sync_error [:maybe :string]]
                                                [:advisories [:sequential AdvisoryResponse]]]
   "List all security advisories with match status."
   []
   (api/check-superuser)
   (let [advisories (t2/hydrate (security-center.db/advisories-newest-first) :acknowledged_by_user)]
-    {:last_checked_at (settings/security-center-last-synced-at)
-     :advisories      (mapv advisory-response advisories)}))
+    {:last_checked_at        (settings/security-center-last-synced-at)
+     :last_sync_attempted_at (settings/security-center-last-sync-attempted-at)
+     :last_sync_error        (settings/security-center-last-sync-error)
+     :advisories             (mapv advisory-response advisories)}))
 
 (defn- acknowledge-response
   "Format a slim response for the acknowledge endpoint."
@@ -98,7 +102,7 @@
   (api/check-superuser)
   (api/check (seq advisory_ids) [400 "advisory_ids must be a non-empty array"])
   (mapv acknowledge-response
-        (security-advisory/acknowledge-many! advisory_ids api/*current-user-id*)))
+        (security-advisory/acknowledge-security-advisories! advisory_ids api/*current-user-id*)))
 
 (defonce ^:private ^ExecutorService sync-executor
   (ThreadPoolExecutor. 1 1 0 TimeUnit/MILLISECONDS

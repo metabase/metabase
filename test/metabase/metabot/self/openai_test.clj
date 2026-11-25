@@ -152,8 +152,34 @@
                                    :message "The server had an error while processing your request. Sorry about that!"}}}]]
       (is (=? [{:type :start}
                {:type      :error
-                :errorText "The server had an error while processing your request. Sorry about that!"}]
+                :errorText "The server had an error while processing your request. Sorry about that!"
+                :error     {:code    "server_error"
+                            :message "The server had an error while processing your request. Sorry about that!"}}]
               (into [] (openai/openai->aisdk-chunks-xf) raw))))))
+
+(deftest ^:parallel openai-error-event-keeps-error-object-test
+  (testing "a top-level error event keeps its code in the :error object, beside the text"
+    (is (= [{:type      :error
+             :errorText "Rate limit reached."
+             :error     {:code "rate_limit_exceeded" :message "Rate limit reached." :param nil}}]
+           (into [] (openai/openai->aisdk-chunks-xf)
+                 [{:type "error" :code "rate_limit_exceeded" :message "Rate limit reached." :param nil
+                   :sequence_number 3}]))))
+  (testing "a nested error object with no message takes the event's own message"
+    (is (=? [{:type      :error
+              :errorText "Rate limit reached."
+              :error     {:code "rate_limit_exceeded" :message "Rate limit reached."}}]
+            (into [] (openai/openai->aisdk-chunks-xf)
+                  [{:type "error" :message "Rate limit reached." :error {:code "rate_limit_exceeded"}}]))))
+  (testing "an integer code with no message is the text as a string, and stays an integer in the :error object"
+    (is (= [{:type :error :errorText "429" :error {:code 429 :message "429"}}]
+           (into [] (openai/openai->aisdk-chunks-xf) [{:type "error" :code 429}]))))
+  (testing "a string error is the text when the event has no message"
+    (is (= [{:type :error :errorText "Upstream timeout" :error {:message "Upstream timeout"}}]
+           (into [] (openai/openai->aisdk-chunks-xf) [{:type "error" :error "Upstream timeout"}])))
+    (is (= [{:type :error :errorText "Upstream timed out." :error {:message "Upstream timed out."}}]
+           (into [] (openai/openai->aisdk-chunks-xf)
+                 [{:type "error" :error "Upstream timeout" :message "Upstream timed out."}])))))
 
 (deftest ^:parallel openai-response-failed-without-message-test
   (testing "response.failed with no message falls back to the error code, then a generic message"
@@ -161,7 +187,10 @@
                      {:type "response.failed"  :response {:id "resp_1" :error {:code "server_error"}}}]
           bare      [{:type "response.created" :response {:id "resp_1"}}
                      {:type "response.failed"  :response {:id "resp_1"}}]]
-      (is (=? [{:type :start} {:type :error :errorText "server_error"}]
+      (is (=? [{:type :start} {:type      :error
+                               :errorText "server_error"
+                               ;; the error object gets the text as its message
+                               :error     {:code "server_error" :message "server_error"}}]
               (into [] (openai/openai->aisdk-chunks-xf) code-only)))
       (is (=? [{:type :start} {:type :error :errorText "The model provider failed to complete the response"}]
               (into [] (openai/openai->aisdk-chunks-xf) bare))))))
@@ -325,12 +354,25 @@
               {:type :text :text "It's 2 PM."}])))))
 
 (deftest ^:parallel parts->openai-input-error-result-test
-  (testing "tool error is formatted in output"
-    (is (=? [{:type   "function_call_output"
-              :call_id "call-1"
-              :output  #"Error:.*failed"}]
-            (openai/parts->openai-input
-             [{:type :tool-output :id "call-1" :error {:message "Tool failed"}}])))))
+  (testing "a failed call sends its text, which is the :output of its result"
+    (is (= [{:type    "function_call_output"
+             :call_id "call-1"
+             :output  "Table 7 was not found."}]
+           (openai/parts->openai-input
+            [{:type   :tool-output :id "call-1"
+              :result {:output "Table 7 was not found." :error {:class :recoverable :code :x}}}]))))
+  (testing "a failed call without :output sends the fallback text"
+    (is (= [{:type    "function_call_output"
+             :call_id "call-1"
+             :output  "Tool execution failed"}]
+           (openai/parts->openai-input
+            [{:type :tool-output :id "call-1" :result {:error {:class :recoverable :code :x}}}])))))
+
+(deftest ^:parallel parts->openai-input-tool-result-without-output-test
+  (testing "a result without :output sends empty text and none of its other keys"
+    (is (= [{:type "function_call_output" :call_id "call-1" :output ""}]
+           (openai/parts->openai-input
+            [{:type :tool-output :id "call-1" :result {:rows [1 2]}}])))))
 
 (deftest ^:parallel openai-reasoning-summary-part-separator-test
   (testing "a 2nd+ summary part opens a new paragraph within the same reasoning item"
@@ -385,6 +427,8 @@
       (is (= {:summary "auto"} (reasoning "gpt-5.5")))
       (is (= {:summary "auto"} (reasoning "gpt-5.6-sol")))
       (is (= {:summary "auto"} (reasoning "gpt-6-astra")))
+      (is (= {:summary "auto"} (reasoning "gpt-6.2-sol")))
+      (is (= {:summary "auto"} (reasoning "gpt-6.2-astra")))
       (is (= {:summary "auto"} (reasoning "o3")))
       (is (= {:summary "auto"} (reasoning "gpt-5.4-pro")))
       (testing "bedrock/azure vendor prefix is stripped"
@@ -419,7 +463,8 @@
 
 (deftest ^:parallel supported-models-test
   (testing "whitelisted models are supported"
-    (doseq [id ["gpt-6-astra" "gpt-5.6-sol" "gpt-5.6-terra" "gpt-5.6-luna" "gpt-5.5" "gpt-5.4-mini"]]
+    (doseq [id ["gpt-6.2-astra" "gpt-6.2-sol" "gpt-6-astra" "gpt-5.6-sol" "gpt-5.6-terra" "gpt-5.6-luna" "gpt-5.5"
+                "gpt-5.4-mini"]]
       (is (contains? openai/supported-models id) id)))
   (testing "non-white-listed models are not supported"
     (doseq [id ["gpt-5" "gpt-4.1" "gpt-4.1-mini" "gpt-4o" "o3" "text-embedding-3-small"]]
@@ -430,7 +475,9 @@
     (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-test"]
       (with-redefs [http/request (fn [_]
                                    {:status 200
-                                    :body   {:data [{:id "gpt-6-astra"            :created 41}
+                                    :body   {:data [{:id "gpt-6.2-astra"          :created 43}
+                                                    {:id "gpt-6.2-sol"            :created 42}
+                                                    {:id "gpt-6-astra"            :created 41}
                                                     {:id "gpt-5.6-sol"            :created 40}
                                                     {:id "gpt-5.6-luna"           :created 39}
                                                     {:id "gpt-5-mini"             :created 30}
@@ -445,7 +492,9 @@
         (is (= [{:id "gpt-5.4" :display_name "GPT-5.4"}
                 {:id "gpt-5.6-luna" :display_name "GPT-5.6 Luna"}
                 {:id "gpt-5.6-sol" :display_name "GPT-5.6 Sol"}
-                {:id "gpt-6-astra" :display_name "GPT-6 Astra"}]
+                {:id "gpt-6-astra" :display_name "GPT-6 Astra"}
+                {:id "gpt-6.2-astra" :display_name "GPT-6.2 Astra"}
+                {:id "gpt-6.2-sol" :display_name "GPT-6.2 Sol"}]
                (:models (openai/list-models {:credentials byok-credentials}))))))))
 
 (deftest openai-raw-explicit-credentials-test
@@ -510,7 +559,7 @@
           model)))
   (testing "GPT-5 and GPT-6 families and o-series reasoning models do not"
     (doseq [model ["gpt-5" "gpt-5-mini" "gpt-5-nano" "gpt-5-2025-08-07" "gpt-5.6-sol" "gpt-6-astra"
-                   "o1" "o1-mini" "o3" "o3-mini" "o4-mini"]]
+                   "gpt-6.2-sol" "gpt-6.2-astra" "o1" "o1-mini" "o3" "o3-mini" "o4-mini"]]
       (is (false? (#'openai/model-supports-temperature? model))
           model))))
 

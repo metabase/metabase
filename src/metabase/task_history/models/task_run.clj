@@ -1,17 +1,17 @@
 (ns metabase.task-history.models.task-run
   "Model for TaskRun - groups related tasks from a single operation (subscription, alert, sync, fingerprint)."
   (:require
-   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.run-tracking.core :as rt]
    [metabase.task-history.db :as task-history.db]
+   [metabase.task-history.schema :as task-history.schema]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -32,13 +32,15 @@
     (contains? (perms/application-permissions-for-user (api/current-user-info)) :monitoring)
     (mi/superuser?)))
 
-(methodical/defmethod t2/simple-hydrate [:model/TaskRun :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (can-access?))))
+(methodical/defmethod t2/batched-hydrate [:model/TaskRun :can_read]
+  "Whether the current user can read each of `rows`, answered once for all of them."
+  [_model k rows]
+  (mi/vary-meta-each rows k (boolean (can-access?))))
 
-(methodical/defmethod t2/simple-hydrate [:model/TaskRun :can_write]
-  [_model k instance]
-  (assoc instance k (boolean (can-access?))))
+(methodical/defmethod t2/batched-hydrate [:model/TaskRun :can_write]
+  "Whether the current user can write each of `rows`, answered once for all of them."
+  [_model k rows]
+  (mi/assoc-each rows k (boolean (can-access?))))
 
 (def run-types
   "Valid run types."
@@ -93,19 +95,11 @@
       (contains? after run-id)        :more
       :else                           :last)))
 
-(mr/def ::TaskRunInfo
-  [:map {:closed true}
-   [:run_type                         (into [:enum] run-types)]
-   [:entity_type                      (into [:enum] entity-types)]
-   [:entity_id                        ms/PositiveInt]
-   ;; The notification this run is for, when applicable (alerts / subscriptions). Lets the run be
-   ;; attributed to the exact notification rather than only to its shared card/dashboard entity.
-   [:notification_id {:optional true} [:maybe ms/PositiveInt]]
-   [:auto-complete   {:optional true} [:maybe :boolean]]])
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-task-run! :- ms/PositiveInt
   "Create a new task run record. Returns the run ID."
-  [{:keys [run_type entity_type entity_id notification_id]} :- ::TaskRunInfo]
+  [{:keys [run_type entity_type entity_id notification_id]} :- ::task-history.schema/task-run.create]
   (task-history.db/insert-task-run!
    {:run_type        run_type
     :entity_type     entity_type
@@ -123,7 +117,7 @@
         status        (if (= #{:success} task-statuses)
                         :success
                         :failed)]
-    (task-history.db/finish-started-task-run! run-id status (t/instant))))
+    (task-history.db/finish-started-task-run! run-id status)))
 
 (mu/defn- task-run-work-done!
   "Call when one piece of work of the `:auto-complete false` run `run-id` ends: [[with-task-run]] after its body, and
@@ -181,7 +175,7 @@
   (if (or *run* (nil? run-info))
     (thunk)
     (let [auto-complete (boolean (get run-info :auto-complete true))
-          run-id        (create-task-run! run-info)]
+          run-id        (create-task-run! (dissoc run-info :auto-complete))]
       (when-not auto-complete
         (add-pending-work! run-id))
       (binding [*run* {:id run-id :auto-complete? auto-complete}]
@@ -205,6 +199,22 @@
   {:style/indent 1}
   [run-info & body]
   `(do-with-task-run ~run-info (fn [] ~@body)))
+
+(mu/defn heartbeat-task-runs-for-process! :- :int
+  "Touch `updated_at` of the started TaskRuns of `process-uuid`, returning the number updated."
+  [process-uuid :- :string]
+  (task-history.db/heartbeat-started-task-runs! process-uuid))
+
+(mu/defn abandon-task-runs-for-cleanup! :- [:maybe [:sequential :map]]
+  "Mark the started TaskRuns abandoned whose last heartbeat is older than `heartbeat-hours` or that started more than
+  `max-duration-hours` ago, returning the abandoned rows."
+  [heartbeat-hours    :- ms/PositiveInt
+   max-duration-hours :- ms/PositiveInt]
+  (rt/reap-rows! {:model         :model/TaskRun
+                  :active        [:status "started"]
+                  :set-terminal! #(task-history.db/set-started-task-runs-terminal! % {:status "abandoned" :ended_at :%now})
+                  :stale         [{:column :updated_at :age heartbeat-hours :unit :hour}
+                                  {:column :started_at :age max-duration-hours :unit :hour}]}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

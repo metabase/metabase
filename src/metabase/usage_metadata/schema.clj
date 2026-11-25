@@ -4,6 +4,7 @@
   These are the shape contracts pinned at the `metabase.usage-metadata.core` boundary and
   enforced inside `metabase.usage-metadata.insights` producers."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -121,8 +122,10 @@
     [:id             ms/PositiveInt]]])
 
 (mr/def ::source-dimension-daily.update
-  "What an update (or insert) of a SourceDimensionDaily accepts: every column of `:source_dimension_daily` except `id`, all optional."
+  "What an update of a SourceDimensionDaily takes: its `:id` and the columns of `:source_dimension_daily` to change,
+  each optional."
   [:map {:closed true}
+   [:id             ms/PositiveInt]
    [:source_type    {:optional true} [:maybe [:or :keyword :string]]]
    [:source_id      {:optional true} [:maybe ms/PositiveInt]]
    [:ownership_mode {:optional true} [:maybe [:or :keyword :string]]]
@@ -132,6 +135,20 @@
    [:bucket_date    {:optional true} [:maybe ms/TemporalInstant]]
    [:count          {:optional true} [:maybe :int]]])
 
+(mr/def ::source-dimension-daily.create
+  "What creating a SourceDimensionDaily takes: the columns of an update without the `:id`, every one of them given."
+  [:merge
+   (mut/dissoc ::source-dimension-daily.update :id)
+   [:map
+    [:source_type    [:maybe [:or :keyword :string]]]
+    [:source_id      [:maybe ms/PositiveInt]]
+    [:ownership_mode [:maybe [:or :keyword :string]]]
+    [:field_id       [:maybe ::lib.schema.id/field]]
+    [:temporal_unit  [:maybe [:or :keyword :string]]]
+    [:binning        [:maybe :string]]
+    [:bucket_date    [:maybe ms/TemporalInstant]]
+    [:count          [:maybe :int]]]])
+
 (mr/def ::source-dimension-profile-daily
   "A SourceDimensionProfileDaily as selected from the app DB: every column of `:source_dimension_profile_daily`."
   [:merge
@@ -140,8 +157,10 @@
     [:id                ms/PositiveInt]]])
 
 (mr/def ::source-dimension-profile-daily.update
-  "What an update (or insert) of a SourceDimensionProfileDaily accepts: every column of `:source_dimension_profile_daily` except `id`, all optional."
+  "What an update of a SourceDimensionProfileDaily takes: its `:id` and the columns of `:source_dimension_profile_daily`
+  to change, each optional."
   [:map {:closed true}
+   [:id                ms/PositiveInt]
    [:source_type       {:optional true} [:maybe [:or :keyword :string]]]
    [:source_id         {:optional true} [:maybe ms/PositiveInt]]
    [:field_id          {:optional true} [:maybe ::lib.schema.id/field]]
@@ -151,6 +170,21 @@
    [:bucket_date       {:optional true} [:maybe ms/TemporalInstant]]
    [:count             {:optional true} [:maybe :int]]])
 
+(mr/def ::source-dimension-profile-daily.create
+  "What creating a SourceDimensionProfileDaily takes: the columns of an update without the `:id`, every one of them
+  given."
+  [:merge
+   (mut/dissoc ::source-dimension-profile-daily.update :id)
+   [:map
+    [:source_type       [:maybe [:or :keyword :string]]]
+    [:source_id         [:maybe ms/PositiveInt]]
+    [:field_id          [:maybe ::lib.schema.id/field]]
+    [:source_basis      [:maybe [:or :keyword :string]]]
+    [:observation_type  [:maybe [:or :keyword :string]]]
+    [:observation_value [:maybe :string]]
+    [:bucket_date       [:maybe ms/TemporalInstant]]
+    [:count             [:maybe :int]]]])
+
 (mr/def ::source-metric-daily
   "A SourceMetricDaily as selected from the app DB: every column of `:source_metric_daily`."
   [:merge
@@ -159,8 +193,10 @@
     [:id                ms/PositiveInt]]])
 
 (mr/def ::source-metric-daily.update
-  "What an update (or insert) of a SourceMetricDaily accepts: every column of `:source_metric_daily` except `id`, all optional."
+  "What an update of a SourceMetricDaily takes: its `:id` and the columns of `:source_metric_daily` to change, each
+  optional."
   [:map {:closed true}
+   [:id                ms/PositiveInt]
    [:source_type       {:optional true} [:maybe [:or :keyword :string]]]
    [:source_id         {:optional true} [:maybe ms/PositiveInt]]
    [:ownership_mode    {:optional true} [:maybe [:or :keyword :string]]]
@@ -171,6 +207,21 @@
    [:bucket_date       {:optional true} [:maybe ms/TemporalInstant]]
    [:count             {:optional true} [:maybe :int]]])
 
+(mr/def ::source-metric-daily.create
+  "What creating a SourceMetricDaily takes: the columns of an update without the `:id`, every one of them given."
+  [:merge
+   (mut/dissoc ::source-metric-daily.update :id)
+   [:map
+    [:source_type       [:maybe [:or :keyword :string]]]
+    [:source_id         [:maybe ms/PositiveInt]]
+    [:ownership_mode    [:maybe [:or :keyword :string]]]
+    [:agg_type          [:maybe [:or :keyword :string]]]
+    [:agg_field_id      [:maybe ::lib.schema.id/field]]
+    [:temporal_field_id [:maybe ::lib.schema.id/field]]
+    [:temporal_unit     [:maybe [:or :keyword :string]]]
+    [:bucket_date       [:maybe ms/TemporalInstant]]
+    [:count             [:maybe :int]]]])
+
 (mr/def ::source-segment-composite-daily
   "A SourceSegmentCompositeDaily as selected from the app DB: every column of `:source_segment_composite_daily`."
   [:merge
@@ -179,8 +230,10 @@
     [:id                ms/PositiveInt]]])
 
 (mr/def ::source-segment-composite-daily.update
-  "What an update (or insert) of a SourceSegmentCompositeDaily accepts: every column of `:source_segment_composite_daily` except `id`, all optional."
+  "What an update of a SourceSegmentCompositeDaily takes: its `:id` and the columns of `:source_segment_composite_daily`
+  to change, each optional."
   [:map {:closed true}
+   [:id                ms/PositiveInt]
    [:source_type       {:optional true} [:maybe [:or :keyword :string]]]
    [:source_id         {:optional true} [:maybe ms/PositiveInt]]
    [:ownership_mode    {:optional true} [:maybe [:or :keyword :string]]]
@@ -190,6 +243,21 @@
    [:bucket_date       {:optional true} [:maybe ms/TemporalInstant]]
    [:count             {:optional true} [:maybe :int]]])
 
+(mr/def ::source-segment-composite-daily.create
+  "What creating a SourceSegmentCompositeDaily takes: the columns of an update without the `:id`, every one of them
+  given."
+  [:merge
+   (mut/dissoc ::source-segment-composite-daily.update :id)
+   [:map
+    [:source_type       [:maybe [:or :keyword :string]]]
+    [:source_id         [:maybe ms/PositiveInt]]
+    [:ownership_mode    [:maybe [:or :keyword :string]]]
+    [:clause            [:maybe :string]]
+    [:atom_fingerprints [:maybe :string]]
+    [:atom_count        [:maybe :int]]
+    [:bucket_date       [:maybe ms/TemporalInstant]]
+    [:count             [:maybe :int]]]])
+
 (mr/def ::source-segment-daily
   "A SourceSegmentDaily as selected from the app DB: every column of `:source_segment_daily`."
   [:merge
@@ -198,8 +266,10 @@
     [:id             ms/PositiveInt]]])
 
 (mr/def ::source-segment-daily.update
-  "What an update (or insert) of a SourceSegmentDaily accepts: every column of `:source_segment_daily` except `id`, all optional."
+  "What an update of a SourceSegmentDaily takes: its `:id` and the columns of `:source_segment_daily` to change, each
+  optional."
   [:map {:closed true}
+   [:id             ms/PositiveInt]
    [:source_type    {:optional true} [:maybe [:or :keyword :string]]]
    [:source_id      {:optional true} [:maybe ms/PositiveInt]]
    [:ownership_mode {:optional true} [:maybe [:or :keyword :string]]]
@@ -207,3 +277,16 @@
    [:predicate      {:optional true} [:maybe :string]]
    [:bucket_date    {:optional true} [:maybe ms/TemporalInstant]]
    [:count          {:optional true} [:maybe :int]]])
+
+(mr/def ::source-segment-daily.create
+  "What creating a SourceSegmentDaily takes: the columns of an update without the `:id`, every one of them given."
+  [:merge
+   (mut/dissoc ::source-segment-daily.update :id)
+   [:map
+    [:source_type    [:maybe [:or :keyword :string]]]
+    [:source_id      [:maybe ms/PositiveInt]]
+    [:ownership_mode [:maybe [:or :keyword :string]]]
+    [:field_id       [:maybe ::lib.schema.id/field]]
+    [:predicate      [:maybe :string]]
+    [:bucket_date    [:maybe ms/TemporalInstant]]
+    [:count          [:maybe :int]]]])

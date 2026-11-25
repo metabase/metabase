@@ -4,10 +4,11 @@
   Fields that were not newly created; newly created Fields are given appropriate metadata when first synced."
   (:require
    [clojure.string :as str]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.fields.common :as common]
-   [metabase.sync.util :as sync-util]
+   [metabase.sync.updates :as sync.updates]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -32,9 +33,13 @@
     ;; again, you need to change the visibility-type to :normal via the fields :put api.
     (:visibility-type field-metadata)))
 
-(mu/defn- update-field-metadata-if-needed! :- [:enum 0 1]
-  "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs
-  base type, database type, semantic type, and comments/remarks; returns `1` if the Field was updated; `0` otherwise."
+(mu/defn- field-changes :- [:maybe [:map
+                                    [:id ::lib.schema.id/field]
+                                    [:updates :map]
+                                    [:unset {:optional true} [:sequential :keyword]]]]
+  "The changes to make to a Metabase Field if any of the info coming back from the DB has changed: base type, database
+  type, semantic type, and comments/remarks. `:updates` are the columns to change, and `:unset` the columns whose user
+  values to drop from the Field's settings. Nil when nothing changes. Writes nothing."
   [database       :- i/DatabaseInstance
    table          :- i/TableInstance
    field-metadata :- i/TableMetadataField
@@ -112,6 +117,17 @@
         is-crufty?                 (crufty-field? database field-metadata)
         set-preview-display-false? (and is-crufty? old-preview-display)
 
+        healing-effective-type?
+        (and (not new-base-type?)
+             (nil? old-coercion-strategy)
+             (some? old-effective-type)
+             (not= old-effective-type new-base-type))
+
+        unset-columns
+        (cond
+          (and new-base-type? (not= old-base-type :type/*)) [:effective_type :coercion_strategy :semantic_type]
+          healing-effective-type?                          [:effective_type :coercion_strategy])
+
         ;; calculate combined updates
         updates
         (merge
@@ -126,9 +142,6 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-base-type
                       new-base-type)
-           (when-not (= old-base-type :type/*)
-             (field-user-settings/unset-field-user-settings!
-              (select-keys metabase-field [:id]) [:effective_type :coercion_strategy :semantic_type]))
            {:base_type           new-base-type
             :effective_type      new-base-type
             :coercion_strategy   nil
@@ -137,15 +150,11 @@
             :fingerprint         nil
             ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
             :semantic_type       nil})
-         (when (and (not new-base-type?)
-                    (nil? old-coercion-strategy)
-                    (some? old-effective-type)
-                    (not= old-effective-type new-base-type))
+         (when healing-effective-type?
            (log/warnf "Healing %s: effective_type %s ≠ base_type %s with no coercion_strategy. Resetting effective_type to match base_type."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-effective-type
                       new-base-type)
-           (field-user-settings/unset-field-user-settings! (select-keys metabase-field [:id]) [:effective_type :coercion_strategy])
            {:effective_type new-base-type})
          (when new-semantic-type?
            (log/infof "Semantic type of %s has changed from '%s' to '%s'."
@@ -233,16 +242,14 @@
            {:nfc_path new-nfc-path})
          (when set-preview-display-false?
            {:preview_display false}))]
-    ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
-    (if (and (seq updates)
-             (pos? (sync-util/update-field-unless-user-set! (u/the-id metabase-field) updates)))
-      1
-      0)))
+    (when (seq updates)
+      (cond-> {:id (u/the-id metabase-field) :updates updates}
+        unset-columns (assoc :unset unset-columns)))))
 
-(declare update-metadata!)
+(declare collect-field-changes)
 
-(mu/defn- update-nested-fields-metadata! :- ms/IntGreaterThanOrEqualToZero
-  "Recursively call `update-metadata!` for all the nested Fields in a `metabase-field`."
+(mu/defn- nested-field-changes :- [:sequential :map]
+  "The [[field-changes]] of all the nested Fields in a `metabase-field`, recursively."
   [database       :- i/DatabaseInstance
    table          :- i/TableInstance
    field-metadata :- i/TableMetadataField
@@ -250,19 +257,55 @@
   (let [nested-fields-metadata (:nested-fields field-metadata)
         metabase-nested-fields (:nested-fields metabase-field)]
     (if (seq metabase-nested-fields)
-      (update-metadata! database table (set nested-fields-metadata) (set metabase-nested-fields))
-      0)))
+      (collect-field-changes database table (set nested-fields-metadata) (set metabase-nested-fields))
+      [])))
 
-(mu/defn update-metadata! :- ms/IntGreaterThanOrEqualToZero
-  "Make sure things like PK status and base-type are in sync with what has come back from the DB. Recursively updates
-  nested Fields. Returns total number of Fields updated."
+(mu/defn- collect-field-changes :- [:sequential :map]
+  "The [[field-changes]] of every 'existing' Field in `our-metadata`, those present in the application database and
+  still present in `db-metadata`, with those of their nested Fields."
   [database     :- i/DatabaseInstance
    table        :- i/TableInstance
    db-metadata  :- [:set i/TableMetadataField]
    our-metadata :- [:set common/TableMetadataFieldWithID]]
-  (sync-util/sum-for [metabase-field our-metadata]
-    ;; only update metadata for 'existing' Fields that are present in our Metadata (i.e., present in the application
-    ;; database) and that are still considered active (i.e., present in DB metadata)
-    (when-let [field-metadata (common/matching-field-metadata metabase-field db-metadata)]
-      (+ (update-field-metadata-if-needed! database table field-metadata metabase-field)
-         (update-nested-fields-metadata! database table field-metadata metabase-field)))))
+  (into []
+        (mapcat (fn [metabase-field]
+                  (when-let [field-metadata (common/matching-field-metadata metabase-field db-metadata)]
+                    (let [changes (field-changes database table field-metadata metabase-field)]
+                      (cond-> (nested-field-changes database table field-metadata metabase-field)
+                        changes (conj changes))))))
+        our-metadata))
+
+(mu/defn- write-field-changes! :- ms/IntGreaterThanOrEqualToZero
+  "Write the [[field-changes]] `collected`, with one drop of the user values that no longer apply per distinct set of
+  them and one bulk update, and return the number of Fields updated."
+  [collected :- [:sequential [:map {:closed true}
+                              [:id      ::lib.schema.id/field]
+                              [:updates :map]
+                              [:unset   {:optional true} [:sequential :keyword]]]]]
+  (doseq [[unset changes] (group-by :unset (filter :unset collected))]
+    (field-user-settings/unset-field-user-settings-for-fields! (mapv :id changes) unset))
+  (sync.updates/update-fields-by-id-unless-user-set! (into {} (map (juxt :id :updates)) collected)))
+
+(mu/defn update-metadata! :- ms/IntGreaterThanOrEqualToZero
+  "Make sure things like PK status and base-type are in sync with what has come back from the DB. Recursively updates
+  nested Fields. The changes of every Field of the Table are collected first, then written together: one bulk drop of
+  the user values that no longer apply and one bulk update, whatever the number of Fields. Returns total number of
+  Fields updated."
+  [database     :- i/DatabaseInstance
+   table        :- i/TableInstance
+   db-metadata  :- [:set i/TableMetadataField]
+   our-metadata :- [:set common/TableMetadataFieldWithID]]
+  (write-field-changes! (collect-field-changes database table db-metadata our-metadata)))
+
+(mu/defn update-metadata-of-tables! :- ms/IntGreaterThanOrEqualToZero
+  "[[update-metadata!]] of each of `entries`, a Table with its `:db-metadata` and `:our-metadata`, writing the changes
+  of all their Fields together and returning the number of Fields updated."
+  [database :- i/DatabaseInstance
+   entries  :- [:sequential [:map {:closed true}
+                             [:table        i/TableInstance]
+                             [:db-metadata  [:set i/TableMetadataField]]
+                             [:our-metadata [:set common/TableMetadataFieldWithID]]]]]
+  (write-field-changes! (into []
+                              (mapcat (fn [{:keys [table db-metadata our-metadata]}]
+                                        (collect-field-changes database table db-metadata our-metadata)))
+                              entries)))

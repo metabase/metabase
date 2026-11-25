@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase-enterprise.custom-viz-plugin.test-util :as cv.tu]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
@@ -87,7 +88,7 @@
   [identifier]
   (mt/with-dynamic-fn-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)
                               cache/fetch-dev-manifest                                (constantly {:name identifier})
-                              cache/set-or-clear-dev-bundle!                          (constantly nil)]
+                              custom-viz-plugin/set-or-clear-dev-bundle!              (constantly nil)]
     (mt/user-http-request :crowberto :post 200 "ee/custom-viz-plugin/dev"
                           {:identifier identifier :dev_bundle_url "http://localhost:5173"})))
 

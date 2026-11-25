@@ -110,13 +110,13 @@ describe(
           assertPropsStoreReset();
         });
 
-        it("should properly render global Mantine and Emotion styles once for multiple rendered components", () => {
+        it("should properly render global Mantine styles and global style sheets once for multiple rendered components", () => {
           const checkStyles = ({
             expectedMantineStylesLength,
-            expectedEmotionStylesLength,
+            expectedGlobalStyleSheetsLength,
           }: {
             expectedMantineStylesLength?: number;
-            expectedEmotionStylesLength?: number;
+            expectedGlobalStyleSheetsLength?: number;
           }) => {
             cy.get('[data-cy-root] > style[data-mantine-styles="true"]').should(
               "have.length",
@@ -125,9 +125,9 @@ describe(
             cy.get(
               '[data-cy-root] > style[data-mantine-styles="classes"]',
             ).should("have.length", expectedMantineStylesLength);
-            cy.get('style[data-emotion="emotion-global"]').should(
+            cy.get("style[data-global-style-sheet]").should(
               "have.length",
-              expectedEmotionStylesLength,
+              expectedGlobalStyleSheetsLength,
             );
           };
 
@@ -150,11 +150,10 @@ describe(
 
           checkStyles({
             expectedMantineStylesLength: 1,
-            // We have 3 usages of `<Global />` component from Emotion, all are wrapped within the
-            // EnsureSingleInstance. Only 2 emit a tag here: the one in SdkFontsGlobalStyles is
-            // empty until `application-font-files` names a custom font, because the bundled faces
-            // now come from fonts.css instead.
-            expectedEmotionStylesLength: 2,
+            // The SDK renders 4 global style sheets, all within EnsureSingleInstance: the CSS
+            // variables, the scoped reset, the image export styles and the custom fonts. The fonts
+            // sheet stays empty until `application-font-files` names a custom font.
+            expectedGlobalStyleSheetsLength: 4,
           });
 
           // Unmount
@@ -162,7 +161,7 @@ describe(
 
           checkStyles({
             expectedMantineStylesLength: 0,
-            expectedEmotionStylesLength: 0,
+            expectedGlobalStyleSheetsLength: 0,
           });
         });
 

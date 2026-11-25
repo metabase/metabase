@@ -4,9 +4,11 @@
    [metabase.analyze.core :as analyze]
    [metabase.driver.util :as driver.u]
    [metabase.sync.analyze.data-sensitivity :as sync.data-sensitivity]
+   [metabase.sync.analyze.test-util :as analyze.tu]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
@@ -19,7 +21,7 @@
   (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id (u/the-id field-or-id)))
 
 (defn- selected-names [table force?]
-  (set (map :name (#'sync.data-sensitivity/fields-to-scan table force?))))
+  (set (map :name (#'sync.data-sensitivity/fields-to-scan [table] force? 0))))
 
 (deftest ^:parallel fields-to-scan-test
   (mt/with-temp [:model/Database db    {}
@@ -288,3 +290,35 @@
              (sync.data-sensitivity/scan-table-data-sensitivity! users)))
       (is (= :PII (label ssn)))
       (is (nil? (label email))))))
+
+(defn- scan-fields-for-db!
+  [database]
+  (sync.data-sensitivity/scan-fields-for-db! database nil :ignore-setting? true))
+
+(deftest scan-fields-for-db-statement-count-test
+  (testing "scanning data sensitivity issues as many statements for 16 Tables as for 4"
+    (let [[small large] (analyze.tu/statement-counts-by-tables (constantly nil) (constantly nil) scan-fields-for-db!)]
+      (is (= small large))))
+  (testing "scanning data sensitivity issues as many statements for 20 Fields per Table as for 5"
+    (let [[small large] (analyze.tu/statement-counts-by-fields (constantly nil) (constantly nil) scan-fields-for-db!)]
+      (is (= small large)))))
+
+(deftest scan-saves-other-tables-when-one-write-fails-test
+  (testing "scanning data sensitivity saves the labels of other Tables when saving those of one Table throws"
+    (mt/with-temp [:model/Database db      {}
+                   :model/Table    table-1 {:db_id (:id db) :name "t1"}
+                   :model/Table    table-2 {:db_id (:id db) :name "t2"}
+                   :model/Table    table-3 {:db_id (:id db) :name "t3"}
+                   :model/Field    f1      {:table_id (:id table-1) :name "foo" :base_type :type/Text}
+                   :model/Field    broken  {:table_id (:id table-2) :name "foo" :base_type :type/Text}
+                   :model/Field    f3      {:table_id (:id table-3) :name "foo" :base_type :type/Text}]
+      (let [update! (mt/original-fn #'field/update-fields!)]
+        (mt/with-dynamic-fn-redefs [field/update-fields! (fn [rows & opts]
+                                                           (when (some #(= (:id broken) (:id %)) rows)
+                                                             (throw (ex-info "write failed" {})))
+                                                           (apply update! rows opts))]
+          (is (= {:fields-scanned 3 :fields-labeled 0 :fields-failed 1}
+                 (sync.data-sensitivity/scan-data-sensitivity! (:id db))))))
+      (is (= :PUBLIC (label f1)))
+      (is (nil? (label broken)))
+      (is (= :PUBLIC (label f3))))))

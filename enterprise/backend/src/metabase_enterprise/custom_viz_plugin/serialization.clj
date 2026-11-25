@@ -132,7 +132,7 @@
 (defn- check-registration!
   "Throws unless the imported plugin `row`, loaded over its `local` row or as new when nil, may hold its identifier."
   [{:keys [identifier]} local]
-  ;; a `:` identifier isn't refused here: its bundle fails validation, so it loads as :error without aborting the batch
+  ;; a `:` identifier never gets here: the spec's `:schema` refuses it, aborting the import
   ;; the unique index would refuse the write anyway, but with an error that doesn't say what to do
   (cache/check-identifier-free! identifier (:id local)
                                 (format (str "A custom viz plugin \"%s\" already exists on this instance. Delete it and pull "

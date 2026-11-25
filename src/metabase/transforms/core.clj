@@ -13,7 +13,6 @@
    [metabase.transforms.models.transform]
    [metabase.transforms.models.transform-job]
    [metabase.transforms.models.transform-run]
-   [metabase.transforms.models.transform-run-cancelation]
    [metabase.transforms.models.transform-tag]
    [metabase.transforms.notification]
    [metabase.transforms.run-listing]
@@ -36,6 +35,8 @@
   python-transform?
   transform-source-database
   transform-source-type]
+ [metabase.transforms.models.transform
+  assoc-permissions]
  [metabase.transforms.util
   add-source-readable
   is-temp-transform-table?]
@@ -66,8 +67,6 @@
  [metabase.transforms.schedule
   delete-trigger!
   existing-trigger]
- [metabase.transforms.models.transform
-  update-transform-tags!]
  [metabase.transforms.models.transform-run
   timeout-run!
   paged-runs
@@ -79,10 +78,4 @@
   transform-runs-for-dag-run]
  [metabase.transforms.run-listing
   paged-run-summaries
-  present-run-summaries]
- [metabase.transforms.models.transform-run-cancelation
-  mark-cancel-started-run!]
- [metabase.transforms.models.transform-job
-  activate-job!
-  deactivate-job!
-  update-job-tags!])
+  present-run-summaries])

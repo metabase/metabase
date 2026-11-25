@@ -17,3 +17,7 @@ export function isAffected(advisory: Advisory): boolean {
     advisory.match_status === "active" || advisory.match_status === "error"
   );
 }
+
+export function isAcknowledged(advisory: Advisory): boolean {
+  return advisory.acknowledged_at != null;
+}

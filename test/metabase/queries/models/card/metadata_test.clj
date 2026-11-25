@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.queries.models.card :as card]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor :as qp]
@@ -140,7 +141,7 @@
                        (:result_metadata (t2/select-one [:model/Card :result_metadata :card_schema] :id card-id)))
             typed        (metadata typed-id)
             unresolvable (metadata unresolvable-id)]
-        (card.metadata/backfill-untyped-model-metadata! (mt/id))
+        (card/backfill-untyped-model-metadata! (mt/id))
         (testing "an untyped model gets its inferred types and field ids, keeping its overrides"
           (is (=? [{:name "ID"}
                    {:name "NAME" :base_type :type/Text :id (mt/id :venues :name) :display_name "Venue Name"}

@@ -132,7 +132,7 @@
 (deftest update-field-test
   (testing "PUT /api/field/:id"
     (testing "test that we can do basic field update work, including unsetting some fields such as semantic-type"
-      (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
+      (mt/with-temp [:model/Field {field-id :id} {:name "Field Test" :display_name "Field Test"}]
         (let [original-field (simple-field-details (field-row field-id))]
           (testing "orignal value"
             (is (= {:name               "Field Test"
@@ -347,7 +347,9 @@
     (testing "target should be hydrated"
       (mt/with-temp [:model/Field fk-field-1 {}
                      :model/Field fk-field-2 {}
-                     :model/Field field {:semantic_type :type/FK :fk_target_field_id (:id fk-field-1)}]
+                     :model/Field field {:display_name       "Test Field"
+                                         :semantic_type      :type/FK
+                                         :fk_target_field_id (:id fk-field-1)}]
         (is (= (:id fk-field-2)
                (:id (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (-> field
                                                                                                            (dissoc :has_field_values)

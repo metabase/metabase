@@ -408,7 +408,7 @@ export const getRowIndexToPKMap = createSelector(
   },
 );
 
-function areLegacyQueriesEqual(
+function areQueriesEqual(
   queryA: DatasetQuery | undefined,
   queryB: DatasetQuery | undefined,
   tableFieldIds: FieldId[],
@@ -416,7 +416,7 @@ function areLegacyQueriesEqual(
   if (queryA == null || queryB == null) {
     return false;
   }
-  return Lib.areLegacyQueriesEqual(
+  return Lib.areQueriesEqual(
     queryA,
     queryB,
     tableFieldIds.filter((id): id is number => typeof id === "number"),
@@ -445,12 +445,12 @@ function areComposedEntitiesEquivalent({
 
   const composedOriginal = originalQuestion.composeQuestionAdhoc();
 
-  const isLastRunComposed = areLegacyQueriesEqual(
+  const isLastRunComposed = areQueriesEqual(
     lastRunQuestion.datasetQuery(),
     composedOriginal.datasetQuery(),
     tableFieldIds,
   );
-  const isCurrentComposed = areLegacyQueriesEqual(
+  const isCurrentComposed = areQueriesEqual(
     currentQuestion.datasetQuery(),
     composedOriginal.datasetQuery(),
     tableFieldIds,
@@ -458,7 +458,7 @@ function areComposedEntitiesEquivalent({
 
   const isLastRunEquivalentToCurrent =
     isLastRunComposed &&
-    areLegacyQueriesEqual(
+    areQueriesEqual(
       currentQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableFieldIds,
@@ -466,7 +466,7 @@ function areComposedEntitiesEquivalent({
 
   const isCurrentEquivalentToLastRun =
     isCurrentComposed &&
-    areLegacyQueriesEqual(
+    areQueriesEqual(
       lastRunQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableFieldIds,
@@ -487,7 +487,7 @@ export function areQueriesEquivalent({
   tableFieldIds: FieldId[];
 }) {
   return (
-    areLegacyQueriesEqual(
+    areQueriesEqual(
       lastRunQuestion?.datasetQuery(),
       currentQuestion?.datasetQuery(),
       tableFieldIds,

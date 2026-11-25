@@ -51,6 +51,7 @@
    [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -636,6 +637,53 @@
                   "FROM"
                   "  \"__mb_stage_0\" AS \"__mb_source\""]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
+
+(deftest ^:parallel multi-stage-join-source-stage-ctes-test
+  (testing "Stage CTEs of a multi-stage join source go in the top-level WITH, not inside the JOIN (#87571)"
+    (let [mp       (lib.tu/mock-metadata-provider
+                    (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :postgres}})
+                    {:cards [{:id            1
+                              :database-id   (meta/id)
+                              :dataset-query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                                                 (lib/aggregate (lib/count))
+                                                 (lib/breakout (meta/field-metadata :checkins :venue-id))
+                                                 lib/append-stage)}]})
+          card     (lib.metadata/card mp 1)
+          query    (lib/query mp (lib.metadata/table mp (meta/id :venues)))
+          card-col (m/find-first #(= (:name %) "VENUE_ID")
+                                 (lib/join-condition-rhs-columns query card nil nil))
+          query    (lib/join query (lib/join-clause card [(lib/= (lib.metadata/field mp (meta/id :venues :id))
+                                                                 card-col)]))]
+      (qp.store/with-metadata-provider mp
+        (let [hsql        (driver/with-driver :postgres
+                            (sql.qp/mbql->honeysql :postgres (qp.preprocess/preprocess query)))
+              join-source (get-in hsql [:join-by 1 0 0])]
+          (is (= ["__mb_stage_0" "__mb_stage_1"]
+                 (map first (:with hsql))))
+          (is (not (contains? join-source :with)))
+          (is (=? {:from [[[::h2x/identifier :table-alias ["__mb_stage_1"]] some?]]}
+                  join-source)))))))
+
+(deftest ^:parallel single-row-aggregation-stage-cte-test
+  (testing "A last stage that aggregates without breakouts goes in its own stage CTE, so Postgres can use its MIN/MAX
+            index optimization, which it skips in a query level with a WITH list"
+    (let [mp     (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :postgres}})
+          query  (lib/append-stage (lib/query mp (lib.metadata/table mp (meta/id :venues))))
+          id-col (m/find-first #(= (:name %) "ID") (lib/visible-columns query))
+          query  (lib/aggregate query (lib/max id-col))]
+      (qp.store/with-metadata-provider mp
+        (driver/with-driver :postgres
+          (testing "without breakouts, a stage that selects the aggregation goes after it"
+            (is (=? [{:source-table (meta/id :venues)}
+                     {:aggregation [[:max {} [:field {} "ID"]]]}
+                     {:fields [[:field {} "max"]]}]
+                    (sql.qp/preprocess :postgres query))))
+          (testing "with a breakout, no stage goes after the aggregation"
+            (is (=? [{:source-table (meta/id :venues)}
+                     {:aggregation [[:max {} [:field {} "ID"]]]
+                      :breakout    [some?]}]
+                    (sql.qp/preprocess :postgres (lib/breakout query (m/find-first #(= (:name %) "NAME")
+                                                                                   (lib/breakoutable-columns query))))))))))))
 
 (deftest ^:parallel nested-field-pivot-compile-test
   (mt/test-driver :postgres
@@ -1913,7 +1961,7 @@
                  (mt/formatted-rows [int str int 4.0 4.0 int int int] (qp/process-query query)))))))))
 
 (deftest ^:parallel native-source-stage-test
-  (testing "a native first stage that has its own WITH, compiled as the body of a stage CTE on Postgres, runs"
+  (testing "a native first stage that has its own WITH runs on Postgres"
     (mt/test-driver :postgres
       (mt/dataset test-data
         (let [mp    (mt/metadata-provider)
@@ -1926,15 +1974,32 @@
           (is (= [[4]]
                  (mt/formatted-rows [int] (qp/process-query query)))))))))
 
+(defn- compile-honeysql
+  "The HoneySQL form that the SQL QP compiles for `query`."
+  [query]
+  (mt/with-metadata-provider (mt/id)
+    (sql.qp/mbql->honeysql :postgres (qp.preprocess/preprocess query))))
+
 (deftest ^:parallel multi-stage-card-referenced-from-native-query-test
-  (testing "a multi-stage card spliced into a native query via {{#id}}, with its CTEs inside the subquery parens, runs"
-    (mt/test-driver :postgres
-      (mt/dataset test-data
-        (let [mp (mt/metadata-provider)]
-          (mt/with-temp [:model/Card card {:dataset_query (count-by-price-over-1-query mp)}]
-            (let [tag   (format "#%d" (:id card))
-                  query (-> (lib/native-query mp (format "SELECT SUM(c.count) FROM {{%s}} AS c" tag))
-                            (lib/with-template-tags {tag {:name tag, :display-name tag, :type :card, :card-id (:id card)}}))]
+  (mt/test-driver :postgres
+    (mt/dataset test-data
+      (let [mp         (mt/metadata-provider)
+            card-query (count-by-price-over-1-query mp)
+            ref-query  (assoc-in card-query [:middleware :card-reference?] true)]
+        (testing "a multi-stage card uses stage CTEs on its own, and subselects when a native query references it"
+          (is (seq (:with (compile-honeysql card-query))))
+          (is (nil? (:with (compile-honeysql ref-query)))))
+        (mt/with-temp [:model/Card card {:dataset_query card-query}]
+          (let [tag   (format "#%d" (:id card))
+                query (-> (lib/native-query mp (format "SELECT SUM(c.count) FROM {{%s}} AS c" tag))
+                          (lib/with-template-tags {tag {:name         tag
+                                                        :display-name tag
+                                                        :type         :card
+                                                        :card-id      (:id card)}}))]
+            (testing "the native query has the card compiled with subselects"
+              (is (str/includes? (:query (qp.compile/compile query))
+                                 (:query (qp.compile/compile ref-query)))))
+            (testing "the native query runs"
               (is (= [[100]]
                      (mt/formatted-rows [int] (qp/process-query query)))))))))))
 
@@ -3025,3 +3090,17 @@
          (driver/query-on-connection :postgres conn ["SELECT 1" []] {})
          (is (thrown-with-msg? Exception #"column \"no_such_column\" does not exist"
                                (driver/query-on-connection :postgres conn ["SELECT no_such_column WHERE 1 = ?" [1]] {}))))))))
+
+(deftest parameter-in-a-comment-on-a-streaming-connection-gets-the-friendly-error-test
+  (mt/test-driver :postgres
+    (testing "outside a data-test run, a connection with autocommit off still checks the parameter count"
+      ;; Downloads and other streamed queries turn autocommit off on Postgres.
+      (sql-jdbc.execute/do-with-connection-with-options
+       :postgres
+       (mt/id)
+       {:stream? true}
+       (fn [^java.sql.Connection conn]
+         (is (false? (.getAutoCommit conn)))
+         (is (thrown-with-msg? Exception #"more parameters than we can handle"
+                               (with-open [_stmt (sql-jdbc.execute/prepared-statement
+                                                  :postgres conn "SELECT 1 -- ?" [1])]))))))))

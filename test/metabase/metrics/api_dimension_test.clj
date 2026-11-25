@@ -878,7 +878,7 @@
     (legacy-curated-metric!
      (fn [metric-id]
        ;; `:dataset_query` is a migration trigger: upgrade 24 derives a metric's dimensions from it.
-       (t2/update! :model/Card :id metric-id {:dataset_query (people-metric-query)})
+       (card/update-cards! [{:id metric-id :dataset_query (people-metric-query)}])
        (let [{:keys [card_schema dimensions]} (stored-card metric-id)
              stored-names (display-name-by-field-id dimensions)]
          (is (= card/current-card-schema-version card_schema)
@@ -895,7 +895,7 @@
     (legacy-curated-metric!
      (fn [metric-id]
        (let [modernized (:dimensions (t2/select-one :model/Card :id metric-id))]
-         (t2/update! :model/Card :id metric-id {:dimensions modernized})
+         (card/update-cards! [{:id metric-id :dimensions modernized}])
          (let [{:keys [card_schema dimensions]} (stored-card metric-id)
                stored-names (display-name-by-field-id dimensions)]
            (is (= card/current-card-schema-version card_schema))

@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin :as custom-viz-plugin]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase-enterprise.custom-viz-plugin.test-util :as cvp.tu]
    [metabase.config.core :as config]
@@ -250,19 +251,19 @@
                                                     :display_name "test-viz"
                                                     :status       :active}]
       (testing "sets a valid http URL"
-        (cache/set-or-clear-dev-bundle! id "http://localhost:5174")
+        (custom-viz-plugin/set-or-clear-dev-bundle! id "http://localhost:5174")
         (is (= "http://localhost:5174"
                (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id))))
       (testing "clears the URL with nil"
-        (cache/set-or-clear-dev-bundle! id nil)
+        (custom-viz-plugin/set-or-clear-dev-bundle! id nil)
         (is (nil? (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id))))
       (testing "clears the URL with empty string"
-        (cache/set-or-clear-dev-bundle! id "http://localhost:5174")
-        (cache/set-or-clear-dev-bundle! id "")
+        (custom-viz-plugin/set-or-clear-dev-bundle! id "http://localhost:5174")
+        (custom-viz-plugin/set-or-clear-dev-bundle! id "")
         (is (nil? (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id id))))
       (testing "SECURITY: rejects file:// URLs"
         (is (thrown-with-msg? Exception #"http or https"
-                              (cache/set-or-clear-dev-bundle! id "file:///etc/passwd")))))))
+                              (custom-viz-plugin/set-or-clear-dev-bundle! id "file:///etc/passwd")))))))
 
 ;;; ------------------------------------------------ Asset Whitelist ------------------------------------------------
 
@@ -295,7 +296,7 @@
     (mt/with-premium-features #{:custom-viz}
       (mt/with-model-cleanup [:model/CustomVizPlugin]
         (let [validated (cache/validate-bundle! (cvp.tu/valid-bundle-bytes "new-viz" {:icon "icon.svg"}))
-              row       (cache/insert-bundle! "new-viz" validated)]
+              row       (custom-viz-plugin/insert-bundle! "new-viz" validated)]
           (is (some? (:id row)))
           (is (= :active (:status row)))
           (is (= "new-viz" (:identifier row)))
@@ -314,7 +315,7 @@
                                                       :bundle        (.getBytes "old" "UTF-8")
                                                       :bundle_hash   "oldhash"}]
         (let [validated (cache/validate-bundle! (cvp.tu/valid-bundle-bytes "save-viz" {:icon "new.svg"}))
-              row       (cache/save-bundle! {:id id} validated)]
+              row       (custom-viz-plugin/save-bundle! {:id id} validated)]
           (is (= :active (:status row))
               "plugin should be active after a successful save")
           (is (nil? (:error_message row))

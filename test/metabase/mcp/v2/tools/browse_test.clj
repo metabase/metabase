@@ -183,15 +183,16 @@
   (testing "a collection the caller CAN read, nested under one they cannot, still appears — pulled up to its
             nearest visible ancestor, the way `collections->tree` renders A > C when B is hidden. Grouping
             children by their direct parent id would drop it from the tree entirely."
-    (mt/with-temp [:model/Collection top    {:name "browse-vis-top"}
-                   :model/Collection hidden {:name "browse-vis-hidden" :location (collection/children-location top)}
-                   :model/Collection _deep  {:name "browse-vis-deep" :location (collection/children-location hidden)}]
-      (perms/revoke-collection-permissions! (perms-group/all-users) hidden)
-      (let [names (surfaced-names (browse-as :rasta {:id (:id top) :mode "tree" :depth 3}))]
-        (is (not (contains? names "browse-vis-hidden"))
-            "the unreadable collection itself stays out")
-        (is (contains? names "browse-vis-deep")
-            "but its readable child is surfaced under the nearest visible ancestor")))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[top] (collection/create-collections! [{:name "browse-vis-top"}])
+            [hidden] (collection/create-collections! [{:name "browse-vis-hidden" :location (collection/children-location top)}])
+            _deep (collection/create-collections! [{:name "browse-vis-deep" :location (collection/children-location hidden)}])]
+        (perms/revoke-collection-permissions! (perms-group/all-users) hidden)
+        (let [names (surfaced-names (browse-as :rasta {:id (:id top) :mode "tree" :depth 3}))]
+          (is (not (contains? names "browse-vis-hidden"))
+              "the unreadable collection itself stays out")
+          (is (contains? names "browse-vis-deep")
+              "but its readable child is surfaced under the nearest visible ancestor"))))))
 
 (deftest ^:parallel tree-leaf-has-no-marker-test
   (testing "a childless node reports empty children and carries no truncation marker"
@@ -544,6 +545,35 @@
             (let [[envelope] (call! {:action "get_fields" :table_ids (vec (repeat 25 t))})]
               (is (= [t] (map :id (:tables envelope)))
                   "25 copies of one table is one table — served, not rejected as over the cap"))))))))
+
+(deftest get-fields-include-hidden-statement-count-test
+  (testing "get_fields with include_hidden runs as many statements for 5 tables as for 20, the cap, with hidden fields"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (mt/with-model-cleanup [:model/Table]
+        (mt/with-full-data-perms-for-all-users!
+          (let [statements (fn [n]
+                             (let [table-ids (t2/insert-returning-pks! :model/Table
+                                                                       (for [i (range n)]
+                                                                         {:db_id db-id :schema "public" :name (format "hidden_%d_%d" n i)
+                                                                          :active true}))]
+                               (t2/insert! :model/Field (for [table-id table-ids
+                                                              [position visibility] [[0 :normal] [1 :hidden]]]
+                                                          {:table_id        table-id
+                                                           :name            (str (name visibility) "_column")
+                                                           :base_type       :type/Integer
+                                                           :database_type   "INTEGER"
+                                                           :position        position
+                                                           :visibility_type visibility}))
+                               (mt/with-test-user :rasta
+                                 (t2/with-call-count [call-count]
+                                   (let [[envelope] (call! {:action         "get_fields"
+                                                            :table_ids      table-ids
+                                                            :include_hidden true})]
+                                     (is (= (repeat n ["normal_column" "hidden_column"])
+                                            (map #(map :name (:fields %)) (:tables envelope))))
+                                     (call-count))))))]
+            (statements 2)
+            (is (= (statements 5) (statements 20)))))))))
 
 ;;; ------------------------------------------------ Byte budget ---------------------------------------------------
 

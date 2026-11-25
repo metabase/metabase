@@ -37,7 +37,6 @@
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]))
 
 (set! *warn-on-reflection* true)
@@ -126,8 +125,8 @@
     (string? x) (try (Long/parseLong (str/trim x)) (catch NumberFormatException _ nil))))
 
 (defn run-distinct-batch
-  "Execute one UNION ALL query covering `fields` from one `table`. The caller is responsible for
-  ensuring `(count fields)` ≤ [[*batch-size*]] (the per-query arm cap) and that all `fields`
+  "Execute one UNION ALL query covering `fields` from one `table` of a Database of `driver`. The caller is
+  responsible for ensuring `(count fields)` <= [[*batch-size*]] (the per-query arm cap) and that all `fields`
   belong to `table`.
 
   Returns `{field-id → {:values [decoded …] :raw-count N}}` with all input fields pre-seeded so
@@ -136,9 +135,8 @@
 
   Does NOT swallow exceptions — callers wrap with `metabase.sync.util/with-error-handling`
   (or equivalent) to decide log-and-continue vs abort semantics."
-  [table fields]
+  [driver table fields]
   (let [db-id          (:db_id table)
-        driver         (:engine (warehouse-schema.db/database db-id))
         fields         (vec fields)
         hsql           (build-union driver table fields)
         [sql & params] (sql.qp/format-honeysql driver hsql)

@@ -219,7 +219,7 @@
                  parameter-fields))
    (op-map "remove_parameter"
            (str "Delete a parameter with its card mappings, inline placements, and linked-filter "
-                "references. Subscriptions that set a value for it are archived, and the result lists them.")
+                "references. Subscriptions that set a value for it are archived, and the result reports them.")
            [[:parameter_id parameter-id-schema]])
    (op-map "move_parameter" "Reorder a parameter in the header, or move it onto a card. Pass exactly one of `index` or `dashcard_id`."
            [[:parameter_id parameter-id-schema]

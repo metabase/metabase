@@ -1,7 +1,7 @@
 (ns metabase.queries.events.backfill-model-metadata-on-sync
   (:require
    [metabase.events.core :as events]
-   [metabase.queries.models.card.metadata :as card.metadata]
+   [metabase.queries.models.card :as card]
    [metabase.util.log :as log]
    [methodical.core :as methodical]))
 
@@ -13,6 +13,6 @@
   fields were not synced yet."
   [_topic {database-id :database_id}]
   (try
-    (card.metadata/backfill-untyped-model-metadata! database-id)
+    (card/backfill-untyped-model-metadata! database-id)
     (catch Throwable e
       (log/errorf e "Error inferring untyped model metadata for Database %d" database-id))))

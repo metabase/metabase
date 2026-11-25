@@ -13,7 +13,6 @@
 (p/import-vars
  [metabase.revisions.models.revision
   describe-columns
-  revert-columns!
   revisions
   same-definition?
   snapshot]
@@ -22,4 +21,6 @@
   fetch-last-edited-info
   with-last-edit-info]
  [metabase.revisions.spec
-  spec])
+  schema-keys
+  spec
+  tracked-columns])

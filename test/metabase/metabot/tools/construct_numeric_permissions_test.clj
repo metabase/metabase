@@ -389,23 +389,14 @@
                  (str "error key differed: missing=" (:error missing) " forbidden=" (:error forbidden))))))))))
 
 (deftest readable-table-lookup-passes-a-full-row-to-can-read-test
-  (testing (str "`readable-active-table-database-id` must hand `mi/can-read?` the whole Table row.\n\n"
-                "`can-read?` for a Table is polymorphic over the instance: its published-collection\n"
-                "branch reads `:is_published` and `:collection_id` (warehouse_schema/models/table.clj,\n"
-                "via `perms/can-access-via-collection?`). Selecting only `:id`/`:db_id` — as this fn\n"
-                "first did — makes that branch evaluate against absent keys, so a user whose access\n"
-                "comes through a published collection is told the table does not exist. Asserting on\n"
-                "the row the predicate receives pins the bug directly, without needing the EE\n"
-                "implementation (OSS `can-access-via-collection?` is a constant `false`).")
+  (testing "`readable-active-table-database-id` must hand `mi/can-read?` the whole Table row, as stored."
     (mt/with-premium-features #{}
       (let [seen (atom nil)]
         (mt/with-dynamic-fn-redefs [mi/can-read? (fn [row] (reset! seen row) true)]
           (metabot.db/readable-active-table-database-id (mt/id :venues)))
         (is (some? @seen) "can-read? should have been called")
-        (doseq [k [:id :db_id :is_published :collection_id]]
-          (is (contains? @seen k)
-              (str "the row handed to can-read? is missing " k
-                   ", so any permission branch reading it silently fails")))))))
+        (is (= (t2/select-one :model/Table :id (mt/id :venues))
+               (dissoc @seen :can_read)))))))
 
 ;;; ============================================================
 ;;; Second review round: the oracle via query-check, and scoped content

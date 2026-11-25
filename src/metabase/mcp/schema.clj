@@ -81,3 +81,59 @@
    [:ip_address           {:optional true} [:maybe :string]]
    [:user_agent           {:optional true} [:maybe :string]]
    [:sanitized_user_agent {:optional true} [:maybe :string]]])
+
+(mr/def ::mcp-feedback.create
+  "What recording MCP Apps visualization feedback takes: its author, rating and text, and the prompt and query it is
+  about."
+  [:map {:closed true}
+   [:user_id           [:maybe ::lib.schema.id/user]]
+   [:positive          [:maybe :boolean]]
+   [:issue_type        [:maybe [:or :keyword :string]]]
+   [:freeform_feedback [:maybe :string]]
+   [:prompt            [:maybe :string]]
+   [:query             [:maybe :string]]])
+
+(mr/def ::mcp-query-handle.create
+  "What storing an McpQueryHandle takes besides its id: the MCP and core sessions it belongs to, the encoded query,
+  and optionally the prompt that produced it."
+  [:map {:closed true}
+   [:mcp_session_id                   :string]
+   [:core_session_id                  [:maybe :string]]
+   [:encoded_query                    :string]
+   [:prompt          {:optional true} [:maybe :string]]])
+
+(mr/def ::mcp-session-log.create
+  "What recording an McpSessionLog takes: the session id, its user, tenant and client, and the optional user agent and
+  IP address."
+  [:map {:closed true}
+   [:id                              :string]
+   [:user_id                         [:maybe ::lib.schema.id/user]]
+   [:tenant_id                       [:maybe ms/PositiveInt]]
+   [:client_name                     [:maybe :string]]
+   [:client_version                  [:maybe :string]]
+   [:ip_address     {:optional true} [:maybe :string]]
+   [:user_agent     {:optional true} [:maybe :string]]])
+
+(mr/def ::mcp-tool-call-log.create
+  "What recording an McpToolCallLog takes: the tool, its caller and client, the outcome and duration, and the optional
+  user agent and IP address."
+  [:map {:closed true}
+   [:tool_name                             :string]
+   [:user_id                               [:maybe ::lib.schema.id/user]]
+   [:client_name                           [:maybe :string]]
+   [:client_version                        [:maybe :string]]
+   [:tenant_id                             [:maybe ms/PositiveInt]]
+   [:status                                [:maybe [:or :keyword :string]]]
+   [:duration_ms                           [:maybe :int]]
+   [:error_code                            [:maybe :int]]
+   [:error_message                         [:maybe :string]]
+   [:ip_address           {:optional true} [:maybe :string]]
+   [:user_agent           {:optional true} [:maybe :string]]
+   [:sanitized_user_agent {:optional true} [:maybe :string]]])
+
+(mr/def ::mcp-group-permission.create
+  "What setting the MCP policy of a group takes: the group, whether its members may connect, and its tool access."
+  [:map {:closed true}
+   [:group_id    ms/PositiveInt]
+   [:mcp_enabled :boolean]
+   [:tool_access :metabase.mcp.permissions/tool-access]])

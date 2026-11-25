@@ -2,6 +2,7 @@
   "Application database queries for the metabot-analytics module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
@@ -155,7 +156,8 @@
   "The conversation, data, and data version of the MetabotMessages of the MetabotConversations with
   `conversation-ids`."
   [conversation-ids :- [:sequential :string]]
-  (t2/select [:model/MetabotMessage :conversation_id :data :data_version] :conversation_id [:in conversation-ids]))
+  (mdb/select-batched #(t2/select [:model/MetabotMessage :conversation_id :data :data_version] :conversation_id [:in %])
+                      conversation-ids))
 
 (mu/defn feedback-for-conversation
   "The MetabotFeedback rows on the messages of the MetabotConversation with `conversation-id`, oldest first."

@@ -5,6 +5,7 @@
    [metabase.analyze.classifiers.core]
    [metabase.analyze.classifiers.data-sensitivity]
    [metabase.analyze.classifiers.name]
+   [metabase.analyze.db]
    [metabase.analyze.fingerprint.fingerprinters]
    [metabase.analyze.query-results]
    [potemkin :as p]))
@@ -14,6 +15,7 @@
   metabase.analyze.classifiers.core/keep-me
   metabase.analyze.classifiers.data-sensitivity/keep-me
   metabase.analyze.classifiers.name/keep-me
+  metabase.analyze.db/keep-me
   metabase.analyze.fingerprint.fingerprinters/keep-me
   metabase.analyze.query-results/keep-me)
 
@@ -28,6 +30,14 @@
  [metabase.analyze.classifiers.name
   infer-entity-type-by-name
   infer-semantic-type-by-name]
+ [metabase.analyze.db
+  data-sensitivity-fields
+  fields-to-fingerprint
+  fingerprint-field-counts
+  incomplete-analysis-fields
+  name-field-counts
+  normal-field-counts
+  normal-fields]
  [metabase.analyze.fingerprint.fingerprinters
   col-wise
   constant-fingerprinter

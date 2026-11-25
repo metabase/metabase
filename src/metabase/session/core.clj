@@ -1,6 +1,5 @@
 (ns metabase.session.core
   (:require
-   [metabase.session.db]
    [metabase.session.models.session]
    [metabase.session.query]
    [metabase.session.settings]
@@ -9,15 +8,11 @@
 
 (set! *warn-on-reflection* true)
 
-(comment metabase.session.db/keep-me
-         metabase.session.models.session/keep-me
+(comment metabase.session.models.session/keep-me
          metabase.session.query/keep-me
          metabase.session.settings/keep-me)
 
 (p/import-vars
- [metabase.session.db
-  end-sessions!
-  end-sessions-by-ids!]
  [metabase.session.query
   live-expr
   live-session-conditions
@@ -67,6 +62,12 @@
   []
   (swap! session-last-update-times
          (fn [m] (into {} (filter (fn [[_ timer]] (<= (u/since-ms timer) activity-update-throttle-ms))) m))))
+
+(defn mark-session-active!
+  "Record that the session whose `key_hashed` is `key-hash` wrote its activity just now. Intended for use in tests."
+  [key-hash]
+  (swap! session-last-update-times assoc key-hash (u/start-timer))
+  nil)
 
 (defn clear-session-activity-cache!
   "Remove all entries from the session activity throttle cache. Intended for use in tests."

@@ -15,7 +15,8 @@
   (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/t2-query-namespace {:level :warning}
                                                                :metabase/unsafe-app-db-query  {:level :warning}
                                                                :metabase/t2-implicit-pk       {:level :warning}
-                                                               :metabase/change-log-raw-write {:level :warning}}}
+                                                               :metabase/change-log-raw-write {:level :warning}
+                                                               :metabase/foreign-model-write  {:level :warning}}}
                                         :ignores    (atom nil)
                                         :findings   (atom [])
                                         :namespaces (atom {})}]
@@ -452,3 +453,33 @@
     (is (empty? (raw-write-findings '(t2/insert! :report_card card) 'metabase.foo-test "test/metabase/foo_test.clj")))
     (is (empty? (raw-write-findings '(t2/insert! :report_card card) 'metabase.app-db.custom-migrations)))
     (is (empty? (raw-write-findings '(t2/insert! :report_card card) 'metabase.app-db.custom-migrations.metrics-v2)))))
+
+(defn- foreign-write-findings
+  "Only the `foreign-model-write` findings of linting `form` in `ns-sym` against a small module tree."
+  [form ns-sym & [filename]]
+  (filter #(= :metabase/foreign-model-write (:type %))
+          (lint-query-call form ns-sym filename '{queries                {:model-exports #{:model/Card}}
+                                                  queries.rest           {:ns-prefix "metabase.queries-rest"}
+                                                  dashboards             {:model-exports #{:model/Dashboard}}
+                                                  enterprise/dashboards  {}
+                                                  app-db                 {}})))
+
+(deftest ^:parallel foreign-model-write-test
+  (testing "a write of a model another module owns is flagged"
+    (are [form] (=? [{:type :metabase/foreign-model-write, :message #".*:model/Card belongs to module queries.*"}]
+                    (foreign-write-findings form 'metabase.dashboards.db))
+      '(t2/insert! :model/Card {:name "x"})
+      '(t2/insert-returning-instances! :model/Card rows)
+      '(t2/update! :model/Card :id id {:name "x"})
+      '(t2/delete! :model/Card :id id)))
+  (testing "a write of the module's own model, or from a descendant of its owner, is fine"
+    (is (empty? (foreign-write-findings '(t2/update! :model/Dashboard :id id {:name "x"}) 'metabase.dashboards.db)))
+    (is (empty? (foreign-write-findings '(t2/update! :model/Card :id id {:name "x"}) 'metabase.queries-rest.db)))
+    (is (empty? (foreign-write-findings '(t2/update! :model/Dashboard :id id {:name "x"}) 'metabase-enterprise.dashboards.db))))
+  (testing "a read, a model that is not a literal, and a model no module exports are not checked"
+    (is (empty? (foreign-write-findings '(t2/select :model/Card :id id) 'metabase.dashboards.db)))
+    (is (empty? (foreign-write-findings '(t2/delete! model :id id) 'metabase.dashboards.db)))
+    (is (empty? (foreign-write-findings '(t2/delete! :model/Unexported :id id) 'metabase.dashboards.db))))
+  (testing "tests and the app-db module are not checked"
+    (is (empty? (foreign-write-findings '(t2/insert! :model/Card card) 'metabase.dashboards.foo-test "test/metabase/dashboards/foo_test.clj")))
+    (is (empty? (foreign-write-findings '(t2/insert! :model/Card card) 'metabase.app-db.custom-migrations)))))
