@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-testing.validator
-  "May this test run? [[validate]] answers, once, for the whole test, and throws a typed refusal when the
-  answer is no. Pure: it parses and rewrites SQL, and opens no connection.
+  "May this test run? [[validate]] answers, once, for the whole test: it throws a typed refusal when the answer is no,
+  and when it is yes returns the SQL a run executes for each expectation written in SQL. Pure: it parses and rewrites
+  SQL, and opens no connection.
 
   Two guards, run against the test as a whole:
 
@@ -17,6 +18,10 @@
   the tables a subject modifies. The parser sees no table inside a procedure or a function, so [[ensure-single-write]]
   admits only one INSERT, UPDATE or DELETE, and refuses the functions it knows to run SQL text or act outside the
   statement. A write made inside any other function goes unseen.
+
+  No guard reads what any other statement does. An input's SQL runs as written, and the query under test and each
+  expectation's SQL run as written apart from their table references: what they may do is up to the database
+  connection.
 
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require
@@ -129,13 +134,24 @@
                 (map (comp table-label :table)))
           inputs)))
 
+(mr/def ::sql-source
+  "Whose SQL a refusal names: nil for the query under test, or `[:expectation name]`."
+  [:maybe [:tuple [:= :expectation] :string]])
+
+(defn- sql-source-label
+  "`source`, a [[::sql-source]], as a message names it."
+  [[kind x :as source]]
+  (case (when source kind)
+    nil          (tru "the query under test")
+    :expectation (tru "expectation {0}" (pr-str x))))
+
 (mu/defn- check-rewrite
-  "Throw unless every table `rewritten` reads is one of `temp-tables`. `source` names the query for the author: nil is
-  the query under test, a string is the expectation that carries the SQL."
+  "Throw unless every table `rewritten`, the rewritten SQL of `source`, reads is one of `temp-tables`. `source` is nil, the
+  query under test, or an expectation."
   [driver      :- :keyword
    rewritten   :- :string
    temp-tables :- [:set :string]
-   source      :- [:maybe :string]]
+   source      :- [:maybe [:tuple [:= :expectation] :string]]]
   (when-let [surviving (seq (surviving-references
                              (data-testing.compile/referenced-tables driver rewritten)
                              temp-tables
@@ -143,17 +159,18 @@
     (throw (data-testing.errors/ex
             ::data-testing.errors/unremapped-reference
             (if source
-              (tru "Expectation {0} reads table(s) this test does not stand in for: {1}. An expectation may only read the output of the query under test and its declared inputs."
-                   (pr-str source) (str/join ", " surviving))
+              (tru "The SQL of {0} reads table(s) this test does not stand in for: {1}. An expectation may only read the output of the query under test and its declared inputs."
+                   (sql-source-label source) (str/join ", " surviving))
               (tru "The test could not fully remap the query under test to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
                    (str/join ", " surviving)))
             (cond-> {:references (vec surviving)}
-              source (assoc :expectation source))))))
+              source (assoc :expectation (second source)))))))
 
-(mu/defn- check-expectation-sql
-  "Throw unless the expectation named `expectation-name` reads only `temp-tables` once rewritten with `replacements`
-  and `output-token`. Its SQL is the author's, so SQL the parser cannot read is a refusal naming the expectation
-  rather than the parser's own escape."
+(mu/defn- check-expectation-sql :- :string
+  "The SQL the run executes for the expectation named `expectation-name`, whose SQL is `sql`: `sql` reading the temp
+  tables of `replacements` and `output-token`, otherwise as written. Throws unless it reads only `temp-tables`. Its
+  SQL is the author's, so SQL the parser cannot read is a refusal naming the expectation rather than the parser's own
+  escape."
   [driver           :- :keyword
    expectation-name :- :string
    sql              :- :string
@@ -161,17 +178,23 @@
    output-token     :- [:maybe ::data-testing.compile/output-token]
    temp-tables      :- [:set :string]]
   (try
-    (check-rewrite driver
-                   (data-testing.compile/replace-tables driver sql replacements output-token)
-                   temp-tables
-                   expectation-name)
+    (let [query (data-testing.compile/replace-tables driver sql replacements output-token)]
+      (check-rewrite driver query temp-tables [:expectation expectation-name])
+      query)
     (catch Exception e
-      (if (sql-parsing/parse-error? e)
+      (cond
+        (sql-parsing/parse-error? e)
         (throw (data-testing.errors/ex
                 ::data-testing.errors/unparseable-source
-                (tru "Expectation {0} has SQL that could not be parsed: {1}"
-                     (pr-str expectation-name) (sql-parsing/parse-error-message e))
+                (tru "The SQL of {0} could not be parsed: {1}"
+                     (sql-source-label [:expectation expectation-name]) (sql-parsing/parse-error-message e))
                 {:expectation expectation-name}))
+
+        (= ::data-testing.errors/unreplaceable-reference (:error-type (ex-data e)))
+        (throw (ex-info (tru "In the SQL of {0}: {1}" (sql-source-label [:expectation expectation-name]) (ex-message e))
+                        (assoc (ex-data e) :expectation expectation-name)))
+
+        :else
         (throw e)))))
 
 (def ^:private placeholder
@@ -293,10 +316,11 @@
                                        missing)})))))
         inputs))
 
-(mu/defn validate :- :nil
+(mu/defn validate :- [:map-of :string :string]
   "Refuse the test unless it is complete against the query it tests, every query it will run reads only the run's
-  temp tables, and it has at least one expectation. Returns nil when there is nothing to refuse, and otherwise throws a
-  typed refusal from [[metabase-enterprise.data-testing.errors]].
+  temp tables, and it has at least one expectation. When nothing is refused, returns, by expectation name, the SQL a
+  run executes for each expectation written in SQL; otherwise throws a typed refusal from
+  [[metabase-enterprise.data-testing.errors]].
 
   `referenced-tables` are the tables the query under test reads, parsed before any replacement; `rewritten-query`
   is that query after it; `replacements` is the map both it and the expectations are rewritten with, whose values name
@@ -362,16 +386,19 @@
             {:tables        (mapv (comp table-label :table) missing)
              :columns       (into {} (map (juxt (comp table-label :table) :columns)) missing)
              :response/keys #{:tables :columns}})))
-  (let [temp-tables (into #{} (map :table) (vals replacements))]
-    (check-rewrite driver rewritten-query temp-tables nil)
-    (doseq [{:keys [name sql]} expectations
-            :when              sql]
-      (when output-token
-        (check-placeholders name sql output-token))
-      (check-expectation-sql driver name sql replacements output-token temp-tables)))
-  (when (empty? expectations)
-    (throw (data-testing.errors/ex
-            ::data-testing.errors/no-expectations
-            (tru "The test has no expectations, so it checks nothing. Add at least one.")
-            {})))
-  nil)
+  (let [temp-tables        (into #{} (map :table) (vals replacements))
+        _                  (check-rewrite driver rewritten-query temp-tables nil)
+        expectation->query (into {}
+                                 (keep (fn [{:keys [name sql]}]
+                                         (when sql
+                                           (when output-token
+                                             (check-placeholders name sql output-token))
+                                           [name (check-expectation-sql driver name sql replacements output-token
+                                                                        temp-tables)])))
+                                 expectations)]
+    (when (empty? expectations)
+      (throw (data-testing.errors/ex
+              ::data-testing.errors/no-expectations
+              (tru "The test has no expectations, so it checks nothing. Add at least one.")
+              {})))
+    expectation->query))

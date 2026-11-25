@@ -233,8 +233,9 @@
    sql params
    (fn [card _asked]
      (data-testing.test-util/refusal
-      #(data-testing.runner/validate-test :card card {:inputs       [(people-rows)]
-                                                      :expectations [(reading refunded-only-1)]})))))
+      #(mt/with-test-user :crowberto
+         (data-testing.runner/validate-test :card card {:inputs       [(people-rows)]
+                                                        :expectations [(reading refunded-only-1)]}))))))
 
 (deftest write-returning-rows-is-refused-test
   (mt/test-drivers (drivers-that-write)
@@ -259,11 +260,12 @@
      (refund-1) ["refunded" 1]
      (fn [card asked]
        (testing "validating a test asks the subject for its plan with the test's parameter values"
-         (is (nil? (data-testing.runner/validate-test
-                    :card card
-                    {:inputs       [(people-rows)]
-                     :expectations [(reading refunded-only-1)]
-                     :parameters   {"id" 1 "status" "refunded"}})))
+         (is (nil? (mt/with-test-user :crowberto
+                     (data-testing.runner/validate-test
+                      :card card
+                      {:inputs       [(people-rows)]
+                       :expectations [(reading refunded-only-1)]
+                       :parameters   {"id" 1 "status" "refunded"}}))))
          (is (= [{"id" 1 "status" "refunded"}] (asked))))))))
 
 (defn- fail-to-write!

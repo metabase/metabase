@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-testing.subject.card-test
-  "The `:card` subject plan: the database, the compiled SQL and the output names of a card. H2 only."
+  "The `:card` subject plan: the database, the compiled SQL and the output names of a card. Postgres only: data tests refuse H2 until VER-182."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
@@ -27,7 +27,7 @@
 (defn- tables-read
   "The tables the compiled SQL of `plan` reads."
   [plan]
-  (data-testing.compile/referenced-tables :h2 (get-in plan [:compiled :query])))
+  (data-testing.compile/referenced-tables driver/*driver* (get-in plan [:compiled :query])))
 
 (defn- native-query
   "A native query of `sql`, with `template-tags` by name."
@@ -36,7 +36,7 @@
     template-tags (lib/with-template-tags template-tags)))
 
 (deftest mbql-card-plan-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (let [orders (data-testing.test-util/table-query :orders)
           query  (lib/aggregate orders (lib/sum (data-testing.test-util/column orders :orders :total)))]
       (mt/with-temp [:model/Card {card-id :id} {:name "Total revenue" :dataset_query query}]
@@ -55,7 +55,7 @@
                                 (data-testing.subject/subject-plan :card {:dataset_query (:dataset_query (saved-card card-id))} empty-definition))))))))
 
 (deftest mbql-card-implicit-join-plan-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (let [orders (data-testing.test-util/table-query :orders)]
                                                                (-> orders
                                                                    (lib/aggregate (lib/sum (data-testing.test-util/column orders :orders :total)))
@@ -65,7 +65,7 @@
                (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) empty-definition))))))))
 
 (deftest mbql-card-with-a-foreign-key-remap-plan-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (mt/with-column-remappings [orders.product_id products.title]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (let [orders (data-testing.test-util/table-query :orders)]
                                                                  (lib/with-fields orders [(data-testing.test-util/column orders :orders :id)
@@ -75,7 +75,7 @@
                  (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) empty-definition)))))))))
 
 (deftest native-card-plan-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (let [{:keys [schema name]} (data-testing.test-util/table-ref :people)]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (native-query (str "SELECT * FROM " schema "." name))}]
         (testing "a native card reads the tables its SQL names"
@@ -83,7 +83,7 @@
                  (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) empty-definition)))))))))
 
 (deftest native-card-with-card-reference-plan-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (let [{:keys [schema name]} (data-testing.test-util/table-ref :products)]
       (mt/with-temp [:model/Card {referenced-id :id} {:dataset_query (native-query (str "SELECT * FROM " schema "." name))}
                      :model/Card {card-id :id}       {:dataset_query
@@ -98,7 +98,7 @@
                  (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) empty-definition)))))))))
 
 (deftest native-card-with-snippet-plan-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (let [{:keys [schema name]} (data-testing.test-util/table-ref :venues)]
       (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "venues table" :content (str schema "." name)}
                      :model/Card {card-id :id} {:dataset_query
@@ -114,7 +114,7 @@
                  (tables-read (data-testing.subject/subject-plan :card (saved-card card-id) empty-definition)))))))))
 
 (deftest metric-and-model-card-plan-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (mt/with-temp [:model/Card {metric-id :id} {:type          :metric
                                                 :dataset_query (lib/aggregate (data-testing.test-util/table-query :orders) (lib/count))}
                    :model/Card {model-id :id}  {:type          :model
@@ -133,7 +133,7 @@
                (tables-read (data-testing.subject/subject-plan :card (saved-card over-model-id) empty-definition))))))))
 
 (deftest card-with-a-parameter-that-needs-a-value-is-refused-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (let [{:keys [schema name]} (data-testing.test-util/table-ref :people)
           people                (str schema "." name)
           tag                   (fn [tag-name & {:as more}]
@@ -180,7 +180,7 @@
                                          "source" (tag "source")))))))))
 
 (deftest card-on-a-database-without-testing-is-refused-test
-  (mt/test-driver :h2
+  (mt/test-driver :postgres
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (data-testing.test-util/table-query :venues)}]
       (let [supports? driver/database-supports?]
         (with-redefs [driver/database-supports? (fn [driver feature database]

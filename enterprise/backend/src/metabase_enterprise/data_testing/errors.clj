@@ -14,6 +14,7 @@
   "Every `:error-type` a test run can throw, and the HTTP status it carries.
 
   400 — the test is wrong, and its author can fix it.
+  403 — the current user may not create or run this test, or change what it tests.
   422 — the test is fine; the subject or its database prevents a run here.
   501 — the test asks for something not built yet."
   {;; 400 — authoring
@@ -24,6 +25,7 @@
    ::duplicate-input-table      400  ; Two inputs stand in for the same table.
    ::unparseable-source         400  ; The SQL of the query under test could not be parsed to find what it reads.
    ::unremapped-reference       400  ; A real table survived the rewrite into the test's SQL.
+   ::unreplaceable-reference    400  ; A table reference could not be replaced in the text of the test's SQL.
    ::no-expectations            400  ; The test checks nothing.
    ::unknown-placeholder        400  ; Expectation SQL writes a `{{...}}` that is not the output token.
    ::missing-input-columns      400  ; A rows input lacks a column the query under test reads.
@@ -33,9 +35,12 @@
    ::parameters-not-taken       400  ; A test sets parameter values for a subject type that takes none.
    ::write-returns-rows         400  ; A subject that writes has a RETURNING or OUTPUT clause, so it returns rows.
 
+   ;; 403 — the current user
+   ::impersonated-user          403  ; The user's connection to the subject's database is impersonated.
+
    ;; 422 — the subject or its environment
    ::unsupported-transform      422  ; Not a query transform (Python, say).
-   ::unsupported-driver         422  ; The database does not support testing.
+   ::unsupported-driver         422  ; The database does not support testing, or is H2, which data tests do not support yet.
    ::uncompilable-subject       422  ; The subject's query does not compile to SQL.
    ::query-failed               422  ; The query under test would not run.
    ::duplicate-output-columns   422  ; The output of the query under test has two columns of one name.

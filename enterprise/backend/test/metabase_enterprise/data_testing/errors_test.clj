@@ -38,6 +38,7 @@
    ::errors/duplicate-input-table      400
    ::errors/unparseable-source         400
    ::errors/unremapped-reference       400
+   ::errors/unreplaceable-reference    400
    ::errors/no-expectations            400
    ::errors/unknown-placeholder        400
    ::errors/missing-input-columns      400
@@ -46,6 +47,7 @@
    ::errors/no-output                  400
    ::errors/write-returns-rows         400
    ::errors/parameters-not-taken       400
+   ::errors/impersonated-user          403
    ::errors/unsupported-transform      422
    ::errors/unsupported-driver         422
    ::errors/uncompilable-subject       422
@@ -78,6 +80,7 @@
              ::errors/duplicate-input-table
              ::errors/unparseable-source
              ::errors/unremapped-reference
+             ::errors/unreplaceable-reference
              ::errors/no-expectations
              ::errors/unknown-placeholder
              ::errors/missing-input-columns
@@ -87,6 +90,9 @@
              ::errors/write-returns-rows
              ::errors/parameters-not-taken}
            (types-with-status 400))))
+  (testing "permission refusals — the current user may not save or run the test — are 403"
+    (is (= #{::errors/impersonated-user}
+           (types-with-status 403))))
   (testing "environment errors — the subject or its database prevents a run here — are 422"
     (is (= #{::errors/unsupported-transform
              ::errors/unsupported-driver
@@ -124,6 +130,7 @@
    ::errors/duplicate-input-table      "transform-test.duplicate-input-table"
    ::errors/unparseable-source         "transform-test.unparseable-source"
    ::errors/unremapped-reference       "transform-test.unremapped-reference"
+   ::errors/unreplaceable-reference    "transform-test.unreplaceable-reference"
    ::errors/no-expectations            "transform-test.no-expectations"
    ::errors/unknown-placeholder        "transform-test.unknown-placeholder"
    ::errors/missing-input-columns      "transform-test.missing-input-columns"
@@ -133,6 +140,7 @@
    ::errors/write-returns-rows         "transform-test.write-returns-rows"
    ::errors/parameters-not-taken       "transform-test.parameters-not-taken"
    ::errors/uncheckable-write          "transform-test.uncheckable-write"
+   ::errors/impersonated-user          "transform-test.impersonated-user"
    ::errors/unsupported-transform      "transform-test.unsupported-transform"
    ::errors/unsupported-driver         "transform-test.unsupported-driver"
    ::errors/uncompilable-subject       "transform-test.uncompilable-subject"

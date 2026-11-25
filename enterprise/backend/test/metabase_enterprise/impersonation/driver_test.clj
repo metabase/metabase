@@ -1407,6 +1407,63 @@
           (is (= :ok       (outcome (query write))))
           (is (= :rejected (outcome (query select)))))))))
 
+(deftest ^:parallel impersonated-native-query-runs-one-statement-test
+  (testing "an impersonated native query whose rebuild Postgres reads as more than one statement is refused"
+    (let [query   (fn [sql] (lib/native-query meta/metadata-provider sql))
+          outcome (fn [sql]
+                    (try
+                      (driver.sql/validate-impersonated-query* :postgres (query sql))
+                      :ok
+                      (catch clojure.lang.ExceptionInfo _ :rejected)))]
+      (testing "read"
+        (testing "control: a plain SELECT runs"
+          (is (= :ok (outcome "SELECT id, name FROM venues WHERE price > 2"))))
+        (testing "a dollar-quoted alias, which SQLGlot writes back bare"
+          (is (= :rejected (outcome "SELECT 1 AS $q$a; RESET ROLE; SELECT current_user$q$"))))
+        (testing "a quote after a backslash, which ends the literal only with standard_conforming_strings on"
+          (is (= :rejected (outcome (str "SELECT 'a\\'' ; RESET ROLE; INSERT INTO public.orders VALUES (87670);"
+                                         " SELECT current_user --'")))))
+        (testing "a literal ending in a backslash, with no semicolon after it, runs"
+          (is (= :ok (outcome "SELECT 'C:\\' AS note")))))
+      (binding [driver.settings/*impersonation-allow-write?* true]
+        (testing "write"
+          (testing "control: a plain INSERT, UPDATE and DELETE run"
+            (is (= :ok (outcome "INSERT INTO venues (name) VALUES ('x')")))
+            (is (= :ok (outcome "UPDATE venues SET name = 'x' WHERE id = 1")))
+            (is (= :ok (outcome "DELETE FROM venues WHERE id = 1"))))
+          (testing "a dollar-quoted alias, which SQLGlot writes back bare"
+            (is (= :rejected (outcome "INSERT INTO venues (name) SELECT 'x' AS $q$a; RESET ROLE; SELECT 1$q$"))))
+          (testing "a quote after a backslash, which ends the literal only with standard_conforming_strings on"
+            (is (= :rejected (outcome (str "INSERT INTO public.t VALUES ('a\\'' ); RESET ROLE;"
+                                           " INSERT INTO public.orders VALUES (2) --')"))))))))))
+
+(deftest ^:parallel impersonated-native-query-rebuild-need-not-rebuild-to-itself-test
+  (testing "an impersonated native query runs when its rebuild passes the checks, even if the rebuild does not rebuild to itself"
+    (let [outcome (fn [sql]
+                    (try
+                      (driver.sql/validate-impersonated-query* :postgres (lib/native-query meta/metadata-provider sql))
+                      :ok
+                      (catch clojure.lang.ExceptionInfo _ :rejected)))]
+      (testing "a -- comment opening a CTE's body, which the rebuild writes as a /* */ comment that a second parse drops"
+        (is (= :ok (outcome "WITH c AS (\n  -- note\n  SELECT id FROM venues) SELECT * FROM c"))))
+      (testing "an E'' string whose rebuild moves a quote, so `set_config` runs, is still refused"
+        (is (= :rejected (outcome "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$none$z$, false) --$q$ AS a")))))))
+
+(deftest ^:parallel impersonated-native-query-refused-for-its-rebuild-is-told-why-test
+  (testing "a single SELECT refused because its rebuild fails the checks is not told only that it must be one SELECT"
+    (let [message (fn [sql write?]
+                    (binding [driver.settings/*impersonation-allow-write?* write?]
+                      (try
+                        (driver.sql/validate-impersonated-query* :postgres (lib/native-query meta/metadata-provider sql))
+                        nil
+                        (catch clojure.lang.ExceptionInfo e (ex-message e)))))]
+      (testing "an E'' string whose rebuild never ends"
+        (is (= "Invalid impersonated native query. Must be a single select statement that Metabase can check."
+               (message "SELECT E'a\\\\' AS id FROM venues" false))))
+      (testing "the same in a write"
+        (is (= "Invalid impersonated native query. Must be a single insert, update, or delete statement that Metabase can check."
+               (message "UPDATE venues SET name = E'a\\\\'" true)))))))
+
 (deftest validate-impersonated-query-is-enforced-for-all-impersonation-drivers-test
   (testing "every driver that supports connection-impersonation enforces the single-statement guard (SEC-1189)"
     (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)

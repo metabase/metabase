@@ -93,11 +93,11 @@
            (#'validator/missing-inputs [(sql-input "PUBLIC" "PEOPLE")] #{{:schema "PUBLIC" :name "ORDERS"}} "PUBLIC")))))
 
 (defn- refusal
-  "The `:error-type` that [[validator/validate]] throws for `args` on H2, or nil when it accepts them."
+  "The `:error-type` that [[validator/validate]] throws for `args` on Postgres, or nil when it accepts them."
   [args]
-  (driver/the-initialized-driver :h2)
+  (driver/the-initialized-driver :postgres)
   (try
-    (validator/validate :h2 args)
+    (validator/validate :postgres args)
     nil
     (catch ExceptionInfo e
       (:error-type (ex-data e)))))
@@ -140,11 +140,11 @@
         with-sql  (fn [args sql] (assoc args :expectations [{:type :empty :name "check" :sql sql}]))
         refused   (fn [args]
                     (try
-                      (validator/validate :h2 args)
+                      (validator/validate :postgres args)
                       nil
                       (catch ExceptionInfo e
                         {:error-type (:error-type (ex-data e)) :message (ex-message e)})))]
-    (driver/the-initialized-driver :h2)
+    (driver/the-initialized-driver :postgres)
     (testing "control: the output token, with or without spaces inside its braces, is accepted"
       (is (nil? (refused (with-sql card-test "SELECT * FROM {{output}} JOIN {{ output }} o2 ON 1 = 1")))))
     (testing "any other placeholder is refused, naming it and the expectation"
@@ -220,12 +220,15 @@
          :ignore-case? false))
 
 (defn- validation-refusal
-  "The refusal of `validator/validate` on H2 with `args`, with its `:columns`, or nil."
+  "The refusal of `validator/validate` on Postgres with `args`, with its `:columns`, or nil."
   [args]
-  (driver/the-initialized-driver :h2)
-  (data-testing.test-util/refusal #(validator/validate :h2 args) :columns))
+  (driver/the-initialized-driver :postgres)
+  (data-testing.test-util/refusal #(validator/validate :postgres args) :columns))
 
-(def ^:private people-rows-input data-testing.test-util/people-rows-input)
+(defn- people-rows-input
+  "A rows input standing in for `PUBLIC.PEOPLE`, the table `people-test` reads, declaring `column-names`."
+  [& column-names]
+  (assoc (apply data-testing.test-util/people-rows-input column-names) :table {:schema "PUBLIC" :name "PEOPLE"}))
 
 (deftest missing-input-columns-test
   (testing "control: a rows input declaring every column the query reads is accepted"
@@ -284,3 +287,48 @@
                                        :inputs       [(assoc (events-input "id") :table {:schema "public" :name "Events"})]
                                        :columns-read #{{:schema "public" :name "Events" :column "id"}
                                                        {:schema "public" :name "events" :column "CreatedAt"}}))))))
+
+;;; ---------------------------------------------- Expectation SQL ----------------------------------------------
+
+(deftest validate-returns-expectation-sql-as-written-test
+  (let [returned (fn [driver sql]
+                   (driver/the-initialized-driver driver)
+                   (get (validator/validate driver (assoc complete-test :expectations [{:type :empty :name "check" :sql sql}]))
+                        "check"))]
+    (testing "a form that SQLGlot would rebuild with another value comes back as its author wrote it"
+      (is (= "SELECT * FROM MB_T1 AS PEOPLE WHERE ID > 0x1F"
+             (returned :postgres "SELECT * FROM PEOPLE WHERE ID > 0x1F")))
+      (is (= "SELECT * FROM MB_T1 AS PEOPLE WHERE ID DIV 2 = 1"
+             (returned :mysql "SELECT * FROM PEOPLE WHERE ID DIV 2 = 1")))
+      (is (= "SELECT * FROM MB_T1 AS PEOPLE WHERE LOG10(ID) = 1"
+             (returned :mysql "SELECT * FROM PEOPLE WHERE LOG10(ID) = 1")))
+      (is (= "SELECT * FROM MB_T1 AS PEOPLE WHERE !ID + 1 = 1"
+             (returned :mysql "SELECT * FROM PEOPLE WHERE !ID + 1 = 1"))))))
+
+(defn- parser-internals
+  "The parser's own workings in `message`: SQLGlot's class names and terminal escape codes."
+  [message]
+  (re-seq #"<class 'sqlglot|\u001b" message))
+
+(deftest unparseable-sql-refusal-reads-as-the-parser-diagnostic-test
+  (let [sql "SELECT a FROM t WHERE ("]
+    (testing "an expectation that does not parse is refused with the diagnostic cleaned of the parser's internals"
+      (driver/the-initialized-driver :postgres)
+      (let [{:keys [error-type message]}
+            (data-testing.test-util/refusal
+             #(validator/validate :postgres (assoc complete-test
+                                                   :expectations [{:type :empty :name "check" :sql sql}])))]
+        (is (= ::errors/unparseable-source error-type))
+        (is (nil? (parser-internals message)) (pr-str message))))))
+
+(deftest validate-returns-the-sql-a-run-executes-for-each-expectation-test
+  (testing "validate returns, by expectation name, each SQL expectation as written but for its tables, which a run executes"
+    (driver/the-initialized-driver :postgres)
+    (is (= {"later ids"  "SELECT * FROM MB_T1 AS PEOPLE WHERE ID > 1 -- c"
+            "rows match" "SELECT ID FROM MB_T1 AS PEOPLE"}
+           (validator/validate :postgres
+                               (assoc complete-test
+                                      :expectations [{:type :empty :name "later ids" :sql "SELECT * FROM PEOPLE WHERE ID > 1 -- c"}
+                                                     {:type :equals :name "rows match" :format :sql :sql "SELECT ID FROM PEOPLE"}
+                                                     {:type    :equals :name "written rows" :format :rows
+                                                      :columns [{:name "ID" :cast_type "integer"}] :rows [{"ID" 1}]}]))))))

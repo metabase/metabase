@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
-   [metabase-enterprise.data-testing.runner :as data-testing.runner]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.data-testing.validator :as data-testing.validator]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
@@ -21,7 +21,7 @@
 
 ;; The Database's synced `default_schema` decides whether a bare table key is registered. Identifier normalization
 ;; still dispatches on an initialized driver; these tests parse and rewrite SQL only, so no connection is needed.
-(use-fixtures :once (fn [f] (driver/the-initialized-driver :h2) (f)))
+(use-fixtures :once (fn [f] (driver/the-initialized-driver :h2) (driver/the-initialized-driver :postgres) (f)))
 
 ;;; -------------------------------------------- Harness --------------------------------------------
 
@@ -175,11 +175,12 @@
 
 (defn- validate
   "Run [[data-testing.validator/validate]] over a test declaring `inputs` and `expectations` against a transform
-  reading `sql`. Returns nil when it accepts the test, and throws its refusal when it does not."
+  reading `sql`. Returns the SQL a run executes for each SQL expectation, by name, when it accepts the test, and throws
+  its refusal when it does not."
   [inputs expectations sql]
   (let [replacements (replacements-for inputs)]
     (data-testing.validator/validate
-     :h2
+     :postgres
      {:inputs              inputs
       :expectations        expectations
       :referenced-tables   (declared-refs sql)
@@ -194,19 +195,21 @@
       ;; Input completeness is checked against the transform's references, never an expectation's, so
       ;; nothing stands in for ORDERS. Guard B covers the expectation's own SQL for exactly this.
       (is (thrown-with-msg?
-           ExceptionInfo #"(?i)Expectation \"leaks\" reads table\(s\) this test does not stand in for: orders"
+           ExceptionInfo #"(?i)^The SQL of expectation \"leaks\" reads table\(s\) this test does not stand in for: orders"
            (validate inputs [{:type :empty :name "leaks" :sql "SELECT * FROM ORDERS"}] source))))
-    (testing "an expectation reading the transform's output or a declared input is accepted"
-      (is (nil? (validate inputs
-                          [{:type :empty :name "output" :sql "SELECT * FROM UNREFERENCED_TARGET"}
-                           {:type :empty :name "input"  :sql "SELECT * FROM PUBLIC.PEOPLE"}]
-                          source))))
+    (testing "an expectation reading the transform's output or a declared input is accepted, reading their temp tables"
+      (is (= {"output" "SELECT * FROM TMP_OUT AS UNREFERENCED_TARGET"
+              "input"  "SELECT * FROM TMP_IN_1 AS PEOPLE"}
+             (validate inputs
+                       [{:type :empty :name "output" :sql "SELECT * FROM UNREFERENCED_TARGET"}
+                        {:type :empty :name "input"  :sql "SELECT * FROM PUBLIC.PEOPLE"}]
+                       source))))
     (testing "an expectation whose SQL cannot be parsed is refused as an authoring error, not a parser escape"
       (is (thrown-with-msg?
-           ExceptionInfo #"Expectation \"broken\" has SQL that could not be parsed"
+           ExceptionInfo #"^The SQL of expectation \"broken\" could not be parsed: "
            (validate inputs [{:type :empty :name "broken" :sql "SELECT * FROM WHERE ("}] source))))
     (testing "an expectation with no SQL of its own is nothing to check"
-      (is (nil? (validate inputs
+      (is (= {} (validate inputs
                           [{:type    :equals :name "rows" :format :rows
                             :columns [{:name "ID" :cast_type "INTEGER"}]
                             :rows    [{"ID" 1}]}]
@@ -319,7 +322,7 @@
 
 (deftest case-mismatched-run-must-not-report-on-real-data-test
   (testing "a run whose rewrite misses must refuse rather than report a result read from real tables"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (mt/test-drivers (data-testing.test-util/data-test-drivers)
       (let [mp                            (mt/metadata-provider)
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
             target                        "mb_remapping_probe_case_mismatch"]
@@ -343,7 +346,7 @@
             ;; lower case. Refusing the run is a fine answer. Reporting :failed is not — it means
             ;; the fixture was ignored and the expectation was measured against real rows.
             (let [outcome (try
-                            (data-testing.runner/run-test! :transform transform transform-test)
+                            (data-testing.test-util/run-as-admin! :transform transform transform-test)
                             (catch Exception e
                               {:refused (ex-message e)}))]
               (is (not= {:status :failed} outcome)
@@ -351,7 +354,7 @@
 
 (deftest target-table-is-never-created-test
   (testing "a run leaves no trace in the warehouse: the transform's target is never materialized"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (mt/test-drivers (data-testing.test-util/data-test-drivers)
       (let [mp                            (mt/metadata-provider)
             {schema :schema, table :name} (lib.metadata/table mp (mt/id :people))
             target                        "mb_remapping_probe_target"]
@@ -370,5 +373,5 @@
                         :expectations [{:type :empty
                                         :name "the output holds only the fixture row"
                                         :sql  (str "SELECT * FROM " schema "." target " WHERE id <> -1")}]}]
-          (is (= :passed (:status (data-testing.runner/run-test! :transform transform transform-test))))
+          (is (= :passed (:status (data-testing.test-util/run-as-admin! :transform transform transform-test))))
           (is (not (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:schema schema :name target}))))))))

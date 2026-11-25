@@ -46,6 +46,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.core :as sql-tools]
@@ -72,15 +73,15 @@
 (mr/def ::plan
   "What [[validated-plan]] hands the run that follows it."
   [:map {:closed true}
-   [:driver       :keyword]
-   [:database     ::lib.schema.metadata/database]
-   [:input->table [:map-of ::data-testing.schema/input :string]]
-   [:output-table [:maybe :string]]
-   [:labels       ::labels]
-   [:replacements ::data-testing.compile/table-replacements]
-   [:output-token [:maybe ::data-testing.compile/output-token]]
-   [:compiled     ::data-testing.compile/compiled-query]
-   [:writes?      :boolean]])
+   [:driver             :keyword]
+   [:database           ::lib.schema.metadata/database]
+   [:input->table       [:map-of ::data-testing.schema/input :string]]
+   [:input->query       [:map-of ::data-testing.schema/input ::data-testing.compile/compiled-query]]
+   [:output-table       [:maybe :string]]
+   [:labels             ::labels]
+   [:expectation->query [:map-of :string :string]]
+   [:compiled           ::data-testing.compile/compiled-query]
+   [:writes?            :boolean]])
 
 (mr/def ::definition
   "What a run reads of a test."
@@ -101,13 +102,12 @@
 
 (mr/def ::context
   "What an expectation is given to build its queries and read their answers: the driver; the output temp table and
-  the columns it has, or a nil table and no columns when the subject modifies tables; the input-table replacements;
-  the token its SQL may write for the output; and the expectation's own temp tables and their columns once they exist."
+  the columns it has, or a nil table and no columns when the subject modifies tables; the SQL the run executes for an
+  expectation written in SQL; and the expectation's own temp tables and their columns once they exist."
   [:map {:closed true}
    [:driver             :keyword]
    [:output-table       [:maybe :string]]
-   [:replacements       ::data-testing.compile/table-replacements]
-   [:output-token       {:optional true} [:maybe ::data-testing.compile/output-token]]
+   [:expectation-query  {:optional true} :string]
    [:output-columns     {:optional true} [:sequential ::data-testing.schema/result-column]]
    [:temp-tables        {:optional true} [:map-of :string :string]]
    [:temp-table-columns {:optional true} [:map-of :string [:sequential ::data-testing.schema/result-column]]]])
@@ -246,15 +246,15 @@
         (throw e)))))
 
 (mu/defn- create-inputs! :- :nil
-  "Materialize each input of `input->table` as its temp table on `conn`."
+  "Materialize each input of `input->table` as its temp table on `conn`, filled by its query in `input->query`."
   [driver       :- :keyword
    conn         :- ::data-testing.schema/connection
    input->table :- [:map-of ::data-testing.schema/input :string]
+   input->query :- [:map-of ::data-testing.schema/input ::data-testing.compile/compiled-query]
    labels       :- ::labels]
   (doseq [[input table] input->table]
     (try
-      (data-testing.executor/create-temp-table!
-       driver conn table (data-testing.compile/compile-input driver input))
+      (data-testing.executor/create-temp-table! driver conn table (input->query input))
       (catch Exception e
         (rethrow-remapped e ::data-testing.errors/setup-failed
                           (tru "Could not create the test input for {0}:"
@@ -307,19 +307,37 @@
 
 (mu/defn- check-expectations :- [:sequential ::data-testing.schema/expectation-result]
   "The result of every expectation, passing ones included, against the output temp table, or against the input temp
-  tables when the subject modifies tables."
-  [driver       :- :keyword
-   conn         :- ::data-testing.schema/connection
-   context      :- ::context
-   expectations :- ::data-testing.schema/expectations
-   labels       :- ::labels]
+  tables when the subject modifies tables. `expectation->query` is the SQL the run executes for each expectation
+  written in SQL, by name."
+  [driver             :- :keyword
+   conn               :- ::data-testing.schema/connection
+   context            :- ::context
+   expectations       :- ::data-testing.schema/expectations
+   expectation->query :- [:map-of :string :string]
+   labels             :- ::labels]
   (let [context (cond-> context
                   (:output-table context)
                   (assoc :output-columns
                          (data-testing.executor/table-columns driver conn (:output-table context))))]
-    (mapv (fn [expectation]
-            (check-expectation driver conn context (expectations.protocol/build expectation) labels))
+    (mapv (fn [{:keys [name] :as expectation}]
+            (check-expectation driver conn
+                               (if-let [query (expectation->query name)]
+                                 (assoc context :expectation-query query)
+                                 context)
+                               (expectations.protocol/build expectation) labels))
           expectations)))
+
+(mu/defn- check-not-impersonated :- :nil
+  "Throw `::data-testing.errors/impersonated-user` when the current user's connection to `database` is impersonated.
+  Throws a 403 when no current user is bound."
+  [database :- ::lib.schema.metadata/database]
+  ;; A run executes its statements on a connection of its own, outside the query processor, which checks an
+  ;; impersonated user's native SQL statement by statement.
+  (when (perms/impersonation-enforced-for-db? (:id database))
+    (throw (data-testing.errors/ex
+            ::data-testing.errors/impersonated-user
+            (tru "A user whose connection to this database is impersonated can''t create or run data tests, or change what they test.")
+            {}))))
 
 (mu/defn- subject-plan :- ::data-testing.subject/subject-plan
   "The [[data-testing.subject/subject-plan]] of `subject` for a test with `definition`, compiled with its `now` standing
@@ -344,14 +362,16 @@
   against, a temp table per input and one for its output unless it modifies tables, the subject's query rewritten to
   read them, and the labels a message renders them as.
 
-  Throws the run's typed refusals — an untestable subject or driver, SQL that will not parse, a write that is not one
-  INSERT, UPDATE or DELETE, returns rows or cannot be checked, a test the validator rejects — so a caller that only
-  wants the answer to \"could this run?\" gets it by asking for the plan and discarding it."
+  Throws the run's typed refusals — a current user whose connection to the database is impersonated, an untestable
+  subject or driver, SQL that will not parse, a table reference that cannot be replaced in the SQL's text, a write
+  that is not one INSERT, UPDATE or DELETE, returns rows or cannot be checked, a test the validator rejects — so a
+  caller that only wants the answer to \"could this run?\" gets it by asking for the plan and discarding it."
   [subject-type                                 :- ::data-testing.subject/subject-type
    subject                                      :- ::data-testing.subject/subject
    {:keys [inputs expectations] :as definition} :- ::definition]
   (let [{:keys [database compiled writes? output-tables output-token output-label]}
         (subject-plan subject-type subject definition)
+        _              (check-not-impersonated database)
         writes?        (boolean writes?)
         driver         (keyword (:engine database))
         source-tables  (source-tables driver (:query compiled))
@@ -361,29 +381,31 @@
         replacements   (data-testing.compile/table-replacements (or output-tables []) input->table output-table
                                                                 default-schema)
         rewritten      (cond-> (data-testing.compile/rewrite-query driver compiled replacements)
-                         writes? (update :query #(data-testing.validator/ensure-single-write driver %)))]
-    (data-testing.validator/validate
-     driver
-     {:inputs              inputs
-      :expectations        expectations
-      :referenced-tables   source-tables
-      :rewritten-query (:query rewritten)
-      :replacements        replacements
-      :output-token        output-token
-      :default-schema      default-schema
-      :writes?             writes?
-      :columns-read        (columns-read driver (lib-be/application-database-metadata-provider (:id database))
-                                         (:query compiled))
-      :ignore-case?        (data-testing.u/column-names-ignore-case? driver)})
-    {:driver       driver
-     :database     database
-     :input->table input->table
-     :output-table output-table
-     :labels       (table-labels output-label input->table output-table)
-     :replacements replacements
-     :output-token output-token
-     :compiled     rewritten
-     :writes?      writes?}))
+                         writes? (update :query #(data-testing.validator/ensure-single-write driver %)))
+        input->query   (into {} (map (fn [input] [input (data-testing.compile/compile-input driver input)])) inputs)
+        expectation->query
+        (data-testing.validator/validate
+         driver
+         {:inputs              inputs
+          :expectations        expectations
+          :referenced-tables   source-tables
+          :rewritten-query (:query rewritten)
+          :replacements        replacements
+          :output-token        output-token
+          :default-schema      default-schema
+          :writes?             writes?
+          :columns-read        (columns-read driver (lib-be/application-database-metadata-provider (:id database))
+                                             (:query compiled))
+          :ignore-case?        (data-testing.u/column-names-ignore-case? driver)})]
+    {:driver             driver
+     :database           database
+     :input->table       input->table
+     :input->query       input->query
+     :output-table       output-table
+     :labels             (table-labels output-label input->table output-table)
+     :expectation->query expectation->query
+     :compiled           rewritten
+     :writes?            writes?}))
 
 (mu/defn validate-test :- :nil
   "Refuse a test of `subject`, a `subject-type`, with `definition` unless it could run: the same checks a run makes,
@@ -405,8 +427,8 @@
   failing expectation is not a refusal: it rides back as that expectation's own result."
   [subject-type                                             :- ::data-testing.subject/subject-type
    subject                                                  :- ::data-testing.subject/subject
-   {test-id :id :keys [expectations] :as saved-test}        :- ::data-testing.schema/saved-test]
-  (let [{:keys [driver database input->table output-table labels replacements output-token compiled writes?]}
+   {test-id :id :keys [expectations] :as saved-test}         :- ::data-testing.schema/saved-test]
+  (let [{:keys [driver database input->table input->query output-table labels expectation->query compiled writes?]}
         (validated-plan subject-type subject (test-definition saved-test))
         {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
         final-status (atom :error)]
@@ -416,16 +438,14 @@
              driver database
              (fn [conn]
                (try
-                 (create-inputs! driver conn input->table labels)
+                 (create-inputs! driver conn input->table input->query labels)
                  (if writes?
                    (run-subject! labels #(data-testing.executor/execute! driver conn compiled))
                    (create-output! driver conn output-table compiled labels))
                  (let [results (check-expectations driver conn
-                                                   {:driver driver
-                                                    :output-table output-table
-                                                    :replacements replacements
-                                                    :output-token output-token}
-                                                   expectations labels)]
+                                                   {:driver       driver
+                                                    :output-table output-table}
+                                                   expectations expectation->query labels)]
                    {:status       (if (every? #(= :passed (:status %)) results) :passed :failed)
                     :expectations results
                     :tables       labels})

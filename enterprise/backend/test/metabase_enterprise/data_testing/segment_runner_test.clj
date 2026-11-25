@@ -42,10 +42,9 @@
                  :model/SegmentTest {test-id :id}    {:segment_id   segment-id
                                                       :inputs       inputs
                                                       :expectations expectations}]
-    (binding [api/*current-user-id* (mt/user->id :crowberto)]
-      (data-testing.runner/run-test! :segment
-                                     (t2/select-one :model/Segment :id segment-id)
-                                     (t2/select-one :model/SegmentTest :id test-id)))))
+    (data-testing.test-util/run-as-admin! :segment
+                                          (t2/select-one :model/Segment :id segment-id)
+                                          (t2/select-one :model/SegmentTest :id test-id))))
 
 (defn- outcomes
   "Each expectation of the run `result` by name: its status."
@@ -53,7 +52,7 @@
   (into {} (map (juxt :name :status)) (:expectations result)))
 
 (deftest segment-expectations-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [[int-type text-type] (data-testing.test-util/cast-types)
           id                   (field-name :id)
           source               (field-name :source)
@@ -78,7 +77,7 @@
         (is (= :failed (:status result)))))))
 
 (deftest segment-output-columns-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [run! (fn [input]
                  (data-testing.test-util/refusal #(run-segment-test! (data-testing.test-util/from-google-segment)
                                                                      [input]
@@ -109,9 +108,9 @@
                                                       :inputs       inputs
                                                       :expectations expectations}]
     (let [segment (t2/select-one :model/Segment :id segment-id)]
-      (if-let [{:keys [error-type]} (data-testing.test-util/refusal #(data-testing.runner/validate-test :segment segment {:inputs inputs :expectations expectations}))]
-        {:refused error-type}
-        (binding [api/*current-user-id* (mt/user->id :crowberto)]
+      (binding [api/*current-user-id* (mt/user->id :crowberto)]
+        (if-let [{:keys [error-type]} (data-testing.test-util/refusal #(data-testing.runner/validate-test :segment segment {:inputs inputs :expectations expectations}))]
+          {:refused error-type}
           (let [result (atom nil)]
             (if-let [{:keys [error-type message]}
                      (data-testing.test-util/refusal #(reset! result (data-testing.runner/run-test!
@@ -138,7 +137,7 @@
                                            "Gizmo"))}))
 
 (deftest a-segment-test-through-a-foreign-key-runs-once-accepted-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [[int-type text-type] (data-testing.test-util/cast-types)
           mp                   (mt/metadata-provider)
           column               (fn [table-key field-key]
@@ -170,7 +169,7 @@
           (is (runs-once-accepted? outcome) (pr-str outcome)))))))
 
 (deftest a-segment-test-validation-accepts-runs-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (let [[int-type text-type] (data-testing.test-util/cast-types)
           input                (fn [& names+types]
                                  (let [columns (mapv (fn [[n t]] {:name n :cast_type t}) (partition 2 names+types))]
@@ -198,7 +197,7 @@
           (is (runs-once-accepted? outcome) (pr-str outcome)))))))
 
 (deftest segment-guards-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (testing "Guard A: a segment test without an input for the segment's table is refused, naming it"
       (let [{:keys [error-type message]} (data-testing.test-util/refusal #(run-segment-test!
                                                                            (data-testing.test-util/from-google-segment)
@@ -216,16 +215,15 @@
                                                                 :sql  (str "SELECT * FROM {{output}} o JOIN " schema "." table " r ON 1 = 1")}])))))))))
 
 (deftest segment-run-is-persisted-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+  (mt/test-drivers (data-testing.test-util/data-test-drivers)
     (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
                    :model/SegmentTest {test-id :id}    {:segment_id   segment-id
                                                         :inputs       [(people-rows three-people)]
                                                         :expectations [{:type :empty :name "none"
                                                                         :sql  "SELECT * FROM {{output}} WHERE 1 = 0"}]}]
-      (binding [api/*current-user-id* (mt/user->id :crowberto)]
-        (is (= :passed (:status (data-testing.runner/run-test! :segment
-                                                               (t2/select-one :model/Segment :id segment-id)
-                                                               (t2/select-one :model/SegmentTest :id test-id))))))
+      (is (= :passed (:status (data-testing.test-util/run-as-admin! :segment
+                                                                    (t2/select-one :model/Segment :id segment-id)
+                                                                    (t2/select-one :model/SegmentTest :id test-id)))))
       (testing "the run is recorded under the test as a segment test run, with its outcome"
         (is (=? [{:test_type    :segment
                   :status       :passed

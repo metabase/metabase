@@ -86,6 +86,41 @@
         (is (= expected (sql-parsing/replace-names (sql-tools/sqlglot-parser) dialect sql replacements))
             (pr-str sql))))))
 
+;;; ------------------------------------------------- swap-tables --------------------------------------------------
+
+(defn- swap-expectation
+  "What [[sql-parsing/swap-tables]] returns for a `swap_tables` case."
+  [{:keys [expected refused]}]
+  (or refused {:sql expected}))
+
+(deftest ^:parallel swap-tables-test
+  (testing "the query with only its table references rewritten, or the reason one could not be"
+    (doseq [{:keys [name sql dialect replacements] :as case} (case-files/expanded-cases "swap_tables")]
+      (testing (str name ", dialect " (pr-str dialect))
+        (is (= (swap-expectation case)
+               (sql-parsing/swap-tables (sql-tools/sqlglot-parser) dialect sql replacements))
+            (pr-str sql))))))
+
+(deftest ^:parallel swap-tables-replaces-what-replace-names-replaces-test
+  (testing "after the swap a query reads the tables it reads after replace-names"
+    (doseq [{:keys [name sql dialect replacements expected]} (case-files/expanded-cases "swap_tables")
+            :when expected
+            :let  [parser (sql-tools/sqlglot-parser)
+                   ;; Only the statement check and the swap read `?::`, which the GraalPy parser does not parse.
+                   tables #(set (sql-parsing/referenced-tables parser dialect (str/replace % "?::" "? ::")))]]
+      (testing (str name ", dialect " (pr-str dialect))
+        (is (= (tables (sql-parsing/replace-names parser dialect (str/replace sql "?::" "? ::") replacements))
+               (tables (:sql (sql-parsing/swap-tables parser dialect sql replacements))))
+            (pr-str sql))))))
+
+(deftest ^:parallel swap-tables-takes-tables-only-test
+  (testing "schema and column replacements are refused, not dropped"
+    (doseq [replacements [{:schemas {"public" "other"}}
+                          {:columns [[{:table "orders" :column "id"} "key"]]}]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"ValueError: swap_tables replaces tables only"
+                            (sql-parsing/swap-tables (sql-tools/sqlglot-parser) "postgres" "SELECT id FROM orders"
+                                                     replacements))))))
+
 ;;; ------------------------------------------------ add-into-clause -----------------------------------------------
 
 (deftest ^:parallel add-into-clause-test
@@ -149,6 +184,39 @@
           (if validate-expected
             (is (=? validate-expected (absent-as-nil validate-expected validated)) (pr-str sql))
             (is (= classified validated) (pr-str sql))))))))
+
+(defn- executable-verdict
+  "The verdict of [[sql-parsing/validate-executable-stmt]] for `sql` of `stmt-type` on Postgres."
+  [sql stmt-type]
+  (sql-parsing/validate-executable-stmt (sql-tools/sqlglot-parser) "postgres" sql stmt-type))
+
+(defn- executes-one-statement?
+  "Whether a caller that executes the `:sql` of `verdict` sends one statement: true unless `verdict` is `:allowed` and
+  its `:sql` parses as more than one statement."
+  [verdict]
+  (or (not= :allowed (:verdict verdict))
+      (:single-stmt? (executable-verdict (:sql verdict) "read"))))
+
+(deftest ^:parallel read-verdict-executes-one-statement-test
+  (testing "an impersonated user's native query runs as one SELECT, so the SQL a \"read\" verdict allows is one statement"
+    (testing "control: a single SELECT is allowed as it is"
+      (is (= {:verdict :allowed :single-stmt? true :sql "SELECT 1 AS a"}
+             (executable-verdict "SELECT 1 AS a" "read"))))
+    (doseq [sql ["SELECT 1 AS $q$a; RESET ROLE; SELECT current_user$q$"
+                 "SELECT 1 AS E'a;SELECT 2'"]]
+      (testing (str "an alias written as a string: " (pr-str sql))
+        (let [verdict (executable-verdict sql "read")]
+          (is (executes-one-statement? verdict) (pr-str verdict)))))))
+
+(deftest ^:parallel write-verdict-executes-one-statement-test
+  (testing "an impersonated user's native write runs as one statement, so the SQL a \"write\" verdict allows is one statement"
+    (testing "control: a single INSERT, UPDATE or DELETE is allowed as it is"
+      (doseq [sql ["INSERT INTO t VALUES (1)" "UPDATE t SET x = 1 WHERE id = -1" "DELETE FROM t WHERE id = 1"]]
+        (is (= {:verdict :allowed :single-stmt? true :sql sql}
+               (executable-verdict sql "write")))))
+    (testing "an alias written as a string"
+      (let [verdict (executable-verdict "INSERT INTO t SELECT 1 AS $q$a; RESET ROLE; SELECT 1$q$" "write")]
+        (is (executes-one-statement? verdict) (pr-str verdict))))))
 
 ;;; ------------------------------------------------ referenced-fields ---------------------------------------------
 

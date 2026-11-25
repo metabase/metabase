@@ -277,8 +277,8 @@
 
 (defrecord EqualsSql [type name format sql]
   expectations.protocol/Expectation
-  (temp-tables [_this {:keys [driver replacements output-token]}]
-    {"expected" {:query  (data-testing.compile/replace-tables driver sql replacements output-token)
+  (temp-tables [_this {:keys [expectation-query]}]
+    {"expected" {:query  expectation-query
                  :params []}})
 
   (probes [_this {:keys [driver output-table output-columns temp-tables] :as context}]

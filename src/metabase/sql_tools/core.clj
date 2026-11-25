@@ -281,10 +281,22 @@
   running out of memory) comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched for in its
   original one. Only `:verdict :allowed` is permission to proceed.
 
-  See [[metabase.sql-parsing.core/validate-executable-stmt]] for the verdict shape, and [[classify-stmt]]
-  for the same question asked by a caller that only needs a verdict."
+  See [[metabase.sql-parsing.core/validate-executable-stmt]] for the verdict shape and the checks the `:sql` itself
+  must pass, and [[classify-stmt]] for the same question asked by a caller that only needs a verdict."
   [driver sql stmt-type]
   (sql-parsing/validate-executable-stmt (sqlglot-parser) (sqlglot/driver->dialect driver) sql stmt-type))
+
+(mu/defn swap-tables :- [:or
+                         [:map {:closed true} [:sql :string]]
+                         [:map {:closed true} [:reason :string] [:detail [:maybe :string]]]]
+  "`sql` with each table reference that `tables`, a [[replace-names]] `:tables` map, replaces written as its
+  replacement, and every other character as given, as `{:sql swapped}`; or `{:reason reason :detail detail}` when a
+  reference cannot be replaced in the text. See [[metabase.sql-parsing.core/swap-tables]] for what changes and the
+  reasons."
+  [driver :- :keyword
+   sql    :- :string
+   tables :- [:map-of ::table-spec ::table-replacement-value]]
+  (sql-parsing/swap-tables (sqlglot-parser) (sqlglot/driver->dialect driver) sql {:tables (vec tables)}))
 
 (defn classify-stmt
   "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that only reads
