@@ -93,3 +93,29 @@
   padding: var(--mantine-spacing-md);
   color: var(--mb-color-text-secondary);
 }
+
+/*
+ * The Query tab: the "Summarize by" and "Group by" bins.
+ * The bins themselves (cards, chips, the typing field and its dropdown) are
+ * the Summarize sidebar's own components, styled in
+ * query_builder/components/view/SummarySidebar/SummarySidebar.module.css.
+ */
+.query {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--mb-color-background_page-tertiary);
+}
+
+/* Where the formula editor opens when a formula chip is edited or "=" is typed. Empty otherwise. */
+.formulaBar {
+  flex: none;
+}
+
+/* The one-line note under the bins while the card is updating, or when the query failed */
+.queryStatus {
+  flex: none;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mb-color-text-secondary);
+}

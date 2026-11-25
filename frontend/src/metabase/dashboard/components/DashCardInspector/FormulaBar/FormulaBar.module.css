@@ -1,0 +1,24 @@
+/* opens to the bar's height when a formula is selected; the workspace below eases down with it */
+.frame {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 150ms ease-out;
+
+  &[data-open] {
+    grid-template-rows: 1fr;
+  }
+
+  /* a closing bar is only on screen while it collapses */
+  &:not([data-open]) .frameContent {
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.frameContent {
+  min-height: 0;
+  overflow: hidden;
+}

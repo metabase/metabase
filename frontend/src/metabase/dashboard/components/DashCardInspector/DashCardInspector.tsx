@@ -7,6 +7,7 @@ import { ActionIcon, Icon, Portal, Tabs } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
 import S from "./DashCardInspector.module.css";
+import { DashCardInspectorQuery } from "./DashCardInspectorQuery";
 import { DashCardInspectorSettings } from "./DashCardInspectorSettings";
 
 interface Point {
@@ -119,6 +120,9 @@ export function DashCardInspector({
         </div>
         <Tabs
           className={S.tabs}
+          // only the open tab exists, so the Query tab doesn't take the
+          // keyboard focus while Settings is showing
+          keepMounted={false}
           value={tab}
           onChange={(value) => isInspectorTab(value) && setTab(value)}
         >
@@ -131,9 +135,7 @@ export function DashCardInspector({
             <DashCardInspectorSettings key={dashcard.id} dashcard={dashcard} />
           </Tabs.Panel>
           <Tabs.Panel className={S.tabPanel} value="query">
-            <div className={S.message}>
-              {t`Query editing will appear here.`}
-            </div>
+            <DashCardInspectorQuery key={dashcard.id} dashcard={dashcard} />
           </Tabs.Panel>
         </Tabs>
       </div>
