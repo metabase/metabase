@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.response :as api.response]
+   [metabase.app-db.core :as mdb]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -35,19 +36,20 @@
 
 (def ^:private user-defaults
   (delay
-    (dissoc
-     (merge
-      (mt/object-defaults :model/User)
-      {:date_joined true
-       :id true
-       :is_active true
-       :last_login false
-       :sso_source nil
-       :login_attributes nil
-       :updated_at true
-       :locale nil
-       :tenant_id false})
-     :type)))
+    (cond-> (dissoc
+             (merge
+              (mt/object-defaults :model/User)
+              {:date_joined true
+               :id true
+               :is_active true
+               :last_login false
+               :sso_source nil
+               :login_attributes nil
+               :updated_at true
+               :locale nil
+               :tenant_id false})
+             :type)
+      (mdb/worktrees-supported?) (assoc :current_worktree_id false))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |        Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id, GET /api/user/recipients     |
@@ -74,7 +76,7 @@
           ;; since this is an admin, all keys are available on each user
           (is (= (set
                   (concat
-                   user/admin-or-self-visible-columns
+                   (user/admin-or-self-visible-columns)
                    [:common_name :group_ids :personal_collection_id :tenant_collection_id :has_used_password]))
                  (->> result first keys set)))
           ;; just make sure all users are there by checking the emails

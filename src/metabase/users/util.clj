@@ -59,7 +59,7 @@
   "Implementation for `/api/user` endpoints; fetch a User from the app DB by `:id`, optionally requiring `:type`
    and/or `:is_active` to match."
   [& {:keys [id type is_active]}]
-  (users.db/admin-or-self-visible-user user/admin-or-self-visible-columns id :type type :is-active? is_active))
+  (users.db/admin-or-self-visible-user (user/admin-or-self-visible-columns) id :type type :is-active? is_active))
 
 (mu/defn invite-user!
   "Implementation for `POST /api/user`, invites a user to Metabase."

@@ -2584,6 +2584,7 @@
            metabase.request.user-agent}
    :uses #{analytics.interface
            api
+           app-db
            embedding
            lib.schema
            permissions
@@ -2853,6 +2854,7 @@
            metabot.agent-api.usage
            premium-features
            query-processor
+           remote-sync
            request
            request.schema
            session
@@ -3518,6 +3520,7 @@
            models
            permissions
            premium-features
+           remote-sync
            request
            session
            sso

@@ -152,9 +152,17 @@
     (:email user) (update :email u/lower-case-en)
     (:locale user) (update :locale i18n/normalized-locale-string)))
 
+(defn- check-current-worktree
+  "Throws a 400 when `worktree-id` is the default worktree, the main app, which a user works in by having no current
+  worktree."
+  [worktree-id]
+  (when (= app-db/default-worktree-id worktree-id)
+    (throw (ex-info (tru "The main app is not a worktree to check out.") {:status-code 400}))))
+
 (t2/define-before-insert :model/User
   [user]
   (check-superuser-has-no-tenant user)
+  (check-current-worktree (:current_worktree_id user))
   (-> (merge insert-default-values user)
       assoc-acknowledged-version
       normalize-user-fields
@@ -166,6 +174,8 @@
     (throw (ex-info (tru "Not able to modify the internal user") {:status-code 400})))
   (when (:is_superuser (t2/changes user))
     (check-superuser-has-no-tenant user))
+  (when (contains? (t2/changes user) :current_worktree_id)
+    (check-current-worktree (:current_worktree_id user)))
   (let [{active? :is_active} (t2/changes user)]
     (-> user
         (merge (normalize-user-fields (t2/changes user))
@@ -228,10 +238,12 @@
   (into self-updatable-columns [:login_attributes :tenant_id :is_superuser :is_data_analyst]))
 
 (defn updatable-columns
-  "The columns of `user` the current user may change: those a superuser may change, those of their own row, or none."
+  "The columns of `user` the current user may change: for a superuser, those a superuser may change including
+  `:current_worktree_id` when applicable; for a regular user, those of their own row; otherwise none."
   [user]
   (cond
-    api/*is-superuser?*                       superuser-updatable-columns
+    api/*is-superuser?*                       (cond-> superuser-updatable-columns
+                                                (app-db/worktrees-supported?) (conj :current_worktree_id))
     (= (u/the-id user) api/*current-user-id*) self-updatable-columns
     :else                                     #{}))
 
@@ -321,10 +333,13 @@
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
-(def admin-or-self-visible-columns
+(defn admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
-  fetching themselves. Needed to power the admin page."
-  (into default-user-columns [:sso_source :is_active :updated_at :login_attributes :jwt_attributes :locale]))
+  fetching themselves, with `current_worktree_id` on an app DB with worktrees, the only one with the column. Needed to
+  power the admin page."
+  []
+  (cond-> (into default-user-columns [:sso_source :is_active :updated_at :login_attributes :jwt_attributes :locale])
+    (app-db/worktrees-supported?) (conj :current_worktree_id)))
 
 (def non-admin-or-self-visible-columns
   "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see

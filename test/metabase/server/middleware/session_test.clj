@@ -268,6 +268,7 @@
                                :is-superuser?           false
                                :is-data-analyst?        false
                                :user-locale             nil
+                               :worktree-id             nil
                                :embedding/auth-method   "api-key"})
                    (#'mw.session/merge-current-user-info nil req)))))
         (testing "Include :is-group-manager? if we have EE + :advanced-permissions "
@@ -280,6 +281,7 @@
                                  :is-data-analyst?        false
                                  :is-group-manager?       false
                                  :user-locale             nil
+                                 :worktree-id             nil
                                  :embedding/auth-method   "api-key"})
                      (#'mw.session/merge-current-user-info nil req))))))))))
 
@@ -443,6 +445,7 @@
                 :is-superuser? false,
                 :is-group-manager? false,
                 :user-locale nil
+                :worktree-id nil
                 :is-data-analyst? false
                 :metabase/authed-session-key-hash test-session-key-hashed
                 :embedding/auth-method "session"}
@@ -461,6 +464,7 @@
                 :is-superuser? true,
                 :is-group-manager? false,
                 :user-locale nil
+                :worktree-id nil
                 :is-data-analyst? false
                 :metabase/authed-session-key-hash test-session-key-hashed
                 :embedding/auth-method "session"}
@@ -515,6 +519,7 @@
                   :is-superuser? false,
                   :is-group-manager? false,
                   :user-locale nil
+                  :worktree-id nil
                   :is-data-analyst? false
                   :metabase/authed-session-key-hash test-session-key-hashed
                   :embedding/auth-method "session"}

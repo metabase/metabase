@@ -15,6 +15,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.sso.core :as sso]
@@ -128,7 +129,7 @@
   []
   (cond
     api/*is-superuser?*
-    user/admin-or-self-visible-columns
+    (user/admin-or-self-visible-columns)
 
     api/*is-group-manager?*
     user/group-manager-visible-columns
@@ -391,6 +392,7 @@
    [:has_used_password          :boolean]
    [:locale                     [:maybe :string]]
    [:tenant_id                  [:maybe ms/PositiveInt]]
+   [:current_worktree_id        {:optional true} [:maybe ms/PositiveInt]]
    [:tenant_collection_id       [:maybe ms/PositiveInt]]
    ;; nil for API-key users, who have no personal collection
    [:personal_collection_id     [:maybe ms/PositiveInt]]
@@ -521,18 +523,22 @@
        [:is_group_manager       {:optional true} [:maybe :boolean]]
        [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
        [:locale                 {:optional true} [:maybe ms/ValidLocale]]
-       [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
+       [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]
+       [:current_worktree_id    {:optional true} [:maybe ms/PositiveInt]]]]
   (api/read-check (users/fetch-user :id id))
   (check-not-internal-user id)
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (users/fetch-user :id id, :is_active true, :type :personal)]
     (let [updatable (user/updatable-columns user-before-update)
           changes   (u/select-keys-when body
-                                        :present (set/intersection #{:first_name :last_name :locale :login_attributes :tenant_id}
+                                        :present (set/intersection #{:first_name :last_name :locale
+                                                                     :login_attributes :tenant_id :current_worktree_id}
                                                                    updatable)
                                         :non-nil (set/intersection #{:email :is_superuser} updatable))]
       (when (seq changes)
         (api/update-check user-before-update changes))
+      (when-let [worktree-id (:current_worktree_id changes)]
+        (api/check-400 (remote-sync/worktree-exists? worktree-id) (tru "There is no worktree {0}." (str worktree-id))))
       ;; SSO users (JWT, SAML, LDAP, Google) can't change their first/last names
       (when (contains? body :first_name)
         (api/checkp (valid-name-update? user-before-update :first_name first_name)
