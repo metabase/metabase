@@ -256,6 +256,7 @@ function TableRows({ rows, hasChevronSlot, onOpen }: TableRowsProps) {
       key={table["table-id"]}
       name={table.name}
       database={table["db-name"]}
+      detail={getSourceText(table["view-data"].groups)}
       hasChevronSlot={rows.length === 1 && hasChevronSlot}
     >
       <StatusButton
@@ -380,6 +381,9 @@ function ExploringCard({ item, tables, onOpen }: ExploringCardProps) {
     >
       <Row
         name={names}
+        tooltip={tables
+          .map((table) => `${table.name} · ${table["db-name"]}`)
+          .join(", ")}
         detail={
           isShared
             ? getSourceText(first.tables[0]["create-queries"].groups)
@@ -468,6 +472,8 @@ interface AllPermissionsCardProps {
 interface PermissionRow {
   key: string;
   name: string;
+  /** A table's database, which the tooltip of its cut-off row names */
+  database?: string;
   status: ValueStatus;
   detail: ExplainDetail;
 }
@@ -494,6 +500,7 @@ function AllPermissionsCard({
       {
         key: `${table["table-id"]}-view-data`,
         name: t`${table.name} · View data`,
+        database: table["db-name"],
         status: getViewDataStatus(table["view-data"].value),
         detail: {
           kind: "table",
@@ -504,6 +511,7 @@ function AllPermissionsCard({
       {
         key: `${table["table-id"]}-create-queries`,
         name: t`${table.name} · Create queries`,
+        database: table["db-name"],
         status: getCreateQueriesStatus(table["create-queries"].value),
         detail: {
           kind: "table",
@@ -516,6 +524,7 @@ function AllPermissionsCard({
             {
               key: `${table["table-id"]}-download-results`,
               name: t`${table.name} · Download results`,
+              database: table["db-name"],
               status: getDownloadStatus(table["download-results"].value),
               detail: {
                 kind: "table",
@@ -537,7 +546,11 @@ function AllPermissionsCard({
     <SheetCard>
       <ToggleRow name={t`All permissions (${rows.length})`} status={null}>
         {rows.map((row) => (
-          <Row key={row.key} name={row.name}>
+          <Row
+            key={row.key}
+            name={row.name}
+            tooltip={row.database && `${row.name} · ${row.database}`}
+          >
             <StatusButton
               status={row.status}
               rowName={row.name}

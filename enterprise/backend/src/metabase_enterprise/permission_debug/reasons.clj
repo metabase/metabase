@@ -48,32 +48,40 @@
 ;;; ------------------------------------------------ Collection --------------------------------------------------
 
 (defn collection-reasons
-  "What each group of the User with `user-id` gives on the Collection with `collection-id` (nil: the root), and the
-  User's own access. `:by-rule` is true when the User has access that no group gives, as a personal or tenant
-  Collection does, and `:personal?` when the Collection is someone's personal Collection."
-  [user-id collection-id]
-  (let [collection (some-> collection-id permission-debug.db/collection)
-        groups     (permission-debug.db/user-groups user-id)
-        names      (group-names groups)
-        target     (or collection-id {:metabase.collections.models.collection.root/is-root? true})
-        writes     (perms/collection-readwrite-path target)
-        reads      (perms/collection-read-path target)
-        grants     (set (permission-debug.db/collection-grant-objects (set (map :id groups)) [writes reads]))
-        group-read (fn [group-id]
-                     (cond
-                       (grants [group-id writes]) :read-and-write
-                       (grants [group-id reads])  :read
-                       :else                      :none))
-        effective  (get (perms/collection-permissions-for-user (perms/user-info user-id) [collection-id] {:root-namespace nil})
-                        collection-id)
-        value-of   (comp collection-values group-read)]
-    {:collection-id collection-id
-     :name          (if collection-id (:name collection) (tru "Our analytics"))
-     :personal?     (some? (:personal_owner_id collection))
-     :value        (name (collection-values effective))
-     :by-rule       (and (not= :none effective)
-                         (every? #(= :none (group-read (:id %))) groups))
-     :groups        (by-group groups names value-of (collection-values effective) :none)}))
+  "What each group of the User with `user-id` gives on the Collection with `collection-id` (nil: the root of
+  `root-namespace`, by default of the default namespace), and the User's own access. `:by-rule` is true when the User
+  has access that no group gives, as a personal or tenant Collection does, and `:personal?` when the Collection is
+  someone's personal Collection."
+  ([user-id collection-id]
+   (collection-reasons user-id collection-id nil))
+  ([user-id collection-id root-namespace]
+   (let [collection (some-> collection-id permission-debug.db/collection)
+         groups     (permission-debug.db/user-groups user-id)
+         names      (group-names groups)
+         target     (or collection-id {:metabase.collections.models.collection.root/is-root? true
+                                       :namespace                                            (some-> root-namespace name)})
+         writes     (perms/collection-readwrite-path target)
+         reads      (perms/collection-read-path target)
+         grants     (set (permission-debug.db/collection-grant-objects (set (map :id groups)) [writes reads]))
+         group-read (fn [group-id]
+                      (cond
+                        (grants [group-id writes]) :read-and-write
+                        (grants [group-id reads])  :read
+                        :else                      :none))
+         effective  (get (perms/collection-permissions-for-user (perms/user-info user-id) [collection-id]
+                                                                {:root-namespace root-namespace})
+                         collection-id)
+         value-of   (comp collection-values group-read)]
+     {:collection-id collection-id
+      :name          (cond
+                       collection-id  (:name collection)
+                       root-namespace (tru "Shared collections")
+                       :else          (tru "Our analytics"))
+      :personal?     (some? (:personal_owner_id collection))
+      :value        (name (collection-values effective))
+      :by-rule       (and (not= :none effective)
+                          (every? #(= :none (group-read (:id %))) groups))
+      :groups        (by-group groups names value-of (collection-values effective) :none)})))
 
 ;;; --------------------------------------------------- Tables ---------------------------------------------------
 
@@ -231,11 +239,30 @@
 
 ;;; --------------------------------------------------- Everything -----------------------------------------------
 
-(defn access-reasons
-  "Everything the User with `user-id` can reach: `:collections`, each one's `collection-reasons` with its `:location`,
-  and `:reasons`, the `table-reasons` of every active Table."
+(defn- collection-entries
+  "The [[collection-reasons]] of the Collections an access answer lists for the User with `user-id`, each with its
+  `:location` and `:namespace`, one namespace after the other. The default namespace and, with tenants on, the shared
+  one start with their root; the tenant Collections come last and have no root to list."
   [user-id]
-  {:collections (mapv (fn [{:keys [id location]}]
-                        (assoc (collection-reasons user-id id) :location location))
-                      (permission-debug.db/accessible-collections user-id))
+  (let [tenants?    (boolean (setting/get :use-tenants))
+        collections (group-by :namespace (permission-debug.db/accessible-collections
+                                          user-id (if tenants? ["shared-tenant-collection" "tenant-specific"] [])))
+        root        (fn [root-namespace]
+                      (assoc (collection-reasons user-id nil root-namespace)
+                             :location "/" :namespace root-namespace))
+        entries     (fn [collection-namespace]
+                      (for [{:keys [id location]} (get collections collection-namespace)]
+                        (assoc (collection-reasons user-id id) :location location :namespace collection-namespace)))]
+    (vec (concat [(root nil)]
+                 (entries nil)
+                 (when tenants?
+                   (concat [(root :shared-tenant-collection)]
+                           (entries :shared-tenant-collection)
+                           (entries :tenant-specific)))))))
+
+(defn access-reasons
+  "Everything the User with `user-id` can reach: `:collections`, the [[collection-entries]], and `:reasons`, the
+  `table-reasons` of every active Table."
+  [user-id]
+  {:collections (collection-entries user-id)
    :reasons     (table-reasons user-id (permission-debug.db/active-table-ids))})

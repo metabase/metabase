@@ -21,6 +21,7 @@ import {
   getCollectionVerdict,
   getSourceText,
   getSubject,
+  getTopOpenCollections,
 } from "./explain";
 import { getCollectionStatus } from "./labels";
 
@@ -43,8 +44,8 @@ export function CollectionSheet({
   return (
     <Stack gap="xl">
       {collection ? (
-        <Flex align="center" justify="space-between" gap="sm" wrap="nowrap">
-          <Flex align="center" gap="xs" wrap="nowrap" miw={0}>
+        <Flex align="flex-start" justify="space-between" gap="sm" wrap="nowrap">
+          <Flex align="flex-start" gap="xs" wrap="nowrap" miw={0}>
             <CollectionVerdict
               collection={collection}
               text={getCollectionVerdict(subject, collection)}
@@ -80,7 +81,11 @@ function CollectionVerdict({ collection, text }: CollectionVerdictProps) {
 
   return (
     <>
-      <VerdictLine icon={status.icon} color={status.color}>
+      <VerdictLine
+        icon={status.icon}
+        color={status.color}
+        detail={getSourceText(collection.groups)}
+      >
         {text}
       </VerdictLine>
       <Tooltip
@@ -90,6 +95,7 @@ function CollectionVerdict({ collection, text }: CollectionVerdictProps) {
       >
         <UnstyledButton
           display="flex"
+          mt="xxs"
           c="text-secondary"
           aria-label={t`About collection permissions`}
         >
@@ -117,12 +123,11 @@ export function AllCollectionsSheet({
   const { currentData, error, isFetching } = useGetPermissionDebugAccessQuery({
     "user-id": userId,
   });
-  const collections = (currentData?.collections ?? [])
-    .filter(({ location, value }) => location === "/" && value !== "none")
-    .sort(
-      (first, second) =>
-        Number(first["personal?"]) - Number(second["personal?"]),
-    );
+  const collections = getTopOpenCollections(
+    currentData?.collections ?? [],
+  ).sort(
+    (first, second) => Number(first["personal?"]) - Number(second["personal?"]),
+  );
 
   return (
     <Stack gap="xl">
@@ -135,7 +140,7 @@ export function AllCollectionsSheet({
             const name = getCollectionName(collection, target);
             return (
               <Row
-                key={collection["collection-id"]}
+                key={`${collection.namespace}-${collection["collection-id"]}`}
                 name={name}
                 detail={
                   collection["by-rule"]

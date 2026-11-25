@@ -1,3 +1,4 @@
+import type { CollectionNamespace } from "./collection";
 import type { GroupId } from "./group";
 import type { UserAttributeMap, UserId } from "./user";
 
@@ -57,7 +58,11 @@ export type PermissionDebugAccessRequest = { "user-id": UserId };
 
 /** Everything a person can reach: every collection, and every table as a query check lists them */
 export type PermissionDebugAccess = {
-  collections: (PermissionDebugCollection & { location: string })[];
+  collections: (PermissionDebugCollection & {
+    location: string;
+    /** With a null id, which namespace's root the collection is */
+    namespace: CollectionNamespace;
+  })[];
   reasons: PermissionDebugReasons;
 };
 

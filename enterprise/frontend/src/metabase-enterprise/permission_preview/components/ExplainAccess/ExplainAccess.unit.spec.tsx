@@ -2,8 +2,15 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  mockTextOverflow,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { defer } from "metabase/utils/promise";
+import { checkNotNull } from "metabase/utils/types";
 import type {
   PermissionDebugAccess,
   PermissionDebugAction,
@@ -103,6 +110,13 @@ function setup({
   const showItem = (itemToExplain: string) =>
     rerender(renderItem(itemToExplain));
   return { onClose, showItem };
+}
+
+/** The row whose status button is named `statusName` */
+function getRow(statusName: string) {
+  return checkNotNull(
+    screen.getByRole("button", { name: statusName }).parentElement,
+  );
 }
 
 describe("ExplainAccess", () => {
@@ -828,6 +842,56 @@ describe("ExplainAccess", () => {
       expect(screen.getAllByText("Full access")).toHaveLength(3);
     });
 
+    it("names the source under each table with access inside an open fold, and none under a blocked one", async () => {
+      const fromSupport = {
+        value: "unrestricted",
+        groups: [createGroupValue("Support", "unrestricted", true)],
+      };
+      setup({
+        answers: {
+          "card/query": createAnswer({
+            reasons: {
+              collection: createCollection(),
+              tables: [
+                createTable({
+                  "table-id": 1,
+                  name: "Orders",
+                  "view-data": fromSupport,
+                }),
+                createTable({
+                  "table-id": 2,
+                  name: "Products",
+                  "view-data": fromSupport,
+                }),
+                createTable({
+                  "table-id": 3,
+                  name: "Reviews",
+                  "view-data": {
+                    value: "blocked",
+                    groups: [createGroupValue("All Users", "blocked")],
+                  },
+                }),
+              ],
+            },
+          }),
+        },
+      });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: /2 tables/ }),
+      );
+
+      expect(
+        within(getRow("Orders, Full access")).getByText("from Support"),
+      ).toBeInTheDocument();
+      expect(
+        within(getRow("Products, Full access")).getByText("from Support"),
+      ).toBeInTheDocument();
+      expect(
+        within(getRow("Reviews, Blocked")).queryByText(/^from /),
+      ).not.toBeInTheDocument();
+    });
+
     it("says varies by table when the tables differ", async () => {
       setup({
         answers: {
@@ -887,6 +951,128 @@ describe("ExplainAccess", () => {
           name: "Sales reports · Collection access, Curate",
         }),
       ).toBeVisible();
+    });
+  });
+
+  describe("a name that is cut off", () => {
+    const tables = [
+      createTable({ "table-id": 1, name: "Orders" }),
+      createTable({
+        "table-id": 2,
+        name: "Products",
+        sandboxes: [createSandbox({ "table-id": 2 })],
+      }),
+    ];
+
+    async function setupDataCard() {
+      setup({
+        answers: {
+          "card/query": createAnswer({
+            reasons: { collection: createCollection(), tables },
+          }),
+        },
+      });
+      await screen.findByRole("button", { name: "Orders, Full access" });
+    }
+
+    describe("when it doesn't fit", () => {
+      beforeEach(() => {
+        mockTextOverflow();
+      });
+
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it.each(["Orders", "· Sample Database"])(
+        "shows the table's and the database's name in a tooltip over %s",
+        async (text) => {
+          await setupDataCard();
+
+          await userEvent.hover(
+            within(getRow("Orders, Full access")).getByText(text),
+          );
+
+          expect(await screen.findByRole("tooltip")).toHaveTextContent(
+            "Orders · Sample Database",
+          );
+        },
+      );
+
+      it("shows the same tooltip on a row that opens", async () => {
+        await setupDataCard();
+
+        await userEvent.hover(
+          within(getRow("Products, Rows filtered")).getByText("Products"),
+        );
+
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(
+          "Products · Sample Database",
+        );
+      });
+
+      it("shows the line under a name in full", async () => {
+        await setupDataCard();
+
+        await userEvent.hover(
+          within(getRow("Orders, Full access")).getByText("from Sales"),
+        );
+
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(
+          "from Sales",
+        );
+      });
+
+      it("names each table with its database on the Exploring row", async () => {
+        await setupDataCard();
+
+        await userEvent.hover(screen.getByText("Orders, Products"));
+
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(
+          "Orders · Sample Database, Products · Sample Database",
+        );
+      });
+
+      it("adds the database's name to a permission row", async () => {
+        await setupDataCard();
+        await userEvent.click(screen.getByText("All permissions (7)"));
+
+        await userEvent.hover(screen.getByText("Orders · View data"));
+
+        // The fold's own tooltip is still closing, so ask for this one's text
+        expect(
+          await screen.findByText("Orders · View data · Sample Database"),
+        ).toBeInTheDocument();
+      });
+
+      it("shows the summary's heading in full", async () => {
+        await setupDataCard();
+        await userEvent.click(
+          screen.getByRole("button", {
+            name: /See everything Sandy Sales can access/,
+          }),
+        );
+
+        await userEvent.hover(
+          screen.getByText("Everything Sandy Sales can access"),
+        );
+
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(
+          "Everything Sandy Sales can access",
+        );
+      });
+    });
+
+    it("gives a table whose names fit no tooltip", async () => {
+      await setupDataCard();
+      const row = getRow("Orders, Full access");
+
+      await userEvent.hover(within(row).getByText("Orders"));
+
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTitle("Orders · Sample Database"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -996,6 +1182,15 @@ describe("ExplainAccess", () => {
       ).toBeInTheDocument();
     });
 
+    it("names the group the access comes from under the verdict", async () => {
+      setupCollection(createCollection({ value: "view" }));
+
+      expect(
+        await screen.findByText("Sandy Sales can view this collection."),
+      ).toBeInTheDocument();
+      expect(screen.getByText("from Sales")).toBeInTheDocument();
+    });
+
     it("explains the value when its status is opened", async () => {
       setupCollection();
 
@@ -1017,6 +1212,7 @@ describe("ExplainAccess", () => {
         {
           ...createCollection({ "collection-id": 5, name: "Examples" }),
           location: "/",
+          namespace: null,
         },
         {
           ...createCollection({
@@ -1025,6 +1221,7 @@ describe("ExplainAccess", () => {
             value: "view",
           }),
           location: "/",
+          namespace: null,
         },
         {
           ...createCollection({
@@ -1033,10 +1230,20 @@ describe("ExplainAccess", () => {
             value: "none",
           }),
           location: "/",
+          namespace: null,
         },
         {
           ...createCollection({ "collection-id": 8, name: "Inside Examples" }),
           location: "/5/",
+          namespace: null,
+        },
+        {
+          ...createCollection({
+            "collection-id": 10,
+            name: "Inside Secret",
+          }),
+          location: "/7/",
+          namespace: null,
         },
         {
           ...createCollection({
@@ -1047,6 +1254,7 @@ describe("ExplainAccess", () => {
             groups: [],
           }),
           location: "/",
+          namespace: null,
         },
       ],
     });
@@ -1068,6 +1276,42 @@ describe("ExplainAccess", () => {
       expect(screen.queryByText("Secret")).not.toBeInTheDocument();
       expect(screen.queryByText("Inside Examples")).not.toBeInTheDocument();
       expect(screen.getByText("All collections")).toBeInTheDocument();
+    });
+
+    it("lists a collection whose parents the person can't open, as the frame does", async () => {
+      setup({ item: "collection/all", access });
+
+      expect(
+        await screen.findByRole("button", { name: "Inside Secret, Curate" }),
+      ).toBeInTheDocument();
+    });
+
+    it("lists each namespace's root, which has no id", async () => {
+      const root = { "collection-id": null, value: "view" } as const;
+      setup({
+        item: "collection/all",
+        access: createAccess({
+          collections: [
+            {
+              ...createCollection({ ...root, name: "Our analytics" }),
+              location: "/",
+              namespace: null,
+            },
+            {
+              ...createCollection({ ...root, name: "Shared collections" }),
+              location: "/",
+              namespace: "shared-tenant-collection",
+            },
+          ],
+        }),
+      });
+
+      expect(
+        await screen.findByRole("button", { name: "Our analytics, View" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Shared collections, View" }),
+      ).toBeInTheDocument();
     });
 
     it("calls the personal collection of a group preview theirs", async () => {
@@ -1100,8 +1344,13 @@ describe("ExplainAccess", () => {
             value: "none",
           }),
           location: "/",
+          namespace: null,
         },
-        { ...createCollection({ "collection-id": 5 }), location: "/" },
+        {
+          ...createCollection({ "collection-id": 5 }),
+          location: "/",
+          namespace: null,
+        },
       ],
       reasons: {
         tables: [
@@ -1175,6 +1424,20 @@ describe("ExplainAccess", () => {
       expect(
         screen.getByRole("button", { name: "Products, Can view" }),
       ).toBeInTheDocument();
+    });
+
+    it("names the source under a table with access, and none under a collection", async () => {
+      await openSummary();
+
+      await userEvent.click(await screen.findByText("Collections (2)"));
+      await userEvent.click(screen.getByText("Tables (4)"));
+
+      expect(
+        within(getRow("Products, Can view")).getByText("from Sales"),
+      ).toBeInTheDocument();
+      expect(
+        within(getRow("Sales reports, Curate")).queryByText("from Sales"),
+      ).not.toBeInTheDocument();
     });
 
     it("opens a table's reason from the summary and comes back to it", async () => {

@@ -1,6 +1,7 @@
 import { msgid, ngettext, t } from "ttag";
 
 import type {
+  PermissionDebugAccess,
   PermissionDebugAnswer,
   PermissionDebugCollection,
   PermissionDebugGroupValue,
@@ -187,6 +188,23 @@ export function getCollectionName(
   return target.kind === "user"
     ? t`${target.user.common_name}'s personal collection`
     : t`Their personal collection`;
+}
+
+/**
+ * The collections the person can open, without those inside another one they can
+ * open. A root never counts as that other one, because no location names it.
+ */
+export function getTopOpenCollections(
+  collections: PermissionDebugAccess["collections"],
+) {
+  const open = collections.filter(({ value }) => value !== "none");
+  const openIds = new Set(
+    open.map((collection) => collection["collection-id"]),
+  );
+  return open.filter(
+    ({ location }) =>
+      !location.split("/").some((id) => openIds.has(Number(id))),
+  );
 }
 
 export function getGroupLabel(group: PermissionDebugGroupValue) {

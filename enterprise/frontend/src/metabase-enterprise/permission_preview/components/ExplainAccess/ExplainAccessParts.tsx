@@ -5,6 +5,7 @@ import { SidesheetCard } from "metabase/common/components/Sidesheet";
 import {
   Alert,
   Box,
+  Ellipsified,
   Flex,
   Icon,
   Text,
@@ -74,6 +75,8 @@ interface RowProps {
   name: string;
   /** The database after a table's name, dimmed; it is cut before the name */
   database?: string;
+  /** What a cut-off name's tooltip says, when the name and database aren't all */
+  tooltip?: string;
   /** The second line: where the value comes from */
   detail?: string | null;
   /** A 16px slot, so rows line up under rows that open */
@@ -86,6 +89,7 @@ export function Row({
   label,
   name,
   database,
+  tooltip,
   detail,
   hasChevronSlot,
   children,
@@ -94,26 +98,54 @@ export function Row({
     <Flex gap="sm" py="sm" align="flex-start" wrap="nowrap">
       {hasChevronSlot && <Box w="1rem" flex="none" />}
       <Box flex={1} miw={0}>
-        <Flex
-          gap="sm"
-          align="baseline"
-          wrap="nowrap"
-          title={database ? `${name} · ${database}` : name}
-        >
+        <Flex gap="sm" align="baseline" wrap="nowrap">
           {label && <BodyText c="text-secondary">{label}</BodyText>}
-          <BodyText flex="0 1 auto" miw={0} truncate>
-            {name}
-          </BodyText>
-          {database && (
-            <SmallText flex="0 1000 auto" miw={0} truncate>
-              {`· ${database}`}
-            </SmallText>
-          )}
+          <RowName name={name} database={database} tooltip={tooltip} />
         </Flex>
-        {detail && <SmallText truncate>{detail}</SmallText>}
+        {detail && (
+          <Ellipsified fz="sm" lh="1rem" c="text-secondary">
+            {detail}
+          </Ellipsified>
+        )}
       </Box>
       {children}
     </Flex>
+  );
+}
+
+type RowNameProps = Pick<RowProps, "name" | "database" | "tooltip">;
+
+/** A row's name, and a table's database. Whichever is cut off shows both in a tooltip. */
+function RowName({
+  name,
+  database,
+  tooltip = database ? `${name} · ${database}` : name,
+}: RowNameProps) {
+  return (
+    <>
+      <Ellipsified
+        flex="0 1 auto"
+        miw={0}
+        fz="md"
+        lh="1.25rem"
+        c="text-primary"
+        tooltip={tooltip}
+      >
+        {name}
+      </Ellipsified>
+      {database && (
+        <Ellipsified
+          flex="0 1000 auto"
+          miw={0}
+          fz="sm"
+          lh="1rem"
+          c="text-secondary"
+          tooltip={tooltip}
+        >
+          {`· ${database}`}
+        </Ellipsified>
+      )}
+    </>
   );
 }
 
@@ -174,21 +206,13 @@ export function ToggleRow({
         <UnstyledButton
           className={S.toggleButton}
           aria-expanded={isOpen}
-          title={database ? `${name} · ${database}` : name}
           onClick={() => setIsOpen((current) => !current)}
         >
           <Icon
             name={isOpen ? "chevrondown" : "chevronright"}
             c="text-secondary"
           />
-          <BodyText flex="0 1 auto" miw={0} truncate>
-            {name}
-          </BodyText>
-          {database && (
-            <SmallText flex="0 1000 auto" miw={0} truncate>
-              {`· ${database}`}
-            </SmallText>
-          )}
+          <RowName name={name} database={database} />
         </UnstyledButton>
         {status}
       </div>
@@ -218,15 +242,25 @@ const VERDICT_ICONS: Record<
 interface VerdictLineProps {
   icon: IconName;
   color: ValueStatus["color"];
+  /** A dimmed line under the verdict: where the value comes from */
+  detail?: string | null;
   children: ReactNode;
 }
 
 /** The sheet's verdict: an icon and one bold line that wraps. */
-export function VerdictLine({ icon, color, children }: VerdictLineProps) {
+export function VerdictLine({
+  icon,
+  color,
+  detail,
+  children,
+}: VerdictLineProps) {
   return (
     <Flex gap="sm" align="flex-start" wrap="nowrap">
       <Icon name={icon} c={color} mt="xs" flex="none" />
-      <BodyText fw="bold">{children}</BodyText>
+      <div>
+        <BodyText fw="bold">{children}</BodyText>
+        {detail && <SmallText>{detail}</SmallText>}
+      </div>
     </Flex>
   );
 }

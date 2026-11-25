@@ -119,7 +119,7 @@
           (is (= {"test-data (h2).PUBLIC.CHECKINS" #{"All Users" (:name (t2/select-one :model/PermissionsGroup :id group-id))}}
                  (-> result :data :blocked-tables))))
         (testing "every table of the dashboard has its per-group values"
-          (is (= {"All Users" "blocked"} (-> (table-entry result "CHECKINS") :view-data group-values (select-keys ["All Users"])))))
+          (is (= {"All Users" "blocked"} (-> (table-entry result "Checkins") :view-data group-values (select-keys ["All Users"])))))
         (testing "a dashboard whose cards are all blocked is denied"
           (perms/set-table-permission! group (mt/id :venues) :perms/view-data :blocked)
           (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :blocked)
@@ -135,15 +135,15 @@
                    :model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
       (grant-venues! group)
       (let [result  (debug :card/query user-id card-id)
-            venues  (table-entry result "VENUES")
+            venues  (table-entry result "Venues")
             sandbox (first (:sandboxes venues))]
         (testing "the table is reshaped, and the segment says so"
           (is (= #{"sandboxed"} (:segment result)))
           (is (= "reshaped" (:outcome result))))
-        (testing "the filter reads as attribute, the person's value and the column"
+        (testing "the filter reads as attribute, the person's value and the column's display names"
           (is (= "Sales" (:group-name sandbox)))
           (is (true? (:enforced? sandbox)))
-          (is (= [{:attribute "category" :value "2" :column "VENUES.CATEGORY_ID" :missing? false}]
+          (is (= [{:attribute "category" :value "2" :column "Venues.Category ID" :missing? false}]
                  (:filters sandbox))))
         (testing "each group's View data value is listed, the group with the rule applying"
           (is (= {"All Users" "blocked" "Sales" "unrestricted"} (group-values (:view-data venues))))
@@ -165,8 +165,8 @@
         (is (= "broken" (:outcome result)))
         (is (= [{:type "missing-attribute" :attribute "category" :table-id (mt/id :venues)}]
                (-> result :reasons :problems)))
-        (is (= [{:attribute "category" :value nil :column "VENUES.CATEGORY_ID" :missing? true}]
-               (-> (table-entry result "VENUES") :sandboxes first :filters)))))))
+        (is (= [{:attribute "category" :value nil :column "Venues.Category ID" :missing? true}]
+               (-> (table-entry result "Venues") :sandboxes first :filters)))))))
 
 (deftest conflicting-sandboxes-are-broken-test
   (mt/with-no-data-perms-for-all-users!
@@ -207,7 +207,7 @@
           (is (= "denied" (:decision result)))
           (is (= {"test-data (h2).PUBLIC.CATEGORIES" #{"All Users" (:name (t2/select-one :model/PermissionsGroup :id group-id))}}
                  (-> result :data :blocked-tables)))
-          (is (some? (table-entry result "CATEGORIES"))))))))
+          (is (some? (table-entry result "Categories"))))))))
 
 (deftest impersonation-reasons-test
   (mt/with-no-data-perms-for-all-users!
@@ -290,9 +290,9 @@
       (let [result (debug :card/download-data user-id card-id)]
         (is (= "limited" (:decision result)))
         (is (= "limited" (:outcome result)))
-        (is (= "ten-thousand-rows" (-> (table-entry result "VENUES") :download-results :value)))
+        (is (= "ten-thousand-rows" (-> (table-entry result "Venues") :download-results :value)))
         (is (= #{"no" "ten-thousand-rows"}
-               (set (vals (group-values (:download-results (table-entry result "VENUES")))))))))))
+               (set (vals (group-values (:download-results (table-entry result "Venues")))))))))))
 
 (deftest the-endpoint-takes-the-new-actions-test
   (mt/with-temp [:model/Collection {collection-id :id :as collection} {}
@@ -354,6 +354,67 @@
         (is (not-any? #(= (:id other-personal) (:collection-id %)) (:collections result)))
         (is (nil? (collection-entry result (:name archived))))))))
 
+(deftest access-lists-the-roots-and-the-shared-and-tenant-collections-test
+  (mt/with-premium-features #{:tenants}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (mt/with-temp [:model/Tenant {tenant-id :id tenant-collection-id :tenant_collection_id} {:name "Access test tenant"
+                                                                                               :slug "access-test-tenant"}
+                     :model/User {tenant-user-id :id} {:tenant_id tenant-id}
+                     :model/PermissionsGroupMembership _ {:user_id  tenant-user-id
+                                                          :group_id (:id (perms/all-external-users-group))}
+                     :model/User {user-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id user-id :group_id (:id (perms/all-users-group))}
+                     :model/Collection shared {:name "Access test shared" :namespace "shared-tenant-collection"}
+                     :model/Collection _ {:name "Access test snippets" :namespace "snippets"}]
+        (perms/grant-collection-read-permissions! (perms/all-external-users-group) shared)
+        ;; All tenant users can view the shared collections' root from the start
+        (let [names         ["Our analytics" "Shared collections" "Access test shared" "Access test snippets"]
+              tenant-entry  (fn [result]
+                              (some #(when (= tenant-collection-id (:collection-id %)) %) (:collections result)))
+              listed        (fn [result]
+                              (filter (set (conj names (:name (tenant-entry result)))) (map :name (:collections result))))
+              tenant-result (access tenant-user-id)]
+          (testing "Our analytics and Shared collections head their namespaces, the tenant collection after them"
+            (is (= ["Our analytics" "Shared collections" "Access test shared" (:name (tenant-entry tenant-result))]
+                   (listed tenant-result))))
+          (testing "a root entry has no id, sits at the top and says its namespace"
+            (is (= {:collection-id nil :location "/" :namespace nil :value "none"}
+                   (select-keys (collection-entry tenant-result "Our analytics")
+                                [:collection-id :location :namespace :value])))
+            (is (= {:collection-id nil :location "/" :namespace :shared-tenant-collection :value "view"}
+                   (select-keys (collection-entry tenant-result "Shared collections")
+                                [:collection-id :location :namespace :value]))))
+          (testing "the shared collections' root names the group that gives the access"
+            (is (= ["All tenant users"]
+                   (->> (collection-entry tenant-result "Shared collections")
+                        :groups
+                        (filter :applies?)
+                        (map :group-name)))))
+          (testing "a shared collection has the value the person's tenant group gives"
+            (is (= {:namespace :shared-tenant-collection :value "view"}
+                   (select-keys (collection-entry tenant-result "Access test shared") [:namespace :value]))))
+          (testing "the person's tenant collection is theirs by rule"
+            (is (= {:namespace :tenant-specific :value "curate" :by-rule true}
+                   (select-keys (tenant-entry tenant-result) [:namespace :value :by-rule]))))
+          (testing "an internal user is listed the tenant collection with no access"
+            (is (= "none" (:value (tenant-entry (access user-id))))))
+          (testing "with tenants off only the default namespace is listed"
+            (mt/with-temporary-setting-values [use-tenants false]
+              (let [result (access user-id)]
+                (is (= ["Our analytics"] (filter (set names) (map :name (:collections result)))))
+                (is (nil? (tenant-entry result)))))))))))
+
+(deftest access-says-where-the-access-to-our-analytics-comes-from-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/PermissionsGroup {sales-id :id :as sales} {:name "Sales"}
+                   :model/User {user-id :id} {}
+                   :model/PermissionsGroupMembership _ {:user_id user-id :group_id (:id (perms/all-users-group))}
+                   :model/PermissionsGroupMembership _ {:user_id user-id :group_id sales-id}]
+      (perms/grant-collection-read-permissions! sales {:metabase.collections.models.collection.root/is-root? true})
+      (let [entry (collection-entry (access user-id) "Our analytics")]
+        (is (= "view" (:value entry)))
+        (is (= ["Sales"] (->> (:groups entry) (filter :applies?) (map :group-name))))))))
+
 (deftest access-lists-every-table-the-same-way-as-a-query-check-test
   (mt/with-no-data-perms-for-all-users!
     (mt/with-temp [:model/User {user-id :id} {}
@@ -362,8 +423,8 @@
       (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
       (let [result (access user-id)]
         (testing "a table the person can view is listed with the groups that give it"
-          (is (= "unrestricted" (-> (table-entry result "VENUES") :view-data :value))))
+          (is (= "unrestricted" (-> (table-entry result "Venues") :view-data :value))))
         (testing "a table blocked for the person is listed as blocked"
-          (is (= "blocked" (-> (table-entry result "CHECKINS") :view-data :value))))
+          (is (= "blocked" (-> (table-entry result "Checkins") :view-data :value))))
         (testing "tables of the same database are all there, not only the ones a query reads"
           (is (<= 4 (count (-> result :reasons :tables)))))))))

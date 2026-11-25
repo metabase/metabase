@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Flex, Icon, Stack, Text } from "metabase/ui";
+import { Ellipsified, Flex, Icon, Stack } from "metabase/ui";
 import { useGetPermissionDebugAccessQuery } from "metabase-enterprise/api";
 import type {
   PermissionDebugAccess,
@@ -30,6 +30,7 @@ import {
   countCollectionValues,
   countTableStatuses,
   getCollectionName,
+  getSourceText,
   getSubject,
   getTableStatus,
   getTableStatusDisplay,
@@ -123,7 +124,10 @@ function SummaryCard({ access, target, onOpenDetail }: SummaryCardProps) {
             .map((collection) => {
               const name = getCollectionName(collection, target);
               return (
-                <Row key={collection["collection-id"]} name={name}>
+                <Row
+                  key={`${collection.namespace}-${collection["collection-id"]}`}
+                  name={name}
+                >
                   <StatusButton
                     status={getCollectionStatus(collection.value)}
                     rowName={name}
@@ -284,6 +288,7 @@ function TableRow({
     <Row
       name={table.name}
       database={table["db-name"]}
+      detail={getSourceText(table["view-data"].groups)}
       hasChevronSlot={hasChevronSlot}
     >
       {button}
@@ -297,9 +302,9 @@ export function SummaryHeading({ target }: { target: PreviewTarget }) {
   return (
     <Flex gap="sm" align="center" wrap="nowrap">
       <Icon name="eye" c="text-secondary" flex="none" />
-      <Text fw="bold" lh="1.25rem" truncate>
+      <Ellipsified fz="md" fw="bold" lh="1.25rem" c="text-primary">
         {t`Everything ${subject} can access`}
-      </Text>
+      </Ellipsified>
     </Flex>
   );
 }

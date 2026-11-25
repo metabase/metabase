@@ -102,14 +102,15 @@
   (t2/select-one :model/Collection :id collection-id))
 
 (mu/defn accessible-collections
-  "The `:id`, `:name`, `:location` and `:personal_owner_id` of the Collections of the default namespace that are worth
-  explaining for the User with `user-id`: not archived, not the Trash or analytics, and not another person's personal
-  Collection."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select [:model/Collection :id :name :location :personal_owner_id]
+  "The `:id`, `:name`, `:location`, `:namespace` and `:personal_owner_id` of the Collections of the default namespace
+  and of `other-namespaces` that are worth explaining for the User with `user-id`: not archived, not the Trash or
+  analytics, and not another person's personal Collection."
+  [user-id          :- ::lib.schema.id/user
+   other-namespaces :- [:sequential :string]]
+  (t2/select [:model/Collection :id :name :location :namespace :personal_owner_id]
              :archived false
-             :namespace nil
              {:where    [:and
+                         [:or [:= :namespace nil] (when (seq other-namespaces) [:in :namespace other-namespaces])]
                          [:or [:= :type nil] [:not-in :type ["trash" "instance-analytics"]]]
                          [:or [:= :personal_owner_id nil] [:= :personal_owner_id user-id]]]
               :order-by [[:name :asc] [:id :asc]]}))
@@ -136,10 +137,11 @@
     (t2/select-fn-vec (juxt :group_id :object) :model/Permissions :group_id [:in group-ids] :object [:in objects])))
 
 (mu/defn tables-with-database
-  "The `:id`, `:db_id`, `:schema`, `:name` and `:db_name` of the Tables with `table-ids`, in ID order."
+  "The `:id`, `:db_id`, `:schema`, `:name` (the display name) and `:db_name` of the Tables with `table-ids`, in ID
+  order."
   [table-ids :- [:set ::lib.schema.id/table]]
   (when (seq table-ids)
-    (t2/query {:select   [:t.id :t.db_id :t.schema :t.name [:db.name :db_name]]
+    (t2/query {:select   [:t.id :t.db_id :t.schema [:t.display_name :name] [:db.name :db_name]]
                :from     [[(t2/table-name :model/Table) :t]]
                :join     [[:metabase_database :db] [:= :t.db_id :db.id]]
                :where    [:in :t.id table-ids]
@@ -159,12 +161,12 @@
     (t2/select :model/Sandbox :group_id [:in group-ids] :table_id [:in table-ids] {:order-by [[:id :asc]]})))
 
 (mu/defn field-labels
-  "A map of Field id to `Table.Field` of the Fields with `field-ids`."
+  "A map of Field id to `Table.Field`, by their display names, of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (when (seq field-ids)
     (into {}
-          (map (fn [{:keys [id name table_name]}] [id (str table_name "." name)]))
-          (t2/query {:select [:f.id :f.name [:t.name :table_name]]
+          (map (fn [{:keys [id display_name table_name]}] [id (str table_name "." display_name)]))
+          (t2/query {:select [:f.id :f.display_name [:t.display_name :table_name]]
                      :from   [[(t2/table-name :model/Field) :f]]
                      :join   [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
                      :where  [:in :f.id field-ids]}))))
