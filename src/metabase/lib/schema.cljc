@@ -352,8 +352,7 @@
 
 (mr/def ::stage.table-sample
   "A built-in sample of the stage's source table: `:percent`, a block sample of about that percent of the table, or
-  `:rows`, about that many random rows. Sync sets it on its sample query for a driver whose compiler reads it: a SQL
-  driver with its own `metabase.driver.sql.query-processor/table-sample->honeysql` (`:percent`), or Mongo (`:rows`). A
+  `:rows`, about that many random rows. Sync sets it on its sample query, for a driver whose compiler reads it. A
   query from a client can carry it too: it then reads a sample of a table the user can read anyway, and compiling it
   fails for a driver that does not support that kind of sample."
   [:and

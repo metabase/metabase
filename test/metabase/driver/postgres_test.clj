@@ -3124,7 +3124,7 @@
     (testing "a sample of a number of rows does not compile, since Postgres has no such sample"
       (let [query (-> (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
                       (assoc-in [:stages 0 :table-sample] {:rows 10}))]
-        (is (thrown-with-msg? Exception #"does not support a built-in table sample"
+        (is (thrown-with-msg? Exception #"supports only a table sample of a percent"
                               (qp.compile/compile query)))))))
 
 (deftest table-random-sample-test

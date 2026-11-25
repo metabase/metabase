@@ -19,7 +19,7 @@
                                             $match $max $min $minute $mod
                                             $month $multiply $ne $not $or
                                             $project $regexMatch $replaceRoot
-                                            $second $setWindowFields $size $skip
+                                            $sample $second $setWindowFields $size $skip
                                             $sort $strcasecmp $subtract $sum
                                             $toBool $toLower $unionWith $unwind $year]]
    [metabase.driver.util :as driver.u]
@@ -2393,7 +2393,7 @@ function(bin) {
       pipeline-ctx
 
       (and rows (zero? stage-number) (empty? (:query pipeline-ctx)))
-      (update pipeline-ctx :query conj {"$sample" {"size" rows}})
+      (update pipeline-ctx :query conj {$sample {"size" rows}})
 
       :else
       (throw (ex-info (tru "MongoDB supports only a table sample of a number of rows, in the first stage of a query.")

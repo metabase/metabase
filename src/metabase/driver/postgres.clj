@@ -186,7 +186,9 @@
   [driver table-expr {:keys [percent] :as table-sample}]
   (if percent
     [:raw [table-expr " TABLESAMPLE SYSTEM (" [:inline percent] ")"]]
-    ((get-method sql.qp/table-sample->honeysql :sql) driver table-expr table-sample)))
+    (throw (ex-info (tru "Driver {0} supports only a table sample of a percent of the table." driver)
+                    {:type         driver-api/qp.error-type.unsupported-feature
+                     :table-sample table-sample}))))
 
 ;; Only tables, partitioned tables and materialized views can be read with TABLESAMPLE. Sync gives a table a row count
 ;; estimate only from `pg_stat_user_tables` (see [[describe-syncable-tables]]), which has no rows for views and

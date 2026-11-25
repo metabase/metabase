@@ -651,7 +651,7 @@
 (defmethod driver/table-random-sample :mongo
   [_driver table fields rff opts]
   (let [rows table-rows-sample/nested-field-sample-limit]
-    (mongo.connection/with-mongo-database [db (driver.u/lib-database (:db_id table))]
+    (mongo.connection/with-mongo-database [db (:db_id table)]
       (if-let [fraction (random-sample-fraction db table rows)]
         {:method   :row
          :fraction fraction
