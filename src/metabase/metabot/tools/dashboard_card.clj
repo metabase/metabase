@@ -163,8 +163,8 @@
                                     " unknown, so these rows can differ from the card on screen."))])))))
 
 (defn- combined-note
-  "The line saying that only `card`, a `card-type` such as question, ran, when `dashcard` shows more than one question
-   on the user's screen, or nil."
+  "The line saying that only `card` ran, when `dashcard` shows more than one question on the user's screen, or nil.
+   The line names the card by its `card-type`, such as question, and its ID."
   [dashcard card card-type]
   (when (or (get-in dashcard [:visualization_settings :visualization])
             (metabot.db/dashcard-has-series? (:id dashcard)))
