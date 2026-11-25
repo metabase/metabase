@@ -289,11 +289,26 @@ describe("scenarios > data studio > library", () => {
       H.DataStudio.Library.allTableItems().should("have.length", 0);
     });
 
-    it("should rename a field and view the table in the query builder", () => {
+    it("should show the table dependencies, rename a field, and view the table in the query builder", () => {
       H.createLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
+      H.createQuestion({
+        name: "Test question",
+        query: { "source-table": ORDERS_ID },
+      });
+      H.waitForBackfillComplete();
       H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
       H.tableHeaderColumn("Total").should("be.visible");
+
+      cy.log("View the table dependencies");
+      H.DataStudio.Tables.dependenciesTab().click();
+      H.DependencyGraph.graph().within(() => {
+        cy.findByText("Orders").should("be.visible");
+        cy.findByText(/question/).click();
+      });
+      H.DependencyGraph.dependencyPanel()
+        .findByText("Test question")
+        .should("be.visible");
 
       cy.log("Rename a field");
       H.DataStudio.Tables.fieldsTab().click();
@@ -460,7 +475,10 @@ describe("scenarios > data studio > library", () => {
         H.entityPickerModalItem(2, "Target Folder").click();
         cy.button("Move").click();
       });
+      bulkBar().should("not.exist");
 
+      cy.log("Verify the nesting after a reload");
+      H.DataStudio.Library.visit();
       H.DataStudio.Library.expandCollection("Target Folder");
       H.DataStudio.Library.result("Parent Folder").should(
         "have.attr",
