@@ -208,8 +208,8 @@
 (defn- sync-chunk!
   "Sync the Fields of the Tables of `chunk`, the column groups of up to [[chunk-max-tables]] Tables of `database`,
   locating each Table in the warehouse with the [[fetch-metadata/table-remapper]] `remap-table`, reading the Tables
-  together and syncing Tables with nested Fields (all of them when `nested?`) one at a time and the others together,
-  or one at a time when that fails."
+  together and syncing Tables with nested Fields in the warehouse or in the app DB (all of them when `nested?`) one at
+  a time and the others together, or one at a time when that fails."
   [database remap-table nested? chunk]
   (let [resolve-table (table-resolver database chunk)
         entries       (into []
@@ -218,7 +218,14 @@
                                       (when-let [table (resolve-table table-name table-schema)]
                                         (table-entry database remap-table table table-metadata)))))
                             chunk)
-        {nested true flat false} (group-by #(boolean (or nested? (some :nested-fields (:db-metadata %)))) entries)]
+        ;; a Table whose nested Fields the warehouse no longer has goes the nested way too, so they are retired
+        had-nested    (when (and (not nested?) (seq entries))
+                        (sync.db/table-ids-with-nested-fields (mapv (comp u/the-id :table) entries)))
+        nested-entry? (fn [{:keys [table db-metadata]}]
+                        (boolean (or nested?
+                                     (some :nested-fields db-metadata)
+                                     (contains? had-nested (u/the-id table)))))
+        {nested true flat false} (group-by nested-entry? entries)]
     {:total-fields   (transduce (map count) + 0 chunk)
      :updated-fields (+ (sync-tables-one-at-a-time! database nested)
                         (if (empty? flat)
