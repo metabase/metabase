@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import type * as Analytics from "metabase/analytics";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -29,6 +30,12 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import * as modelActions from "../../../../../actions/models";
 
 import { QuestionActions } from "./QuestionActions";
+
+// `metabase/analytics` is auto-mocked for every test (see `__support__/mocks`).
+// Reached via requireMock because the lint rule forbids importing
+// `trackSchemaEvent` outside analytics files.
+const { trackSchemaEvent } =
+  jest.requireMock<typeof Analytics>("metabase/analytics");
 
 function createCard(opts?: Partial<Card>) {
   return createMockCard({
@@ -208,15 +215,22 @@ describe("QuestionActions", () => {
     it("should allow to turn into a model with write data & collection permissions", async () => {
       const { onOpenModal } = setup({
         card: createCard({
+          id: 7,
           type: "question",
           can_write: true,
         }),
       });
 
       await openActionsMenu();
+      expect(trackSchemaEvent).not.toHaveBeenCalled();
 
       await userEvent.click(screen.getByText("Turn into a model"));
       expect(onOpenModal).toHaveBeenCalledWith(MODAL_TYPES.TURN_INTO_DATASET);
+      expect(trackSchemaEvent).toHaveBeenCalledTimes(1);
+      expect(trackSchemaEvent).toHaveBeenCalledWith("question", {
+        event: "turn_into_model_clicked",
+        question_id: 7,
+      });
     });
 
     it("should skip showing model modal if user has acknowledged it previously", async () => {

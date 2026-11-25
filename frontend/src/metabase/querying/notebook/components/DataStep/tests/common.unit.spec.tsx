@@ -495,6 +495,207 @@ describe("DataStep", () => {
     );
   });
 
+  describe("searching the data picker modal for questions, models and tables", () => {
+    const ORDERS_COUNT_QUESTION = createMockCard({
+      id: 21,
+      name: "Orders, Count",
+      type: "question",
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    });
+    const ORDERS_MODEL = createMockCard({
+      id: 22,
+      name: "Orders Model",
+      type: "model",
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    });
+    const PEOPLE_QUESTION = createMockCard({
+      id: 23,
+      name: "People question",
+      type: "question",
+      dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+    });
+    const ROOT_CARDS = [PEOPLE_QUESTION, ORDERS_COUNT_QUESTION, ORDERS_MODEL];
+    const SEARCH_ITEMS = [
+      ...ROOT_CARDS.map((card) =>
+        createMockSearchResult({
+          id: card.id,
+          name: card.name,
+          model: card.type === "model" ? "dataset" : "card",
+          database_id: SAMPLE_DB_ID,
+          collection: createMockCollection(ROOT_COLLECTION),
+        }),
+      ),
+      createMockSearchResult({
+        id: ORDERS_ID,
+        name: "Orders",
+        model: "table",
+        table_id: ORDERS_ID,
+        database_id: SAMPLE_DB_ID,
+        table_schema: "PUBLIC",
+        database_name: "Sample Database",
+      }),
+    ];
+
+    const getModal = () =>
+      screen.getByRole("dialog", { name: "Pick your starting data" });
+    const getLevel = (level: number) =>
+      within(getModal()).getByTestId(`item-picker-level-${level}`);
+    const getSearchCalls = () =>
+      fetchMock.callHistory
+        .calls("path:/api/search")
+        .map((call) => new URL(call.url).searchParams.get("q")?.trim())
+        .filter((q) => q != null);
+
+    const setupSearch = async () => {
+      ROOT_CARDS.forEach((card) => {
+        setupCardEndpoints(card);
+        const database = createSampleDatabase();
+        setupCardQueryMetadataEndpoint(
+          card,
+          createMockCardQueryMetadata({
+            databases: [database],
+            tables: database.tables,
+          }),
+        );
+      });
+      setupRootCollectionItemsEndpoint({
+        rootCollectionItems: ROOT_CARDS.map((card) =>
+          createMockCollectionItem({
+            id: card.id,
+            name: card.name,
+            model: card.type === "model" ? "dataset" : "card",
+          }),
+        ),
+      });
+      const emptyQuery = Question.create({
+        metadata: createMockMetadata(),
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+      }).query();
+      return setup({
+        step: createMockNotebookStep({ query: emptyQuery }),
+        searchItems: SEARCH_ITEMS,
+        applyQueryUpdates: true,
+      });
+    };
+
+    it("should not search for blank input, list matching questions, models and tables, and restore the browse view when the search is cleared", async () => {
+      const { getNextQuery } = await setupSearch();
+
+      await userEvent.click(await screen.findByText("Browse all"));
+      expect(
+        await screen.findByRole("dialog", { name: "Pick your starting data" }),
+      ).toBeInTheDocument();
+      expect(
+        within(getLevel(0)).queryByText(/Search results for/),
+      ).not.toBeInTheDocument();
+      await userEvent.click(
+        await within(getLevel(0)).findByText("Our analytics"),
+      );
+
+      const searchInput = screen.getByPlaceholderText("Search…");
+      await userEvent.type(searchInput, "  ");
+      await userEvent.click(within(getModal()).getByText("Our analytics"));
+      await userEvent.type(searchInput, "ord");
+
+      expect(
+        await within(getLevel(0)).findByText(/Search results for/),
+      ).toBeVisible();
+      const results = await screen.findAllByTestId("result-item");
+      const resultNames = results.map((result) =>
+        within(result)
+          .getByText(/^(Orders|Orders, Count|Orders Model)\s*$/)
+          .textContent?.trim(),
+      );
+      expect(resultNames).toEqual(
+        expect.arrayContaining(["Orders, Count", "Orders Model", "Orders"]),
+      );
+      expect(resultNames).toHaveLength(3);
+      expect(screen.queryByText(PEOPLE_QUESTION.name)).not.toBeInTheDocument();
+      expect(getSearchCalls()).toEqual(["ord"]);
+
+      await userEvent.clear(searchInput);
+      await waitFor(() =>
+        expect(
+          within(getLevel(0)).queryByText(/Search results for/),
+        ).not.toBeInTheDocument(),
+      );
+      expect(getSearchCalls()).toEqual(["ord"]);
+
+      await userEvent.click(
+        await within(getModal()).findByText(ORDERS_COUNT_QUESTION.name),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("dialog", { name: "Pick your starting data" }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(
+        await within(screen.getByTestId("data-step-cell")).findByText(
+          ORDERS_COUNT_QUESTION.name,
+        ),
+      ).toBeInTheDocument();
+      expect(Lib.allSourceCardIds(getNextQuery())).toEqual([
+        ORDERS_COUNT_QUESTION.id,
+      ]);
+    });
+
+    it("should reopen the modal at the picked question's collection, and switch the source to a table", async () => {
+      const { getNextTableName, getNextQuery } = await setupSearch();
+
+      await userEvent.click(await screen.findByText("Browse all"));
+      await screen.findByRole("dialog", { name: "Pick your starting data" });
+      await userEvent.click(
+        await within(getModal()).findByText("Our analytics"),
+      );
+      await userEvent.click(
+        await within(getModal()).findByText(ORDERS_MODEL.name),
+      );
+      expect(
+        await within(screen.getByTestId("data-step-cell")).findByText(
+          ORDERS_MODEL.name,
+        ),
+      ).toBeInTheDocument();
+      await waitFor(() =>
+        expect(Lib.allSourceCardIds(getNextQuery())).toEqual([ORDERS_MODEL.id]),
+      );
+
+      await userEvent.click(
+        within(screen.getByTestId("data-step-cell")).getByText(
+          ORDERS_MODEL.name,
+        ),
+      );
+      await userEvent.click(await screen.findByTestId("mini-picker-header"));
+      await userEvent.click(await screen.findByText("Browse all"));
+      await screen.findByRole("dialog", { name: "Pick your starting data" });
+
+      await waitFor(() =>
+        expect(
+          within(getLevel(0)).getByRole("link", { name: /Our analytics/ }),
+        ).toHaveAttribute("data-active", "true"),
+      );
+      expect(
+        await within(getLevel(1)).findByText(ORDERS_COUNT_QUESTION.name),
+      ).toBeInTheDocument();
+      expect(
+        within(getLevel(1)).getByRole("link", { name: /Orders Model/ }),
+      ).toHaveAttribute("data-active", "true");
+
+      await userEvent.click(within(getLevel(0)).getByText("Databases"));
+      await userEvent.click(
+        await within(getModal()).findByText("Sample Database"),
+      );
+      await userEvent.click(await within(getModal()).findByText("Products"));
+
+      await waitFor(() => expect(getNextTableName()).toBe("Products"));
+      expect(
+        await within(screen.getByTestId("data-step-cell")).findByText(
+          "Products",
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("should remove joins when changing a table", async () => {
     const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
       stages: [

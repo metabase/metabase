@@ -815,6 +815,16 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
         queryBuilderMode: "notebook",
       });
       expect(screen.queryByLabelText("notebook icon")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("notebook-button")).not.toBeInTheDocument();
+    });
+
+    it("shows the close notebook editor once a new question has results", () => {
+      setup({
+        card,
+        queryBuilderMode: "notebook",
+        result: createMockDataset(),
+      });
+      expect(screen.getByTestId("notebook-button")).toBeInTheDocument();
     });
   });
 });

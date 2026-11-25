@@ -12,7 +12,12 @@ import {
   renderWithProviders,
   screen,
 } from "__support__/ui";
-import type { CollectionContentModel, TokenFeatures } from "metabase-types/api";
+import type {
+  CollectionContentModel,
+  CollectionItem,
+  Database,
+  TokenFeatures,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -37,7 +42,14 @@ export const setup = async (
   {
     tokenFeatures = null,
     hasAccessToRoot = true,
-  }: { tokenFeatures?: TokenFeatures | null; hasAccessToRoot?: boolean } = {},
+    extraDatabases = [],
+    extraRootItems = [],
+  }: {
+    tokenFeatures?: TokenFeatures | null;
+    hasAccessToRoot?: boolean;
+    extraDatabases?: Database[];
+    extraRootItems?: CollectionItem[];
+  } = {},
 ) => {
   const onChangeSpy = jest.fn();
   const onCloseSpy = jest.fn();
@@ -115,7 +127,7 @@ export const setup = async (
       createMockTable({ id: 12, db_id: 3, display_name: "lydia", schema: "" }),
     ],
   });
-  setupDatabasesEndpoints([db, db2, db3]);
+  setupDatabasesEndpoints([db, db2, db3, ...extraDatabases]);
 
   const ROOT_COLLECTION = createMockCollection({
     id: "root",
@@ -167,6 +179,7 @@ export const setup = async (
         name: "Catherine",
         collection_id: "root",
       }),
+      ...extraRootItems,
     ],
   });
 
