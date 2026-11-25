@@ -29,12 +29,12 @@
   [:maybe
    [:map {:closed true}
     [:truncation-size {:optional true} :int]
-    [:limit           {:optional true} :int]
+    [:limit           {:optional true} [:maybe :int]]
     [:order-by        {:optional true} [:maybe [:sequential [:or ::lib.schema.order-by/order-by ::lib.ref/referenceable]]]]
     [:rff             {:optional true} fn?]]])
 
-(mu/defn- table-rows-sample-query :- ::lib.schema/query
-  "Returns the mbql query to query a table for sample rows"
+(mu/defn table-rows-sample-query :- ::lib.schema/query
+  "Returns the mbql query to query a table for sample rows. An explicit `:limit nil` gives a query with no limit."
   [mp    :- ::lib.schema.metadata/metadata-provider
    table :- ::lib.schema.metadata/table
    cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]

@@ -24,6 +24,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.quoting :as quoting :refer [quote-columns]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.key-blocks :as key-blocks]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
@@ -861,6 +862,38 @@
 (defmethod sql-jdbc.sync/excluded-schemas :mysql
   [_]
   #{"INFORMATION_SCHEMA"})
+
+;;; ------------------------------------------------ Table samples -------------------------------------------------
+
+(defn- key-block-key-name
+  "The name of the first column of the primary key of `table`, when it is an InnoDB table, or nil. InnoDB stores a table
+  in the order of its primary key, so a run of rows from a start point on that column is a short read of the index.
+  For a key of several columns, only the first one is used: a row comparison does not use the full index."
+  [table]
+  (-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:db_id table)))
+                  [(str "SELECT s.COLUMN_NAME AS column_name"
+                        " FROM information_schema.TABLES t"
+                        " JOIN information_schema.STATISTICS s"
+                        " ON s.TABLE_SCHEMA = t.TABLE_SCHEMA AND s.TABLE_NAME = t.TABLE_NAME"
+                        " WHERE t.TABLE_SCHEMA = DATABASE() AND t.TABLE_NAME = ? AND t.ENGINE = 'InnoDB'"
+                        " AND s.INDEX_NAME = 'PRIMARY' AND s.SEQ_IN_INDEX = 1")
+                   (:name table)]
+                  {:timeout 15})
+      first
+      :column_name))
+
+;; Only for `:mysql` itself, so that a child driver keeps its own `table-rows-sample`.
+(defmethod driver/database-supports? [:mysql :table-random-sample]
+  [driver _feature _db]
+  (= driver :mysql))
+
+;; Key blocks on the first column of the primary key of an InnoDB table. Other tables, such as views and tables of other
+;; storage engines, keep the first rows.
+(defmethod driver/table-random-sample :mysql
+  [driver table fields rff opts]
+  (if-let [key-name (key-block-key-name table)]
+    (key-blocks/sample driver table fields key-name rff opts)
+    {:method :first-rows}))
 
 (defmethod sql.qp/quote-style :mysql [_] :mysql)
 

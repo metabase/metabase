@@ -7,6 +7,13 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- New helper `metabase.driver.sql.key-blocks/sample`, for a SQL driver whose database has no good built-in sample:
+  a `metabase.driver/table-random-sample` that reads short runs of rows at points spread over an ordered key, in one
+  statement, and weights them for gaps in the key. The driver names the key column, which must be a number or a date or
+  time with an index that reads it in order. The MySQL driver uses it for the first column of the primary key of an
+  InnoDB table. `metabase.driver.common.table-rows-sample/table-rows-sample-query` is now public, and its `:limit` can be
+  nil for a query with no limit.
+
 - New multimethod `metabase.driver/table-random-sample` and feature flag `:table-random-sample`, false by default. A
   driver that supports the flag gives sync a better sample of a table's rows for fingerprints than the first rows, and
   says how it read them: `{:method :block | :row | :first-rows | :unspecified, :fraction f, :runs n, :result r}`. The
