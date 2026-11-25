@@ -146,15 +146,41 @@
 ;;; |                                      FINGERPRINTING ALL FIELDS IN A TABLE                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private resample-growth-factor
+  "How many times its row count when its Fields were fingerprinted a Table must have for sync to sample it again."
+  2)
+
+(defn- grown-table-ids
+  "The ids of the Tables among `table-ids` that grew [[resample-growth-factor]] times since their fingerprints, whose
+  fingerprinted Fields sync fingerprints again. None in a refingerprint run, which takes all Fields anyway."
+  [table-ids]
+  (if *refingerprint?*
+    #{}
+    (analyze/grown-table-ids (vec table-ids) resample-growth-factor)))
+
+(defn- fingerprint-field-counts
+  "The number of Fields to fingerprint of each of the Tables with `table-ids`, by Table id: all fingerprinted Fields of
+  a Table that grew a lot since its fingerprints."
+  [table-ids]
+  (let [versions i/*fingerprint-version->types-that-should-be-re-fingerprinted*
+        grown    (grown-table-ids table-ids)]
+    (cond-> (analyze/fingerprint-field-counts table-ids *refingerprint?* versions)
+      (seq grown) (merge (analyze/fingerprint-field-counts (vec grown) true versions)))))
+
 (mu/defn- fields-to-fingerprint :- [:map-of :int [:sequential i/FieldInstance]]
   "Up to `limit` Fields of each of `tables` to fingerprint, new active and visible ones included, by Table id, ordered
-  by id so that the selection is stable across syncs."
+  by id so that the selection is stable across syncs. A Table that grew a lot since its fingerprints gets all of its
+  fingerprinted Fields again."
   [tables :- [:sequential i/TableInstance]
    limit  :- ms/PositiveInt]
-  (group-by :table_id (analyze/fields-to-fingerprint (mapv :id tables)
-                                                     *refingerprint?*
-                                                     i/*fingerprint-version->types-that-should-be-re-fingerprinted*
-                                                     limit)))
+  (let [versions i/*fingerprint-version->types-that-should-be-re-fingerprinted*
+        grown    (grown-table-ids (map :id tables))]
+    (doseq [table tables
+            :when (contains? grown (:id table))]
+      (log/infof "Table %s grew to about %d rows since its fingerprints; sampling it again"
+                 (sync-util/name-for-logging table) (:estimated_row_count table)))
+    (cond-> (group-by :table_id (analyze/fields-to-fingerprint (mapv :id tables) *refingerprint?* versions limit))
+      (seq grown) (merge (group-by :table_id (analyze/fields-to-fingerprint (vec grown) true versions limit))))))
 
 (mu/defn- warn-too-many-fields!
   "Log that `table` has more fields to fingerprint than fingerprint-max-fields-per-table (`limit`), so only the first
@@ -271,8 +297,7 @@
                   (sync-util/refingerprint-reducible-sync-tables database)
                   (sync-util/reducible-sync-tables database))
          groups (table-chunks/groups tables
-                                     #(analyze/fingerprint-field-counts
-                                       % *refingerprint?* i/*fingerprint-version->types-that-should-be-re-fingerprinted*)
+                                     fingerprint-field-counts
                                      (inc (sync.settings/fingerprint-max-fields-per-table)))]
      (reduce (fn [acc group] (fingerprint-group! acc group log-progress-fn continue?))
              (empty-stats-map 0)

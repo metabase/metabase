@@ -34,6 +34,7 @@
   data-sensitivity-fields
   fields-to-fingerprint
   fingerprint-field-counts
+  grown-table-ids
   incomplete-analysis-fields
   name-field-counts
   normal-field-counts

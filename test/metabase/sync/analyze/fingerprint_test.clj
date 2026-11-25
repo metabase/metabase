@@ -495,3 +495,37 @@
           (is (= 100 (:row-count origin))))
         (testing "and the time, in UTC"
           (is (= "2026-01-02T03:04:05Z" (:collected-at origin))))))))
+
+(deftest grown-table-ids-test
+  (testing "a Table counts as grown when its estimate is at least twice the row count recorded with its fingerprints"
+    (mt/with-temp [:model/Database db   {}
+                   :model/Table    grew {:db_id (:id db) :estimated_row_count 250}
+                   :model/Table    same {:db_id (:id db) :estimated_row_count 150}
+                   :model/Table    none {:db_id (:id db) :estimated_row_count 250}
+                   :model/Table    gone {:db_id (:id db) :estimated_row_count nil}
+                   :model/Field    _    {:table_id (:id grew) :fingerprint_origin {:source :sample :row-count 100}}
+                   :model/Field    _    {:table_id (:id grew) :fingerprint_origin {:source :sample :row-count 200}}
+                   :model/Field    _    {:table_id (:id same) :fingerprint_origin {:source :sample :row-count 100}}
+                   :model/Field    _    {:table_id (:id none) :fingerprint_origin {:source :sample :row-count nil}}
+                   :model/Field    _    {:table_id (:id gone) :fingerprint_origin {:source :sample :row-count 100}}]
+      (is (= #{(:id grew)}
+             (analyze.db/grown-table-ids (mapv :id [grew same none gone]) 2))))))
+
+(deftest grown-table-is-fingerprinted-again-test
+  (testing "a Table that grew a lot since its fingerprints gets new ones, with its new row count in their origin"
+    (mt/with-temp-copy-of-db
+      (t2/update! :model/Table :id (mt/id :venues) {:estimated_row_count 100})
+      (binding [sync.fingerprint/*refingerprint?* true]
+        (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (mt/id :venues))))
+      (let [table #(t2/select-one :model/Table :id (mt/id :venues))
+            fp!   #(sync.fingerprint/fingerprint-table! (table))]
+        (testing "no new fingerprints while the table has grown less than twice"
+          (t2/update! :model/Table :id (mt/id :venues) {:estimated_row_count 150})
+          (is (zero? (:updated-fingerprints (fp!)))))
+        (testing "new fingerprints once it has grown twice"
+          (t2/update! :model/Table :id (mt/id :venues) {:estimated_row_count 200})
+          (is (pos? (:updated-fingerprints (fp!))))
+          (is (= 200 (:row-count (t2/select-one-fn :fingerprint_origin :model/Field :id (mt/id :venues :name))))))
+        (testing "and not again until it doubles from there"
+          (t2/update! :model/Table :id (mt/id :venues) {:estimated_row_count 300})
+          (is (zero? (:updated-fingerprints (fp!)))))))))

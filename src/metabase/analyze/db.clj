@@ -127,6 +127,34 @@
                                   (needs-fingerprint-update-clause refingerprint? version->base-types))
                          limit))
 
+(mu/defn grown-table-ids :- [:set ::lib.schema.id/table]
+  "The ids of the Tables among `table-ids` whose row count estimate is at least `factor` times the row count recorded
+  in the fingerprint origin of their first fingerprinted Field, which has the oldest fingerprint of the Table: a
+  new sample gives all of a Table's Fields the same origin. A Table with no estimate, or whose fingerprints recorded no
+  row count, is not among them."
+  [table-ids :- ::table-ids
+   factor    :- pos?]
+  (into #{}
+        (keep (fn [{:keys [table_id fingerprint_origin estimated_row_count]}]
+                (when-let [then (some-> fingerprint_origin :row-count)]
+                  (when (and (pos? then) (>= estimated_row_count (* factor then)))
+                    table_id))))
+        (app-db/select-batched
+         #(t2/select :model/Field
+                     {:select [:f.table_id :f.fingerprint_origin :t.estimated_row_count]
+                      :from  [[(t2/table-name :model/Field) :f]]
+                      :join  [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
+                      :where [:and
+                              [:> :t.estimated_row_count 0]
+                              [:in :f.id ^:allow-subquery {:select   [[:%min.id :id]]
+                                                           :from     [(t2/table-name :model/Field)]
+                                                           :where    [:and
+                                                                      [:in :table_id [:auto/param %]]
+                                                                      [:= :active true]
+                                                                      [:not= :fingerprint_origin nil]]
+                                                           :group-by [:table_id]}]]})
+         table-ids)))
+
 (mu/defn incomplete-analysis-fields :- [:sequential (ms/InstanceOf :model/Field)]
   "Up to `limit` active, visible Fields of the Tables with `table-ids` fingerprinted at `fingerprint-version` but not
   yet analyzed, lowest id first, after `after-id`."
