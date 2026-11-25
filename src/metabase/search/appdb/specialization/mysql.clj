@@ -46,15 +46,27 @@
         (map base-column)
         base-schema))
 
+(def ^:private index-statements
+  "The suffix of each index name, and the statement that creates the index from its name and the table name."
+  [["identity_idx"       "CREATE UNIQUE INDEX %s ON %s (model, model_id)"]
+   ["text_idx"           "CREATE FULLTEXT INDEX %s ON %s (search_terms)"]
+   ["native_text_idx"    "CREATE FULLTEXT INDEX %s ON %s (native_search_terms)"]
+   ["name_idx"           "CREATE FULLTEXT INDEX %s ON %s (name_terms)"]
+   ["prefix_idx"         "CREATE FULLTEXT INDEX %s ON %s (prefix_terms)"]
+   ["model_archived_idx" "CREATE INDEX %s ON %s (model, archived)"]
+   ["archived_idx"       "CREATE INDEX %s ON %s (archived)"]])
+
+(defn- index-name [prefix suffix]
+  (str prefix "_" suffix))
+
 (defmethod specialization/post-create-statements :mysql [prefix table-name]
-  (mapv #(format % prefix table-name)
-        ["CREATE UNIQUE INDEX %s_identity_idx ON %s (model, model_id)"
-         "CREATE FULLTEXT INDEX %s_text_idx ON %s (search_terms)"
-         "CREATE FULLTEXT INDEX %s_native_text_idx ON %s (native_search_terms)"
-         "CREATE FULLTEXT INDEX %s_name_idx ON %s (name_terms)"
-         "CREATE FULLTEXT INDEX %s_prefix_idx ON %s (prefix_terms)"
-         "CREATE INDEX %s_model_archived_idx ON %s (model, archived)"
-         "CREATE INDEX %s_archived_idx ON %s (archived)"]))
+  (mapv (fn [[suffix statement]] (format statement (index-name prefix suffix) table-name)) index-statements))
+
+;; Each statement commits on its own, so a process killed while creating the table leaves it without some indexes.
+(defmethod specialization/table-complete? :mysql [table-name]
+  (let [table-name (name table-name)
+        existing   (into #{} (map u/lower-case-en) (search.db/mysql-index-names table-name))]
+    (every? #(contains? existing (u/lower-case-en (index-name table-name (first %)))) index-statements)))
 
 (def ^:private max-allowed-packet
   (mdb/memoize-for-application-db #(search.db/mysql-max-allowed-packet)))

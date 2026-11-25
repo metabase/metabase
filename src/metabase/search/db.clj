@@ -309,6 +309,18 @@
   [table-name :- :string]
   (t2/exists? :information_schema.tables :table_name table-name))
 
+(mu/defn mysql-index-names :- [:set :string]
+  "The names of the indexes on the table `table-name` in the current MySQL database."
+  [table-name :- :string]
+  ;; MySQL labels an `information_schema` column in upper case unless it is aliased.
+  (into #{}
+        (map :index_name)
+        (t2/query {:select-distinct [[:index_name :index_name]]
+                   :from            [:information_schema.statistics]
+                   :where           [:and
+                                     [:= :table_schema :%database]
+                                     [:= :table_name table-name]]})))
+
 (mu/defn orphan-index-table-names
   "The `:table_name`s of search index tables in the current schema with no SearchIndexMetadata."
   []

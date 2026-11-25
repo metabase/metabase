@@ -224,6 +224,21 @@
             (search.db/set-mysql-fulltext-stopwords! stopwords?))))
       (search.db/create-search-index-table! table-name))))
 
+(defn- discard-incomplete!
+  "The pending index `table-name`, or nil after dropping it and its metadata because it lacks indexes."
+  [table-name]
+  ;; Rebuilds hold the cluster lock, so an incomplete pending table is left over from a process that was killed while
+  ;; creating it, rather than one another node is still creating.
+  (if (specialization/table-complete? table-name)
+    table-name
+    (do
+      (log/warnf "Pending index %s is missing indexes, dropping it to create it again" table-name)
+      (t2/with-connection [conn (mdb/app-db)]
+        (search-index-metadata/delete-search-index-metadata-for-index! conn (name table-name)))
+      (drop-table! table-name)
+      (sync-tracking-atoms!)
+      nil)))
+
 (defn maybe-create-pending!
   "Create a search index table if one doesn't exist. Record and return the name of the table, regardless."
   []
@@ -236,7 +251,7 @@
             (mc/swap! indexes-component assoc :pending table-name)
             table-name))
       ;; The database is the source of truth
-      (let [{:keys [pending]} (sync-tracking-atoms!)]
+      (let [pending (some-> (:pending (sync-tracking-atoms!)) discard-incomplete!)]
         (or pending
             (let [table-name (gen-table-name)]
               (log/infof "Creating pending index %s for lang %s" table-name (i18n/site-locale-string))

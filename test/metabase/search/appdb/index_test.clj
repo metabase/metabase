@@ -910,3 +910,30 @@
                 (memoize/memo-clear! @#'search.mysql/max-allowed-packet))))
           (is (< 1 @statements))
           (is (= 5 (t2/count (search.index/active-table)))))))))
+
+(deftest ^:synchronized incomplete-pending-index-is-recreated-test
+  (when (= :mysql (mdb/db-type))
+    (testing "A pending index that an interrupted creation left without some indexes is dropped and created again"
+      (let [discard! (fn [table-name]
+                       (search.db/drop-search-index-table-if-exists! table-name)
+                       (t2/with-connection [conn (mdb/app-db)]
+                         (search-index-metadata/delete-search-index-metadata-for-index! conn (name table-name))))]
+        (mc/binding (search.index/indexes-handle) {:active nil, :pending nil}
+                    (fn []
+                      (let [interrupted (search.index/maybe-create-pending!)]
+                        (try
+                          ;; As if the process died before creating its full-text indexes.
+                          (t2/query [(format "DROP INDEX %1$s_text_idx ON %1$s" (name interrupted))])
+                          (search.engine/reset-tracking! :search.engine/appdb)
+                          (let [recreated (search.index/maybe-create-pending!)]
+                            (try
+                              (is (= {:recreated?           true
+                                      :interrupted-exists?  false
+                                      :recreated-complete?  true}
+                                     {:recreated?           (not= interrupted recreated)
+                                      :interrupted-exists?  (search.index/exists? interrupted)
+                                      :recreated-complete?  (specialization/table-complete? recreated)}))
+                              (finally
+                                (discard! recreated))))
+                          (finally
+                            (discard! interrupted))))))))))

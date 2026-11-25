@@ -14,6 +14,14 @@
   {:arglists '([unique-prefix table-name])}
   db-type)
 
+(defmulti table-complete?
+  "Whether the index table `table-name` has everything [[post-create-statements]] creates.
+  A database that creates the table and its indexes atomically needs no check."
+  {:arglists '([table-name])}
+  db-type)
+
+(defmethod table-complete? :default [_table-name] true)
+
 (defmulti base-query
   "Generate the basic shape of the index table query, to be augmented with rankers and filters."
   {:arglists '([table-name search-term search-ctx select-items])}
