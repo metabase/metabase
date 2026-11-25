@@ -1,12 +1,16 @@
 import userEvent from "@testing-library/user-event";
+import { setPlatformAPI } from "echarts/core";
 import fetchMock, { type CallLog } from "fetch-mock";
 import { setupJestCanvasMock } from "jest-canvas-mock";
+import _ from "underscore";
 
 import {
+  setupCardQueryMetadataEndpoint,
   setupLastDownloadFormatEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   renderHook,
   screen,
   waitFor,
@@ -16,13 +20,19 @@ import {
 import { mockGetBoundingClientRect } from "__support__/utils";
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { DatasetQuery } from "metabase-types/api";
+import type {
+  Dataset,
+  DatasetQuery,
+  TestStageWithSourceSpec,
+} from "metabase-types/api";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
@@ -31,9 +41,11 @@ import {
 import {
   ORDERS,
   ORDERS_ID,
+  PEOPLE_ID,
   PRODUCTS_ID,
   createOrdersCreatedAtDatasetColumn,
   createOrdersIdDatasetColumn,
+  createPeopleStateDatasetColumn,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -58,6 +70,8 @@ registerVisualizations();
 const MISSING_FIELD_ID = 9999;
 
 describe("QueryBuilder", () => {
+  setupCanvasTextMeasurement();
+
   beforeEach(() => {
     setupLastDownloadFormatEndpoints();
   });
@@ -942,4 +956,797 @@ describe("QueryBuilder", () => {
       });
     });
   });
+  describe("running a query after an empty result", () => {
+    const FILTERED_CARD = createMockUnsavedCard({
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              filters: [
+                {
+                  type: "operator",
+                  operator: ">",
+                  args: [
+                    { type: "column", name: "TOTAL" },
+                    { type: "literal", value: 1000 },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      ),
+    });
+
+    const EMPTY_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createOrdersIdDatasetColumn()],
+        rows: [],
+      }),
+    });
+
+    const NON_EMPTY_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createOrdersIdDatasetColumn()],
+        rows: [[1], [2]],
+      }),
+      row_count: 2,
+    });
+
+    it("should not show 'No results' while the next query runs (metabase#41464)", async () => {
+      await setup({
+        card: FILTERED_CARD,
+        dataset: EMPTY_DATASET,
+        database: createSampleDatabase({ auto_run_queries: true }),
+      });
+
+      expect(await screen.findByText("No results")).toBeInTheDocument();
+
+      const response = defer<Dataset>();
+      fetchMock.modifyRoute("dataset-post", {
+        response: () => response.promise,
+      });
+
+      const pill = screen.getByTestId("filter-pill");
+      expect(pill).toHaveTextContent("Total is greater than 1000");
+      await userEvent.click(within(pill).getByLabelText("Remove"));
+
+      const main = screen.getByTestId("query-builder-main");
+      expect(
+        await within(main).findByTestId("loading-indicator"),
+      ).toBeInTheDocument();
+      expect(within(main).queryByText("No results")).not.toBeInTheDocument();
+
+      response.resolve(NON_EMPTY_DATASET);
+      expect(await screen.findByText("Showing 2 rows")).toBeInTheDocument();
+      expect(
+        within(main).queryByTestId("loading-indicator"),
+      ).not.toBeInTheDocument();
+    });
+  });
+  describe("saving a chart from the raw table view", () => {
+    mockGetBoundingClientRect({ width: 1000, height: 800 });
+
+    const LINE_CARD = createMockUnsavedCard({
+      display: "line",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [{ type: "operator", operator: "count", args: [] }],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "month" },
+              ],
+            },
+          ],
+        }),
+      ),
+      visualization_settings: {},
+    });
+
+    const LINE_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createOrdersCreatedAtDatasetColumn({
+            source: "breakout",
+            unit: "month",
+            display_name: "Created At: Month",
+            field_ref: [
+              "field",
+              ORDERS.CREATED_AT,
+              { "base-type": "type/DateTime", "temporal-unit": "month" },
+            ],
+          }),
+          createMockColumn({
+            name: "count",
+            display_name: "Count",
+            source: "aggregation",
+            base_type: "type/BigInteger",
+            effective_type: "type/BigInteger",
+            semantic_type: "type/Quantity",
+            field_ref: ["aggregation", 0],
+          }),
+        ],
+        rows: [
+          ["2025-04-01T00:00:00Z", 1],
+          ["2025-05-01T00:00:00Z", 19],
+        ],
+      }),
+      row_count: 2,
+    });
+
+    it("should save the chart settings when the question is saved from the raw table view (metabase#41612)", async () => {
+      fetchMock.post("path:/api/card", (call: CallLog) =>
+        createMockCard({
+          ...JSON.parse(String(call.options.body)),
+          id: 41612,
+        }),
+      );
+      setupCardQueryMetadataEndpoint(
+        createMockCard({ id: 41612 }),
+        createMockCardQueryMetadata({ databases: [createSampleDatabase()] }),
+      );
+      const { router } = await setup({
+        card: LINE_CARD,
+        dataset: LINE_DATASET,
+        database: createSampleDatabase({ auto_run_queries: true }),
+      });
+
+      await userEvent.click(await screen.findByLabelText("Switch to data"));
+      expect(
+        await screen.findByRole("columnheader", { name: "Created At: Month" }),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      const modal = await screen.findByTestId("save-question-modal");
+      await waitFor(() =>
+        expect(
+          within(modal).getByLabelText(/Where do you want to save this/),
+        ).toHaveTextContent("Our analytics"),
+      );
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Save" }),
+      );
+
+      const createCall = await waitFor(() =>
+        checkNotNull(
+          fetchMock.callHistory.lastCall("path:/api/card", { method: "POST" }),
+        ),
+      );
+      const createdCard: unknown = JSON.parse(String(createCall.options.body));
+      expect(createdCard).toMatchObject({
+        display: "line",
+        visualization_settings: {
+          "graph.metrics": ["count"],
+          "graph.dimensions": ["CREATED_AT"],
+        },
+      });
+      await waitFor(() =>
+        expect(router.location.pathname).toMatch(/^\/question\/41612/),
+      );
+    });
+  });
+  describe("removing the first aggregation of a query with a later stage", () => {
+    mockGetBoundingClientRect({ width: 1000, height: 800 });
+
+    const sumOf = (name: string) => ({
+      type: "operator" as const,
+      operator: "sum",
+      args: [{ type: "column" as const, name }],
+    });
+
+    const createAggregatedQuery = () => {
+      const query = Lib.appendStage(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [sumOf("SUBTOTAL"), sumOf("TAX"), sumOf("TOTAL")],
+              breakouts: [{ type: "column", name: "CREATED_AT", unit: "week" }],
+            },
+          ],
+        }),
+      );
+      const sumOfTax = checkNotNull(
+        Lib.filterableColumns(query, 1).find(
+          (column) =>
+            Lib.displayInfo(query, 1, column).displayName === "Sum of Tax",
+        ),
+      );
+      return Lib.filter(
+        query,
+        1,
+        Lib.numberFilterClause({
+          operator: ">",
+          column: sumOfTax,
+          values: [100],
+        }),
+      );
+    };
+
+    const AGGREGATED_CARD = createMockUnsavedCard({
+      display: "table",
+      dataset_query: Lib.toJsQuery(createAggregatedQuery()),
+    });
+
+    // Columns of a previous stage come back with the "fields" source
+    const createSumColumn = (name: string, displayName: string) =>
+      createMockColumn({
+        name,
+        display_name: displayName,
+        source: "fields",
+        base_type: "type/Float",
+        effective_type: "type/Float",
+        field_ref: ["field", name, { "base-type": "type/Float" }],
+      });
+
+    const createWeekColumn = () =>
+      createOrdersCreatedAtDatasetColumn({
+        source: "fields",
+        unit: "week",
+        display_name: "Created At: Week",
+        field_ref: [
+          "field",
+          "CREATED_AT",
+          { "base-type": "type/DateTime", "temporal-unit": "week" },
+        ],
+      });
+
+    const FILTERED_ROW_COUNT = 175;
+
+    const FILTERED_BY_TAX_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createWeekColumn(),
+          createSumColumn("sum", "Sum of Tax"),
+          createSumColumn("sum_2", "Sum of Total"),
+        ],
+        rows: Array.from({ length: FILTERED_ROW_COUNT }, (_, index) => [
+          `2025-01-${String((index % 28) + 1).padStart(2, "0")}T00:00:00Z`,
+          101 + index,
+          1000 + index,
+        ]),
+      }),
+      row_count: FILTERED_ROW_COUNT,
+    });
+
+    const EMPTY_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createWeekColumn()],
+        rows: [],
+      }),
+    });
+
+    const isFilteredByTax = (call: CallLog) => {
+      const body = getRequestBody(call);
+      const aggregations = getIn(body, ["stages", 0, "aggregation"]);
+      const aggregatedFieldIds = Array.isArray(aggregations)
+        ? aggregations.map((aggregation) => getIn(aggregation, [2, 2]))
+        : [];
+      const filter = getIn(body, ["stages", 1, "filters", 0]);
+      return (
+        _.isEqual(aggregatedFieldIds, [ORDERS.TAX, ORDERS.TOTAL]) &&
+        getIn(filter, [0]) === ">" &&
+        getIn(filter, [2, 2]) === "sum" &&
+        getIn(filter, [3]) === 100
+      );
+    };
+
+    it("should not re-target the filter of the next stage (metabase#12679)", async () => {
+      await setup({
+        card: AGGREGATED_CARD,
+        dataset: EMPTY_DATASET,
+        initialRoute: `/question/notebook#${serializeCardForUrl(AGGREGATED_CARD)}`,
+      });
+      fetchMock.modifyRoute("dataset-post", {
+        response: (call: CallLog) =>
+          isFilteredByTax(call) ? FILTERED_BY_TAX_DATASET : EMPTY_DATASET,
+      });
+
+      const filterStep = await screen.findByTestId("step-filter-1-0");
+      expect(
+        within(filterStep).getByText("Sum of Tax is greater than 100"),
+      ).toBeInTheDocument();
+
+      const summarizeStep = screen.getByTestId("step-summarize-0-0");
+      const subtotalItem = checkNotNull(
+        within(summarizeStep)
+          .getAllByTestId("notebook-cell-item")
+          .find((item) => item.textContent === "Sum of Subtotal"),
+      );
+      await userEvent.click(within(subtotalItem).getByLabelText("close icon"));
+
+      await waitFor(() =>
+        expect(
+          within(summarizeStep).queryByText("Sum of Subtotal"),
+        ).not.toBeInTheDocument(),
+      );
+      expect(within(summarizeStep).getByText("Sum of Tax")).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId("step-filter-1-0")).getByText(
+          "Sum of Tax is greater than 100",
+        ),
+      ).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Visualize" }));
+
+      expect(
+        await screen.findByText(`Showing ${FILTERED_ROW_COUNT} rows`),
+      ).toBeInTheDocument();
+      const runCall = checkNotNull(
+        fetchMock.callHistory.lastCall("path:/api/dataset", { method: "POST" }),
+      );
+      expect(isFilteredByTax(runCall)).toBe(true);
+
+      const filtersControl = await screen.findByTestId(
+        "filters-visibility-control",
+      );
+      if (screen.queryByTestId("qb-filters-panel") == null) {
+        await userEvent.click(filtersControl);
+      }
+      expect(
+        await within(await screen.findByTestId("qb-filters-panel")).findByText(
+          "Sum of Tax is greater than 100",
+        ),
+      ).toBeInTheDocument();
+
+      expect(
+        await screen.findByRole("columnheader", { name: "Sum of Tax" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("columnheader", { name: "Sum of Total" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("columnheader", { name: "Sum of Subtotal" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+  describe("chart settings after adding a query stage", () => {
+    mockGetBoundingClientRect({ width: 1000, height: 800 });
+
+    const STATE_COUNTS: [string, number][] = [
+      ["AK", 68],
+      ["AL", 56],
+      ["AR", 49],
+      ["AZ", 20],
+      ["CA", 90],
+    ];
+
+    const BAR_CARD = createMockCard({
+      id: 44668,
+      name: "Count by state",
+      display: "bar",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: PEOPLE_ID },
+              aggregations: [{ type: "operator", operator: "count", args: [] }],
+              breakouts: [{ type: "column", name: "STATE" }],
+              limit: 5,
+            },
+          ],
+        }),
+      ),
+      visualization_settings: {
+        "graph.metrics": ["count"],
+        "graph.dimensions": ["STATE"],
+      },
+    });
+
+    const createCountColumn = (source: "aggregation" | "fields") =>
+      createMockColumn({
+        name: "count",
+        display_name: "Count",
+        source,
+        base_type: "type/BigInteger",
+        effective_type: "type/BigInteger",
+        semantic_type: "type/Quantity",
+        field_ref:
+          source === "aggregation"
+            ? ["aggregation", 0]
+            : ["field", "count", { "base-type": "type/BigInteger" }],
+      });
+
+    const BAR_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createPeopleStateDatasetColumn({ source: "breakout" }),
+          createCountColumn("aggregation"),
+        ],
+        rows: STATE_COUNTS,
+      }),
+      row_count: STATE_COUNTS.length,
+    });
+
+    const STAGED_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createPeopleStateDatasetColumn({
+            field_ref: ["field", "STATE", { "base-type": "type/Text" }],
+          }),
+          createCountColumn("fields"),
+          createMockColumn({
+            name: "Custom String",
+            display_name: "Custom String",
+            source: "fields",
+            base_type: "type/Text",
+            effective_type: "type/Text",
+            field_ref: ["expression", "Custom String"],
+          }),
+          createMockColumn({
+            name: "Custom Number",
+            display_name: "Custom Number",
+            source: "fields",
+            base_type: "type/BigInteger",
+            effective_type: "type/BigInteger",
+            field_ref: ["expression", "Custom Number"],
+          }),
+        ],
+        rows: STATE_COUNTS.map(([state, count]) => [
+          state,
+          count,
+          `abc_${count}`,
+          count * 2,
+        ]),
+      }),
+      row_count: STATE_COUNTS.length,
+    });
+
+    // Matches `concat("abc_", [Count])` named "Custom String" and
+    // `[Count] * 2` named "Custom Number", both on the count of stage 0
+    const hasCustomColumnStage = (call: CallLog) => {
+      const expressions = getIn(getRequestBody(call), [
+        "stages",
+        1,
+        "expressions",
+      ]);
+      if (!Array.isArray(expressions) || expressions.length !== 2) {
+        return false;
+      }
+      const [customString, customNumber] = expressions;
+      const isCountRef = (ref: unknown) =>
+        getIn(ref, [0]) === "field" && getIn(ref, [2]) === "count";
+      return (
+        getIn(customString, [0]) === "concat" &&
+        getIn(customString, [1, "lib/expression-name"]) === "Custom String" &&
+        getIn(customString, [2]) === "abc_" &&
+        isCountRef(getIn(customString, [3])) &&
+        getIn(customString, ["length"]) === 4 &&
+        getIn(customNumber, [0]) === "*" &&
+        getIn(customNumber, [1, "lib/expression-name"]) === "Custom Number" &&
+        isCountRef(getIn(customNumber, [2])) &&
+        getIn(customNumber, [3]) === 2 &&
+        getIn(customNumber, ["length"]) === 4
+      );
+    };
+
+    const addCustomColumn = async (formula: string, name: string) => {
+      const input = await screen.findByTestId("custom-expression-query-editor");
+      await waitFor(() => expect(input).toHaveProperty("readOnly", false));
+      await userEvent.click(input);
+      await userEvent.paste(formula);
+      await userEvent.tab();
+      await userEvent.type(screen.getByTestId("expression-name"), name);
+      const doneButton = screen.getByRole("button", { name: "Done" });
+      await waitFor(() => expect(doneButton).toBeEnabled());
+      await userEvent.click(doneButton);
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("expression-editor"),
+        ).not.toBeInTheDocument(),
+      );
+    };
+
+    const getChart = () => screen.findByTestId("chart-container");
+    const getMain = () => screen.getByTestId("query-builder-main");
+    const getSidebar = () => screen.getByTestId("chartsettings-sidebar");
+
+    it("should not drop graph.metrics after adding a new query stage (metabase#44668)", async () => {
+      await setup({
+        card: BAR_CARD,
+        dataset: BAR_DATASET,
+        database: createSampleDatabase({ auto_run_queries: true }),
+      });
+      fetchMock.modifyRoute("dataset-post", {
+        response: (call: CallLog) =>
+          hasCustomColumnStage(call) ? STAGED_DATASET : BAR_DATASET,
+      });
+
+      await userEvent.click(screen.getByTestId("notebook-button"));
+      const actionButtons = await screen.findAllByTestId("action-buttons");
+      await userEvent.click(
+        within(actionButtons[actionButtons.length - 1]).getByRole("button", {
+          name: /Custom column/,
+        }),
+      );
+      await addCustomColumn('concat("abc_", [Count])', "Custom String");
+      await userEvent.click(
+        within(await screen.findByTestId("step-expression-1-0")).getByLabelText(
+          "add icon",
+        ),
+      );
+      await addCustomColumn("[Count] * 2", "Custom Number");
+      await userEvent.click(screen.getByRole("button", { name: "Visualize" }));
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory
+            .calls("path:/api/dataset", { method: "POST" })
+            .some(hasCustomColumnStage),
+        ).toBe(true),
+      );
+      await act(() => fetchMock.callHistory.flush(true));
+
+      await waitFor(async () =>
+        expect(within(await getChart()).getByText("State")).toBeInTheDocument(),
+      );
+      const chart = await getChart();
+      expect(within(chart).getByText("Count")).toBeInTheDocument();
+      for (const [state] of STATE_COUNTS) {
+        expect(within(chart).getByText(state)).toBeInTheDocument();
+      }
+      expect(
+        within(getMain()).queryByLabelText("Legend"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByTestId("viz-settings-button"));
+      await userEvent.click(
+        await within(getSidebar()).findByText("Add another series"),
+      );
+      const legend = await within(getMain()).findByLabelText("Legend");
+      expect(within(legend).getByText("Count")).toBeInTheDocument();
+      expect(within(legend).getByText("Custom Number")).toBeInTheDocument();
+      expect(
+        within(getSidebar()).queryByText("Add another series"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(getSidebar()).queryByText("Add series breakout"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(
+        within(getSidebar()).getByTestId("remove-Custom Number"),
+      );
+      await waitFor(() =>
+        expect(
+          within(getMain()).queryByLabelText("Legend"),
+        ).not.toBeInTheDocument(),
+      );
+
+      await userEvent.click(
+        within(getSidebar()).getByText("Add series breakout"),
+      );
+      const listbox = await screen.findByRole("listbox");
+      expect(
+        within(listbox).getByRole("option", { name: "Count" }),
+      ).toBeInTheDocument();
+      expect(
+        within(listbox).getByRole("option", { name: "Custom Number" }),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        within(listbox).getByRole("option", { name: "Custom String" }),
+      );
+
+      const breakoutLegend = await within(getMain()).findByLabelText("Legend");
+      for (const [, count] of STATE_COUNTS) {
+        expect(
+          within(breakoutLegend).getByText(`abc_${count}`),
+        ).toBeInTheDocument();
+      }
+      expect(
+        within(getSidebar()).queryByText("Add another series"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(getSidebar()).queryByText("Add series breakout"),
+      ).not.toBeInTheDocument();
+    });
+  });
+  describe("chart settings after removing query clauses", () => {
+    mockGetBoundingClientRect({ width: 1000, height: 800 });
+
+    const countByMonthStage: TestStageWithSourceSpec = {
+      source: { type: "table", id: ORDERS_ID },
+      aggregations: [{ type: "operator", operator: "count", args: [] }],
+      breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
+    };
+
+    const WATERFALL_CARD = createMockCard({
+      id: 36027,
+      name: "Waterfall",
+      display: "waterfall",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            countByMonthStage,
+            {
+              joins: [
+                {
+                  source: { type: "table", id: ORDERS_ID },
+                  strategy: "left-join",
+                  conditions: [
+                    {
+                      operator: "<=",
+                      left: { type: "column", name: "CREATED_AT" },
+                      right: { type: "column", name: "CREATED_AT" },
+                    },
+                  ],
+                },
+              ],
+              aggregations: [
+                {
+                  type: "operator",
+                  operator: "sum",
+                  args: [{ type: "column", name: "count" }],
+                },
+              ],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "month" },
+              ],
+            },
+          ],
+        }),
+      ),
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["sum"],
+      },
+    });
+
+    const createMonthColumn = () =>
+      createOrdersCreatedAtDatasetColumn({
+        source: "breakout",
+        unit: "month",
+        display_name: "Created At: Month",
+        field_ref: [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+      });
+
+    const createNumberColumn = (name: string, displayName: string) =>
+      createMockColumn({
+        name,
+        display_name: displayName,
+        source: "aggregation",
+        base_type: "type/BigInteger",
+        effective_type: "type/BigInteger",
+        field_ref: ["aggregation", 0],
+      });
+
+    // 48 months from April 2025 that add up to 18,760 orders
+    const MONTHLY_ROWS = Array.from({ length: 48 }, (_, index) => [
+      new Date(Date.UTC(2025, 3 + index, 1)).toISOString(),
+      index < 40 ? 400 : 345,
+    ]);
+
+    const WATERFALL_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createMonthColumn(), createNumberColumn("sum", "Sum of Count")],
+        rows: MONTHLY_ROWS,
+      }),
+      row_count: MONTHLY_ROWS.length,
+    });
+
+    const COUNT_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createMonthColumn(), createNumberColumn("count", "Count")],
+        rows: MONTHLY_ROWS,
+      }),
+      row_count: MONTHLY_ROWS.length,
+    });
+
+    const isCountByMonthQuery = (call: CallLog) => {
+      const body = getRequestBody(call);
+      const stages = getIn(body, ["stages"]);
+      return (
+        Array.isArray(stages) &&
+        stages.length === 1 &&
+        getIn(body, ["stages", 0, "aggregation", 0, 0]) === "count" &&
+        getIn(body, ["stages", 0, "breakout", 0, 1, "temporal-unit"]) ===
+          "month" &&
+        getIn(body, ["stages", 0, "joins"]) == null
+      );
+    };
+
+    const removeStep = async (testId: string) => {
+      const step = await screen.findByTestId(testId);
+      await userEvent.click(within(step).getByLabelText("Remove step"));
+      await waitFor(() =>
+        expect(screen.queryByTestId(testId)).not.toBeInTheDocument(),
+      );
+    };
+
+    it("should use default metrics and dimensions if they are missing after removing some query clauses (metabase#36027)", async () => {
+      await setup({
+        card: WATERFALL_CARD,
+        dataset: WATERFALL_DATASET,
+        database: createSampleDatabase({ auto_run_queries: true }),
+      });
+      fetchMock.modifyRoute("dataset-post", {
+        response: (call: CallLog) =>
+          isCountByMonthQuery(call) ? COUNT_DATASET : WATERFALL_DATASET,
+      });
+
+      await userEvent.click(screen.getByTestId("notebook-button"));
+      await removeStep("step-summarize-1-0");
+      await removeStep("step-join-1-0");
+      await userEvent.click(screen.getByRole("button", { name: "Visualize" }));
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory
+            .calls("path:/api/dataset", { method: "POST" })
+            .some(isCountByMonthQuery),
+        ).toBe(true),
+      );
+      await act(() => fetchMock.callHistory.flush(true));
+
+      const chart = await screen.findByTestId("chart-container");
+      await waitFor(() =>
+        expect(
+          within(chart).getByText("Created At: Month"),
+        ).toBeInTheDocument(),
+      );
+      expect(within(chart).getByText("Count")).toBeInTheDocument();
+      for (const month of [
+        "April 2025",
+        "April 2026",
+        "April 2027",
+        "April 2028",
+      ]) {
+        expect(within(chart).getByText(month)).toBeInTheDocument();
+      }
+      for (const tick of [
+        "0",
+        "3,000",
+        "6,000",
+        "9,000",
+        "12,000",
+        "15,000",
+        "18,000",
+        "21,000",
+      ]) {
+        expect(within(chart).getByText(tick)).toBeInTheDocument();
+      }
+    });
+  });
 });
+
+function getRequestBody(call: CallLog): unknown {
+  return JSON.parse(String(call.options.body));
+}
+
+/** Reads a nested value of a request body, or undefined when it is missing */
+function getIn(value: unknown, path: (string | number)[]): unknown {
+  return path.reduce<unknown>(
+    (current, key) =>
+      current != null && typeof current === "object" && key in current
+        ? Reflect.get(current, key)
+        : undefined,
+    value,
+  );
+}
+
+/**
+ * echarts keeps the first 2D canvas context it measures text with, and the
+ * file's `afterEach` resets every mock, including the `jest.fn` methods
+ * jest-canvas-mock puts on that context. A chart rendered after another chart
+ * then measures text as `undefined` and never settles. This makes echarts
+ * measure text with a new context of the current document on each call.
+ * echarts stays loaded after this file when the test runner keeps packages
+ * loaded between files, so the function must not keep a context of this file.
+ */
+function setupCanvasTextMeasurement() {
+  beforeEach(() => {
+    setPlatformAPI({
+      measureText: (text: string, font?: string) => {
+        const context = checkNotNull(
+          document.createElement("canvas").getContext("2d"),
+        );
+        context.font = font ?? "12px sans-serif";
+        return context.measureText(text);
+      },
+    });
+  });
+}
