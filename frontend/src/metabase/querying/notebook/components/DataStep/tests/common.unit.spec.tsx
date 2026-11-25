@@ -697,6 +697,49 @@ describe("DataStep", () => {
       expect(Lib.fields(nextQuery, 0)).toHaveLength(1);
     });
 
+    it("should keep the first column when de-selecting all, and let another column replace it", async () => {
+      // The mock fields have no position, so the picker lists them by name and
+      // "Created At" comes first (in the sample database it is "ID").
+      const { getNextQuery } = await setup({ applyQueryUpdates: true });
+      const getSelectedColumnNames = () => {
+        const nextQuery = getNextQuery();
+        return getColumnNames(
+          nextQuery,
+          0,
+          Lib.fieldableColumns(nextQuery, 0).filter(
+            (column) => Lib.displayInfo(nextQuery, 0, column).selected,
+          ),
+        );
+      };
+
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Select all"));
+      expect(getSelectedColumnNames()).toEqual(["CREATED_AT"]);
+      expect(screen.getByLabelText("Created At")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+
+      await userEvent.click(screen.getByLabelText("Tax"));
+      expect(screen.getByLabelText("Created At")).not.toHaveAttribute(
+        "aria-disabled",
+      );
+
+      await userEvent.click(screen.getByLabelText("Created At"));
+      expect(getSelectedColumnNames()).toEqual(["TAX"]);
+      expect(screen.getByLabelText("Tax")).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+
+      await userEvent.hover(
+        within(screen.getByLabelText("Product ID")).getByLabelText("More info"),
+      );
+      expect(
+        await screen.findByText("The unique identifier of the product"),
+      ).toBeInTheDocument();
+    });
+
     describe("when searching", () => {
       afterEach(() => {
         jest.mocked(isTouchDevice).mockReturnValue(false);
