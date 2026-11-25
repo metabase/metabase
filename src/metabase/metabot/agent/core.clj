@@ -637,11 +637,11 @@
         ;; embedded Metabot, whatever profile the request names. The tool checks again, for someone who joins mid-turn.
         offered      (profiles/profile->tools profile capabilities)
         base-tools   (cond-> offered
-                       (and (contains? offered "run_query")
+                       (and (some #(contains? offered %) ["run_query" "run_dashboard_card"])
                             (or (not (and conversation-id api/*current-user-id*))
                                 (= (:entity_id metabot) metabot.config/embedded-metabot-id)
                                 (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*)))
-                       (dissoc "run_query"))
+                       (dissoc "run_query" "run_dashboard_card"))
         seeded       (-> (or state {})
                          (seed-state context)
                          (seed-chart-configs context)

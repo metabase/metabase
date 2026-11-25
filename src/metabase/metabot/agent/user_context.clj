@@ -292,7 +292,7 @@
   (te/lines "The user is currently looking at the details of a dashboard:"
             (if (some? filter-values)
               (str "Each filter's `current_value` is the value applied to the cards on the user's screen, and a filter"
-                   " marked `cleared` has no value applied.")
+                   " marked `cleared` has no value applied. A filter with neither has an unknown value on screen.")
               "The filter values on the user's screen are unknown.")))
 
 (defmethod format-entity "dashboard"

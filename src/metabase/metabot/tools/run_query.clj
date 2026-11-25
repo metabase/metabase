@@ -720,7 +720,8 @@
    that text shows, and whether the run has more rows than it shows.
    The text opens with `open-tag`, the `<query_results ...` start of the opening tag, which this closes with the
    counts, and the lines `notes` follow the rows.
-   A truncated page gets advice to aggregate the query and run it again only with `rerun-advice?`."
+   A truncated page, or one whose rows are too long to show, gets advice to change the query and run it again only
+   with `rerun-advice?`."
   [open-tag {:keys [cols rows truncated?]} notes rerun-advice?]
   (let [shown-cols            (vec (take max-columns cols))
         {:keys [table shown]} (rows-table shown-cols rows)
@@ -745,7 +746,8 @@
                          [(cond
                             none-fit?
                             (str "The query returned rows, but one row is longer than the output limit."
-                                 " Select fewer columns and run it again.")
+                                 (when rerun-advice?
+                                   " Select fewer columns and run it again."))
 
                             truncated?
                             (str "Only the first " shown " rows are shown, so do not count or total them to answer."

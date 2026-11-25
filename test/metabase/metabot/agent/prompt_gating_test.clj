@@ -326,6 +326,10 @@
     (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query"])]
       (is (re-find #"# Hard constraint: you cannot see query results" rendered))
       (is (not (re-find #"run_query" rendered)))))
+  (testing "with only the dashboard card runner, results stay hidden apart from the dashboard's cards"
+    (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query" "run_dashboard_card"])]
+      (is (re-find #"# Hard constraint: you cannot see query results" rendered))
+      (is (re-find #"The one exception is a card on the dashboard the user is viewing" rendered))))
   (testing "with run_query the model is told how to read results"
     (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query" "run_query"])]
       (is (re-find #"# You can see results only by running a query" rendered))

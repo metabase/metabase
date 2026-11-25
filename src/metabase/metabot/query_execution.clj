@@ -191,10 +191,14 @@
                 :constraints                {:max-results           limit
                                              :max-results-bare-rows limit}
                 :middleware                 {:js-int-to-string? true}
-                ;; The card's `:info` stays on the query, so the QP checks the run as a run of the card
-                :make-run                   (fn [qp _export-format]
+                ;; The card runner's default QP even for a pivot card, whose runner would replace the row limit with the
+                ;; pivot cap.
+                ;; The card's `:info` stays on the query, so the QP checks the run as a run of the card.
+                :make-run                   (fn [_qp _export-format]
                                               (fn [query info]
-                                                (qp (update query :info merge info) nil))))]
+                                                (-> (update query :info merge info)
+                                                    qp/userland-query
+                                                    (qp/process-query nil)))))]
     (page (run-bounded! run options) row-limit)))
 
 (defn response-cols

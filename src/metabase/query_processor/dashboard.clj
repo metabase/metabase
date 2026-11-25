@@ -250,7 +250,9 @@
        (not= :blocked
              (get (perms/some-table-in-database-permissions-for-user (perms/user-info api/*current-user-id*) :perms/view-data [(:database_id card)]) (:database_id card))))
       (let [resolved-params (resolve-params-for-query dashboard dashcard card-id
-                                                      (some->> parameters not-empty (lib/normalize ::dashboards.schema/parameters))
+                                                      (some->> parameters
+                                                               not-empty
+                                                               (lib/normalize ::dashboards.schema/parameters))
                                                       (boolean save-last-used-parameters?))
             options         (merge
                              {:ignore-cache false

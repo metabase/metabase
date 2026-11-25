@@ -10,8 +10,10 @@
    [metabase.metabot.tools.dashboard-card :as dashboard-card]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.test :as mt]
-   [metabase.users.models.user-parameter-value :as user-parameter-value]))
+   [metabase.users.models.user-parameter-value :as user-parameter-value]
+   [toucan2.core :as t2]))
 
 (defn- run-card!
   "Call `run_dashboard_card` as rasta with `args`, in a conversation of rasta's own with query execution on, while
@@ -169,3 +171,101 @@
                    :model/DashboardCard       {dashcard-id :id}     {:dashboard_id dashboard-id, :card_id card-id}]
       (is (=? {:error {:code ::dashboard-card/metabot-sql-card}}
               (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id}))))))
+
+(deftest text-filter-ignores-case-test
+  (testing "a contains filter matches as the dashboard runs it, ignoring case"
+    (let [name-target (mt/$ids venues [:dimension $name])]
+      (mt/with-temp [:model/Card          {card-id :id}      {:dataset_query (venues-count)}
+                     :model/Dashboard     {dashboard-id :id} {:parameters [{:id   "name"
+                                                                            :name "Name"
+                                                                            :slug "name"
+                                                                            :type "string/contains"}]}
+                     :model/DashboardCard {dashcard-id :id}  {:dashboard_id       dashboard-id
+                                                              :card_id            card-id
+                                                              :parameter_mappings [{:parameter_id "name"
+                                                                                    :card_id      card-id
+                                                                                    :target       name-target}]}]
+        ;; "Red Medicine" and "Fred 62": a case-sensitive match finds only the second
+        (is (= 2 (count-shown (:output (run-card! [{:type       "dashboard"
+                                                    :id         dashboard-id
+                                                    :parameters [{:id "name", :value ["red"]}]}]
+                                                  {:dashcard_id dashcard-id})))))))))
+
+(deftest filter-without-value-is-unknown-test
+  (testing "a filter sent without a value is unknown, not cleared"
+    (do-with-venues-dashboard
+     (fn [{:keys [dashboard-id dashcard-id]}]
+       (let [{:keys [output]} (run-card! [{:type "dashboard", :id dashboard-id, :parameters [{:id "price"}]}]
+                                         {:dashcard_id dashcard-id})]
+         (is (= 100 (count-shown output)))
+         (is (str/includes? output "No value was applied for Price: its value on the user's screen is unknown")))))))
+
+(deftest series-dashcard-test
+  (testing "on a dashcard with series, only the main card's filters count, and the result says only it ran"
+    (mt/with-temp [:model/Card                {card-id :id}      {:dataset_query (venues-count)}
+                   :model/Card                {series-id :id}    {:dataset_query (venues-count)}
+                   :model/Dashboard           {dashboard-id :id} {:parameters [price-filter]}
+                   :model/DashboardCard       {dashcard-id :id}  {:dashboard_id       dashboard-id
+                                                                  :card_id            card-id
+                                                                  :parameter_mappings [(price-mapping series-id)]}
+                   :model/DashboardCardSeries _                  {:dashboardcard_id dashcard-id
+                                                                  :card_id          series-id
+                                                                  :position         0}]
+      (let [{:keys [output]} (run-card! [{:type       "dashboard"
+                                          :id         dashboard-id
+                                          :parameters [{:id "price", :value [1]}]}]
+                                        {:dashcard_id dashcard-id})]
+        (is (= 100 (count-shown output)))
+        (is (str/includes? output "No dashboard filter is connected to this card"))
+        (is (str/includes? output (str "these rows are only those of its main question, question " card-id ".")))))))
+
+(deftest pivot-card-runs-as-plain-query-test
+  (testing "a pivot card runs through the plain QP, which keeps the row limit"
+    (mt/with-temp [:model/Card          {card-id :id}      {:display       :pivot
+                                                            :dataset_query (let [mp (mt/metadata-provider)]
+                                                                             (-> (venues-count)
+                                                                                 (lib/breakout
+                                                                                  (lib.metadata/field
+                                                                                   mp (mt/id :venues :price)))))}
+                   :model/Dashboard     {dashboard-id :id} {}
+                   :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+      (mt/with-dynamic-fn-redefs [qp.pivot/run-pivot-query (fn [& _] (throw (ex-info "pivot runner" {})))]
+        (is (=? {:structured-output {:returned 2, :truncated? true}}
+                (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id, :row_limit 2})))))))
+
+(deftest automatic-dashboard-test
+  (testing "an automatically generated dashboard is refused as one, not as no dashboard"
+    (is (=? {:error {:code ::dashboard-card/automatic-dashboard}}
+            (run-card! [{:type "dashboard", :id "/auto/dashboard/table/1"}] {:dashcard_id 1})))))
+
+(deftest unreadable-nested-question-refused-test
+  (testing "a question reading one the user can't read is refused for permission, whatever that question holds"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}
+                     :model/Collection          {open-id :id}         {}
+                     :model/Collection          {closed-id :id}       {}
+                     :model/Card                {sql-id :id}          {:collection_id           closed-id
+                                                                       :dataset_query
+                                                                       (mt/native-query {:query "SELECT 1"})
+                                                                       :metabot_conversation_id conversation-id}
+                     :model/Card                {card-id :id}         {:collection_id open-id
+                                                                       :dataset_query
+                                                                       (let [mp (mt/metadata-provider)]
+                                                                         (lib/query mp (lib.metadata/card mp sql-id)))}
+                     :model/Dashboard           {dashboard-id :id}    {:collection_id open-id}
+                     :model/DashboardCard       {dashcard-id :id}     {:dashboard_id dashboard-id, :card_id card-id}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) open-id)
+        (is (=? {:error {:code ::dashboard-card/no-permission}}
+                (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id})))))))
+
+(deftest does-not-add-recent-view-test
+  (testing "Metabot running a card doesn't add it to the user's recent views"
+    (do-with-venues-dashboard
+     (fn [{:keys [dashboard-id dashcard-id card-id]}]
+       (t2/delete! :model/RecentViews :user_id (mt/user->id :rasta))
+       (is (= 100 (count-shown (:output (run-card! [{:type "dashboard", :id dashboard-id}]
+                                                   {:dashcard_id dashcard-id})))))
+       (is (not (t2/exists? :model/RecentViews
+                            :user_id  (mt/user->id :rasta)
+                            :model    "card"
+                            :model_id card-id)))))))

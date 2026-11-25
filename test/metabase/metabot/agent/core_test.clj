@@ -329,7 +329,12 @@
             (testing "a conversation someone else started"
               (is (= {:tool? false, :prompt? false, :show-chart? false} (offered someone)))))
           (testing "no conversation does none of them"
-            (is (= {:tool? false, :prompt? false, :show-chart? false} (offered nil)))))))))
+            (is (= {:tool? false, :prompt? false, :show-chart? false} (offered nil))))
+          (testing "the dashboard card runner is offered only where run_query is"
+            (is (= [true false false false]
+                   (for [conversation-id [own thread someone nil]]
+                     (contains? (:tools (init-agent-as-admin conversation-id [] (internal-metabot) :internal))
+                                "run_dashboard_card"))))))))))
 
 (deftest run-query-not-offered-to-embedded-metabot-test
   ;; The request names the profile, so an embedded Metabot can ask for one that offers run_query.
