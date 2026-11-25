@@ -2019,6 +2019,85 @@
         (is (= false
                (set-archived! false)))))))
 
+(deftest restore-question-trashed-with-collection-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Card {card-id :id} {:collection_id collection-id}]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+    (let [card-url (str "card/" card-id)]
+      (mt/user-http-request :rasta :put 200 (str "collection/" collection-id) {:archived true})
+      (is (=? {:archived true :archived_directly false :can_restore false}
+              (mt/user-http-request :rasta :get 200 card-url)))
+      (is (=? {:errors {:collection_id "archived Collection"}}
+              (mt/user-http-request :rasta :put 400 card-url {:archived false})))
+      (is (true? (:archived (mt/user-http-request :rasta :get 200 card-url)))))))
+
+(deftest restore-question-to-same-trashed-collection-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Card {card-id :id} {:collection_id collection-id}]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+    (let [card-url (str "card/" card-id)]
+      (mt/user-http-request :rasta :put 200 (str "collection/" collection-id) {:archived true})
+      (is (=? {:errors {:collection_id "archived Collection"}}
+              (mt/user-http-request :rasta :put 400 card-url {:archived false :collection_id collection-id})))
+      (is (true? (:archived (mt/user-http-request :rasta :get 200 card-url)))))))
+
+(deftest restore-standalone-question-with-null-dashboard-id-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Card {card-id :id} {:collection_id collection-id}]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+    (let [card-url (str "card/" card-id)]
+      (mt/user-http-request :rasta :put 200 (str "collection/" collection-id) {:archived true})
+      (is (=? {:errors {:collection_id "archived Collection"}}
+              (mt/user-http-request :rasta :put 400 card-url {:archived false :dashboard_id nil})))
+      (is (true? (:archived (mt/user-http-request :rasta :get 200 card-url)))))))
+
+(deftest restore-question-trashed-before-collection-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Card {card-id :id} {:collection_id collection-id}]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+    (let [card-url (str "card/" card-id)]
+      (mt/user-http-request :rasta :put 200 card-url {:archived true})
+      (mt/user-http-request :rasta :put 200 (str "collection/" collection-id) {:archived true})
+      (is (=? {:archived true :archived_directly true :can_restore false}
+              (mt/user-http-request :rasta :get 200 card-url)))
+      (is (=? {:errors {:collection_id "archived Collection"}}
+              (mt/user-http-request :rasta :put 400 card-url {:archived false})))
+      (is (true? (:archived (mt/user-http-request :rasta :get 200 card-url)))))))
+
+(deftest restore-model-trashed-with-collection-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Card {card-id :id} {:collection_id collection-id
+                                            :type :model}]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+    (let [card-url (str "card/" card-id)]
+      (mt/user-http-request :rasta :put 200 (str "collection/" collection-id) {:archived true})
+      (is (=? {:type "model" :archived true :archived_directly false :can_restore false}
+              (mt/user-http-request :rasta :get 200 card-url)))
+      (is (=? {:errors {:collection_id "archived Collection"}}
+              (mt/user-http-request :rasta :put 400 card-url {:archived false})))
+      (is (true? (:archived (mt/user-http-request :rasta :get 200 card-url)))))))
+
+(deftest restore-question-to-live-collection-test
+  (mt/with-temp [:model/Collection {source-id :id} {}
+                 :model/Collection {destination-id :id} {}
+                 :model/Card {card-id :id} {:collection_id source-id}]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) source-id)
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) destination-id)
+    (let [card-url (str "card/" card-id)]
+      (mt/user-http-request :rasta :put 200 (str "collection/" source-id) {:archived true})
+      (mt/user-http-request :rasta :put 200 card-url {:archived false :collection_id destination-id})
+      (is (=? {:archived false :collection_id destination-id}
+              (mt/user-http-request :rasta :get 200 card-url))))))
+
+(deftest restore-question-to-root-collection-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Card {card-id :id} {:collection_id collection-id}]
+    (let [card-url (str "card/" card-id)]
+      (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id) {:archived true})
+      (mt/user-http-request :crowberto :put 200 card-url {:archived false :collection_id nil})
+      (is (=? {:archived false :collection_id nil}
+              (mt/user-http-request :crowberto :get 200 card-url))))))
+
 (deftest we-shouldn-t-be-able-to-archive-cards-if-we-don-t-have-collection--write--perms
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp [:model/Collection  collection {}

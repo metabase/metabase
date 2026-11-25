@@ -1549,6 +1549,15 @@
         (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))
         (is (false? (t2/select-one-fn :archived_directly :model/Card :id card-id)))))))
 
+(deftest restore-question-in-trashed-collection-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Card {card-id :id} {:collection_id collection-id}]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+    (collection/update-collections! [{:id collection-id :archived true}])
+    (is (=? {:errors {:collection_id "archived Collection"}}
+            (mt/user-http-request :rasta :put 400 (str "agent/v1/question/" card-id) {:archived false})))
+    (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))))
+
 (deftest update-question-replace-query-test
   (testing "Replacing the underlying query via :query (base64)"
     (mt/with-temp [:model/Card {card-id :id} {:name          "Card To Re-query"
@@ -1735,6 +1744,15 @@
           (is (false? (:archived resp))))
         (is (false? (t2/select-one-fn :archived :model/Dashboard :id dash-id)))
         (is (false? (t2/select-one-fn :archived :model/Card :id card-id)))))))
+
+(deftest restore-dashboard-in-trashed-collection-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Dashboard {dashboard-id :id} {:collection_id collection-id}]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+    (collection/update-collections! [{:id collection-id :archived true}])
+    (is (=? {:errors {:collection_id "archived Collection"}}
+            (mt/user-http-request :rasta :put 400 (str "agent/v1/dashboard/" dashboard-id) {:archived false})))
+    (is (true? (t2/select-one-fn :archived :model/Dashboard :id dashboard-id)))))
 
 (deftest update-dashboard-dashcards-add-test
   (testing "Add a card to the dashboard (autoplaced)"

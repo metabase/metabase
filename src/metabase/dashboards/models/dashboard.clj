@@ -543,19 +543,23 @@
     [:dashcards {:optional true} [:maybe [:sequential DashcardPart]]]]])
 
 (defn- check-dashboard-updates
-  "Throw a 400 unless every one of `rows`, updates of the `id->stored` Dashboards that move, satisfies these rules:
+  "Throw a 400 when an update that moves or restores a Dashboard in `id->stored` breaks one of these rules:
 
   - its Collection is in a namespace that holds Dashboards
   - its Collection is not the library, its Data or its Metrics collection
   - its Collection is not archived, unless the Dashboard is
-  - a change of its parameters keeps them well formed"
+
+  Also throw a 400 when an update supplies invalid `:parameters`."
   [id->stored rows]
   (doseq [row rows :when (contains? row :parameters)]
     (params/assert-valid-parameters row))
   (check-dashboards
-   (for [row (filterv #(changed? (get id->stored (:id %)) % :collection_id) rows)]
-     {:collection_id (:collection_id row)
-      :archived      (boolean (if (contains? row :archived) (:archived row) (:archived (get id->stored (:id row)))))})))
+   (for [row rows
+         :let [stored (get id->stored (:id row))]
+         :when (or (changed? stored row :collection_id)
+                   (and (:archived stored) (false? (:archived row))))]
+     {:collection_id (get row :collection_id (:collection_id stored))
+      :archived      (get row :archived (:archived stored))})))
 
 (defn- write-dashboard-updates!
   "Writes `rows`, updates of the `id->stored` Dashboards, with the parts each holds in `parts`, and returns what the events

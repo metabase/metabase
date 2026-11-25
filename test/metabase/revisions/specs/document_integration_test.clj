@@ -104,6 +104,17 @@
             (is (= "created this." (:description creation-revision)))
             (is (not= "created this." (:description latest-revision)))))))))
 
+(deftest revert-document-in-trashed-collection-test
+  (mt/with-temp [:model/Collection {collection-id :id} {}
+                 :model/Document {document-id :id} {:collection_id collection-id}]
+    (create-document-revision! document-id true :crowberto)
+    (let [{revision-id :id} (first (revision/revisions :model/Document document-id))]
+      (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id) {:archived true})
+      (is (= {:errors {:collection_id "archived Collection"}}
+             (mt/user-http-request :crowberto :post 400 "revision/revert"
+                                   {:entity :document :id document-id :revision_id revision-id})))
+      (is (true? (t2/select-one-fn :archived :model/Document :id document-id))))))
+
 (deftest document-reversion-api-test
   (testing "Document reversion via API works correctly"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Original Document"

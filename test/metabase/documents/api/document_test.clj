@@ -1821,14 +1821,80 @@
         (mt/user-http-request :crowberto
                               :put 200 (format "collection/%s" coll-id)
                               {:archived true})
-        (mt/user-http-request :crowberto
-                              :put 200 (format "document/%s" doc-id)
-                              {:archived false})
-        (mt/user-http-request :crowberto
-                              :put 200 (format "document/%s" doc-id)
-                              {:archived true})
-        (is (=? {:archived true, :archived_directly false}
-                (t2/select-one [:model/Document :archived :archived_directly] :id doc-id)))))))
+        ;; `with-temp` inserts the row directly, since the API refuses an active document in an archived collection.
+        (mt/with-temp [:model/Document {active-doc-id :id} {:collection_id coll-id}]
+          (mt/user-http-request :crowberto
+                                :put 200 (format "document/%s" active-doc-id)
+                                {:archived true})
+          (is (=? {:archived true, :archived_directly false}
+                  (t2/select-one [:model/Document :archived :archived_directly] :id active-doc-id))))))))
+
+(deftest restore-document-with-cards-in-trashed-collection-test
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Document {doc-id :id} {:collection_id coll-id}
+                 :model/Card {card-id :id} {:collection_id coll-id :document_id doc-id}]
+    (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
+    (is (= {:errors {:collection_id "archived Collection"}}
+           (mt/user-http-request :crowberto :put 400 (str "document/" doc-id) {:archived false})))
+    (is (true? (t2/select-one-fn :archived :model/Document :id doc-id)))
+    (is (true? (t2/select-one-fn :archived :model/Card :id card-id)))))
+
+(deftest restore-document-with-clones-into-trashed-collection-test
+  (mt/with-temp [:model/Collection {live-id :id} {}
+                 :model/Collection {trashed-id :id} {}
+                 :model/Collection {other-id :id} {}
+                 :model/Card {card-id :id} {:collection_id other-id}
+                 :model/Document {doc-id :id} {:collection_id live-id}]
+    (mt/user-http-request :crowberto :put 200 (str "document/" doc-id) {:archived true})
+    (mt/user-http-request :crowberto :put 200 (str "collection/" trashed-id) {:archived true})
+    (is (= {:errors {:collection_id "archived Collection"}}
+           (mt/user-http-request :crowberto :put 400 (str "document/" doc-id)
+                                 {:archived false
+                                  :collection_id trashed-id
+                                  :document (documents.test-util/cards->prose-mirror-ast [card-id])})))
+    (is (=? {:archived true :collection_id live-id}
+            (t2/select-one [:model/Document :archived :collection_id] :id doc-id)))))
+
+(deftest restore-document-trashed-with-collection-test
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Document {doc-id :id} {:collection_id coll-id}]
+    (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+    (let [document-url (str "document/" doc-id)]
+      (mt/user-http-request :rasta :put 200 (str "collection/" coll-id) {:archived true})
+      (is (= {:errors {:collection_id "archived Collection"}}
+             (mt/user-http-request :rasta :put 400 document-url {:archived false})))
+      (is (true? (:archived (mt/user-http-request :rasta :get 200 document-url)))))))
+
+(deftest restore-document-trashed-before-collection-test
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Document {doc-id :id} {:collection_id coll-id}]
+    (let [document-url (str "document/" doc-id)]
+      (mt/user-http-request :crowberto :put 200 document-url {:archived true})
+      (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
+      (is (= {:errors {:collection_id "archived Collection"}}
+             (mt/user-http-request :crowberto :put 400 document-url {:archived false})))
+      (is (true? (:archived (mt/user-http-request :crowberto :get 200 document-url)))))))
+
+(deftest restore-document-to-same-trashed-collection-test
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Document {doc-id :id} {:collection_id coll-id}]
+    (let [document-url (str "document/" doc-id)]
+      (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
+      (is (= {:errors {:collection_id "archived Collection"}}
+             (mt/user-http-request :crowberto :put 400 document-url {:archived false :collection_id coll-id})))
+      (is (true? (:archived (mt/user-http-request :crowberto :get 200 document-url)))))))
+
+(deftest restore-document-to-live-collection-test
+  (mt/with-temp [:model/Collection {source-id :id} {}
+                 :model/Collection {destination-id :id} {}
+                 :model/Document {doc-id :id} {:collection_id source-id}]
+    (perms/grant-collection-readwrite-permissions! (perms/all-users-group) source-id)
+    (perms/grant-collection-readwrite-permissions! (perms/all-users-group) destination-id)
+    (let [document-url (str "document/" doc-id)]
+      (mt/user-http-request :rasta :put 200 (str "collection/" source-id) {:archived true})
+      (mt/user-http-request :rasta :put 200 document-url {:archived false :collection_id destination-id})
+      (is (=? {:archived false :collection_id destination-id}
+              (mt/user-http-request :rasta :get 200 document-url))))))
 
 (deftest archived-documents-filtering-test
   (testing "Archived documents are properly filtered from various endpoints"
