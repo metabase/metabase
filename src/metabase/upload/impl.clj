@@ -556,7 +556,7 @@
                                                        :display_name display-name
                                                        :data_source  :upload})
           _set_is_upload          (table/update-tables! [{:id (:id table) :is_upload      true
-                                                          :data_authority :authoritative
+                                                          :data_authority :ingested
                                                           :data_source    :upload
                                                           :is_writable    true}])
           _sync                   (scan-and-sync-table! table)

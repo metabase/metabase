@@ -23,18 +23,16 @@
   [root-id :- ms/PositiveInt]
   (t2/select-pks-set :model/Collection :location [:like (str "/" root-id "/%")]))
 
-(mu/defn curated-tables-reducible
-  "Reducible ID, published flag, data layer, and data authority of the active Tables that are published or
-  authoritative."
+(mu/defn published-final-table-ids-reducible
+  "Reducible `:id` rows of the active Tables that are published at the `final` data layer."
   []
-  (t2/reducible-select [:model/Table :t.id :t.data_layer :t.data_authority
-                        [:s.is_published :is_published]]
-                       {:from      [[(t2/table-name :model/Table) :t]]
-                        :left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
-                        :where     [:and
-                                    [:= :t.active true]
-                                    [:or [:= :s.is_published true]
-                                     [:= :t.data_authority "authoritative"]]]}))
+  (t2/reducible-select [:model/Table :t.id]
+                       {:from       [[(t2/table-name :model/Table) :t]]
+                        :inner-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
+                        :where      [:and
+                                     [:= :t.active true]
+                                     [:= :s.is_published true]
+                                     [:= :t.data_layer "final"]]}))
 
 (mu/defn official-collection-ids
   "The IDs of the official Collections."

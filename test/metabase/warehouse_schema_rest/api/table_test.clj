@@ -533,15 +533,11 @@
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:active false, :data_authority "unconfigured"})
           (is (= :unconfigured (user-table-fn :data_authority (u/the-id table)))))
-        (testing "Can set data_authority to authoritative"
-          (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
-                                {:data_authority "authoritative"})
-          (is (= :authoritative (user-table-fn :data_authority (u/the-id table)))))
-        (testing "Can set data_authority between different values"
+        (testing "Can set data_authority to computed"
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:data_authority "computed"})
           (is (= :computed (user-table-fn :data_authority (u/the-id table)))))
-        (testing "Can set data_authority to ingested"
+        (testing "Can set data_authority between different values"
           (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                                 {:data_authority "ingested"})
           (is (= :ingested (user-table-fn :data_authority (u/the-id table)))))
@@ -549,10 +545,11 @@
           (is (= "Cannot set data_authority back to unconfigured once it has been configured"
                  (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
                                        {:data_authority "unconfigured"}))))
-        (testing "Cannot set data_authority to unknown via API"
-          (is (= [:data_authority]
-                 (keys (:errors (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
-                                                      {:data_authority "unknown"}))))))))))
+        (testing "Cannot set data_authority to unknown or the retired authoritative via API (BOT-2735)"
+          (doseq [value ["unknown" "authoritative"]]
+            (is (= [:data_authority]
+                   (keys (:errors (mt/user-http-request :crowberto :put 400 (format "table/%d" (u/the-id table))
+                                                        {:data_authority value})))))))))))
 
 (deftest ^:parallel unknown-data-authority-value-test
   (testing "Tables with unknown data_authority values from database are read as :unknown"

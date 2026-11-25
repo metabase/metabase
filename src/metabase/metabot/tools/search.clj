@@ -41,7 +41,7 @@
 
 (defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
-  [{:keys [verified moderated_status collection data_authority curated data_layer can_write] :as result}]
+  [{:keys [verified moderated_status collection curated data_layer can_write] :as result}]
   (let [model (:model result)
         verified? (or (boolean verified) (= moderated_status "verified"))
         collection-info (select-keys collection [:id :name :authority_level])
@@ -71,8 +71,7 @@
                   :display_name    (:name result)
                   :database_id     (:database_id result)
                   :database_schema (:table_schema result)
-                  :official        official?
-                  :data_authority  data_authority})
+                  :official        official?})
           (m/assoc-some :curated curated :data_layer data_layer))
 
       "dashboard"

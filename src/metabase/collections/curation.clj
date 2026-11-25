@@ -1,7 +1,6 @@
 (ns metabase.collections.curation
   "Canonical definition of \"curated\" content for Metabot's \"verified or curated content\" setting.
-  Curated content is verified cards/dashboards, official-collection content, library/published content,
-  or authoritative tables.
+  Curated content is verified cards/dashboards, official-collection content, or library/published content.
   [[curated?]] is the predicate; [[curated-honeysql]] is its SQL mirror for migrations.
   (The source-of-truth variant that reads signals from cards/dashboards/tables lives in
   `metabase.metabot.curation`, since this foundational module shouldn't reference those higher-level models.)"
@@ -27,7 +26,7 @@
 (defn curated?
   "Whether the given curation-signal map is curated. THIS IS THE AUTHORITATIVE RULE.
   Reads `:model` `:verified` `:official_collection` `:is_published` `:root_collection_type`
-  `:data_layer` `:data_authority`; text signals may be strings or keywords.
+  `:data_layer`; text signals may be strings or keywords.
 
   Several places re-encode or apply this rule and MUST be kept in sync when it changes:
     - [[curated-honeysql]] — SQL mirror of this predicate (used by the semantic backfill)
@@ -37,13 +36,13 @@
     - metabase.metabot.curation/curated-ids — source-of-truth check for recent views
     - metabase-enterprise.data-complexity-score.complexity/enumerate-catalogs — set-membership mirror
       for the `:metabot` catalog's Cards (Tables call [[curated?]] directly)
-    - metabase-enterprise.search.semantic.db.migration.impl/add-data-authority-and-curated-columns! —
-      recomputes the precomputed `curated` column for existing index rows
+    - metabase-enterprise.search.semantic.db.migration.impl — migrations that recompute the precomputed
+      `curated` column for existing index rows
 
   The signals above are populated at ingestion by the search specs, so a NEW signal must also be added to
   metabase.queries.models.card, metabase.dashboards.models.dashboard, metabase.warehouse-schema.models.table
   (and metabase.search.spec attr-types), and reaches existing rows only on reindex / via the migration above."
-  [{:keys [model verified official_collection is_published root_collection_type data_layer data_authority]}]
+  [{:keys [model verified official_collection is_published root_collection_type data_layer]}]
   ;; No feature gate: a signal can only be set while its feature is present, so the flag is already
   ;; feature-correct and self-heals on the next reindex after any feature change.
   (boolean
@@ -53,8 +52,7 @@
                 (contains? library-root-collection-types (as-name root_collection_type)))
             ;; published tables count only at the `final` layer; non-table library content has none
             (or (not= (as-name model) "table")
-                (= "final" (as-name data_layer))))
-       (= "authoritative" (as-name data_authority)))))
+                (= "final" (as-name data_layer)))))))
 
 (defn curated-honeysql
   "HoneySQL mirror of [[curated?]] for SQL contexts, e.g. backfilling the precomputed `curated` column.
@@ -71,6 +69,5 @@
      [:or [:is (col :is_published) true]
       [:in (col :root_collection_type) (vec library-root-collection-types)]]
      [:or [:not= (col :model) "table"]
-      [:= (col :data_layer) "final"]]]
-    [:= (col :data_authority) "authoritative"]]
+      [:= (col :data_layer) "final"]]]]
    false])

@@ -93,17 +93,15 @@
 (def writable-data-authority-types
   "Valid values we can configure for `Table.data_authority`.
   `:unconfigured`  - no data authority status has been set yet;
-  `:authoritative` - this table is the authoritative source of truth;
-  `:computed`      - this table is derived/computed from other authoritative sources within metabase;
-  `:ingested`      - this table is ingested from external sources;"
-  #{:unconfigured :authoritative :computed :ingested})
+  `:computed`      - this table is derived/computed from other sources within metabase;
+  `:ingested`      - this table is ingested from external sources, e.g. an uploaded CSV;"
+  #{:unconfigured :computed :ingested})
 
 (def readable-data-authority-types
   "Valid values we can return for `Table.data_authority`.
   `:unconfigured`  - no data authority status has been set yet;
-  `:authoritative` - this table is the authoritative source of truth;
-  `:computed`      - this table is derived/computed from other authoritative sources within metabase;
-  `:ingested`      - this table is ingested from external sources;
+  `:computed`      - this table is derived/computed from other sources within metabase;
+  `:ingested`      - this table is ingested from external sources, e.g. an uploaded CSV;
   `:unknown`       - fallback for an unexpected value from the database, e.g. from a newer version we rolled back from."
   (conj writable-data-authority-types :unknown))
 
@@ -712,8 +710,7 @@
                    :collection-type     :collection.type
                    :collection-location :collection.location
                    :root-collection-type {:batch-fn collection/root-collection-types}
-                   :data-layer          :data_layer
-                   :data-authority      :data_authority}
+                   :data-layer          :data_layer}
     :search-terms {:name         search/explode-camel-case
                    :display_name true
                    :description  true}

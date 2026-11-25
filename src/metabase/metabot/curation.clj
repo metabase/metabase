@@ -117,7 +117,7 @@
            :root_collection_type (when library? (root-collection-type-of coll roots collection_id))}])))
 
 (defn- table-curation-signals
-  "`[id signal-map]` pairs for tables, whose curation comes from is_published, data_layer, and data_authority. An
+  "`[id signal-map]` pairs for tables, whose curation comes from is_published and data_layer. An
   inactive or hidden table, or one on a routing destination or the audit database, gets no pair: search never
   returns it, so it isn't curated.
   root_collection_type is intentionally omitted: the table search spec joins the collection only for
@@ -129,15 +129,14 @@
         rows          (metabot.db/table-curation-rows ids)
         destinations  (let [db-ids (into #{} (keep :db_id) rows)]
                         (if (seq db-ids) (metabot.db/destination-database-ids db-ids) #{}))]
-    (for [{:keys [id db_id active visibility_type is_published data_layer data_authority]} rows
+    (for [{:keys [id db_id active visibility_type is_published data_layer]} rows
           :when (and active
                      (nil? visibility_type)
                      (not (contains? destinations db_id))
                      (not= db_id audit-app/audit-db-id))]
-      [id {:model          "table"
-           :is_published   (boolean (and library? is_published))
-           :data_layer     data_layer
-           :data_authority data_authority}])))
+      [id {:model        "table"
+           :is_published (boolean (and library? is_published))
+           :data_layer   data_layer}])))
 
 (defn- curation-signals
   "`[id signal-map]` pairs for the given search-model string and ids, read from source-of-truth tables."

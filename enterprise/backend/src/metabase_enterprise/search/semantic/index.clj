@@ -79,7 +79,6 @@
      [:collection_type :text]
      [:root_collection_type :text]
      [:data_layer :text]
-     [:data_authority :text]
      ;; Precomputed "verified or curated content" flag — see metabase.collections.curation/curated?
      [:curated :boolean]
      [:dashboardcard_count :int]
@@ -164,7 +163,7 @@
   [owner-ids {:keys [model id embedding searchable_text embeddable_text native_query created_at creator_id updated_at
                      last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
                      pinned dashboardcard_count view_count last_viewed_at collection_type root_collection_type
-                     data_layer data_authority curated] :as doc}]
+                     data_layer curated] :as doc}]
   {:model               model
    :model_id            id
    :collection_id       collection_id
@@ -182,7 +181,6 @@
    :collection_type     collection_type
    :root_collection_type root_collection_type
    :data_layer          data_layer
-   :data_authority      data_authority
    :curated             (some-> curated to-boolean)
    :dashboardcard_count dashboardcard_count
    :view_count          view_count
@@ -332,7 +330,7 @@
      ;; Must equal db.migration.impl/dynamic-schema-version — a freshly created index already has the
      ;; latest schema, so recording an older version would mark it stale on creation. Kept as a literal
      ;; (not a require) to avoid an index → impl → index-metadata → index cycle; bump both together.
-     :version 6}))
+     :version 7}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]
@@ -705,7 +703,6 @@
    [:collection_type :collection_type]
    [:root_collection_type :root_collection_type]
    [:data_layer :data_layer]
-   [:data_authority :data_authority]
    [:curated :curated]
    [:dashboardcard_count :dashboardcard_count]
    [:view_count :view_count]

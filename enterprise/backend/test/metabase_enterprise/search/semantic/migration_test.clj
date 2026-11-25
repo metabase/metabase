@@ -310,7 +310,6 @@
                       "curated"
                       "dashboardcard_count"
                       "database_id"
-                      "data_authority"
                       "data_layer"
                       "display_type"
                       "embedding"
@@ -526,24 +525,62 @@
                       "7" "library-data"}  ; pre-existing value preserved
                      rows-by-id)))))))))
 
-(deftest candidate-table-ids-test
-  (testing "Migration 5 sweeps only active published/authoritative tables, sorted into the two id lists it
-            backfills — others are implicitly not curated (table curation never uses root_collection_type)"
+(deftest curated-table-ids-test
+  (testing "the table curation backfills sweep only active published-final tables — others are implicitly not
+            curated (table curation never uses root_collection_type)"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {pub :id}      {:db_id db-id :active true :data_layer :final}
                    :model/TableUserSettings _ {:table_id pub :is_published true}
-                   :model/Table {auth :id}     {:db_id db-id :active true  :data_authority :authoritative}
+                   :model/Table {staged :id}   {:db_id db-id :active true :data_layer :internal}
+                   :model/TableUserSettings _ {:table_id staged :is_published true}
                    :model/Table {inactive :id} {:db_id db-id :active false :data_layer :final}
                    :model/TableUserSettings _ {:table_id inactive :is_published true}
-                   :model/Table {plain :id}    {:db_id db-id :active true}]
-      (let [{:keys [authoritative published]} (#'semantic.db.migration.impl/candidate-table-ids)
-            authoritative (set authoritative)
-            published     (set published)]
-        (is (contains? published (str pub))      "published-final tables go in :published")
-        (is (contains? authoritative (str auth)) "authoritative tables go in :authoritative")
-        (is (not (contains? published (str inactive))) "inactive tables are skipped")
-        (is (not (contains? published (str plain)))    "plain tables aren't candidates")
-        (is (not (contains? authoritative (str plain))))))))
+                   :model/Table {plain :id}    {:db_id db-id :active true :data_layer :final}]
+      (let [ids (set (#'semantic.db.migration.impl/curated-table-ids))]
+        (is (= {:published-final true :published-internal false :inactive false :unpublished false}
+               {:published-final    (contains? ids (str pub))
+                :published-internal (contains? ids (str staged))
+                :inactive           (contains? ids (str inactive))
+                :unpublished        (contains? ids (str plain))}))))))
+
+(deftest migration-7-drops-data-authority-test
+  (testing "migration 7 un-curates tables indexed as authoritative unless they are published-final, and drops the
+            data_authority column (BOT-2735)"
+    (mt/with-premium-features #{:semantic-search}
+      (semantic.tu/with-test-db! {:mode :mock-initialized}
+        (mt/with-temp [:model/Database {db-id :id} {}
+                       :model/Table {pub :id} {:db_id db-id :active true :data_layer :final}
+                       :model/TableUserSettings _ {:table_id pub :is_published true}]
+          (let [pgvector       (semantic.env/get-pgvector-datasource!)
+                index-metadata (semantic.env/get-index-metadata)
+                meta-tbl       (keyword (:metadata-table-name index-metadata))
+                table-name     (active-index-table-name! pgvector index-metadata)
+                kw-tbl         (keyword table-name)
+                columns        #(into #{} (map :column_name)
+                                      (jdbc/execute! pgvector
+                                                     ["SELECT column_name FROM information_schema.columns WHERE table_name = ?"
+                                                      (semantic.util/table-name-part table-name)]
+                                                     {:builder-fn jdbc.rs/as-unqualified-maps}))]
+            ;; an index table from before migration 7 still has the column
+            (jdbc/execute! pgvector [(format "ALTER TABLE %s ADD COLUMN data_authority text"
+                                             (semantic.util/quote-table table-name))])
+            (doseq [[model model-id authority] [["table" (str pub) "authoritative"]
+                                                ["table" "999999" "authoritative"]
+                                                ["table" "999998" "ingested"]
+                                                ["card"  "1"      nil]]]
+              (insert-index-row! pgvector kw-tbl {:model          [:inline model]
+                                                  :model_id       [:inline model-id]
+                                                  :data_authority [:inline authority]
+                                                  :curated        [:inline true]}))
+            (jdbc/execute! pgvector (sql/format {:update meta-tbl :set {:index_version 6}}))
+            (semantic.core/init! (semantic.tu/mock-documents) nil)
+            (is (= {(str pub) true "999999" false "999998" true "1" true}
+                   (->> (jdbc/execute! pgvector
+                                       (sql/format {:select [:model_id :curated] :from [kw-tbl]} :quoted true)
+                                       {:builder-fn jdbc.rs/as-unqualified-maps})
+                        (map (juxt :model_id :curated))
+                        (into {}))))
+            (is (not (contains? (columns) "data_authority")))))))))
 
 (deftest official-collection-dashboard-ids-test
   (testing "Migration 5 backfills official-only dashboards (official_collection is new on the spec, so

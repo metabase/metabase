@@ -19,6 +19,7 @@
    [metabase.util.json :as json]
    [metabase.util.queue :as queue]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -342,17 +343,18 @@
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Database {db-id :id} {}]
         (mt/with-model-cleanup [:model/Table]
-          (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at)
-                                        :db_id          db-id
-                                        :name           "Curatedgoldtbl"
-                                        :active         true
-                                        :data_authority :authoritative
-                                        :data_layer     :final)])
-          (let [result (->> (search.tu/search-results "Curatedgoldtbl")
-                            (filter (comp #{"table"} :model))
-                            first)]
-            (is (=? {:model "table" :curated true :data_authority "authoritative" :data_layer "final"}
-                    result))))))))
+          (let [[{table-id :id}] (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table)
+                                                                       :created_at :updated_at)
+                                                               :db_id      db-id
+                                                               :name       "Curatedgoldtbl"
+                                                               :active     true
+                                                               :data_layer :final)])]
+            (table-user-settings/create-table-user-settings! [{:table_id table-id :is_published true}])
+            (let [result (->> (search.tu/search-results "Curatedgoldtbl")
+                              (filter (comp #{"table"} :model))
+                              first)]
+              (is (=? {:model "table" :curated true :data_layer "final"}
+                      result)))))))))
 
 (defn- queued-updates!
   "Run `f` with a fresh ingestion queue swapped in, and return the updates that end up on it."

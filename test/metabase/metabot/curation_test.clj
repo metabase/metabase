@@ -36,8 +36,8 @@
               [{pt :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "curationfixture published" :active true
                                                                                                                               :data_layer :final})])
               _ (table-user-settings/create-table-user-settings! [{:table_id pt :is_published true}])
-              [{at :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "curationfixture authoritative" :active true
-                                                                                                                              :data_authority :authoritative})])
+              [{at :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "curationfixture ingested" :active true
+                                                                                                                              :data_authority :ingested})])
               [{xt :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "curationfixture plaintable" :active true})])
               [{ult :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "curationfixture unpublishedlib" :active true
                                                                                                                                :data_layer :final})])
@@ -76,8 +76,8 @@
                 indexed  (into #{} (comp (filter :curated) (map (juxt :model :id)))
                                (search.tu/search-results "curationfixture"))
                 ->strs   #(into #{} (map (fn [[m id]] [m (str id)])) %)]
-            (is (= #{["card" vq] ["card" oq] ["table" pt] ["table" at]} source)
-                "source-of-truth marks verified/official cards and published-final/authoritative tables curated")
+            (is (= #{["card" vq] ["card" oq] ["table" pt]} source)
+                "source-of-truth marks verified/official cards and published-final tables curated")
             (is (= (->strs source) (->strs indexed))
                 "source-of-truth agrees with the index's precomputed curated column")))))))
 
@@ -96,10 +96,10 @@
               [{st :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture staged" :active true
                                                                                                                               :data_layer :internal})])
               _ (table-user-settings/create-table-user-settings! [{:table_id pt :is_published true} {:table_id st :is_published true}])
-              [{at :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture authoritative" :active true
-                                                                                                                              :data_authority :authoritative})])
+              [{at :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture ingested" :active true
+                                                                                                                              :data_authority :ingested})])
               [{ht :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture hidden" :active true
-                                                                                                                              :visibility_type :hidden :data_authority :authoritative})])
+                                                                                                                              :visibility_type :hidden :data_authority :ingested})])
               [{xt :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture plaintable" :active true})])
               mp     (mt/metadata-provider)
               query  (lib/query mp (lib.metadata/table mp (mt/id :venues)))
@@ -165,7 +165,7 @@
                 indexed (into #{} (comp (filter :curated) (map (juxt :model :id)))
                               (search.tu/search-results "parityfixture"))
                 ->strs  #(into #{} (map (fn [[m id]] [m (str id)])) %)]
-            (is (= #{["card" vq] ["card" oq] ["metric" lm] ["metric" om] ["dashboard" od] ["table" pt] ["table" at]}
+            (is (= #{["card" vq] ["card" oq] ["metric" lm] ["metric" om] ["dashboard" od] ["table" pt]}
                    source))
             (is (= (->strs source) (->strs indexed))
                 "source-of-truth agrees with the index's precomputed curated column")))))))

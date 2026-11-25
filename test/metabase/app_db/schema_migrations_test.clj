@@ -5655,3 +5655,38 @@
         (is (= {published [true collection-id], unpublished [false nil], plain [false nil]}
                (t2/select-pk->fn (juxt :is_published :collection_id) :metabase_table
                                  :id [:in [published unpublished plain]])))))))
+
+(deftest retire-authoritative-data-authority-test
+  (impl/test-migrations ["dsgsuy" "m6suhc"] [migrate!]
+    (let [db-id     (t2/insert-returning-pk! :metabase_database {:name       "Data Authority DB"
+                                                                 :engine     "h2"
+                                                                 :created_at :%now
+                                                                 :updated_at :%now
+                                                                 :details    "{}"})
+          table!    (fn [values]
+                      (t2/insert-returning-pk! :metabase_table (merge {:active     true
+                                                                       :db_id      db-id
+                                                                       :name       (mt/random-name)
+                                                                       :created_at :%now
+                                                                       :updated_at :%now}
+                                                                      values)))
+          settings! (fn [table-id values]
+                      (t2/insert! :metabase_table_user_settings (merge {:table_id   table-id
+                                                                        :created_at :%now
+                                                                        :updated_at :%now}
+                                                                       values)))
+          upload    (table! {:is_upload true :data_authority "authoritative"})
+          admin-set (table! {:data_authority "authoritative"})
+          computed  (table! {:data_authority "computed"})
+          ingested  (table! {:data_authority "ingested"})
+          plain     (table! {:data_authority "unconfigured"})
+          ids       [upload admin-set computed ingested plain]]
+      (settings! upload {:data_authority "authoritative"})
+      (settings! admin-set {:data_authority "authoritative"})
+      (settings! computed {:data_authority "computed"})
+      (migrate!)
+      (testing "authoritative uploads become ingested, other authoritative tables unconfigured, the rest keep theirs"
+        (is (= {upload "ingested" admin-set "unconfigured" computed "computed" ingested "ingested" plain "unconfigured"}
+               (t2/select-pk->fn :data_authority :metabase_table :id [:in ids])))
+        (is (= {upload "ingested" admin-set "unconfigured" computed "computed"}
+               (t2/select-fn->fn :table_id :data_authority :metabase_table_user_settings :table_id [:in ids])))))))

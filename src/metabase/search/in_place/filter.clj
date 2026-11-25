@@ -195,7 +195,7 @@
 ;; [[metabase.collections.curation/curated?]], which the appdb/semantic engines apply via a precomputed
 ;; `curated` index column. The legacy in-place engine has no such column, so it approximates the rule
 ;; in SQL over the signals that are tractable here: verified + official-collection for card-like models,
-;; and published-at-final-layer or authoritative for tables. Library-membership-by-root-collection-type is
+;; and published-at-final-layer for tables. Library-membership-by-root-collection-type is
 ;; not enforced here; the legacy engine is being retired. Keep in sync with [[curated?]].
 
 (defn- curated-card-like-query
@@ -227,17 +227,14 @@
 (defmethod build-optional-filter-query [:curated "table"]
   [_filter model query curated?]
   (assert (true? curated?) "filter for non-curated content is not supported")
-  ;; Approximate collections.curation/curated? for tables: authoritative tables count unconditionally;
-  ;; published tables count only at the `final` layer. Unlike curated? (feature-ungated, since the precomputed
-  ;; column is only written while a feature is active), this live in-place filter gates the published branch
-  ;; on the current :library feature, matching the card-like in-place filters above.
-  (let [authoritative   [:= (search.config/column-with-model-alias model :data_authority) "authoritative"]
-        published-final (when (premium-features/has-feature? :library)
-                          [:and
-                           [:= :table_settings.is_published true]
-                           [:= (search.config/column-with-model-alias model :data_layer) "final"]])]
-    (sql.helpers/where query (cond-> [:or authoritative]
-                               published-final (conj published-final)))))
+  ;; Approximate collections.curation/curated? for tables: published tables count only at the `final` layer.
+  ;; Unlike curated? (feature-ungated, since the precomputed column is only written while a feature is active),
+  ;; this live in-place filter requires the current :library feature, matching the card-like in-place filters above.
+  (sql.helpers/where query (if (premium-features/has-feature? :library)
+                             [:and
+                              [:= :table_settings.is_published true]
+                              [:= (search.config/column-with-model-alias model :data_layer) "final"]]
+                             false-clause)))
 
 (doseq [model ["measure" "segment"]]
   (defmethod build-optional-filter-query [:curated model]

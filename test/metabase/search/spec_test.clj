@@ -106,7 +106,7 @@
                                 :fields
                                 #{:active :description :schema :name :id :db_id :initial_sync_status :display_name
                                   :visibility_type :view_count :created_at :updated_at
-                                  :data_layer :data_authority}
+                                  :data_layer}
                                 :where        [:= :updated.id :this.id]}},
                  :TableUserSettings #{{:search-model "segment"
                                        :fields       #{:collection_id :is_published}

@@ -395,8 +395,8 @@
                                            :name "curated_scope_library_card"}
          :model/Card {plain-card :id}     {:database_id db-id :type :model :archived false
                                            :name "curated_scope_plain_card"}
-         :model/Table {authoritative :id} {:db_id db-id :active true :name "curated_scope_authoritative"
-                                           :data_authority :authoritative}
+         :model/Table {ingested :id}      {:db_id db-id :active true :name "curated_scope_ingested"
+                                           :data_authority :ingested}
          :model/Table {pub-final :id}     {:db_id db-id :active true :name "curated_scope_published_final"
                                            :data_layer :final}
          :model/TableUserSettings _ {:table_id pub-final :is_published true}
@@ -404,30 +404,31 @@
                                            :data_layer :internal}
          :model/TableUserSettings _ {:table_id pub-internal :is_published true}
          :model/Table {plain-table :id}   {:db_id db-id :active true :name "curated_scope_plain_table"}
-         :model/Table {hidden-auth :id}   {:db_id db-id :active true :name "curated_scope_hidden_authoritative"
-                                           :visibility_type "hidden" :data_authority :authoritative}]
+         :model/Table {hidden-pub :id}    {:db_id db-id :active true :name "curated_scope_hidden_published"
+                                           :visibility_type "hidden" :data_layer :final}
+         :model/TableUserSettings _ {:table_id hidden-pub :is_published true}]
         (let [metabot (:metabot (#'complexity/enumerate-catalogs {:curated-only? true :collection-id nil}))
               in?     (comp boolean (into #{} (map (juxt :kind :id)) metabot) vector)]
-          (is (= {:verified-card       true
-                  :official-card       true
-                  :library-card        true
-                  :plain-card          false
-                  :authoritative-table true
-                  :published-final     true
-                  :published-internal  false
-                  :plain-table         false
-                  :hidden-authoritative false}
-                 {:verified-card        (in? :model  verified-card)
-                  :official-card        (in? :model  official-card)
-                  :library-card         (in? :metric library-card)
-                  :plain-card           (in? :model  plain-card)
-                  :authoritative-table  (in? :table  authoritative)
-                  :published-final      (in? :table  pub-final)
-                  :published-internal   (in? :table  pub-internal)
-                  :plain-table          (in? :table  plain-table)
-                  :hidden-authoritative (in? :table  hidden-auth)})
-              "curated Cards (verified / official / library) and curated Tables (authoritative /
-               published-final) are in; uncurated entities and hidden tables stay out"))))))
+          (is (= {:verified-card      true
+                  :official-card      true
+                  :library-card       true
+                  :plain-card         false
+                  :ingested-table     false
+                  :published-final    true
+                  :published-internal false
+                  :plain-table        false
+                  :hidden-published   false}
+                 {:verified-card      (in? :model  verified-card)
+                  :official-card      (in? :model  official-card)
+                  :library-card       (in? :metric library-card)
+                  :plain-card         (in? :model  plain-card)
+                  :ingested-table     (in? :table  ingested)
+                  :published-final    (in? :table  pub-final)
+                  :published-internal (in? :table  pub-internal)
+                  :plain-table        (in? :table  plain-table)
+                  :hidden-published   (in? :table  hidden-pub)})
+              "curated Cards (verified / official / library) and published-final Tables are in; uncurated
+               entities, a table's data authority, and hidden tables don't count"))))))
 
 (deftest ^:synchronized metabot-collection-scope-ids-test
   (testing "nil collection-id returns nil (no Metabot collection scope configured)"

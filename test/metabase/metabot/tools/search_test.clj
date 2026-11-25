@@ -453,18 +453,16 @@
                     :database_id 42
                     :database_schema "public"
                     :official false
-                    :data_authority nil
                     :updated_at "2024-01-01"
                     :created_at "2024-01-01"}]
       (is (= expected (#'search/postprocess-search-result result))))))
 
 (deftest ^:parallel postprocess-search-result-curation-signals-test
-  (testing "non-null curation signals (curated, official collection, table data_authority + data_layer) carried through"
-    (is (=? {:type           "table"
-             :curated        true
-             :official       true
-             :data_authority "authoritative"
-             :data_layer     "final"}
+  (testing "non-null curation signals (curated, official collection, table data_layer) carried through"
+    (is (=? {:type       "table"
+             :curated    true
+             :official   true
+             :data_layer "final"}
             (#'search/postprocess-search-result
              {:model          "table"
               :id             9
@@ -473,13 +471,12 @@
               :database_id    1
               :table_schema   "public"
               :curated        true
-              :data_authority "authoritative"
               :data_layer     "final"
               :collection     {:id 3 :name "Official" :authority_level "official"}})))))
 
 (deftest ^:parallel search-result-xml-renders-curation-signals-test
-  (testing "the XML the LLM actually sees carries curated/data_layer/data_authority for a table result —
-            the render path that was a no-op until these reached search results (BOT-1570)"
+  (testing "the XML the LLM actually sees carries curated/data_layer for a table result, and no data_authority —
+            the render path that was a no-op until these reached search results (BOT-1570, BOT-2735)"
     (let [result (#'search/postprocess-search-result
                   {:model          "table"
                    :id             9
@@ -495,7 +492,7 @@
       (is (str/includes? xml "is_curated=\"true\""))
       (is (str/includes? xml "is_official=\"true\""))
       (is (str/includes? xml "data_layer=\"final\""))
-      (is (str/includes? xml "data_authority=\"authoritative\"")))))
+      (is (not (str/includes? xml "data_authority"))))))
 
 (deftest ^:parallel postprocess-search-result-test-2
   (testing "model (dataset) result postprocessing"
