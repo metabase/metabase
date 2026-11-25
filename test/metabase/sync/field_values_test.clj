@@ -687,6 +687,13 @@
               (scanned 2)
               (is (= (dec all) (probed scan)))
               (is (not (read?))))
+            (testing "scanned a little less than 7 days ago, as by the scan a week before: read"
+              (t2/update! (t2/table-name :model/FieldValues) {:id fv-id}
+                          {:has_more_values true
+                           :values          "[\"XX\"]"
+                           :last_scanned_at (t/plus (t/minus (t/offset-date-time) (t/days 7)) (t/minutes 5))})
+              (is (= all (probed scan)))
+              (is (read?)))
             (testing "scanned 8 days ago: read"
               (scanned 8)
               (is (= all (probed scan)))
