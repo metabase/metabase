@@ -342,6 +342,35 @@ describe("Notebook > custom column > exiting the editor", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should go back to the filter column list when cancelling a custom filter and close it with Escape", async () => {
+    setup();
+
+    await userEvent.click(screen.getByRole("button", { name: "Filter" }));
+    const popover = await screen.findByTestId("clause-popover");
+    await userEvent.click(
+      await within(popover).findByText(/Custom expression/i),
+    );
+    await getExpressionInput();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(queryExpressionWidget()).not.toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("clause-popover")).getByText(
+        /Custom expression/i,
+      ),
+    ).toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByTestId("clause-popover")).not.toBeInTheDocument(),
+    );
+    expect(
+      within(getStep("step-filter-0-0")).getByText(
+        "Add filters to narrow your answer",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("should be possible to close the popover when navigating away from the expression editor", async () => {
     setup();
 
