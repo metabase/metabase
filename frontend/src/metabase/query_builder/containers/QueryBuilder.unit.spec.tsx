@@ -6,6 +6,9 @@ import _ from "underscore";
 
 import {
   setupCardQueryMetadataEndpoint,
+  setupCardsEndpoints,
+  setupCollectionItemsEndpoint,
+  setupFieldValuesEndpoint,
   setupLastDownloadFormatEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
@@ -33,6 +36,8 @@ import type {
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockCollection,
+  createMockCollectionItemFromCollection,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
@@ -42,7 +47,10 @@ import {
   ORDERS,
   ORDERS_ID,
   PEOPLE_ID,
+  PRODUCTS,
   PRODUCTS_ID,
+  PRODUCT_CATEGORY_VALUES,
+  PRODUCT_VENDOR_VALUES,
   createOrdersCreatedAtDatasetColumn,
   createOrdersIdDatasetColumn,
   createPeopleStateDatasetColumn,
@@ -54,14 +62,17 @@ import { getQuestion } from "../store/selectors";
 import {
   TEST_CARD,
   TEST_CARD_VISUALIZATION,
+  TEST_COLLECTION,
   TEST_MODEL_DATASET,
   TEST_NATIVE_CARD,
   TEST_NATIVE_CARD_DATASET,
   TEST_STRUCTURED_CARD,
   TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
   TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
+  TEST_UNSAVED_STRUCTURED_CARD,
   setup,
   waitForFaviconReady,
+  waitForSaveToBeEnabled,
 } from "./test-utils";
 
 registerVisualizations();
@@ -268,6 +279,27 @@ describe("QueryBuilder", () => {
       );
     });
 
+    it("stops showing the loading document title when the query fails (metabase#49270)", async () => {
+      renderHook(() => usePageTitle("Metabase", { titleIndex: 0 }));
+      await setup({ card: TEST_UNSAVED_STRUCTURED_CARD });
+      await waitFor(() => expect(document.title).toBe("Question · Metabase"));
+
+      const response = defer<Response>();
+      fetchMock.removeRoute("dataset-post");
+      fetchMock.post("path:/api/dataset", () => response.promise, {
+        name: "dataset-post",
+      });
+
+      const [runButton] = screen.getAllByTestId("run-button");
+      await userEvent.click(runButton);
+      await waitFor(() =>
+        expect(document.title).toBe("Doing science... · Metabase"),
+      );
+
+      response.resolve(new Response(JSON.stringify({}), { status: 500 }));
+      await waitFor(() => expect(document.title).toBe("Question · Metabase"));
+    });
+
     describe("query execution time", () => {
       it("renders query execution time for mbql questions", async () => {
         await setup({
@@ -316,6 +348,100 @@ describe("QueryBuilder", () => {
         ),
       ).toBeInTheDocument();
       expect(within(visualization).getByText(message)).toBeInTheDocument();
+    });
+  });
+
+  describe("saving a new question", () => {
+    mockGetBoundingClientRect();
+
+    it("saves a new question under the name and collection picked in the modal (metabase#55631)", async () => {
+      const firstCollection = createMockCollection({
+        id: 2,
+        name: "First collection",
+      });
+      await setup({
+        card: TEST_UNSAVED_STRUCTURED_CARD,
+        collections: [
+          createMockCollection({
+            id: "root",
+            name: "Our analytics",
+            can_write: true,
+          }),
+          TEST_COLLECTION,
+          firstCollection,
+        ],
+      });
+      setupCollectionItemsEndpoint({
+        collection: { id: "root" },
+        collectionItems: [TEST_COLLECTION, firstCollection].map((collection) =>
+          createMockCollectionItemFromCollection({
+            ...collection,
+            can_write: true,
+            here: ["collection"],
+          }),
+        ),
+      });
+      setupCollectionItemsEndpoint({
+        collection: TEST_COLLECTION,
+        collectionItems: [],
+      });
+      setupCollectionItemsEndpoint({
+        collection: firstCollection,
+        collectionItems: [],
+      });
+      const savedCard = createMockCard({
+        id: 1,
+        name: "Custom",
+        collection_id: firstCollection.id,
+        dataset_query: TEST_UNSAVED_STRUCTURED_CARD.dataset_query,
+      });
+      setupCardsEndpoints([savedCard]);
+      setupCardQueryMetadataEndpoint(
+        savedCard,
+        createMockCardQueryMetadata({ databases: [createSampleDatabase()] }),
+      );
+
+      await waitForSaveToBeEnabled();
+      await userEvent.click(screen.getByText("Save"));
+      const modal = await screen.findByTestId("save-question-modal");
+      const nameInput = within(modal).getByLabelText("Name");
+      expect(nameInput).toHaveValue("Orders");
+      await userEvent.clear(nameInput);
+      await userEvent.type(nameInput, "Custom");
+      await userEvent.click(
+        within(modal).getByLabelText(/Where do you want to save this/),
+      );
+      const picker = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(
+        await within(picker).findByText("First collection"),
+      );
+      await userEvent.click(
+        within(picker).getByRole("button", { name: "Select this collection" }),
+      );
+      await waitFor(() =>
+        expect(
+          within(modal).getByLabelText(/Where do you want to save this/),
+        ).toHaveTextContent("First collection"),
+      );
+
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Save" }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("save-question-modal"),
+        ).not.toBeInTheDocument(),
+      );
+
+      const createCall = checkNotNull(
+        fetchMock.callHistory.lastCall("card-create"),
+      );
+      const createBody: unknown = JSON.parse(String(createCall.options.body));
+      expect(createBody).toMatchObject({
+        name: "Custom",
+        collection_id: firstCollection.id,
+      });
+      expect(await screen.findByDisplayValue("Custom")).toBeInTheDocument();
     });
   });
 
@@ -597,6 +723,234 @@ describe("QueryBuilder", () => {
           },
         ],
       });
+    });
+  });
+
+  describe("filtering from the header and going back", () => {
+    const PRODUCTS_CARD = createMockUnsavedCard({
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+        }),
+      ),
+    });
+
+    afterEach(() => {
+      window.history.replaceState(null, "", "/");
+    });
+
+    it("focuses the filter search and shows the running query after going back (metabase#54817, metabase#57398)", async () => {
+      setupFieldValuesEndpoint(PRODUCT_CATEGORY_VALUES);
+      setupFieldValuesEndpoint({
+        ...PRODUCT_VENDOR_VALUES,
+        has_more_values: false,
+      });
+      const { router } = await setup({
+        card: PRODUCTS_CARD,
+        syncWindowLocation: true,
+      });
+
+      await userEvent.click(
+        await screen.findByTestId("question-filter-header"),
+      );
+      const popover = await screen.findByRole("dialog");
+      expect(within(popover).getByPlaceholderText("Find...")).toHaveFocus();
+
+      await userEvent.click(within(popover).getByText("Category"));
+      await userEvent.click(await within(popover).findByText("Widget"));
+      await userEvent.click(
+        within(popover).getByLabelText("Add another filter"),
+      );
+
+      await userEvent.click(await within(popover).findByText("Vendor"));
+      await userEvent.click(await within(popover).findByText("Vendor 3"));
+      await userEvent.click(
+        within(popover).getByLabelText("Add another filter"),
+      );
+
+      const filtersPanel = await screen.findByTestId("qb-filters-panel");
+      expect(
+        await within(filtersPanel).findByText("Vendor is Vendor 3"),
+      ).toBeInTheDocument();
+
+      const response = defer<Dataset>();
+      fetchMock.modifyRoute("dataset-post", {
+        response: () => response.promise,
+      });
+      const requestCountBeforeBack = fetchMock.callHistory.calls(
+        "path:/api/dataset",
+        { method: "POST" },
+      ).length;
+
+      act(() => router.back());
+
+      expect(
+        await within(
+          await screen.findByTestId("query-builder-main"),
+        ).findByTestId("loading-indicator"),
+      ).toBeInTheDocument();
+      const panelAfterBack = await screen.findByTestId("qb-filters-panel");
+      expect(
+        within(panelAfterBack).getByText("Category is Widget"),
+      ).toBeInTheDocument();
+      expect(
+        within(panelAfterBack).queryByText("Vendor is Vendor 3"),
+      ).not.toBeInTheDocument();
+
+      const runCalls = fetchMock.callHistory.calls("path:/api/dataset", {
+        method: "POST",
+      });
+      expect(runCalls.length).toBe(requestCountBeforeBack + 1);
+      const runBody: unknown = JSON.parse(
+        String(runCalls[runCalls.length - 1].options.body),
+      );
+      expect(runBody).toMatchObject({
+        stages: [
+          {
+            "source-table": PRODUCTS_ID,
+            filters: [["=", expect.anything(), expect.anything(), "Widget"]],
+          },
+        ],
+      });
+
+      response.resolve(createMockDataset());
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("loading-indicator"),
+        ).not.toBeInTheDocument(),
+      );
+    });
+  });
+
+  describe("sorting in the raw table mode (metabase#42723)", () => {
+    const LINE_CARD = createMockCard({
+      id: 42723,
+      name: "Products by month and category",
+      display: "line",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: PRODUCTS_ID },
+              aggregations: [{ type: "operator", operator: "count", args: [] }],
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "month" },
+                { type: "column", name: "CATEGORY" },
+              ],
+            },
+          ],
+        }),
+      ),
+    });
+
+    const COLS = [
+      createMockColumn({
+        name: "CREATED_AT",
+        display_name: "Created At: Month",
+        source: "breakout",
+        field_ref: [
+          "field",
+          PRODUCTS.CREATED_AT,
+          { "base-type": "type/DateTime", "temporal-unit": "month" },
+        ],
+        base_type: "type/DateTime",
+        effective_type: "type/DateTime",
+        unit: "month",
+      }),
+      createMockColumn({
+        name: "CATEGORY",
+        display_name: "Category",
+        source: "breakout",
+        field_ref: ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+        base_type: "type/Text",
+        effective_type: "type/Text",
+      }),
+      createMockColumn({
+        id: undefined,
+        table_id: undefined,
+        name: "count",
+        display_name: "Count",
+        source: "aggregation",
+        field_ref: ["aggregation", 0],
+        base_type: "type/BigInteger",
+        effective_type: "type/BigInteger",
+      }),
+    ];
+
+    const DATASET = createMockDataset({
+      data: createMockDatasetData({
+        rows: [
+          ["2027-01-01T00:00:00Z", "Gadget", 7],
+          ["2027-02-01T00:00:00Z", "Widget", 3],
+        ],
+        cols: COLS,
+      }),
+    });
+
+    const SORTED_DATASET = createMockDataset({
+      data: createMockDatasetData({
+        rows: [
+          ["2027-02-01T00:00:00Z", "Widget", 3],
+          ["2027-01-01T00:00:00Z", "Gadget", 7],
+        ],
+        cols: COLS,
+      }),
+    });
+
+    function isSortedByCountQuery(call: CallLog) {
+      const body: unknown = JSON.parse(String(call.options.body));
+      return JSON.stringify(body).includes('"order-by":[["asc"');
+    }
+
+    mockGetBoundingClientRect({ width: 1000, height: 800 });
+
+    it("keeps the line chart after sorting by a column in the data view", async () => {
+      await setup({ card: LINE_CARD, dataset: DATASET });
+      fetchMock.modifyRoute("dataset-post", {
+        response: (call: CallLog) =>
+          isSortedByCountQuery(call) ? SORTED_DATASET : DATASET,
+      });
+      expect(await screen.findByTestId("chart-container")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByLabelText("Switch to data"));
+      const headerCell = await screen.findByRole("columnheader", {
+        name: "Count",
+      });
+      await userEvent.click(within(headerCell).getByText("Count"));
+      await userEvent.click(
+        await screen.findByTestId("click-actions-sort-control-sort.ascending"),
+      );
+
+      await waitFor(() =>
+        expect(
+          within(
+            screen.getByRole("columnheader", { name: /Count/ }),
+          ).getByLabelText("chevronup icon"),
+        ).toBeInTheDocument(),
+      );
+      const runCall = checkNotNull(
+        fetchMock.callHistory.lastCall("path:/api/dataset", { method: "POST" }),
+      );
+      const runBody: unknown = JSON.parse(String(runCall.options.body));
+      expect(runBody).toMatchObject({
+        stages: [
+          {
+            "source-table": PRODUCTS_ID,
+            "order-by": [
+              [
+                "asc",
+                expect.anything(),
+                ["aggregation", expect.anything(), expect.anything()],
+              ],
+            ],
+          },
+        ],
+      });
+      await userEvent.click(screen.getByLabelText("Switch to visualization"));
+      expect(await screen.findByTestId("chart-container")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("columnheader", { name: /Count/ }),
+      ).not.toBeInTheDocument();
     });
   });
 
