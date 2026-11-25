@@ -706,16 +706,16 @@
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/OTHER]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (fn []
-    (let [normalized-db-type (remove-low-cardinality-and-nullable
-                              (.getColumnTypeName rsmeta i))]
-      (cond
-        (= normalized-db-type "ipv4")
-        (ipv4-column->string rs i)
-        (= normalized-db-type "ipv6")
-        (ipv6-column->string rs i)
-        ;; _
-        :else (.getObject rs i)))))
+  (let [normalized-db-type (remove-low-cardinality-and-nullable (.getColumnTypeName rsmeta i))]
+    (cond
+      (= normalized-db-type "ipv4")
+      (fn [] (ipv4-column->string rs i))
+
+      (= normalized-db-type "ipv6")
+      (fn [] (ipv6-column->string rs i))
+
+      :else
+      (fn [] (.getObject rs i)))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/VARCHAR]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
