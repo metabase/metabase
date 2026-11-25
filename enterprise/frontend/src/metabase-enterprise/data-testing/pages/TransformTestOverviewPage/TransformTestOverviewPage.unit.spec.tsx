@@ -34,6 +34,10 @@ import {
 
 import { TransformTestOverviewPage } from "./TransformTestOverviewPage";
 
+const { trackSimpleEvent } = jest.requireMock<{
+  trackSimpleEvent: jest.Mock;
+}>("metabase/analytics");
+
 const QUERY_SOURCE: QueryTransformSource = {
   type: "query",
   query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
@@ -94,6 +98,10 @@ function setup({
 }
 
 describe("TransformTestOverviewPage", () => {
+  afterEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   it("shows the test name with a breadcrumb back to the transform tests", async () => {
     setup();
 
@@ -157,12 +165,18 @@ describe("TransformTestOverviewPage", () => {
     expect(await screen.findByText(/Last run failed/)).toBeInTheDocument();
   });
 
-  it("runs the test and reloads it", async () => {
+  it("runs the test from the Run this test section and reloads it", async () => {
     setup();
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /Run now/ }),
-    );
+    expect(
+      await screen.findByRole("heading", { name: "Run this test" }),
+    ).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: /Run now/ }));
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "transform_test_trigger_manual_run",
+      target_id: 2,
+      triggered_from: "test_overview",
+    });
 
     await waitFor(() => {
       expect(

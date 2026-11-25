@@ -213,7 +213,7 @@
   [table      :- [:or :keyword :string]
    model      :- [:or :keyword :string]
    model-ids  :- [:or [:set [:or :string ms/PositiveInt]] [:sequential [:or :string ms/PositiveInt]]]]
-  (t2/delete! table :model model :model_id [:in model-ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! table :model model :model_id [:in %]) model-ids))
 
 (mu/defn insert-rows!
   "Insert `entries` into the search index `table`."
@@ -278,7 +278,7 @@
 
 (mu/defn insert-index-metadata!
   "Insert the SearchIndexMetadata `row`."
-  [row :- ::search.schema/search-index-metadata.update]
+  [row :- ::search.schema/search-index-metadata.create]
   (t2/insert! :model/SearchIndexMetadata row))
 
 (mu/defn delete-index-metadata-by-version!
@@ -402,7 +402,8 @@
 (mu/defn user-common-names
   "A map of User id to common name for the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in %])
+                          user-ids))
 
 (mu/defn card-result-metadata
   "A map of Card id to result metadata for the Cards with `card-ids`.
@@ -417,11 +418,17 @@
   (let [result-metadata-out (:out mi/transform-result-metadata)]
     (into {}
           (map (juxt :id (comp result-metadata-out :result_metadata)))
-          (when (seq card-ids)
-            (t2/select [(t2/table-name :model/Card) :id :result_metadata] :id [:in card-ids])))))
+          (mdb/select-batched #(t2/select [(t2/table-name :model/Card) :id :result_metadata] :id [:in %]) card-ids))))
 
 (mu/defn collection-permission-rows
   "The Collections with `collection-ids`, with the columns their `:can_write` hydration reads, which search results
   don't carry."
   [collection-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Collection :id :type :namespace :location :is_remote_synced] :id [:in collection-ids]))
+  (mdb/select-batched #(t2/select [:model/Collection :id :type :namespace :location :is_remote_synced] :id [:in %])
+                      collection-ids))
+
+(mu/defn document-exploration-ids
+  "A map of the id of each Document in `document-ids` to its `:exploration_id`, nil for a Document in no Exploration."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (mdb/select-batched-map #(t2/select-pk->fn :exploration_id [:model/Document :id :exploration_id] :id [:in %])
+                          document-ids))

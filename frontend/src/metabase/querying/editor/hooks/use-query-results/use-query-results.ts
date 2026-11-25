@@ -37,7 +37,7 @@ export function useQueryResults(
     const isRunnable = Lib.canRun(question.query(), question.type());
     const isResultDirty =
       lastRunQuestion == null ||
-      !Lib.areLegacyQueriesEqual(
+      !Lib.areQueriesEqual(
         question.datasetQuery(),
         lastRunQuestion.datasetQuery(),
       );

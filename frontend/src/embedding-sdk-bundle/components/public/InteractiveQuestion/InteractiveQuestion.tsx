@@ -39,6 +39,7 @@ import type {
   SdkQuestionEntityInternalProps,
   SdkQuestionEntityPublicProps,
 } from "embedding-sdk-bundle/types/question";
+import { useQuestionFromCard } from "metabase/metadata-store";
 
 import { QuestionAlertsButton } from "../notifications/QuestionAlertsButton";
 
@@ -127,12 +128,9 @@ function InteractiveQuestionInner(props: InteractiveQuestionInternalProps) {
   // When rendered via the `query` prop (Metabot `navigate_to`), no questionId is
   // passed. Derive it from the card so a native query opens the SQL editor,
   // matching SdkAdHocQuestion / MetabotQuestion. See EMB-2042.
+  const deserializedQuestion = useQuestionFromCard(deserializedCard);
   const resolvedQuestionId = query
-    ? resolveQuestionId(
-        undefined,
-        // Unjustified type cast. FIXME
-        deserializedCard as { dataset_query?: { type?: string } } | undefined,
-      )
+    ? resolveQuestionId(undefined, deserializedQuestion)
     : questionId;
 
   const isNewQuestion =

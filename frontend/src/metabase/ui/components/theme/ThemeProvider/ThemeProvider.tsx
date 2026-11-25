@@ -1,5 +1,3 @@
-// eslint-disable-next-line eslint-js/no-restricted-imports
-import { ThemeProvider as _CompatibilityEmotionThemeProvider } from "@emotion/react";
 import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { MantineProvider } from "@mantine/core";
 import { type ReactNode, useContext, useMemo } from "react";
@@ -123,9 +121,7 @@ export const ThemeProvider = ({
       withCssVariables={withCssVariables}
       withGlobalClasses={withGlobalClasses}
     >
-      <_CompatibilityEmotionThemeProvider theme={theme}>
-        <DatesProvider>{children}</DatesProvider>
-      </_CompatibilityEmotionThemeProvider>
+      <DatesProvider>{children}</DatesProvider>
     </MantineProvider>
   );
 };

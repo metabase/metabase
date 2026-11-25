@@ -206,6 +206,9 @@ export function SettingsOIDCForm() {
     ? providersSetting.env_name
     : undefined;
   const isLocked = lockedEnvName != null;
+  const lockedFieldProps = isLocked
+    ? { readOnly: true, variant: "read-only" as const }
+    : {};
   const isEnabled = existingProvider?.enabled ?? false;
 
   const initialValues = useMemo(
@@ -326,7 +329,7 @@ export function SettingsOIDCForm() {
                     placeholder="okta"
                     required
                     disabled={isExisting}
-                    readOnly={isLocked}
+                    {...lockedFieldProps}
                   />
                   <FormTextInput
                     name="login-prompt"
@@ -335,7 +338,7 @@ export function SettingsOIDCForm() {
                     descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                     placeholder={t`Sign in with Okta`}
                     required
-                    readOnly={isLocked}
+                    {...lockedFieldProps}
                   />
                   <FormTextInput
                     name="issuer-uri"
@@ -344,7 +347,7 @@ export function SettingsOIDCForm() {
                     descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                     placeholder="https://your-idp.example.com"
                     required
-                    readOnly={isLocked}
+                    {...lockedFieldProps}
                   />
                   <FormTextInput
                     name="client-id"
@@ -353,7 +356,7 @@ export function SettingsOIDCForm() {
                     descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                     placeholder="metabase-client-id"
                     required
-                    readOnly={isLocked}
+                    {...lockedFieldProps}
                   />
                   <FormTextInput
                     name="client-secret"
@@ -367,7 +370,7 @@ export function SettingsOIDCForm() {
                         ? t`Leave blank to keep current value`
                         : "your-client-secret"
                     }
-                    readOnly={isLocked}
+                    {...lockedFieldProps}
                   />
                   <FormTextInput
                     name="scopes"
@@ -376,7 +379,7 @@ export function SettingsOIDCForm() {
                     descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                     placeholder={DEFAULT_SCOPES.join(", ")}
                     nullable
-                    readOnly={isLocked}
+                    {...lockedFieldProps}
                   />
                 </Stack>
               </SettingsSection>
@@ -398,14 +401,14 @@ export function SettingsOIDCForm() {
                     label={t`First name attribute key`}
                     placeholder={DEFAULT_FIRST_NAME_ATTRIBUTE}
                     nullable
-                    readOnly={isLocked}
+                    {...lockedFieldProps}
                   />
                   <FormTextInput
                     name="attribute-lastname"
                     label={t`Last name attribute key`}
                     placeholder={DEFAULT_LAST_NAME_ATTRIBUTE}
                     nullable
-                    readOnly={isLocked}
+                    {...lockedFieldProps}
                   />
                 </Stack>
               </CollapsibleSettingsSection>
@@ -432,7 +435,7 @@ export function SettingsOIDCForm() {
                   descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                   placeholder={DEFAULT_GROUP_ATTRIBUTE}
                   nullable
-                  readOnly={isLocked}
+                  {...lockedFieldProps}
                 />
               </OidcGroupMappingSection>
 

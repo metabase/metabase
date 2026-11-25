@@ -116,21 +116,19 @@ To configure CC/BCC:
 
 {% include plans-blockquote.html feature="Approved domains for notifications" %}
 
-You can configure allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/alerts.md).
+You can configure allowed email address domain(s) for [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/alerts.md).
 
 Adding approved domains allows you to restrict which email addresses people can send alerts and subscriptions to. This restriction only applies to sending email to people who lack an account with that Metabase. People with Metabase accounts who aren't [restricted by row or column security](../permissions/row-and-column-security.md) will be able to email any other person with an account in that same Metabase.
 
 To configure allowed domains:
 
 1. Go to **Admin > Settings > Email**
-2. Under **Allowed domains for notifications**, add allowed domains:
+2. Under **Approved domains for notifications**, add allowed domains:
 
    - To allow all domains, leave the field empty (allowing all domains is the default).
    - To specify multiple domains, separate each domain with a comma, with no space in between (e.g., `domain1,domain2`).
 
-You can also set this property using the environment variable [`MB_SUBSCRIPTION_ALLOWED_DOMAINS`](../configuring-metabase/environment-variables.md#mb_subscription_allowed_domains).
-
-> Changing this setting won't affect already existing subscriptions and alerts.
+Metabase checks approved domains every time it sends a subscription or alert, including subscriptions and alerts created before you changed the setting. If an old subscription or alert is supposed to email someone outside the new approved domains, Metabase won't send that email to _anyone_.
 
 ### Suggest recipients on dashboard subscriptions and alerts
 
@@ -152,6 +150,24 @@ To configure suggested recipients for subscriptions and alerts:
    - Don't show suggestions
 
 People with [row or column restrictions](../permissions/row-and-column-security.md) won't see suggestions.
+
+## Configure email with environment variables
+
+On self-hosted Metabases, you can also set these settings with [environment variables](./environment-variables.md).
+
+| Setting                                                                         | Environment variable                                                                            |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| [SMTP host](#set-up-email-on-self-hosted-metabases)                             | [`MB_EMAIL_SMTP_HOST`](./environment-variables.md#mb_email_smtp_host)                           |
+| [SMTP port](#set-up-email-on-self-hosted-metabases)                             | [`MB_EMAIL_SMTP_PORT`](./environment-variables.md#mb_email_smtp_port)                           |
+| [SMTP security](#set-up-email-on-self-hosted-metabases)                         | [`MB_EMAIL_SMTP_SECURITY`](./environment-variables.md#mb_email_smtp_security)                   |
+| [SMTP username](#set-up-email-on-self-hosted-metabases)                         | [`MB_EMAIL_SMTP_USERNAME`](./environment-variables.md#mb_email_smtp_username)                   |
+| [SMTP password](#set-up-email-on-self-hosted-metabases)                         | [`MB_EMAIL_SMTP_PASSWORD`](./environment-variables.md#mb_email_smtp_password)                   |
+| [From name](#add-from-and-reply-to-addresses)                                   | [`MB_EMAIL_FROM_NAME`](./environment-variables.md#mb_email_from_name)                           |
+| [From address](#add-from-and-reply-to-addresses)                                | [`MB_EMAIL_FROM_ADDRESS`](./environment-variables.md#mb_email_from_address)                     |
+| [Reply-to address](#add-from-and-reply-to-addresses)                            | [`MB_EMAIL_REPLY_TO`](./environment-variables.md#mb_email_reply_to)                             |
+| [CC or BCC](#add-recipients-as-cc-or-bcc)                                       | [`MB_BCC_ENABLED`](./environment-variables.md#mb_bcc_enabled)                                   |
+| [Approved domains](#approved-domains-for-notifications)                         | [`MB_SUBSCRIPTION_ALLOWED_DOMAINS`](./environment-variables.md#mb_subscription_allowed_domains) |
+| [Suggest recipients](#suggest-recipients-on-dashboard-subscriptions-and-alerts) | [`MB_USER_VISIBILITY`](./environment-variables.md#mb_user_visibility)                           |
 
 ## Email best practices
 

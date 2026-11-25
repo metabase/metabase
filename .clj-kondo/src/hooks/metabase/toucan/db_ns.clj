@@ -9,6 +9,7 @@
   returns its input unchanged so Kondo's normal analysis of the call (arity, var usage) still runs."
   (:require
    [clj-kondo.hooks-api :as hooks]
+   [hooks.common :as hooks.common]
    [hooks.common.modules :as modules]))
 
 (def ^:private driver-db-namespace
@@ -524,6 +525,35 @@
                             "Then ignore this finding, with the reason in a comment.")
               :type :metabase/change-log-raw-write)))))
 
+(defn- model-owner
+  "The module whose `:model-exports` in `modules` lists `model`, or nil when none does."
+  [modules model]
+  (some (fn [[module {:keys [model-exports]}]]
+          (when (contains? model-exports model)
+            module))
+        modules))
+
+(defn- lint-foreign-model-write!
+  "Register a `:metabase/foreign-model-write` finding when a write names a literal `:model/X` that a module other than
+  that of `ns`, or one of its ancestors, owns: such a write goes through the owning model's write function."
+  [config ns node]
+  (let [[fn-node model-node] (:children node)
+        verb                 (some-> fn-node hooks/sexpr name symbol)
+        model                (when (hooks/keyword-node? model-node) (hooks/sexpr model-node))]
+    (when (and (contains? table-write-fns verb)
+               (keyword? model)
+               (= "model" (namespace model))
+               (not (contains? (hooks.common/ignored-linters node) :metabase/foreign-model-write)))
+      (let [modules (:metabase/modules config)
+            owner   (model-owner modules model)
+            module  (modules/module config ns)]
+        (when (and owner module (not (modules/descendant-of? modules module owner)))
+          (hooks/reg-finding!
+           (assoc (meta model-node)
+                  :message (format "%s belongs to module %s; write it through that module's write function, not `%s` in %s"
+                                   model owner (hooks/sexpr fn-node) module)
+                  :type :metabase/foreign-model-write)))))))
+
 (defn lint-query-call
   "Register a `:metabase/t2-query-namespace` finding when a Toucan 2 query call appears outside a `<module>.db`
   namespace."
@@ -542,6 +572,10 @@
               :message (format "Application database query calls like `%s` must live in metabase[-enterprise].<module>.db (or metabase.driver.<driver>.db) namespaces"
                                (hooks/sexpr fn-node))
               :type :metabase/t2-query-namespace))))
+  (when (and ns
+             (not (test-file? filename))
+             (not (re-find #"^metabase\.app-db\." (str ns))))
+    (lint-foreign-model-write! (modules/config input) ns node))
   (when (and ns
              (db-namespace? (modules/config input) ns)
              (not (test-file? filename))

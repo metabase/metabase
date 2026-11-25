@@ -9,5 +9,6 @@
    [metabase.channel.impl.email]
    [metabase.channel.impl.http]
    [metabase.channel.impl.slack]
+   [metabase.channel.models.channel]
    [metabase.channel.settings]
    [metabase.channel.task.refresh-slack-channel-user-cache]))

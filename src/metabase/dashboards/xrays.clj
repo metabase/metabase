@@ -9,8 +9,7 @@
   "The related entities of `dashboard`."
   [dashboard]
   (let [cards (xrays.related/dashboard-cards dashboard)]
-    {:cards (->> cards
-                 (mapcat xrays.related/similar-questions)
+    {:cards (->> (xrays.related/similar-questions-for-cards cards)
                  (remove (set cards))
                  distinct
                  xrays.related/filter-visible

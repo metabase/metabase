@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.events.test-util :as events.tu]
    [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.models.pulse :as models.pulse]
@@ -193,3 +194,29 @@
                  {:type    :notification-recipient/user
                   :user_id (mt/user->id :lucky)}]
                 (email-recipients noti)))))))))
+
+(deftest list-alerts-statement-count-test
+  (testing "GET /api/alert runs as many statements for 10 alerts as for 40"
+    (mt/with-model-cleanup [:model/Notification :model/NotificationCard]
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (doseq [user [:crowberto :rasta]]
+          (let [list-ids #(set (map :id (mt/user-http-request user :get 200 "alert")))
+                count-of (fn [n]
+                           (let [created (mt/with-test-user :rasta
+                                           (models.notification/create-notifications!
+                                            (vec (for [_ (range n)]
+                                                   {:payload_type  :notification/card
+                                                    :active        true
+                                                    :creator_id    (mt/user->id :rasta)
+                                                    :payload       {:card_id card-id :send_condition :has_result}
+                                                    :handlers      [{:channel_type :channel/email
+                                                                     :recipients   [{:type    :notification-recipient/user
+                                                                                     :user_id (mt/user->id :rasta)}]}]}))))]
+                             (list-ids)
+                             {:ids   (map :id created)
+                              :count (events.tu/real-statement-count! list-ids)}))
+                small    (count-of 10)
+                large    (count-of 40)]
+            (testing user
+              (is (= (:count small) (:count large)))
+              (is (every? (list-ids) (concat (:ids small) (:ids large)))))))))))

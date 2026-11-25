@@ -7,6 +7,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.impersonation.db :as impersonation.db]
+   [metabase-enterprise.impersonation.models.impersonation-query-cache :as impersonation-query-cache]
    [metabase-enterprise.impersonation.settings :as impersonation.settings]
    [metabase.config.core :as config]
    [metabase.task.core :as task]
@@ -22,8 +23,9 @@
   "Delete the outdated impersonation query cache rows."
   []
   (let [cutoff  (t/minus (t/offset-date-time) (t/days (impersonation.settings/impersonation-query-cache-retention-days)))
-        deleted (impersonation.db/delete-outdated-query-caches! config/mb-version-string cutoff)]
-    (log/infof "Impersonation query cache cleanup complete. Deleted %d row(s)." deleted)))
+        ids     (impersonation.db/outdated-query-cache-ids config/mb-version-string cutoff)]
+    (impersonation-query-cache/delete-impersonation-query-caches! ids)
+    (log/infof "Impersonation query cache cleanup complete. Deleted %d row(s)." (count ids))))
 
 (task/defjob ImpersonationQueryCacheCleanup
   "Delete outdated impersonation query cache rows"

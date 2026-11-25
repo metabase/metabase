@@ -33,9 +33,11 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses.models.database :as database]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -103,7 +105,7 @@
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
        [:include-editable-data-model {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
-  (let [hydrations (cond-> [:db]
+  (let [hydrations (cond-> [:db :collection]
                      (premium-features/any-transforms-enabled?) (conj :transform))]
     (as-> (warehouse-schema-rest.db/matching-tables
            {:term                       term
@@ -121,9 +123,10 @@
       (if include-editable-data-model
         (schema.table/filter-tables-by-data-model-perms tables)
         (mi/readable tables))
-      (into [] (comp (if can-query (filter mi/can-query?) identity)
-                     (map schema.table/present-table))
-            (cond-> tables can-query (t2/hydrate :can_query))))))
+      (cond->> (cond-> tables can-query (t2/hydrate :can_query))
+        can-query (filter mi/can-query?))
+      (schema.table/present-tables tables)
+      (mapv (fn [table db] (assoc table :db db)) tables (database/add-json-access (map :db tables))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -206,11 +209,11 @@
          [:ids [:sequential ms/PositiveInt]]]
         table-update-entries))
 
-(mu/defn ^:private update-table!*
-  "Takes an existing table and the changes, updates in the database, and hydrates the Fields of the result when its
-  field order changed."
-  [{:keys [id] :as existing-table} :- :metabase.warehouse-schema.schema/table
-   body                            :- [:or TableUpdateBodySingle TableUpdateBodyBulk]]
+(mu/defn ^:private update-existing-tables!
+  "Takes the existing tables and the changes, updates them all in the database with one write of their user settings,
+  and returns them as the database holds them, read once, hydrating the Fields of those whose field order changed."
+  [existing-tables :- [:sequential :metabase.warehouse-schema.schema/table]
+   body            :- [:or TableUpdateBodySingle TableUpdateBodyBulk]]
   (when-let [changes (-> body
                          (u/select-keys-when
                           :non-nil [:display_name :show_in_getting_started :entity_type :field_order :collection_id]
@@ -219,11 +222,16 @@
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]
-    (schema.table-user-settings/upsert-table-user-settings! existing-table changes))
-  (let [updated-table (warehouse-schema-rest.db/table id)]
-    (if (not= (:field_order updated-table) (:field_order existing-table))
-      (t2/hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values])
-      updated-table)))
+    (schema.table-user-settings/upsert-table-user-settings-for-tables! (into #{} (map :id) existing-tables) changes))
+  (let [updated-by-id (u/index-by :id (warehouse-schema-rest.db/tables-by-ids (mapv :id existing-tables)))
+        reordered-ids (into #{}
+                            (comp (filter #(not= (:field_order (updated-by-id (:id %))) (:field_order %)))
+                                  (map :id))
+                            existing-tables)
+        hydrated      (when (seq reordered-ids)
+                        (u/index-by :id (t2/hydrate (mapv updated-by-id reordered-ids)
+                                                    [:fields [:target :has_field_values] :dimensions :has_field_values])))]
+    (mapv (fn [{:keys [id]}] (get hydrated id (updated-by-id id))) existing-tables)))
 
 (defn- check-can-publish-tables-to-collection!
   [tables collection-id]
@@ -240,7 +248,7 @@
     (run! api/write-check (t2/hydrate existing-tables :can_write))
     (when collection_id
       (check-can-publish-tables-to-collection! existing-tables collection_id))
-    (let [updated-tables (events/with-batched-events (mapv #(update-table!* % body) existing-tables))
+    (let [updated-tables (t2/with-transaction [_conn] (update-existing-tables! existing-tables body))
           newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
       (sync/sync-tables-in-background! newly-unhidden)
@@ -317,16 +325,24 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (warehouse-schema-rest.db/active-unretired-field-ids-for-table id))]
-    (for [origin-field (t2/hydrate (warehouse-schema-rest.db/active-fields-targeting field-ids) [:table :db] :can_read)
-          :when (and (-> origin-field :table :active)
-                     (mi/can-read? origin-field))
-          :let [origin-field (update origin-field :table schema.table/present-table)]]
-      ;; it's silly to be hydrating some of these tables/dbs
-      {:relationship   :Mt1
-       :origin_id      (:id origin-field)
-       :origin         origin-field
-       :destination_id (:fk_target_field_id origin-field)
-       :destination    (t2/hydrate (warehouse-schema-rest.db/field (:fk_target_field_id origin-field)) :table)})))
+    (let [origin-fields (t2/hydrate (warehouse-schema-rest.db/active-fields-targeting field-ids) [:table :db] :can_read)
+          origin-fields (map (fn [field db] (cond-> field (:table field) (assoc-in [:table :db] db)))
+                             origin-fields
+                             (database/add-json-access (map (comp :db :table) origin-fields)))
+          destinations  (when (seq origin-fields)
+                          (u/index-by :id (t2/hydrate (warehouse-schema-rest.db/fields-by-ids
+                                                       (into [] (comp (map :fk_target_field_id) (distinct))
+                                                             origin-fields))
+                                                      :table)))]
+      (for [origin-field origin-fields
+            :when (and (-> origin-field :table :active)
+                       (mi/can-read? origin-field))
+            :let [origin-field (update origin-field :table schema.table/present-table)]]
+        {:relationship   :Mt1
+         :origin_id      (:id origin-field)
+         :origin         origin-field
+         :destination_id (:fk_target_field_id origin-field)
+         :destination    (get destinations (:fk_target_field_id origin-field))}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -358,7 +374,7 @@
                     [:id ms/PositiveInt]]]
   (api/write-check (warehouse-schema-rest.db/table id))
   (when-let [field-ids (warehouse-schema-rest.db/field-ids-for-table id)]
-    (warehouse-schema-rest.db/delete-field-values-for-fields! field-ids))
+    (field-values/delete-field-values! (field-values/ids-of-fields (vec field-ids))))
   {:status :success})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -15,7 +15,7 @@ The MCP server is available on every Metabase plan. Some controls, like [MCP too
 
 Your Metabase's MCP server is served from the `/api/metabase-mcp` endpoint.
 
-Once an admin has [turned on the MCP server](#turn-on-the-mcp-server), point your MCP client at:
+The MCP server is on by default (admins can [turn it off](#turn-the-mcp-server-on-or-off)). Point your MCP client at:
 
 ```
 https://{your-metabase.example.com}/api/metabase-mcp
@@ -25,7 +25,7 @@ Replace `{your-metabase.example.com}` with your Metabase's URL. Admins can also 
 
 Your client will direct you to an authentication page for your Metabase.
 
-Once authenticated, you can approve or block the tools in your client. On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can also [limit which tools each group can use](./usage-controls.md#mcp-tools-access).
+Once authenticated, you can approve or block the tools in your client. By default, everyone can use every tool. On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can also [limit which tools each group can use](./usage-controls.md#mcp-tools-access).
 
 Connected a client before Metabase 0.64? It'll ask you to sign in again after you upgrade.
 
@@ -75,7 +75,7 @@ See [Claude Code MCP docs](https://code.claude.com/docs/en/mcp).
 
 If you use Claude on the web or Claude Desktop, go to [Claude's connector directory](https://claude.ai/directory/connectors/metabase) and enter your [Metabase's MCP URL](#connect-a-client-to-your-metabase-mcp-servers-url).
 
-One of your Metabase admins will still need to have [turned on your Metabase's MCP server](#turn-on-the-mcp-server). You'll authenticate against your own Metabase during setup. If Claude asks you to choose authentication options, see [Choose authentication options in Claude](#choose-authentication-options-in-claude).
+If you can't connect, check with your Metabase admins that they haven't [turned off the MCP server](#turn-the-mcp-server-on-or-off). You'll authenticate against your Metabase during setup. If Claude asks you to choose authentication options, see [Choose authentication options in Claude](#choose-authentication-options-in-claude).
 
 ## MCP tools
 
@@ -99,9 +99,9 @@ Clients that can't render inline charts (like Claude Code) won't list the `visua
 
 _Admin > AI > MCP_
 
-### Turn on the MCP server
+### Turn the MCP server on or off
 
-From **Admin > AI**, open the **MCP** tab in the left sidebar, and use the **MCP server** toggle to turn the MCP server on or off.
+The MCP server is on by default. From **Admin > AI**, open the **MCP** tab in the left sidebar, and use the **MCP server** toggle to turn the MCP server on or off.
 
 The MCP server also needs [AI features](./overview.md) on. If **Disable all AI features** is on in **Admin > AI**, the MCP server stays off and the **MCP** settings are grayed out.
 
@@ -132,6 +132,8 @@ https://mcp.internal.example.com https://*.staging.example.com
 ```
 
 Wildcards (`*`) work for subdomains. Origins can't include a path. Changes take effect within a minute.
+
+On self-hosted Metabases, you can also set allowed origins with the [`MB_MCP_APPS_CORS_CUSTOM_ORIGINS`](../configuring-metabase/environment-variables.md#mb_mcp_apps_cors_custom_origins) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 ## Authentication
 
@@ -236,7 +238,7 @@ See [Agent-driven development](./agent-driven-development.md).
 
 Some clients don't support connecting to MCP servers running on localhost. For example, Claude Desktop doesn't permit local connections, but Claude Code does.
 
-For containerized setups, like when testing locally, you may need to set the `MB_SITE_URL` environment variable to the URL you point to in order to authenticate your client. For example, if you're playing around with a Metabase on localhost, you should set:
+For containerized setups, like when testing locally, you may need to set the [`MB_SITE_URL`](../configuring-metabase/environment-variables.md#mb_site_url) environment variable to the URL you point to in order to authenticate your client. For example, if you're playing around with a Metabase on localhost, you should set:
 
 ```
 MB_SITE_URL: http://localhost:3000

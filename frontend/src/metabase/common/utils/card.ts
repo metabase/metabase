@@ -212,7 +212,7 @@ function datasetQueryForComparison(datasetQuery: JsonQuery): JsonQuery {
 export function cardQueryIsEquivalent(cardA: UnsavedCard, cardB: UnsavedCard) {
   const datasetQueryA = datasetQueryForComparison(cardA.dataset_query);
   const datasetQueryB = datasetQueryForComparison(cardB.dataset_query);
-  return Lib.areLegacyQueriesEqual(datasetQueryA, datasetQueryB);
+  return Lib.areQueriesEqual(datasetQueryA, datasetQueryB);
 }
 
 export function cardParametersAreEquivalent(cardA: Card, cardB: Card) {

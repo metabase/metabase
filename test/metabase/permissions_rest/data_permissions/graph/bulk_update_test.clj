@@ -370,15 +370,18 @@
                               :download       {:schemas :full}
                               :data-model     {:schemas {"s1" {t3a :all t3b :none}
                                                          "s2" {t3d :all t3e :none}}}}}}
-              ;; Run the update and count queries.
-              ;; Expected: 1 select tables + 1 select current perms + 1 bulk delete + 2 bulk inserts (transforms
-              ;; rows last) + 1 native-access lookup per database-level create-queries or transforms row, 10 for this
-              ;; graph. Tables must not add queries: more is very likely an N+1 query in one of these dimensions!
-              query-count (t2/with-call-count [call-count]
-                            (data-perms.graph/update-data-perms-graph!* graph)
-                            (call-count))]
-          (is (<= query-count 10)
-              (format "Expected constant query count but got %d — possible N+1 regression" query-count)))
+              counted (fn [graph]
+                        (t2/with-call-count [call-count]
+                          (data-perms.graph/update-data-perms-graph!* graph)
+                          (call-count)))
+              tables  (fn [n value]
+                        {g2 {db1 {:download {:schemas (update-vals (group-by #(if (contains? #{t1a t1b t1c} %) "s1" "s2")
+                                                                             (take n [t1a t1d t1b t1e t1c t1f]))
+                                                                   #(zipmap % (repeat value)))}}}})]
+          (counted (tables 1 :full))
+          (testing "table-level permissions on more tables add no queries"
+            (is (= (counted (tables 2 :none)) (counted (tables 6 :limited)))))
+          (data-perms.graph/update-data-perms-graph!* graph))
         ;; Verify the permissions actually took effect by spot-checking a few values
         (let [result (data-perms.graph/data-permissions-graph :group-ids [g1 g2 g3])]
           (testing "g1/db1 db-level perms applied"

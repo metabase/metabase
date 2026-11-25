@@ -1,5 +1,6 @@
 (ns metabase.notification.payload.impl.card
   (:require
+   [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.render.core :as channel.render]
    [metabase.events.core :as events]
    [metabase.notification.db :as notification.db]
@@ -19,14 +20,19 @@
   (log/with-context {:card_id (:card_id payload)}
     (let [card-id     (:card_id payload)
           part        (notification.execute/execute-card creator_id card-id)
-          card-result (:result part)]
+          card        (notification.db/card card-id)
+          card-result (:result part)
+          result-part (email.result-attachment/card-attachment-part payload part)]
       (when (not= :completed (:status card-result))
         (throw (ex-info (format "Failed to execute card with error: %s" (:error card-result))
                         {:card_id card-id
                          :status (:status card-result)
                          :error  (:error card-result)})))
       {:card_part        part
-       :card             (notification.db/card card-id)
+       :card             card
+       :timezone         (channel.render/defaulted-timezone card)
+       :download_levels  (email.result-attachment/download-levels [result-part] creator_id)
+       :metadata_providers (email.result-attachment/metadata-providers [result-part])
        :style            {:color_text_dark   channel.render/color-text-dark
                           :color_text_light  channel.render/color-text-light
                           :color_text_medium channel.render/color-text-medium}
@@ -74,7 +80,7 @@
   (when (and (-> notification-info :payload :send_once)
              (not skipped?))
     (log/info "Archiving due to send_once")
-    (notification.db/deactivate-notification! (:id notification-info)))
+    (models.notification/update-notifications! [{:id (:id notification-info) :active false}]))
   (try
     (when-let [rows (-> notification-payload :payload :card_part :result :data :rows)]
       (notification.payload/cleanup! rows))

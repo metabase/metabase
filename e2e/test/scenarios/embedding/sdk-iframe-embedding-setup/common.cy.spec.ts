@@ -24,8 +24,6 @@ describe("scenarios > embedding > sdk iframe embed setup > common", () => {
     H.updateSetting("show-static-embed-terms", false);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-
-    H.mockEmbedJsToDevServer();
   });
 
   it("should close wizard when clicking `close` button on the modal and `Done` button on the last step", () => {
@@ -212,8 +210,6 @@ describe("scenarios > embedding > sdk iframe embed setup > common (oss and start
       H.enableTracking();
 
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-
-      H.mockEmbedJsToDevServer();
     });
 
     it("allows to select the `guest` item when modular embedding is disabled, but not the `Metabase Account` item when token feature is missing", () => {

@@ -3,6 +3,7 @@
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.permissions.db :as permissions.db]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -54,12 +55,14 @@
   :type       :boolean
   :audit      :never)
 
+(defenterprise deactivate-tenants!
+  "Deactivate every Tenant and every active tenant User, which an OSS build has none of."
+  metabase-enterprise.tenants.models
+  [])
+
 (defn- update-use-tenants! [new-val]
   (when-not new-val
-    ;; deactivate all tenants
-    (permissions.db/deactivate-all-tenants!)
-    ;; deactivate all tenant users, so if the tenant is reactivated someday they'll come back too
-    (permissions.db/deactivate-active-tenant-users!))
+    (deactivate-tenants!))
   (setting/set-value-of-type! :boolean :use-tenants new-val))
 
 (defsetting use-tenants

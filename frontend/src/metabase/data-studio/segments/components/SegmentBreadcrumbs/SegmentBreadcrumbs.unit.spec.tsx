@@ -41,7 +41,6 @@ const TEST_TABLE = createMockTable({
   db: SINGLE_SCHEMA_DB,
   display_name: "Orders",
   schema: "PUBLIC",
-  collection_id: TEST_COLLECTION.id,
   collection: TEST_COLLECTION,
 });
 
@@ -109,7 +108,6 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
 
     const tableWithAncestors = createMockTable({
       ...TEST_TABLE,
-      collection_id: collection.id,
       collection,
     });
 
@@ -155,13 +153,12 @@ describe("PublishedTableSegmentBreadcrumbs", () => {
     expect(newSegmentText.closest("a")).toBeNull();
   });
 
-  it("renders without collection when collection_id is null", async () => {
+  it("renders without collection when table has no collection", async () => {
     const tableNoCollection = createMockTable({
       ...TEST_TABLE,
       id: 44,
       display_name: "Unpublished Table",
-      collection_id: null,
-      collection: undefined,
+      collection: null,
     });
 
     setup({ table: tableNoCollection });

@@ -36,6 +36,7 @@
    [metabase.serialization.transform :as serialization.transform]
    [metabase.serialization.util :as serialization.util]
    [metabase.serialization.visualization-settings :as serialization.viz]
+   [metabase.serialization.writes :as serialization.writes]
    [metabase.util.namespaces :as shared.ns]))
 
 (shared.ns/import-fns
@@ -74,6 +75,11 @@
   loaded-entities
   local-rows
   with-import-transaction]
+ [serialization.writes
+  delete!
+  insert!
+  insert-stub-users!
+  update!]
  [serialization.storage
   batch-storage-paths
   collection-namespace-folder

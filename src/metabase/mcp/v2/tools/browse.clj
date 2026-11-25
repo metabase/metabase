@@ -253,21 +253,11 @@
   10)
 
 (defn- fetch-table-metadata-rows
-  "Fetch query-metadata rows for `table-ids` in request order. Always goes through the
-   defenterprise fetchers so EE column-level sandboxing applies; `include-hidden?` forces the
-   per-table path (the batch helper cannot include hidden fields). Ids that don't resolve to a
-   readable table land in `:missing` — indistinguishable between absent and unreadable.
-   Returns `{:rows [...] :missing [ids]}`."
+  "The query-metadata rows of `table-ids` in request order, fetched through the defenterprise fetcher so that EE
+  column-level sandboxing applies, with hidden fields when `include-hidden?`, as `{:rows [...] :missing [ids]}` where
+  `:missing` holds the ids of absent and of unreadable tables alike."
   [table-ids include-hidden?]
-  (let [rows  (if include-hidden?
-                (keep (fn [id]
-                        (try
-                          (schema.table/fetch-table-query-metadata id {:include-hidden-fields? true})
-                          (catch clojure.lang.ExceptionInfo e
-                            (when-not (contains? #{403 404} (:status-code (ex-data e)))
-                              (throw e)))))
-                      table-ids)
-                (schema.table/batch-fetch-table-query-metadatas table-ids nil))
+  (let [rows  (schema.table/batch-fetch-table-query-metadatas table-ids {:include-hidden-fields? include-hidden?})
         by-id (u/index-by :id rows)]
     {:rows    (into [] (keep by-id) table-ids)
      :missing (into [] (remove by-id) table-ids)}))

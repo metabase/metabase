@@ -21,7 +21,7 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { QUERY_COMPLETED } from "../store/actions";
 import { queryBuilderReducer } from "../store/reducer";
-import { getMetabotCardBaseline, getQuestion } from "../store/selectors";
+import { getQuestion, toMetabotCardBaseline } from "../store/selectors";
 
 import { queryCompleted } from "./querying";
 
@@ -164,7 +164,7 @@ describe("queryCompleted on a question Metabot opened", () => {
   };
 
   const baselineOf = (state: State) =>
-    getMetabotCardBaseline(checkNotNull(getQuestion(state)));
+    toMetabotCardBaseline(checkNotNull(getQuestion(state)));
 
   it("adds the display the query builder picked and keeps the loaded one for Back", async () => {
     let loaded: MetabotCardBaseline | undefined;
@@ -180,7 +180,7 @@ describe("queryCompleted on a question Metabot opened", () => {
     ]);
   });
 
-  it("adds a baseline only once when the query reruns", async () => {
+  it("keeps one copy of a baseline added twice", async () => {
     const { state } = await setup((state) => [baselineOf(state)]);
     const qb = queryBuilderReducer(state.qb, {
       type: ADD_METABOT_CARD_BASELINE,

@@ -27,7 +27,7 @@ Try out the SDK in the [Modular embedding SDK playground](https://sdk-playground
 
 ## Modular embedding SDK prerequisites
 
-- React application using React 18 or React 19. Metabase 66 will drop support for React 18. If you need to stay on React 18 for longer, use [Metabase 64 LTS](https://www.metabase.com/version-support).
+- React 19, starting with Metabase 66. If your app uses React 18 or earlier, the SDK displays an error. To use React 18, use [Metabase 64 LTS](https://www.metabase.com/version-support).
 - Nodejs 20.x or higher.
 - Metabase version 1.52 or higher.
 
@@ -47,7 +47,9 @@ To use the SDK, you'll need to enable the SDK in Metabase, and install the SDK i
 
 1. Go to **Embedding hub > Security**.
 2. Toggle on **Modular embedding React SDK**.
-3. In **Cross-Origin Resource Sharing (CORS)**, enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
+3. In **Cross-Origin Resource Sharing (CORS)**, enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included, unless you've blocked it with the [`MB_DISABLE_CORS_ON_LOCALHOST`](../../configuring-metabase/environment-variables.md#mb_disable_cors_on_localhost) environment variable.
+
+On self-hosted Metabases, you can also set allowed origins with the environment variable [`MB_EMBEDDING_APP_ORIGINS_SDK`](../../configuring-metabase/environment-variables.md#mb_embedding_app_origins_sdk), or in the [config file](../../configuring-metabase/config-file.md).
 
 ### Install the SDK in your React application
 

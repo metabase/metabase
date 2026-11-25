@@ -354,13 +354,14 @@
   against, a temp table per input and one for its output, the subject's query rewritten to read them, and the labels a
   message renders them as.
 
-  Throws the run's typed refusals — a current user whose connection to the database is impersonated, an untestable
-  subject or driver, SQL that will not parse, a table reference that cannot be replaced in the SQL's text, a test the
-  validator rejects — so a caller that only wants the answer to \"could this
-  run?\" gets it by asking for the plan and discarding it."
+  Throws the run's typed refusals — an archived subject, a current user whose connection to the database is
+  impersonated, an untestable subject or driver, SQL that will not parse, a table reference that cannot be replaced in
+  the SQL's text, a test the validator rejects — so a caller that only wants the answer to \"could this run?\" gets it
+  by asking for the plan and discarding it."
   [subject-type                         :- ::data-testing.subject/subject-type
    subject                              :- ::data-testing.subject/subject
    {:keys [inputs expectations now]}    :- ::definition]
+  (data-testing.subject/check-not-archived subject-type subject)
   (let [{:keys [database compiled output-tables output-token output-label]}
         (subject-plan subject-type subject inputs now)
         _              (check-not-impersonated database)
@@ -408,36 +409,45 @@
 
 (mu/defn run-test! :- ::data-testing.schema/run-result
   "Run `saved-test` against `subject`, a `subject-type`, on temp tables and report what each expectation found,
-  recording the run under the test.
+  recording the run under the test. The optional last argument is a map; its `:on-start`, when given, is called with
+  the run's id once the run is recorded.
 
   Throws a typed refusal from [[metabase-enterprise.data-testing.errors]] when the run cannot happen. A
   failing expectation is not a refusal: it rides back as that expectation's own result."
-  [subject-type                                             :- ::data-testing.subject/subject-type
-   subject                                                  :- ::data-testing.subject/subject
-   {test-id :id :keys [expectations] :as saved-test}         :- ::data-testing.schema/saved-test]
-  (let [{:keys [driver database input->table input->query output-table labels expectation->query compiled]}
-        (validated-plan subject-type subject (test-definition saved-test))
-        {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
-        final-status (atom :error)]
-    (try
-      (let [result
-            (driver/do-with-test-connection
-             driver database
-             (fn [conn]
-               (try
-                 (create-inputs! driver conn input->table input->query labels)
-                 (create-output! driver conn output-table compiled labels)
-                 (let [results (check-expectations driver conn
-                                                   {:driver       driver
-                                                    :output-table output-table}
-                                                   expectations expectation->query labels)]
-                   {:status       (if (every? #(= :passed (:status %)) results) :passed :failed)
-                    :expectations results
-                    :tables       labels})
-                 (finally
-                   (doseq [table (cons output-table (vals input->table))]
-                     (data-testing.executor/drop-temp-table! driver conn table))))))]
-        (reset! final-status (:status result))
-        result)
-      (finally
-        (data-testing.run-tracking/finish-run! run-id @final-status)))))
+  ([subject-type :- ::data-testing.subject/subject-type
+    subject      :- ::data-testing.subject/subject
+    saved-test   :- ::data-testing.schema/saved-test]
+   (run-test! subject-type subject saved-test {}))
+  ([subject-type                                             :- ::data-testing.subject/subject-type
+    subject                                                  :- ::data-testing.subject/subject
+    {test-id :id :keys [expectations] :as saved-test}         :- ::data-testing.schema/saved-test
+    {:keys [on-start]}                                       :- [:map {:closed true}
+                                                                 [:on-start {:optional true} ifn?]]]
+   (let [{:keys [driver database input->table input->query output-table labels expectation->query compiled]}
+         (validated-plan subject-type subject (test-definition saved-test))
+         {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
+         final-status (atom :error)]
+     (try
+       (when on-start
+         (on-start run-id))
+       (let [result
+             (driver/do-with-test-connection
+              driver database
+              (fn [conn]
+                (try
+                  (create-inputs! driver conn input->table input->query labels)
+                  (create-output! driver conn output-table compiled labels)
+                  (let [results (check-expectations driver conn
+                                                    {:driver       driver
+                                                     :output-table output-table}
+                                                    expectations expectation->query labels)]
+                    {:status       (if (every? #(= :passed (:status %)) results) :passed :failed)
+                     :expectations results
+                     :tables       labels})
+                  (finally
+                    (doseq [table (cons output-table (vals input->table))]
+                      (data-testing.executor/drop-temp-table! driver conn table))))))]
+         (reset! final-status (:status result))
+         result)
+       (finally
+         (data-testing.run-tracking/finish-run! run-id @final-status))))))

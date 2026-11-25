@@ -62,11 +62,9 @@
   WHERE lower(name) LIKE '%cam'
   AND field_2 = \"abc\""
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -216,14 +214,15 @@
      query
      constraints)))
 
-(def ^:private find-joins-cache-duration-ms
-  "Amount of time to cache results of `find-joins`. Since FK relationships in Tables are unlikely to change very
-  often (actually, only when the DB is synced again) we can cache them for a while and avoid a complicated app DB
-  call."
-  ;; 5 minutes seems reasonable
-  (u/minutes->ms 5))
+(mr/def ::fk-graph
+  "The FK relationships of a Database: `lhs-table-id -> rhs-table-id -> [join-info*]`."
+  [:map-of ::lib.schema.id/table [:map-of ::lib.schema.id/table [:sequential ::join-info]]])
 
-(defn- database-fk-relationships* [database-id enable-reverse-joins?]
+(defn- database-fk-relationships
+  "The FK relationships of the Database with `database-id` in both directions, or only forward unless
+  `enable-reverse-joins?`, read in one query, as `lhs-table-id -> rhs-table-id -> [join-info*]` where `join-info` is
+  `{:lhs {:table <id>, :field <id>}, :rhs {:table <id>, :field <id>}}`."
+  [database-id enable-reverse-joins?]
   (let [rows (parameters.db/fk-relationships-for-database database-id)
         ;; The `:fk-table.active` / `:pk-field.active` LEFT JOIN clauses null out the target endpoint
         ;; when the FK-owning table or FK target field is inactive; drop those rows so no nil-keyed
@@ -242,25 +241,6 @@
                     joins))]
     (-> (group-by (comp :table :lhs) joins)                ; Outer grouping: LHS table ID
         (update-vals #(group-by (comp :table :rhs) %)))))  ; Inner grouping: RHS table ID
-
-(def ^:private ^{:arglists '([database-id enable-reverse-joins?])} database-fk-relationships
-  "Return a sequence of FK relationships that exist in a database, in the format
-
-    lhs-table-id -> rhs-table-id -> [join-info*]
-
-  where `join-info` is of the format
-
-    {:lhs {:table <id>, :field <id>}, :rhs {:table <id>, :field <id>}}
-
-  'lhs' refers to the Table and Field on the left-hand-side of the join, and 'rhs' refers to the Table on the
-  right-hand-side of the join. Of course, you can join in either direction (e.g. `FROM B JOIN A ...` or `FROM A JOIN
-  B`), so both `A -> B` and `B -> A` versions of the relationship are returned; having both possibilities simplifies
-  the implementation of `find-joins` below."
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[database-id enable-reverse-joins?]]
-                         [(mdb/unique-identifier) database-id enable-reverse-joins?])}
-   database-fk-relationships*
-   :ttl/threshold find-joins-cache-duration-ms))
 
 (defn- traverse-graph
   "A breadth first traversal of graph, not probing any paths that are over `max-depth` in length."
@@ -289,80 +269,14 @@
 
 (def ^:private max-traversal-depth 5)
 
-(defn- find-joins* [database-id source-table-id other-table-id enable-reverse-joins?]
-  (let [fk-relationships (database-fk-relationships database-id enable-reverse-joins?)]
-    ;; find series of joins needed to get from LHS -> RHS. `path` is the tables we're already joining against when
-    ;; recursing so we don't end up coming up with circular joins.
-    ;;
-    ;; the general idea here is to see if LHS can join directly against RHS, otherwise recursively try all of the
-    ;; tables LHS can join against and see if we can find a path that way.
-    ;; TODO: (bshepherdson 2025/11/25) This bespoke graph construction and traversal would be better migrated to
-    ;; use `metabase.graph.core`.
-    (u/prog1 (traverse-graph fk-relationships source-table-id other-table-id max-traversal-depth)
-      (when (seq <>)
-        (log/tracef (format-joins-for-logging <>))))))
-
-(def ^:private ^{:arglists '([database-id source-table-id other-table-id]
-                             [database-id source-table-id other-table-id enable-reverse-joins?])} find-joins
+(defn- find-joins
   "Find the joins that must be done to make fields in Table with `other-table-id` accessible in a query whose
-  primary (source) Table is the Table with `source-table-id`. Note that if there are multiple FKs for a particular
-  link between two tables, both will be returned as possible joins.
-
-  Information about joins is returned in the format:
-
-    [{:lhs {:table <id>, :field <id>}, :rhs {table <id>, :field <id>}}
-     ...]
-
-  e.g.
-
-    ;; 'airport' is the source Table; find the joins needed to include 'country' Table
-    (find-joins my-database-id <airport> <country>)
-    ;; ->
-    ;; 3 joins needed: airport -> municipality; municipality -> region; region -> country
-    [{:lhs {:table <airport>, :field <airport.municipality_id>}
-      :rhs {:table <municipality>, :field <municipality.id>}}
-     {:lhs {:table <municipality>, :field <region.id>}
-      :rhs {:table <region>, :field <country.id>}}
-     {:lhs {:table <region>, :field <region.country_id>}
-      :rhs {:table <country>, :field <country.id>}}]"
-  (let [f (memoize/ttl
-           ^{::memoize/args-fn (fn [[database-id source-table-id other-table-id enable-reverse-joins?]]
-                                 [(mdb/unique-identifier)
-                                  database-id
-                                  source-table-id
-                                  other-table-id
-                                  enable-reverse-joins?])}
-           find-joins*
-           :ttl/threshold find-joins-cache-duration-ms)]
-    ;; expose memoize metadata
-    (with-meta
-     (fn
-       ([database-id source-table-id other-table-id]
-        (f database-id source-table-id other-table-id *enable-reverse-joins*))
-       ([database-id source-table-id other-table-id enable-reverse-joins?]
-        (f database-id source-table-id other-table-id enable-reverse-joins?)))
-     (meta f))))
-
-(def ^{:private true
-       :arglists '([db-id source-table field-ids fk-pairs other-table-ids enable-reverse-joins?])}
-  find-all-joins*
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[_db-id source-table-id field-ids fk-pairs other-table-ids enable-reverse-joins?]]
-                         [(mdb/unique-identifier) source-table-id field-ids fk-pairs
-                          other-table-ids enable-reverse-joins?])}
-   (fn [db-id source-table-id field-ids fk-pairs other-table-ids enable-reverse-joins?]
-     (let [all-joins (mapcat #(find-joins db-id source-table-id % enable-reverse-joins?)
-                             other-table-ids)]
-       (when (seq all-joins)
-         (log/tracef "Deduplicating for source %s; Tables to keep: %s\n%s"
-                     (name-for-logging :model/Table source-table-id)
-                     (str/join ", " (map (partial name-for-logging :model/Table)
-                                         other-table-ids))
-                     (format-joins-for-logging all-joins))
-         (u/prog1 (vec (dedupe/dedupe-joins source-table-id field-ids fk-pairs all-joins other-table-ids))
-           (when-not (= all-joins <>)
-             (log/tracef "Deduplicated:\n%s" (format-joins-for-logging <>)))))))
-   :ttl/threshold find-joins-cache-duration-ms))
+  primary (source) Table is the Table with `source-table-id`, following the FK relationships of `fk-graph` and
+  returning every FK where several link two tables, as `[{:lhs {:table <id>, :field <id>}, :rhs {...}} ...]`."
+  [fk-graph source-table-id other-table-id]
+  (u/prog1 (traverse-graph fk-graph source-table-id other-table-id max-traversal-depth)
+    (when (seq <>)
+      (log/tracef (format-joins-for-logging <>)))))
 
 (mu/defn- find-all-joins
   "Find the complete set of joins we need to do for `source-table-id` to join against Fields in `field-ids`.
@@ -370,7 +284,7 @@
   `fk-pairs` are unordered `#{lhs-field rhs-field}` pairs the caller knows the expanded query already uses — the
   deduper prefers an exact match from this set over a bare field-id match from `field-ids`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   database-id           :- ::lib.schema.id/database
+   fk-graph              :- ::fk-graph
    source-table-id       :- ::lib.schema.id/table
    field-ids             :- [:set ::lib.schema.id/field]
    fk-pairs              :- [:set ::fk-pair]]
@@ -378,7 +292,16 @@
                                                     (map :table-id)
                                                     (lib.metadata/bulk-metadata metadata-providerable :metadata/column field-ids))
                                               source-table-id))]
-    (find-all-joins* database-id source-table-id field-ids fk-pairs other-table-ids *enable-reverse-joins*)))
+    (let [all-joins (mapcat #(find-joins fk-graph source-table-id %) other-table-ids)]
+      (when (seq all-joins)
+        (log/tracef "Deduplicating for source %s; Tables to keep: %s\n%s"
+                    (name-for-logging :model/Table source-table-id)
+                    (str/join ", " (map (partial name-for-logging :model/Table)
+                                        other-table-ids))
+                    (format-joins-for-logging all-joins))
+        (u/prog1 (vec (dedupe/dedupe-joins source-table-id field-ids fk-pairs all-joins other-table-ids))
+          (when-not (= all-joins <>)
+            (log/tracef "Deduplicated:\n%s" (format-joins-for-logging <>))))))))
 
 (mu/defn- add-joins :- ::lib.schema/query
   "Add joins to the MBQL `query` we're generating. The Field for which we are returning values is the \"source Field\",
@@ -465,8 +388,8 @@
 (defn- join-path
   "The joins that lead from `source-table-id` to `table-id`, in order, or nil if there is no path. Where several FKs
   link two Tables, prefer one of `field-ids`."
-  [database-id source-table-id table-id field-ids]
-  (when-let [joins (not-empty (find-joins database-id source-table-id table-id))]
+  [fk-graph source-table-id table-id field-ids]
+  (when-let [joins (not-empty (find-joins fk-graph source-table-id table-id))]
     (dedupe/dedupe-joins source-table-id field-ids #{} joins #{table-id})))
 
 (mr/def ::one-to-many-path
@@ -479,7 +402,7 @@
   "The join paths from `source-table-id` to those Tables of `field-ids` that can only be reached by following an FK
   backwards somewhere, keyed by Table ID."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   database-id           :- ::lib.schema.id/database
+   fk-graph              :- ::fk-graph
    source-table-id       :- ::lib.schema.id/table
    field-ids             :- [:set ::lib.schema.id/field]]
   (let [table-ids (when (seq field-ids)
@@ -489,7 +412,7 @@
                           source-table-id))
         paths     (into {}
                         (keep (fn [table-id]
-                                (when-let [path (join-path database-id source-table-id table-id field-ids)]
+                                (when-let [path (join-path fk-graph source-table-id table-id field-ids)]
                                   [table-id path])))
                         table-ids)
         id->field (when (seq paths)
@@ -615,7 +538,7 @@
   caller knows the expanded card query uses; the deduper prefers an edge whose endpoints match a pair over one picked
   only from `field-ids`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   database-id           :- ::lib.schema.id/database
+   fk-graph              :- ::fk-graph
    source-table-id       :- ::lib.schema.id/table
    constraints           :- [:maybe ::constraints]
    field-ids             :- [:set ::lib.schema.id/field]
@@ -636,13 +559,13 @@
                                    constraints)
         unpinned-constraints (remove oriented-constraint constraints)
         constraint-field-ids (into #{} (map :field-id) unpinned-constraints)
-        paths                (one-to-many-paths metadata-providerable database-id source-table-id constraint-field-ids)
+        paths                (one-to-many-paths metadata-providerable fk-graph source-table-id constraint-field-ids)
         direct-field-ids     (into field-ids
                                    (comp (remove #(contains? paths (:table-id %)))
                                          (map :id))
                                    (lib.metadata/bulk-metadata metadata-providerable :metadata/column
                                                                constraint-field-ids))
-        graph-joins          (find-all-joins metadata-providerable database-id source-table-id direct-field-ids
+        graph-joins          (find-all-joins metadata-providerable fk-graph source-table-id direct-field-ids
                                              (or fk-pairs #{}))
         joins                (vec (m/distinct-by #(get-in % [:rhs :table]) (concat pinned-edges graph-joins)))]
     {:joins           joins
@@ -683,8 +606,8 @@
         remap-field-ids   (cond-> #{}
                             reversed?       (conj field-id)
                             (not reversed?) (cond-> original-field-id (conj original-field-id)))
-        {:keys [joins semi-join-paths]} (constraint-joins mp database-id source-table-id constraints
-                                                          remap-field-ids via-path fk-pairs)
+        {:keys [joins semi-join-paths]} (constraint-joins mp (database-fk-relationships database-id *enable-reverse-joins*)
+                                                          source-table-id constraints remap-field-ids via-path fk-pairs)
         joined-table-ids  (set (map #(get-in % [:rhs :table]) joins))
         field             (cond-> (lib.metadata/field mp field-id)
                             reversed? (lib/with-join-alias (joined-table-alias field-table-id)))
@@ -948,7 +871,8 @@
   (let [database-id      (field/field-id->database-id field-id)
         mp               (lib-be/application-database-metadata-provider database-id)
         source-table-id  (:table-id (lib.metadata/field mp field-id))
-        {:keys [joins semi-join-paths]} (constraint-joins mp database-id source-table-id constraints #{} nil nil)
+        {:keys [joins semi-join-paths]} (constraint-joins mp (database-fk-relationships database-id *enable-reverse-joins*)
+                                                          source-table-id constraints #{} nil nil)
         joined-table-ids (set (map #(get-in % [:rhs :table]) joins))
         field            (lib.metadata/field mp field-id)]
     (when (seq joins)

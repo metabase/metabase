@@ -1,6 +1,7 @@
 (ns metabase-enterprise.content-verification.api.collection-test
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -53,11 +54,12 @@
                    (:authority_level (mt/user-http-request :crowberto :put 200 (format "collection/%d" id) {:authority_level "official"}))))
             (is (= :official (t2/select-one-fn :authority_level :model/Collection :id id)))))
         (testing "Non-admins can patch without the :authority_level"
-          (mt/with-temp [:model/Collection collection {:name "whatever" :authority_level "official"}]
-            (is (= "official"
-                   (-> (mt/user-http-request :rasta :put 200 (str "collection/" (:id collection))
-                                             {:name "foo"})
-                       :authority_level)))))
+          (mt/with-model-cleanup [:model/Collection]
+            (let [[collection] (collection/create-collections! [{:name "whatever" :authority_level "official"}])]
+              (is (= "official"
+                     (-> (mt/user-http-request :rasta :put 200 (str "collection/" (:id collection))
+                                               {:name "foo"})
+                         :authority_level))))))
         (testing "non-admins get 403"
           (mt/with-temp
             [:model/Collection {id :id} {:authority_level nil}]
