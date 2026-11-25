@@ -36,7 +36,7 @@
               [{pt :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "curationfixture published" :active true
                                                                                                                               :data_layer :final})])
               _ (table-user-settings/create-table-user-settings! [{:table_id pt :is_published true}])
-              [{at :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "curationfixture ingested" :active true
+              [{it :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "curationfixture ingested" :active true
                                                                                                                               :data_authority :ingested})])
               [{xt :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "curationfixture plaintable" :active true})])
               [{ult :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "curationfixture unpublishedlib" :active true
@@ -70,7 +70,7 @@
           ;; re-ingest the now-verified card so the index reflects it
           (search/update! (t2/select-one :model/Card :id vq) true)
           (let [items    [["card" vq] ["card" oq] ["card" pq]
-                          ["table" pt] ["table" at] ["table" xt] ["table" ult]]
+                          ["table" pt] ["table" it] ["table" xt] ["table" ult]]
                 source   (metabot.curation/curated-ids items)
                 ;; the index-derived verdict, read back off search results (which now carry :curated)
                 indexed  (into #{} (comp (filter :curated) (map (juxt :model :id)))
@@ -96,7 +96,7 @@
               [{st :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture staged" :active true
                                                                                                                               :data_layer :internal})])
               _ (table-user-settings/create-table-user-settings! [{:table_id pt :is_published true} {:table_id st :is_published true}])
-              [{at :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture ingested" :active true
+              [{it :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture ingested" :active true
                                                                                                                               :data_authority :ingested})])
               [{ht :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db :name "parityfixture hidden" :active true
                                                                                                                               :visibility_type :hidden :data_authority :ingested})])
@@ -157,7 +157,7 @@
           (search/update! (t2/select-one :model/Card :id vq) true)
           (let [items   [["card" vq] ["card" oq] ["card" aq] ["metric" lm] ["metric" om] ["metric" pm]
                          ["dashboard" od] ["dashboard" pd]
-                         ["table" pt] ["table" st] ["table" at] ["table" ht] ["table" xt]
+                         ["table" pt] ["table" st] ["table" it] ["table" ht] ["table" xt]
                          ;; a duplicate id is judged once and returned once
                          ["card" vq]]
                 source  (with-redefs [metabot.curation/curation-batch-size 2]
