@@ -349,7 +349,12 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    {:keys [dev_bundle_url]} :- [:map {:closed true} [:dev_bundle_url [:maybe :string]]]]
-  (api/update-check (api/check-404 (custom-viz-plugin.db/non-blob-plugin id)) {:dev_bundle_url dev_bundle_url})
+  (let [plugin (api/check-404 (custom-viz-plugin.db/non-blob-plugin id))]
+    ;; a plugin a read-only instance pulled runs the repository's code, so it can be taken off a dev server there,
+    ;; but not pointed at one
+    (if (seq dev_bundle_url)
+      (api/write-check plugin)
+      (api/update-check plugin {:dev_bundle_url nil})))
   (check-dev-mode-enabled!)
   (custom-viz-plugin/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})

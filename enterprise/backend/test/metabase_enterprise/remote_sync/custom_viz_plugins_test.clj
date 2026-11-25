@@ -213,6 +213,13 @@
         (mt/with-dynamic-fn-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)]
           (mt/user-http-request :crowberto :post 403 "ee/custom-viz-plugin/dev"
                                 {:identifier "dev-only" :dev_bundle_url "http://localhost:5173"})))
+      (testing "a pulled plugin can't be pointed at a dev server, only taken off one"
+        (mt/with-dynamic-fn-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)]
+          (mt/user-http-request :crowberto :put 403 (str "ee/custom-viz-plugin/" id "/dev-url")
+                                {:dev_bundle_url "http://localhost:5173"})
+          (is (= {:dev_bundle_url nil}
+                 (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id "/dev-url")
+                                       {:dev_bundle_url nil})))))
       (testing "`enabled` and existing dev-only plugins stay this instance's"
         (is (false? (:enabled (mt/user-http-request :crowberto :put 200 (str "ee/custom-viz-plugin/" id) {:enabled false}))))
         (delete-plugin! 204 (t2/insert-returning-pk! :model/CustomVizPlugin
