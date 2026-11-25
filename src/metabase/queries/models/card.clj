@@ -2837,7 +2837,10 @@
    :render     queries.staleness/render})
 
 (defmethod eid-translation/spec :model/Card [_model]
-  {:names [:card :dataset :metric]})
+  {:names      [:card :dataset :metric]
+   :references {:table_id :model/Table :source_card_id :model/Card}
+   :structures [:dataset_query :result_metadata :parameters :parameter_mappings :visualization_settings
+                :dimensions :dimension_mappings]})
 
 (defmethod xrays/spec :model/Card [_model]
   {:related    queries.xrays/related

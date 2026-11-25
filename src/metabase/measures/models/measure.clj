@@ -298,4 +298,8 @@
    :update!            #(do (update-measures! % {:writer :replacement}) %)})
 
 (defmethod eid-translation/spec :model/Measure [_model]
-  {:names [:measure]})
+  {:names      [:measure]
+   :references {:table_id :model/Table}
+   :structures [:definition]
+   :transforms {:dimensions         measures.serialization/api-dimensions-transform
+                :dimension_mappings measures.serialization/api-dimension-mappings-transform}})

@@ -524,4 +524,6 @@
   {:synced-filter-clause dashboards.db/synced-dashcards-clause})
 
 (defmethod eid-translation/spec :model/DashboardCard [_model]
-  {:names [:dashboard-card]})
+  {:names      [:dashboard-card]
+   :structures [:parameter_mappings]
+   :transforms {:visualization_settings dashboards.serialization/api-visualization-settings-transform}})

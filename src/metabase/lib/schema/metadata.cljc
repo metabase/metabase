@@ -1004,6 +1004,7 @@
     :decode/mock   mock-measure}
    [:lib/type   [:= :metadata/measure]]
    [:id         ::lib.schema.id/measure]
+   [:entity-id  {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:name       ::lib.schema.common/non-blank-string]
    [:table-id   ::lib.schema.id/table]
    ;; the MBQL snippet defining this Measure, contains an aggregation expression.

@@ -125,12 +125,12 @@
   "The salt that scopes an entity's computed dimension ids to that entity; see
    [[metabase.lib-metric.dimension.jvm/compute-dimension-pairs]].
 
-   Metrics are Cards and use their `:entity-id`, which survives an export/import round trip. Measures have no
-   `:entity-id` on their metadata (`:metabase.lib.schema.metadata/measure` is closed), so they fall back to their
-   local id — enough, since these ids are never required to agree across instances."
+   It is the entity's `:entity-id`, which survives an export/import round trip, so that an instance and its restore
+   derive the same ids. A Measure's is prefixed, so that it never equals a Card's. Measure metadata without an
+   `:entity-id`, such as a test's, falls back to its local id."
   [entity]
   (case (:lib/type entity)
-    :metadata/measure (str "measure/" (:id entity))
+    :metadata/measure (str "measure/" (or (:entity-id entity) (:id entity)))
     (:entity-id entity)))
 
 ;;; ------------------------------------------------- Hydration -------------------------------------------------

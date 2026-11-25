@@ -878,4 +878,6 @@
   {:candidates documents.db/stale-document-candidates})
 
 (defmethod eid-translation/spec :model/Document [_model]
-  {:names [:document]})
+  {:names      [:document]
+   :references {:made_public_by_id :model/User}
+   :structures [:document]})

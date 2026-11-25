@@ -377,4 +377,5 @@
               :hydrate native-query-snippets.collection-items/hydrate}})
 
 (defmethod eid-translation/spec :model/NativeQuerySnippet [_model]
-  {:names [:snippet]})
+  {:names      [:snippet]
+   :structures [:content :template_tags]})

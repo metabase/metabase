@@ -740,4 +740,6 @@
                     {:topic :user-deactivated, :when users.audit/deactivated?}]})
 
 (defmethod eid-translation/spec :model/User [_model]
-  {:names [:user]})
+  {:names      [:user]
+   :references {:personal_collection_id :model/Collection
+                :group_ids              :model/PermissionsGroup}})

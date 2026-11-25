@@ -50,9 +50,10 @@
   (column-values model refs (resolve/row-ids store model (into #{} (remove nil?) refs) opts)))
 
 (defn fk-transform
-  "A spec transform between the database ids of `model` rows and their references."
+  "A spec transform between the database ids of `model` rows and their references, with `:model` naming `model`."
   [model]
-  {:export (fn [store _ ids _] (column-refs store model ids))
+  {:model  model
+   :export (fn [store _ ids _] (column-refs store model ids))
    :import (fn [store _ refs opts] (column-ids store model refs opts))})
 
 (def user-transform

@@ -1,10 +1,12 @@
 (ns metabase.eid-translation.core
   (:require
    [metabase.eid-translation.impl]
+   [metabase.eid-translation.responses]
    [metabase.eid-translation.util]
    [potemkin :as p]))
 
 (comment metabase.eid-translation.impl/keep-me
+         metabase.eid-translation.responses/keep-me
          metabase.eid-translation.util/keep-me)
 
 (p/import-vars
@@ -12,6 +14,8 @@
   Status
   default-counter
   statuses]
+ [metabase.eid-translation.responses
+  ->entity-ids]
  [metabase.eid-translation.util
   ->id
   ->id-or-404

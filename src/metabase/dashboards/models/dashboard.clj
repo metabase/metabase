@@ -1002,7 +1002,8 @@
    :render     dashboards.staleness/render})
 
 (defmethod eid-translation/spec :model/Dashboard [_model]
-  {:names [:dashboard]})
+  {:names      [:dashboard]
+   :structures [:parameters]})
 
 (defmethod xrays/spec :model/Dashboard [_model]
   {:related dashboards.xrays/related})
