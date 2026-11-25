@@ -99,19 +99,13 @@ export const DataModel = {
     getEmptyState: getSegmentListEmptyState,
     getNewSegmentLink: getSegmentListNewLink,
     getSegment: getSegmentListItem,
-    getSegments: getSegmentListItems,
   },
   SegmentEditor: {
     get: getSegmentEditor,
     getNameInput: getSegmentEditorNameInput,
-    getDescriptionInput: getSegmentEditorDescriptionInput,
     getFilterPlaceholder: getSegmentEditorFilterPlaceholder,
-    getPreviewLink: getSegmentEditorPreviewLink,
     getSaveButton: getSegmentEditorSaveButton,
-    getCancelButton: getSegmentEditorCancelButton,
     getActionsButton: getSegmentEditorActionsButton,
-    getBreadcrumb: getSegmentEditorBreadcrumb,
-    getDefinitionTab: getSegmentEditorDefinitionTab,
     getRevisionHistoryTab: getSegmentEditorRevisionHistoryTab,
     getDependenciesTab: getSegmentEditorDependenciesTab,
   },
@@ -611,10 +605,6 @@ function getSegmentListItem(name: string) {
   return getSegmentList().findByRole("listitem", { name });
 }
 
-function getSegmentListItems() {
-  return getSegmentList().findAllByRole("listitem");
-}
-
 /** segment editor helpers */
 
 function getSegmentEditor() {
@@ -627,37 +617,16 @@ function getSegmentEditorNameInput() {
   return getSegmentEditor().findByPlaceholderText("New segment");
 }
 
-function getSegmentEditorDescriptionInput() {
-  getSegmentEditor().findByLabelText("Give it a description").click();
-  return getSegmentEditor().findByPlaceholderText("Only if it really needs it");
-}
-
 function getSegmentEditorFilterPlaceholder() {
   return getSegmentEditor().findByText("Add filters to narrow your answer");
-}
-
-function getSegmentEditorPreviewLink() {
-  return getSegmentEditor().findByRole("link", { name: /Preview/i });
 }
 
 function getSegmentEditorSaveButton() {
   return getSegmentEditor().button("Save");
 }
 
-function getSegmentEditorCancelButton() {
-  return getSegmentEditor().button("Cancel");
-}
-
 function getSegmentEditorActionsButton() {
   return cy.findByLabelText("Segment actions");
-}
-
-function getSegmentEditorBreadcrumb(tableName: string) {
-  return cy.findByText(tableName);
-}
-
-function getSegmentEditorDefinitionTab() {
-  return cy.findByTestId("segment-pane-header").findByText("Definition");
 }
 
 function getSegmentEditorRevisionHistoryTab() {
