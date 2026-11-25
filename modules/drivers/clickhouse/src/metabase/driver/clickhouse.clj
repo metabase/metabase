@@ -995,13 +995,17 @@
 
 ;;; ------------------------------------------------ Table samples -------------------------------------------------
 
-;; `SAMPLE k` reads the rows whose sampling key falls in a fraction `k` of its range, from an index on it, so the rows
-;; come from all over the table. A table can be sampled only when it declares a sampling key (`SAMPLE BY`).
+;; `SAMPLE k` reads the rows whose sampling key falls in a fraction `k` of its range. A table can be sampled only when
+;; it declares a sampling key (`SAMPLE BY`).
+(defn- sample-fraction
+  "`percent` as the plain decimal fraction that `SAMPLE` takes, since Java prints a double below 0.001 as 1.0E-4."
+  [percent]
+  (.toPlainString (.stripTrailingZeros ^BigDecimal (/ (bigdec percent) 100M))))
+
 (defmethod sql.qp/table-sample->honeysql :clickhouse
   [driver table-expr {:keys [percent] :as table-sample}]
   (if percent
-    ;; a plain decimal fraction, since Java prints a double below 0.001 as 1.0E-4
-    [:raw [table-expr " SAMPLE " (.toPlainString (.stripTrailingZeros ^BigDecimal (/ (bigdec percent) 100M)))]]
+    [:raw [table-expr " SAMPLE " (sample-fraction percent)]]
     ((get-method sql.qp/table-sample->honeysql :sql) driver table-expr table-sample)))
 
 ;; Only for `:clickhouse` itself, so that a child driver keeps its own `table-rows-sample`.
@@ -1009,24 +1013,44 @@
   [driver _feature _db]
   (= driver :clickhouse))
 
-(def ^:private sampling-key-timeout-seconds
-  "The time limit of the catalog query for the sampling key of a table."
-  15)
+(def ^:private max-sample-read-factor
+  "How many times the sample size `SAMPLE` may read, by the estimate of the index analysis. `SAMPLE` reads at least a
+  granule of each part for each value of the columns of the sorting key before the sampling key, so it reads few rows
+  only when those columns have few values; otherwise it can read the whole table, and it also does for a sampling key
+  whose values fill a small part of its type's range."
+  100)
 
 (defn- sampling-key?
-  "Whether `table` declares a sampling key, which `SAMPLE` needs."
-  [table]
-  (-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:db_id table)))
-                  ["SELECT sampling_key FROM system.tables WHERE database = ? AND name = ?" (:schema table) (:name table)]
-                  {:timeout sampling-key-timeout-seconds})
+  "Whether `table` declares a sampling key, which `SAMPLE` needs. No JDBC time limit: the driver sends it as
+  `max_execution_time`, which a read-only user cannot set; the query reads metadata."
+  [spec table]
+  (-> (jdbc/query spec ["SELECT sampling_key FROM system.tables WHERE database = ? AND name = ?"
+                        (:schema table) (:name table)])
       first
       :sampling_key
       perf/not-empty
       boolean))
 
-;; The native SAMPLE for a table with a sampling key. Other tables keep the first rows.
+(defn- sample-read-rows
+  "The rows that `SAMPLE` of `percent` percent of `table` reads, by `EXPLAIN ESTIMATE`, which analyzes the index and
+  reads no data."
+  [spec table percent]
+  (transduce (map (comp long :rows)) + 0
+             (jdbc/query spec [(str "EXPLAIN ESTIMATE SELECT 1 FROM "
+                                    (sql.u/quote-name :clickhouse :table (:schema table) (:name table))
+                                    " SAMPLE " (sample-fraction percent))])))
+
+(defn- cheap-sample?
+  "Whether `SAMPLE` of `table` for a sample of `opts` reads at most [[max-sample-read-factor]] times its rows."
+  [table {:keys [rows] :as opts}]
+  (let [spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:db_id table)))]
+    (boolean (when-let [percent (and (sampling-key? spec table) (table-rows-sample/block-sample-percent opts))]
+               (<= (sample-read-rows spec table percent) (* max-sample-read-factor rows))))))
+
+;; The native SAMPLE for a table with a sampling key, when the index analysis says it reads few rows. Other tables keep
+;; the first rows.
 (defmethod driver/table-random-sample :clickhouse
   [_driver table fields rff opts]
-  (if (and (:row-count opts) (sampling-key? table))
+  (if (and (:row-count opts) (cheap-sample? table opts))
     (table-rows-sample/block-sample table fields rff opts)
     {:method :first-rows}))
