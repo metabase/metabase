@@ -6,6 +6,7 @@
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.analyze.table-chunks :as table-chunks]
    [metabase.sync.db :as sync.db]
@@ -164,10 +165,11 @@
   "Fetch distinct values for the Fields of each of `tables`, by `table-id->fields`, each Table's Database by
   `table-database`, and write their FieldValues at once, returning the counts of outcomes."
   [tables table-database table-id->fields fvs-map]
-  (let [fetched (mapv (fn [table]
-                        (database-routing/with-anonymous-router-access
-                          (table-field-values-changes (table-database table) table (table-id->fields (:id table)) fvs-map)))
-                      tables)]
+  (let [fetched (lib-be/with-metadata-provider-cache
+                  (mapv (fn [table]
+                          (database-routing/with-anonymous-router-access
+                            (table-field-values-changes (table-database table) table (table-id->fields (:id table)) fvs-map)))
+                        tables))]
     (assoc (save-changes! (into [] (mapcat :changes) fetched))
            :queries (transduce (map :queries) + 0 fetched))))
 
