@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
 import { type ComponentType, type ReactNode, useState } from "react";
 import { t } from "ttag";

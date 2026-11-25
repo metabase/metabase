@@ -39,12 +39,12 @@
   "The data-access patterns behind schema generation."
   (library-scope [source]
     "The [[LibraryScope]] of the root libraries.")
-  (metrics [source collection-ids]
-    "Schema entities for the metrics in `collection-ids`.")
+  (metrics [source collection-ids metric-ids]
+    "Schema entities for the metrics in `collection-ids`, only those with `metric-ids` when it has any.")
   (tables [source table-ids]
     "Schema entities for the tables with `table-ids`.")
-  (library-tables [source collection-ids]
-    "Published table rows in `collection-ids`."))
+  (library-tables [source collection-ids table-ids]
+    "Published table rows in `collection-ids`, only those with `table-ids` when it has any."))
 
 (defn- curated-library-ids
   [scope-key requested-ids]
@@ -55,11 +55,13 @@
   (reify SchemaSource
     (library-scope [_]
       (app-db-library-scope))
-    (metrics [_ collection-ids]
+    (metrics [_ collection-ids metric-ids]
       (vec (schemas.metric/metric-schemas
-            (curated-library-ids :metric-collection-ids collection-ids))))
+            (curated-library-ids :metric-collection-ids collection-ids)
+            metric-ids)))
     (tables [_ table-ids]
       (vec (schemas.table/table-schemas (schemas.table/select-tables table-ids))))
-    (library-tables [_ collection-ids]
+    (library-tables [_ collection-ids table-ids]
       (vec (schemas.table/select-library-tables
-            (curated-library-ids :data-collection-ids collection-ids))))))
+            (curated-library-ids :data-collection-ids collection-ids)
+            table-ids)))))

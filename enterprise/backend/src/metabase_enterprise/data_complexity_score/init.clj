@@ -2,6 +2,7 @@
   "Loader + startup wiring for data-complexity-score tasks.
   Ensures boot-time Data Complexity Score publishing runs regardless of `MB_DISABLE_SCHEDULER`."
   (:require
+   [metabase-enterprise.data-complexity-score.models.data-complexity-score]
    [metabase-enterprise.data-complexity-score.settings]
    [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase-enterprise.data-complexity-score.task.complexity-score-trimmer]

@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   findRequests,
   setupAdhocQueryMetadataEndpoint,
@@ -27,6 +28,7 @@ import {
 import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import Question from "metabase-lib/v1/Question";
 import type { Database, DatabaseId } from "metabase-types/api";
 import {
   createMockCardQueryMetadata,
@@ -51,6 +53,12 @@ const ADDITIONAL_DB = createMockDatabase({
   id: 3,
   name: "New Database",
   engine: "postgres",
+});
+const AUDIT_DB = createMockDatabase({
+  id: 13371337,
+  name: "Internal Metabase Database",
+  engine: "postgres",
+  is_audit: true,
 });
 
 const LAST_USED_DATABASE_SETTING_URL =
@@ -119,13 +127,15 @@ const setup = async ({
 
 // The "Use a native query" link of NewModelOptions, which its own spec pins.
 const getNewNativeModelUrl = (databaseId: DatabaseId | null) =>
-  Urls.newQuestion({
-    mode: "query",
-    DEPRECATED_RAW_MBQL_type: "native",
-    creationType: "native_question",
-    cardType: "model",
-    DEPRECATED_RAW_MBQL_databaseId: databaseId ?? undefined,
-  });
+  Urls.newQuestion(
+    Question.create({
+      metadata: createMockMetadata(),
+      DEPRECATED_RAW_MBQL_type: "native",
+      cardType: "model",
+      DEPRECATED_RAW_MBQL_databaseId: databaseId ?? undefined,
+    }),
+    { mode: "query", creationType: "native_question" },
+  );
 
 const selectDatabase = async (name: string) => {
   await userEvent.click(
@@ -241,6 +251,42 @@ describe("QueryBuilder > native database source", () => {
       expect(within(popover).getByText(ADDITIONAL_DB.name)).toBeInTheDocument();
       expect(
         within(popover).queryByText(SAMPLE_DB.name),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("instance analytics database (metabase#44856)", () => {
+    it("selects the only other database instead of the instance analytics database", async () => {
+      await setup({
+        editorType: "question",
+        databases: [AUDIT_DB, SAMPLE_DB],
+        lastUsedDatabaseId: null,
+      });
+
+      expect(await screen.findByTestId("selected-database")).toHaveTextContent(
+        SAMPLE_DB.name,
+      );
+      await waitFor(async () => {
+        expect(await findLastUsedDatabaseRequests()).toHaveLength(1);
+      });
+      const [request] = await findLastUsedDatabaseRequests();
+      expect(request.body).toEqual({ value: SAMPLE_DB.id });
+    });
+
+    it("does not list the instance analytics database", async () => {
+      await setup({
+        editorType: "question",
+        databases: [AUDIT_DB, SAMPLE_DB, POSTGRES_DB],
+        lastUsedDatabaseId: POSTGRES_DB.id,
+      });
+
+      await userEvent.click(await screen.findByTestId("selected-database"));
+
+      const popover = await screen.findByRole("dialog");
+      expect(within(popover).getByText(SAMPLE_DB.name)).toBeInTheDocument();
+      expect(within(popover).getByText(POSTGRES_DB.name)).toBeInTheDocument();
+      expect(
+        within(popover).queryByText(AUDIT_DB.name),
       ).not.toBeInTheDocument();
     });
   });

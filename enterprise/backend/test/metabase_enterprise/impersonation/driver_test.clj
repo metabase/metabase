@@ -34,6 +34,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -305,17 +306,15 @@
     (or (get @impersonation-databases cache-key)
         (let [details  (impersonation-granting-details driver source-db)
               _        (assert-owns-its-secrets driver details source-db)
-              database (first (t2/insert-returning-instances!
-                               :model/Database
-                               (merge (t2.with-temp/with-temp-defaults :model/Database)
-                                      {:engine  driver
-                                       :name    (format "impersonation-%s-%d" (name driver) (u/the-id source-db))
-                                       :details details})))]
+              database (first (database/create-databases!
+                               [(merge (t2.with-temp/with-temp-defaults :model/Database)
+                                       {:engine  driver
+                                        :name    (format "impersonation-%s-%d" (name driver) (u/the-id source-db))
+                                        :details details})]))]
           (sync/sync-database! (:id database) {:scan :schema})
-          (t2/update! :model/Database :id (u/the-id database)
-                      {:details (cond-> (impersonation-details driver source-db)
-                                  (driver/database-supports? driver :connection-impersonation-requires-role nil)
-                                  (assoc :role (impersonation-default-role driver)))})
+          (database/update-databases! [{:id (u/the-id database) :details (cond-> (impersonation-details driver source-db)
+                                                                           (driver/database-supports? driver :connection-impersonation-requires-role nil)
+                                                                           (assoc :role (impersonation-default-role driver)))}])
           ;; the pools opened during sync authenticate as the granting user; tests must not inherit them
           (driver/notify-database-updated driver (driver.u/lib-database (:id database)))
           (let [database (t2/select-one :model/Database :id (u/the-id database))]
@@ -346,7 +345,7 @@
                             ;; ids were created by this namespace and are deleted after its last test finishes.
                             ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
                             #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-                            (t2/delete! :model/Database :id [:in ids]))))))
+                            (database/delete-databases! (vec ids)))))))
 
 (deftest conn-impersonation-simple-test
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
@@ -491,32 +490,38 @@
             {role-name {venues-table {}}}
             (impersonation-default-user driver/*driver*)
             (impersonation-default-role driver/*driver*)
-            (let [details (impersonation-details driver/*driver* (mt/db))]
-              (mt/with-temp [:model/Database database {:engine             driver/*driver*
-                                                       :details            details
-                                                       :write_data_details details}]
-                (mt/with-db database
-                  (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
-                    (t2/update! :model/Database :id (mt/id)
-                                (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
-                  (sync/sync-database! (:id database) {:scan :schema})
-                  (impersonation.util-test/with-impersonations!
-                    {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                     :attributes     {"impersonation_attr" role-name}}
-                    (testing "Read connection: impersonation restricts access as expected"
-                      (is (= [[100]]
-                             (mt/formatted-rows [int]
-                                                (mt/run-mbql-query venues {:aggregation [[:count]]})))))
-                    (testing "Write connection: impersonation still restricts access"
-                      (driver.conn/with-write-connection
+            (mt/with-model-cleanup [:model/Database :model/Secret]
+              (let [details    (impersonation-details driver/*driver* (mt/db))
+                    [database] (database/create-databases! [{:name               (mt/random-name)
+                                                             :engine             driver/*driver*
+                                                             :details            details
+                                                             :write_data_details details
+                                                             :settings           {:database-source-dataset-name "test-data"}}])]
+                (try
+                  (mt/with-db database
+                    (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                      (t2/update! :model/Database :id (mt/id)
+                                  (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+                    (sync/sync-database! (:id database) {:scan :schema})
+                    (impersonation.util-test/with-impersonations!
+                      {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                       :attributes     {"impersonation_attr" role-name}}
+                      (testing "Read connection: impersonation restricts access as expected"
                         (is (= [[100]]
                                (mt/formatted-rows [int]
-                                                  (mt/run-mbql-query venues {:aggregation [[:count]]}))))))
-                    (testing "Write connection: impersonation blocks disallowed tables"
-                      (driver.conn/with-write-connection
-                        (is (thrown?
-                             java.lang.Exception
-                             (mt/run-mbql-query checkins {:aggregation [[:count]]})))))))))))))))
+                                                  (mt/run-mbql-query venues {:aggregation [[:count]]})))))
+                      (testing "Write connection: impersonation still restricts access"
+                        (driver.conn/with-write-connection
+                          (is (= [[100]]
+                                 (mt/formatted-rows [int]
+                                                    (mt/run-mbql-query venues {:aggregation [[:count]]}))))))
+                      (testing "Write connection: impersonation blocks disallowed tables"
+                        (driver.conn/with-write-connection
+                          (is (thrown?
+                               java.lang.Exception
+                               (mt/run-mbql-query checkins {:aggregation [[:count]]})))))))
+                  (finally
+                    (database/delete-databases! [(:id database)])))))))))))
 
 ;; Proves `with-write-connection` actually routes to the write connection pool by using
 ;; two different Postgres users: a readonly user (for read) who is NOT a member of the
@@ -701,32 +706,44 @@
           impersonation-user
           (impersonation-default-role driver/*driver*)
           (testing "Using connection impersonation with a user that can't be impersonated returns an error"
-            (mt/with-temp [:model/Database database {:engine driver/*driver*,
-                                                     :details details}]
-              (mt/with-db database
-                (sync/sync-database! (:id database) {:scan :schema})
-                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                               :attributes     {"impersonation_attr" role-a}}
-                  (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"Connection impersonation is enabled for this database, but no default role is found"
-                       (mt/run-mbql-query venues
-                         {:aggregation [[:count]]})))))))
+            (mt/with-model-cleanup [:model/Database]
+              (let [[database] (database/create-databases! [{:name     (mt/random-name)
+                                                             :engine   driver/*driver*
+                                                             :details  details
+                                                             :settings {:database-source-dataset-name "test-data"}}])]
+                (try
+                  (mt/with-db database
+                    (sync/sync-database! (:id database) {:scan :schema})
+                    (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                                   :attributes     {"impersonation_attr" role-a}}
+                      (is (thrown-with-msg?
+                           clojure.lang.ExceptionInfo
+                           #"Connection impersonation is enabled for this database, but no default role is found"
+                           (mt/run-mbql-query venues
+                             {:aggregation [[:count]]})))))
+                  (finally
+                    (database/delete-databases! [(:id database)]))))))
           (testing "Using connection impersonation with a default user that can't be impersonated works if an impersonation user (role) is provided"
-            (mt/with-temp [:model/Database database {:engine driver/*driver*,
-                                                     :details (merge details {:role impersonation-user})}]
-              (mt/with-db database
-                (sync/sync-database! (:id database) {:scan :schema})
-                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                               :attributes     {"impersonation_attr" role-a}}
-                  (is (= [[100]]
-                         (mt/rows
-                          (mt/run-mbql-query venues
-                            {:aggregation [[:count]]}))))
-                  (is (thrown?
-                       java.lang.Exception
-                       (mt/run-mbql-query checkins
-                         {:aggregation [[:count]]}))))))))))))
+            (mt/with-model-cleanup [:model/Database]
+              (let [[database] (database/create-databases! [{:name     (mt/random-name)
+                                                             :engine   driver/*driver*
+                                                             :details  (merge details {:role impersonation-user})
+                                                             :settings {:database-source-dataset-name "test-data"}}])]
+                (try
+                  (mt/with-db database
+                    (sync/sync-database! (:id database) {:scan :schema})
+                    (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                                   :attributes     {"impersonation_attr" role-a}}
+                      (is (= [[100]]
+                             (mt/rows
+                              (mt/run-mbql-query venues
+                                {:aggregation [[:count]]}))))
+                      (is (thrown?
+                           java.lang.Exception
+                           (mt/run-mbql-query checkins
+                             {:aggregation [[:count]]})))))
+                  (finally
+                    (database/delete-databases! [(:id database)])))))))))))
 
 (deftest conn-impersonation-with-db-routing
   (mt/test-driver :postgres
@@ -1332,7 +1349,8 @@
                         (is (= original-name (read-name)))))))))))))))
 
 (deftest admins-can-run-show-timezone-statement-test
-  (mt/test-drivers (mt/normal-driver-select {:+parent :postgres})
+  (mt/test-drivers (mt/normal-driver-select {:+parent :postgres
+                                             :+features [:connection-impersonation]})
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             role-a (u/lower-case-en (mt/random-name))]
@@ -1580,7 +1598,8 @@
     ;; End-to-end check that the rejection holds through the real QP preprocess chain, and that it happens
     ;; *before* execution: we ask the warehouse directly rather than trusting the QP status, so that a
     ;; refactor moving validation after execution begins would fail here.
-    (mt/test-drivers (mt/normal-driver-select {:+parent :postgres})
+    (mt/test-drivers (mt/normal-driver-select {:+parent :postgres
+                                               :+features [:connection-impersonation]})
       (mt/with-premium-features #{:advanced-permissions}
         (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
               role-a       (u/lower-case-en (mt/random-name))]

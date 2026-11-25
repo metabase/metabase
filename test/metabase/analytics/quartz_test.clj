@@ -2,9 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.analytics.quartz :as analytics.quartz]
+   [metabase.task.core :as task]
    [metabase.test :as mt])
   (:import
-   [org.quartz JobDetail JobExecutionContext JobExecutionException JobKey Scheduler TriggerKey Trigger$TriggerState]))
+   [org.quartz JobDataMap JobDetail JobExecutionContext JobExecutionException JobKey Scheduler TriggerKey Trigger$TriggerState]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,12 +35,16 @@
 
 (defn- mock-job-execution-context
   "Creates a mock JobExecutionContext."
-  ^JobExecutionContext [^String job-name ^long run-time]
-  (let [job-key (JobKey. job-name)
-        job-detail (reify JobDetail (getKey [_] job-key))]
-    (reify JobExecutionContext
-      (getJobDetail [_] job-detail)
-      (getJobRunTime [_] run-time))))
+  (^JobExecutionContext [job-name run-time]
+   (mock-job-execution-context job-name run-time {}))
+  (^JobExecutionContext [^String job-name ^long run-time job-data]
+   (let [job-key (JobKey. job-name)
+         job-detail (reify JobDetail
+                      (getKey [_] job-key)
+                      (getJobDataMap [_] (JobDataMap. ^java.util.Map job-data)))]
+     (reify JobExecutionContext
+       (getJobDetail [_] job-detail)
+       (getJobRunTime [_] run-time)))))
 
 (deftest get-quartz-task-states-test
   (testing "should correctly count tasks in various states"
@@ -110,6 +115,15 @@
                 "Successful counter should remain unchanged")
             (is (= 1.0 (mt/metric-value system :metabase-tasks/quartz-tasks-executed fail-tags))
                 "Counter should increment for failed job with correct tags")))))))
+
+(deftest job-listener-uses-metrics-job-name-of-job-data-test
+  (mt/with-prometheus-system! [_ system]
+    (let [listener (analytics.quartz/create-job-execution-listener)]
+      (doseq [job-name ["sync.job.1" "sync.job.2"]]
+        (.jobWasExecuted listener (mock-job-execution-context job-name 1 {task/metrics-job-name-key "sync.job"}) nil))
+      (is (= 2.0 (mt/metric-value system :metabase-tasks/quartz-tasks-executed {:status "succeeded" :job-name "sync.job"})))
+      (is (= 0.0 (mt/metric-value system :metabase-tasks/quartz-tasks-executed {:status   "succeeded"
+                                                                                :job-name "DEFAULT.sync.job.1"}))))))
 
 (deftest trigger-listener-test
   (testing "Trigger listener should set the correct gauge values for task states"

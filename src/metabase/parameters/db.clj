@@ -5,7 +5,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (defn- nested
@@ -82,12 +81,17 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (mdb/select-batched #(t2/select :model/Field :id [:in %]) field-ids))
+
+(mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
+  "The Database id of each of the Tables with `table-ids`, by Table id."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (mdb/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in [:auto/param %]]) table-ids))
 
 (mu/defn fields-fk-info
   "The id, FK target, and semantic type of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-ids]))
+  (mdb/select-batched #(t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in %]) field-ids))
 
 (mu/defn field-fk-target-field-id
   "The FK target Field id of the Field with `field-id`, or nil."
@@ -124,39 +128,39 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(mu/defn delete-field-values!
-  "Delete the FieldValues with `id`, returning the number deleted."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/FieldValues :id id))
-
 (mu/defn advanced-field-values
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, or nil."
   [field-id :- ::lib.schema.id/field
    hash-key :- :string]
   (t2/select-one :model/FieldValues :field_id field-id, :type :advanced, :hash_key hash-key))
 
-(mu/defn find-or-insert-advanced-field-values!
-  "The advanced FieldValues of the Field with `field-id` and `hash-key`, inserting one built by calling
-  `insert-fn` if none exists yet."
-  [field-id  :- ::lib.schema.id/field
-   hash-key  :- :string
-   insert-fn :- fn?]
-  (mdb/select-or-insert! :model/FieldValues {:field_id field-id, :type :advanced, :hash_key hash-key} insert-fn))
+(mu/defn advanced-field-values-of-fields
+  "The advanced FieldValues of the Fields with `field-ids` whose hash key is one of `hash-keys`, by descending id."
+  [field-ids :- [:sequential ::lib.schema.id/field]
+   hash-keys :- [:sequential :string]]
+  (->> (mdb/select-batched (fn [field-ids]
+                             (mdb/select-batched #(t2/select :model/FieldValues :field_id [:in field-ids], :type :advanced, :hash_key [:in %]
+                                                             {:order-by [[:id :desc]]})
+                                                 hash-keys))
+                           field-ids)
+       (sort-by :id #(compare %2 %1))
+       vec))
 
 (mu/defn active-name-fields-for-tables
   "The `columns` of the active `:type/Name` Fields of the Tables with `table-ids`."
   [columns   :- [:sequential :keyword]
    table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select (into [:model/Field] columns)
-             :table_id      [:in table-ids]
-             :semantic_type (mdb/isa :type/Name)
-             :active        true))
+  (mdb/select-batched #(t2/select (into [:model/Field] columns)
+                                  :table_id      [:in %]
+                                  :semantic_type (mdb/isa :type/Name)
+                                  :active        true)
+                      table-ids))
 
 (mu/defn fields-with-columns
   "The `columns` of the Fields with `field-ids`."
   [columns   :- [:sequential :keyword]
    field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select (into [:model/Field] columns) :id [:in field-ids]))
+  (mdb/select-batched #(t2/select (into [:model/Field] columns) :id [:in %]) field-ids))
 
 (mu/defn fk-relationships-for-database
   "Rows describing FK -> PK Field relationships (`:f1`/`:t1` FK Field/Table ids, `:f2`/`:t2` PK Field/Table ids)

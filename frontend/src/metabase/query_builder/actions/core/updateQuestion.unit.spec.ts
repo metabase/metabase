@@ -10,7 +10,6 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import * as questionActions from "metabase/questions/actions";
 import type { QueryBuilderMode } from "metabase/redux/store";
-import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import {
@@ -30,7 +29,6 @@ import {
   createMockCard,
   createMockColumn,
   createMockDataset,
-  createMockSavedQuestionsDatabase,
   createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import {
@@ -64,8 +62,6 @@ type SetupOpts = {
   queryBuilderMode?: QueryBuilderMode;
   isShowingTemplateTagsEditor?: boolean;
 };
-
-const SAVED_QUESTIONS_DB = createMockSavedQuestionsDatabase();
 
 function createNativeJsQuery(
   templateTags: Record<string, TestTemplateTag> = {},
@@ -231,7 +227,7 @@ async function setup({
   }
 
   const entitiesState = createMockEntitiesState({
-    databases: [createSampleDatabase(), SAVED_QUESTIONS_DB],
+    databases: [createSampleDatabase()],
     // Unjustified type cast. FIXME
     questions: cards,
   });
@@ -241,9 +237,7 @@ async function setup({
   );
   const ordersTable = createOrdersTable();
   const ordersFields = ordersTable.fields ?? [];
-  const question = isSavedCard
-    ? checkNotNull(metadata.question(card.id))
-    : new Question(card, metadata);
+  const question = new Question(card, metadata);
 
   const queryResult = createMockDataset({
     data: {

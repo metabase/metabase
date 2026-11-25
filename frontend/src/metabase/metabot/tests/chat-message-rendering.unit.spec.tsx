@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { assocIn } from "icepick";
 import type { ComponentProps } from "react";
 
 import {
@@ -32,7 +31,9 @@ import {
   setup as renderMetabotChat,
   thumbsDown,
   thumbsUp,
+  updateTestConversation,
 } from "metabase/metabot/tests/utils";
+import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -194,6 +195,37 @@ describe("AgentMessage", () => {
       ).not.toBeInTheDocument();
       expect(
         screen.queryByTestId("metabot-chat-message-thumbs-down"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("generated chart", () => {
+    const generatedChartPart: MetabotMessage["parts"][number] = {
+      id: "g1",
+      role: "agent",
+      type: "data_part",
+      part: {
+        type: "data-generated_entity",
+        data: {
+          type: "card",
+          id: "chart-1",
+          title: "Orders by month",
+          query: {
+            id: "query-1",
+            query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+          },
+        },
+      },
+    };
+
+    it("shows a link to open the chart when charts show as links", () => {
+      setup({ parts: [generatedChartPart] }, { chartsAsLinks: true });
+
+      expect(
+        screen.getByTestId("metabot-inline-chart-link"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("metabot-inline-chart"),
       ).not.toBeInTheDocument();
     });
   });
@@ -457,14 +489,20 @@ describe("UserMessage chart mentions", () => {
       SAMPLE_PROVIDER,
       DEFAULT_TEST_QUERY,
     );
-    const metabotState = assocIn(
-      getMetabotInitialState(),
-      ["conversations", "omnibot", "state"],
+    const initialState = getMetabotInitialState();
+    const omnibotConversationId = checkNotNull(
+      initialState.agents.omnibot,
+    ).conversationId;
+    const metabotState = updateTestConversation(
+      initialState,
+      omnibotConversationId,
       {
-        charts: {
-          "chart-1": {
-            queries: [datasetQuery],
-            visualization_settings: { chart_type: "bar" },
+        state: {
+          charts: {
+            "chart-1": {
+              queries: [datasetQuery],
+              visualization_settings: { chart_type: "bar" },
+            },
           },
         },
       },

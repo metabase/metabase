@@ -386,6 +386,11 @@
 (defmethod driver/database-supports? [:snowflake :test/dynamic-dataset-loading]
   [_driver _feature _database] false)
 
+;; Python transforms swap in a new table with a drop and then a rename, since this driver doesn't support
+;; `:atomic-renames`.
+(defmethod driver/database-supports? [:snowflake :test/python-transforms-without-atomic-renames]
+  [_driver _feature _database] true)
+
 (defmethod tx/fake-sync-schema :snowflake
   [_driver]
   "PUBLIC")

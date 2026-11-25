@@ -29,8 +29,10 @@
 
     (jobWasExecuted [_ ctx job-exception]
       (try
-        (let [tags {:status (if job-exception "failed" "succeeded")
-                    :job-name (.. ctx getJobDetail getKey toString)}]
+        (let [job-detail (.getJobDetail ctx)
+              tags       {:status   (if job-exception "failed" "succeeded")
+                          :job-name (or (.getString (.getJobDataMap job-detail) task/metrics-job-name-key)
+                                        (.. job-detail getKey toString))}]
           (analytics/inc! :metabase-tasks/quartz-tasks-executed tags))
         (catch Throwable e
           (log/errorf "Failed to record Prometheus metric for Quartz job completion: %s" (ex-message e)))))))

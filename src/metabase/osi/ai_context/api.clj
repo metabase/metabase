@@ -32,7 +32,7 @@
 
     - a string is length-capped as the `:instructions` it becomes, and
     - validation (and every read) only ever sees the object form."
-  (mu/with AiContext {:decode/api osi-ai-context/->ai-context}))
+  (mu/with AiContext {:decode/api osi.schema/normalize-ai-context}))
 
 (def ^:private Entry
   "An ai_context row as returned on reads. `entity_type` is any string: a row can predate a type's
@@ -98,7 +98,7 @@
   ;; Upsert on the normalized (stored) key so re-posting a relabelled card updates its one row.
   ;; update-or-insert! handles the compound key, the no-op re-PUT, and the concurrent-create race
   ;; (savepoint + single retry) centrally.
-  (osi.db/upsert-ai-context! (entity-retrieval/normalize-entity-type entity-type) entity-local-id ai_context)
+  (osi-ai-context/upsert-osi-ai-context! (entity-retrieval/normalize-entity-type entity-type) entity-local-id ai_context)
   (get-entry entity-type entity-local-id))
 
 (api.macros/defendpoint :post "/reconcile"
@@ -126,12 +126,11 @@
                  (str "The library entity index is unavailable: it needs the library entity-retrieval "
                       "feature plus a configured pgvector store and embedding backend.")))
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:entity-type/:entity-local-id"
+(api.macros/defendpoint :delete "/:entity-type/:entity-local-id" :- ::api/generic-204-no-content
   "Delete the ai_context entry for an entity by its logical key."
   [{:keys [entity-type entity-local-id]} :- logical-key-route-schema
    _query-params]
   (api/check-superuser)
   (api/check-404 (get-entry entity-type entity-local-id))
-  (osi.db/delete-ai-context! (entity-retrieval/normalize-entity-type entity-type) entity-local-id)
+  (osi-ai-context/delete-osi-ai-context! (entity-retrieval/normalize-entity-type entity-type) entity-local-id)
   api/generic-204-no-content)

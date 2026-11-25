@@ -7,7 +7,18 @@ const { IS_DEV_MODE } = require("../constants");
 const ROOT_PATH = path.resolve(__dirname, "../../../..");
 const ASSETS_PATH = ROOT_PATH + "/resources/frontend_client/app/assets";
 const LOCALES_PATH = ROOT_PATH + "/resources/frontend_client/app/locales";
-const FONTS_PATH = ROOT_PATH + "/resources/frontend_client/app/fonts";
+// Bundled font sources. Deliberately outside resources/ so they are not packaged
+// into the jar twice: the build emits hashed copies into app/dist/fonts.
+const FONTS_PATH = ROOT_PATH + "/frontend/fonts";
+// Per-range chunks written by the font-subset loader. The stylesheet that
+// declares them is that loader's output, not a file. Chunk names carry the hash
+// of their inputs, so the directory doubles as the cache that keeps a warm build
+// from re-subsetting 104 faces.
+const GENERATED_FONTS_PATH = ROOT_PATH + "/node_modules/.cache/font-subsets";
+// Backs the bare `fonts.css` import. No such file exists: a virtual module
+// holds the place and the font-subset loader supplies every rule, built from
+// the fonts in the directory beside it.
+const FONT_FACES_PATH = ROOT_PATH + "/frontend/fonts/fonts.css";
 const DOCS_PATH = ROOT_PATH + "/docs";
 const FRONTEND_BUILD_CONFIGS_PATH = ROOT_PATH + "/frontend/build";
 const SRC_PATH = ROOT_PATH + "/frontend/src/metabase";
@@ -42,6 +53,8 @@ const RESOLVE_ALIASES = {
   // Written by the `:translations` build step, which runs before the frontend one.
   locales: LOCALES_PATH,
   fonts: FONTS_PATH,
+  "generated-fonts": GENERATED_FONTS_PATH,
+  "fonts.css$": FONT_FACES_PATH,
   docs: DOCS_PATH,
   metabase: SRC_PATH,
   "metabase-lib": LIB_SRC_PATH,
@@ -52,10 +65,6 @@ const RESOLVE_ALIASES = {
   __support__: TEST_SUPPORT_PATH,
   e2e: E2E_PATH,
   style: SRC_PATH + "/css/core/index",
-  // NOTE @kdoh - 7/24/18
-  // icepick 2.x is es6 by default, to maintain backwards compatibility
-  // with ie11 point to the minified version
-  icepick: ROOT_PATH + "/node_modules/icepick/icepick.min",
   // conditionally load either the EE plugins file or a empty file in the CE code tree
   "ee-plugins":
     process.env.MB_EDITION === "ee"

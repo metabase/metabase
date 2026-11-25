@@ -11,6 +11,8 @@
    [metabase-enterprise.mcp.db :as mcp.db]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
+   [metabase.mcp.models.mcp-session-log :as mcp-session-log]
+   [metabase.mcp.models.mcp-tool-call-log :as mcp-tool-call-log]
    [metabase.mcp.usage :as mcp.usage]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]))
@@ -61,7 +63,7 @@
             pii (select-keys (analytics/pii-fields-from {:user-agent user-agent
                                                          :ip-address ip-address})
                              [:user_agent :ip_address])]
-        (mcp.db/insert-session-log!
+        (mcp-session-log/create-mcp-session-log!
          (merge {:id             session-id
                  :user_id        user-id
                  :tenant_id      tenant-id
@@ -78,7 +80,7 @@
   [session-id]
   (try
     (when session-id
-      (mcp.db/end-session-log! session-id))
+      (mcp-session-log/end-mcp-session-log! session-id))
     (catch Throwable e
       (log/warnf "Failed to record MCP session end: %s" (ex-message e)))))
 
@@ -118,7 +120,7 @@
           pii (select-keys (analytics/pii-fields-from {:user-agent user-agent
                                                        :ip-address ip-address})
                            [:user_agent :ip_address :sanitized_user_agent])]
-      (mcp.db/insert-tool-call-log!
+      (mcp-tool-call-log/create-mcp-tool-call-log!
        (merge {:tool_name       (or (not-empty (truncate tool-name tool-name-max-length))
                                     unknown-tool-name)
                :user_id         user-id

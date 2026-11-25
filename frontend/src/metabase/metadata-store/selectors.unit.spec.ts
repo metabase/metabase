@@ -2,7 +2,7 @@ import { createMockSettingsState, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import type { EntitiesState } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
-import Metadata from "metabase-lib/v1/metadata/Metadata";
+import * as Lib from "metabase-lib";
 import {
   createMockDatabase,
   createMockField,
@@ -11,12 +11,7 @@ import {
   createMockSettings,
   createMockTable,
 } from "metabase-types/api/mocks";
-import {
-  ORDERS,
-  ORDERS_ID,
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import {
   getMetadata,
@@ -53,39 +48,19 @@ function setup() {
 }
 
 describe("getMetadata", () => {
-  it("should properly transfer metadata", () => {
-    const { metadata, sampleDatabase, segments, settings } = setup();
+  it("should give metabase-lib store databases, tables and fields", () => {
+    const { metadata, sampleDatabase } = setup();
     const sampleDatabaseTables = checkNotNull(sampleDatabase.tables);
+    const provider = Lib.metadataProvider(sampleDatabase.id, metadata);
 
-    expect(metadata).toBeInstanceOf(Metadata);
-    expect(Object.keys(metadata.databases).length).toEqual(2);
-    expect(Object.keys(metadata.tables).length).toEqual(
-      sampleDatabase?.tables?.length,
-    );
-    expect(Object.keys(metadata.fields).length).toEqual(
-      sampleDatabaseTables.reduce(
-        (count, table) => count + checkNotNull(table.fields).length,
-        0,
-      ),
-    );
-    expect(Object.keys(metadata.segments).length).toEqual(segments.length);
-    expect(metadata.settings).toEqual(settings);
-    expect(metadata.setting("site-url")).toEqual(settings["site-url"]);
-  });
-
-  describe("connected table", () => {
-    it("should have a parent database", () => {
-      const { metadata } = setup();
-      const table = checkNotNull(metadata.table(ORDERS_ID));
-      expect(table.database).toEqual(metadata.database(SAMPLE_DB_ID));
-    });
-  });
-
-  describe("connected field", () => {
-    it("should have a parent table", () => {
-      const { metadata } = setup();
-      const field = checkNotNull(metadata.field(ORDERS.CREATED_AT));
-      expect(field.table).toEqual(metadata.table(ORDERS_ID));
+    expect(
+      Lib.databaseMetadata(Lib.metadataProvider(2, metadata)),
+    ).not.toBeNull();
+    sampleDatabaseTables.forEach((table) => {
+      expect(Lib.tableMetadata(provider, table.id)).not.toBeNull();
+      checkNotNull(table.fields).forEach((field) => {
+        expect(Lib.fieldMetadata(provider, Number(field.id))).not.toBeNull();
+      });
     });
   });
 });
@@ -133,37 +108,25 @@ describe("table relations", () => {
     },
   };
 
-  const v1FieldIds = (state: ReturnType<typeof createMockState>) =>
-    getMetadata(state)
-      .table(TABLE_ID)
-      ?.fields?.map((field) => field.id);
-
   describe("getShallowTableFieldIds", () => {
-    it("should list every original field, sensitive ones included, like getMetadata", () => {
+    it("should list every original field, sensitive ones included", () => {
       const state = createMockState({ entities });
 
       expect(getShallowTableFieldIds(state, TABLE_ID)).toEqual([10, 11]);
-      expect(getShallowTableFieldIds(state, TABLE_ID)).toEqual(
-        v1FieldIds(state),
-      );
     });
 
-    it("should list only visible fields without original fields, like getMetadata", () => {
+    it("should list only visible fields without original fields", () => {
       const state = createMockState({
         entities: entitiesWithoutOriginalFields,
       });
 
       expect(getShallowTableFieldIds(state, TABLE_ID)).toEqual([10]);
-      expect(getShallowTableFieldIds(state, TABLE_ID)).toEqual(
-        v1FieldIds(state),
-      );
     });
 
-    it("should list nothing for a hidden table, which getMetadata leaves out", () => {
+    it("should list nothing for hidden table", () => {
       const state = createMockState({ entities });
 
       expect(getShallowTableFieldIds(state, HIDDEN_TABLE_ID)).toEqual([]);
-      expect(getMetadata(state).table(HIDDEN_TABLE_ID)).toBeNull();
     });
 
     it("should return the same array until the table or its fields change", () => {
@@ -177,34 +140,25 @@ describe("table relations", () => {
   });
 
   describe("getShallowTableForeignKeys", () => {
-    it("should keep only foreign keys from visible tables, like getMetadata", () => {
+    it("should keep only foreign keys from visible tables", () => {
       const state = createMockState({ entities });
-      const v1OriginIds = getMetadata(state)
-        .table(TABLE_ID)
-        ?.fks?.filter((foreignKey) => foreignKey.origin != null)
-        .map((foreignKey) => foreignKey.origin_id);
-
       const foreignKeys = getShallowTableForeignKeys(state, TABLE_ID);
 
       expect(foreignKeys?.map((foreignKey) => foreignKey.origin_id)).toEqual([
         20,
       ]);
-      expect(foreignKeys?.map((foreignKey) => foreignKey.origin_id)).toEqual(
-        v1OriginIds,
-      );
       expect(foreignKeys?.[0].origin).toMatchObject({
         id: 20,
         table_id: CONNECTED_TABLE_ID,
       });
     });
 
-    it("should be undefined before the table's foreign keys load", () => {
+    it("should be undefined before foreign keys load", () => {
       const state = createMockState({ entities });
 
       expect(
         getShallowTableForeignKeys(state, CONNECTED_TABLE_ID),
       ).toBeUndefined();
-      expect(getMetadata(state).table(CONNECTED_TABLE_ID)?.fks).toBeUndefined();
     });
   });
 });

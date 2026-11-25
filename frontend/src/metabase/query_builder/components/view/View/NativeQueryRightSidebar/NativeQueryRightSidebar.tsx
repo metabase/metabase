@@ -5,10 +5,10 @@ import { DataReference } from "metabase/querying/components/DataReference/DataRe
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
 import { useDispatch, useSelector } from "metabase/redux";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CollectionId,
-  DatasetQuery,
   EmbeddingParameterVisibility,
   NativeQuerySnippet,
   RowValue,
@@ -39,7 +39,7 @@ interface NativeQueryRightSidebarProps {
   isShowingTimelineSidebar: boolean;
   isShowingQuestionInfoSidebar: boolean;
   isShowingQuestionSettingsSidebar: boolean;
-  setDatasetQuery: (query: DatasetQuery) => void;
+  setQuery: (query: Lib.Query) => void;
   setTemplateTag: (tag: TemplateTag) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   getEmbeddedParameterVisibility: (
@@ -80,18 +80,16 @@ export const NativeQueryRightSidebar = (
     isShowingQuestionSettingsSidebar,
   })
     .with({ isShowingTemplateTagsEditor: true }, () => {
-      const query = question.legacyNativeQuery();
-      return query ? (
+      return (
         <TagEditorSidebar
           {...props}
-          query={query}
           originalQuestion={originalQuestion}
           setTemplateTagConfig={(tag, config) =>
             dispatch(setTemplateTagConfig(tag, config))
           }
           onClose={toggleTemplateTagsEditor}
         />
-      ) : null;
+      );
     })
     .with({ isShowingDataReference: true }, () => (
       <DataReference

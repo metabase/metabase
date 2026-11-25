@@ -48,8 +48,6 @@ export const TableActionInputTextarea = ({
         input: classNames?.textInputElement,
       }}
       {...inputProps}
-      // Match the line height for single line text (should look like a regular input)
-      styles={{ input: { lineHeight: "165%" } }}
       maxRows={maxRows}
       minRows={minRows}
       autosize

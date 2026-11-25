@@ -1,7 +1,14 @@
 import fetchMock from "fetch-mock";
 
-import { createMockMetadataFromState } from "__support__/metadata";
-import { createMockLocation, createMockState } from "__support__/state";
+import {
+  createMockMetadata,
+  createMockMetadataFromState,
+} from "__support__/metadata";
+import {
+  createMockLocation,
+  createMockQueryBuilderState,
+  createMockState,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
@@ -9,14 +16,14 @@ import * as CardLib from "metabase/common/utils/card";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
+import type { PendingMetabotCard } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import type { JsMetadata } from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
   DatabaseId,
@@ -52,6 +59,7 @@ type BaseSetupOpts = {
   location: Location;
   params: Record<string, unknown>;
   hasDataPermissions?: boolean;
+  pendingMetabotCard?: PendingMetabotCard | null;
 };
 
 const SEGMENT = createMockSegment();
@@ -61,9 +69,11 @@ async function baseSetup({
   location,
   params,
   hasDataPermissions = true,
+  pendingMetabotCard = null,
 }: BaseSetupOpts) {
   jest.useFakeTimers();
   const state = createMockState({
+    qb: createMockQueryBuilderState({ pendingMetabotCard }),
     entities: createMockEntitiesState({
       databases: hasDataPermissions ? [createSampleDatabase()] : [],
       segments: [SEGMENT],
@@ -572,6 +582,86 @@ describe("QB Actions > initializeQB", () => {
       await setup({ card });
       expect(runQuestionQuerySpy).not.toHaveBeenCalled();
     });
+
+    describe("opened by Metabot", () => {
+      const location = getLocationForCard(card);
+      const url = `${location.pathname}${location.hash}`;
+      const addedBaselines = (dispatch: jest.Mock) =>
+        dispatch.mock.calls
+          .map(([action]) => action)
+          .filter(
+            (action) => action?.type === sharedQB.ADD_METABOT_CARD_BASELINE,
+          );
+
+      it("records the question it loaded as Metabot's", async () => {
+        const { dispatch, result } = await setup({
+          card,
+          location,
+          pendingMetabotCard: { url },
+        });
+
+        expect(addedBaselines(dispatch)).toEqual([
+          sharedQB.addMetabotCardBaseline({
+            dataset_query: result.card.dataset_query,
+            display: result.card.display,
+            visualization_settings: result.card.visualization_settings,
+            parameters: [],
+          }),
+        ]);
+      });
+
+      it("clears the pending card before anything else", async () => {
+        const { dispatch } = await setup({
+          card,
+          location,
+          pendingMetabotCard: { url },
+        });
+
+        const types = dispatch.mock.calls.map(([action]) => action?.type);
+        expect(types[0]).toBe(sharedQB.SET_PENDING_METABOT_CARD);
+        expect(dispatch).toHaveBeenCalledWith(
+          sharedQB.setPendingMetabotCard(null),
+        );
+      });
+
+      it("records nothing when Metabot was opening another question", async () => {
+        const { dispatch } = await setup({
+          card,
+          location,
+          pendingMetabotCard: { url: "/question#another-card" },
+        });
+
+        expect(addedBaselines(dispatch)).toEqual([]);
+        expect(dispatch).toHaveBeenCalledWith(
+          sharedQB.setPendingMetabotCard(null),
+        );
+      });
+
+      it("records nothing when Metabot did not open it", async () => {
+        const { dispatch } = await setup({ card, location });
+
+        expect(addedBaselines(dispatch)).toEqual([]);
+      });
+    });
+  });
+
+  describe("unsaved structured questions opened by Metabot", () => {
+    const { card } = TEST_CASE.UNSAVED_STRUCTURED_QUESTION;
+
+    it("records nothing", async () => {
+      const location = getLocationForCard(card);
+      const { dispatch } = await setup({
+        card,
+        location,
+        pendingMetabotCard: { url: `${location.pathname}${location.hash}` },
+      });
+
+      expect(
+        dispatch.mock.calls.filter(
+          ([action]) => action?.type === sharedQB.ADD_METABOT_CARD_BASELINE,
+        ),
+      ).toEqual([]);
+    });
   });
 
   describe("models", () => {
@@ -744,13 +834,13 @@ describe("QB Actions > initializeQB", () => {
       });
     }
 
-    function getQueryText(card: Card, metadata: Metadata) {
+    function getQueryText(card: Card, metadata: JsMetadata) {
       return Lib.rawNativeQuery(new Question(card, metadata).query());
     }
 
     function isDirty(
       { card, originalCard }: { card: Card; originalCard: Card },
-      metadata: Metadata,
+      metadata: JsMetadata,
     ) {
       return new Question(card, metadata).isDirtyComparedTo(
         new Question(originalCard, metadata),
@@ -995,6 +1085,7 @@ describe("QB Actions > initializeQB", () => {
 
     it("constructs a card based on provided 'db' param", async () => {
       const expectedCard = Question.create({
+        metadata: createMockMetadata(),
         DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
       }).card();
 
@@ -1003,7 +1094,7 @@ describe("QB Actions > initializeQB", () => {
       const query = question.query();
 
       expect(
-        Lib.areLegacyQueriesEqual(
+        Lib.areQueriesEqual(
           result.card.dataset_query,
           expectedCard.dataset_query,
         ),
@@ -1014,12 +1105,16 @@ describe("QB Actions > initializeQB", () => {
 
     it("constructs a card based on provided 'db' and 'table' params", async () => {
       const { result, metadata } = await setupOrdersTable();
-      const expectedCard = checkNotNull(
-        metadata.table(ORDERS_ID)?.question().card(),
-      );
+      const expectedCard = Question.create({
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+        DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+        metadata,
+      })
+        .setDefaultDisplay()
+        .card();
 
       expect(
-        Lib.areLegacyQueriesEqual(
+        Lib.areQueriesEqual(
           result.card.dataset_query,
           expectedCard.dataset_query,
         ),
@@ -1081,12 +1176,16 @@ describe("QB Actions > initializeQB", () => {
 
     it("builds the table's default ad-hoc question from the slug", async () => {
       const { result, metadata } = await setupTableRoute(ORDERS_ID);
-      const expectedCard = checkNotNull(
-        metadata.table(ORDERS_ID)?.question().card(),
-      );
+      const expectedCard = Question.create({
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+        DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
+        metadata,
+      })
+        .setDefaultDisplay()
+        .card();
 
       expect(
-        Lib.areLegacyQueriesEqual(
+        Lib.areQueriesEqual(
           result.card.dataset_query,
           expectedCard.dataset_query,
         ),

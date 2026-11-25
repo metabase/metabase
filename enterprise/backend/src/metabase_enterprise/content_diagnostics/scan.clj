@@ -135,9 +135,8 @@
         id->ns     (when (seq root-colls)
                      (cd.db/collection-namespaces-by-id root-colls))
         ;; str realizes the label NOW, in the job's (site) locale
-        root-label (memoize (fn [collection-namespace]
-                              (str (:name (collection/root-collection-with-ui-details
-                                           collection-namespace)))))]
+        root-label (fn [collection-namespace]
+                     (str (:name (collection/root-collection-with-ui-details collection-namespace))))]
     (mapv (fn [{:keys [scope-collection-id entity-type entity-id] :as finding}]
             (assoc finding :entity-collection-name
                    (if scope-collection-id
@@ -158,7 +157,7 @@
   [scan-id findings]
   (doseq [chunk (partition-all insert-batch-size findings)]
     (t2/with-transaction [_conn]
-      (cd.db/insert-findings!
+      (finding/create-findings!
        (for [{:keys [entity-type entity-id finding-type details scope-collection-id
                      last-active-at duration-ms content-count duplicate-count
                      entity-name entity-created-at entity-creator-id entity-creator-name

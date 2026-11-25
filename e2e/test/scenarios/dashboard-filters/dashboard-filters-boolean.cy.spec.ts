@@ -169,7 +169,7 @@ describe("scenarios > dashboard > filters > boolean", () => {
             cy.findByPlaceholderText(
               "e.g. http://acme.com/id/{{user_id}}",
             ).type(
-              `http://localhost:4000/question/${questionId}?boolean={{${FIELD_NAME}}}`,
+              `${Cypress.config("baseUrl")}/question/${questionId}?boolean={{${FIELD_NAME}}}`,
               { parseSpecialCharSequences: false },
             );
             cy.button("Done").click();
@@ -292,7 +292,7 @@ function createNativeQuestionWithFieldFilterAndDashboard({
               name: "boolean",
               "display-name": "Boolean",
               type: "dimension",
-              dimension: ["field", fieldId, null],
+              "field-id": fieldId,
               "widget-type": "boolean/=",
               default: null,
             },

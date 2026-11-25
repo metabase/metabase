@@ -7,6 +7,7 @@ import type {
   CardType,
   CreateCardRequest,
   DashboardId,
+  DashboardTabId,
   DatabaseId,
   DatasetQuery,
   DraftTransform,
@@ -119,6 +120,8 @@ export type MetabotCardInfo = {
 export type MetabotDashboardInfo = {
   type: "dashboard";
   id: DashboardId;
+  // The open tab, on a dashboard with tabs
+  tab_id?: DashboardTabId;
 };
 
 export type MetabotAdhocQueryInfo = {
@@ -246,6 +249,27 @@ export const METABOT_ISSUE_TYPE_VALUES = [
 ] as const;
 
 export type MetabotIssueType = (typeof METABOT_ISSUE_TYPE_VALUES)[number];
+
+export type GenerateCustomExpressionReference = {
+  name: string;
+  type?: string | null;
+};
+
+export type GenerateCustomExpressionRequest = {
+  mode: "aggregation" | "expression";
+  prompt: string;
+  columns: GenerateCustomExpressionReference[];
+  metrics?: GenerateCustomExpressionReference[] | null;
+  measures?: GenerateCustomExpressionReference[] | null;
+  table_name?: string | null;
+  metabot_id: string;
+  database_id: DatabaseId;
+};
+
+export type GenerateCustomExpressionResponse = {
+  expression: string;
+  name: string;
+};
 
 export type MetabotFeedback = {
   message_id: string;

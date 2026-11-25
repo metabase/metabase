@@ -17,7 +17,7 @@ import {
 
 import { DataAppActionDefinitionPage } from "./DataAppActionDefinitionPage";
 
-const APP = createMockDataApp({ name: "teams" });
+const APP = createMockDataApp({ slug: "teams" });
 
 const DATABASE = createMockDatabase({
   id: 1,
@@ -53,12 +53,12 @@ function setup({ action }: SetupOpts) {
 
   renderWithProviders(
     <Route
-      path="/data-studio/apps/:name/actions/:actionId"
+      path="/data-studio/apps/:slug/actions/:actionId"
       element={<DataAppActionDefinitionPage />}
     />,
     {
       withRouter: true,
-      initialRoute: `/data-studio/apps/${APP.name}/actions/${action.id}`,
+      initialRoute: `/data-studio/apps/${APP.slug}/actions/${action.id}`,
     },
   );
 }

@@ -1,8 +1,16 @@
 (ns metabase.glossary.models.glossary
   (:require
+   [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
+   [metabase.audit-app.core :as audit]
+   [metabase.events.core :as events]
    [metabase.glossary.db :as glossary.db]
    [metabase.glossary.schema :as glossary.schema]
+   [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -14,6 +22,46 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
+(def GlossaryEntry
+  "Schema for a glossary entry."
+  [:map {:closed true}
+   [:id         ms/PositiveInt]
+   [:term       ::glossary.schema/glossary.term]
+   [:definition ::glossary.schema/glossary.definition]])
+
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
+
+(defn- glossary-writable?
+  "Whether the current user can write glossary entries: a superuser or an entitled data analyst, on an instance that is
+  not remote-sync read-only."
+  []
+  (boolean (and (api/entitled-data-analyst?) (not (remote-sync/read-only?)))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Glossary :can_read]
+  "Whether the current user can read each of `entries`, which every user can."
+  [_model k entries]
+  (for [entry entries]
+    (when entry
+      (vary-meta entry assoc k true))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Glossary :can_write]
+  "Whether the current user can write each of `entries`, answered once for the whole list."
+  [_model k entries]
+  (let [writable (glossary-writable?)]
+    (for [entry entries]
+      (when entry
+        (assoc entry k writable)))))
+
+(defmethod mi/can-create? :model/Glossary
+  [_model _entry]
+  (glossary-writable?))
+
+(defmethod mi/can-update? :model/Glossary
+  [entry _changes]
+  (mi/can-write? entry))
+
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
+
 (methodical/defmethod t2/batched-hydrate [:model/Glossary :creator]
   "Add creator (user) to a glossary entry"
   [_model _k glossary-entries]
@@ -24,21 +72,58 @@
       (for [entry glossary-entries]
         (assoc entry :creator (get id->creator (:creator_id entry)))))))
 
-(def GlossaryEntry
-  "Schema for a glossary entry."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:term       ms/NonBlankString]
-   [:definition ms/NonBlankString]])
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-;;; ---------------------- Serialization ----------------------------
+(mu/defn create-glossaries! :- [:sequential (ms/InstanceOf :model/Glossary)]
+  "Insert the Glossary `rows` and return the inserted instances, in the order of `rows`, publishing their create
+  event."
+  [rows :- [:sequential ::glossary.schema/glossary.create]]
+  (app-db/create-batched! :model/Glossary rows
+                          {:after-create #(events/publish-event! :event/glossary-create (events/create-event %))}))
 
-(defmethod serialization/spec :model/Glossary [_]
-  {:schema    ::glossary.schema/external-glossary
-   :copy      [:entity_id :term :definition]
-   :transform {:creator_id serialization/user-transform}})
+(mu/defn update-glossaries! :- :nil
+  "Apply `updates`, each the `:id` of a Glossary entry with the columns to give it, publishing one update event for all
+  of them."
+  [updates :- [:sequential ::glossary.schema/glossary.update]]
+  (app-db/update-batched! :model/Glossary updates
+                          {:reread?      true
+                           :after-update (fn [updates id->stored id->updated]
+                                           (events/publish-event! :event/glossary-update
+                                                                  (events/update-event id->stored updates {:objects id->updated})))}))
 
-(defmethod serialization/storage-paths :model/Glossary [_ entities _]
+(mu/defn delete-glossaries! :- :nil
+  "Delete the Glossary entries with `ids` in one transaction, publishing their delete event right before the first
+  statement."
+  [ids :- [:sequential ms/PositiveInt]]
+  (app-db/delete-batched! :model/Glossary ids
+                          {:before-delete #(events/publish-event! :event/glossary-delete (events/delete-event %))}))
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defn- storage-paths
+  "The storage path of each of the Glossary `entities`, under `glossary/` by term."
+  [entities _ctx]
   (mapv (fn [item]
           [{:label "glossary"} {:label (:term item) :key (:entity_id item)}])
         entities))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Glossary [_model]
+  {:skip? false})
+
+(defmethod serialization/spec :model/Glossary [_]
+  {:schema        ::glossary.schema/external-glossary
+   :copy          [:entity_id :term :definition]
+   :transform     {:creator_id serialization/user-transform}
+   :storage-paths storage-paths})
+
+(defmethod remote-sync/spec :model/Glossary
+  [_model]
+  {:name         :term
+   :synced-items glossary.db/synced-glossary-items})
+
+(defmethod audit/spec :model/Glossary [_model]
+  {:track          [:term]
+   :track-redacted [:creator_id :definition]
+   :skip           [:entity_id]})

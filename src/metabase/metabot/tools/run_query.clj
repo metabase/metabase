@@ -28,7 +28,8 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
-   [metabase.util.quoting :as quoting]))
+   [metabase.util.quoting :as quoting]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -45,18 +46,28 @@
 
 (def ^:private max-table-chars 10000)
 
+(defn create-sql-query-to-read
+  "Returns how a recovery step names `create_sql_query` for SQL written only to read its values: with
+   `show_chart: false` when SQL execution is allowed, since the tool takes the argument alongside run_query only then."
+  []
+  (cond-> "`create_sql_query`"
+    (scope/sql-execution-allowed?) (str " (pass `show_chart: false`)")))
+
+;; Every step here is offered alongside run_query, where construct_notebook_query takes `show_chart`, and
+;; [[recovery-hint]] picks `:sql-query` only when SQL execution is allowed.
 (def ^:private hint-steps
   "Map each refusal hint to a recovery step.
    [[recovery-hint]] picks the hint for most refusals."
   {:notebook-query {:uses #{"construct_notebook_query" "run_query"}
-                    :text (str "To get values, build the question with `construct_notebook_query`, then run that"
-                               " query with `run_query`.")}
+                    :text (str "To get values, build the question with `construct_notebook_query` (pass"
+                               " `show_chart: false`), then run that query with `run_query`.")}
    ;; A notebook query over the same SQL question would be refused again
-   :sql-card       {:uses #{"construct_notebook_query"}
-                    :text "To get values, build the question from tables with `construct_notebook_query` instead."}
+   :sql-card       {:uses #{"construct_notebook_query" "run_query"}
+                    :text (str "To get values, build the question from tables with `construct_notebook_query` (pass"
+                               " `show_chart: false`), then run that query with `run_query`.")}
    :sql-query      {:uses #{"create_sql_query" "run_query"}
-                    :text (str "To get values, write the question as SQL with `create_sql_query`, then run that"
-                               " query with `run_query`.")}
+                    :text (str "To get values, write the question as SQL with `create_sql_query` (pass"
+                               " `show_chart: false`), then run that query with `run_query`.")}
    :no-values      {:uses #{}
                     :text "Tell the user you can't read its results."}})
 
@@ -117,7 +128,8 @@
    :recovery [(if (= :none source)
                 (:no-values hint-steps)
                 {:uses #{"construct_notebook_query" "run_query"}
-                 :text (str "To get its values, use `construct_notebook_query` to build a notebook query with "
+                 :text (str "To get its values, use `construct_notebook_query` (pass `show_chart: false`) to build a"
+                            " notebook query with "
                             (if (= :base-table source)
                               "the metric's base table as its source"
                               (format "the %s that the metric is built on as its `source-card` (portable entity ID %s)"
@@ -192,13 +204,14 @@
       {:message  (str "Only a single read-only SELECT statement can run, and query " query-id
                       " reads a saved question whose SQL is not one." (some->> problem (str " ")))
        :recovery (cond-> [{:uses #{"create_sql_query"}
-                           :text "Write a read-only SELECT with `create_sql_query` and run that instead."}]
+                           :text (str "Write a read-only SELECT with " (create-sql-query-to-read)
+                                      " and run that instead.")}]
                    notebook? (conj (:sql-card hint-steps)))}
       {:message  (str "Only a single read-only SELECT statement can run, and query " query-id " is not one."
                       (some->> problem (str " ")))
        :recovery (cond-> [{:uses #{"create_sql_query"}
-                           :text (str "Use `create_sql_query` to rewrite it as one SELECT that changes and locks"
-                                      " nothing, then run that query.")}]
+                           :text (str "Use " (create-sql-query-to-read) " to rewrite it as one SELECT that changes"
+                                      " and locks nothing, then run that query.")}]
                    notebook? (conj (:notebook-query hint-steps)))})))
 
 (tools/defrecoverable not-sql!
@@ -234,13 +247,13 @@
   (let [{:keys [kind card-id table-id]} (tools.u/metric-required-source metric)
         source-card (when (= :card kind) (metabot.db/card card-id))]
     (cond
-      (some-> source-card mi/can-read?)
+      (some-> source-card (t2/hydrate :can_read) mi/can-read?)
       {:card-type (:type source-card)
        :entity-id (:entity_id source-card)}
 
       ;; Reading the metric is collection-based and does not imply querying its table.
       (and (= :table kind)
-           (some->> table-id (mi/can-query? :model/Table)))
+           (some-> table-id metabot.db/table (t2/hydrate :can_query) mi/can-query?))
       :base-table
 
       :else
@@ -261,7 +274,7 @@
                          parsed))]
     ;; A question the user can't read is treated like one that doesn't exist, so its id tells them nothing.
     (let [card (metabot.db/card card-id)]
-      (when (some-> card mi/can-read?)
+      (when (some-> card (t2/hydrate :can_read) mi/can-read?)
         (when (= :metric (:type card))
           (metric-not-runnable! {:query-id query-id, :source (metric-source card)}))
         ;; The rows go to the model: a curated-only Metabot runs a saved question only when `read_resource` would
@@ -303,18 +316,23 @@
       (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*)
       (shared-conversation! {}))))
 
-(defn sql-results-readable?
-  "Whether `run_query` would let the model read a SQL query's results in this session, the query's own checks aside:
-   the session offers the tool, query execution and SQL execution are allowed, and the conversation belongs to the
-   current user alone."
+(defn results-readable?
+  "Whether `run_query` would let the model read a notebook query's results in this session.
+   That holds, the query's own checks aside, when the session offers the tool, query execution is allowed, and the
+   conversation belongs to the current user alone."
   []
   (let [conversation-id (shared/current-conversation-id)]
     (boolean (and (shared/tool-offered? "run_query")
                   (metabot.settings/metabot-query-execution-enabled?)
-                  (scope/sql-execution-allowed?)
                   (some? conversation-id)
                   (some? api/*current-user-id*)
                   (not (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*))))))
+
+(defn sql-results-readable?
+  "Whether `run_query` would let the model read a SQL query's results in this session.
+   That holds when [[results-readable?]] does and SQL execution is allowed."
+  []
+  (and (scope/sql-execution-allowed?) (results-readable?)))
 
 (defn- existing-database?
   "Return whether `database-id` names an existing database."
@@ -326,8 +344,8 @@
   "Whether `database-id` names a database that exists and the current user can read. `can-read?` alone holds for any
    id when the user is an admin, so it can't tell a deleted database from a live one."
   [database-id]
-  (and (existing-database? database-id)
-       (mi/can-read? :model/Database database-id)))
+  (and (pos-int? database-id)
+       (boolean (some-> (metabot.db/database database-id) (t2/hydrate :can_read) mi/can-read?))))
 
 (defn- token
   "`x`'s name as the query normalizer reads a key or marker: namespace kept, lowercased, `_` read as `-`. nil for
@@ -458,11 +476,13 @@
    through another saved question.
    Holds a nil for each question that no longer exists."
   [query]
-  (map metabot.db/card (:card (lib/all-referenced-entity-ids-recursive query))))
+  (let [ids  (vec (:card (lib/all-referenced-entity-ids-recursive query)))
+        by-id (u/index-by :id (metabot.db/cards-with-ids ids))]
+    (map by-id ids)))
 
 (defn- metabot-sql-card?
   "Whether `card` is a SQL question that Metabot saved and nobody has edited since.
-   Saving a chart from a conversation sets the two columns, in [[metabot.db/link-card-to-conversation!]].
+   Saving a chart from a conversation sets the two columns, in [[metabase.queries.models.card/link-to-metabot-conversation!]].
    The Card model's `clear-metabot-origin` clears them when the query, display or visualization settings change."
   [card]
   ;; A question's `query_type` is native only when its whole query is one SQL stage, so a notebook stage over SQL
@@ -513,7 +533,8 @@
         ;; Every refusal past this point says something about the SQL of the questions the query reads, and
         ;; compiling expands that SQL, so only a user who can read each of them gets that far. Anyone else gets
         ;; the refusal the QP would give them for a question they can't read.
-        (when (and (or inline-sql? sql-card?) (not-every? #(some-> % mi/can-read?) cards))
+        (when (and (or inline-sql? sql-card?) (or (some nil? cards)
+                                                  (not-every? mi/can-read? (t2/hydrate (into [] cards) :can_read))))
           (no-permission! {:query-id query-id}))
         (when sql-card?
           (check-sql-runnable! query-id (:database normalized) true allow-non-sql?))
@@ -525,7 +546,7 @@
 (def ^:private query-timeout-ms
   "How long one query may run."
   ;; A query Metabot wrote can be far slower than expected, and nothing else ends it before the database query timeout.
-  (u/minutes->ms 3))
+  (u/seconds->ms 90))
 
 (defn- run-options
   "What may stop a query this tool runs: the chat request being canceled, and the time limit."
@@ -564,7 +585,10 @@
           refused (atom nil)]
       (try
         (binding [qp.pipeline/*execute* (fn [driver native-query respond]
-                                          (let [sql (get-in native-query [:native :query])]
+                                          (let [sql (if (:lib/type native-query)
+                                                      ;; drivers that support `:mbql-5-native-query-execution`
+                                                      (:native (lib/query-stage native-query -1))
+                                                      (get-in native-query [:native :query]))]
                                             (when-not (or (= checked-sql sql)
                                                           (and (string? sql)
                                                                (sql-tools/read-only-select? driver sql)))

@@ -217,4 +217,24 @@
   {:name "clickhouse-backtick-quoted-function-name"
    :sql "SELECT `parseDateTimeBestEffort`(ts) FROM events"
    :dialect "clickhouse"
-   :expected [["events" "ts"]]}]}
+   :expected [["events" "ts"]]}
+
+  {:name "postgres-jsonb-operators"
+   :sql "SELECT j->'k'->>'v' AS v, data::jsonb FROM events WHERE j @> '{\"a\": 1}'"
+   :dialect "postgres"
+   :expected [[nil nil "events" "data"] [nil nil "events" "j"]]}
+
+  {:name "postgres-double-colon-casts"
+   :sql "SELECT total::numeric(10,2), created_at::date FROM orders"
+   :dialect "postgres"
+   :expected [[nil nil "orders" "created_at"] [nil nil "orders" "total"]]}
+
+  {:name "snowflake-variant-path"
+   :sql "SELECT v:path.to.field::string AS f FROM raw_events"
+   :dialect "snowflake"
+   :expected [[nil nil "raw_events" "v"]]}
+
+  {:name "bigquery-struct-access-reads-no-known-field"
+   :sql "SELECT user.address.city FROM events"
+   :dialect "bigquery"
+   :expected []}]}

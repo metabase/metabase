@@ -17,6 +17,7 @@
    [metabase.serialization.protocol :as protocol]
    [metabase.serialization.protocol.mp :as protocol.mp]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli.registry :as mr]))
 
@@ -1185,6 +1186,15 @@
              (get (repair-in-stage {"aggregation" [["count-where" {} input]]}) "aggregation"))
           (pr-str input)))))
 
+(deftest ^:parallel whole-day-repair-returns-an-unchanged-query-test
+  (testing "a query with nothing to repair comes back as the same object"
+    ;; `filters` holds a whole-day comparison this pass would expand if it descended there, and
+    ;; a `default` month bound is widened to a date that leaves the comparison as written.
+    (let [query {"stages" [{"aggregation" [["count-where" {} [">=" {} created-at "2017-01-31"]]
+                                           ["count-where" {} [">=" {} created-at (abs-dt "2025-01" "default")]]]
+                            "filters"     [["=" {} created-at (abs-dt "2017-01-31" "day")]]}]}]
+      (is (identical? query (#'repair/repair-day-and-default-comparisons* query))))))
+
 (deftest ^:parallel between-a-whole-day-and-now-or-a-timestamp-test
   (doseq [unit ["day" "default"]
           [end end'] [[["now" {}] ["now" {}]]
@@ -1819,10 +1829,6 @@
 ;;; stamping the matching aggregation's `lib/uuid` if needed.
 ;;; ============================================================
 
-(defn- uuid-string? [x]
-  (and (string? x)
-       (try (java.util.UUID/fromString x) true (catch Exception _ false))))
-
 (defn- agg-uuid-of [stage idx]
   (get-in stage ["aggregation" idx 1 "lib/uuid"]))
 
@@ -1843,7 +1849,7 @@
           stage    (get-in repaired ["stages" 0])
           agg-uuid (agg-uuid-of stage 0)]
       (testing "the matched aggregation got a lib/uuid stamped into its options"
-        (is (uuid-string? agg-uuid)))
+        (is (u/uuid-string? agg-uuid)))
       (testing "order-by inner clause is now [\"aggregation\" {} <that-uuid>]"
         (is (= ["aggregation" {} agg-uuid]
                (get-in stage ["order-by" 0 2])))))))
@@ -1867,8 +1873,8 @@
           stage    (get-in repaired ["stages" 0])
           sum-uuid (agg-uuid-of stage 0)
           cnt-uuid (agg-uuid-of stage 1)]
-      (is (uuid-string? sum-uuid))
-      (is (uuid-string? cnt-uuid))
+      (is (u/uuid-string? sum-uuid))
+      (is (u/uuid-string? cnt-uuid))
       (is (not= sum-uuid cnt-uuid) "each aggregation gets its own uuid")
       (is (= ["aggregation" {} cnt-uuid] (get-in stage ["order-by" 0 2]))
           "first order-by (count) refers to the count aggregation")
@@ -2325,9 +2331,6 @@
                    (select-by-pks [_ _ _ _] (throw (ex-info "boom" {})))
                    (select-by-refs [_ _ _ _] (throw (ex-info "unexpected store call" {})))
                    (select-by-parent-pks [_ _ _ _] (throw (ex-info "unexpected store call" {})))
-                   (insert-rows! [_ _ _] (throw (ex-info "unexpected store call" {})))
-                   (update-row! [_ _ _ _] (throw (ex-info "unexpected store call" {})))
-                   (delete-rows! [_ _ _] (throw (ex-info "unexpected store call" {})))
                    (transact [_ _ f] (f)))
         clause   ["field" {} ["DB" "PUBLIC" "PRODUCTS" "CATEGORY"]]
         run      (fn [strict?]
@@ -2916,7 +2919,7 @@
             uuid     (get-in aggs [0 1 "lib/uuid"])]
         (if ordered?
           (do
-            (is (uuid-string? uuid))
+            (is (u/uuid-string? uuid))
             (is (= [["count" {"lib/uuid" uuid}]] aggs))
             (is (= ["aggregation" {"base-type" "type/BigInteger", "effective-type" "type/BigInteger"} uuid]
                    (get-in repaired ["stages" 0 "order-by" 0 2]))))
@@ -2958,7 +2961,7 @@
           count-agg (get-in repaired ["stages" 0 "aggregation" 1])
           ref-clause (get-in repaired ["stages" 0 "order-by" 0 2])]
       (testing "target aggregation clause got a lib/uuid stamped"
-        (is (uuid-string? (get-in count-agg [1 "lib/uuid"]))))
+        (is (u/uuid-string? (get-in count-agg [1 "lib/uuid"]))))
       (testing "ref last slot is the same UUID as the target aggregation"
         (is (= (get-in count-agg [1 "lib/uuid"])
                (nth ref-clause 2))))
@@ -3102,7 +3105,7 @@
           repaired (repair/repair trivial-mp q)
           stage1-agg-uuid (get-in repaired ["stages" 1 "aggregation" 0 1 "lib/uuid"])
           stage1-ref-uuid (get-in repaired ["stages" 1 "order-by" 0 2 2])]
-      (is (uuid-string? stage1-agg-uuid))
+      (is (u/uuid-string? stage1-agg-uuid))
       (is (= stage1-agg-uuid stage1-ref-uuid))
       (is (= "type/Float"
              (get-in repaired ["stages" 1 "order-by" 0 2 1 "base-type"]))))))
@@ -4715,3 +4718,52 @@
                  (first (binning-error! (with-lhs joined (binned (text-users-ref 101))))))))
         (testing "a binned numeric column of the join passes"
           (is (nil? (binning-error! (with-lhs joined (binned (lib/with-join-alias (text-users-ref 201) alias)))))))))))
+
+;;; ============================================================
+;;; `repairs` - the passes that changed the query
+;;; ============================================================
+
+(defn- orders-query
+  "A query on ORDERS that follows the prompt contract, with `filter-clause` as its one filter."
+  [filter-clause]
+  {"lib/type" "mbql/query"
+   "stages"   [{"lib/type"     "mbql.stage/mbql"
+                "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                "filters"      [filter-clause]}]})
+
+(deftest ^:parallel repairs-test
+  (let [field ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]
+    (testing "a pass that changed the query is named, without the `*` of its function"
+      (is (= ["rewrite-operator-name-aliases"]
+             (repair/repairs (repair/repair trivial-mp (orders-query ["gte" {} field 10]))))))
+    (testing "the names are sorted, and each pass is named once"
+      (is (= ["ensure-clause-options" "rewrite-operator-name-aliases" "swap-between-bounds"]
+             (repair/repairs (repair/repair trivial-mp (orders-query ["or" {}
+                                                                      ["gte" {} field 10]
+                                                                      ["lte" {} field 20]
+                                                                      ["between" field 20 10]]))))))
+    (testing "a query that follows the prompt contract has no repairs"
+      (is (= []
+             (repair/repairs (repair/repair trivial-mp (orders-query [">=" {} field 10]))))))
+    (testing "a structural pass is not reported, though it changed the query"
+      (let [query    (orders-query [">=" {} field 10])
+            repaired (repair/repair trivial-mp query)]
+        (is (not (contains? query "database")))
+        (is (= "Sample" (get repaired "database")))
+        (is (= [] (repair/repairs repaired)))))
+    (testing "a second run on a repaired query has no repairs"
+      (let [repaired (repair/repair trivial-mp (orders-query ["gte" {} field 10]))]
+        (is (= [] (repair/repairs (repair/repair trivial-mp repaired))))))
+    (testing "a value that did not come from `repair` has none"
+      (is (nil? (repair/repairs (orders-query [">=" {} field 10])))))
+    (testing "the recording does not change the returned query or its stage indexes"
+      (let [repaired (repair/repair trivial-mp (orders-query ["gte" {} field 10]))]
+        (is (= (assoc (orders-query [">=" {} field 10]) "database" "Sample")
+               repaired))
+        (is (some? (:metabase.agent-lib.representations/original-stage-indexes (meta repaired))))))))
+
+(deftest ^:parallel structural-passes-are-pass-functions-test
+  (testing "each structural pass names a pass function, so a rename cannot leave a dead name in the set"
+    (doseq [pass-name @#'repair/structural-passes]
+      (is (some? (ns-resolve 'metabase.agent-lib.representations.repair (symbol (str pass-name "*"))))
+          pass-name))))

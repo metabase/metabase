@@ -3,7 +3,6 @@
    #?(:cljs [metabase.test-runner.assert-exprs.approximately-equal])
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field.util :as lib.field.util]
@@ -464,6 +463,8 @@
                           (lib/breakout (lib/with-temporal-bucket column :year))
                           (lib/breakout (lib/with-temporal-bucket column :month)))
           query       (->> query
+                           ;; existing usage -- do not use going forward
+                           #_{:clj-kondo/ignore [:deprecated-var]}
                            lib/->legacy-MBQL
                            (lib/query meta/metadata-provider))]
       (is (= query
@@ -555,8 +556,7 @@
                                        :dataset-query
                                        (-> (lib.tu/venues-query)
                                            (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
-                                           (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
-                                           lib.convert/->legacy-MBQL)
+                                           (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
                                        :description "Number of toucans plus number of pelicans"
                                        :type :metric}]})
           query (-> (lib/query metadata-provider (lib.metadata/card metadata-provider 100))

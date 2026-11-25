@@ -3,6 +3,7 @@ import type { Active, ClientRect, DndContextProps, Over } from "@dnd-kit/core";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
@@ -159,6 +160,7 @@ export function setup({
   canPivot,
   pivotColumnSplit: initialPivotColumnSplit,
 }: SetupOpts = {}) {
+  setupUserMetabotPermissionsEndpoint();
   const onQueryChange = jest.fn<void, [Lib.Query, SummaryPivotChange?]>();
 
   function Wrapper() {

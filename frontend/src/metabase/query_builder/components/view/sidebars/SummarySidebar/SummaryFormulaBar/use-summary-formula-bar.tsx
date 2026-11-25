@@ -145,8 +145,8 @@ export function useSummaryFormulaBar({
       return undefined;
     }
     return {
-      start: (source, input, onReady) => {
-        open(input, { kind: "new", wellId, source });
+      start: (source, input, onReady, name) => {
+        open(input, { kind: "new", wellId, source, name });
         editorSource.startNew(wellId, source, onReady);
       },
       isPending: () => editorSource.isNewPending(wellId),

@@ -50,9 +50,10 @@
   (without-unavailable-tables (data-apps.db/active-tables table-ids)))
 
 (defn select-library-tables
-  "Returns the published tables in the library collections with `collection-ids`."
-  [collection-ids]
-  (->> (data-apps.db/published-tables-in-collections collection-ids)
+  "Returns the published tables in the library collections with `collection-ids`, only those with `table-ids` when it
+  has any."
+  [collection-ids table-ids]
+  (->> (data-apps.db/published-tables-in-collections collection-ids table-ids)
        (without-unavailable-tables)))
 
 (defn segment-schema
@@ -88,23 +89,17 @@
       nil)))
 
 (defn- measure-result-columns
-  "Returns result columns for table measures with one definition query and metadata provider."
-  [database-id measures]
-  (let [measure-ids (into [] (keep :id) measures)]
-    (when (seq measure-ids)
-      (let [definition-by-measure-id (into {}
-                                           (map (juxt :id :definition))
-                                           (data-apps.db/measure-definitions measure-ids))]
-        (try
-          (let [metadata-provider (lib-be/application-database-metadata-provider database-id)]
-            (into {}
-                  (keep (fn [{:keys [id]}]
-                          (when-let [definition (get definition-by-measure-id id)]
-                            [id (schemas.common/aggregation-result-column-with-metadata-provider metadata-provider definition)])))
-                  measures))
-          ;; Result-column inference is best effort; callers fall back to an unknown column.
-          (catch Exception _
-            {}))))))
+  "Returns result columns for table `measures`, inferred with `metadata-provider` from `definition-by-measure-id`."
+  [metadata-provider definition-by-measure-id measures]
+  (try
+    (into {}
+          (keep (fn [{:keys [id]}]
+                  (when-let [definition (get definition-by-measure-id id)]
+                    [id (schemas.common/aggregation-result-column-with-metadata-provider metadata-provider definition)])))
+          measures)
+    ;; Result-column inference is best effort; callers fall back to an unknown column.
+    (catch Exception _
+      {})))
 
 (defn measure-schema
   "Returns the schema for a measure."
@@ -123,10 +118,10 @@
     :description description)))
 
 (defn table-schema
-  "Returns the schema for a table."
-  [{:keys [id name description display_name database_id database_name database_schema portable_entity_id fields segments measures]}]
+  "Returns the schema for a table, with the result columns of its measures by measure id."
+  [{:keys [id name description display_name database_id database_name database_schema portable_entity_id fields segments measures]}
+   measure-result-column-by-id]
   (let [segments-map                 (schemas.common/keyed-map (map #(segment-schema id %) segments))
-        measure-result-column-by-id  (measure-result-columns database_id measures)
         measures-map                 (schemas.common/keyed-map (map #(measure-schema id database_id
                                                                                      (get measure-result-column-by-id (:id %))
                                                                                      %)
@@ -159,27 +154,45 @@
     :table-name (:name table)}
    :status-code (:status-code error-data)))
 
-(defn- table-details
-  [table]
-  (let [response (metabot/get-table-details
-                  {:entity-type          :table
-                   :entity-id            (:id table)
-                   :with-fields?         true
-                   :with-field-values?   false
-                   :with-related-tables? false
-                   :with-metrics?        false
-                   :with-measures?       true
-                   :with-segments?       true})]
-    (or (:structured-output response)
-        (let [error-message (:output response)]
-          (throw (ex-info (table-details-error-message table error-message)
-                          (assoc (table-details-error-data table response)
-                                 :error-message error-message)))))))
+(defn- check-table-details
+  "The details of `table` in the `response` of the table details lookup, which throws when it failed."
+  [table response]
+  (or (:structured-output response)
+      (let [error-message (:output response)]
+        (throw (ex-info (table-details-error-message table error-message)
+                        (assoc (table-details-error-data table response)
+                               :error-message error-message))))))
+
+(defn- database-table-schemas
+  "Returns table schemas for selected table rows of the Database with `database-id`, by table id, read with one
+  metadata provider."
+  [database-id tables]
+  (let [metadata-provider        (lib-be/application-database-metadata-provider database-id)
+        responses                (metabot/get-tables-details metadata-provider
+                                                             (mapv :id tables)
+                                                             {:entity-type          :table
+                                                              :with-fields?         true
+                                                              :with-field-values?   false
+                                                              :with-related-tables? false
+                                                              :with-metrics?        false
+                                                              :with-measures?       true
+                                                              :with-segments?       true})
+        details                  (mapv check-table-details tables responses)
+        measure-ids              (into [] (comp (mapcat :measures) (keep :id)) details)
+        definition-by-measure-id (when (seq measure-ids)
+                                   (into {} (map (juxt :id :definition)) (data-apps.db/measure-definitions measure-ids)))]
+    (into {}
+          (map (fn [{:keys [id measures] :as table-details}]
+                 [id (table-schema table-details
+                                   (when (seq measures)
+                                     (measure-result-columns metadata-provider definition-by-measure-id measures)))]))
+          details)))
 
 (defn table-schemas
-  "Returns table schemas for selected table rows."
+  "Returns table schemas for selected table rows, with one metadata provider per Database."
   [tables]
-  (for [table tables
-        :let [details (table-details table)]
-        :when details]
-    (table-schema details)))
+  (let [schema-by-table-id (into {}
+                                 (mapcat (fn [[database-id database-tables]]
+                                           (database-table-schemas database-id database-tables)))
+                                 (group-by :db_id tables))]
+    (keep (comp schema-by-table-id :id) tables)))

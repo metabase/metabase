@@ -6,6 +6,9 @@
 
  :deps
  {com.amazon.redshift/redshift-jdbc42 {:mvn/version "2.2.5"}
+  ;; these two are optional dependencies only needed when using IAM
+  software.amazon.awssdk/redshift     {:mvn/version "2.57.8"}
+  software.amazon.awssdk/redshiftserverless {:mvn/version "2.57.8"}
   com.amazonaws/aws-java-sdk-core     {:mvn/version "1.12.792"
                                        ;; pinned in and resolved from /deps.edn
                                        :exclusions [com.fasterxml.jackson.core/jackson-core

@@ -11,7 +11,7 @@ import {
 } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { Series } from "metabase-types/api";
+import type { DatasetColumn, RowValue, Series } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -383,6 +383,66 @@ describe("Scalar", () => {
     );
 
     expect(screen.getByText("12,345")).toBeInTheDocument();
+  });
+});
+
+describe("Scalar value font size (#85061)", () => {
+  const LONG_SUFFIX = " active users this quarter";
+  const NUMBER_COLUMN = createMockColumn({
+    name: "count",
+    base_type: "type/Integer",
+  });
+  const TEXT_COLUMN = createMockColumn({
+    name: "count",
+    base_type: "type/Text",
+  });
+
+  interface SetupOpts {
+    column: DatasetColumn;
+    value: RowValue;
+    suffix?: string;
+  }
+
+  const getValueFontSize = ({ column, value, suffix }: SetupOpts) => {
+    const rawSeries = [
+      createMockSingleSeries(
+        { display: "scalar" },
+        { data: createMockDatasetData({ rows: [[value]], cols: [column] }) },
+      ),
+    ];
+    const { unmount } = render(
+      <Scalar
+        {...mockedProps}
+        series={rawSeries}
+        rawSeries={rawSeries}
+        settings={{ ...settings, column: () => ({ suffix }) }}
+        visualizationIsClickable={() => false}
+        width={230}
+        height={150}
+      />,
+    );
+    const { fontSize } = screen.getByTestId("scalar-value").style;
+    unmount();
+    return fontSize;
+  };
+
+  it("keeps the card font size for a number with a long suffix", () => {
+    expect(
+      getValueFontSize({
+        column: NUMBER_COLUMN,
+        value: 12345,
+        suffix: LONG_SUFFIX,
+      }),
+    ).toBe(getValueFontSize({ column: NUMBER_COLUMN, value: 12345 }));
+  });
+
+  it("shrinks the font size for a long text value", () => {
+    expect(
+      getValueFontSize({
+        column: TEXT_COLUMN,
+        value: `12,345${LONG_SUFFIX}`,
+      }),
+    ).not.toBe(getValueFontSize({ column: NUMBER_COLUMN, value: 12345 }));
   });
 });
 

@@ -1,6 +1,5 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { thaw } from "icepick";
 import type { ComponentProps } from "react";
 import { useState } from "react";
 
@@ -99,7 +98,7 @@ function setupPivotSettings() {
     const onChange = (update: VisualizationSettings) => {
       setQuestion((q) => {
         const newQuestion = q.updateSettings(update);
-        return new Question(thaw(newQuestion.card()), metadata);
+        return new Question(newQuestion.card(), metadata);
       });
     };
 
@@ -178,6 +177,13 @@ describe("Visualizations > PivotTable > PivotTable", () => {
       "offsetWidth",
       originalOffsetWidth,
     );
+  });
+
+  it("should keep the theme's px font size that the column widths are measured with", async () => {
+    setupPivotTable();
+    expect(await screen.findByTestId("pivot-table")).toHaveStyle({
+      fontSize: "12px",
+    });
   });
 
   TEST_CASES.forEach((testCase) => {

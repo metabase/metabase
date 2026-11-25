@@ -83,6 +83,17 @@
           added (first (filter #(= -1 (:id %)) dashcards))]
       (is (<= 4 (:row added))))))
 
+(deftest autoplace-without-a-tab-on-a-one-tab-dashboard-test
+  (testing "a card added with no tab to a one-tab dashboard avoids that tab's cards, as it shows there"
+    (let [dash  (assoc empty-dash
+                       :tabs      [{:id 1 :name "A"}]
+                       :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id 1}])
+          added (->> (compile-with-stub-cards dash [{:op "add_card" :id -1 :card_id 42 :size {:size_x 12 :size_y 6}}])
+                     :dashcards
+                     (filter #(= -1 (:id %)))
+                     first)]
+      (is (= [0 12] [(:row added) (:col added)])))))
+
 (defn- op-error
   "The error data [[dashboard-ops/compile-ops]] throws for `ops` against `current` and `cards`, or nil when it compiles.
    It defaults `cards` to a stub row for every card `ops` name.
@@ -422,6 +433,181 @@
           dc (first dashcards)]
       (is (= [0 0 8 2] [(:row dc) (:col dc) (:size_x dc) (:size_y dc)])))))
 
+;;; Two charts side by side, each with a card below it, as on the eval dashboard whose widened chart covered its
+;;; neighbour.
+(def ^:private side-by-side
+  (dash-with [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id nil}
+              {:id 8 :card_id 9 :row 0 :col 12 :size_x 12 :size_y 6 :dashboard_tab_id nil}
+              {:id 9 :card_id 9 :row 6 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id nil}
+              {:id 10 :card_id 9 :row 6 :col 12 :size_x 12 :size_y 4 :dashboard_tab_id nil}]))
+
+(defn- layout
+  "`{dashcard-id [row col size_x size_y]}` for a compiled payload."
+  [payload]
+  (u/for-map [dc (:dashcards payload)] [(:id dc) [(:row dc) (:col dc) (:size_x dc) (:size_y dc)]]))
+
+(deftest ^:parallel resize-pushes-covered-cards-down-test
+  (testing "widening a card pushes the card it covers down, and that one pushes the card it lands on"
+    (let [payload (compile-with-stub-cards side-by-side
+                                           [{:op "resize" :dashcard_id 7 :size {:size_x 24 :size_y 6}}])]
+      (is (= {7 [0 0 24 6], 8 [6 12 12 6], 9 [6 0 12 6], 10 [12 12 12 4]}
+             (layout payload)))
+      (testing "the payload says which stored cards moved, in save order"
+        (is (= [8 10] (:pushed-dashcard-ids (dashboard-ops/effects payload)))))
+      (testing "the payload keeps save order"
+        (is (= [7 8 9 10] (map :id (:dashcards payload))))))))
+
+(deftest ^:parallel explicit-positions-push-covered-cards-down-test
+  (testing "move to a position over another card pushes it down"
+    (let [payload (compile-with-stub-cards side-by-side
+                                           [{:op "move" :dashcard_id 9 :position {:row 0 :col 12}}])]
+      (is (= {7 [0 0 12 6], 8 [6 12 12 6], 9 [0 12 12 6], 10 [12 12 12 4]}
+             (layout payload)))
+      (is (= [8 10] (:pushed-dashcard-ids (dashboard-ops/effects payload))))))
+  (testing "add_card at a position over cards pushes them down"
+    (let [payload (compile-with-stub-cards side-by-side
+                                           [{:op "add_card" :id -1 :card_id 42
+                                             :position {:row 0 :col 0} :size {:size_x 24 :size_y 2}}])]
+      (is (= {-1 [0 0 24 2], 7 [2 0 12 6], 8 [2 12 12 6], 9 [8 0 12 6], 10 [8 12 12 4]}
+             (layout payload)))
+      (is (= [7 8 9 10] (:pushed-dashcard-ids (dashboard-ops/effects payload))))))
+  (testing "a placed card that covers nothing moves nothing"
+    (let [payload (compile-with-stub-cards side-by-side
+                                           [{:op "resize" :dashcard_id 10 :size {:size_x 12 :size_y 6}}])]
+      (is (= {7 [0 0 12 6], 8 [0 12 12 6], 9 [6 0 12 6], 10 [6 12 12 6]}
+             (layout payload)))
+      (is (empty? (:pushed-dashcard-ids (dashboard-ops/effects payload)))))))
+
+(deftest ^:parallel autoplaced-cards-are-pushed-not-refused-test
+  (testing "a card the call autoplaces moves out of the way of a card a later op places, and isn't listed as moved"
+    (let [payload (compile-with-stub-cards (dash-with [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6
+                                                        :dashboard_tab_id nil}])
+                                           [{:op "add_card" :id -1 :card_id 42 :size {:size_x 12 :size_y 6}}
+                                            {:op "resize" :dashcard_id 7 :size {:size_x 24 :size_y 6}}])]
+      (is (= {7 [0 0 24 6], -1 [6 12 12 6]} (layout payload)))
+      (is (empty? (:pushed-dashcard-ids (dashboard-ops/effects payload)))))))
+
+(deftest ^:parallel cards-without-a-tab-share-the-only-tab-test
+  (testing "with one tab, a card with no tab settles with the cards on that tab, where it shows"
+    (let [dash (assoc empty-dash
+                      :tabs      [{:id 1 :name "A"}]
+                      :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id nil}
+                                  {:id 8 :card_id 9 :row 0 :col 12 :size_x 12 :size_y 6 :dashboard_tab_id 1}])]
+      (is (= {7 [0 0 24 6], 8 [6 12 12 6]}
+             (layout (compile-with-stub-cards dash [{:op "resize" :dashcard_id 7 :size {:size_x 24 :size_y 6}}])))))))
+
+(deftest ^:parallel untouched-tabs-keep-their-layout-test
+  (let [overlapping [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id 1}
+                     {:id 8 :card_id 9 :row 2 :col 6 :size_x 12 :size_y 6 :dashboard_tab_id 1}]
+        dash        (assoc empty-dash
+                           :tabs       [{:id 1 :name "A"} {:id 2 :name "B"}]
+                           :parameters [{:id "p1" :name "P1" :type "category"}]
+                           :dashcards  (conj overlapping
+                                             {:id 9 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6
+                                              :dashboard_tab_id 2}))]
+    (testing "a tab that already overlaps stays as it is when the call places a card on another tab"
+      (let [payload (compile-with-stub-cards dash [{:op "resize" :dashcard_id 9 :size {:size_x 24 :size_y 6}}])]
+        (is (= overlapping (filterv #(= 1 (:dashboard_tab_id %)) (:dashcards payload))))
+        (is (empty? (:pushed-dashcard-ids (dashboard-ops/effects payload))))))
+    (testing "or when the call places no card at all"
+      (let [payload (compile-with-stub-cards dash [{:op "update_parameter" :parameter_id "p1" :name "Status"}])]
+        (is (= (:dashcards dash) (:dashcards payload)))))))
+
+(deftest ^:parallel existing-overlaps-stay-unless-a-placed-card-reaches-them-test
+  (let [overlapping [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id nil}
+                     {:id 8 :card_id 9 :row 2 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id nil}]
+        dash        (dash-with (conj overlapping {:id 9 :card_id 9 :row 20 :col 0 :size_x 12 :size_y 4
+                                                  :dashboard_tab_id nil}))]
+    (testing "adding the first tab, which the stored cards now show on, moves none of them"
+      (let [payload (compile-with-stub-cards dash [{:op "add_tab" :id -1 :name "Details"}])]
+        (is (= {7 [0 0 12 6], 8 [2 0 12 6], 9 [20 0 12 4]} (layout payload)))
+        (is (empty? (:pushed-dashcard-ids (dashboard-ops/effects payload))))))
+    (testing "resizing a card that covers neither leaves them as they are"
+      (let [payload (compile-with-stub-cards dash [{:op "resize" :dashcard_id 9 :size {:size_x 24 :size_y 4}}])]
+        (is (= {7 [0 0 12 6], 8 [2 0 12 6], 9 [20 0 24 4]} (layout payload)))
+        (is (empty? (:pushed-dashcard-ids (dashboard-ops/effects payload))))))
+    (testing "a placed card that covers one of them pushes it below the other too"
+      (let [payload (compile-with-stub-cards dash [{:op "resize" :dashcard_id 7 :size {:size_x 12 :size_y 8}}])]
+        (is (= {7 [0 0 12 8], 8 [8 0 12 6], 9 [20 0 12 4]} (layout payload)))
+        (is (= [8] (:pushed-dashcard-ids (dashboard-ops/effects payload))))))))
+
+(deftest ^:parallel positioned-cards-must-not-overlap-test
+  (testing "two cards given positions in one call that cover each other fail, naming both"
+    (is (= {::dashboard-ops/error :overlapping-cards, :dashcard-ids [9 10]}
+           (op-error side-by-side
+                     [{:op "move" :dashcard_id 9 :position {:row 0 :col 0}}
+                      {:op "move" :dashcard_id 10 :position {:row 2 :col 6}}])))))
+
+(deftest ^:parallel resized-cards-yield-to-positioned-cards-test
+  (testing "a resized card keeps its place unless a card given a position covers it, as with a title added on top"
+    (let [payload (compile-with-stub-cards side-by-side
+                                           [{:op "add_heading" :id -1 :text "Spend"
+                                             :position {:row 0 :col 0} :size {:size_x 24 :size_y 1}}
+                                            {:op "resize" :dashcard_id 7 :size {:size_x 24 :size_y 6}}])]
+      (is (= {-1 [0 0 24 1], 7 [1 0 24 6], 8 [7 12 12 6], 9 [7 0 12 6], 10 [13 12 12 4]}
+             (layout payload)))
+      (is (= [7 8 9 10] (:pushed-dashcard-ids (dashboard-ops/effects payload))))))
+  (testing "two resized cards that cover each other settle in order of row and column rather than fail"
+    (is (= {7 [0 0 24 6], 8 [6 12 12 8], 9 [6 0 12 6], 10 [14 12 12 4]}
+           (layout (compile-with-stub-cards side-by-side
+                                            [{:op "resize" :dashcard_id 7 :size {:size_x 24 :size_y 6}}
+                                             {:op "resize" :dashcard_id 8 :size {:size_x 12 :size_y 8}}]))))))
+
+(deftest ^:parallel duplicated-tabs-settle-like-their-source-test
+  (testing "a tab duplicated after a resize gets a valid layout, as its copies carry the resize"
+    (let [dash    (assoc empty-dash
+                         :tabs      [{:id 1 :name "A"}]
+                         :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id 1}
+                                     {:id 8 :card_id 9 :row 0 :col 12 :size_x 12 :size_y 6 :dashboard_tab_id 1}])
+          payload (compile-with-stub-cards dash [{:op "resize" :dashcard_id 7 :size {:size_x 24 :size_y 6}}
+                                                 {:op "duplicate_tab" :id -5 :tab_id 1}])
+          copies  (filterv #(= -5 (:dashboard_tab_id %)) (:dashcards payload))]
+      (is (= #{[0 0 24 6] [6 12 12 6]}
+             (set (map (juxt :row :col :size_x :size_y) copies))))
+      (testing "and only stored cards are listed as moved"
+        (is (= [8] (:pushed-dashcard-ids (dashboard-ops/effects payload)))))))
+  (testing "the copies settle as the source tab does, with a moved card's copy kept in place"
+    (let [dash    (assoc empty-dash
+                         :tabs      [{:id 1 :name "A"}]
+                         :dashcards [{:id 8 :card_id 20 :row 0 :col 12 :size_x 12 :size_y 6 :dashboard_tab_id 1}
+                                     {:id 9 :card_id 21 :row 6 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id 1}])
+          payload (compile-with-stub-cards dash [{:op "move" :dashcard_id 9 :position {:row 0 :col 12}}
+                                                 {:op "duplicate_tab" :id -5 :tab_id 1}])
+          on-tab  (fn [tab-id]
+                    (u/for-map [dc (:dashcards payload) :when (= tab-id (:dashboard_tab_id dc))]
+                      [(:card_id dc) [(:row dc) (:col dc)]]))]
+      (is (= {21 [0 12], 20 [6 12]} (on-tab 1) (on-tab -5))))))
+
+(deftest ^:parallel autoplaced-move-drops-an-earlier-position-test
+  (testing "a card positioned and then moved without a position yields to a later resize"
+    (let [dash (assoc empty-dash
+                      :tabs      [{:id 1 :name "A"} {:id 2 :name "B"}]
+                      :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id 1}
+                                  {:id 8 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id 2}])]
+      (is (= {7 [6 12 12 6], 8 [0 0 24 6]}
+             (layout (compile-with-stub-cards dash [{:op "move" :dashcard_id 7 :position {:row 0 :col 12}}
+                                                    {:op "move" :dashcard_id 7 :tab 2}
+                                                    {:op "resize" :dashcard_id 8 :size {:size_x 24 :size_y 6}}])))))))
+
+(deftest ^:parallel reused-new-id-is-not-placed-test
+  (testing "a removed card's id reused by an autoplaced card doesn't keep the removed card's position"
+    (is (= {-1 [1 0 12 4], -2 [0 0 24 1]}
+           (layout (compile-with-stub-cards empty-dash
+                                            [{:op "add_card" :id -1 :card_id 42
+                                              :position {:row 0 :col 0} :size {:size_x 12 :size_y 4}}
+                                             {:op "remove" :dashcard_id -1}
+                                             {:op "add_card" :id -1 :card_id 42 :size {:size_x 12 :size_y 4}}
+                                             {:op "add_heading" :id -2 :text "Spend"
+                                              :position {:row 0 :col 0} :size {:size_x 24 :size_y 1}}]))))))
+
+(deftest ^:parallel placed-card-past-the-grid-edge-test
+  (testing "a placed card that runs past column 24 fails"
+    (is (= {::dashboard-ops/error :past-grid-edge, :dashcard-id 8, :col 12, :size-x 24}
+           (op-error side-by-side [{:op "resize" :dashcard_id 8 :size {:size_x 24 :size_y 6}}])))
+    (is (= {::dashboard-ops/error :past-grid-edge, :dashcard-id -1, :col 20, :size-x 6}
+           (op-error empty-dash [{:op "add_card" :id -1 :card_id 42
+                                  :position {:row 0 :col 20} :size {:size_x 6 :size_y 4}}])))))
+
 (deftest move-without-a-position-keeps-its-own-slot-test
   (testing "GHY-4147: move without a position autoplaces against the *other* cards on the tab. The
             moved card is not its own sibling — counting it means the search can never return the
@@ -671,7 +857,12 @@
            (op-error empty-dash
                      [{:op "add_tab" :id -1 :name "Q3"}
                       {:op "add_tab" :id -2 :name "Q4"}
-                      {:op "add_card" :id -3 :card_id 42}])))))
+                      {:op "add_card" :id -3 :card_id 42}]))))
+  (testing "a stored dashcard with no tab is rejected too, though no op touches it"
+    (is (= {::dashboard-ops/error :cards-without-tab, :dashcard-ids [7]}
+           (op-error (assoc (dash-with [{:id 7 :card_id 9 :dashboard_tab_id nil :row 0 :col 0 :size_x 4 :size_y 4}])
+                            :tabs [{:id 1 :name "A"} {:id 2 :name "B"}])
+                     [{:op "add_text" :id -1 :markdown "hi" :tab 2}])))))
 
 (deftest single-tab-coverage-is-not-enforced-test
   (testing "GHY-4147: with exactly one tab, a tabless card is allowed — update-dashboard! back-fills
@@ -751,6 +942,15 @@
                                 [{:op "update_parameter" :parameter_id "p1" :name "Y"}]
                                 {})]
       (is (= [{:id "p1" :name "Y" :slug "y" :type "string/="}] parameters)))))
+
+(deftest update-parameter-clears-test
+  (testing "update_parameter removes the properties it clears and keeps the rest"
+    (let [{:keys [parameters]} (compile-with-stub-cards
+                                (assoc empty-dash :parameters [{:id "p1", :name "X", :slug "x", :type "string/="
+                                                                :default "a", :isMultiSelect true}])
+                                [{:op "update_parameter" :parameter_id "p1" :clear ["default"]}]
+                                {})]
+      (is (= [{:id "p1", :name "X", :slug "x", :type "string/=", :isMultiSelect true}] parameters)))))
 
 (deftest update-parameter-preserves-slug-when-not-renaming-test
   (testing "GHY-4147: an update that does not touch the name leaves the slug alone, so an edit to
@@ -953,10 +1153,10 @@
     :native   {:query "SELECT 1 WHERE {{cat}} AND total > {{min}} /* {{unit}} {{snippet: base}} */"
                :template-tags
                {"cat"           {:id "u1" :name "cat" :display-name "Category" :type :dimension
-                                 :dimension [:field 18 nil] :widget-type :string/=}
+                                 :field-id  18 :widget-type :string/=}
                 "min"           {:id "u2" :name "min" :display-name "Min" :type :number}
                 "unit"          {:id "u3" :name "unit" :display-name "Unit" :type :temporal-unit
-                                 :dimension [:field 22 nil]}
+                                 :field-id  22}
                 "snippet: base" {:id "u4" :name "snippet: base" :display-name "base" :type :snippet
                                  :snippet-name "base"}}}}})
 
@@ -1266,3 +1466,169 @@
                           {})))
       (is (=? {::dashboard-ops/error :unknown-card, :card-id 12}
               (op-error dash [{:op "set_series" :dashcard_id 7 :card_ids [11 12]}] {}))))))
+
+(defn- dropped-connections
+  "The filter connections compiling `ops` against `current` drops, with every field wireable."
+  [current ops]
+  (dynamic-redefs/with-dynamic-fn-redefs [mapping-targets/target-for-field (fn [_card _param field-id]
+                                                                             [:dimension [:field field-id nil]])]
+    (:dropped-connections (dashboard-ops/effects (compile-with-stub-cards current ops {9 a-card})))))
+
+(defn- p1-mapping
+  "A mapping of `p1` onto `card-id`."
+  [card-id]
+  {:parameter_id "p1", :card_id card-id, :target [:dimension [:field card-id nil]]})
+
+(def ^:private series-connected-dashcard
+  "[[a-dashcard]] with its own card and its series card both connected to `p1`."
+  (assoc a-dashcard :parameter_mappings [(p1-mapping 9) (p1-mapping 11)]))
+
+(deftest ^:parallel dropped-connections-replace-card-test
+  (testing "a replaced card that isn't connected again is reported under the card it shows now"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
+           (dropped-connections (p1-dash a-dashcard) [{:op "replace_card" :dashcard_id 7 :card_id 99}]))))
+  (testing "a replaced card connected again in the same call reports nothing"
+    (is (= []
+           (dropped-connections (p1-dash a-dashcard)
+                                [{:op "replace_card" :dashcard_id 7 :card_id 99}
+                                 {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]))))
+  (testing "a series card promoted by replace_card is reported once, in the dashcard's own slot"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 11, :series false}]
+           (dropped-connections (p1-dash series-connected-dashcard)
+                                [{:op "replace_card" :dashcard_id 7 :card_id 11}]))))
+  (testing "a promoted series card that was the only one connected is reported"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 11, :series false}]
+           (dropped-connections (p1-dash (assoc a-dashcard :parameter_mappings [(p1-mapping 11)]))
+                                [{:op "replace_card" :dashcard_id 7 :card_id 11}]))))
+  (testing "a promoted series card replaced in turn is reported under the card that replaced it"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
+           (dropped-connections (p1-dash (assoc a-dashcard :parameter_mappings [(p1-mapping 11)]))
+                                [{:op "replace_card" :dashcard_id 7 :card_id 11}
+                                 {:op "replace_card" :dashcard_id 7 :card_id 99}])))))
+
+(deftest ^:parallel dropped-connections-wire-parameter-test
+  (testing "wiring a card replaces its series card's connection to the filter, which is reported"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 11, :series true}]
+           (dropped-connections (p1-dash series-connected-dashcard)
+                                [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}])))))
+
+(deftest ^:parallel dropped-connections-removed-test
+  (testing "a call that removes the card, series card or filter, or unwires it, reports nothing"
+    (doseq [ops [[{:op "remove" :dashcard_id 7}]
+                 [{:op "remove_parameter" :parameter_id "p1"}]
+                 [{:op "unwire_parameter" :parameter_id "p1"}]
+                 [{:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}]
+                 [{:op "set_series" :dashcard_id 7 :card_ids []}]]]
+      (testing (pr-str ops)
+        (is (= [] (dropped-connections (p1-dash series-connected-dashcard) ops))))))
+  (testing "removing a tab reports nothing for the cards on it"
+    (is (= []
+           (dropped-connections (assoc (p1-dash (assoc series-connected-dashcard :dashboard_tab_id 5))
+                                       :tabs [{:id 5 :name "One"} {:id 6 :name "Two"}])
+                                [{:op "remove_tab" :tab_id 5}]))))
+  (testing "an op that touches no connection reports nothing"
+    (is (= []
+           (dropped-connections (p1-dash series-connected-dashcard)
+                                [{:op "resize", :dashcard_id 7, :size {:size_x 6, :size_y 6}}])))))
+
+(deftest ^:parallel dropped-connections-asked-for-test
+  (testing "a patch_dashcard that sets the mappings drops the filters it leaves out on purpose"
+    (is (= []
+           (dropped-connections (p1-dash series-connected-dashcard)
+                                [{:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings []}}]))))
+  (testing "an unwire after a replace drops the replaced card's connection on purpose"
+    (is (= []
+           (dropped-connections (p1-dash a-dashcard)
+                                [{:op "replace_card" :dashcard_id 7 :card_id 99}
+                                 {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
+                                 {:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}]))))
+  (testing "unwiring or patching away a connection a replace already cleared drops it on purpose"
+    (doseq [op [{:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}
+                {:op "unwire_parameter" :parameter_id "p1"}
+                {:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings []}}]]
+      (testing (pr-str op)
+        (is (= []
+               (dropped-connections (p1-dash a-dashcard)
+                                    [{:op "replace_card" :dashcard_id 7 :card_id 99} op]))))))
+  (testing "a filter removed and added again under the same id doesn't report the old filter's connections"
+    (is (= []
+           (dropped-connections (p1-dash a-dashcard)
+                                [{:op "remove_parameter" :parameter_id "p1"}
+                                 {:op "add_parameter" :parameter_id "p1" :name "P1" :type "category"}]))))
+  (testing "a patch that maps only a series card leaves the dashcard's own card unconnected on purpose"
+    (is (= []
+           (dropped-connections (p1-dash a-dashcard)
+                                [{:op "replace_card" :dashcard_id 7 :card_id 99}
+                                 {:op "set_series" :dashcard_id 7 :card_ids [9]}
+                                 {:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings [(p1-mapping 9)]}}
+                                 {:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}]))))
+  (testing "an unwire after a promotion drops both connections it stands for on purpose"
+    (is (= []
+           (dropped-connections (p1-dash series-connected-dashcard)
+                                [{:op "replace_card" :dashcard_id 7 :card_id 11}
+                                 {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
+                                 {:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}])))))
+
+(deftest ^:parallel dropped-connections-asked-for-does-not-hide-later-losses-test
+  (testing "a filter a patch keeps is reported when a later op drops it"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
+           (dropped-connections (p1-dash a-dashcard)
+                                [{:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings [(p1-mapping 9)]}}
+                                 {:op "replace_card" :dashcard_id 7 :card_id 99}]))))
+  (testing "a connection an op drops on purpose and a later op restores is reported when a third op drops it"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
+           (dropped-connections (p1-dash a-dashcard)
+                                [{:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings []}}
+                                 {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
+                                 {:op "replace_card" :dashcard_id 7 :card_id 99}]))))
+  (testing "an unwire doesn't hide a loss after the connection is restored on a replacement card"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 98, :series false}]
+           (dropped-connections (p1-dash a-dashcard)
+                                [{:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}
+                                 {:op "replace_card" :dashcard_id 7 :card_id 99}
+                                 {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
+                                 {:op "replace_card" :dashcard_id 7 :card_id 98}]))))
+  (testing "a patch that drops the card's own connection doesn't hide its series card's, once that is promoted"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 11, :series false}]
+           (dropped-connections (p1-dash series-connected-dashcard)
+                                [{:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings [(p1-mapping 11)]}}
+                                 {:op "replace_card" :dashcard_id 7 :card_id 11}])))))
+
+(def ^:private another-dashcard
+  "A second dashcard below [[a-dashcard]], its card 12 connected to `p1`."
+  {:id                 8
+   :card_id            12
+   :row                10
+   :col                0
+   :size_x             4
+   :size_y             4
+   :dashboard_tab_id   nil
+   :parameter_mappings [(p1-mapping 12)]})
+
+(deftest ^:parallel dropped-connections-asked-elsewhere-test
+  (testing "an op that asks to drop another dashcard's connections doesn't hide an earlier loss on this one"
+    (doseq [op [{:op "unwire_parameter", :parameter_id "p1", :dashcard_id 8}
+                {:op "patch_dashcard", :dashcard_id 8, :patch {:parameter_mappings []}}]]
+      (testing (pr-str op)
+        (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
+               (dropped-connections (assoc (p1-dash a-dashcard) :dashcards [a-dashcard another-dashcard])
+                                    [{:op "replace_card", :dashcard_id 7, :card_id 99} op]))))))
+  (testing "a patch that doesn't set the mappings doesn't hide an earlier loss"
+    (is (= [{:parameter_id "p1", :dashcard_id 7, :card_id 99, :series false}]
+           (dropped-connections (p1-dash a-dashcard)
+                                [{:op "replace_card", :dashcard_id 7, :card_id 99}
+                                 {:op          "patch_dashcard"
+                                  :dashcard_id 7
+                                  :patch       {:visualization_settings {:card.title "New"}}}])))))
+
+(deftest ^:parallel dropped-connections-stored-mappings-test
+  (testing "a mapping stored without a card id never filtered anything, so losing it is not reported"
+    (is (= []
+           (dropped-connections (p1-dash (assoc a-dashcard :parameter_mappings [(dissoc (p1-mapping 9) :card_id)]))
+                                [{:op "replace_card" :dashcard_id 7 :card_id 99}]))))
+  (testing "a stored mapping onto a card the dashcard doesn't show is not reported, even once the card is shown"
+    (doseq [card-id [99 77]]
+      (testing (str "replaced by card " card-id)
+        (is (= []
+               (dropped-connections (p1-dash (assoc a-dashcard :parameter_mappings [(p1-mapping 77)]))
+                                    [{:op "replace_card" :dashcard_id 7 :card_id card-id}])))))))

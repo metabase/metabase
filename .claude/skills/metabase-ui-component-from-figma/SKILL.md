@@ -15,7 +15,7 @@ This is a frontend task — also load **typescript-write** (and **typescript-rev
 
 The ticket is one of two shapes; identify which up front, because Phase 2 differs:
 
-- **Update an existing component** — the component already exists with call sites, either in `metabase/ui` *or* as a legacy component elsewhere (e.g. `frontend/src/metabase/common/components/`, possibly Emotion styled-components) that this ticket also migrates into `metabase/ui`. The risk is *regression* (call sites, behavior), so you map usage and lock behavior with tests before touching it.
+- **Update an existing component** — the component already exists with call sites, either in `metabase/ui` *or* as a legacy component elsewhere (e.g. `frontend/src/metabase/common/components/`) that this ticket also migrates into `metabase/ui`. The risk is *regression* (call sites, behavior), so you map usage and lock behavior with tests before touching it.
 - **Create a new component** — nothing equivalent exists anywhere yet. Rarer. The risk is *API design*, so you scaffold the component and its public surface first.
 
 Phases 1, 2, 5 and 6 are shared. The middle two differ in **order**: update mode builds the showcase (Phase 3) *before* styling (Phase 4); create mode does the reverse — implement and style first, then build the showcase as the last step — because there's nothing to render until the component exists.
@@ -36,7 +36,7 @@ Phases 1, 2, 5 and 6 are shared. The middle two differ in **order**: update mode
 
 ### Mode: update an existing component
 
-1. Locate the component dir (typically containing `Component.config.ts` or `Component.tsx`, `Component.module.css`, `Component.stories.tsx`, `index.ts`). A ticket may also be **migrating a legacy component** — if it still uses Emotion styled-components, reach for the **emotion-migrate** skill.
+1. Locate the component dir (typically containing `Component.config.ts` or `Component.tsx`, `Component.module.css`, `Component.stories.tsx`, `index.ts`).
 2. Map every usage across `frontend/src` and `e2e` (JSX `<Component`, sub-components like `Component.Group`, and wrapper components).
 3. Write findings to **`local/<TICKET>-<component>-usage-findings.md`**, one entry per usage: code location (`file:line`), short context, and **non-standard usage** (excessive customization, inline styling, invalid/legacy props). Invalid props are a signal that call sites will need migrating in Phase 6. This doc **stays** — the user walks it at the end to verify each real usage still looks right.
 4. State the blast radius plainly: how many call sites, where, and whether they're confined.
@@ -172,7 +172,7 @@ export const OverviewStory = {
 - **Scope controls per story.** A static matrix should hide knobs it ignores: `parameters.controls = { include: [...] }` (or `{ disable: true }`). Wire any kept knob (e.g. `children`) through to the cells so it does something.
 - `loki.config.js` has a `storiesFilter`; check it before renaming a story that's already covered.
 
-Validate: `bun run lint-oxlint -- <files>` and `bun run type-check-pure`.
+Validate: `bun run lint-oxlint-pure -- <files>` and `bun run type-check-pure`.
 
 ### Optional: verify in the browser yourself
 
@@ -217,7 +217,7 @@ General gotchas when extending Mantine components — adapt per component:
 - **Built-in icons use `currentColor`**, so they inherit the slot's text color.
 - For text on a brand fill, follow the existing convention (`text-primary-inverse`) unless the user wants pure white; flag the dark-theme implication.
 
-After edits: `npx stylelint <css>`, `LINT_CSS_MODULES=true bun run lint-oxlint -- <files>`, `bun run type-check-pure`.
+After edits: `npx stylelint <css>`, `LINT_CSS_MODULES=true bun run lint-oxlint-pure -- <files>`, `bun run type-check-pure`.
 
 ## Phase 5 — Iterate with the user
 
@@ -239,6 +239,6 @@ Only after sign-off:
 - [ ] **Update:** usage + blast radius in `local/<TICKET>-<component>-usage-findings.md`; behavior locked with unit tests **if** the component has custom interactive logic (skip for thin Mantine wrappers / pure restyles). **Create:** component scaffolded with its public surface and barrel exports.
 - [ ] Storybook showcase matrix built from the component's full state space (theme excluded — global toggle drives light/dark), single panel, hover/pressed forced via `storybook-addon-pseudo-states`, controls scoped per story; lint + type-check pass. (Update mode: built before styling, **component styles untouched**. Create mode: built after the component is implemented in Phase 4.)
 - [ ] Figma desktop MCP available; exact tokens extracted and mapped to semantic `--mb-color-*` (NO `color-mix`, NO primitives) and to existing scale vars for radius/spacing/elevation/type — any color *or* dimensional value with no matching token/scale step flagged to the user, not baked in as a literal.
-- [ ] Component styled; stylelint + eslint(+CSS modules) + type-check pass.
+- [ ] Component styled; stylelint + oxlint (with CSS modules) + type-check pass.
 - [ ] Iterated with the user until satisfied.
 - [ ] Committed (when asked); call sites migrated/verified (update) or export wired (create); findings doc handed back.

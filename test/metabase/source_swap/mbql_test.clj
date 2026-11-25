@@ -716,7 +716,7 @@
 (deftest ^:parallel swap-source-in-parameter-target-implicit-join-test
   (let [query           (lib/query meta/metadata-provider (meta/table-metadata :orders))
         category-col    (find-column (lib/filterable-columns query) "CATEGORY")
-        target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
+        target          [:dimension (lib/->legacy-MBQL-ref (lib/ref category-col))]
         upgraded-target (source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query target)
         swapped-target  (source-swap.mbql/swap-source-in-parameter-mbql-target query target
                                                                                [:table (meta/id :orders)]
@@ -735,7 +735,7 @@
         mp              (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
         query           (lib/query mp (lib.metadata/card mp 1))
         category-col    (find-column (lib/filterable-columns query) "CATEGORY")
-        target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
+        target          [:dimension (lib/->legacy-MBQL-ref (lib/ref category-col))]
         upgraded-target (source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query target)
         swapped-target  (source-swap.mbql/swap-source-in-parameter-mbql-target query target
                                                                                [:card 1]
@@ -754,7 +754,7 @@
         mp              (lib.tu/metadata-provider-with-card-from-query 1 reviews-query)
         query           (lib/query mp (meta/table-metadata :orders))
         category-col    (find-column (lib/filterable-columns query) "CATEGORY")
-        target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
+        target          [:dimension (lib/->legacy-MBQL-ref (lib/ref category-col))]
         upgraded-target (source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query target)
         swapped-target  (source-swap.mbql/swap-source-in-parameter-mbql-target query target
                                                                                [:table (meta/id :orders)]
@@ -773,7 +773,7 @@
         mp              (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
         query           (lib/query mp (lib.metadata/card mp 1))
         category-col    (find-column (lib/filterable-columns query) "CATEGORY")
-        target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
+        target          [:dimension (lib/->legacy-MBQL-ref (lib/ref category-col))]
         upgraded-target (source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query target)
         swapped-target  (source-swap.mbql/swap-source-in-parameter-mbql-target query target
                                                                                [:card 1]
@@ -906,7 +906,7 @@
 (deftest ^:parallel upgrade-field-ref-in-parameter-target-expression-test
   (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                             (lib/expression "expr" (lib/+ (meta/field-metadata :orders :id) 1)))
-        target          [:dimension (lib/->legacy-MBQL (lib/ensure-uuid [:field {:base-type :type/Integer} "expr"]))]
+        target          [:dimension (lib/->legacy-MBQL-ref (lib/ensure-uuid [:field {:base-type :type/Integer} "expr"]))]
         upgraded-target (source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query target)
         swapped-target  (source-swap.mbql/swap-source-in-parameter-mbql-target query target
                                                                                [:table (meta/id :orders)]

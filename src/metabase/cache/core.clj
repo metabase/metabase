@@ -7,8 +7,6 @@
 (comment metabase.cache.models.cache-config/keep-me
          metabase.cache.settings/keep-me)
 
-(p/import-def metabase.cache.models.cache-config/invalidate! invalidate-config!)
-
 (p/import-vars
  [metabase.cache.models.cache-config
   card-strategy

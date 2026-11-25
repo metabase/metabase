@@ -1,13 +1,11 @@
-// eslint-disable-next-line eslint-js/no-restricted-imports
-import { ThemeProvider as _CompatibilityEmotionThemeProvider } from "@emotion/react";
 import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { MantineProvider } from "@mantine/core";
-import { merge } from "icepick";
 import { type ReactNode, useContext, useMemo } from "react";
 
 import type { ColorName } from "metabase/ui/colors/types";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { getCspNonce } from "metabase/utils/csp";
+import { deepMerge } from "metabase/utils/deep-merge";
 import type { ColorSettings } from "metabase-types/api";
 
 import { getThemeOverrides } from "../../../theme";
@@ -69,7 +67,7 @@ export const ThemeProvider = ({
 
   const theme = useMemo(() => {
     // Unjustified type cast. FIXME
-    const baseTheme = merge(
+    const baseTheme = deepMerge(
       getThemeOverrides({
         colorScheme: resolvedColorScheme,
         whitelabelColors,
@@ -123,9 +121,7 @@ export const ThemeProvider = ({
       withCssVariables={withCssVariables}
       withGlobalClasses={withGlobalClasses}
     >
-      <_CompatibilityEmotionThemeProvider theme={theme}>
-        <DatesProvider>{children}</DatesProvider>
-      </_CompatibilityEmotionThemeProvider>
+      <DatesProvider>{children}</DatesProvider>
     </MantineProvider>
   );
 };

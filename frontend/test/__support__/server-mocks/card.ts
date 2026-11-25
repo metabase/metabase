@@ -141,6 +141,25 @@ export function setupForbiddenCardEndpoints(cardId: CardId) {
   });
 }
 
+/**
+ * Makes the card's own endpoints return 404, i.e. a card that was permanently
+ * deleted.
+ */
+export function setupNotFoundCardEndpoints(cardId: CardId) {
+  fetchMock.get(`path:/api/card/${cardId}`, {
+    status: 404,
+    body: "Not found.",
+  });
+  fetchMock.get(`path:/api/card/${cardId}/query_metadata`, {
+    status: 404,
+    body: "Not found.",
+  });
+  fetchMock.post(`path:/api/card/${cardId}/query`, {
+    status: 404,
+    body: "Not found.",
+  });
+}
+
 type SetupCardQueryEndpointsOpts = {
   /**
    * Return the request's parameters in `json_query.parameters`, as the real
@@ -151,7 +170,8 @@ type SetupCardQueryEndpointsOpts = {
 
 export function setupCardQueryEndpoints(
   card: Card,
-  dataset: Dataset,
+  // A promise holds the response until the test resolves it
+  dataset: Dataset | Promise<Dataset>,
   { echoParameters = false }: SetupCardQueryEndpointsOpts = {},
 ) {
   if (!echoParameters) {
@@ -159,15 +179,16 @@ export function setupCardQueryEndpoints(
     return;
   }
 
-  fetchMock.post(`path:/api/card/${card.id}/query`, (call) => {
+  fetchMock.post(`path:/api/card/${card.id}/query`, async (call) => {
+    const resolvedDataset = await dataset;
     const body: unknown = JSON.parse(String(call.options.body ?? "{}"));
     const parameters =
       typeof body === "object" && body != null && "parameters" in body
         ? body.parameters
         : [];
     return {
-      ...dataset,
-      json_query: { ...dataset.json_query, parameters },
+      ...resolvedDataset,
+      json_query: { ...resolvedDataset.json_query, parameters },
     };
   });
 }

@@ -254,6 +254,42 @@
             (is (some #(re-find #"Advanced Permissions" (str (:message %)))
                       (messages)))))))))
 
+(deftest sync-groups-one-refused-group-among-several-test
+  (testing "when one of 4 groups to add is refused, user is added to other 3 and refusal is logged"
+    (mt/with-premium-features #{}
+      (mt/with-log-messages-for-level [messages :error]
+        (mt/with-user-in-groups [group-1 {:name (str ::group-1)}
+                                 group-2 {:name (str ::group-2)}
+                                 group-3 {:name (str ::group-3)}
+                                 user    []]
+          (integrations.common/sync-group-memberships! user [group-1 (perms-group/data-analyst) group-2 group-3])
+          (is (= #{"All Users"
+                   ":metabase.sso.common-test/group-1"
+                   ":metabase.sso.common-test/group-2"
+                   ":metabase.sso.common-test/group-3"}
+                 (group-memberships user)))
+          (is (= [(format "Error adding user %d to group %d" (u/the-id user) (u/the-id (perms-group/data-analyst)))]
+                 (keep #(re-find #"Error adding user \d+ to group \d+" (str (:message %))) (messages)))))))))
+
+(deftest sync-groups-statement-count-test
+  (testing "adding user to 10 groups at login runs as many statements as adding them to 40"
+    (mt/with-model-cleanup [:model/PermissionsGroup :model/User]
+      (let [statements (fn [n]
+                         (let [group-ids (t2/insert-returning-pks! :model/PermissionsGroup
+                                                                   (for [i (range n)] {:name (format "SSO %d %d" n i)}))
+                               user-id   (t2/insert-returning-pk! :model/User {:email      (format "sso-%d@example.com" n)
+                                                                               :first_name "Test"
+                                                                               :last_name  "User"
+                                                                               :password   "password"})]
+                           (t2/with-call-count [call-count]
+                             (integrations.common/sync-group-memberships! user-id group-ids)
+                             (u/prog1 (call-count)
+                               (is (= (set group-ids)
+                                      (t2/select-fn-set :group_id :model/PermissionsGroupMembership
+                                                        :user_id user-id :group_id [:in group-ids])))))))]
+        (statements 2)
+        (is (= (statements 10) (statements 40)))))))
+
 (mt/when-ee-evailable
  (deftest sync-groups-data-analyst-with-advanced-permissions-test
    (testing "a mapped add to the Data Analysts group succeeds when :advanced-permissions is present"

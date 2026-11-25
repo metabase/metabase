@@ -6,14 +6,14 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.models.dag-run :as transforms.dag-run]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.models.transform-job :as transform-job]
    [metabase.transforms.models.transform-run :as transform-run]
-   [metabase.transforms.models.transform-tag :as transform-tag]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 ;; Use the default test fixture which sets up the test database
@@ -65,20 +65,6 @@
       (is (t2/exists? :model/TransformTag :id (:id tag))
           "Tag should still exist after job deletion"))))
 
-(deftest transform-tag-helper-functions-test
-  (testing "TransformTag helper functions"
-    (mt/with-temp [:model/TransformTag tag {}]
-      (testing "tag-name-exists?"
-        (is (transform-tag/tag-name-exists? (:name tag))
-            "Should return true for existing tag name")
-        (is (not (transform-tag/tag-name-exists? (str "nonexistent-" (u/generate-nano-id))))
-            "Should return false for non-existing tag name"))
-      (testing "tag-name-exists-excluding?"
-        (is (not (transform-tag/tag-name-exists-excluding? (:name tag) (:id tag)))
-            "Should return false when checking same tag's name")
-        (is (transform-tag/tag-name-exists-excluding? (:name tag) (inc (:id tag)))
-            "Should return true when name exists but with different ID")))))
-
 (deftest hydrate-tag-ids-test
   (testing "TransformJob tag_ids hydration preserves position order"
     (mt/with-temp [:model/TransformJob job1 {:name "job1" :schedule "0 0 * * * ?"}
@@ -112,22 +98,22 @@
           (testing "Transform created without creator_id defaults to internal user"
             (is (= config/internal-mb-user-id (:creator_id transform))))
           (testing "Initial tag order is preserved"
-            (transform.model/update-transform-tags! transform-id [(:id tag2) (:id tag1) (:id tag3)])
+            (transform.model/update-transform! transform-id {:tag_ids [(:id tag2) (:id tag1) (:id tag3)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag2) (:id tag1) (:id tag3)] (:tag_ids hydrated))
                   "Tags should be in the order specified")))
           (testing "Reordering tags preserves new order"
-            (transform.model/update-transform-tags! transform-id [(:id tag3) (:id tag1) (:id tag2)])
+            (transform.model/update-transform! transform-id {:tag_ids [(:id tag3) (:id tag1) (:id tag2)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids hydrated))
                   "Tags should be reordered correctly")))
           (testing "Adding and removing tags preserves order"
-            (transform.model/update-transform-tags! transform-id [(:id tag1) (:id tag4)])
+            (transform.model/update-transform! transform-id {:tag_ids [(:id tag1) (:id tag4)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag1) (:id tag4)] (:tag_ids hydrated))
                   "Should have only the specified tags in order")))
           (testing "Duplicate tags are deduplicated while preserving order"
-            (transform.model/update-transform-tags! transform-id [(:id tag2) (:id tag3) (:id tag2) (:id tag1)])
+            (transform.model/update-transform! transform-id {:tag_ids [(:id tag2) (:id tag3) (:id tag2) (:id tag1)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids hydrated))
                   "Duplicates removed, order preserved"))))))))
@@ -135,18 +121,18 @@
 (deftest job-tags-ordering-test
   (testing "Job tags maintain specified order through updates"
     (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temp [:model/TransformJob job {:name "test job" :schedule "0 0 * * *"}
+      (mt/with-temp [:model/TransformJob job {:name "test job" :schedule "0 0 * * * ?"}
                      :model/TransformTag tag1 {:name "tag1"}
                      :model/TransformTag tag2 {:name "tag2"}
                      :model/TransformTag tag3 {:name "tag3"}]
         (let [job-id (:id job)]
           (testing "Initial tag order is preserved"
-            (transform-job/update-job-tags! job-id [(:id tag2) (:id tag1)])
+            (transform-job/update-transform-job! job-id {:tag_ids [(:id tag2) (:id tag1)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids)]
               (is (= [(:id tag2) (:id tag1)] (:tag_ids hydrated))
                   "Tags should be in the order specified")))
           (testing "Reordering and adding tags preserves order"
-            (transform-job/update-job-tags! job-id [(:id tag1) (:id tag3) (:id tag2)])
+            (transform-job/update-transform-job! job-id {:tag_ids [(:id tag1) (:id tag3) (:id tag2)]})
             (let [hydrated (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids)]
               (is (= [(:id tag1) (:id tag3) (:id tag2)] (:tag_ids hydrated))
                   "Tags should be reordered with new tag added"))))))))
@@ -258,9 +244,10 @@
         (testing "Can only add allowed content types"
           (is (some? (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id transforms)))))
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Card can only go in Collections in the.*"
-                                (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id transforms)}))))
+                                (card/create-cards! [(merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id transforms)})])))
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A Transform can only go in Collections in the :transforms namespace."
-                                (t2/insert! :model/Transform (assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id regular-col))))))))))
+                                (transform.model/create-transforms!
+                                 [(assoc (mt/with-temp-defaults :model/Transform) :collection_id (:id regular-col))]))))))))
 
 (deftest deleted-transform-preserves-runs-test
   (testing "Deleting a transform sets transform_id to NULL but preserves the run"
@@ -301,15 +288,22 @@
           (is (= transform-name (:transform_name run)))
           (is (= entity-id (:transform_entity_id run))))))))
 
+(defn- incremental-native-query
+  "A native query on `db-id` with a table variable for the incremental range filter."
+  [db-id sql]
+  (lib/with-template-tags
+    (lib/native-query (lib-be/application-database-metadata-provider db-id) sql)
+    {"source_table" {:id "source_table" :name "source_table" :display-name "Source Table" :type :table :table-id (mt/id :venues)}}))
+
 (deftest checkpoint-reset-on-filter-field-change-test
   (testing "Changing checkpoint-filter-field-id resets stored checkpoint"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Transform {transform-id :id}
                      {:source {:type :query
-                               :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")
+                               :query (incremental-native-query db-id "SELECT 1 FROM {{source_table}}")
                                :source-incremental-strategy {:type "checkpoint"
-                                                             :checkpoint-filter-field-id 100}}
+                                                             :checkpoint-filter-field-id (mt/id :venues :id)}}
                       :target {:type "table-incremental"
                                :schema "public"
                                :name "test_incr"
@@ -322,9 +316,9 @@
         (testing "changing checkpoint-filter-field-id resets checkpoint"
           (t2/update! :model/Transform :id transform-id
                       {:source {:type :query
-                                :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")
+                                :query (incremental-native-query db-id "SELECT 1 FROM {{source_table}}")
                                 :source-incremental-strategy {:type "checkpoint"
-                                                              :checkpoint-filter-field-id 200}}})
+                                                              :checkpoint-filter-field-id (mt/id :venues :price)}}})
           (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (nil? (:last_checkpoint_value t)))))
         (testing "updating without changing checkpoint-filter-field-id preserves checkpoint"
@@ -333,9 +327,9 @@
                       {:last_checkpoint_value "99"})
           (t2/update! :model/Transform :id transform-id
                       {:source {:type :query
-                                :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 2")
+                                :query (incremental-native-query db-id "SELECT 2 FROM {{source_table}}")
                                 :source-incremental-strategy {:type "checkpoint"
-                                                              :checkpoint-filter-field-id 200}}})
+                                                              :checkpoint-filter-field-id (mt/id :venues :price)}}})
           (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (= "99" (:last_checkpoint_value t)))))))))
 
@@ -345,9 +339,9 @@
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Transform {transform-id :id}
                      {:source {:type :query
-                               :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")
+                               :query (incremental-native-query db-id "SELECT 1 FROM {{source_table}}")
                                :source-incremental-strategy {:type "checkpoint"
-                                                             :checkpoint-filter-field-id 100
+                                                             :checkpoint-filter-field-id (mt/id :venues :id)
                                                              :lookback {:value 4 :unit "day"}}}
                       :target {:type "table-incremental"
                                :schema "public"
@@ -407,3 +401,41 @@
           (let [result (transforms.job-run/paged-job-runs {:job-id j1-id :limit 1 :offset 0})]
             (is (= 1 (count (:data result))))
             (is (= 2 (:total result)))))))))
+
+(defn- started-run-attributes
+  "The attributes of a started run of each run model, linked to the Transform `transform-id` and the job `job-id`."
+  [transform-id job-id]
+  {:model/TransformRun    {:transform_id        transform-id
+                           :status              "started"
+                           :run_method          "manual"
+                           :is_active           true}
+   :model/TransformJobRun {:job_id        job-id
+                           :status        "started"
+                           :run_method    "cron"
+                           :start_time    #t "2025-09-01T10:00:00Z"
+                           :is_active     true}
+   :model/TransformDagRun {:source_transform_id        transform-id
+                           :direction                  :downstream
+                           :transform_count            1
+                           :status                     :started
+                           :start_time                 #t "2025-09-01T10:00:00Z"
+                           :is_active                  true}})
+
+(deftest started-runs-store-snapshot-columns-test
+  (mt/with-temp [:model/Transform    {transform-id :id transform-name :name transform-entity-id :entity_id} {}
+                 :model/TransformJob {job-id :id job-name :name job-entity-id :entity_id} {:name "Snapshot Job"}]
+    (mt/with-model-cleanup [:model/TransformJobRun :model/TransformDagRun]
+      (is (=? {:job_name job-name, :job_entity_id job-entity-id}
+              (transforms.job-run/start-run! job-id :manual)))
+      (is (=? {:source_transform_name transform-name, :source_transform_entity_id transform-entity-id}
+              (transforms.dag-run/start-dag-run! transform-id :downstream nil 1))))))
+
+(deftest runs-get-end-time-when-they-end-test
+  (mt/with-temp [:model/Transform    {transform-id :id} {}
+                 :model/TransformJob {job-id :id} {}]
+    (doseq [[model attributes] (started-run-attributes transform-id job-id)]
+      (testing model
+        (mt/with-temp [model {run-id :id} (assoc attributes :end_time nil)]
+          (is (nil? (t2/select-one-fn :end_time model :id run-id)))
+          (t2/update! model :id run-id {:status :succeeded :is_active nil})
+          (is (some? (t2/select-one-fn :end_time model :id run-id))))))))

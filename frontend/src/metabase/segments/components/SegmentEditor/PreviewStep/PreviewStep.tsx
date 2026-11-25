@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { Button, Flex, Loader, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
@@ -36,9 +37,10 @@ function PreviewQuery({ query, stageIndex }: PreviewQueryProps) {
   const { data, isFetching } = useGetAdhocQueryQuery(Lib.toJsQuery(countQuery));
   const count = data?.data?.rows?.[0]?.[0];
 
-  const previewUrl = Urls.newQuestion({
-    dataset_query: Lib.toJsQuery(query),
-  });
+  const buildQuestion = useQuestionFromOptsBuilder();
+  const previewUrl = Urls.newQuestion(
+    buildQuestion({ dataset_query: Lib.toJsQuery(query) }),
+  );
 
   return (
     <ClauseStep>

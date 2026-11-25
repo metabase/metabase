@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 
-import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
-import { defaultFontFiles } from "metabase/css/core/fonts.styled";
+import "metabase/css/core/base.css";
+import "fonts.css";
+import { GlobalStyleSheet } from "metabase/styled-components/components/GlobalStyleSheet";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
-import { PortalContainer, ThemeProvider } from "metabase/ui";
+import { PortalContainer, ThemeProvider, useMantineTheme } from "metabase/ui";
 
 // @ts-expect-error: See metabase/utils/delay
 // This will skip the skippable delays in stories
@@ -22,36 +23,30 @@ require("metabase/visualizations/components/EChartsRenderer/EChartsRenderer");
 
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
-import { Global, css, useTheme } from "@emotion/react";
 import { initialize, mswLoader } from "msw-storybook-addon";
 
 import { loadCodeEditor } from "metabase/common/components/CodeEditor";
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
-import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import {
   getSaveDomImageStyles,
   loadVisualizationComponents,
 } from "metabase/viz-core";
 
-// Inject @font-face declarations synchronously at preview load so that bundled
-// fonts are registered with `document.fonts` before any story's loaders run.
-// Without this, the Emotion <Global /> in the decorator below registers them
-// later, and the fontsReady loader has nothing to wait for on first render.
-if (
-  typeof document !== "undefined" &&
-  !document.head.querySelector("style[data-metabase-font-faces]")
-) {
-  const fontFaceStyle = document.createElement("style");
-  fontFaceStyle.dataset.metabaseFontFaces = "true";
-  fontFaceStyle.textContent = defaultFontFiles({ baseUrl: "/" }).styles;
-  document.head.appendChild(fontFaceStyle);
-}
-
+// Force every registered font to load before the story renders. This ensures we
+// use same fonts for tests every time, instead of using generic fallback
+// family like `sans-serif` which might resolve to different specific fonts (depending
+// on what available on current machine) which might have different metrics, in turn
+// producing inconsistent behavior in code relying on measuring text (e.g., column
+// autosize in table visualization). Awaiting all loads here makes measurements
+// deterministic across platforms.
+//
+// The bundled @font-face rules arrive in the stylesheet fonts.css is extracted
+// into, so wait for the browser to have parsed it before reading document.fonts:
+// the set is empty until then, and there would be nothing to await.
 const PRELOADED_FONT_FAMILIES = ["Lato", "JetBrains Mono"];
 
-// Load the app's text and monospace fonts before the story renders,
-// so code that measures text, like the table's column autosize, gets the same metrics on every machine.
 const fontsReady = async () => {
+  await document.fonts.ready;
   const loads: Promise<unknown>[] = [];
   document.fonts.forEach((face) => {
     if (PRELOADED_FONT_FAMILIES.includes(face.family)) {
@@ -59,6 +54,7 @@ const fontsReady = async () => {
     }
   });
   await Promise.all(loads);
+  await document.fonts.ready;
 };
 
 // Note: Changing the names of the stories may impact loki visual testing. Please ensure that
@@ -109,16 +105,31 @@ const argTypes = {
   },
 };
 
-const globalStyles = css`
-  ${defaultFontFiles({ baseUrl: "/" })}
+declare global {
+  interface Window {
+    // Set by Loki before the page's scripts run.
+    loki?: { isRunning?: boolean };
+  }
+}
 
+// Loki widens the window to fit a story, so the page's own scrollbars would
+// only end up in the screenshot. Scrollbars inside the story stay visible.
+const lokiStyles = window.loki?.isRunning
+  ? `
+      html::-webkit-scrollbar,
+      body::-webkit-scrollbar {
+        display: none;
+      }
+    `
+  : "";
+
+const globalStyles = `
   body {
     font-size: 0.875em;
-    ${rootStyle}
   }
 
   ${getSaveDomImageStyles(false)}
-  ${baseStyle}
+  ${lokiStyles}
 `;
 
 const getResolvedColorScheme = (
@@ -144,22 +155,20 @@ const decorators = [
     );
 
     return (
-      <EmotionCacheProvider>
-        <OverlayStackProvider>
-          <ThemeProvider resolvedColorScheme={resolvedColorScheme}>
-            <Global styles={globalStyles} />
-            <CssVariables />
-            {createPortal(<PortalContainer />, document.body)}
-            <Story />
-          </ThemeProvider>
-        </OverlayStackProvider>
-      </EmotionCacheProvider>
+      <OverlayStackProvider>
+        <ThemeProvider resolvedColorScheme={resolvedColorScheme}>
+          <GlobalStyleSheet styles={globalStyles} />
+          <CssVariables />
+          {createPortal(<PortalContainer />, document.body)}
+          <Story />
+        </ThemeProvider>
+      </OverlayStackProvider>
     );
   },
 ];
 
 function CssVariables() {
-  const theme = useTheme();
+  const theme = useMantineTheme();
   useEffect(() => {
     // mantine v7 will not work correctly without this
     document.body.dir = "ltr";
@@ -171,7 +180,7 @@ function CssVariables() {
   }, [theme]);
 
   const styles = useMemo(() => {
-    return css`
+    return `
       ${cssVariables}
 
       :root {
@@ -184,9 +193,9 @@ function CssVariables() {
         height: 100%;
       }
     `;
-  }, [theme]);
+  }, [cssVariables]);
 
-  return <Global styles={styles} />;
+  return <GlobalStyleSheet styles={styles} />;
 }
 
 /*

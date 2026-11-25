@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
@@ -48,7 +49,7 @@ function setupQuestion({ id, name, hasAccess }: SetupQuestionOptions): Card {
     name,
     result_metadata: [createMockColumn()],
   });
-  const q = new Question(card);
+  const q = new Question(card, createMockMetadata());
 
   if (hasAccess) {
     setupCardEndpoints(q.card());

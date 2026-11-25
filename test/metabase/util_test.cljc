@@ -61,6 +61,30 @@
        "https://metabase.com" false
        "email@metabase.com"   false)))
 
+(deftest ^:parallel uuid-string?-test
+  (are [s expected] (= expected
+                       (u/uuid-string? s))
+    ;; the canonical form, in either case
+    "12345678-9abc-def0-1234-56789abcdef0"  true
+    "12345678-9ABC-DEF0-1234-56789ABCDEF0"  true
+    ;; short forms that `UUID/fromString` accepts on the JVM
+    "1-2-3-4-5"                             false
+    "157-bad-cafe-dead-beef"                false
+    ;; malformed strings
+    ""                                      false
+    "not-a-uuid"                            false
+    "123456789abcdef0123456789abcdef0"      false
+    " 12345678-9abc-def0-1234-56789abcdef0" false
+    ;; values that are not strings
+    nil                                     false
+    (random-uuid)                           false
+    12345678                                false))
+
+(defspec uuid-string?-accepts-generated-uuids-test 100
+  (prop/for-all [id gen/uuid]
+    (and (u/uuid-string? (str id))
+         (u/uuid-string? (u/upper-case-en (str id))))))
+
 (deftest ^:parallel state?-test
   (are [x expected] (= expected
                        (u/state? x))
@@ -720,3 +744,31 @@
      (testing "the states a caller adding protection accepts, and the one it does not"
        (is (#{:https :unknown} (u/https-state {:scheme :http :headers {"origin" "https://example.com"}})))
        (is (nil? (#{:https :unknown} (u/https-state {:scheme :http :headers {}})))))))
+
+(deftest run-each!-test
+  (testing "every step runs whatever the earlier ones did, and the ones that threw come back in order"
+    (let [ran      (atom [])
+          failures (u/run-each! [[:a #(swap! ran conj :a)]
+                                 [:b #(throw (ex-info "b failed" {}))]
+                                 [:c #(swap! ran conj :c)]
+                                 [:d #(throw (ex-info "d failed" {}))]])]
+      (is (= {:ran [:a :c], :failures [[:b "b failed"] [:d "d failed"]]}
+             {:ran @ran, :failures (mapv (fn [[label e]] [label (ex-message e)]) failures)}))))
+  (testing "with no failures it returns an empty vector"
+    (is (= [] (u/run-each! [[:a (constantly :ok)]])))))
+
+(deftest map-by-key-set-test
+  (testing "each group of rows with the same keys goes to one call, and the results keep the order of the rows"
+    (let [calls (atom [])]
+      (is (= [:a :c :b]
+             (u/map-by-key-set (fn [group]
+                                 (swap! calls conj (count group))
+                                 (mapv #(if (contains? % :x) (if (= 1 (:x %)) :a :b) :c) group))
+                               [{:x 1} {:y 1} {:x 2}])))
+      (is (= [1 2] (sort @calls)))))
+  (testing "rows with the same keys in a different order are one group"
+    (let [calls (atom 0)]
+      (u/map-by-key-set (fn [group] (swap! calls inc) group) [{:a 1 :b 2} {:b 3 :a 4}])
+      (is (= 1 @calls))))
+  (testing "no rows, no calls"
+    (is (= [] (u/map-by-key-set (fn [_] (throw (ex-info "called" {}))) [])))))

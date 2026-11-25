@@ -135,3 +135,28 @@
               (fetch-persisted-info :crowberto 200)
               (fetch-persisted-info user 200)
               (fetch-persisted-info :rasta 403))))))))
+
+(deftest persist-listing-follows-writable-databases-test
+  (testing "GET /api/persist lists the persisted models of the databases the user can write, and none without one"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-user-in-groups [group {:name "Monitoring Group"}
+                               user  [group]]
+        (perms/grant-application-permissions! group :monitoring)
+        (mt/with-temp [:model/Database       {other-id :id} {}
+                       :model/Card           {card-a :id}   {:database_id (mt/id) :type :model}
+                       :model/PersistedInfo  {info-a :id}   {:database_id (mt/id) :card_id card-a}
+                       :model/Card           {card-b :id}   {:database_id other-id :type :model}
+                       :model/PersistedInfo  {info-b :id}   {:database_id other-id :card_id card-b}]
+          (let [ours   #{info-a info-b}
+                listed (fn [user] (mt/user-http-request user :get 200 "persist"))
+                ours-in (fn [response] (into #{} (comp (map :id) (filter ours)) (:data response)))]
+            (testing "a user who can write no database gets nothing"
+              (is (=? {:data [] :total 0} (listed user))))
+            (testing "a user who can write one database gets the persisted models of that database"
+              (mt/with-db-perm-for-group! group (mt/id) :perms/manage-database :yes
+                (let [response (listed user)]
+                  (is (= #{info-a} (ours-in response)))
+                  (is (every? #(= (mt/id) (:database_id %)) (:data response)))
+                  (is (pos? (:total response))))))
+            (testing "a superuser gets the persisted models of every database"
+              (is (= ours (ours-in (listed :crowberto)))))))))))

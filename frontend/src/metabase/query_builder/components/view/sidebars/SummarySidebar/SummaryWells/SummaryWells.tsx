@@ -9,6 +9,7 @@ import type {
   SummaryFormulaClause,
   SummaryFormulaInput,
 } from "../SummaryFormulaBar";
+import type { SummaryFormulaGenerator } from "../SummaryFormulaGenerator";
 import S from "../SummarySidebar.module.css";
 import type {
   SummaryDimensionItem,
@@ -37,6 +38,7 @@ type SummaryWellsProps = {
   stageIndex: number;
   sections: SummaryFieldSection[];
   formulaInputs?: Partial<Record<SummaryWellId, SummaryFormulaInput>>;
+  formulaGenerator?: SummaryFormulaGenerator;
   draftFormula?:
     | (DraftFormulaChipProps & { wellId: SummaryWellId; draftKey: number })
     | null;
@@ -57,6 +59,7 @@ export function SummaryWells({
   stageIndex,
   sections,
   formulaInputs,
+  formulaGenerator,
   draftFormula,
   editingFormulaClause,
   draggedItem,
@@ -110,6 +113,7 @@ export function SummaryWells({
         <SummaryWellInput
           wellId="values"
           formulaInput={formulaInputs?.values}
+          formulaGenerator={formulaGenerator}
           sections={valueSections}
           hasItems={valueItems.length > 0}
           autoFocus
@@ -151,6 +155,7 @@ export function SummaryWells({
         <SummaryWellInput
           wellId="columns"
           formulaInput={formulaInputs?.columns}
+          formulaGenerator={formulaGenerator}
           sections={dimensionSections}
           hasItems={columnItems.length > 0}
           onPick={(field) => onPick("columns", field)}
@@ -188,6 +193,7 @@ export function SummaryWells({
           <SummaryWellInput
             wellId="rows"
             formulaInput={formulaInputs?.rows}
+            formulaGenerator={formulaGenerator}
             sections={dimensionSections}
             hasItems={rowItems.length > 0}
             onPick={(field) => onPick("rows", field)}

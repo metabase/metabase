@@ -5,6 +5,7 @@ import { Box, Stack } from "metabase/ui";
 
 import { UPSELL_CAMPAIGN_EXPERIENCE } from "../../../analytics";
 import { useSdkIframeEmbedSetupContext } from "../../../context";
+import { DataAppEnableEmbeddingCard } from "../../../data-apps/DataAppEnableEmbeddingCard";
 import { hasAuthToSelect } from "../../../utils/has-auth-to-select";
 import { hasResourceToSelect } from "../../../utils/has-resource-to-select";
 import { AuthenticationCard } from "../../AuthenticationCard";
@@ -20,8 +21,8 @@ export const SelectEmbedExperienceStep = () => {
   const showAuth = hasAuthToSelect(experience);
   const showResource = hasResourceToSelect(experience);
 
-  // Authentication is interactive even when preview/navigation is disabled
-  // (otherwise the user couldn't switch auth type or accept terms to unblock).
+  // Experience and authentication remain interactive so the user can switch
+  // embed types or accept the terms to unblock setup.
   const dimmedProps = {
     opacity: allowPreviewAndNavigation ? 1 : 0.5,
     className: cx(!allowPreviewAndNavigation && CS.pointerEventsNone),
@@ -29,11 +30,11 @@ export const SelectEmbedExperienceStep = () => {
 
   return (
     <Stack gap="lg">
-      <Box {...dimmedProps}>
-        <ExperienceCard />
-      </Box>
+      <ExperienceCard />
 
       {showAuth && <AuthenticationCard />}
+
+      <DataAppEnableEmbeddingCard />
 
       {showResource && (
         <Box {...dimmedProps}>

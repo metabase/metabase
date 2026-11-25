@@ -19,6 +19,7 @@ import type {
   Collection,
   CollectionId,
   CollectionItem,
+  CollectionItemModel,
   ListCollectionItemsResponse,
 } from "metabase-types/api";
 import {
@@ -160,6 +161,12 @@ function getItemsCalls(collectionId: CollectionId = collection.id) {
   );
 }
 
+function getSortDirections(collectionId: CollectionId = collection.id) {
+  return getItemsCalls(collectionId).map((call) =>
+    new URL(call.url).searchParams.get("sort-direction"),
+  );
+}
+
 function getMetadataCalls(collectionId: CollectionId = collection.id) {
   return fetchMock.callHistory.calls(
     `path:/api/collection/${collectionId}/items/metadata`,
@@ -213,6 +220,28 @@ function CollectionNavigationTest({
         collection={currentCollection}
         collectionId={currentCollection.id}
         showFilterBar
+      />
+    </>
+  );
+}
+
+function ControlledTypeFilterTest({ pageSize }: { pageSize?: number }) {
+  const [typeFilter, setTypeFilter] = useState<CollectionItemModel[] | null>(
+    null,
+  );
+
+  return (
+    <>
+      <button onClick={() => setTypeFilter(["card"])}>
+        Show only questions
+      </button>
+      <CollectionItemsTable
+        collection={collection}
+        collectionId={collection.id}
+        pageSize={pageSize}
+        showFilterBar
+        typeFilter={typeFilter}
+        onTypeFilterChange={setTypeFilter}
       />
     </>
   );
@@ -450,8 +479,7 @@ describe("CollectionItemsTable", () => {
       expect(getItemsCalls()).toHaveLength(2);
     });
 
-    const tableWasMounted =
-      (await screen.findByTestId("collection-table")) != null;
+    await screen.findByTestId("collection-table");
     const emptyStateWasVisible =
       screen.queryByTestId("collection-empty-state") != null;
     await act(async () => {
@@ -462,7 +490,6 @@ describe("CollectionItemsTable", () => {
     expect(
       await screen.findByTestId("collection-empty-state"),
     ).toBeInTheDocument();
-    expect(tableWasMounted).toBe(true);
     expect(emptyStateWasVisible).toBe(false);
   });
 
@@ -696,8 +723,11 @@ describe("CollectionItemsTable", () => {
     advanceSearchDebounce();
 
     expect(await screen.findByText("Didn't find anything")).toBeInTheDocument();
+    const emptyState = screen.getByTestId("collection-filter-empty-state");
     expect(
-      screen.getByTestId("collection-filter-empty-state"),
+      within(emptyState).getByText(
+        "There weren't any results for your search.",
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("collection-table")).not.toBeInTheDocument();
   });
@@ -1018,6 +1048,34 @@ describe("CollectionItemsTable", () => {
     expect(getSearchCalls(nextCollection.id)).toHaveLength(0);
   });
 
+  it("keeps the sort order when navigating to another collection", async () => {
+    const nextCollection = createMockCollection({ id: 2, can_write: false });
+    setupCollectionItemsEndpoint({ collection, collectionItems });
+    setupCollectionItemsEndpoint({
+      collection: nextCollection,
+      collectionItems: createFillerItems(3, {
+        collection_id: nextCollection.id,
+      }),
+    });
+    renderWithProviders(
+      <CollectionNavigationTest nextCollection={nextCollection} />,
+      { withRouter: true, withDND: true },
+    );
+    expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Name"));
+    await waitFor(() => {
+      expect(getSortDirections(collection.id).at(-1)).toBe("desc");
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Open next collection" }),
+    );
+
+    expect(await screen.findByText("Extra card 1")).toBeInTheDocument();
+    expect(getSortDirections(nextCollection.id)).toEqual(["desc"]);
+  });
+
   it("does not show the previous collection's toolbar while a smaller collection loads", async () => {
     const nextCollection = createMockCollection({ id: 2, can_write: false });
     setupCollectionItemsEndpoint({ collection, collectionItems });
@@ -1164,5 +1222,344 @@ describe("CollectionItemsTable", () => {
     expect(
       screen.queryByTestId("items-table-skeleton"),
     ).not.toBeInTheDocument();
+  });
+
+  describe("controlled type filter", () => {
+    it("applies a filter set from outside and resets pagination", async () => {
+      setupCollectionItemsEndpoint({ collection, collectionItems });
+      renderWithProviders(<ControlledTypeFilterTest pageSize={1} />, {
+        withRouter: true,
+        withDND: true,
+      });
+
+      expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+      expect(await screen.findByText("Customer 360")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Show only questions" }),
+      );
+
+      await waitFor(() => {
+        expect(findItemsSearchParamsByModels(["card"])?.get("offset")).toBe(
+          "0",
+        );
+      });
+      expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Filter, filters applied" }),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByTestId("collection-type-filter-button"),
+      );
+      expect(screen.getByLabelText("Question")).toBeChecked();
+    });
+
+    it("keeps the toolbar visible in a small collection while a type filter is applied", async () => {
+      setupCollectionItemsEndpoint({
+        collection,
+        collectionItems: collectionItems.slice(0, 3),
+      });
+      renderWithProviders(<ControlledTypeFilterTest />, {
+        withRouter: true,
+        withDND: true,
+      });
+
+      expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("collection-items-toolbar"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Show only questions" }),
+      );
+
+      expect(
+        await screen.findByTestId("collection-items-toolbar"),
+      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByText("Revenue overview")).not.toBeInTheDocument();
+      });
+      expect(screen.getByText("Customer 360")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByTestId("collection-type-filter-button"),
+      );
+      await userEvent.click(screen.getByLabelText("Question"));
+
+      expect(await screen.findByText("Revenue overview")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("collection-items-toolbar"),
+        ).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("pagination", () => {
+    const PAGE_SIZE = 25;
+    const pagedItems = [
+      createMockCollectionItem({
+        id: 500,
+        collection_id: collection.id,
+        model: "collection",
+        name: "Sub-collection",
+      }),
+      ...createFillerItems(14, { model: "dashboard" }),
+      ...createFillerItems(15, { model: "card" }).map((item, index) => ({
+        ...item,
+        id: 200 + index,
+      })),
+    ];
+    const TOTAL = pagedItems.length;
+
+    function getLastItemsParams() {
+      const calls = getItemsCalls();
+      return new URL(calls[calls.length - 1].url).searchParams;
+    }
+
+    function getEntryNames() {
+      return screen
+        .queryAllByTestId("collection-entry-name")
+        .map((cell) => cell.textContent);
+    }
+
+    const FIRST_PAGE_NAMES = pagedItems
+      .slice(0, PAGE_SIZE)
+      .map((item) => item.name);
+    const SECOND_PAGE_NAMES = pagedItems
+      .slice(PAGE_SIZE)
+      .map((item) => item.name);
+
+    it("pages back and forth and returns to the first page when the sort changes on another page", async () => {
+      setup({ collectionItems: pagedItems, showFilterBar: false });
+      // The page label changes before the response replaces the rows, so the
+      // assertions must wait for the returned rows, not the label.
+      fetchMock.modifyRoute(`collection-${collection.id}-items`, {
+        delay: 500,
+      });
+
+      await waitFor(() => {
+        expect(getEntryNames()).toEqual(FIRST_PAGE_NAMES);
+      });
+      expect(screen.getByText(`1 - ${PAGE_SIZE}`)).toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent(
+        String(TOTAL),
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+      await waitFor(() => {
+        expect(getEntryNames()).toEqual(SECOND_PAGE_NAMES);
+      });
+      expect(getLastItemsParams().get("offset")).toBe(String(PAGE_SIZE));
+      expect(
+        screen.getByText(`${PAGE_SIZE + 1} - ${TOTAL}`),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent(
+        String(TOTAL),
+      );
+      expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Previous page" }),
+      );
+      await waitFor(() => {
+        expect(getEntryNames()).toEqual(FIRST_PAGE_NAMES);
+      });
+      expect(screen.getByText(`1 - ${PAGE_SIZE}`)).toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent(
+        String(TOTAL),
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+      await waitFor(() => {
+        expect(getEntryNames()).toEqual(SECOND_PAGE_NAMES);
+      });
+
+      const callsBeforeSort = getItemsCalls().length;
+      await userEvent.click(screen.getByText("Last edited at"));
+
+      await waitFor(() => {
+        expect(getItemsCalls()).toHaveLength(callsBeforeSort + 1);
+      });
+      const sortedParams = getLastItemsParams();
+      expect(sortedParams.get("sort-column")).toBe("last_edited_at");
+      expect(sortedParams.get("offset")).toBe("0");
+      await waitFor(() => {
+        expect(getEntryNames()).toEqual(FIRST_PAGE_NAMES);
+      });
+      expect(screen.getByText(`1 - ${PAGE_SIZE}`)).toBeInTheDocument();
+    });
+  });
+
+  describe("sorting", () => {
+    function createEditedItem(
+      id: number,
+      name: string,
+      model: CollectionItemModel,
+      editor: { first_name: string; last_name: string } | null,
+    ) {
+      return createMockCollectionItem({
+        id,
+        name,
+        model,
+        collection_id: collection.id,
+        "last-edit-info": editor
+          ? {
+              id: 1,
+              email: "editor@example.com",
+              timestamp: "2024-01-01T00:00:00Z",
+              ...editor,
+            }
+          : undefined,
+      });
+    }
+
+    const BOBBY = { first_name: "Bobby", last_name: "Tables" };
+    const ROBERT = { first_name: "Robert", last_name: "Tableton" };
+    const aDashboard = createEditedItem(1, "A Dashboard", "dashboard", BOBBY);
+    const aQuestion = createEditedItem(2, "A Question", "card", ROBERT);
+    const bDashboard = createEditedItem(3, "B Dashboard", "dashboard", ROBERT);
+    const bQuestion = createEditedItem(4, "B Question", "card", ROBERT);
+    const subCollection = createEditedItem(
+      5,
+      "Sub-collection",
+      "collection",
+      null,
+    );
+
+    // The order the backend returns for each sort; any other sort gets nothing.
+    const ORDERS: Record<string, CollectionItem[]> = {
+      "name:asc": [aDashboard, aQuestion, bDashboard, bQuestion, subCollection],
+      "name:desc": [
+        subCollection,
+        bQuestion,
+        bDashboard,
+        aQuestion,
+        aDashboard,
+      ],
+      "model:asc": [
+        aDashboard,
+        bDashboard,
+        aQuestion,
+        bQuestion,
+        subCollection,
+      ],
+      "model:desc": [
+        subCollection,
+        aQuestion,
+        bQuestion,
+        aDashboard,
+        bDashboard,
+      ],
+      "last_edited_by:asc": [
+        aDashboard,
+        aQuestion,
+        bDashboard,
+        bQuestion,
+        subCollection,
+      ],
+      "last_edited_by:desc": [
+        bQuestion,
+        bDashboard,
+        aQuestion,
+        aDashboard,
+        subCollection,
+      ],
+      "last_edited_at:asc": [
+        aDashboard,
+        aQuestion,
+        bDashboard,
+        bQuestion,
+        subCollection,
+      ],
+      "last_edited_at:desc": [
+        bQuestion,
+        bDashboard,
+        aQuestion,
+        aDashboard,
+        subCollection,
+      ],
+    };
+
+    function setupSortedItems() {
+      setup({ collectionItems: ORDERS["name:asc"], showFilterBar: false });
+      fetchMock.modifyRoute(`collection-${collection.id}-items`, {
+        response: (call: { url: string }) => {
+          const params = new URL(call.url).searchParams;
+          const key = `${params.get("sort-column")}:${params.get("sort-direction")}`;
+          const data = ORDERS[key] ?? [];
+          return { data, total: data.length, models: [], limit: 25, offset: 0 };
+        },
+      });
+    }
+
+    function getNames() {
+      return screen
+        .getAllByTestId("collection-entry-name")
+        .map((cell) => cell.textContent);
+    }
+
+    function getEditors() {
+      return screen
+        .getAllByTestId("collection-entry-last-edited-by")
+        .map((cell) => cell.textContent);
+    }
+
+    async function sortBy(columnName: string, expected: CollectionItem[]) {
+      await userEvent.click(
+        within(screen.getByTestId("items-table-head")).getByText(columnName),
+      );
+      await waitFor(() => {
+        expect(getNames()).toEqual(expected.map((item) => item.name));
+      });
+    }
+
+    it("asks the backend for each column and direction and lists the items in the order it returns", async () => {
+      setupSortedItems();
+
+      await waitFor(() => {
+        expect(getNames()).toEqual(ORDERS["name:asc"].map((item) => item.name));
+      });
+
+      await sortBy("Name", ORDERS["name:desc"]);
+      await sortBy("Name", ORDERS["name:asc"]);
+      await sortBy("Type", ORDERS["model:asc"]);
+      await sortBy("Type", ORDERS["model:desc"]);
+      await sortBy("Last edited by", ORDERS["last_edited_by:asc"]);
+      expect(getEditors()).toEqual([
+        "Bobby Tables",
+        "Robert Tableton",
+        "Robert Tableton",
+        "Robert Tableton",
+        "",
+      ]);
+      await sortBy("Last edited by", ORDERS["last_edited_by:desc"]);
+      expect(getEditors()).toEqual([
+        "Robert Tableton",
+        "Robert Tableton",
+        "Robert Tableton",
+        "Bobby Tables",
+        "",
+      ]);
+      await sortBy("Last edited at", ORDERS["last_edited_at:asc"]);
+      await sortBy("Last edited at", ORDERS["last_edited_at:desc"]);
+
+      expect(
+        getItemsCalls().map((call) => {
+          const params = new URL(call.url).searchParams;
+          return `${params.get("sort-column")}:${params.get("sort-direction")}`;
+        }),
+      ).toEqual([
+        "name:asc",
+        "name:desc",
+        "model:asc",
+        "model:desc",
+        "last_edited_by:asc",
+        "last_edited_by:desc",
+        "last_edited_at:asc",
+        "last_edited_at:desc",
+      ]);
+    });
   });
 });
