@@ -110,7 +110,6 @@
    [:probed                 {:optional true} :int]
    [:queries                {:optional true} :int]
    [:too-large              {:optional true} :int]
-   [:too-large-updated      {:optional true} :int]
    [:catalog-call-ms        {:optional true} :int]
    [:nested-field-call-ms   {:optional true} :int]
    [:nested-field-tables    {:optional true} :int]

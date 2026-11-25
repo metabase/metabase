@@ -423,7 +423,7 @@
               (is (not (contains? states "XX")) "Stale seeded values were replaced"))))))))
 
 (deftest ^:synchronized sync-fields-grouped-by-table!-too-large-count-test
-  (testing "The counts say how many of the scanned lists are too large, and how many updates were to such lists"
+  (testing "The counts say how many of the scanned lists are too large"
     (mt/dataset test-data
       (mt/with-temp [:model/FieldValues _ {:field_id        (mt/id :people :state)
                                            :type            :full
@@ -437,8 +437,9 @@
           ;; `people.state` has more than 10 values and `people.source` has fewer
           (binding [field-values/*distinct-limit* (int 10)]
             (testing "first scan: both lists change, and one of them is too large"
-              (is (=? {:probed 2, :updated 2, :too-large 1, :too-large-updated 1}
-                      (sync.field-values/sync-fields-grouped-by-table! fields))))
+              (is (= {:probed 2, :updated 2, :too-large 1}
+                     (select-keys (sync.field-values/sync-fields-grouped-by-table! fields)
+                                  [:probed :updated :too-large :too-large-updated]))))
             (testing "second scan: the list is still counted as too large"
               (is (=? {:probed 2, :too-large 1}
                       (sync.field-values/sync-fields-grouped-by-table! fields))))))))))

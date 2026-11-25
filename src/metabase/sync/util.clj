@@ -584,7 +584,6 @@
    [:throwable              {:optional true} [:maybe (ms/InstanceOfClass Throwable)]]
    [:timezone-id            {:optional true} [:maybe :string]]
    [:too-large              {:optional true} :int]
-   [:too-large-updated      {:optional true} :int]
    [:total-failed           {:optional true} :int]
    [:total-fields           {:optional true} :int]
    [:total-fks              {:optional true} :int]
@@ -754,16 +753,20 @@
 
 (defn- do-with-call-stats
   "Call `thunk`, the body of a sync step, and add to the stats it returns the counters of its calls to the warehouse,
-  as whole numbers. See [[add-call-stats!]] for the counters. A step that used none of them gets no keys."
+  as whole numbers. See [[add-call-stats!]] for the counters. A step that used none of them gets no keys.
+
+  The counters also become attributes of the tracing span of the step, `:sync/query-calls` and so on."
   [thunk]
   (let [counters (atom {})
-        result   (binding [*call-stats*      counters
+        result   (binding [*call-stats*          counters
                            qp.pipeline/*execute* (counting-execute qp.pipeline/*execute*)]
-                   (thunk))]
+                   (thunk))
+        stats    (update-vals @counters #(long (Math/round (double %))))]
+    (tracing/add-span-attrs! :sync (update-keys stats #(keyword "sync" (name %))))
     (cond-> result
-      (and (seq @counters)
+      (and (seq stats)
            (or (nil? result) (map? result)))
-      (merge (update-vals @counters #(long (Math/round (double %))))))))
+      (merge stats))))
 
 (mu/defn- run-step-with-metadata :- StepNameWithMetadata
   "Runs `step` on `database` returning metadata from the run"

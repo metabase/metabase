@@ -28,13 +28,12 @@
     (= ::field-values/fv-deleted result) {:deleted 1}))
 
 (defn- too-large-delta
-  "The counts for `change`, what [[field-values/field-values-change]] returned for a Field, with `result`, its outcome
+  "The count for `change`, what [[field-values/field-values-change]] returned for a Field, with `result`, its outcome
   or the Throwable writing it threw, when the Field has more values than its list holds."
   [change result]
   (when (and (:too-large? change)
              (not (instance? Throwable result)))
-    (cond-> {:too-large 1}
-      (= ::field-values/fv-updated result) (assoc :too-large-updated 1))))
+    {:too-large 1}))
 
 (defn- fields-to-scan
   "Up to `limit` active, normal-visibility Fields of each of `tables`, by Table id, ordered by id so that the
@@ -73,10 +72,9 @@
   - `:probed`  fields we attempted to fetch distinct values for (active list-eligible fields)
   - `:queries` warehouse queries actually issued (1 per UNION batch on SQL, 1 per field on non-SQL)
   - `:created`/`:updated`/`:deleted`/`:errors` per-field outcomes (`::fv-skipped` is not counted)
-  - `:too-large` fields with more values than their list holds, whatever the outcome
-  - `:too-large-updated` the `:updated` outcomes among those. Which values the warehouse returns for such a field is
-    arbitrary, so this update can be a rewrite with no change in the data"
-  {:errors 0, :created 0, :updated 0, :deleted 0, :probed 0, :queries 0, :too-large 0, :too-large-updated 0})
+  - `:too-large` fields with more values than their list holds, whatever the outcome. Which values the warehouse
+    returns for such a field is arbitrary, so an `:updated` outcome for one can be a rewrite with no change in the data"
+  {:errors 0, :created 0, :updated 0, :deleted 0, :probed 0, :queries 0, :too-large 0})
 
 (defn- fetch-distinct-for-table
   "Run all UNION batches for `fields` from `table` of a Database of `driver`. Returns

@@ -19,6 +19,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
+   [metabase.tracing.core :as tracing]
+   [metabase.tracing.test-util :as tracing.tu]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
@@ -224,6 +226,36 @@
     (is (= :value (sync-util/with-call-time :catalog-call-ms :value)))
     (is (= [0 1 2] (into [] (sync-util/timed-reducible :catalog-call-ms (range 3)))))
     (is (nil? (sync-util/add-call-stats! {:nested-field-tables 1})))))
+
+(deftest call-stats-on-tracing-span-test
+  (testing "the call counters of a step are attributes of its tracing span"
+    (tracing.tu/with-span-exporter [exporter]
+      (try
+        (tracing/init-enabled-groups! "sync" "INFO")
+        (let [query-step (mt/random-name)
+              quiet-step (mt/random-name)
+              mp         (mt/metadata-provider)
+              venues     (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+              sync-steps [(sync-util/create-sync-step query-step
+                                                      (fn [_]
+                                                        (qp/process-query (lib/limit venues 3))
+                                                        (sync-util/add-call-stats! {:catalog-call-ms 12, :nested-field-tables 2})
+                                                        {:total-tables 1}))
+                          (sync-util/create-sync-step quiet-step (fn [_] {:total-tables 2}))]
+              _          (sync-util/run-sync-operation (mt/random-name) (driver.u/lib-database (mt/id)) sync-steps)
+              span-attrs (into {} (map (juxt :name :attrs)) (tracing.tu/finished-spans exporter))]
+          (testing "a step that made calls"
+            (is (=? {"sync.query_calls"         1
+                     "sync.query_rows"          3
+                     "sync.query_call_ms"       nat-int?
+                     "sync.catalog_call_ms"     12
+                     "sync.nested_field_tables" 2}
+                    (get span-attrs (str "sync.step." query-step)))))
+          (testing "a step that made no call has no such attributes"
+            (is (empty? (filter #(re-find #"^sync\.(query|catalog|nested)" %)
+                                (keys (get span-attrs (str "sync.step." quiet-step))))))))
+        (finally
+          (tracing/shutdown-groups!))))))
 
 (deftest run-sync-operation-record-failed-task-history-test
   (let [process-name (mt/random-name)
