@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.api.common :as api]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
@@ -193,14 +194,19 @@
    :auth-identities (t2/count :model/AuthIdentity :user_id user-id)
    :sessions        (t2/count :model/Session :user_id user-id)})
 
+(defn- jwt-for
+  "A JWT for `email` that gives another name and an attribute."
+  [email]
+  (jwt/sign {:email email :first_name "Renamed" :last_name "by SSO" :region "south"}
+            sso.test-setup/default-jwt-secret))
+
 (defn- jwt-sign-in
-  "Sign in over JWT SSO with `email`, under another name and with an attribute, expecting `status`."
+  "Sign in over JWT SSO with `email`, expecting `status`."
   [status email]
   (binding [client/*url-prefix* ""]
     (client/client-real-response :get status "/auth/sso" {:request-options {:redirect-strategy :none}}
                                  :return_to "/"
-                                 :jwt (jwt/sign {:email email :first_name "Renamed" :last_name "by SSO" :region "south"}
-                                                sso.test-setup/default-jwt-secret))))
+                                 :jwt (jwt-for email))))
 
 (deftest stand-in-cannot-sign-in-through-sso-test
   (sso.test-setup/with-jwt-default-setup!
@@ -214,6 +220,8 @@
                      (:body (jwt-sign-in 401 (:email stand-in))))))
             (testing "nothing about the stand-in changes: its user row, groups, sign-in identities and sessions"
               (is (= before (account (:id stand-in)))))
+            (testing "the refused login returns no user for a provider's own steps after login to change"
+              (is (not (contains? (auth-identity/login! :provider/jwt {:token (jwt-for (:email stand-in))}) :user))))
             (testing "guard: the same sign-in reactivates an ordinary deactivated user"
               (mt/with-temp [:model/User {user-id :id email :email} {:is_active false}]
                 (jwt-sign-in 302 email)
