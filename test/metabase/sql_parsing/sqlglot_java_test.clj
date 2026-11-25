@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [metabase.sql-parsing.case-files :as case-files]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-parsing.graal :as graal]
    [metabase.sql-parsing.protocol :as protocol]
@@ -126,6 +127,13 @@
                ["postgres" "read-only" "rebuild-strict" "SELECT 0b101 AS a"                                              "number-literal"]
                ["postgres" "read-only" "rebuild-strict" "SELECT 0o17"                                                    "number-literal"]
                ["postgres" "read-only" "rebuild-strict" "SELECT 1_000_000"                                               "number-literal"]
+               ;; Upper-case prefixes, a signed number, and a character outside the Basic Multilingual Plane before the
+               ;; number, after which each parser cuts the detail from the text at its own offsets.
+               ["postgres" "read-only" "rebuild-strict" "SELECT 0X1F AS a"                                               "number-literal"]
+               ["postgres" "read-only" "rebuild-strict" "SELECT 0B101 AS a"                                              "number-literal"]
+               ["postgres" "read-only" "rebuild-strict" "SELECT -0x10 AS a"                                              "number-literal"]
+               ["postgres" "read-only" "rebuild-strict" "SELECT '\uD83D\uDE00' AS e, 0x1F AS a"                        "number-literal"]
+               ["postgres" "read-only" "rebuild-strict" "SELECT '\uD83D\uDE00' AS e, 1_000"                            "number-literal"]
                ;; Followed by an alias, these do not parse; the number is still the reason.
                ["postgres" "read-only" "rebuild-strict" "SELECT 0o17 AS n"                                               "number-literal"]
                ["postgres" "read-only" "rebuild-strict" "SELECT 1_000_000 AS n"                                          "number-literal"]
@@ -161,11 +169,31 @@
                              ["mysql"      "SELECT INSTR(?, ?) AS id FROM t # ?\n LIMIT ?, ?"]
                              ["redshift"   "SELECT ? AS a /* ? */"]
                              ["clickhouse" "SELECT position(?, ?) AS id FROM t LIMIT ?"]
-                             ["tsql"       "SELECT [?] AS a, ? AS b FROM t ORDER BY a OFFSET ? ROWS"]]]
+                             ["tsql"       "SELECT [?] AS a, ? AS b FROM t ORDER BY a OFFSET ? ROWS"]
+                             ;; A nested comment, which Postgres, ClickHouse and T-SQL read as one comment and MySQL
+                             ;; as two; an escaped quote before `?` in a string; and `??`.
+                             ["postgres"   "SELECT /* /* */ ? */ ? AS a"]
+                             ["clickhouse" "SELECT /* /* */ ? */ ? AS a"]
+                             ["tsql"       "SELECT /* /* */ ? */ ? AS a"]
+                             ["mysql"      "SELECT /* /* */ ? */ ? AS a"]
+                             ["postgres"   "SELECT E'\\'?' AS a, ? AS b"]
+                             ["mysql"      "SELECT 'a\\'?' AS a, ? AS b"]
+                             ["clickhouse" "SELECT 'a\\'?' AS a, ? AS b"]
+                             ["postgres"   "SELECT meta ?? ? FROM t"]]]
         (testing (pr-str dialect sql)
           ;; Compared as the shadow parser compares them: Python writes `?::` as `p_0 ::`, Java as `p_0::`.
           (is (= (shadow/logical-value :name-placeholders (protocol/name-placeholders graal dialect sql "p_"))
                  (shadow/logical-value :name-placeholders (protocol/name-placeholders java dialect sql "p_")))))))))
+
+(deftest add-into-clause-matches-graalpy-test
+  (testing "both parsers rewrite each add_into_clause case to the same SELECT INTO"
+    (let [graal (sql-parsing/parser :sqlglot)
+          java  (sql-parsing/parser :sqlglot-java)]
+      (doseq [{:keys [name sql dialect table-name expected error]} (case-files/cases "add_into_clause")
+              :when (not error)]
+        (testing name
+          (is (= expected (protocol/add-into-clause graal dialect sql table-name)) "GraalPy")
+          (is (= expected (protocol/add-into-clause java dialect sql table-name)) "Java"))))))
 
 (defn- python-statement-count
   "`_postgres_statement_count` of `sql` with `standard_conforming_strings` as given, run by the GraalPy parser."
