@@ -851,22 +851,28 @@
                   [table_name (long table_rows)])))
         rows))
 
+(def ^:private row-count-estimates-timeout-seconds
+  "The time limit of the row count estimate query. On MySQL 5.7 and MariaDB, `TABLE_ROWS` opens each table of the
+  schema, which can be slow for a schema with very many tables."
+  15)
+
 (defn- query-row-count-estimates
-  "The row count estimates of the base tables of the database of `conn`. The schema is the database name without a
-  Vitess routing suffix such as `@replica`, which `DATABASE()` can return (see the `active-tables` method below)."
+  "The row count estimates of the tables of the database of `conn`. The schema filter is `DATABASE()`, as in the
+  driver's own `getTables` query for a nil catalog (see the `active-tables` method below). Views have no estimate."
   [^java.sql.Connection conn]
   (row-count-estimates
    (jdbc/query {:connection conn}
                [(str "SELECT TABLE_NAME AS table_name, TABLE_ROWS AS table_rows FROM information_schema.TABLES"
-                     " WHERE TABLE_SCHEMA = SUBSTRING_INDEX(DATABASE(), '@', 1) AND TABLE_TYPE = 'BASE TABLE'")])))
+                     " WHERE TABLE_SCHEMA = DATABASE()")]
+               {:timeout row-count-estimates-timeout-seconds})))
 
 (defn- with-row-count-estimates
-  "`tables` with the `:estimated_row_count` of each base table. The estimate is extra information, so a failure to
-  read it is logged and the tables are returned without it."
+  "`tables` with the `:estimated_row_count` of each table. The estimate is extra information, so a failure to read it
+  is logged and the tables are returned without it."
   [conn tables]
   (let [estimates (try
                     (query-row-count-estimates conn)
-                    (catch Throwable e
+                    (catch Exception e
                       (log/warn e "Could not read the row count estimates of the tables")
                       {}))]
     (eduction (map (fn [table]
