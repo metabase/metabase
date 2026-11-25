@@ -54,6 +54,7 @@ import type { BarItem } from "./TokenBar";
 import {
   EXAMPLES,
   MEASURE_TABLES,
+  type MetricExample,
   applyFilters,
   exampleDraft,
   filterItemsFor,
@@ -119,6 +120,19 @@ function useSourceItems() {
     items.find((item) => item.id === id && item.icon === "sum")?.section;
   const idOf = (measureName: string) =>
     `measure:${measures.find((m) => m.name === measureName)?.id}`;
+  /** The example's measures this instance doesn't have, by name. */
+  const missingFor = (example: MetricExample) =>
+    [
+      ...new Set(
+        example.formula.flatMap((part) =>
+          typeof part === "object" ? [part.measure] : [part],
+        ),
+      ),
+    ].filter(
+      (name) =>
+        name in MEASURE_TABLES &&
+        !measures.some((m) => m.name === name && !m.archived),
+    );
 
   return {
     metrics,
@@ -127,6 +141,7 @@ function useSourceItems() {
     nameOf,
     tableOf,
     idOf,
+    missingFor,
     isLoading: isLoadingMetrics || isLoadingMeasures,
   };
 }
@@ -196,6 +211,7 @@ export function MetricEditorPrototype() {
   }, [view, isNew, selected, example, pathname, navigate]);
 
   const savedDraft = param ? saved[param] : undefined;
+  const missingMeasures = example ? sources.missingFor(example) : [];
 
   return (
     <Stack gap="sm">
@@ -225,6 +241,8 @@ export function MetricEditorPrototype() {
             onNew={() => open(`${NEW}-${newKey()}`)}
             onOpen={(id) => open(String(id))}
           />
+        ) : missingMeasures.length > 0 ? (
+          <MissingMeasures names={missingMeasures} />
         ) : isNew || selected || example ? (
           <MetricEditorPage
             key={param}
@@ -252,6 +270,28 @@ export function MetricEditorPrototype() {
           </Text>
         )}
       </Box>
+    </Stack>
+  );
+}
+
+/** The examples use Sample Database measures made by hand on each instance. */
+function MissingMeasures({ names }: { names: string[] }) {
+  return (
+    <Stack p="xl" gap="sm">
+      <Text fw="bold">
+        This example needs measures this instance doesn’t have
+      </Text>
+      <Text c="text-secondary">
+        Create them in Data Studio on the Sample Database, with these exact
+        names, then reload:
+      </Text>
+      <Stack gap={4} component="ul" m={0} pl="lg">
+        {names.map((name) => (
+          <Text component="li" key={name}>
+            <strong>{name}</strong>, on the {MEASURE_TABLES[name]} table
+          </Text>
+        ))}
+      </Stack>
     </Stack>
   );
 }
