@@ -383,6 +383,17 @@
                                      :db_id (u/the-id db)
                                      {:order-by [[:id :asc]]}))))))))
 
+(deftest new-table-gets-estimated-row-count-test
+  (testing "a new table stores the row count estimate of its first sync, so it does not wait for the next sync"
+    (mt/with-temp [:model/Database db {}]
+      (#'sync-tables/create-tables! (driver.u/lib-database (:id db))
+                                    #{{:schema "public" :name "counted" :estimated_row_count 42}
+                                      {:schema "public" :name "uncounted"}}
+                                    {:sample? false})
+      (is (= {"counted" 42, "uncounted" nil}
+             (t2/select-fn->fn :name :estimated_row_count [:model/Table :name :estimated_row_count]
+                               :db_id (u/the-id db)))))))
+
 (deftest sample-database-tables-data-authority-test
   (testing "Tables from sample databases should be marked as :ingested"
     (mt/with-temp [:model/Database sample-db {:is_sample true}
