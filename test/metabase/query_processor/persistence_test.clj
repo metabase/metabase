@@ -333,7 +333,9 @@
 
 (deftest persisted-multi-stage-model-omits-model-stages-test
   (testing "A query on a persisted multi-stage model reads only the cache, not the stages of the model"
-    (mt/test-drivers (mt/normal-driver-select {:+parent :postgres, :+features [:persist-models]})
+    (mt/test-drivers (mt/normal-driver-select {:+parent   :sql
+                                               :+features [:persist-models]
+                                               :+fns      [sql.qp/use-ctes-for-stages?]})
       (mt/dataset test-data
         (mt/with-persistence-enabled! [persist-models!]
           (let [mp          (mt/metadata-provider)
