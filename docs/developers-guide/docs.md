@@ -1,6 +1,6 @@
 ---
 title: Developing Metabase documentation
-summary: Preview docs as you write them, check for broken links, and regenerate the pages that are built from source.
+summary: Preview docs as you write them, add images, check for broken links, and regenerate the pages that are built from source.
 ---
 
 # Developing Metabase documentation
@@ -72,6 +72,18 @@ To bring your changes into `docs/latest/api-documentation`, you'll need to open 
 ```
 clojure -M:ee:doc api-documentation
 ```
+
+## Images
+
+Save the image as a PNG (or a GIF for animations), usually in the `images` folder next to the page, and link to it with a relative path, like `![Dashboard filters](./images/dashboard-filters.png)`.
+
+When you push to a PR that isn't a draft (or mark a draft ready for review), a bot uploads the image to `cdn.metabase.com`, points the link at the CDN, deletes the file from your branch, and commits. Pull before you push again. The bot fails if no page links to an image you added.
+
+For an image with light and dark versions, add the dark one with `#gh-dark-mode-only` at the end of the link and mark the light one with `#gh-light-mode-only`, like `![Dashboard filters](./images/dashboard-filters-dark.png#gh-dark-mode-only)`. The bot turns them into linked images so GitHub shows the one that matches the reader's theme. An image without a suffix shows in both themes.
+
+To replace an image that's already on the CDN, add the new file and change the link back to its local path.
+
+The bot can't upload images from a fork. If your PR comes from a fork, ask a maintainer to push your branch to metabase/metabase.
 
 ## Style guide
 
