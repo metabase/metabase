@@ -78,28 +78,30 @@
   [rows :- [:sequential :map]]
   (mdb/update-grouped! :model/Database rows))
 
-(defn- set-field-values-scan-due!
-  "Mark the value-list scan of the Database with `database-id` due now when `due?` and none is due yet, or clear the
-  mark, returning the number updated. Goes by the table, not the model: it is sync's own record, so `updated_at` and
-  the update event stay for changes to the Database."
-  [database-id due?]
-  (let [table (t2/table-name :model/Database)]
-    ;; the change log skips this column on purpose (see the `change-log/spec` of `:model/Database`)
-    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
-    (if due?
-      (t2/update! table :id database-id :field_values_scan_due_at nil {:field_values_scan_due_at :%now})
-      (t2/update! table :id database-id {:field_values_scan_due_at nil}))))
+(mu/defn mark-field-values-scans-due!
+  "Set `field_values_scan_due_at` to now on the Databases with `database-ids` that have no scan due yet, returning the
+  number updated. Goes by the table, not the model: it is sync's own record, so `updated_at` and the update event stay
+  for changes to the Database."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (mdb/sum-batched mdb/update-partition-size
+                   (fn [ids]
+                     ;; the change log skips this column on purpose (see the `change-log/spec` of `:model/Database`)
+                     #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
+                     (t2/update! (t2/table-name :model/Database)
+                                 :id [:in ids] :field_values_scan_due_at nil
+                                 {:field_values_scan_due_at :%now}))
+                   database-ids))
 
-(mu/defn mark-field-values-scan-due!
-  "Set `field_values_scan_due_at` of the Database with `database-id` to now, unless a scan is already due, returning
-  the number updated."
-  [database-id :- ::lib.schema.id/database]
-  (set-field-values-scan-due! database-id true))
-
-(mu/defn clear-field-values-scan-due!
-  "Clear `field_values_scan_due_at` of the Database with `database-id`, returning the number updated."
-  [database-id :- ::lib.schema.id/database]
-  (set-field-values-scan-due! database-id false))
+(mu/defn clear-field-values-scans-due!
+  "Clear `field_values_scan_due_at` of the Databases with `database-ids`, returning the number updated. Goes by the
+  table, as [[mark-field-values-scans-due!]] does."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (mdb/sum-batched mdb/update-partition-size
+                   (fn [ids]
+                     ;; the change log skips this column on purpose (see the `change-log/spec` of `:model/Database`)
+                     #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
+                     (t2/update! (t2/table-name :model/Database) :id [:in ids] {:field_values_scan_due_at nil}))
+                   database-ids))
 
 (mu/defn health-check-candidate-ids
   "The `:id` of the lowest-id non-audit, non-sample, non-stub, non-destination Database of each engine."

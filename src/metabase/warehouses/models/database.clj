@@ -971,17 +971,19 @@
                                 (dissoc opts :databases)))
    nil))
 
-(mu/defn mark-field-values-scan-due! :- :nil
-  "Record that the scheduled value-list scan of the Database with `database-id` is due, keeping the time of a scan
-  already due. The next metadata sync runs it. Sync's own record, so it publishes no update event."
-  [database-id :- ::lib.schema.id/database]
-  (warehouses.db/mark-field-values-scan-due! database-id)
+(mu/defn mark-field-values-scans-due! :- :nil
+  "Record that the scheduled value-list scan of each Database with `database-ids` is due, keeping the time of a scan
+  already due. The next metadata sync of the Database starts it. Sync's own record, so it publishes no update event."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (when (seq database-ids)
+    (warehouses.db/mark-field-values-scans-due! database-ids))
   nil)
 
-(mu/defn clear-field-values-scan-due! :- :nil
-  "Record that the value-list scan of the Database with `database-id` ran."
-  [database-id :- ::lib.schema.id/database]
-  (warehouses.db/clear-field-values-scan-due! database-id)
+(mu/defn clear-field-values-scans-due! :- :nil
+  "Record that the value-list scan of each Database with `database-ids` is no longer due, because it ran or failed."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (when (seq database-ids)
+    (warehouses.db/clear-field-values-scans-due! database-ids))
   nil)
 
 (mu/defn disable-uploads! :- :int

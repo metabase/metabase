@@ -30,7 +30,9 @@
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database])
   (:import
+   (java.util Date)
    (org.quartz
+    CronExpression
     JobDetail)))
 
 (set! *warn-on-reflection* true)
@@ -69,6 +71,47 @@
          end-time
          (< (.toMinutes (t/duration start-time end-time)) analyze-duration-threshold-for-refingerprinting))))
 
+(def ^:private scan-due-key
+  "The job data key that marks a run of the `UpdateFieldValues` job that the sync job started for a scan that is due."
+  "scan-due")
+
+(defn- start-due-field-values-scan!
+  "Start the `UpdateFieldValues` job now for the scan of the Database with `database-id` that is due. The scan runs in
+  that job, not in the sync job: one job runs the syncs of all Databases one at a time, so a long scan there would make
+  the syncs of the others miss their time."
+  [database-id]
+  (task/trigger-now! (sync-databases-trigger/job-key sync-databases-trigger/field-values-task-info)
+                     {"db-id" database-id scan-due-key true}))
+
+(def ^:private scan-wait-limit
+  "How soon the next metadata sync of a Database must come for its scheduled scan to wait for it."
+  (t/hours 1))
+
+(defn- next-metadata-sync
+  "The time of the next scheduled metadata sync of `database`, or nil when it has none."
+  [{:keys [metadata_sync_schedule]}]
+  (when metadata_sync_schedule
+    (some-> (CronExpression. ^String metadata_sync_schedule)
+            (.getNextValidTimeAfter (Date.))
+            t/instant)))
+
+(defn- scan-waits-for-sync?
+  "Whether the scheduled scan of `database` waits for its next metadata sync, so that both wake the warehouse once:
+  only when that sync comes within [[scan-wait-limit]]. The audit database has no metadata sync."
+  [database]
+  (and (not= audit/audit-db-id (:id database))
+       (some-> (next-metadata-sync database)
+               (t/before? (t/plus (t/instant) scan-wait-limit)))))
+
+(defn- scan-field-values!
+  "Scan the value lists of the Database with `database-id`, and clear the mark of a scan that is due, also when the scan
+  fails, so that a failing scan does not start again at each sync."
+  [database-id]
+  (try
+    (sync.field-values/update-field-values! database-id)
+    (finally
+      (database/clear-field-values-scans-due! [database-id]))))
+
 (defn- sync-and-analyze-database*!
   [database-id]
   (log/infof "Starting sync task for Database %d." database-id)
@@ -97,17 +140,14 @@
                                                (should-refingerprint-fields? analyze-results))
                                       (tracing/with-span :sync "sync.refingerprint" {:db/id db-id}
                                         (analyze/refingerprint-db! db-id)))
-              field-values-results  (when (and (:is_full_sync database)
+              scan-started?         (when (and (:is_full_sync database)
                                                (:field_values_scan_due_at database))
-                                      (try
-                                        (tracing/with-span :sync "sync.field-values" {:db/id db-id}
-                                          (sync.field-values/update-field-values! db-id))
-                                        (finally
-                                          (database/clear-field-values-scan-due! db-id))))]
+                                      (start-due-field-values-scan! db-id)
+                                      true)]
           (cond-> {:metadata-results metadata-results}
             analyze-results (assoc :analyze-results analyze-results)
             refingerprint-results (assoc :refingerprint-results refingerprint-results)
-            field-values-results (assoc :field-values-results field-values-results)))))))
+            scan-started? (assoc :field-values-scan-started? true)))))))
 
 (defn- sync-and-analyze-database!
   "The sync and analyze database job, as a function that can be used in a test"
@@ -140,9 +180,10 @@
   (sync-and-analyze-database! job-context))
 
 (defn- update-field-values!
-  "The update field values job, as a function that can be used in a test. It only records that the scan is due: the
-  next run of the sync job runs it, after the metadata steps, so that a warehouse that suspends when idle is woken
-  once for both."
+  "The update field values job, as a function that can be used in a test. At its scheduled time, it records that the
+  scan is due when the metadata sync of the Database comes soon: that sync starts the job again, right after its own
+  steps, so that a warehouse that suspends when idle is woken once for both. Otherwise, and when the sync started it,
+  it scans."
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
     (if (warehouses/disable-auto-sync)
@@ -153,12 +194,19 @@
                                 (do
                                   (sync-databases-trigger/unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
                                   (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
-          (if (:is_full_sync database)
+          (cond
+            (not (:is_full_sync database))
+            (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)
+
+            (and (not (get (qc/from-job-data job-context) scan-due-key))
+                 (scan-waits-for-sync? database))
             (do
-              (database/mark-field-values-scan-due! database-id)
-              (log/infof "The Field values update of Database %d is due; the next sync of it runs the update."
+              (database/mark-field-values-scans-due! [database-id])
+              (log/infof "The Field values update of Database %d is due; its next sync starts the update."
                          database-id))
-            (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))))
+
+            :else
+            (scan-field-values! database-id)))))))
 
 (task/defjob UpdateFieldValues
   "Update field values"
