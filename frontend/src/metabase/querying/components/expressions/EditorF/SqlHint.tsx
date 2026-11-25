@@ -5,7 +5,7 @@ import * as Lib from "metabase-lib";
 
 import { ErrorText } from "./Errors";
 import S from "./SqlHint.module.css";
-import { getSqlFixes, looksLikeSql } from "./sql-hints";
+import { applyAllSqlFixes, getSqlFixes, looksLikeSql } from "./sql-hints";
 import type { GenerateExpressionResult } from "./use-generate-expression";
 
 const CONVERT_PROMPT =
@@ -17,6 +17,9 @@ const CONVERT_PROMPT =
  * syntax from SQL or another language: one line on the syntax of custom
  * expressions, and "Fix with AI", which proposes a conversion as a diff.
  * `isFixing` is true while the AI works on it.
+ *
+ * Without the AI, our own fixes convert the text when they give a valid
+ * expression, also as a diff. When they don't, there is no action.
  */
 export function useSqlHint({
   hasError,
@@ -25,6 +28,8 @@ export function useSqlHint({
   stageIndex,
   availableColumns,
   isEnabled,
+  isAiAvailable,
+  validate,
   generate,
   proposeSource,
 }: {
@@ -34,6 +39,9 @@ export function useSqlHint({
   stageIndex: number;
   availableColumns: Lib.ColumnMetadata[];
   isEnabled: boolean;
+  isAiAvailable: boolean;
+  /** The error message for the source, or null when it's valid. */
+  validate: (source: string) => string | null;
   generate: (request: {
     prompt: string;
     source: string;
@@ -61,6 +69,15 @@ export function useSqlHint({
     () => isActive && getSqlFixes(source, columnNames).length > 0,
     [isActive, source, columnNames],
   );
+
+  // The text with all our fixes, when it's a valid expression.
+  const converted = useMemo(() => {
+    if (!isActive || isAiAvailable) {
+      return null;
+    }
+    const result = applyAllSqlFixes(source, columnNames);
+    return result !== source && validate(result) == null ? result : null;
+  }, [isActive, isAiAvailable, source, columnNames, validate]);
 
   const handleConvert = useCallback(async () => {
     setIsConverting(true);
@@ -93,7 +110,17 @@ export function useSqlHint({
             : t`Some parts use syntax from other languages, which custom expressions don't support.`
         }
       />{" "}
-      {isConverting ? (
+      {!isAiAvailable ? (
+        converted != null && (
+          <button
+            type="button"
+            className={S.fixWithAi}
+            onClick={() => proposeSource(converted)}
+          >
+            {t`Convert to a custom expression`}
+          </button>
+        )
+      ) : isConverting ? (
         <span className={S.fixing}>{t`Fixing with AI…`}</span>
       ) : refusalMessage != null ? (
         <ErrorText text={refusalMessage} />

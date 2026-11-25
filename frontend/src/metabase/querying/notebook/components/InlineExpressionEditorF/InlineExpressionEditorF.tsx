@@ -396,6 +396,7 @@ export function InlineExpressionEditorF({
             aiError={mode === "ai" && !isGenerating ? aiError : undefined}
             onExitCode={canUseAi ? enterAi : undefined}
             onFixingChange={setIsFixing}
+            isAiAvailable={isAiAvailable}
             expressionMode={expressionMode}
             clause={clause}
             initialClause={clause}

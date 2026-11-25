@@ -139,6 +139,8 @@ export type EditorFProps = {
   onExitCode?: () => void;
   /** Called when "Fix with AI" in the error starts and stops working. */
   onFixingChange?: (isFixing: boolean) => void;
+  /** False without an AI provider: the SQL hint converts without the AI. */
+  isAiAvailable?: boolean;
 };
 
 export type GenerateResult =
@@ -220,6 +222,7 @@ export function EditorF(props: EditorFProps) {
     aiError,
     onExitCode,
     onFixingChange,
+    isAiAvailable = true,
   } = props;
 
   const ref = useRef<CodeMirrorRef>(null);
@@ -615,6 +618,8 @@ export function EditorF(props: EditorFProps) {
     stageIndex,
     availableColumns,
     isEnabled: canAssist,
+    isAiAvailable,
+    validate,
     generate,
     proposeSource,
   });
