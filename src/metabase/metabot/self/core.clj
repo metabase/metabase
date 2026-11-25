@@ -639,6 +639,24 @@
                           group))))
         parts))
 
+(defn tool-result-text
+  "The text that a provider adapter sends to the model for the `:result` of a `:tool-output` part.
+
+  The text is the result's `:output`. The other keys of the result, such as `:structured-output` and `:data-parts`,
+  do not go to the model.
+
+  `ToolResult` requires `:output`, but production does not check it: `mu/defn` validates its schemas only in dev and
+  test. So in production a map result without `:output` can get here, and it is sent as empty text. That is also what
+  [[metabase.metabot.persistence/history]] replays for it, so the next turn's request still starts with the bytes
+  that this turn sent."
+  [result]
+  ;; A result that is not a map also gets empty text, but history replays its printed value. So the next turn's
+  ;; bytes are different. A failed result without `:output` also gets empty text. The Claude adapter then sends an
+  ;; empty `is_error` result, which Anthropic rejects. `metabase.metabot.tools.runtime/invoke` always sets `:output`,
+  ;; so production does not make these results. https://github.com/metabase/metabase/pull/87321 sends the printed
+  ;; value and adds a fallback text. When it is merged, remove this comment or update it.
+  (or (:output result) ""))
+
 (defn stamp-tool-titles-xf
   "Stamp a client-facing `:title` onto `:tool-input` parts via each tool's
   optional `:title-fn`. Stringified JSON is coerced first, so the title describes the arguments the

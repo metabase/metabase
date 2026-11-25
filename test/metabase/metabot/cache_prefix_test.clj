@@ -5,10 +5,11 @@
   wire format of each adapter.
 
   They cover the `<context>` block sent before each user message, assistant text streamed in deltas, a turn with one
-  successful tool call, text written after a tool call, and tool calls that run in parallel. The history does not
-  replay some other parts of a turn as they were sent: the SQL dialect preload, thinking and failed tool calls. No
-  conversation here has those parts, except DeepSeek's thinking directive, which the tests with tool calls leave out:
-  after a tool call with no signed thinking, it differs between the two turns."
+  successful tool call, a tool call that fails with a failure the runtime declares, text written after a tool call,
+  and tool calls that run in parallel. The history does not replay some other parts of a turn as they were sent: the
+  SQL dialect preload, thinking and the text of a failure that no tool declared. No conversation here has those parts,
+  except DeepSeek's thinking directive, which the tests with tool calls leave out: after a tool call with no signed
+  thinking, it differs between the two turns."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -161,6 +162,19 @@
                                              (for [i (range 1 11)]
                                                {:type :tool-input :id (str "msg-1-call-" i) :function "load_skill"
                                                 :arguments {:ids ["read-resource"]}})))
+                (answer "msg-2" "There are 18,760 orders.")]}
+   {:message  "And last month?"
+    :context  {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
+    :response (answer "msg-3" "Last month there were 1,412.")}])
+
+(def ^:private failed-call-turns
+  "Two turns. The first LLM call of the first turn calls `load_skill` with no skill id. The arguments are not valid, so
+  the call fails with a failure that the runtime declares, and the history replays the text that the model read."
+  [{:message   "How many orders do we have?"
+    :context   {:current_time_with_timezone "2026-10-20T10:00:00+00:00"}
+    :responses [(mut/mock-llm-response [{:type :start :id "msg-1"}
+                                        {:type :tool-input :id "msg-1-call" :function "load_skill"
+                                         :arguments {:ids []}}])
                 (answer "msg-2" "There are 18,760 orders.")]}
    {:message  "And last month?"
     :context  {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
@@ -479,5 +493,20 @@
       (is (= 10 (count (ids :tool-output last-of-turn-1))))
       (is (= (ids :tool-input last-of-turn-1)
              (ids :tool-output last-of-turn-1))))
+    ;; DeepSeek's thinking directive is left out, for the reason in [[streamed-text-replays-as-one-part-test]].
+    (check-turn-edge last-of-turn-1 turn-2 {"deepseek" [:thinking]})))
+
+(deftest failed-tool-call-replays-as-a-failure-test
+  (let [requests                  (run-turns! failed-call-turns)
+        [_ last-of-turn-1 turn-2] requests
+        tool-output               (fn [opts] (some #(when (= :tool-output (:type %)) %) (:input opts)))]
+    (testing "turn 1 makes two LLM calls, turn 2 makes one"
+      (is (= 3 (count requests))))
+    (testing "the call fails in turn 1, and turn 2 replays the text that turn 1 sent"
+      (is (get-in (tool-output last-of-turn-1) [:result :error]))
+      (is (= (get-in (tool-output last-of-turn-1) [:result :output])
+             (get-in (tool-output turn-2) [:result :output]))))
+    (testing "turn 2 replays the result as a failure"
+      (is (get-in (tool-output turn-2) [:result :error])))
     ;; DeepSeek's thinking directive is left out, for the reason in [[streamed-text-replays-as-one-part-test]].
     (check-turn-edge last-of-turn-1 turn-2 {"deepseek" [:thinking]})))

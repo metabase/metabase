@@ -74,7 +74,17 @@
   (testing "tool result with string role"
     (is (=? [{:type :tool-output :id "t1" :result {:output "results"}}]
             (messages/input-message->parts
-             {:role "tool" :tool_call_id "t1" :content "results"})))))
+             {:role "tool" :tool_call_id "t1" :content "results"}))))
+  (testing "a failed tool result keeps its failure mark, and a result without one has no :error"
+    (is (= [{:type   :tool-output
+             :id     "t1"
+             :result {:output "boom"
+                      :error  {:class :recoverable :code ::messages/replayed-failure}}}]
+           (messages/input-message->parts
+            {:role :tool :tool_call_id "t1" :content "boom" :is_error true})))
+    (is (= [{:type :tool-output :id "t1" :result {:output "Found 42"}}]
+           (messages/input-message->parts
+            {:role :tool :tool_call_id "t1" :content "Found 42"})))))
 
 (deftest ^:parallel input-message-user-with-tool-results-test
   (testing "user message with tool_result content blocks"

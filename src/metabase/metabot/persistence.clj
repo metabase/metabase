@@ -494,7 +494,8 @@
   stays replayable rather than being silently dropped. Pass
   `:on-unresolved :skip` to drop it instead (Slack replays only completed tool
   calls and gets assistant text from its own thread copy).
-  While query execution is off, a stored query result is replaced with a note that it is hidden."
+  While query execution is off, a stored query result is replaced with a note that it is hidden.
+  The result of a failed (`output-error`) call has `:is_error true`."
   ([part] (tool-part->llm-messages part nil))
   ([part {:keys [on-unresolved]}]
    (when (schema.v2/tool-part? part)
@@ -514,9 +515,18 @@
                          :arguments (if (string? input)
                                       input
                                       (json/encode (or input {})))}]}
-          {:role         :tool
-           :tool_call_id toolCallId
-           :content      content}])))))
+          (cond-> {:role         :tool
+                   :tool_call_id toolCallId
+                   :content      content}
+            ;; The Claude and Gemini adapters mark a failed result as they marked it in the turn that
+            ;; failed, so the next turn's request starts with the bytes that this turn sent. The other
+            ;; adapters send only the text, with no mark in either turn.
+            ;;
+            ;; A stored failure can have a blank `errorText`, for example in a v1 row or after an exception with an
+            ;; empty message. Claude then gets an `is_error` result with empty content, which Anthropic rejects.
+            ;; https://github.com/metabase/metabase/pull/87321 makes `self.core/tool-result-text` send "Tool
+            ;; execution failed" for it. When it is merged, remove this paragraph.
+            (= "output-error" state) (assoc :is_error true))])))))
 
 (defn- message-text
   [{:keys [data]}]
