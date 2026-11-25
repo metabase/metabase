@@ -542,7 +542,7 @@
       (let [definition {:inputs       [(data-testing.test-util/people-rows-input "ID")]
                         :expectations [{:type :empty :name "none" :sql "SELECT * FROM PEOPLE WHERE 1 = 0"}]}
             refusal    (fn [thunk] (data-testing.test-util/refusal (fn [] (mt/with-test-user :crowberto (thunk)))))
-            expected   {:error-type ::data-testing.errors/unsupported-h2
+            expected   {:error-type ::data-testing.errors/unsupported-driver
                         :message    "Data tests do not support H2 databases yet."}]
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (let [mp (mt/metadata-provider)]
                                                                    (lib/query mp (lib.metadata/table mp (mt/id :people))))}

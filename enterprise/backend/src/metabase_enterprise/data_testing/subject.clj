@@ -124,7 +124,7 @@
 
 (mu/defn testable-database :- ::lib.schema.metadata/database
   "The Database with `database-id`, if its driver can run a test. 404 when there is no such Database. Throws
-  `::data-testing.errors/unsupported-h2` for an H2 database."
+  `::data-testing.errors/unsupported-driver` when its driver cannot, and for an H2 database."
   [database-id :- [:maybe ::lib.schema.id/database]]
   (api/check-404 (some-> database-id data-testing.db/database-exists?))
   (let [database (driver.u/lib-database database-id)
@@ -138,7 +138,7 @@
     ;; H2 driver's own checks of native SQL. Enabling data tests on H2 is VER-182.
     (when (= :h2 driver)
       (throw (data-testing.errors/ex
-              ::data-testing.errors/unsupported-h2
+              ::data-testing.errors/unsupported-driver
               (tru "Data tests do not support H2 databases yet.")
               {:driver driver})))
     database))

@@ -38,8 +38,7 @@
 
    ;; 422 — the subject or its environment
    ::unsupported-transform      422  ; Not a query transform (Python, say).
-   ::unsupported-driver         422  ; The database does not support testing.
-   ::unsupported-h2             422  ; The database is H2, which data tests do not support yet.
+   ::unsupported-driver         422  ; The database does not support testing, or is H2, which data tests do not support yet.
    ::uncompilable-subject       422  ; The subject's query does not compile to SQL.
    ::query-failed               422  ; The query under test would not run.
    ::parameters-not-kept        422  ; The query under test's placeholders are not one per value, or its rewrite does not keep each once.
