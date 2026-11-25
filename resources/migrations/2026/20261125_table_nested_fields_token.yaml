@@ -1,0 +1,33 @@
+## The change token of a Table at the last search of its JSON columns for nested fields, and the time of that search,
+## so that sync searches again only when the Table changed.
+
+databaseChangeLog:
+  - changeSet:
+      id: gxmh4x
+      author: nvoxland
+      comment: Add metabase_table.nested_fields_token
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: nested_fields_token
+                  type: varchar(255)
+                  remarks: The change token the driver gave for the table at the last search for nested fields
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: e9ujrm
+      author: nvoxland
+      comment: Add metabase_table.nested_fields_searched_at
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: nested_fields_searched_at
+                  type: ${timestamp_type}
+                  remarks: When sync last searched the JSON columns of the table for nested fields
+                  constraints:
+                    nullable: true

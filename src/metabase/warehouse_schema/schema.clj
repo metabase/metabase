@@ -317,6 +317,8 @@
    [:database_require_filter {:optional true} [:maybe :boolean]]
    [:estimated_row_count     {:optional true} [:maybe :int]]
    [:value_scan_token        {:optional true} [:maybe :string]]
+   [:nested_fields_token     {:optional true} [:maybe :string]]
+   [:nested_fields_searched_at {:optional true} [:maybe ms/TemporalInstant]]
    [:view_count              {:optional true} [:maybe :int]]
    [:is_defective_duplicate  {:optional true} [:maybe :boolean]]
    [:deactivated_at          {:optional true} [:maybe ms/TemporalInstant]]

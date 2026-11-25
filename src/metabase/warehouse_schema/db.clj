@@ -299,6 +299,18 @@
   [table-id->token :- [:map-of ::lib.schema.id/table [:maybe :string]]]
   (update-by-cases! (t2/table-name :model/Table) :id :value_scan_token table-id->token))
 
+(mu/defn update-table-nested-fields-searches!
+  "Set the `nested_fields_token` of each ::warehouse-schema.schema/table in `table-id->token`, and its
+  `nested_fields_searched_at` to now, returning the number updated. Goes by the table, not the model, as
+  [[update-table-value-scan-tokens!]] does."
+  [table-id->token :- [:map-of ::lib.schema.id/table [:maybe :string]]]
+  (app-db/sum-batched app-db/update-partition-size
+                      (fn [part]
+                        (t2/update! (t2/table-name :model/Table) :id [:in (mapv key part)]
+                                    {:nested_fields_token       (into [:case] (mapcat (fn [[k v]] [[:= :id k] v])) part)
+                                     :nested_fields_searched_at :%now}))
+                      table-id->token))
+
 (mu/defn update-field-custom-positions!
   "Set the `custom_position` of each ::warehouse-schema.schema/field in `field-id->position`, returning the number
   updated."

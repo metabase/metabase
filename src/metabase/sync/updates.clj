@@ -62,6 +62,11 @@
   [table-id->token]
   (table/record-value-scan-tokens! table-id->token))
 
+(defn record-nested-fields-searches!
+  "Record the nested-field search of each Table in `table-id->token` through [[table/record-nested-fields-searches!]]."
+  [table-id->token]
+  (table/record-nested-fields-searches! table-id->token))
+
 (defn- update-fields-counted!
   "Apply the Field update `rows` with `opts` and return their number."
   [rows opts]

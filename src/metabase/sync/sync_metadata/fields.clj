@@ -39,14 +39,18 @@
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
   (:require
+   [java-time.api :as t]
+   [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
+   [metabase.sync.settings :as sync.settings]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
    [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -85,17 +89,30 @@
       (into #{} (take limit (sort-by :name db-metadata)))
       db-metadata)))
 
+(defn- without-nested-json-fields
+  "`our-metadata` without the Fields found in JSON columns, which have an `:nfc-path`."
+  [our-metadata]
+  (into #{} (remove (comp seq :nfc-path)) our-metadata))
+
 (mu/defn- sync-and-update-limited! :- ms/IntGreaterThanOrEqualToZero
   "Sync the Field instances of a Table and update their metadata from `db-metadata`, already limited by
-  [[limit-fields-to-sync]], returning the number of Fields synced."
-  [database    :- i/DatabaseInstance
-   table       :- i/TableInstance
-   db-metadata :- [:set i/TableMetadataField]]
-  (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
-     ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
-     ;; Re-fetch our metadata because there might be some things that have changed after calling
-     ;; `sync-instances`
-     (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table))))
+  [[limit-fields-to-sync]], returning the number of Fields synced. With `:keep-nested-json?`, `db-metadata` has no
+  Fields found in JSON columns because sync did not search them, so the stored ones are left as they are."
+  ([database    :- i/DatabaseInstance
+    table       :- i/TableInstance
+    db-metadata :- [:set i/TableMetadataField]]
+   (sync-and-update-limited! database table db-metadata nil))
+  ([database                    :- i/DatabaseInstance
+    table                       :- i/TableInstance
+    db-metadata                 :- [:set i/TableMetadataField]
+    {:keys [keep-nested-json?]} :- [:maybe [:map [:keep-nested-json? {:optional true} :boolean]]]]
+   (let [our-metadata #(cond-> (fields.our-metadata/our-metadata table)
+                         keep-nested-json? without-nested-json-fields)]
+     (+ (sync-instances/sync-instances! table db-metadata (our-metadata))
+        ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
+        ;; Re-fetch our metadata because there might be some things that have changed after calling
+        ;; `sync-instances`
+        (sync-metadata/update-metadata! database table db-metadata (our-metadata))))))
 
 (mu/defn- sync-and-update! :- ms/IntGreaterThanOrEqualToZero
   "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
@@ -163,6 +180,33 @@
         (when (and best (nil? (:visibility_type best)))
           (dissoc best :lower_name :lower_schema))))))
 
+(defn- json-column?
+  [{:keys [base-type]}]
+  (isa? base-type :type/JSON))
+
+(defn- nested-fields-tokens
+  "The change token of each of `tables`, the ones of a chunk with a JSON column, by Table id, or nil when the driver of
+  `database` cannot search JSON columns, gives no tokens, or reading them fails."
+  [database tables]
+  (let [driver (driver.u/database->driver database)]
+    (when (and (seq tables)
+               (driver.u/supports? driver :nested-field-columns database)
+               (driver.u/supports? driver :table-change-tokens database))
+      (let [tokens (sync-util/with-error-handling (format "Error reading the change tokens of the tables of %s"
+                                                          (sync-util/name-for-logging database))
+                     (driver/table-change-tokens driver database tables))]
+        (when (map? tokens)
+          tokens)))))
+
+(defn- nested-fields-searched-since?
+  "Whether the JSON columns of `table` were searched for nested fields with `token`, within the full-pass period of
+  `database`."
+  [database table token]
+  (and (some? token)
+       (= token (:nested_fields_token table))
+       (some-> (:nested_fields_searched_at table)
+               (t/after? (t/minus (t/offset-date-time) (sync.settings/full-pass-period database))))))
+
 (defn- table-entry
   "The `table` of the column group `table-metadata` with its `:db-metadata`, including nested field columns and limited
   by [[limit-fields-to-sync]], or nil when reading them from the warehouse fails, which is logged."
@@ -179,16 +223,34 @@
       (log-table-failure table e)
       nil)))
 
+(defn- sync-table-entry!
+  "Sync the Fields of the Table of `entry` on its own, and return the number of Fields synced, or nil when it failed,
+  which is logged."
+  [database {:keys [table db-metadata keep-nested-json?]}]
+  (try
+    (sync-and-update-limited! database table db-metadata {:keep-nested-json? (boolean keep-nested-json?)})
+    (catch Exception e
+      (log-table-failure table e)
+      nil)))
+
+(defn- record-nested-fields-searches!
+  "Record the search for nested fields, and the change token, of each of the Table `entries` that searched and synced."
+  [entries]
+  (when (seq entries)
+    (sync-util/with-error-handling "Error recording the search for nested fields"
+      (sync.updates/record-nested-fields-searches! (into {} (map (juxt (comp :id :table) ::nested-token)) entries)))))
+
 (defn- sync-tables-one-at-a-time!
   "Sync the Fields of each of the Table `entries` on its own, logging the failure of one and going on with the others,
-  and return the number of Fields synced."
+  record the search for nested fields of the ones that searched with a change token, and return the number of Fields
+  synced."
   [database entries]
-  (sync-util/sum-for [{:keys [table db-metadata]} entries]
-    (try
-      (sync-and-update-limited! database table db-metadata)
-      (catch Exception e
-        (log-table-failure table e)
-        0))))
+  (let [synced (mapv #(sync-table-entry! database %) entries)]
+    (record-nested-fields-searches! (into []
+                                          (comp (filter (fn [[entry n]] (and n (contains? entry ::nested-token))))
+                                                (map first))
+                                          (map vector entries synced)))
+    (transduce (map #(or % 0)) + 0 synced)))
 
 (defn- sync-tables-together!
   "Sync the Fields of all the Table `entries`, none with nested Fields, reading our metadata of all of them together,
@@ -210,13 +272,34 @@
   others together, or one at a time when that fails."
   [database nested? chunk]
   (let [resolve-table (table-resolver database chunk)
-        entries       (into []
+        resolved      (into []
                             (keep (fn [table-metadata]
                                     (let [{:keys [table-name table-schema]} (first table-metadata)]
                                       (when-let [table (resolve-table table-name table-schema)]
-                                        (table-entry database table table-metadata)))))
+                                        [table table-metadata]))))
                             chunk)
-        {nested true flat false} (group-by #(boolean (or nested? (some :nested-fields (:db-metadata %)))) entries)]
+        tokens        (nested-fields-tokens database (into [] (comp (filter #(some json-column? (second %))) (map first))
+                                                           resolved))
+        entries       (into []
+                            (keep (fn [[table table-metadata]]
+                                    (cond
+                                      (not (contains? tokens (:id table)))
+                                      (table-entry database table table-metadata)
+
+                                      (nested-fields-searched-since? database table (get tokens (:id table)))
+                                      {:table             table
+                                       :db-metadata       (limit-fields-to-sync table (set table-metadata))
+                                       :keep-nested-json? true}
+
+                                      :else
+                                      (some-> (table-entry database table table-metadata)
+                                              (assoc ::nested-token (get tokens (:id table)))))))
+                            resolved)
+        {nested true flat false} (group-by #(boolean (or nested?
+                                                         (:keep-nested-json? %)
+                                                         (contains? % ::nested-token)
+                                                         (some :nested-fields (:db-metadata %))))
+                                           entries)]
     {:total-fields   (transduce (map count) + 0 chunk)
      :updated-fields (+ (sync-tables-one-at-a-time! database nested)
                         (if (empty? flat)
