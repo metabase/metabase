@@ -217,3 +217,9 @@ dependency-graph.json
 
 # mage modules-tree --html output
 /modules.html
+
+# @metabase/ui package build output
+/frontend/ui-package/dist/
+/frontend/ui-package/.pack/
+/frontend/ui-package/LICENSE.txt
+/frontend/ui-package/smoke-app/dist/
