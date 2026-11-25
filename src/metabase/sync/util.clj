@@ -660,6 +660,8 @@
                       (comp str log-summary-fn))
     :essential? (boolean essential?)}))
 
+;; Dynamic so that the driver and query processor code a step calls, which takes no sync argument, can add to the
+;; counters of that step, on its own thread and on threads that convey bindings.
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *call-stats*
   "An atom with the call counters of the sync step that is running, or nil outside a sync step."
