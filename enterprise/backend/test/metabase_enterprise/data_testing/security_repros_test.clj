@@ -310,6 +310,61 @@
                          (t2/delete! model :id id))
                        (t2/delete! :model/DataTestRun :test_id [:in [card-test-id transform-test-id segment-test-id]])))))))))))))
 
+(deftest impersonated-user-cannot-run-a-data-test-in-a-suite-or-revert-one-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-testing :transforms-basic}
+    (do-with-unreachable-postgres
+     (fn [db-id]
+       (mt/with-db (t2/select-one :model/Database :id db-id)
+         ;; As in `impersonated-user-cannot-save-or-run-a-data-test-test`, rasta's group is impersonated on the
+         ;; Database, with unrestricted view-data and native query permission.
+         (impersonation.util-test/with-impersonations! {:impersonations [{:db-id db-id :attribute "role_attr"}]
+                                                        :attributes     {"role_attr" "limited_role"}}
+           (mt/with-temp [:model/Card      {card-id :id}  {:dataset_query (lib/native-query
+                                                                           (lib-be/application-database-metadata-provider db-id)
+                                                                           card-sql)}
+                          :model/TestSuite {suite-id :id} {}]
+             ;; Created and edited through the API, which records the revisions a revert needs.
+             (let [{test-id :id eid :entity_id} (mt/user-http-request :crowberto :post 200 "ee/card-test"
+                                                                      (card-test-body card-id "SELECT 1 AS id"
+                                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))
+                   path        (str "ee/card-test/" test-id)
+                   revert      {:entity "card-test" :id test-id :revision_id nil}
+                   creation-id (->> (mt/user-http-request :crowberto :get 200 (str "revision/card-test/" test-id))
+                                    (some #(when (:is_creation %) (:id %))))]
+               (try
+                 (is (pos-int? creation-id) "premise: the test has a creation revision")
+                 (mt/user-http-request :crowberto :put 200 path {:expectations [(assoc output-expectation :name "changed")]})
+                 (data-testing.test-util/add-members! suite-id [[:card eid]])
+                 (mt/with-data-analyst-role! (mt/user->id :rasta)
+                   (testing "a suite run by rasta refuses the member as its own run endpoint does, and nothing reaches the warehouse"
+                     (let [{:keys [result sent roles]}
+                           (with-recorder! #(mt/user-http-request :rasta :post 200 (str "ee/test-suite/" suite-id "/run")))]
+                       (is (=? {:status  "failed"
+                                :members [{:status "refused" :error {:error_code "card-test.impersonated-user"}}]}
+                               result)
+                           (pr-str result))
+                       (is (= [] sent))
+                       (is (= [] roles))
+                       (is (zero? (t2/count :model/DataTestRun :test_type "card" :test_id test-id)))))
+                   (testing "rasta cannot revert the test to other expectations, and the test keeps its expectations"
+                     (let [{:keys [result sent]}
+                           (with-recorder! #(mt/user-http-request :rasta :post 403 "revision/revert"
+                                                                  (assoc revert :revision_id creation-id)))]
+                       (is (= "card-test.impersonated-user" (:error-code result)) (pr-str result))
+                       (is (= [] sent))
+                       (is (= ["changed"] (map :name (t2/select-one-fn :expectations :model/CardTest :id test-id)))))))
+                 (testing "control: an admin's run of the same suite passes"
+                   (let [{:keys [result sent]}
+                         (with-recorder! #(mt/user-http-request :crowberto :post 200 (str "ee/test-suite/" suite-id "/run")))]
+                     (is (=? {:status "passed" :members [{:status "passed"}]} result) (pr-str result))
+                     (is (seq sent))))
+                 (testing "control: an admin's same revert succeeds"
+                   (mt/user-http-request :crowberto :post 200 "revision/revert" (assoc revert :revision_id creation-id))
+                   (is (= ["check"] (map :name (t2/select-one-fn :expectations :model/CardTest :id test-id)))))
+                 (finally
+                   (t2/delete! :model/DataTestRun :test_type "card" :test_id test-id)
+                   (t2/delete! :model/CardTest :id test-id)))))))))))
+
 (deftest data-test-run-with-no-current-user-is-refused-test
   (mt/with-premium-features #{:transforms-testing :transforms-basic}
     (do-with-unreachable-postgres
