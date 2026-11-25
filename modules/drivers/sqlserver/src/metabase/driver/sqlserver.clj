@@ -1062,7 +1062,8 @@
 (defmethod sql.qp/table-sample->honeysql :sqlserver
   [driver table-expr {:keys [percent] :as table-sample}]
   (if percent
-    [:raw [table-expr " TABLESAMPLE SYSTEM (" [:inline percent] " PERCENT)"]]
+    ;; a plain decimal, since Java prints a double below 0.001 as 1.0E-4
+    [:raw [table-expr " TABLESAMPLE SYSTEM (" (.toPlainString (.stripTrailingZeros ^BigDecimal (bigdec percent))) " PERCENT)"]]
     ((get-method sql.qp/table-sample->honeysql :sql) driver table-expr table-sample)))
 
 ;; Only for `:sqlserver` itself, so that a child driver keeps its own `table-rows-sample`.

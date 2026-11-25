@@ -2011,6 +2011,12 @@
                       (lib/limit 10)
                       (assoc-in [:stages 0 :table-sample] {:percent 2.5}))]
         (is (re-find #"FROM \"dbo\"\.\"venues\" TABLESAMPLE SYSTEM \(2\.5 PERCENT\)"
+                     (:query (qp.compile/compile query))))))
+    (testing "a very small percent is a plain decimal"
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                      (assoc-in [:stages 0 :table-sample] {:percent 5.0E-5}))]
+        (is (re-find #"TABLESAMPLE SYSTEM \(0\.00005 PERCENT\)"
                      (:query (qp.compile/compile query))))))))
 
 (deftest table-random-sample-test
@@ -2032,7 +2038,7 @@
           (let [{:keys [method fraction result sqls]} (sample {:rows 100 :row-count 100})]
             (is (= :block method))
             (is (= 1.0 fraction))
-            (is (=? [#"(?s)SELECT TOP\(200\) .*TABLESAMPLE SYSTEM \(100\.0 PERCENT\).*"] sqls))
+            (is (=? [#"(?s)SELECT TOP\(200\) .*TABLESAMPLE SYSTEM \(100 PERCENT\).*"] sqls))
             (is (= 100 (count result)))))
         (testing "the driver declines, so that sync reads the first rows, when there is no row count estimate"
           (is (= {:method :first-rows :sqls []} (sample {:rows 100 :row-count nil}))))))))
