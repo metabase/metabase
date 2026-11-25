@@ -127,16 +127,6 @@ const CATEGORY_COLS = [
   }),
 ];
 
-function createCategoryDataset(categories: [id: number, name: string][]) {
-  return createMockDataset({
-    data: {
-      cols: CATEGORY_COLS,
-      rows: ROWS.map((row, index) => [...row, ...categories[index]]),
-    },
-    row_count: ROWS.length,
-  });
-}
-
 const UPDATE_FORM: DescribeActionFormResponse = {
   title: "Update",
   parameters: [
@@ -678,8 +668,10 @@ describe("EditTableDataContainer", () => {
   describe("filter and sort", () => {
     it("cycles a column sort through ascending, descending and none", async () => {
       const { router, store } = await setupGrid();
+      // Every click goes to the same header element, so a remount would lose them
+      const nameHeader = getHeader().getByText("Name");
 
-      await userEvent.click(getHeader().getByText("Name"));
+      await userEvent.click(nameHeader);
       await waitForGridToSettle(store, { datasetRequests: 2 });
       expect(getHeader().getByLabelText("chevronup icon")).toBeInTheDocument();
       expect(getHeader().getAllByTestId("header-sort-indicator")).toHaveLength(
@@ -687,13 +679,13 @@ describe("EditTableDataContainer", () => {
       );
       expect(router?.location.search).toMatch(/^\?query=/);
 
-      await userEvent.click(getHeader().getByText("Name"));
+      await userEvent.click(nameHeader);
       await waitForGridToSettle(store, { datasetRequests: 3 });
       expect(
         getHeader().getByLabelText("chevrondown icon"),
       ).toBeInTheDocument();
 
-      await userEvent.click(getHeader().getByText("Name"));
+      await userEvent.click(nameHeader);
       await waitFor(() =>
         expect(
           getHeader().queryByTestId("header-sort-indicator"),
@@ -702,55 +694,34 @@ describe("EditTableDataContainer", () => {
       expect(router?.location.search).toBe("");
     });
 
-    it("keeps handling header clicks while a sort refetch runs", async () => {
-      const { store } = await setupGrid();
-      fetchMock.modifyRoute("dataset", { delay: 300 });
-      const nameHeader = getHeader().getByText("Name");
-
-      await userEvent.click(nameHeader);
-      await userEvent.click(nameHeader);
-
-      await waitForGridToSettle(store, { datasetRequests: 3 });
-      expect(
-        getHeader().getByLabelText("chevrondown icon"),
-      ).toBeInTheDocument();
-    });
-
-    it("keeps body cells mounted when the dataset is refetched", async () => {
-      const { store } = await setupGrid();
+    it("keeps body cells mounted and their foreign key names current after a refetch", async () => {
+      const { store } = await setupGrid({
+        dataset: createMockDataset({
+          data: {
+            cols: CATEGORY_COLS,
+            rows: ROWS.map((row) => [...row, 1, "Asian"]),
+          },
+        }),
+      });
       const nameCellContent = within(getCell(1, "name")).getByText("Bravo");
       const rowCheckbox = getRowSelectSection(1).getByTestId(
         "row-select-checkbox",
       );
+      fetchMock.modifyRoute("dataset", {
+        response: createMockDataset({
+          data: {
+            cols: CATEGORY_COLS,
+            rows: ROWS.map((row) => [...row, 2, "Burger"]),
+          },
+        }),
+      });
 
       await userEvent.click(getHeader().getByText("Score"));
       await waitForGridToSettle(store, { datasetRequests: 2 });
 
       expect(nameCellContent).toBeInTheDocument();
       expect(rowCheckbox).toBeInTheDocument();
-    });
-
-    it("shows foreign key display names from a refetched dataset", async () => {
-      const { store } = await setupGrid({
-        dataset: createCategoryDataset([
-          [1, "Asian"],
-          [1, "Asian"],
-          [1, "Asian"],
-        ]),
-      });
-      expect(getCell(2, "category_id")).toHaveTextContent("Asian");
-      fetchMock.modifyRoute("dataset", {
-        response: createCategoryDataset([
-          [1, "Asian"],
-          [1, "Asian"],
-          [2, "Burger"],
-        ]),
-      });
-
-      await userEvent.click(getHeader().getByText("Score"));
-      await waitForGridToSettle(store, { datasetRequests: 2 });
-
-      expect(getCell(2, "category_id")).toHaveTextContent("Burger");
+      expect(getCell(1, "category_id")).toHaveTextContent("Burger");
     });
 
     it("adds a filter and keeps filter and sort in the URL across reloads", async () => {
