@@ -11,12 +11,16 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
+import PublicApp from "metabase/public/containers/PublicApp";
 import { Route } from "metabase/router";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import { defer } from "metabase/utils/promise";
 import type {
+  Dashboard,
   DashboardCard,
   DashboardTab,
+  EnterpriseSettings,
+  QuestionDashboardCard,
   TokenFeatures,
 } from "metabase-types/api";
 import {
@@ -31,7 +35,7 @@ import {
 
 import { PublicOrEmbeddedDashboardPage } from "../PublicOrEmbeddedDashboardPage";
 
-const MOCK_UUID = "00000000-0000-4000-8000-000000000000";
+export const MOCK_UUID = "00000000-0000-4000-8000-000000000000";
 
 const MOCK_TOKEN =
   "eyJhbGciOiJIUzI1NiJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjExfSwicGFyYW1zIjp7fSwiaWF0IjoxNzEyNjg0NTA1LCJfZW1iZWRkaW5nX3BhcmFtcyI6e319.WbZTB-cQYh4gjh61ZzoLOcFbJ6j6RlOY3GS4fwzv3W4";
@@ -40,7 +44,8 @@ registerStaticVisualizations();
 registerDashboardVisualizations();
 
 export type SetupOpts = {
-  hash?: Record<string, string>;
+  /** A record is encoded with `URLSearchParams`; a string is used as the raw hash, as a browser keeps it. */
+  hash?: Record<string, string> | string;
   queryString?: string;
   numberOfTabs?: number;
   tokenFeatures?: TokenFeatures;
@@ -56,6 +61,14 @@ export type SetupOpts = {
   hasEmbedBranding?: boolean;
   /** Also serves the static embed endpoints under `/api/preview_embed`, as the embed preview requests them. */
   embedPreview?: boolean;
+  /** Overrides of the dashboard the endpoint returns, such as its parameters. */
+  dashboard?: Partial<Omit<Dashboard, "dashcards" | "tabs">>;
+  /** Overrides of the question dashcard generated for each tab. */
+  getTabDashcard?: (tabId: number) => Partial<QuestionDashboardCard>;
+  /** Extra settings, on top of the token features. */
+  settings?: Partial<EnterpriseSettings>;
+  /** Renders the page inside `PublicApp`, as the public routes do. */
+  withPublicApp?: boolean;
 };
 
 export async function setup(
@@ -71,10 +84,15 @@ export async function setup(
     accessType = "embed",
     hasEmbedBranding,
     embedPreview = false,
+    dashboard: dashboardOverrides = {},
+    getTabDashcard,
+    settings: extraSettings,
+    withPublicApp = false,
   }: SetupOpts = { dashboardTitle: "" },
 ) {
   const settings = mockSettings({
     "token-features": tokenFeatures,
+    ...extraSettings,
     ...(hasEmbedBranding !== undefined && {
       "hide-embed-branding?": !hasEmbedBranding,
     }),
@@ -103,6 +121,7 @@ export async function setup(
           can_write: false,
         }),
         dashboard_tab_id: tabId,
+        ...getTabDashcard?.(tabId),
       }),
     );
   });
@@ -118,6 +137,7 @@ export async function setup(
     id: 1,
     name: dashboardTitle,
     parameters: [],
+    ...dashboardOverrides,
     dashcards,
     tabs,
   });
@@ -148,14 +168,16 @@ export async function setup(
     accessType === "public"
       ? `/public/dashboard/${MOCK_UUID}`
       : `/embed/dashboard/${MOCK_TOKEN}`;
-  const hashString = _.isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`;
+  const encodedHash =
+    typeof hash === "string" ? hash : new URLSearchParams(hash).toString();
+  const hashString = encodedHash === "" ? "" : `#${encodedHash}`;
   const href = `${pathname}${queryString}${hashString}`;
 
   // Setting initial window.location state,
   // so it can be used by getInitialSelectedTabId
   window.history.replaceState({}, "", href);
 
-  const view = renderWithProviders(
+  const routes = (
     <>
       <Route
         path="embed/dashboard/:token"
@@ -165,7 +187,11 @@ export async function setup(
         path="public/dashboard/:uuid"
         element={<PublicOrEmbeddedDashboardPage />}
       />
-    </>,
+    </>
+  );
+
+  const view = renderWithProviders(
+    withPublicApp ? <Route element={<PublicApp />}>{routes}</Route> : routes,
     {
       storeInitialState: createMockState({ settings }),
       withRouter: true,

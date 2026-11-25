@@ -121,6 +121,35 @@ describe("PublicApp", () => {
     expect(screen.queryByText("Powered by")).not.toBeInTheDocument();
   });
 
+  describe("page background (metabase#62391)", () => {
+    const TRANSPARENT_BACKGROUND = "background-color: transparent";
+
+    afterEach(() => {
+      delete window.overrideIsWithinIframe;
+      document.body.style.removeProperty("background-color");
+    });
+
+    it("keeps the page background with #background=false outside of an iframe", () => {
+      setup({ hash: "#background=false" });
+
+      expect(screen.getByTestId("embed-frame")).toBeInTheDocument();
+      expect(document.body).not.toHaveAttribute(
+        "style",
+        expect.stringContaining(TRANSPARENT_BACKGROUND),
+      );
+    });
+
+    it("makes the page background transparent inside an iframe", () => {
+      window.overrideIsWithinIframe = true;
+      setup({ hash: "#background=false" });
+
+      expect(screen.getByTestId("embed-frame")).toBeInTheDocument();
+      expect(document.body).toHaveStyle({
+        backgroundColor: "rgba(0, 0, 0, 0)",
+      });
+    });
+  });
+
   describe("theming", () => {
     it("renders correctly without a theme parameter", () => {
       setup();

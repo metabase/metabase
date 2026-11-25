@@ -43,23 +43,6 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
       H.expectNoBadSnowplowEvents();
     });
 
-    it("#downloads=false should disable both PDF downloads and dashcard results downloads", () => {
-      cy.visit(`${publicLink}#downloads=false`);
-      waitLoading();
-
-      cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
-        "be.visible",
-      );
-      H.getDashboardCard()
-        .findAllByTestId("cell-data")
-        .should("have.length.above", 0);
-
-      cy.findByRole("button", { name: "Download as PDF" }).should("not.exist");
-
-      // we should not have any dashcard action in a public/embed scenario, so the menu should not be there
-      H.getEmbeddedDashboardCardMenu().should("not.exist");
-    });
-
     it("#downloads=pdf should enable only PDF downloads and allow downloading a public dashboard as PDF", () => {
       cy.visit(`${publicLink}#downloads=pdf`);
       waitLoading();
@@ -85,7 +68,7 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
       });
     });
 
-    it("should enable both downloads by default, allow downloading a public dashcard as CSV, and #downloads=results should enable only dashcard results downloads", () => {
+    it("should enable both downloads by default and allow downloading a public dashcard as CSV", () => {
       cy.visit(publicLink);
       waitLoading();
 
@@ -110,34 +93,6 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
         accessed_via: "public-link",
         export_type: "csv",
       });
-
-      cy.visit(`${publicLink}#downloads=results`);
-      cy.reload();
-      waitLoading();
-
-      H.getDashboardCard()
-        .findAllByTestId("cell-data")
-        .should("have.length.above", 0);
-      cy.get("header")
-        .findByRole("button", { name: "Download as PDF" })
-        .should("not.exist");
-
-      H.main().realHover();
-      H.getEmbeddedDashboardCardMenu().click();
-      cy.findByLabelText("Download results").should("be.visible");
-    });
-
-    it("#downloads=results, pdf should handle whitespace between parameters", () => {
-      cy.visit(`${publicLink}#downloads=results, pdf`);
-      waitLoading();
-
-      cy.get("header")
-        .findByRole("button", { name: "Download as PDF" })
-        .should("exist");
-
-      H.main().realHover();
-      H.getEmbeddedDashboardCardMenu().click();
-      cy.findByLabelText("Download results").should("be.visible");
     });
   });
 
@@ -163,15 +118,6 @@ describe("Public dashboards/questions downloads (results and pdf)", () => {
         });
 
       cy.signOut();
-    });
-
-    it("#downloads=false should disable result downloads", () => {
-      cy.visit(`${publicLink}#downloads=false`);
-      waitLoading();
-
-      H.echartsContainer().should("be.visible");
-      H.main().realHover();
-      cy.findByRole("button", { name: "Download results" }).should("not.exist");
     });
 
     it("should be able to download the question as PNG", () => {
