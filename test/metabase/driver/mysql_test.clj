@@ -1528,8 +1528,8 @@
                      (mt/with-test-user :crowberto
                        (into {}
                              (map (fn [{:keys [id name]}]
-                                    [name (sort-by str (get-in (#'distinct-batch/run-distinct-batch* :mysql table fields form)
-                                                               [id :values]))]))
+                                    [name (sort-by (juxt some? str) (get-in (#'distinct-batch/run-distinct-batch* :mysql table fields form)
+                                                                            [id :values]))]))
                              fields)))
             today  (scan {})]
         (is (= 14 (count fields)))
@@ -1538,10 +1538,14 @@
             (let [plain (scan form)]
               (testing "gives the same values as casting in the GROUP BY, for every type but VARCHAR"
                 (is (= (dissoc today "t_varchar") (dissoc plain "t_varchar"))))
-              (testing "keeps a VARCHAR value with a trailing space apart, as the column's NO PAD collation does"
-                (is (= [nil "abc"] (today "t_varchar")))
-                (is (= [nil "abc" "abc "] (plain "t_varchar")))))))
+              (is (= [nil "abc"] (today "t_varchar")))
+              (if (mysql/mariadb? (mt/db))
+                (testing "merges a VARCHAR value with a trailing space, as MariaDB's PAD SPACE collation does"
+                  (is (= [nil "abc"] (plain "t_varchar"))))
+                (testing "keeps a VARCHAR value with a trailing space apart, as MySQL's NO PAD collation does"
+                  (is (= [nil "abc" "abc "] (plain "t_varchar"))))))))
         (testing "the MySQL driver asks for it, but not for MariaDB, which reads every row in both forms"
-          (is (true? (driver.u/supports? :mysql :field-values/group-by-plain-column (mt/db))))
+          (is (= (not (mysql/mariadb? (mt/db)))
+                 (driver.u/supports? :mysql :field-values/group-by-plain-column (mt/db))))
           (is (false? (driver/database-supports? :mysql :field-values/group-by-plain-column
                                                  (assoc (mt/db) :dbms_version {:flavor "MariaDB"})))))))))
