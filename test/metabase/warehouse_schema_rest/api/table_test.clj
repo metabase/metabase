@@ -1787,6 +1787,15 @@
                   (mt/user-http-request :crowberto :put 400 (format "table/%d" table-id) {column value})))
           (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id))))))))
 
+(deftest structural-metadata-bulk-put-ignores-structural-metadata-test
+  (testing "the deprecated bulk PUT /api/table drops the structural metadata keys"
+    (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id)}]
+      (is (=? [{:id table-id :table_role nil :description "User Description"}]
+              (mt/user-http-request :crowberto :put 200 "table"
+                                    {:ids [table-id] :table_role "role/Fact" :description "User Description"})))
+      (is (=? {:table_role nil :table_role_set false}
+              (t2/select-one :model/TableUserSettings :table_id table-id))))))
+
 (deftest structural-metadata-put-rejects-field-name-in-definition-test
   (testing "a Field name in a definition gets a 400, not a NULL that sync would then skip"
     (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id)}]

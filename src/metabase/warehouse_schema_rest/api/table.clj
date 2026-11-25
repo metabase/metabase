@@ -214,8 +214,8 @@
   "Schema for a Table's `eav_definition` in a request."
   (definition-request-schema :eav_definition ::warehouse-schema.schema/eav-definition))
 
-(def ^:private table-update-entries
-  "User-settable Table columns, as optional `:map` entries."
+(def ^:private common-table-update-entries
+  "User-settable Table columns common to both the single and the bulk update body."
   [[:display_name            {:optional true} [:maybe ms/NonBlankString]]
    [:entity_type             {:optional true} [:maybe EntityType]]
    [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
@@ -229,26 +229,34 @@
    [:data_layer              {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:owner_email             {:optional true} [:maybe :string]]
    [:owner_user_id           {:optional true} [:maybe :int]]
-   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
-   [:table_role              {:optional true} [:maybe ::warehouse-schema.schema/table-role]]
-   [:grain                   {:optional true} [:maybe ::warehouse-schema.schema/grain]]
-   [:grain_description       {:optional true} [:maybe :string]]
-   [:period_granularity      {:optional true} [:maybe ::warehouse-schema.schema/period-granularity]]
-   [:mutability              {:optional true} [:maybe ::warehouse-schema.schema/mutability]]
-   [:load_strategy           {:optional true} [:maybe ::warehouse-schema.schema/load-strategy]]
-   [:scd_type                {:optional true} [:maybe ::warehouse-schema.schema/scd-type]]
-   [:history_definition      {:optional true} [:maybe HistoryDefinition]]
-   [:eav_definition          {:optional true} [:maybe EavDefinition]]])
+   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]])
+
+(def ^:private single-table-update-entries
+  "User-settable Table columns accepted in only the single-table update body."
+  ;; Some of these simply do not make sense for a bulk update, e.g. :history_definition or :eav_definition. Others
+  ;; *could* be included in [[common-table-update-entries]], but the `PUT /api/table` endpoint is deprecated, so
+  ;; prefer adding new entries here to avoid expanding a deprecated API.
+  [[:table_role         {:optional true} [:maybe ::warehouse-schema.schema/table-role]]
+   [:grain              {:optional true} [:maybe ::warehouse-schema.schema/grain]]
+   [:grain_description  {:optional true} [:maybe :string]]
+   [:period_granularity {:optional true} [:maybe ::warehouse-schema.schema/period-granularity]]
+   [:mutability         {:optional true} [:maybe ::warehouse-schema.schema/mutability]]
+   [:load_strategy      {:optional true} [:maybe ::warehouse-schema.schema/load-strategy]]
+   [:scd_type           {:optional true} [:maybe ::warehouse-schema.schema/scd-type]]
+   [:history_definition {:optional true} [:maybe HistoryDefinition]]
+   [:eav_definition     {:optional true} [:maybe EavDefinition]]])
 
 (def ^:private TableUpdateBodySingle
   "Body of `PUT /api/table/:id`."
-  (into [:map {:closed true}] table-update-entries))
+  (into [:map {:closed true}]
+        (concat common-table-update-entries
+                single-table-update-entries)))
 
 (def ^:private TableUpdateBodyBulk
   "Body of the deprecated `PUT /api/table/`."
   (into [:map {:closed true}
          [:ids [:sequential ms/PositiveInt]]]
-        table-update-entries))
+        common-table-update-entries))
 
 (mu/defn ^:private update-existing-tables!
   "Takes the existing tables and the changes, updates them all in the database with one write of their user settings,
