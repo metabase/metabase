@@ -657,6 +657,18 @@
         entities
         values))
 
+(defn- keep-configured-data-authorities
+  "The load `items` of Tables, keeping the data authority of a stored Table that has one configured where the entity
+  holds the retired `authoritative`, as the app DB migration that retired it did.
+  A configured data authority can't go back to `unconfigured`, which an authoritative non-upload imports as."
+  [items]
+  (mapv (fn [{:keys [entity local] :as item}]
+          (cond-> item
+            (and (retired-data-authority? (:data_authority entity))
+                 (not= :unconfigured (keyword (:data_authority local :unconfigured))))
+            (assoc-in [:row :data_authority] (keyword (:data_authority local)))))
+        items))
+
 (defn- storage-paths
   "The storage path of each of the Table `entities`, in the directory of its Database and schema."
   [entities _ctx]
@@ -693,6 +705,7 @@
                          :data_authority {:export serialization/export-unchanged :import import-data-authorities}}
    :defaults            {:is_upload               false
                          :show_in_getting_started false}
+   :before-load         keep-configured-data-authorities
    :storage-paths       storage-paths
    :insert!             create-tables!
    :update!             #(do (update-tables! %) %)

@@ -763,13 +763,17 @@
     (mt/with-temp [:model/Database {db-id :id}    {}
                    :model/Table    {upload :id}   {:db_id db-id :is_upload true}
                    :model/Table    {regular :id}  {:db_id db-id}
-                   :model/Table    {computed :id} {:db_id db-id}]
-      (doseq [[table-id authority] [[upload "authoritative"] [regular "authoritative"] [computed "computed"]]]
+                   :model/Table    {computed :id} {:db_id db-id}
+                   :model/Table    {kept :id}     {:db_id db-id :data_authority :computed}]
+      (doseq [[table-id authority] [[upload   "authoritative"]
+                                    [regular  "authoritative"]
+                                    [computed "computed"]
+                                    [kept     "authoritative"]]]
         (let [extracted (first (serialization/export-batch :model/Table [(t2/select-one :model/Table :id table-id)]))]
           (serialization/load :model/Table [(assoc extracted :data_authority authority)])))
-      (testing "and imports any other value as it is"
-        (is (= {upload :ingested regular :unconfigured computed :computed}
-               (t2/select-pk->fn :data_authority :model/Table :id [:in [upload regular computed]])))))))
+      (testing "imports any other value as it is, and keeps a Table's configured value over the retired one"
+        (is (= {upload :ingested regular :unconfigured computed :computed kept :computed}
+               (t2/select-pk->fn :data_authority :model/Table :id [:in [upload regular computed kept]])))))))
 
 (deftest curation-column-defaults-test
   (testing "a new table gets consistent non-null data_layer and data_authority defaults"
