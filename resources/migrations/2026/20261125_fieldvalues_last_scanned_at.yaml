@@ -1,0 +1,18 @@
+## When sync last scanned the warehouse for the values of a full FieldValues, so that a list that is too large is
+## scanned weekly, not daily.
+
+databaseChangeLog:
+  - changeSet:
+      id: cdj07j
+      author: nvoxland
+      comment: Add metabase_fieldvalues.last_scanned_at
+      changes:
+        - addColumn:
+            tableName: metabase_fieldvalues
+            columns:
+              - column:
+                  name: last_scanned_at
+                  type: ${timestamp_type}
+                  remarks: When sync last read the values of the field from the warehouse; null before the first scan
+                  constraints:
+                    nullable: true

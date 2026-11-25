@@ -139,9 +139,21 @@
                                       {:keep-too-large? (not rescan?)})))]))
                       fields)})))
 
+(defn- record-scan-times!
+  "Record the time of the scan on the lists of the Fields of `pairs`, each a Field and its outcome, that the scan read
+  and that still have a list."
+  [pairs]
+  (let [field-ids (into []
+                        (comp (remove (fn [[_ outcome]]
+                                        (or (instance? Throwable outcome) (= ::field-values/fv-deleted outcome))))
+                              (map (comp :id first)))
+                        pairs)]
+    (sync-util/with-error-handling "Error recording the time of the field values scan"
+      (field-values/record-scans! field-ids))))
+
 (defn- save-changes!
   "Write the changes of `pairs`, each a Field and its change or a Throwable, at once, or Field by Field when that
-  fails, and return the counts of their outcomes."
+  fails, record the time of the scan on the lists it read, and return the counts of their outcomes."
   [pairs]
   (let [ok      (into [] (remove (comp #(instance? Throwable %) second)) pairs)
         saved?  (and (next ok)
@@ -156,11 +168,13 @@
                                                   (format "Error updating field values for %s"
                                                           (sync-util/name-for-logging field))
                                                    (sync.updates/save-field-values-changes! [(:id field)] [change])
-                                                   (:result change))))]
-    (transduce (map (comp result->delta outcome))
+                                                   (:result change))))
+        outcomes (mapv outcome pairs)]
+    (record-scan-times! (map vector (map first pairs) outcomes))
+    (transduce (map result->delta)
                (partial merge-with +)
                (assoc empty-counts :probed (count pairs))
-               pairs)))
+               outcomes)))
 
 (defn- sync-fields-of-tables!
   "Fetch distinct values for the Fields of each of `tables`, by `table-id->fields`, each Table's Database by
@@ -227,14 +241,27 @@
     :else
     true))
 
+(def ^:private too-large-scan-period
+  "How long the scheduled scan waits to read again a list that was too large at its last scan. Which values the
+  warehouse returns for such a list is arbitrary, and the scan does not store them again while it stays too large, so a
+  daily scan only finds out sooner that a list fell under the limit."
+  (t/days 7))
+
+(defn- too-large-scanned-recently?
+  "Whether `fv` was too large at its last scan, and that scan was within [[too-large-scan-period]]."
+  [fv]
+  (and (:has_more_values fv)
+       (some-> (:last_scanned_at fv) (t/after? (t/minus (t/offset-date-time) too-large-scan-period)))))
+
 (mr/def ::scan-options
   [:map {:closed true}
    [:rescan? :boolean]])
 
 (mu/defn- update-field-values-for-tables!
   "Update the FieldValues of the Fields of `tables` that need it, reading their Fields and FieldValues together, with
-  one UNION ALL query per Table on SQL drivers and one DISTINCT query per Field elsewhere. A manual rescan
-  (`:rescan?`) also stores again the lists that are still too large."
+  one UNION ALL query per Table on SQL drivers and one DISTINCT query per Field elsewhere. The scheduled scan reads a
+  list that was too large at its last scan only once in [[too-large-scan-period]]. A manual rescan (`:rescan?`) reads
+  every list, and also stores again the lists that are still too large."
   [database :- i/DatabaseInstance
    tables   :- [:sequential i/TableInstance]
    opts     :- ::scan-options]
@@ -253,7 +280,11 @@
         clear-counts      (clear-field-values! to-clear)
         fvs-map           (field-values/batched-get-latest-full-field-values (map u/the-id to-sync))
         last-used-at      (field-values/fields-last-used-at (vec (vals fvs-map)))
-        table-id->to-sync (group-by :table_id (filter #(syncable? last-used-at % (get fvs-map (u/the-id %))) to-sync))]
+        due?              (fn [field]
+                            (let [fv (get fvs-map (u/the-id field))]
+                              (and (syncable? last-used-at field fv)
+                                   (or (:rescan? opts) (not (too-large-scanned-recently? fv))))))
+        table-id->to-sync (group-by :table_id (filter due? to-sync))]
     (merge-with + clear-counts (sync-fields-of-tables! tables (constantly database) table-id->to-sync fvs-map opts))))
 
 (mu/defn update-field-values-for-table!

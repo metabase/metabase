@@ -699,6 +699,16 @@
   [field-values-id :- ms/PositiveInt]
   (t2/update! :model/FieldValues :id field-values-id {:last_used_at :%now}))
 
+(mu/defn stamp-full-field-values-scanned!
+  "Stamp `last_scanned_at` on the full FieldValues of the ::warehouse-schema.schema/field with `field-ids`, returning
+  the number updated. Goes by the table, not the model, so `updated_at` keeps the time the values last changed."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (app-db/sum-batched app-db/update-partition-size
+                      #(t2/update! (t2/table-name :model/FieldValues)
+                                   {:field_id [:in %] :type "full"}
+                                   {:last_scanned_at :%now})
+                      field-ids))
+
 (defn- field-values-of-fields-kvs
   "The conditions on FieldValues of the Fields with `field-ids`."
   [field-ids]

@@ -743,6 +743,14 @@
 
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
+(mu/defn record-scans! :- :nil
+  "Record that sync read the values of the Fields with `field-ids` from the warehouse now, on their full FieldValues.
+  It does not change their values, so it publishes no update event."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (when (seq field-ids)
+    (warehouse-schema.db/stamp-full-field-values-scanned! field-ids))
+  nil)
+
 (mu/defn delete-field-values! :- :nil
   "Delete the FieldValues with `ids` in one transaction, publishing their delete event."
   [ids :- [:sequential ms/PositiveInt]]
@@ -944,7 +952,7 @@
   {:schema        ::warehouse-schema.schema/external-field-values
    :identity      [:field_id :type]
    :copy          [:type :values :human_readable_values :has_more_values :hash_key]
-   :skip          [:last_used_at]
+   :skip          [:last_used_at :last_scanned_at]
    :transform     {:field_id serialization/field-transform}
    :defaults      {:has_more_values false}
    :storage-paths warehouse-schema.serialization/field-values-storage-paths
