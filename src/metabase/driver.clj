@@ -532,8 +532,9 @@
   change only costs one more scan, while one that stays the same when the Table changed leaves old values in the
   lists. Give `nil`, or no entry, for a Table whose token is not known; sync then reads it as before.
 
-  Sync calls this only for a driver that supports `:table-change-tokens`. Sync still reads each Table at least once in
-  the `change-token-full-pass-days` period, whatever its token."
+  `database` is the Lib metadata of the Database. Sync calls this only for a driver that supports
+  `:table-change-tokens`. Sync still reads each Table at least once in the `change-token-full-pass-days` period,
+  whatever its token."
   {:added "0.66.0" :arglists '([driver database tables])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
