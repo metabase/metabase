@@ -24,6 +24,11 @@ summary: Changes to the Metabase driver interface, listed by release.
   `metabase.driver/table-random-sample`. A driver with its own `apply-top-level-clause` for `:source-table` must call
   the new method itself. The Postgres driver is the first to use it.
 
+- A query stage's `:table-sample` can also be `{:rows n}`, about `n` random rows, for an engine with a sample of a
+  number of rows. `table-sample->honeysql` gets it too, and must throw for a kind of sample the driver does not
+  support. The Mongo driver compiles `{:rows n}` to a first `$sample` stage, and uses it for its
+  `metabase.driver/table-random-sample` when the sample is under 5% of a plain collection.
+
 - New driver feature `:stage-ctes/nest-single-row-aggregation`. Drivers that use `:stage-ctes` can opt in to put an
   aggregation with no breakouts over a previous stage in its own stage CTE. This is for databases like Postgres that
   do not use an index for `MIN`/`MAX` when the aggregation is in a `SELECT` that has a `WITH` clause. The default is

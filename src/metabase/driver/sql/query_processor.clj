@@ -2079,9 +2079,11 @@
     (->honeysql driver (h2x/identifier :table db schema table-name))))
 
 (defmulti table-sample->honeysql
-  "The `FROM` item that reads the table `table-expr`, a compiled table identifier, with the driver's built-in block
-  sample of about `percent` percent of it, for example `[:raw [table-expr \" TABLESAMPLE SYSTEM (2.5)\"]]`. The
-  compiler calls it for a stage with `:table-sample`, which sync sets only for a driver that implements this method."
+  "The `FROM` item that reads the table `table-expr`, a compiled table identifier, with the driver's built-in sample.
+  `table-sample` is `{:percent p}`, a block sample of about `p` percent of the table, for example
+  `[:raw [table-expr \" TABLESAMPLE SYSTEM (2.5)\"]]`, or `{:rows n}`, about `n` random rows. Throw for a kind of
+  sample the driver does not support, as the `:sql` method does. The compiler calls it for a stage with
+  `:table-sample`, which sync sets only for a driver that implements this method."
   {:added "0.66.0", :arglists '([driver table-expr table-sample])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

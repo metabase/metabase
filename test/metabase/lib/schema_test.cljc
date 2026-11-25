@@ -453,3 +453,12 @@
                            :lib/type      :mbql.stage/native}]
                :lib/type :mbql/query}
               normalized)))))
+
+(deftest ^:parallel table-sample-has-exactly-one-kind-test
+  (are [table-sample valid?] (= valid? (mr/validate ::lib.schema/stage.table-sample table-sample))
+    {:percent 2.5}            true
+    {:rows 500}               true
+    {}                        false
+    {:percent 2.5, :rows 500} false
+    {:rows 0}                 false
+    {:percent 101}            false))

@@ -3120,7 +3120,12 @@
                                                                {:truncation-size 50 :table-sample {:percent 2.5}})
             sql   (:query (qp.compile/compile query))]
         (is (re-find #"TABLESAMPLE SYSTEM \(2\.5\)" sql))
-        (is (re-find #"(?i)substring" sql))))))
+        (is (re-find #"(?i)substring" sql))))
+    (testing "a sample of a number of rows does not compile, since Postgres has no such sample"
+      (let [query (-> (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
+                      (assoc-in [:stages 0 :table-sample] {:rows 10}))]
+        (is (thrown-with-msg? Exception #"does not support a built-in table sample"
+                              (qp.compile/compile query)))))))
 
 (deftest table-random-sample-test
   (mt/test-driver :postgres

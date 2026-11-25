@@ -183,8 +183,10 @@
 ;;; ------------------------------------------------ Table samples -------------------------------------------------
 
 (defmethod sql.qp/table-sample->honeysql :postgres
-  [_driver table-expr {:keys [percent]}]
-  [:raw [table-expr " TABLESAMPLE SYSTEM (" [:inline percent] ")"]])
+  [driver table-expr {:keys [percent] :as table-sample}]
+  (if percent
+    [:raw [table-expr " TABLESAMPLE SYSTEM (" [:inline percent] ")"]]
+    ((get-method sql.qp/table-sample->honeysql :sql) driver table-expr table-sample)))
 
 ;; Only tables, partitioned tables and materialized views can be read with TABLESAMPLE. Sync gives a table a row count
 ;; estimate only from `pg_stat_user_tables` (see [[describe-syncable-tables]]), which has no rows for views and

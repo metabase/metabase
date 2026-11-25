@@ -33,6 +33,7 @@
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2])
   (:import
+   (com.mongodb.client MongoDatabase)
    (org.bson.types Binary ObjectId)))
 
 (set! *warn-on-reflection* true)
@@ -604,6 +605,48 @@
                   ["Barney's Beanery" 46]
                   ["Busby's West" 48]]
                  (driver/table-rows-sample :mongo table fields rff {}))))))))
+
+(deftest ^:parallel table-sample-compiles-to-a-first-sample-stage-test
+  (mt/test-driver :mongo
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                    (lib/limit 3)
+                    (assoc-in [:stages 0 :table-sample] {:rows 3}))]
+      (is (=? {:query [{"$sample" {"size" 3}} {"$project" map?} {"$limit" 3}]}
+              (qp.compile/compile query))))))
+
+(deftest table-random-sample-test
+  (mt/test-driver :mongo
+    (let [table     (t2/select-one :model/Table :id (mt/id :venues))
+          fields    (map #(t2/select-one :model/Field :id (mt/id :venues %)) [:name :category_id])
+          all-rows  (set (mt/rows (mt/run-mbql-query venues {:fields [$name $category_id]})))
+          pipelines (atom [])
+          sample    (fn [table]
+                      (let [mbql->native (mt/original-fn #'mongo.qp/mbql->native)]
+                        (mt/with-dynamic-fn-redefs [mongo.qp/mbql->native (fn [query]
+                                                                            (doto (mbql->native query)
+                                                                              (as-> $native (swap! pipelines conj (:query $native)))))]
+                          (driver/table-random-sample :mongo table fields (constantly conj) {}))))]
+      (is (driver.u/supports? :mongo :table-random-sample (mt/db)))
+      (testing "Reads random documents with a first $sample stage when they are under 5% of the collection"
+        (with-redefs [table-rows-sample/nested-field-sample-limit 3]
+          (let [{:keys [method fraction result]} (sample table)]
+            (is (= :row method))
+            (is (= 0.03 fraction))
+            (is (= 3 (count result)))
+            (is (every? all-rows result))
+            (is (= {"$sample" {"size" 3}} (first (last @pipelines)))))))
+      (testing "Declines when the sample would be 5% of the collection or more, since $sample then sorts all of it"
+        (with-redefs [table-rows-sample/nested-field-sample-limit 5]
+          (is (= {:method :first-rows} (sample table)))))
+      (testing "Declines for a view, since $sample is then not the first stage of the pipeline that runs"
+        (with-redefs [table-rows-sample/nested-field-sample-limit 3]
+          (mongo.connection/with-mongo-database [^MongoDatabase db (driver.u/lib-database (mt/id))]
+            (.createView db "venues_sample_view" "venues" [])
+            (try
+              (is (= {:method :first-rows} (sample (assoc table :name "venues_sample_view"))))
+              (finally
+                (.drop (mongo.util/collection db "venues_sample_view"))))))))))
 
 ;; ## Big-picture tests for the way data should look post-sync
 (deftest table-sync-test
