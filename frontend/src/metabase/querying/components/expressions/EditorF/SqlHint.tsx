@@ -103,12 +103,14 @@ export function useSqlHint({
 
   return (
     <>
-      <span className={S.title}>{t`Looks like SQL`}</span>
+      <span className={S.title}>
+        {isSql ? t`Looks like SQL` : t`Check the syntax`}
+      </span>
       <div className={S.body}>
         <span>
           {isSql
             ? t`Custom expressions use their own syntax: [Column] for columns, and functions like isNull([Column]).`
-            : t`Some parts use SQL syntax, which custom expressions do not support.`}
+            : t`Some parts use syntax from other languages, which custom expressions do not support.`}
           {showMetabaseLinks && (
             <>
               {" "}

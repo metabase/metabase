@@ -7,7 +7,6 @@ import {
   hasNextSnippetField,
   hasPrevSnippetField,
   nextSnippetField,
-  pickedCompletion,
   selectedCompletion,
   snippet,
   startCompletion,
@@ -192,23 +191,10 @@ export function dismissSuggestionsOrPlaceholders(view: EditorView) {
 }
 
 /**
- * The value at `pos` is the last one of its call, and the call takes more:
- * another value of a function like concat(), or an optional one. Then
- * picking a value stays there, so that a comma can add the next one.
+ * Picks the highlighted option and stays on the placeholder, so that the user
+ * can continue it, as in `[Status] = "pending"`. Moves on only when nothing is
+ * highlighted, like snippets in VS Code.
  */
-function canTakeMoreValues(state: EditorState, pos: number) {
-  const source = state.doc.toString();
-  const fn = enclosingFunction(source, pos);
-  if (fn?.arg == null) {
-    return false;
-  }
-  const isLastValue = source.slice(fn.arg.to).trimStart().startsWith(")");
-  return (
-    isLastValue && getNextArgumentPlaceholder(fn.name, fn.arg.index + 1) != null
-  );
-}
-
-/** Picks the highlighted option, or moves on when nothing is highlighted. */
 function pickOrMoveOn(view: EditorView) {
   // "No columns fit here" is a message, not an option: skip past it.
   if (selectedCompletion(view.state)?.type === "empty") {
@@ -216,8 +202,6 @@ function pickOrMoveOn(view: EditorView) {
     return nextSnippetField(view);
   }
   if (selectedCompletion(view.state) != null) {
-    // CodeMirror ignores a pick right after the list changes. Don't move on
-    // then, which would skip the value without picking it.
     acceptCompletion(view);
     return true;
   }
@@ -298,8 +282,8 @@ const bracketReplacesPlaceholder = /* #__PURE__ */ Prec.highest(
 
 /**
  * One rule for the placeholders of functions and templates: Tab and Enter
- * pick the highlighted option and move to the next placeholder, or just move
- * on when the list is closed. Shift-Tab goes back. After the last value, they
+ * pick the highlighted option, or move to the next placeholder when the list
+ * is closed. Shift-Tab goes back. After the last value, they
  * go past the closing parenthesis, where the snippet ends.
  */
 const tabAndEnterMoveOn = /* #__PURE__ */ Prec.highest(
@@ -323,33 +307,7 @@ const tabAndEnterMoveOn = /* #__PURE__ */ Prec.highest(
   }),
 );
 
-/**
- * Picking a column or a value on a placeholder moves to the next one, by
- * keyboard or by mouse. Picking a function starts its own placeholders, so
- * the cursor stays in them.
- */
-const moveOnAfterPick = /* #__PURE__ */ EditorView.updateListener.of(
-  (update) => {
-    if (!isSnippetActive(update.state)) {
-      return;
-    }
-    const pickedValue = update.transactions.some((transaction) => {
-      const completion = transaction.annotation(pickedCompletion);
-      return completion != null && typeof completion.apply !== "function";
-    });
-    const pos = update.state.selection.main.head;
-    if (pickedValue && !canTakeMoreValues(update.state, pos)) {
-      nextSnippetField(update.view);
-    }
-  },
-);
-
-/** How placeholders behave while typing: Tab, Enter, comma and picking. */
+/** How placeholders behave while typing: Tab, Enter and comma. */
 export function placeholderNavigation(): Extension {
-  return [
-    commaMovesOn,
-    bracketReplacesPlaceholder,
-    tabAndEnterMoveOn,
-    moveOnAfterPick,
-  ];
+  return [commaMovesOn, bracketReplacesPlaceholder, tabAndEnterMoveOn];
 }

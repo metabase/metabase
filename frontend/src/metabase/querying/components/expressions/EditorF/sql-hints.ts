@@ -151,11 +151,14 @@ const RULES: Rule[] = [
       String.raw`(${OPERAND})\s+(NOT\s+)?IN\s*\(([^()]*)\)`,
       "gi",
     ),
+    // `AND in(…)` is the in() function, which an earlier fix can write.
     fix: ([operand, not, values]) =>
-      `${not ? "notIn" : "in"}(${operand}, ${values
-        .split(",")
-        .map((value) => toDoubleQuotes(value.trim()))
-        .join(", ")})`,
+      /^(and|or|not)$/i.test(operand)
+        ? null
+        : `${not ? "notIn" : "in"}(${operand}, ${values
+            .split(",")
+            .map((value) => toDoubleQuotes(value.trim()))
+            .join(", ")})`,
   },
   {
     pattern: new RegExp(
