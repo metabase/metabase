@@ -55,7 +55,7 @@ The docs site generates the same heading ids as GitHub, so link to a heading by 
 
 New and changed PNGs and GIFs under `docs/` go to the CDN, and the repo keeps a small pointer file at the same path. Existing images stay as they are until a PR changes them. This is off until the `DOCS_IMAGE_POINTERS` repo variable is `true`; until then, images work as they always have.
 
-Add or replace an image the usual way: put the PNG or GIF in the PR and link it from the Markdown. When you push to a PR, the `Docs images` workflow uploads it to `https://cdn.metabase.com/docs/<sha256>` and commits a small pointer file in its place, so pull before you push again. Links don't change.
+Add or replace an image the usual way: put the PNG or GIF in the PR and link it from the Markdown. When you push to a PR that isn't a draft (or mark a draft ready for review), the `Docs images` workflow uploads it to `https://cdn.metabase.com/docs/<sha256>` and commits a small pointer file in its place, so pull before you push again. Links don't change.
 
 To move or delete an image, `git mv` or `git rm` the pointer.
 

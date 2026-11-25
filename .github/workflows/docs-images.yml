@@ -2,6 +2,7 @@ name: Docs images
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: docs-images-${{ github.event.pull_request.number }}
@@ -18,7 +19,7 @@ defaults:
 
 jobs:
   docs-images:
-    if: vars.DOCS_IMAGE_POINTERS == 'true'
+    if: vars.DOCS_IMAGE_POINTERS == 'true' && !github.event.pull_request.draft
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     env:
@@ -59,13 +60,13 @@ jobs:
         if: steps.images.outputs.patterns && env.SAME_REPO == 'true'
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
         with:
-          role-to-assume: ${{ secrets.DOCS_CDN_IAM_ROLE }}
-          aws-region: ${{ vars.DOCS_CDN_AWS_REGION }}
+          role-to-assume: ${{ secrets.DOCS_IMAGES_CDN_IAM_ROLE }}
+          aws-region: ${{ vars.DOCS_IMAGES_CDN_AWS_REGION }}
 
       - name: Move docs images to the CDN
         if: steps.images.outputs.patterns && env.SAME_REPO == 'true'
         env:
-          DOCS_CDN_S3_BUCKET: ${{ vars.DOCS_CDN_S3_BUCKET }}
+          DOCS_IMAGES_CDN_S3_BUCKET: ${{ vars.DOCS_IMAGES_CDN_S3_BUCKET }}
           HEAD_REF: ${{ github.head_ref }}
         run: |
           node "$RUNNER_TEMP/docs-images.js" convert < "$RUNNER_TEMP/images.txt" | tee -a "$GITHUB_STEP_SUMMARY"

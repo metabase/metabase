@@ -59,7 +59,7 @@ function upload(path, key, type) {
       "s3api",
       "put-object",
       "--bucket",
-      process.env.DOCS_CDN_S3_BUCKET,
+      process.env.DOCS_IMAGES_CDN_S3_BUCKET,
       "--key",
       key,
       "--body",
