@@ -62,7 +62,7 @@
   {:source       :sample
    :method       method
    :row-count    (:estimated_row_count table)
-   :collected-at (str (t/offset-date-time))})
+   :collected-at (str (t/instant))})
 
 (mr/def ::FingerprintStats
   [:map {:closed true}

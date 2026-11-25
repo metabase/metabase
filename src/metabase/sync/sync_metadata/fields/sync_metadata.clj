@@ -148,6 +148,7 @@
             ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
             :fingerprint_version 0
             :fingerprint         nil
+            :fingerprint_origin  nil
             ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
             :semantic_type       nil})
          (when healing-effective-type?

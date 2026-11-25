@@ -123,17 +123,6 @@
   {:in  mi/json-in
    :out (comp update-semantic-numeric-values mi/json-out-with-keywordization)})
 
-(defn- keywordize-fingerprint-origin
-  "The stored `fingerprint_origin` map with its `:source` and `:method` back as keywords."
-  [origin]
-  (some-> origin
-          (m/update-existing :source keyword)
-          (m/update-existing :method keyword)))
-
-(def ^:private transform-json-fingerprint-origin
-  {:in  mi/json-in
-   :out (comp keywordize-fingerprint-origin mi/json-out-with-keywordization)})
-
 (def ^:private field-transforms
   {:base_type         transform-field-base-type
    :effective_type    transform-field-effective-type
@@ -143,7 +132,8 @@
    :has_field_values  mi/transform-keyword
    :data_sensitivity  mi/transform-keyword
    :fingerprint       transform-json-fingerprints
-   :fingerprint_origin transform-json-fingerprint-origin
+   :fingerprint_origin (mi/transform-json-with-schema "metabase_field.fingerprint_origin"
+                                                      ::warehouse-schema.schema/field.fingerprint-origin)
    :settings          mi/transform-json
    :nfc_path          mi/transform-json
    :json_unfolding    mi/transform-boolean})
