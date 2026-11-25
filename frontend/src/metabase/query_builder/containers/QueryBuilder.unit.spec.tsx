@@ -77,6 +77,7 @@ import {
   TEST_STRUCTURED_CARD,
   TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
   TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
+  TEST_UNSAVED_NATIVE_CARD,
   TEST_UNSAVED_STRUCTURED_CARD,
   saveQuestion,
   setup,
@@ -431,6 +432,50 @@ describe("QueryBuilder", () => {
       await waitFor(() =>
         expect(document.title).toBe(`${TEST_STRUCTURED_CARD.name} · Metabase`),
       );
+    });
+
+    it("shows the loading message in the page and the document title while an ad-hoc native question loads (metabase#40051)", async () => {
+      renderHook(() => usePageTitle("Metabase", { titleIndex: 0 }));
+      const response = defer<Response>();
+
+      await setup({ card: TEST_UNSAVED_NATIVE_CARD });
+      fetchMock.modifyRoute("dataset-post", {
+        response: () => response.promise,
+      });
+      // an ad-hoc native question does not run on load
+      expect(fetchMock.callHistory.calls("dataset-post")).toHaveLength(0);
+      // the editor's run button is mocked out in Jest, so this uses its shortcut
+      await userEvent.keyboard("{Control>}{Enter}{/Control}");
+
+      const main = await screen.findByTestId("query-builder-main");
+      expect(
+        await within(main).findByText("Doing science..."),
+      ).toBeInTheDocument();
+      await waitFor(() =>
+        expect(document.title).toBe("Doing science... · Metabase"),
+      );
+      const [datasetCall] = fetchMock.callHistory.calls("dataset-post");
+      expect(JSON.parse(String(datasetCall.options.body))).toEqual(
+        expect.objectContaining({
+          stages: [
+            expect.objectContaining({
+              "lib/type": "mbql.stage/native",
+              native: "SELECT 1",
+            }),
+          ],
+        }),
+      );
+
+      response.resolve(
+        new Response(JSON.stringify(TEST_NATIVE_CARD_DATASET), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+      await waitFor(() => expect(document.title).toBe("Question · Metabase"));
+      expect(
+        within(main).queryByText("Doing science..."),
+      ).not.toBeInTheDocument();
     });
 
     it("stops showing the loading document title when the query fails (metabase#49270)", async () => {
