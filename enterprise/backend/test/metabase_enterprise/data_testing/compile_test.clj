@@ -216,7 +216,7 @@
   "`compiled` rewritten for Postgres to read the temp table of [[orders->temp]], or the `:error-type` of the refusal."
   [compiled]
   (try
-    (data-testing.compile/rewrite-query :postgres compiled orders->temp identity)
+    (data-testing.compile/rewrite-query :postgres compiled orders->temp)
     (catch clojure.lang.ExceptionInfo e
       (:error-type (ex-data e)))))
 
@@ -235,13 +235,7 @@
            (rewrite {:query "SELECT '?' AS \"?\", ? AS id /* ? */" :params ["x"]}))))
   (testing "values that the parser reads no placeholder for are refused"
     (is (= ::data-testing.errors/parameters-not-kept
-           (rewrite {:query "SELECT '?' AS a, ? AS b" :params ["x" "y"]}))))
-  (testing "the SQL the run executes is what the check is given"
-    (let [checked (atom nil)]
-      (is (= {:query "SELECT id FROM mb_tmp AS orders" :params []}
-             (data-testing.compile/rewrite-query :postgres {:query "SELECT id FROM orders" :params []} orders->temp
-                                                 #(reset! checked %))))
-      (is (= "SELECT id FROM mb_tmp AS orders" @checked)))))
+           (rewrite {:query "SELECT '?' AS a, ? AS b" :params ["x" "y"]})))))
 
 (deftest replace-tables-refuses-a-reference-it-cannot-replace-in-the-text-test
   (let [refusal (fn [sql replacements]

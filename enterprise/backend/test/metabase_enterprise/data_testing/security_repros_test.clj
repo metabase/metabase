@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-testing.security-repros-test
-  "Data tests send the warehouse only single SELECTs that pass the statement check, and refuse impersonated users.
+  "Data tests refuse impersonated users, send the warehouse input SQL only as a single SELECT that passes the statement
+  check, and send the query under test and expectation SQL as written apart from their table references.
 
   No test opens a warehouse connection. Each runs against a Database row with the `:postgres` engine whose details
   point at a closed port, and replaces three driver methods with a recorder: `driver/do-with-test-connection` calls its
@@ -112,13 +113,6 @@
                                                                       "SELECT * FROM {{output}} WHERE 1 = 0"))]
            (is (re-find #"^The SQL check refuses the SQL of input public.orders: " (str (:thrown result)))
                (pr-str result))
-           (is (= [] sent))))
-       (testing "`empty` expectation SQL of more than one statement is refused before anything is sent"
-         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id"
-                                                                      (str "SELECT * FROM {{output}} WHERE 1 = 0; COMMIT; "
-                                                                           "DO $$ BEGIN EXECUTE 'DELETE FROM public.orders'; END $$")))]
-           (is (re-find #"^The SQL check refuses the SQL of expectation \"check\": " (str (:thrown result)))
-               (pr-str result))
            (is (= [] sent))))))))
 
 (def ^:private escape-sql
@@ -227,11 +221,10 @@
   reads as ending one quote later, so in the rebuild `setval` runs and `--` comments out the rest."
   "SELECT E'\\\\' || $q$' || (SELECT setval($z$orders_id_seq$z$, 4242))::text --$q$ AS id")
 
-(def ^:private hidden-set-config-sql
-  "An `empty` expectation of the same form as [[hidden-setval-sql]], whose rebuild calls `set_config`. The rewrite of
-  `{{output}}` is itself a rebuild, so the string is written `E'\\\\\\\\'`: the rewrite turns it into `e'\\\\'`, and
-  the rebuild the run executes into `e'\\'`, which Postgres ends one quote later."
-  (str "SELECT E'\\\\\\\\' || $q$' || set_config($z$role$z$, $z$postgres$z$, false) --$q$ AS id"
+(def ^:private string-with-a-call-sql
+  "An `empty` expectation of the same form as [[hidden-setval-sql]]. As written, Postgres reads `E'\\\\'` as one
+  backslash and the dollar-quoted text after it as a string, so `set_config` is text and never runs."
+  (str "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$postgres$z$, false) --$q$ AS id"
        " FROM {{output}} WHERE 1 = 0"))
 
 (deftest data-test-sends-the-checked-statement-test
@@ -271,17 +264,17 @@
            (is (re-find #"^The SQL check refuses the SQL of " (str (:thrown result))) (pr-str result))
            (is (not (re-find #"\bnull\b" (str (:thrown result)))) (pr-str result))
            (is (= [] sent))))
-       (testing "`empty` expectation SQL whose rebuilt E'' string ends one quote later, running `set_config`, is refused before anything is sent"
-         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id" hidden-set-config-sql))]
-           (is (re-find #"^The SQL check refuses the SQL of " (str (:thrown result))) (pr-str result))
-           (is (not (re-find #"\bnull\b" (str (:thrown result)))) (pr-str result))
-           (is (= [] sent))))
-       (testing "the card's own SQL of more than one statement is refused before anything is sent"
-         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT id FROM public.orders; COMMIT; SELECT 1"
+       (testing "`empty` expectation SQL is sent as written apart from its table, so its E'' string ends where its author ended it"
+         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id" string-with-a-call-sql))]
+           (is (= :passed (:status result)) (pr-str result))
+           (is (some #(str/includes? % (str/replace string-with-a-call-sql #" FROM .*$" " FROM ")) sent) (pr-str sent))
+           (is (some #(re-find #" FROM \S+ AS __mb_output WHERE 1 = 0" %) sent) (pr-str sent))))
+       (testing "the card's own SQL is sent as written apart from its table"
+         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "select  id -- the id\nFROM public.orders"
                                                                       "SELECT 1 AS id" "SELECT * FROM {{output}} WHERE 1 = 0"))]
-           (is (re-find #"^The SQL check refuses the SQL of the query under test: " (str (:thrown result)))
-               (pr-str result))
-           (is (= [] sent))))))))
+           (is (= :passed (:status result)) (pr-str result))
+           (is (some #(re-find #"^CREATE TEMPORARY TABLE \S+ AS select  id -- the id\nFROM \S+ AS orders$" %) sent)
+               (pr-str sent))))))))
 
 (def ^:private output-expectation
   "An `empty` expectation of a card or segment test, which reads the output as `{{output}}`."

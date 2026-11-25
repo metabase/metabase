@@ -451,11 +451,3 @@
                                                      {:type :equals :name "rows match" :format :sql :sql "SELECT ID FROM PEOPLE"}
                                                      {:type    :equals :name "written rows" :format :rows
                                                       :columns [{:name "ID" :cast_type "integer"}] :rows [{"ID" 1}]}]))))))
-
-(deftest validate-refuses-expectation-sql-of-more-than-one-statement-test
-  (testing "control: an expectation of one SELECT is accepted"
-    (is (nil? (refusal (assoc complete-test :expectations [{:type :empty :name "none" :sql "SELECT * FROM PEOPLE"}])))))
-  (testing "an expectation of two statements is refused as it is authored"
-    (is (= ::errors/not-a-single-select
-           (refusal (assoc complete-test :expectations [{:type :empty :name "none"
-                                                         :sql  "SELECT * FROM PEOPLE; DROP TABLE PEOPLE"}]))))))

@@ -166,14 +166,12 @@
 
 (mu/defn rewrite-query :- ::compiled-query
   "`compiled` reading from the temp tables of `replacements` instead of the tables they replace (see
-  [[replace-tables]]). `check` is called with the SQL the run executes, for the refusals it throws. `:params` stay as
-  they are: the placeholders do not move.
+  [[replace-tables]]). `:params` stay as they are: the placeholders do not move.
 
   Throws `::data-testing.errors/parameters-not-kept` when the placeholders the parser reads are not one per value."
   [driver       :- :keyword
    compiled     :- ::compiled-query
-   replacements :- ::table-replacements
-   check        :- ifn?]
+   replacements :- ::table-replacements]
   (let [{:keys [query params]} compiled]
     (when (seq params)
       (let [{placeholders :count} (sql-tools/name-placeholders driver query "mb_param_")]
@@ -183,9 +181,7 @@
                   (tru "The query under test cannot be tested as it is: it has {0} parameter value(s), and Metabase finds {1} placeholder(s) in its SQL."
                        (count params) placeholders)
                   {})))))
-    (let [swapped (replace-tables driver query replacements)]
-      (check swapped)
-      (assoc compiled :query swapped))))
+    (assoc compiled :query (replace-tables driver query replacements))))
 
 ;;; ------------------------------------------------- Queries -------------------------------------------------
 

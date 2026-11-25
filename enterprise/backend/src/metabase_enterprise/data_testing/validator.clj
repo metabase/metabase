@@ -14,8 +14,9 @@
     could not match), and running it would hit the real table or error at execution. This covers the query under test
     and every expectation that carries the author's own SQL.
 
-  [[ensure-single-select]] checks each SQL statement a run executes (the query under test, each SQL input and each
-  expectation's SQL) and returns the text the run executes.
+  [[ensure-single-select]] checks the SQL of an input and returns the text the run executes for it. The query under
+  test and each expectation's SQL run as written apart from their table references, with no statement check: what
+  they may do is up to the database connection.
 
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require
@@ -289,9 +290,9 @@
 
 (mu/defn- check-expectation-sql :- :string
   "The SQL the run executes for the expectation named `expectation-name`, whose SQL is `sql`: `sql` reading the temp
-  tables of `replacements` and `output-token`, otherwise as written. Throws unless it is one SELECT that passes
-  [[ensure-single-select]] and reads only `temp-tables`. Its SQL is the author's, so SQL the parser cannot read is a refusal naming the
-  expectation rather than the parser's own escape."
+  tables of `replacements` and `output-token`, otherwise as written. Throws unless it reads only `temp-tables`. Its
+  SQL is the author's, so SQL the parser cannot read is a refusal naming the expectation rather than the parser's own
+  escape."
   [driver           :- :keyword
    expectation-name :- :string
    sql              :- :string
@@ -303,7 +304,6 @@
                           [:expectation expectation-name])
   (try
     (let [query (data-testing.compile/replace-tables driver sql replacements output-token)]
-      (ensure-single-select driver query [:expectation expectation-name])
       (check-rewrite driver query temp-tables [:expectation expectation-name])
       query)
     (catch Exception e
