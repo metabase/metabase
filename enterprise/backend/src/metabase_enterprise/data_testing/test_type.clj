@@ -7,8 +7,7 @@
 
   - `:model`: the model of those tests;
   - `:run-topics`: the audit topics of their runs, `{:start topic :timeout topic}`;
-  - `:subject`: a function of a saved test that returns the thing it tests, or nil when that is gone;
-  - `:can-run?`: a function of a saved test that returns whether the current user may run it."
+  - `:subject`: a function of a saved test that returns the thing it tests, or nil when that is gone."
   {:arglists '([test-type])}
   identity)
 

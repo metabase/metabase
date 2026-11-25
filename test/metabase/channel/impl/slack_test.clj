@@ -217,10 +217,10 @@
                         :creator {:common_name "Test User"}}
           recipient    {:type :notification-recipient/raw-value :details {:value "#test-channel"}}]
       (mt/with-dynamic-fn-redefs [slack/upload-file!             (fn [_ _] {:id "uploaded-file-id"})
-                                  channel.slack/part->sections! (fn [params part]
+                                  channel.slack/part->sections! (fn [params part & more]
                                                                   (if (= 2 (-> part :card :id))
                                                                     (throw (ex-info "boom rendering part" {}))
-                                                                    (orig params part)))]
+                                                                    (apply orig params part more)))]
         (mt/with-temporary-setting-values [site-url "http://example.com"]
           (let [blocks   (-> (channel/render-notification :channel/slack notification {:recipients [recipient]})
                              first :blocks)

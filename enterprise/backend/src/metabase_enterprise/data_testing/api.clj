@@ -105,7 +105,7 @@
                     [:id ms/PositiveInt]]]
   (let [transform-test (api/read-check :model/TransformTest id)
         transform      (api/read-check :model/Transform (:transform_id transform-test))]
-    (api/check-403 (data-testing.models/can-run-test? (:id transform)))
+    (api/check-403 (mi/can-query? (t2/hydrate transform-test :can_query)))
     (refusing #(data-testing.runner/run-test! :transform transform transform-test))))
 
 (def ^{:arglists '([request respond raise])} routes

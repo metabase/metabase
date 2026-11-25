@@ -20,7 +20,6 @@ const ORDERS = createMockTable({
   id: 5,
   name: "orders",
   display_name: "Orders",
-  collection_id: DATA.id,
   collection: DATA,
 });
 

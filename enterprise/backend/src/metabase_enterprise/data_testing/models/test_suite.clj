@@ -6,6 +6,7 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase-enterprise.data-testing.suite :as data-testing.suite]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
@@ -66,6 +67,22 @@
   [_model k suites]
   (let [answer (may-change-suites?)]
     (mapv #(assoc % k answer) suites)))
+
+(methodical/defmethod t2/batched-hydrate [:model/TestSuite :can_query]
+  "Whether the current user may run each suite: they may read it and run every one of its members, which an empty suite
+  has none of and a member whose test is missing fails, the members of all the suites and their tests answered together."
+  [_model k suites]
+  (let [suites   (t2/hydrate suites :can_read)
+        members  (data-testing.db/suite-members (into [] (comp (remove nil?) (filter mi/can-read?) (map :id)) suites))
+        runnable (data-testing.suite/runnable-answers
+                  (data-testing.suite/saved-tests-by :entity_id (mapv data-testing.suite/member-ref members)))
+        by-suite (group-by :suite_id members)]
+    (mapv (fn [suite]
+            (when suite
+              (assoc suite k (boolean (and (mi/can-read? suite)
+                                           (every? #(true? (get runnable (data-testing.suite/member-ref %)))
+                                                   (get by-suite (:id suite))))))))
+          suites)))
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 

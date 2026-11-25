@@ -32,13 +32,15 @@
     (contains? (perms/application-permissions-for-user (api/current-user-info)) :monitoring)
     (mi/superuser?)))
 
-(methodical/defmethod t2/simple-hydrate [:model/TaskRun :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (can-access?))))
+(methodical/defmethod t2/batched-hydrate [:model/TaskRun :can_read]
+  "Whether the current user can read each of `rows`, answered once for all of them."
+  [_model k rows]
+  (mi/vary-meta-each rows k (boolean (can-access?))))
 
-(methodical/defmethod t2/simple-hydrate [:model/TaskRun :can_write]
-  [_model k instance]
-  (assoc instance k (boolean (can-access?))))
+(methodical/defmethod t2/batched-hydrate [:model/TaskRun :can_write]
+  "Whether the current user can write each of `rows`, answered once for all of them."
+  [_model k rows]
+  (mi/assoc-each rows k (boolean (can-access?))))
 
 (def run-types
   "Valid run types."

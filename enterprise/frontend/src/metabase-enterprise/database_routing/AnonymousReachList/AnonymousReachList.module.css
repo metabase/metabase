@@ -1,0 +1,8 @@
+.list {
+  list-style: none;
+  margin: 0;
+}
+
+.row:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}

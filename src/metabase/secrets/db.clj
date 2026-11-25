@@ -2,6 +2,7 @@
   "Application database queries for the secrets module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -33,4 +34,4 @@
 (mu/defn delete-secrets!
   "Delete every version of the Secrets with `ids`, returning the number deleted."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Secret :id [:in ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/Secret :id [:in %]) ids))

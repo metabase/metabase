@@ -153,8 +153,8 @@
   "Look for a timeline and corresponding events associated with this dashcard."
   [{{:keys [collection_id] :as _card} :card}]
   (let [timelines (timeline.db/timelines-for-collection collection_id false)]
-    (->> (t2/hydrate timelines :creator [:collection :can_write])
-         (map #(include-events-singular % {:events/all? true})))))
+    (-> (t2/hydrate timelines :creator [:collection :can_write])
+        (include-events {:events/all? true}))))
 
 ;;; ------------------------------------------------------ Writes ------------------------------------------------------
 

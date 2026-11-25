@@ -170,11 +170,10 @@
   (let [{:keys [help hot port]} (:options (cli/parse-opts args cli-spec))]
     (when help
       ;; CLI help text belongs on stdout
-      #_{:clj-kondo/ignore [:discouraged-var :redundant-do]}
-      (do
-        (println "Usage: clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev [options]")
-        (println "Options:")
-        (println (:summary (cli/parse-opts [] cli-spec))))
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (println (str/join "\n" ["Usage: clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev [options]"
+                               "Options:"
+                               (:summary (cli/parse-opts [] cli-spec))]))
       (System/exit 0))
     (when hot
       ;; CLI startup message belongs on stdout

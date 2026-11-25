@@ -279,16 +279,22 @@
             ;; {[:table 3] {:name ...}}
             collection-columns
             (dashboards.db/link-card-collection-read-columns (vec (get (into {} model-and-ids) "collection")))
+            rows (dashboards.db/link-card-info-rows model-and-ids)
+            readable?
+            (->> rows
+                 (map (fn [{model :model :as instance}]
+                        (t2/instance (serialization/link-card-model->toucan-model model)
+                                     (cond-> instance
+                                       (= model "collection")
+                                       (merge (get collection-columns (:id instance)))))))
+                 (group-by t2/model)
+                 (mapcat (fn [[_model instances]] (t2/hydrate instances :can_read)))
+                 (into {} (map (fn [instance] [[(:model instance) (:id instance)] (mi/can-read? instance)]))))
             model-and-id->info
-            (-> (m/index-by (juxt :model :id) (dashboards.db/link-card-info-rows model-and-ids))
-                (update-vals (fn [{model :model :as instance}]
-                               (if (mi/can-read? (t2/hydrate (t2/instance (serialization/link-card-model->toucan-model model)
-                                                                          (cond-> instance
-                                                                            (= model "collection")
-                                                                            (merge (get collection-columns (:id instance)))))
-                                                             :can_read))
-                                 instance
-                                 {:restricted true}))))]
+            (into {}
+                  (map (fn [{:keys [model id] :as row}]
+                         [[model id] (if (readable? [model id]) row {:restricted true})]))
+                  rows)]
         (map (fn [card]
                (if-let [model-info (->> (get-in card entity-path)
                                         ((juxt :model :id))

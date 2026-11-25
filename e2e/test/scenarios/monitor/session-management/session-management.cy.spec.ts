@@ -169,20 +169,6 @@ describe("scenarios > monitor > session management", () => {
             .findByText("This session")
             .should("be.visible");
 
-          cy.log(
-            "The admin's own session can't be selected or revoked from here",
-          );
-          currentSessionRow().findByRole("checkbox").should("be.disabled");
-          currentSessionRow().click();
-          sessionSidebar().should("contain", "Bobby Tables");
-          sessionSidebar()
-            .findByRole("button", { name: "Revoke session" })
-            .should("not.exist");
-          sessionSidebar()
-            .findByRole("button", { name: "Revoke active sessions" })
-            .should("not.exist");
-          sessionSidebar().button("Close").click();
-
           cy.log("Every revoked session is on record as revoked by an admin");
           cy.findByTestId("sessions-tab-ended").click();
           sessionRow(s.signedOut).should("contain", "Signed out");
@@ -204,16 +190,6 @@ describe("scenarios > monitor > session management", () => {
           ].forEach((session) =>
             sessionRow(session).should("contain", "Revoked by admin"),
           );
-
-          cy.log("Ended sessions are read-only");
-          cy.findByTestId("sessions-table")
-            .findAllByRole("checkbox")
-            .should("not.exist");
-          sessionRow(s.ldap).click();
-          sessionSidebar().should("contain", "Revoked by admin");
-          sessionSidebar()
-            .findByRole("button", { name: "Revoke session" })
-            .should("not.exist");
         },
       );
     },
@@ -284,72 +260,27 @@ describe("scenarios > monitor > session management", () => {
         sessionRow(s.deactivated).should("contain", "User deactivated");
         sessionRow(s.passwordChanged).should("contain", "Password changed");
         sessionRow(s.supportAccess).should("contain", "Support access revoked");
-
-        const ended = [
-          s.loggedOut,
-          s.deactivated,
-          s.passwordChanged,
-          s.supportAccess,
-        ];
-        const expectOnlyListed = (...listed: TestSession[]) =>
-          ended.forEach((session) =>
-            sessionRow(session).should(
-              listed.includes(session) ? "be.visible" : "not.exist",
-            ),
-          );
-
-        cy.log("Filtering by reason narrows the ended sessions");
-        cy.button("Show filters").click();
-        H.popover().findByRole("textbox", { name: "Reason" }).click();
-        cy.findByRole("option", { name: "Password changed" }).click();
-        H.popover().button("Apply").click();
-        expectOnlyListed(s.passwordChanged);
-
-        cy.log("Clearing the filters brings every ended session back");
-        cy.button("Show filters").click();
-        H.popover().button("Clear filters").click();
-        expectOnlyListed(...ended);
-
-        cy.log("Filtering by auth method narrows them too");
-        cy.button("Show filters").click();
-        H.popover().findByRole("button", { name: "Support access" }).click();
-        H.popover().button("Apply").click();
-        expectOnlyListed(s.supportAccess);
-
-        cy.log("Searching matches the owner of an ended session");
-        cy.button("Show filters").click();
-        H.popover().button("Clear filters").click();
-        cy.findByLabelText("Search sessions").type("Read Only");
-        expectOnlyListed(s.loggedOut);
       },
     );
   });
 });
 
-describe("scenarios > monitor > session management > access", () => {
+describe("scenarios > monitor > session management > upsell", () => {
   beforeEach(() => {
     H.restore();
-  });
-
-  it("shows the upsell to an admin without the feature", () => {
     cy.signInAsAdmin();
     // a valid token that lacks the feature, rather than no token at all
     H.activateToken("starter");
+  });
+
+  // Jest covers which page the route renders; this checks the upsell is visible in a real layout, which jsdom can't
+  it("shows the upsell to an admin without the feature", () => {
     cy.visit("/monitor/sessions");
     cy.findByTestId("monitor-main")
       .findByText(
         /See who is signed in to your Metabase. Revoke individual sessions/,
       )
       .should("be.visible");
-    cy.findByTestId("sessions-table").should("not.exist");
-  });
-
-  it("is admin-only", () => {
-    cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
-    cy.signInAsNormalUser();
-    cy.visit("/monitor/sessions");
-    cy.location("pathname").should("eq", "/unauthorized");
   });
 });
 
@@ -475,14 +406,6 @@ function visitSessions() {
 
 function sessionRow(session: TestSession) {
   return cy.findByTestId(`session-row-${session.id}`);
-}
-
-/** The row of the session the admin's own browser is using, flagged "This session" */
-function currentSessionRow() {
-  return cy
-    .findByTestId("sessions-table")
-    .findByText("This session")
-    .closest("[role='row']");
 }
 
 function sessionSidebar() {

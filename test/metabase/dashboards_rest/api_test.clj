@@ -36,6 +36,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
+   [metabase.public-sharing.test-util :as public-sharing.test-util]
    [metabase.pulse.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -45,6 +46,7 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.revisions.models.revision :as revision]
    [metabase.revisions.test-util :as revisions.tu]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
@@ -3016,6 +3018,107 @@
     (testing "Test that we get a 404 if the Dashboard doesn't exist"
       (is (= "Not found."
              (mt/user-http-request :crowberto :post 404 (format "dashboard/%d/public_link" Integer/MAX_VALUE)))))))
+
+(deftest share-dashboard-on-routed-database-test
+  (when config/ee-available?
+    (testing "POST /api/dashboard/:id/public_link"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-premium-features #{:database-routing}
+          (testing "a Dashboard with a Card on a routed database that does not allow anonymous access cannot be shared"
+            (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Dashboard     dashboard  {}
+                           :model/Card          card       {}
+                           :model/DashboardCard _          {:dashboard_id (u/the-id dashboard)
+                                                            :card_id      (u/the-id card)}]
+              (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                     (mt/user-http-request :crowberto :post 400
+                                           (format "dashboard/%d/public_link" (u/the-id dashboard)))))
+              (is (not (t2/exists? :model/Dashboard :id (u/the-id dashboard), :public_uuid [:not= nil])))))
+          (testing "a Dashboard whose Cards live elsewhere but whose filter draws its value list from the routed
+                 database refuses: it reaches that database through something it renders, not through its own Cards"
+            (mt/with-temp [:model/DatabaseRouter _            {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Database       other        {}
+                           :model/Card           value-source {}
+                           :model/Card           main         {:database_id (u/the-id other)}
+                           :model/Dashboard      dashboard
+                           {:parameters [(public-sharing.test-util/card-value-source-parameter
+                                          (u/the-id value-source))]}
+                           :model/DashboardCard  _            {:dashboard_id (u/the-id dashboard)
+                                                               :card_id      (u/the-id main)}]
+              (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                     (mt/user-http-request :crowberto :post 400
+                                           (format "dashboard/%d/public_link" (u/the-id dashboard)))))
+              (is (not (t2/exists? :model/Dashboard :id (u/the-id dashboard), :public_uuid [:not= nil])))))
+          (testing "a Card reaching the routed database only as a series on one of its DashboardCards refuses too"
+            (mt/with-temp [:model/DatabaseRouter      _         {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Database            other     {}
+                           :model/Dashboard           dashboard {}
+                           :model/Card                main      {:database_id (u/the-id other)}
+                           :model/DashboardCard       dashcard  {:dashboard_id (u/the-id dashboard)
+                                                                 :card_id      (u/the-id main)}
+                           :model/Card                series    {}
+                           :model/DashboardCardSeries _         {:dashboardcard_id (u/the-id dashcard)
+                                                                 :card_id          (u/the-id series)}]
+              (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                     (mt/user-http-request :crowberto :post 400
+                                           (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
+          (testing "the permission check runs before the refusal, so a non-admin is refused generically and the
+                 explanation naming the database reaches only a viewer who could act on it"
+            (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Dashboard      dashboard {}
+                           :model/Card           card      {}
+                           :model/DashboardCard  _         {:dashboard_id (u/the-id dashboard)
+                                                            :card_id      (u/the-id card)}]
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403
+                                           (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
+          (testing "an already-shared Dashboard still returns its existing link, so a dead one stays deletable"
+            (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Dashboard     dashboard  (shared-dashboard)
+                           :model/Card          card       {}
+                           :model/DashboardCard _          {:dashboard_id (u/the-id dashboard)
+                                                            :card_id      (u/the-id card)}]
+              (is (= (:public_uuid dashboard)
+                     (:uuid (mt/user-http-request :crowberto :post 200
+                                                  (format "dashboard/%d/public_link" (u/the-id dashboard))))))))
+          (testing "once an admin allows anonymous access it can"
+            (mt/with-temp [:model/DatabaseRouter _         {:database_id              (mt/id)
+                                                            :user_attribute           "db_name"
+                                                            :anonymous_access_granted true}
+                           :model/Dashboard     dashboard  {}
+                           :model/Card          card       {}
+                           :model/DashboardCard _          {:dashboard_id (u/the-id dashboard)
+                                                            :card_id      (u/the-id card)}]
+              (is (=? {:uuid string?}
+                      (mt/user-http-request :crowberto :post 200
+                                            (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
+          (testing "a Dashboard whose only Card on the routed database is archived renders nothing anonymously -- the
+                 public dashcard route 404s on it -- so it can"
+            (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Dashboard      dashboard {}
+                           :model/Card           card      {:archived true}
+                           :model/DashboardCard  _         {:dashboard_id (u/the-id dashboard)
+                                                            :card_id      (u/the-id card)}]
+              (is (=? {:uuid string?}
+                      (mt/user-http-request :crowberto :post 200
+                                            (format "dashboard/%d/public_link" (u/the-id dashboard)))))))
+          (testing "an empty Dashboard on a routed database queries nothing, so it can"
+            (mt/with-temp [:model/DatabaseRouter _        {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Dashboard     dashboard {}]
+              (is (=? {:uuid string?}
+                      (mt/user-http-request :crowberto :post 200
+                                            (format "dashboard/%d/public_link" (u/the-id dashboard))))))))
+        (testing "without the database-routing feature it is still refused: the router refuses anonymous queries either way"
+          (mt/with-premium-features #{}
+            (mt/with-temp [:model/DatabaseRouter _         {:database_id (mt/id), :user_attribute "db_name"}
+                           :model/Dashboard     dashboard  {}
+                           :model/Card          card       {}
+                           :model/DashboardCard _          {:dashboard_id (u/the-id dashboard)
+                                                            :card_id      (u/the-id card)}]
+              (is (= (public-sharing.test-util/anonymous-access-refused-message (:name (mt/db)))
+                     (mt/user-http-request :crowberto :post 400
+                                           (format "dashboard/%d/public_link" (u/the-id dashboard)))))
+              (is (not (t2/exists? :model/Dashboard :id (u/the-id dashboard), :public_uuid [:not= nil]))))))))))
 
 (deftest delete-public-link-test
   (testing "DELETE /api/dashboard/:id/public_link"
@@ -6061,6 +6164,79 @@
                                                                               })]
     (is (partial= {:name       "Test Dashboard"
                    :creator_id (mt/user->id :crowberto)} response))))
+
+(defn- transient-dashboard-body [n & [extra-settings]]
+  (let [mp (mt/metadata-provider)
+        q  (dissoc (lib/query mp (lib.metadata/table mp (mt/id :venues))) :lib/metadata)]
+    {:name      "Transient dashboard"
+     :dashcards (vec (for [i (range n)]
+                       {:row i :col 0 :size_x 4 :size_y 4
+                        :card {:name                   (str "transient card " i)
+                               :display                "line"
+                               :dataset_query          q
+                               :visualization_settings (if (= i 0) (or extra-settings {}) {})}}))}))
+
+(deftest save-transient-dashboard-create-check-statements-do-not-grow-with-cards-test
+  (mt/with-temp [:model/Collection {coll-id :id} {}]
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+    (mt/with-test-user :rasta
+      (let [check!     #'api.dashboard/check-create-transient-dashboard-cards
+            statements (fn [n] (t2/with-call-count [call-count] (check! (transient-dashboard-body n) coll-id) (call-count)))]
+        (statements 2)
+        (is (= (statements 4) (statements 10)))))))
+
+(deftest save-transient-dashboard-keeps-card-order-test
+  (search.tu/with-index-disabled
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Card       {existing-id :id} {:name "existing card" :collection_id coll-id}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+      (mt/with-model-cleanup [:model/Card :model/Dashboard]
+        (let [body      (update (transient-dashboard-body 3) :dashcards
+                                (fn [[a b c]]
+                                  [(assoc a :series [(assoc (:card b) :name "series card")])
+                                   (assoc b :card {:id existing-id})
+                                   c]))
+              dashboard (mt/user-http-request :rasta :post 200 (str "dashboard/save/collection/" coll-id) body)
+              dashcards (t2/hydrate (t2/select :model/DashboardCard :dashboard_id (:id dashboard) {:order-by [:row]}) :card)]
+          (is (= ["transient card 0" "existing card" "transient card 2"]
+                 (map (comp :name :card) dashcards)))
+          (is (= [["series card"] nil nil]
+                 (map (fn [{:keys [id]}]
+                        (t2/select-fn-vec :name :model/Card
+                                          :id [:in (or (seq (t2/select-fn-vec :card_id :model/DashboardCardSeries :dashboardcard_id id)) [-1])]))
+                      dashcards))))))))
+
+(deftest save-transient-dashboard-refuses-batch-with-one-forbidden-card-test
+  (search.tu/with-index-disabled
+    (mt/with-temp [:model/Collection {coll-id :id}          {}
+                   :model/Collection {hidden-coll-id :id}   {}
+                   :model/Timeline   {timeline-id :id}      {:collection_id hidden-coll-id}]
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+      (let [path   (str "dashboard/save/collection/" coll-id)
+            before (t2/count :model/Card :collection_id coll-id)]
+        (testing "a card that shows a timeline the user cannot read"
+          (mt/user-http-request :rasta :post 403 path
+                                (transient-dashboard-body 5 {:timeline.selected_timeline_ids [timeline-id]}))
+          (is (= before (t2/count :model/Card :collection_id coll-id))))
+        (testing "a Collection the user cannot write"
+          (mt/user-http-request :rasta :post 403 (str "dashboard/save/collection/" hidden-coll-id) (transient-dashboard-body 5))
+          (is (zero? (t2/count :model/Card :collection_id hidden-coll-id))))))))
+
+(deftest save-transient-dashboard-refuses-batch-whose-last-query-cannot-run-test
+  (testing "a transient dashboard whose last new card has a query the user cannot run saves nothing"
+    (search.tu/with-index-disabled
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+          (let [body (update (transient-dashboard-body 4) :dashcards
+                             (fn [dashcards]
+                               (update dashcards 3 assoc-in [:card :dataset_query]
+                                       (dissoc (lib/native-query (mt/metadata-provider) "SELECT 1") :lib/metadata))))]
+            (mt/user-http-request :rasta :post 403 (str "dashboard/save/collection/" coll-id) body)
+            (is (zero? (t2/count :model/Card :collection_id coll-id)))
+            (is (zero? (t2/count :model/Dashboard :collection_id coll-id)))))))))
 
 ;;; +--------------------------------------------------------------------------------------------------+
 ;;; |       result_metadata persistence with parameters (QUE2-502)                                     |

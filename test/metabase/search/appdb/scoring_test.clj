@@ -408,8 +408,9 @@
     (testing "measures and segments on a published Library table inherit its library boost and curated status"
       (collections.tu/with-library [{data :data}]
         (mt/with-model-cleanup [:model/Segment :model/Measure :model/Table]
-          (let [[lib-tbl plain-tbl] (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "lib_tbl" :is_published true :collection_id (:id data))
-                                                           (assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "plain_tbl" :is_published false :collection_id nil)])
+          (let [[lib-tbl plain-tbl] (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "lib_tbl")
+                                                           (assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) :name "plain_tbl")])
+                _                   (table-user-settings/create-table-user-settings! [{:table_id (:id lib-tbl) :is_published true :collection_id (:id data)}])
                 _                   (measure/create-measures! [(assoc (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id) :name "foo measure lib" :definition (table-measure-definition (:id lib-tbl)))
                                                                (assoc (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id) :name "foo measure plain" :definition (table-measure-definition (:id plain-tbl)))])
                 _                   (segment/create-segments! [(assoc (dissoc (mt/with-temp-defaults :model/Segment) :created_at :updated_at :entity_id) :name "foo segment lib" :definition (table-definition (:id lib-tbl)))

@@ -103,6 +103,44 @@
                                                        :perm_value "yes"}]})))
           (is (not (t2/exists? :model/MetabotPermissions :group_id group-id))))))))
 
+(deftest update-permissions-statement-count-test
+  (mt/with-premium-features #{:ai-controls}
+    (mt/with-temporary-setting-values [metabot-advanced-permissions true]
+      (mt/with-model-cleanup [:model/PermissionsGroup :model/MetabotPermissions]
+        (let [groups     (fn [n prefix]
+                           (t2/insert-returning-pks! :model/PermissionsGroup
+                                                     (for [i (range n)] {:name (str prefix " " i)})))
+              request    (fn [group-ids value]
+                           {:permissions (for [group-id group-ids
+                                               perm-type ["permission/metabot" "permission/metabot-nlq"]]
+                                           {:group_id group-id :perm_type perm-type :perm_value value})})
+              statements (fn [n]
+                           (let [group-ids (groups n (str "Statements " n))]
+                             (mt/user-http-request :crowberto :put 200 "ee/ai-controls/permissions"
+                                                   (request (take (quot n 2) group-ids) "no"))
+                             (t2/with-call-count [call-count]
+                               (mt/user-http-request :crowberto :put 200 "ee/ai-controls/permissions"
+                                                     (request group-ids "yes"))
+                               (u/prog1 (call-count)
+                                 (is (= (* 2 n) (t2/count :model/MetabotPermissions :group_id [:in group-ids]
+                                                          :perm_value :yes)))))))]
+          (statements 2)
+          (testing "PUT /api/ee/ai-controls/permissions inserting and updating rows costs as many statements for 10 groups as for 40"
+            (is (= (statements 10) (statements 40))))
+          (testing "a batch where one group is hidden by current mode is refused and writes nothing"
+            (let [group-ids (groups 3 "Refused")]
+              (is (= (str "Group " (u/the-id (perms/all-users-group)) " has no AI permissions in the current permission mode.")
+                     (mt/user-http-request :crowberto :put 400 "ee/ai-controls/permissions"
+                                           (update (request group-ids "yes") :permissions concat
+                                                   [{:group_id   (u/the-id (perms/all-users-group))
+                                                     :perm_type  "permission/metabot-nlq"
+                                                     :perm_value (if (= :yes (t2/select-one-fn :perm_value :model/MetabotPermissions
+                                                                                               :group_id (u/the-id (perms/all-users-group))
+                                                                                               :perm_type :permission/metabot-nlq))
+                                                                   "no"
+                                                                   "yes")}]))))
+              (is (not (t2/exists? :model/MetabotPermissions :group_id [:in group-ids]))))))))))
+
 (deftest user-permissions-with-custom-group-test
   (mt/with-premium-features #{:ai-controls}
     (testing "GET /api/metabot/permissions/user-permissions"

@@ -48,6 +48,22 @@
    :cacheCreationTokens (get-in u [:input_tokens_details :cache_write_tokens] 0)
    :cacheReadTokens     (get-in u [:input_tokens_details :cached_tokens] 0)})
 
+(defn- response-error-chunk
+  "The [[core/error-chunk]] for an `error` object that the Responses API streamed after its 200.
+  Its text is the object's message, else its code, else a generic text."
+  [error]
+  (core/error-chunk error (or (:message error)
+                              (some-> (:code error) str)
+                              (tru "The model provider failed to complete the response"))))
+
+(defn- error-event-object
+  "The error object of a Responses API `error` event. The event carries its `code` and `message` at the top level
+  (https://platform.openai.com/docs/api-reference/responses-streaming/error). Some servers nest an `error` object,
+  or send a string `error`. The event's own `message` is then the fallback text."
+  [{:keys [error message] :as event}]
+  (-> (if (map? error) error (select-keys event [:code :message :param]))
+      (update :message #(or % message (when (string? error) error)))))
+
 (defn openai->aisdk-chunks-xf
   "Translates OpenAI /v1/responses streaming events into AI SDK v5 protocol chunks.
 
@@ -91,7 +107,7 @@
            ;; in case the response was incomplete we'll close up latest type
            @current-type (close!)
            true          (rf)))
-        ([result {t :type :keys [response item delta error] :as chunk}]
+        ([result {t :type :keys [response item delta] :as chunk}]
          (let [middle     (second (str/split t #"\."))
                chunk-type (case middle
                             "output_item"             (case (:type item)
@@ -185,12 +201,8 @@
                                 :raw-finish-reason raw))))
              ;; `response.failed` is the Responses API's terminal failure event. Its error lives nested under
              ;; `response.error`, not in a top-level `error` event, so surface it explicitly.
-             (= t "response.failed")            (rf {:type      :error
-                                                     :errorText (or (get-in response [:error :message])
-                                                                    (get-in response [:error :code])
-                                                                    (tru "The model provider failed to complete the response"))})
-             (= t "error")                      (rf {:type      :error
-                                                     :errorText (or (:message error) (:message chunk))}))))))))
+             (= t "response.failed")            (rf (response-error-chunk (:error response)))
+             (= t "error")                      (rf (response-error-chunk (error-event-object chunk))))))))))
 
 ;;; AISDK parts → OpenAI Responses API input items
 
@@ -223,10 +235,7 @@
                                              (if (string? args) args (json/encode args)))}
                   :tool-output {:type    "function_call_output"
                                 :call_id (:id part)
-                                :output  (or (get-in part [:result :output])
-                                             (when-let [err (:error part)]
-                                               (str "Error: " (:message err)))
-                                             (pr-str (:result part)))}
+                                :output  (core/tool-result-text (:result part))}
                   ;; user messages
                   {:role    (name (or (:role part) "user"))
                    :content (or (:content part) "")})))

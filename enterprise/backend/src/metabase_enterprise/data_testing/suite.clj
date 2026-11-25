@@ -44,6 +44,32 @@
                       [[test-type (get saved-test column)] saved-test]))))
         (group-by first refs)))
 
+(def ^:private RunnableAnswer
+  "Whether the current user may run a saved test, or what checking it threw."
+  [:or :boolean (ms/InstanceOfClass Throwable)])
+
+(defn- runnable-answers-of-type
+  "`[ref answer]` for each `[ref saved-test]` of `entries`, saved tests of one type: their `:can_query` hydrated
+  together, or, when that throws, each one alone, the answer then being what it throws."
+  [entries]
+  (try
+    (mapv (fn [[ref _] saved-test] [ref (mi/can-query? saved-test)])
+          entries
+          (t2/hydrate (mapv val entries) :can_query))
+    (catch Exception _
+      (mapv (fn [[ref saved-test]]
+              [ref (try
+                     (mi/can-query? (t2/hydrate saved-test :can_query))
+                     (catch Exception e
+                       e))])
+            entries))))
+
+(mu/defn runnable-answers :- [:map-of TestKey RunnableAnswer]
+  "A map from each ref of `ref->test`, as [[saved-tests-by]] returns it, to whether the current user may run its saved
+  test, or what checking that threw, asked for the tests of each type together."
+  [ref->test :- [:map-of TestKey ::data-testing.schema/saved-test]]
+  (into {} (mapcat runnable-answers-of-type) (vals (group-by (comp first key) ref->test))))
+
 (mu/defn- member-response :- ::data-testing.schema/test-suite.member.response
   "`member` as the current user sees it, given `saved-test`, the test it names, or nil."
   [{:keys [test_type test_entity_id position]} :- ::data-testing.schema/test-suite.member
@@ -106,16 +132,14 @@
   withheld and the history is still returned. Every member keeps its status."
   [runs :- [:sequential ::data-testing.schema/test-suite-run]]
   (let [refs  (into [] (comp (mapcat :members) (filter :error) (map member-ref) (distinct)) runs)
+        tests (saved-tests-by :entity_id refs)
         shown (into #{}
-                    (keep (fn [[[test-type :as ref] saved-test]]
-                            (when (try
-                                    ((:can-run? (data-testing.test-type/spec test-type)) saved-test)
-                                    (catch Exception e
-                                      (log/warnf e "Could not check whether the user may run %s test %s"
-                                                 (name test-type) (:id saved-test))
-                                      false))
-                              ref)))
-                    (saved-tests-by :entity_id refs))]
+                    (keep (fn [[[test-type :as ref] answer]]
+                            (if (instance? Throwable answer)
+                              (log/warnf answer "Could not check whether the user may run %s test %s"
+                                         (name test-type) (:id (get tests ref)))
+                              (when answer ref))))
+                    (runnable-answers tests))]
     (mapv (fn [run]
             (cond-> run
               (seq (:members run))

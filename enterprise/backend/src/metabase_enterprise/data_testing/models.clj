@@ -15,9 +15,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
@@ -95,48 +93,81 @@
   "Whether the current user may run native SQL against the Database with `db-id`, as the input and expectation SQL of a
   test does."
   [db-id]
-  (query-perms/can-run-query? (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")))
+  (contains? (query-perms/native-query-database-ids [db-id]) db-id))
 
-(defn query-subject-allows?
-  "Whether `subject-check` holds for `subject`, a card or a segment, hydrated with `k`, and the current user may run
-  `query`, the subject's query, and write the native SQL of a test against the Database of `query`. False when
-  `subject` is nil."
-  [subject-check k subject query]
-  (boolean
-   (when subject
-     (and (subject-check (t2/hydrate subject k))
-          ;; A run compiles the query with the cards, snippets and segments it includes, and a run's errors can quote
-          ;; their SQL, so the user must be allowed to run the query, not only to read the subject.
-          (query-perms/can-run-query? query)
-          (or (mi/superuser?)
-              (some-> (not-empty query) lib/database-id can-run-native-query?))))))
+(defn query-database-id
+  "The id of the Database of `query`, a card's or a segment's query, or nil when it has none."
+  [query]
+  (some-> (not-empty query) lib/database-id))
 
-(defn- can-save-for-transform?
-  "Whether the current user may save or delete a test of `transform`: they may edit it, as `transform-writable?` says,
-  and run the native SQL of a test against its source Database, as `can-run-native-query?` says."
-  [transform transform-writable? can-run-native-query?]
-  (boolean
-   (and transform
-        transform-writable?
-        (or (mi/superuser?)
-            (some-> (transforms-base.i/source-db-id transform) can-run-native-query?)))))
+(def ^:private native-columns
+  "The columns of a saved test holding SQL or rows that a run sends to the subject's Database: a change to them needs
+  native queries there."
+  [:inputs :expectations])
 
-(mu/defn- can-save? :- :boolean
-  "Whether the current user may save or delete a test of the Transform `transform-id` (see [[can-save-for-transform?]])."
-  [transform-id :- ::lib.schema.id/transform]
-  (let [transform (data-testing.db/transform transform-id)]
-    (can-save-for-transform? transform (some-> transform (t2/hydrate :can_write) mi/can-write?) can-run-native-query?)))
+(defn- subject-native?
+  "Whether the current user, unless a superuser, may run native SQL against the Database that `db-id` gives for
+  `subject`, false when there is no subject."
+  [db-id subject]
+  (boolean (and subject
+                (or (mi/superuser?)
+                    (some-> (db-id subject) can-run-native-query?)))))
 
-(mu/defn can-run-test? :- :boolean
-  "Whether the current user may run a test of the Transform `transform-id`: they may read it, and run the native SQL of
-  a test against its source Database."
-  [transform-id :- ::lib.schema.id/transform]
-  (let [transform (data-testing.db/transform transform-id)]
+(defn- subject-can-query?
+  "Whether the current user may run `subject`, as its `:can_query` says, false when there is no subject."
+  [subject]
+  (boolean (some-> subject (t2/hydrate :can_query) mi/can-query?)))
+
+(defn- subject-writable-where-read-only?
+  "Whether `subject` may take tests on an instance where remote sync keeps synced content read-only, which then needs
+  that the current user may edit it, as its `:can_write` says, since that refuses a synced subject there."
+  [subject]
+  (boolean (or (not (remote-sync/read-only?))
+               (some-> subject (t2/hydrate :can_write) mi/can-write?))))
+
+(defn can-create-test?
+  "Whether the current user may create a test of `subject`: they may run native SQL against its Database, which
+  `db-id` gives, run the subject, and edit it on a read-only instance."
+  [subject db-id]
+  (and (subject-native? db-id subject)
+       (subject-can-query? subject)
+       (subject-writable-where-read-only? subject)))
+
+(defn can-update-test?
+  "Whether the current user may apply `changes` to the saved `test`, whose subject `subject-key` names and
+  `load-subject` loads by id: `writable?` holds, a change to its inputs or expectations needs native SQL on the
+  Database of its new subject, which `db-id` gives, and a change of subject needs that they may run the new one and,
+  on a read-only instance, edit it."
+  [test changes {:keys [subject-key load-subject db-id writable?]}]
+  (let [changes?    #(and (contains? changes %) (not= (get changes %) (get test %)))
+        new-subject (delay (some-> (get changes subject-key (get test subject-key)) load-subject))]
     (boolean
-     (and transform
-          (mi/can-read? (t2/hydrate transform :can_read))
-          (or (mi/superuser?)
-              (some-> (transforms-base.i/source-db-id transform) can-run-native-query?))))))
+     (and writable?
+          (or (not-any? changes? native-columns)
+              (subject-native? db-id @new-subject))
+          (or (not (changes? subject-key))
+              (and (subject-can-query? @new-subject)
+                   (subject-writable-where-read-only? @new-subject)))))))
+
+(defn assoc-subject-answers
+  "Each of the saved `tests`, nil ones left nil, with under `k` whether the subject its `subject-key` names among
+  `subjects` exists and passes `subject-check` once all are hydrated with `subject-k`."
+  [tests k {:keys [subject-key subjects subject-k subject-check]}]
+  (let [id->subject (u/index-by :id (t2/hydrate subjects subject-k))]
+    (for [saved-test tests]
+      (when saved-test
+        (assoc saved-test k (boolean (some-> (get id->subject (subject-key saved-test)) subject-check)))))))
+
+(defn assoc-can-query
+  "Each of the saved `tests`, nil ones left nil, with under `k` whether the current user reads the test, as its
+  `:can_read` says, and may run its subject, the one its `subject-key` names among `subjects`, as the subject's
+  `:can_query` says, all answered at once."
+  [tests k subject-key subjects]
+  (let [id->subject (u/index-by :id (t2/hydrate subjects :can_query))]
+    (for [saved-test (t2/hydrate tests :can_read)]
+      (when saved-test
+        (assoc saved-test k (boolean (and (mi/can-read? saved-test)
+                                          (some-> (get id->subject (subject-key saved-test)) mi/can-query?))))))))
 
 (defn with-readable-subjects
   "Add to each of the saved `tests` whether the current user can read its subject, as `:can_read` in its metadata, the
@@ -155,40 +186,42 @@
     (data-testing.db/transforms (into [] (comp (keep :transform_id) (distinct)) transform-tests))))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_write]
-  "Add whether the current user can write each transform test, loading their transforms at once and checking each
-  source Database once."
+  "Add whether the current user can write each transform test: they may edit its transform, on an instance where remote
+  sync does not keep synced content read-only, loading the transforms at once."
   [_model k transform-tests]
-  (mi/instances-with-hydrated-data
-   transform-tests k
-   #(let [transforms (u/index-by :id (t2/hydrate (data-testing.db/transforms
-                                                  (into [] (comp (keep :transform_id) (distinct)) transform-tests))
-                                                 :can_write))
-          native?    (memoize can-run-native-query?)]
-      (into {}
-            (map (fn [{:keys [id transform_id]}]
-                   [id (and (not (remote-sync/read-only?))
-                            (let [transform (get transforms transform_id)]
-                              (can-save-for-transform? transform (:can_write transform) native?)))]))
-            (remove nil? transform-tests)))
-   :id
-   {:default false}))
+  (let [read-only? (remote-sync/read-only?)]
+    (assoc-subject-answers transform-tests k
+                           {:subject-key   :transform_id
+                            :subjects      (data-testing.db/transforms
+                                            (into [] (comp (keep :transform_id) (distinct)) transform-tests))
+                            :subject-k     :can_write
+                            :subject-check #(and (not read-only?) (mi/can-write? %))})))
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_query]
+  "Add whether the current user may run each transform test: they read it and may run its transform, as its
+  `:can_query` says, loading the transforms at once."
+  [_model k transform-tests]
+  (assoc-can-query transform-tests k :transform_id
+                   (data-testing.db/transforms (into [] (comp (keep :transform_id) (distinct)) transform-tests))))
 
 (defmethod mi/can-create? :model/TransformTest
   [_model instance]
-  (can-save? (:transform_id instance)))
+  (can-create-test? (some-> (:transform_id instance) data-testing.db/transform) transforms-base.i/source-db-id))
 
-(defn- unsynced-change-writable?
-  "Whether the current user can apply `changes` that touch no synced column of `instance`, which a read-only instance
-  still accepts."
-  [instance changes]
-  (and (not (remote-sync/synced-changes? :model/TransformTest instance changes))
-       (can-save? (:transform_id instance))))
+(defn- transform-writable?
+  "Whether the current user may edit the Transform `transform-id`."
+  [transform-id]
+  (boolean (some-> transform-id data-testing.db/transform (t2/hydrate :can_write) mi/can-write?)))
 
 (defmethod mi/can-update? :model/TransformTest
   [instance changes]
-  (and (or (mi/can-write? instance)
-           (unsynced-change-writable? instance changes))
-       (can-save? (:transform_id changes (:transform_id instance)))))
+  (can-update-test? instance changes
+                    {:subject-key  :transform_id
+                     :load-subject data-testing.db/transform
+                     :db-id        transforms-base.i/source-db-id
+                     :writable?    (or (mi/can-write? instance)
+                                       (and (not (remote-sync/synced-changes? :model/TransformTest instance changes))
+                                            (transform-writable? (:transform_id instance))))}))
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
@@ -274,8 +307,7 @@
   {:model      :model/TransformTest
    :run-topics {:start   :event/transform-test-run-start
                 :timeout :event/transform-test-run-timeout}
-   :subject    #(data-testing.db/transform (:transform_id %))
-   :can-run?   #(can-run-test? (:transform_id %))})
+   :subject    #(data-testing.db/transform (:transform_id %))})
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 

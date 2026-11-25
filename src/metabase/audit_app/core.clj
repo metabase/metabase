@@ -15,11 +15,11 @@
  [metabase.audit-app.impl
   default-audit-collection-entity-id
   audit-db-id
+  audit-collection-ids
+  audit-entity
   default-audit-collection
   default-custom-reports-collection
-  is-collection-id-audit?
-  is-parent-collection-audit?
-  memoized-select-audit-entity]
+  is-collection-id-audit?]
  [metabase.audit-app.models.audit-log
   model-name]
  [metabase.audit-app.settings

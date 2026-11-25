@@ -136,8 +136,8 @@
                                         {:inputs [(assoc (first data-testing.test-util/google-segment-inputs) :rows [{"ID" 3 "SOURCE" "Google"}])]})))
           (is (= before (t2/select-one :model/SegmentTest :id test-id))))))))
 
-(deftest a-run-by-a-non-admin-of-a-test-of-a-segment-with-no-definition-is-forbidden-test
-  (testing "the permission check comes first: a non-admin may not run an empty definition, so gets 403, not 422"
+(deftest a-run-by-a-non-admin-of-a-test-of-a-segment-with-no-definition-gets-its-refusal-test
+  (testing "a non-admin may run a test of a segment with an empty definition, and gets its refusal"
     (mt/with-premium-features data-testing.test-util/data-analyst-features
       (perms.tu/with-no-data-perms-for-all-users!
         (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
@@ -151,7 +151,8 @@
                 (testing "control: the non-admin runs the test while the segment has its definition"
                   (is (=? {:status "passed"} (mt/user-http-request :rasta :post 200 path))))
                 (data-testing.test-util/empty-segment-definition! segment-id)
-                (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :post 403 path)))
+                (is (=? {:error-code "segment-test.uncompilable-subject"}
+                        (mt/user-http-request :rasta :post 422 path)))
                 (testing "control: an admin gets the refusal of the empty definition"
                   (is (=? {:error-code "segment-test.uncompilable-subject"}
                           (mt/user-http-request :crowberto :post 422 path))))
@@ -297,11 +298,12 @@
                 (mt/user-http-request :rasta :post 403 (str path "/run"))))
             (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
                                                                           :perms/create-queries :query-builder-and-native}
-              (testing "a user who may read the segment: get and run, but not create, update or delete"
+              (testing "a user who may read the segment and write native queries: get, run and create, but not update or delete"
                 (is (= test-id (:id (mt/user-http-request :rasta :get 200 path))))
                 (is (= "passed" (:status (mt/user-http-request :rasta :post 200 (str path "/run")))))
+                (let [created (mt/user-http-request :rasta :post 200 "ee/segment-test" (body segment-id))]
+                  (t2/delete! :model/SegmentTest :id (:id created)))
                 (let [before (segment-tests-state)]
-                  (mt/user-http-request :rasta :post 403 "ee/segment-test" (body segment-id))
                   (mt/user-http-request :rasta :put 403 path {:name "nope"})
                   (mt/user-http-request :rasta :delete 403 path)
                   (testing "and the refused requests created, changed and deleted no test"
@@ -314,11 +316,11 @@
             (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
                                                                           :perms/create-queries :query-builder}
               (mt/with-data-analyst-role! (mt/user->id :lucky)
-                (testing "no native queries on the segment's database: 403 on create and on run"
+                (testing "no native queries on the segment's database: 403 on create, and the run is allowed"
                   (let [before (segment-tests-state)]
                     (mt/user-http-request :lucky :post 403 "ee/segment-test" (body segment-id))
                     (is (= before (segment-tests-state))))
-                  (mt/user-http-request :lucky :post 403 (str path "/run"))
+                  (is (= "passed" (:status (mt/user-http-request :lucky :post 200 (str path "/run")))))
                   (is (= test-id (:id (mt/user-http-request :lucky :get 200 path)))))))
             (finally
               (t2/delete! :model/DataTestRun :test_type "segment" :test_id test-id))))))))

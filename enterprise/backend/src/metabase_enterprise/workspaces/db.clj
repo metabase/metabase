@@ -65,12 +65,12 @@
 (mu/defn databases
   "The Databases with ids in `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
+  (app-db/select-batched #(t2/select :model/Database :id [:in %]) database-ids))
 
 (mu/defn database-id->database
   "Map of id to Database for the ids in `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-pk->fn identity :model/Database :id [:in database-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn identity :model/Database :id [:in %]) database-ids))
 
 (mu/defn active-table-schemas
   "The set of schemas of the active Tables of the Database with `database-id`."
@@ -151,7 +151,8 @@
 (mu/defn creators
   "The Users with ids in `user-ids`, with the columns a Workspace's `:creator` exposes."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select [:model/User :id :first_name :last_name :email :common_name] :id [:in user-ids]))
+  (app-db/select-batched #(t2/select [:model/User :id :first_name :last_name :email :common_name] :id [:in %])
+                         user-ids))
 
 ;;; --------------------------------------------- WorkspaceDatabase --------------------------------------------
 
@@ -168,7 +169,9 @@
 (mu/defn workspace-databases-of-workspaces
   "The WorkspaceDatabases of the Workspaces with ids in `workspace-ids`, ordered by id."
   [workspace-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/WorkspaceDatabase :workspace_id [:in workspace-ids] {:order-by [[:id :asc]]}))
+  (vec (sort-by :id (app-db/select-batched #(t2/select :model/WorkspaceDatabase :workspace_id [:in %]
+                                                       {:order-by [[:id :asc]]})
+                                           workspace-ids))))
 
 (mu/defn workspace-database-ids-with-status
   "The ids of the WorkspaceDatabases of the Workspace with `workspace-id` whose status is `status`."
@@ -226,7 +229,7 @@
 (mu/defn delete-workspace-databases!
   "Delete the WorkspaceDatabases with ids in `workspace-database-ids`."
   [workspace-database-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/WorkspaceDatabase :id [:in workspace-database-ids]))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/WorkspaceDatabase :id [:in %]) workspace-database-ids))
 
 (mu/defn workspace-has-active-databases?
   "Whether the Workspace with `workspace-id` has a WorkspaceDatabase that is not `:unprovisioned`."
@@ -270,15 +273,17 @@
   "The id of one of the Databases with `database-ids` that has a WorkspaceDatabase that is not `:unprovisioned`, or
   nil."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-one-fn :database_id :model/WorkspaceDatabase
-                    :database_id [:in database-ids]
-                    :status [:not= :unprovisioned]
-                    {:order-by [[:database_id :asc]]}))
+  (first (sort (app-db/select-batched #(some-> (t2/select-one-fn :database_id :model/WorkspaceDatabase
+                                                                 :database_id [:in %]
+                                                                 :status [:not= :unprovisioned]
+                                                                 {:order-by [[:database_id :asc]]})
+                                               vector)
+                                      database-ids))))
 
 (mu/defn delete-unprovisioned-workspace-databases-of-databases!
   "Delete the `:unprovisioned` WorkspaceDatabases of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/delete! :model/WorkspaceDatabase :database_id [:in database-ids] :status :unprovisioned))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/WorkspaceDatabase :database_id [:in %] :status :unprovisioned) database-ids))
 
 ;;; ---------------------------------------------- TableRemapping ----------------------------------------------
 
@@ -353,7 +358,7 @@
 (mu/defn delete-table-remappings-of-databases!
   "Delete the TableRemappings of the Databases with `database-ids`, returning the number of rows deleted."
   [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
-  (t2/delete! :model/TableRemapping :database_id [:in database-ids]))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/TableRemapping :database_id [:in %]) database-ids))
 
 (mu/defn delete-table-remappings-into!
   "Delete the TableRemappings of the Database with `database-id` whose target is in the `(to-db, to-schema)`

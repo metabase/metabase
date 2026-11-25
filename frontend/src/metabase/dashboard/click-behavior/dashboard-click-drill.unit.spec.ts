@@ -18,6 +18,7 @@ import {
 import {
   ORDERS,
   ORDERS_ID,
+  PRODUCTS,
   PRODUCTS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -640,6 +641,110 @@ describe("DashboardClickAction with a question link from a metric", () => {
         (filter) => Lib.displayInfo(drilledQuery, 0, filter).displayName,
       ),
     ).toEqual(["User ID is 92"]);
+  });
+});
+
+describe("DashboardClickAction with a question link from a table column", () => {
+  it("opens the saved question filtered by the clicked text value (metabase#48829)", () => {
+    const metadata = createMockMetadata({
+      databases: [createSampleDatabase()],
+    });
+    const questionCard = createMockCard({
+      id: 48829,
+      name: "Issue 48829",
+      display: "table",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(createMetadataProvider({ metadata }), {
+          stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+        }),
+      ),
+    });
+    const target = getTargetsForQuestion(
+      new Question(questionCard, metadata),
+    ).find(({ name }) => name === "Title");
+    if (target == null) {
+      throw new Error("Title target not found");
+    }
+    const idColumn = createMockColumn({
+      id: PRODUCTS.ID,
+      name: "ID",
+      display_name: "ID",
+      base_type: "type/BigInteger",
+      effective_type: "type/BigInteger",
+      semantic_type: "type/PK",
+    });
+    const titleColumn = createMockColumn({
+      id: PRODUCTS.TITLE,
+      name: "TITLE",
+      display_name: "Title",
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      semantic_type: "type/Title",
+    });
+    const categoryColumn = createMockColumn({
+      id: PRODUCTS.CATEGORY,
+      name: "CATEGORY",
+      display_name: "Category",
+      base_type: "type/Text",
+      effective_type: "type/Text",
+      semantic_type: "type/Category",
+    });
+
+    const actions = DashboardClickAction({
+      question: new Question(questionCard, metadata),
+      clicked: {
+        column: titleColumn,
+        value: "Rustic Paper Wallet",
+        data: [
+          { col: idColumn, value: 1 },
+          { col: titleColumn, value: "Rustic Paper Wallet" },
+          { col: categoryColumn, value: "Gizmo" },
+        ],
+        settings: buildSettings({
+          columns: {
+            TITLE: {
+              type: "link",
+              linkType: "question",
+              targetId: questionCard.id,
+              parameterMapping: {
+                [target.id]: {
+                  id: target.id,
+                  source: { type: "column", id: "TITLE", name: "Title" },
+                  target: target.target,
+                },
+              },
+            },
+          },
+        }),
+        extraData: {
+          dashboard: createMockDashboard({ id: 1 }),
+          dashcard: createMockDashboardCard({
+            card_id: questionCard.id,
+            card: questionCard,
+          }),
+          questions: { [questionCard.id]: questionCard },
+        },
+      },
+    });
+
+    expect(actions).toHaveLength(1);
+    const [action] = actions;
+    const url =
+      isAlwaysDefaultClickAction(action) && "url" in action
+        ? action.url?.()
+        : undefined;
+    expect(url).toMatch(/^\/question#/);
+    const drilledQuestion = new Question(
+      deserializeCardFromUrl(url?.split("#")[1] ?? ""),
+      metadata,
+    );
+    const drilledQuery = drilledQuestion.query();
+    expect(drilledQuestion.card().original_card_id).toBe(questionCard.id);
+    expect(
+      Lib.filters(drilledQuery, -1).map(
+        (filter) => Lib.displayInfo(drilledQuery, -1, filter).displayName,
+      ),
+    ).toEqual(["Title is Rustic Paper Wallet"]);
   });
 });
 

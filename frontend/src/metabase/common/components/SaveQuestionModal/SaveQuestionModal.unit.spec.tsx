@@ -175,10 +175,10 @@ const setup = async (
   );
   await screen.findByRole("button", { name: "Save" });
 
-  const rerender = () => {
+  const rerender = (nextQuestion: Question = question) => {
     _rerender(
       <SaveQuestionModal
-        question={question}
+        question={nextQuestion}
         originalQuestion={originalQuestion}
         onCreate={onCreateMock}
         onSave={onSaveMock}
@@ -373,6 +373,44 @@ describe("SaveQuestionModal", () => {
       expect(newQuestion.displayName()).toBe("My favorite orders");
       expect(newQuestion.description()).toBe("So many of them");
       expect(newQuestion.collectionId()).toBe(1);
+    });
+
+    it("should keep the edited name when the saved question replaces the question (metabase#55631)", async () => {
+      const otherCollection = createMockCollection({
+        id: 2,
+        name: "Other collection",
+      });
+      const question = getQuestion();
+      const { rerender } = await setup(question, null, {
+        collectionEndpoints: {
+          collections: [BOBBY_TEST_COLLECTION, otherCollection],
+          rootCollection: ROOT_TEST_COLLECTION,
+        },
+      });
+      expect(screen.getByLabelText("Name")).toHaveValue(
+        EXPECTED_SUGGESTED_NAME,
+      );
+      await fillForm({ name: "Custom" });
+      await waitFor(() =>
+        expect(saveLocDropdown()).toHaveTextContent(BOBBY_TEST_COLLECTION.name),
+      );
+
+      rerender(
+        new Question(
+          {
+            ...question.card(),
+            id: 10,
+            name: "Custom",
+            collection_id: otherCollection.id,
+          },
+          metadata,
+        ),
+      );
+
+      await waitFor(() =>
+        expect(saveLocDropdown()).toHaveTextContent(otherCollection.name),
+      );
+      expect(screen.getByLabelText("Name")).toHaveValue("Custom");
     });
 
     it("should not allow to enter a name with more than 254 characters", async () => {

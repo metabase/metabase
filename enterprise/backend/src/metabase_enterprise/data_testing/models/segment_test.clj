@@ -50,45 +50,47 @@
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
-(defn- segment-allows?
-  "Whether `segment-check` holds for the Segment `segment-id`, hydrated with `k`, and the current user may run the
-  segment's definition and write the native SQL of a test against its Database."
-  [segment-check k segment-id]
-  (let [segment (data-testing.db/segment segment-id)]
-    (data-testing.models/query-subject-allows? segment-check k segment (:definition segment))))
-
-(mu/defn- can-save-test? :- :boolean
-  "Whether the current user may save or delete a test of the Segment `segment-id`: they may edit the segment and run
-  its definition, and write the native SQL of a test against its Database."
-  [segment-id :- ::lib.schema.id/segment]
-  (segment-allows? mi/can-write? :can_write segment-id))
-
-(mu/defn can-run? :- :boolean
-  "Whether the current user may run the saved `segment-test`: they may read its segment and run the segment's
-  definition, and write the native SQL of a test against its Database."
-  [segment-test :- ::data-testing.schema/segment-test]
-  ;; Input SQL can read any table of the Database, and the guards do not check what it reads, so reading the
-  ;; segment is not enough.
-  (segment-allows? mi/can-read? :can_read (:segment_id segment-test)))
-
 (methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_read]
   "Add whether the current user can read the segment of each segment test, loading the segments at once."
   [_model k segment-tests]
   (data-testing.models/with-readable-subjects k segment-tests :segment_id
     (data-testing.db/segments-by-ids (into [] (comp (keep :segment_id) (distinct)) segment-tests))))
 
-(methodical/defmethod t2/simple-hydrate [:model/SegmentTest :can_write]
-  [_model k instance]
-  (assoc instance k (boolean (can-save-test? (:segment_id instance)))))
+(defn- segment-database-id
+  "The id of the Database of the query of `segment`."
+  [segment]
+  (data-testing.models/query-database-id (:definition segment)))
+
+(methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_write]
+  "Add whether the current user may edit each segment test: they may edit its segment, loading the segments at once."
+  [_model k segment-tests]
+  (vec (data-testing.models/assoc-subject-answers
+        segment-tests k
+        {:subject-key   :segment_id
+         :subjects      (data-testing.db/segments-by-ids
+                         (into [] (comp (remove nil?) (keep :segment_id) (distinct)) segment-tests))
+         :subject-k     :can_write
+         :subject-check mi/can-write?})))
+
+(methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_query]
+  "Add whether the current user may run each segment test: they read it and may run its segment, as its `:can_query`
+  says, loading the segments at once."
+  [_model k segment-tests]
+  (vec (data-testing.models/assoc-can-query
+        segment-tests k :segment_id
+        (data-testing.db/segments-by-ids (into [] (comp (remove nil?) (keep :segment_id) (distinct)) segment-tests)))))
 
 (defmethod mi/can-create? :model/SegmentTest
   [_model instance]
-  (can-save-test? (:segment_id instance)))
+  (data-testing.models/can-create-test? (some-> (:segment_id instance) data-testing.db/segment) segment-database-id))
 
 (defmethod mi/can-update? :model/SegmentTest
   [instance changes]
-  (and (mi/can-write? instance)
-       (can-save-test? (:segment_id changes (:segment_id instance)))))
+  (data-testing.models/can-update-test? instance changes
+                                        {:subject-key  :segment_id
+                                         :load-subject data-testing.db/segment
+                                         :db-id        segment-database-id
+                                         :writable?    (mi/can-write? instance)}))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
@@ -125,8 +127,7 @@
    :run-topics {:start   :event/segment-test-run-start
                 :timeout :event/segment-test-run-timeout}
    ;; A suite records a typed refusal of the subject as the member's refusal.
-   :subject    #(testable-segment (:segment_id %))
-   :can-run?   can-run?})
+   :subject    #(testable-segment (:segment_id %))})
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 

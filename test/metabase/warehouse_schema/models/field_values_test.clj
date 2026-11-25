@@ -918,7 +918,7 @@
         (mt/with-dynamic-fn-redefs [qp/process-query (fn [_query] {:data {:rows [[0 "a"] [0 "b"] [1 "42"]]}})]
           (is (= {f1-id {:values ["a" "b"] :raw-count 2}
                   f2-id {:values [42] :raw-count 1}}
-                 (distinct-batch/run-distinct-batch table fields))))))))
+                 (distinct-batch/run-distinct-batch :h2 table fields))))))))
 
 (deftest ^:mb/driver-tests run-distinct-batch-integration-test
   (testing "run-distinct-batch returns correct distinct values for each field"
@@ -927,7 +927,7 @@
         (let [table   (t2/select-one :model/Table :id (mt/id :people))
               fields  [(t2/select-one :model/Field :id (mt/id :people :state))
                        (t2/select-one :model/Field :id (mt/id :people :source))]
-              results (distinct-batch/run-distinct-batch table fields)]
+              results (distinct-batch/run-distinct-batch driver/*driver* table fields)]
           (is (map? results) "Returns a map keyed by field-id")
           (is (= (set (map :id fields)) (set (keys results))))
           (testing "people.state distinct values"
@@ -954,8 +954,8 @@
               float-fields   (mapv #(t2/select-one :model/Field :id (mt/id :products %)) [:rating])
               expected-set   (fn [f] (set (map first (-> (field-values/distinct-values f) :values))))
               per-field-results (into {} (map (fn [f] [(:id f) (expected-set f)])) (concat text-fields float-fields))
-              people-results    (distinct-batch/run-distinct-batch people-table text-fields)
-              products-results  (distinct-batch/run-distinct-batch products-table float-fields)
+              people-results    (distinct-batch/run-distinct-batch driver/*driver* people-table text-fields)
+              products-results  (distinct-batch/run-distinct-batch driver/*driver* products-table float-fields)
               union-results     (merge people-results products-results)]
           (doseq [field (concat text-fields float-fields)]
             (testing (format "field %s (%s)" (:name field) (name (:base_type field)))
@@ -972,7 +972,7 @@
         (let [table        (t2/select-one :model/Table :id (mt/id :people))
               state-field  (t2/select-one :model/Field :id (mt/id :people :state))
               source-field (t2/select-one :model/Field :id (mt/id :people :source))
-              results      (distinct-batch/run-distinct-batch table [state-field source-field])]
+              results      (distinct-batch/run-distinct-batch driver/*driver* table [state-field source-field])]
           (testing "Result map is keyed by field-id with :values / :raw-count entries"
             (is (map? results))
             (is (= #{(:id state-field) (:id source-field)} (set (keys results)))))

@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema.models.table-user-settings-test
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
@@ -52,10 +53,54 @@
     (mt/with-temp [:model/Collection {collection-id :id} {}
                    :model/Table      {table-id :id :as table} {}]
       (table-user-settings/upsert-table-user-settings! table {:is_published true :collection_id collection-id})
-      (is (=? {:is_published true :collection_id collection-id} (user-table table-id)))
+      (is (=? {:is_published true :collection_id collection-id}
+              (t2/select-one :model/TableUserSettings :table_id table-id)))
       (testing "a Table published into the root collection keeps its NULL collection_id"
         (table-user-settings/upsert-table-user-settings! table {:is_published true :collection_id nil})
-        (is (=? {:is_published true :collection_id nil} (user-table table-id)))))))
+        (is (=? {:is_published true :collection_id nil}
+                (t2/select-one :model/TableUserSettings :table_id table-id)))))))
+
+(deftest only-published-tables-sit-in-collections-test
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Table      {table-id :id} {}]
+    (testing "inserting settings that put unpublished Table into Collection is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only a published Table can be in a Collection"
+                            (t2/insert! :model/TableUserSettings {:table_id table-id :collection_id coll-id})))
+      (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id))))
+    (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Unpublished"})
+    (testing "putting an unpublished Table into a Collection is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only a published Table can be in a Collection"
+                            (t2/update! :model/TableUserSettings :table_id table-id {:collection_id coll-id}))))
+    (testing "publishing a Table into a Collection is accepted"
+      (t2/update! :model/TableUserSettings :table_id table-id {:is_published true :collection_id coll-id})
+      (is (= [true coll-id] ((juxt :is_published :collection_id)
+                             (t2/select-one :model/TableUserSettings :table_id table-id)))))
+    (testing "unpublishing a Table while it stays in its Collection is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only a published Table can be in a Collection"
+                            (t2/update! :model/TableUserSettings :table_id table-id {:is_published false}))))
+    (testing "a published Table without a Collection is accepted"
+      (t2/update! :model/TableUserSettings :table_id table-id {:collection_id nil})
+      (is (= [true nil] ((juxt :is_published :collection_id)
+                         (t2/select-one :model/TableUserSettings :table_id table-id)))))))
+
+(deftest collection-of-published-table-test
+  (testing "collection_id FK constraint prevents referencing non-existent collection"
+    (mt/with-temp [:model/Table {table-id :id} {}]
+      (is (thrown?
+           Exception
+           (t2/with-transaction [_conn]
+             (t2/insert! :model/TableUserSettings
+                         {:table_id table-id :is_published true :collection_id Integer/MAX_VALUE}))))
+      (is (= table-id (:id (user-table table-id))))))
+  (testing "deleting a collection unpublishes the tables in it"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
+                   :model/Table {table-1-id :id} {}
+                   :model/TableUserSettings _ {:table_id table-1-id :is_published true :collection_id coll-id}
+                   :model/Table {table-2-id :id} {}
+                   :model/TableUserSettings _ {:table_id table-2-id :is_published true :collection_id coll-id}]
+      (collection/delete-collections! [coll-id])
+      (is (= #{[false nil]} (t2/select-fn-set (juxt :is_published :collection_id) :model/TableUserSettings
+                                              :table_id [:in [table-1-id table-2-id]]))))))
 
 (deftest bulk-upsert-test
   (testing "a bulk edit records the same values on every Table it names"

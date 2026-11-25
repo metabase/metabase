@@ -13,11 +13,11 @@
    [metabase.sync.analyze.interestingness :as sync.interestingness]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.models.field :as field]))
+   [metabase.util.malli :as mu]))
 
 ;; How does analysis decide which Fields should get analyzed?
 ;;
@@ -61,13 +61,13 @@
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `table`."
   [table :- i/TableInstance]
   (let [now (t/offset-date-time)]
-    (field/update-fields! (for [id (vec (sync.db/analyzed-field-ids-of-table (:id table) i/*latest-fingerprint-version*))] {:id id :last_analyzed now}))))
+    (sync.updates/update-fields! (for [id (vec (sync.db/analyzed-field-ids-of-table (:id table) i/*latest-fingerprint-version*))] {:id id :last_analyzed now}))))
 
 (mu/defn- update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `database`."
   [database :- i/DatabaseInstance]
   (let [now (t/offset-date-time)]
-    (field/update-fields! (for [id (vec (sync.db/analyzed-field-ids-of-database (:id database) i/*latest-fingerprint-version*))] {:id id :last_analyzed now}))))
+    (sync.updates/update-fields! (for [id (vec (sync.db/analyzed-field-ids-of-database (:id database) i/*latest-fingerprint-version*))] {:id id :last_analyzed now}))))
 
 (mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."

@@ -989,7 +989,7 @@
                    :model/DashboardCard _                   {:dashboard_id slack-dash-id :card_id card-id}
                    :model/Dashboard     {inapp-dash-id :id} {}
                    :model/DashboardCard _                   {:dashboard_id inapp-dash-id :card_id card-id}]
-      (let [alert-schedules        #(->> (models.notification/notifications-for-card card-id)
+      (let [alert-schedules        #(->> (get (models.notification/notifications-for-cards [card-id]) card-id)
                                          (mapcat :subscriptions)
                                          (mapv :cron_schedule))
             subscription-schedules (fn [dash-id]

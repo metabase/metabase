@@ -11,6 +11,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
    [metabase.test :as mt]
+   [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))
 
 (def ^:private inputs
@@ -315,18 +316,21 @@
                                                                             :perms/create-queries :query-builder}
                 (is (some #{test-id} (map :id (mt/user-http-request :lucky :get 200 "ee/transform-test"))))
                 (mt/user-http-request :lucky :get 200 path)
-                (testing "but running them needs native access to source database"
+                (testing "and run them without native access to source database"
                   (let [runs-before (t2/count :model/DataTestRun :test_type "transform" :test_id test-id)]
-                    (mt/user-http-request :lucky :post 403 (str path "/run"))
-                    (is (= runs-before (t2/count :model/DataTestRun :test_type "transform" :test_id test-id)))))))
+                    (is (= "passed" (:status (mt/user-http-request :lucky :post 200 (str path "/run")))))
+                    (is (= (inc runs-before) (t2/count :model/DataTestRun :test_type "transform" :test_id test-id)))))))
             (testing "data analysts who can read transform and write native queries on its source database can run its tests"
               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
                                                                             :perms/create-queries :query-builder-and-native}
                 (is (= "passed" (:status (mt/user-http-request :lucky :post 200 (str path "/run")))))))
-            (testing "saving or deleting tests needs transforms permission on source database"
+            (testing "creating a test needs native access and permission to run the transform, editing or deleting one needs transforms permission"
               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
                                                                             :perms/create-queries :query-builder-and-native}
-                (refused-writes :lucky)))
+                (mt/with-model-cleanup [:model/TransformTest]
+                  (mt/user-http-request :lucky :post 200 "ee/transform-test" body))
+                (mt/user-http-request :lucky :put 403 path {:name "nope"})
+                (mt/user-http-request :lucky :delete 403 path)))
             (testing "saving or deleting tests needs native access to source database, which transforms permission needs"
               (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/create-queries :query-builder}
                 (refused-writes :lucky)))
@@ -514,3 +518,20 @@
         (testing "DELETE"
           (mt/user-http-request :crowberto :delete 204 (str "ee/transform-test/" entity-id))
           (is (not (t2/exists? :model/TransformTest :id test-id))))))))
+
+(deftest list-transform-tests-statement-count-test
+  (data-testing.test-util/with-transforms-enabled #{:transforms-testing :transforms :transforms-basic :advanced-permissions}
+    (mt/with-model-cleanup [:model/Transform :model/TransformTest]
+      (mt/with-data-analyst-role! (mt/user->id :lucky)
+        (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                      :perms/create-queries :query-builder-and-native}
+          (doseq [user [:crowberto :lucky]]
+            (testing (str "as " (name user))
+              (let [[few many] (transforms.tu/statements-at-two-sizes
+                                (fn [n]
+                                  (doseq [transform-id (transforms.tu/create-count-test-transforms! n)]
+                                    (t2/insert! :model/TransformTest
+                                                (merge (mt/with-temp-defaults :model/TransformTest)
+                                                       {:transform_id transform-id})))
+                                  #(mt/user-http-request user :get 200 "ee/transform-test")))]
+                (is (= few many))))))))))

@@ -5,7 +5,9 @@
    [metabase.events.test-util :as events.tu]
    [metabase.sync.updates :as sync.updates]
    [metabase.test :as mt]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -62,3 +64,54 @@
                        #(field-user-settings/unset-field-user-settings-for-fields! ids [:description])))))]
     (counted 1)
     (is (= (counted 2) (counted 6)))))
+
+(defn- write-while-database-locked!
+  "Run `write!` on another thread while a transaction holds the lock of the Database with `db-id`, returning whether it
+  was still waiting after half a second and whether it finished once the lock was released."
+  [db-id write!]
+  (let [locked  (promise)
+        release (promise)
+        holder  (future
+                  (t2/with-transaction [_conn]
+                    (warehouses.db/lock-databases! [db-id])
+                    (deliver locked true)
+                    @release))
+        _       (deref locked 10000 nil)
+        writer  (future (write!) ::written)
+        waiting (try
+                  (= ::waiting (deref writer 500 ::waiting))
+                  (finally
+                    (deliver release true)))]
+    (deref holder 10000 nil)
+    {:waiting? waiting
+     :written? (= ::written (deref writer 30000 ::timeout))}))
+
+(deftest sync-field-writes-take-database-lock-first-test
+  (mt/with-model-cleanup [:model/Database]
+    (let [db-id               (t2/insert-returning-pk! :model/Database {:name "Lock First" :engine :h2 :details {}})
+          table-id            (t2/insert-returning-pk! :model/Table {:db_id db-id :name "T" :active true})
+          [field-id other-id] (insert-fields! table-id 2)]
+      (testing "sync writes of Fields and FieldValues lock their Database before their own rows"
+        (testing "update-fields!"
+          (is (= {:waiting? true :written? true}
+                 (write-while-database-locked! db-id #(sync.updates/update-fields! [{:id field-id :description "d"}]))))
+          (is (= "d" (t2/select-one-fn :description :model/Field :id field-id))))
+        (testing "create-fields!"
+          (is (= {:waiting? true :written? true}
+                 (write-while-database-locked! db-id #(sync.updates/create-fields! [{:table_id      table-id
+                                                                                     :name          "H"
+                                                                                     :base_type     :type/Text
+                                                                                     :database_type "VARCHAR"}])))))
+        (testing "save-field-values-changes!"
+          (is (= {:waiting? true :written? true}
+                 (write-while-database-locked! db-id #(sync.updates/save-field-values-changes!
+                                                       [other-id]
+                                                       [{:create {:field_id              other-id
+                                                                  :type                  :full
+                                                                  :has_more_values       false
+                                                                  :values                ["b"]
+                                                                  :human_readable_values nil}}]))))
+          (is (t2/exists? :model/FieldValues :field_id other-id))))
+      (testing "Field writes outside sync take no lock of their Database"
+        (is (= {:waiting? false :written? true}
+               (write-while-database-locked! db-id #(field/update-fields! [{:id field-id :description "e"}]))))))))

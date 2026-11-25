@@ -65,11 +65,12 @@
    {:keys [include], archived? :archived} :- [:map {:closed true}
                                               [:include  {:optional true} ::include]
                                               [:archived {:default false} ms/BooleanValue]]]
-  (let [timelines (->> (list-timelines archived?)
-                       (map collection.root/hydrate-root-collection))]
-    (cond->> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)
+  (let [root      (collection.root/hydrated-root-collection)
+        timelines (->> (list-timelines archived?)
+                       (map #(collection.root/hydrate-root-collection % root)))]
+    (cond-> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)
       (= include :events)
-      (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
+      (timeline-event/include-events {:events/all? archived?}))))
 
 (api.macros/defendpoint :get "/:id" :- ::Timeline
   "Fetch the `Timeline` with `id`, a numeric id or an entity id. Include `include=events` to unarchived events

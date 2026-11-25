@@ -244,18 +244,22 @@
 
 ;;; ----------------------------------------------------- Utils ------------------------------------------------------
 
+(defn- used-recently?
+  "Whether `last-used-at` falls within [[active-field-values-cutoff]]."
+  [last-used-at]
+  (boolean (some-> last-used-at (t/after? (t/minus (t/offset-date-time) active-field-values-cutoff)))))
+
 (defn inactive?
-  "If FieldValues have not been accessed recently they are considered inactive."
-  [field-values]
-  (let [cutoff (t/minus (t/offset-date-time) active-field-values-cutoff)]
-    (and
-     field-values
-     (not (or
-           (t/after? (:last_used_at field-values)
-                     cutoff)
-           ;; Double check that there are no other variants of Fieldvalues (e.g. advanced) that have not been used more recently
-           (t/after? (warehouse-schema.db/field-values-last-used-at (:field_id field-values))
-                     cutoff))))))
+  "Whether neither `field-values` nor any other FieldValues of their Field, the latest `last_used_at` of which is
+  `field-last-used-at`, read when not given, were used within [[active-field-values-cutoff]]."
+  ([field-values]
+   (and field-values
+        (not (used-recently? (:last_used_at field-values)))
+        (inactive? field-values (warehouse-schema.db/field-values-last-used-at (:field_id field-values)))))
+  ([field-values field-last-used-at]
+   (and field-values
+        (not (used-recently? (:last_used_at field-values)))
+        (not (used-recently? field-last-used-at)))))
 
 (defn field-should-have-field-values?
   "Should this `field` be backed by a corresponding FieldValues object?"
@@ -340,15 +344,15 @@
   nil)
 
 (defenterprise hash-input-for-impersonation
-  "Return a hash-key that will be used for impersonated fieldvalues."
+  "Return a hash-key that will be used for impersonated fieldvalues of a Field of the Database with `_database-id`."
   metabase-enterprise.impersonation.driver
-  [_field]
+  [_database-id]
   nil)
 
 (defenterprise hash-input-for-database-routing
-  "Returns a hash input that will be used for fields subject to database routing"
+  "Returns a hash input that will be used for fields of the Database with `_database-id` subject to database routing."
   metabase-enterprise.database-routing.models
-  [_field]
+  [_database-id]
   nil)
 
 (defn hash-input-for-linked-filters
@@ -359,7 +363,7 @@
 
 ;;; ------------------------------------------------------ CRUD ------------------------------------------------------
 
-(declare delete-field-values! ids-of-fields find-or-create-full-field-values! touch-field-values!
+(declare create-field-values! delete-field-values! ids-of-fields find-or-create-full-field-values! touch-field-values!
          update-field-values!)
 
 (defn limit-values
@@ -449,35 +453,25 @@
   [field-id]
   (get-latest-field-values field-id :full nil))
 
-(def ^:private fv-select-batch-size
-  "Chunk size when fetching FieldValues by `field_id [:in …]`.
-  Wide tables can have thousands of list-eligible fields, and batching keeps each app-DB `IN (…)` clause bounded."
-  500)
-
 (defn batched-get-latest-full-field-values
   "Batched version of [[get-latest-full-field-values]] .
   Takes a list of field-ids and returns a map of field-id -> full FieldValues.
   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-ids]
-  (delete-duplicates-and-return-latest!
-   (when (seq field-ids)
-     (mapcat (fn [batch]
-               (warehouse-schema.db/full-field-values-for-fields batch))
-             (partition-all fv-select-batch-size field-ids)))))
+  (delete-duplicates-and-return-latest! (warehouse-schema.db/full-field-values-for-fields (vec field-ids))))
 
-(defn persist-field-values!
-  "Persist raw distinct values for a single field. Caller passes raw values fetched from the
-  warehouse; this function applies the in-memory cap via `limit-values`, detects whether the
-  warehouse-side row LIMIT fired (by counting raw values against `*distinct-limit*`), and
-  combines both signals into `:has_more_values`. Compares the result against `existing-fv` and
-  creates / updates / skips / deletes as appropriate. Returns one of `::fv-skipped`,
-  `::fv-updated`, `::fv-created`, or `::fv-deleted`.
+(mu/defn fields-last-used-at :- [:map-of ::lib.schema.id/field ms/TemporalInstant]
+  "The latest `last_used_at` of any FieldValues of the Field of each of `field-values` not used within
+  [[active-field-values-cutoff]], by Field id, for [[inactive?]]."
+  [field-values :- [:sequential [:map [:field_id ::lib.schema.id/field]]]]
+  (warehouse-schema.db/field-values-last-used-at-by-field
+   (into [] (comp (remove (comp used-recently? :last_used_at)) (map :field_id)) field-values)))
 
-  - `existing-fv`: the current FieldValues row for this field, or `nil` if none exists.
-  - `raw-values`: raw distinct values from the warehouse (no pre-capping required).
-
-  Note that this only persists *Full* FieldValues. Advanced FieldValues for the same field are
-  deleted as a side effect of [[delete-field-values!]] when the capped value set is empty."
+(defn field-values-change
+  "What persisting `raw-values`, the raw distinct values of one Field from the warehouse, changes against
+  `existing-fv`, its full FieldValues or nil: `{:result r}` with `r` one of `::fv-skipped`, `::fv-updated`,
+  `::fv-created` or `::fv-deleted`, and the `:delete` Field id, `:create` row or `:update` row that
+  [[save-field-values-changes!]] writes."
   [field existing-fv raw-values]
   (let [field-name      (or (:name field) (:id field))
         row-cap-hit?    (>= (count raw-values) *distinct-limit*)
@@ -486,34 +480,74 @@
         has-more-values (boolean (or row-cap-hit? char-cap-hit?))]
     (cond
       (empty? values)
-      (do
-        (delete-field-values! (ids-of-fields [(u/the-id field)]))
-        ::fv-deleted)
+      {:result ::fv-deleted
+       :delete (u/the-id field)}
 
-      ;; if FieldValues object doesn't exist create one
       (nil? existing-fv)
       (do
         (log/debugf "Storing FieldValues for Field %s..." field-name)
-        (find-or-create-full-field-values! (u/the-id field) has-more-values values)
-        ::fv-created)
+        {:result ::fv-created
+         :create {:field_id              (u/the-id field)
+                  :type                  :full
+                  :has_more_values       has-more-values
+                  :values                values
+                  :human_readable_values nil}})
 
-      ;; if existing FieldValues won't change, skip it
       (and (= (:values existing-fv) values)
            (= (:has_more_values existing-fv) has-more-values))
       (do
         (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
-        ::fv-skipped)
+        {:result ::fv-skipped})
 
-      ;; otherwise the FieldValues object already exists; update values in it
       :else
       (do
         (log/debugf "Storing updated FieldValues for Field %s..." field-name)
-        (update-field-values! [(assoc (m/remove-vals nil?
-                                                     {:has_more_values       has-more-values
-                                                      :values                values
-                                                      :human_readable_values (fixup-human-readable-values existing-fv values)})
-                                      :id (u/the-id existing-fv))])
-        ::fv-updated))))
+        {:result ::fv-updated
+         :update (assoc (m/remove-vals nil?
+                                       {:has_more_values       has-more-values
+                                        :values                values
+                                        :human_readable_values (fixup-human-readable-values existing-fv values)})
+                        :id (u/the-id existing-fv))}))))
+
+(defn- create-full-field-values!
+  "Insert the full FieldValues `rows` of Fields that have none by now in one transaction, or one Field at a time with
+  [[find-or-create-full-field-values!]] when a concurrent insert stored some first."
+  [rows]
+  (let [stored (into #{}
+                     (map :field_id)
+                     (warehouse-schema.db/full-field-values-by-field [:model/FieldValues :field_id]
+                                                                     (into #{} (map :field_id) rows)))
+        rows   (into [] (remove (comp stored :field_id)) rows)]
+    (when (seq rows)
+      (try
+        (create-field-values! rows)
+        (catch Exception e
+          (when-not (sql-errors/duplicate-key? e)
+            (throw e))
+          (doseq [{:keys [field_id has_more_values values]} rows]
+            (find-or-create-full-field-values! field_id has_more_values values)))))))
+
+(defn save-field-values-changes!
+  "Write `changes`, each what [[field-values-change]] returns for a Field, with one delete call, one insert call and
+  one update call."
+  [changes]
+  (let [deletes (into [] (keep :delete) changes)
+        creates (into [] (keep :create) changes)
+        updates (into [] (keep :update) changes)]
+    (when (seq deletes)
+      (delete-field-values! (ids-of-fields deletes)))
+    (when (seq creates)
+      (create-full-field-values! creates))
+    (when (seq updates)
+      (update-field-values! updates))
+    nil))
+
+(defn persist-field-values!
+  "Write what [[field-values-change]] returns for `field`, `existing-fv` and `raw-values`, and return its `:result`."
+  [field existing-fv raw-values]
+  (let [change (field-values-change field existing-fv raw-values)]
+    (save-field-values-changes! [change])
+    (:result change)))
 
 (defn create-or-update-full-field-values!
   "Create or update the full FieldValues object for `field`. If the FieldValues object already
@@ -704,15 +738,14 @@
                        {:before-delete #(events/publish-event! :event/field-values-delete (events/delete-event %))}))
 
 (mu/defn ids-of-fields :- [:sequential ms/PositiveInt]
-  "The ids of every FieldValues of the Fields with `field-ids`, read in batches of [[mdb/delete-partition-size]]."
+  "The ids of every FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (into [] (mapcat #(warehouse-schema.db/field-values-ids-of-fields (vec %))) (partition-all mdb/delete-partition-size field-ids)))
+  (warehouse-schema.db/field-values-ids-of-fields field-ids))
 
 (mu/defn ids-of-tables :- [:sequential ms/PositiveInt]
-  "The ids of the FieldValues of the Fields of the Tables with `table-ids`, read in batches of
-  [[mdb/delete-partition-size]]."
+  "The ids of the FieldValues of the Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (into [] (mapcat #(warehouse-schema.db/field-values-ids-of-tables (vec %))) (partition-all mdb/delete-partition-size table-ids)))
+  (warehouse-schema.db/field-values-ids-of-tables table-ids))
 
 (mu/defn ids-of-database :- [:sequential ms/PositiveInt]
   "The ids of the FieldValues of every Field of the Database with `database-id`."
@@ -722,16 +755,22 @@
 (mu/defn advanced-ids-of-fields :- [:sequential ms/PositiveInt]
   "The ids of the advanced FieldValues of the Fields with `field-ids`, which their full FieldValues replace."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (into []
-        (mapcat #(warehouse-schema.db/field-values-ids-of-types (vec %) advanced-field-values-types))
-        (partition-all mdb/delete-partition-size field-ids)))
+  (warehouse-schema.db/field-values-ids-of-types field-ids advanced-field-values-types))
 
-(mu/defn ids-older-than :- [:sequential ms/PositiveInt]
-  "The ids of the FieldValues of `types` of the Field with `field-id` created more than `max-age-days` days ago."
-  [field-id     :- ::lib.schema.id/field
-   types        :- [:set :keyword]
-   max-age-days :- :int]
-  (warehouse-schema.db/field-values-ids-of-types-before field-id types max-age-days))
+(mu/defn ids-by-field :- [:map-of ::lib.schema.id/field [:sequential ms/PositiveInt]]
+  "The ids of the FieldValues of each of the Fields with `field-ids` that has any, by Field id."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (-> (group-by :field_id (when (seq field-ids)
+                            (warehouse-schema.db/field-values-ids-and-field-ids field-ids)))
+      (update-vals #(mapv :id %))))
+
+(mu/defn expired-advanced-ids-of-database :- [:sequential ms/PositiveInt]
+  "The ids of the advanced FieldValues older than [[advanced-field-values-max-age]] of the active, normal-visibility
+  Fields of the synced Tables of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (warehouse-schema.db/expired-field-values-ids-of-database database-id
+                                                            advanced-field-values-types
+                                                            (t/as advanced-field-values-max-age :days)))
 
 (defn- clear-advanced-field-values-for-fields!
   "Delete the advanced FieldValues of the Fields with `field-ids`, which their full FieldValues replace."

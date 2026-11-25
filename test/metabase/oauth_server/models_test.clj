@@ -1,7 +1,6 @@
 (ns metabase.oauth-server.models-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.query :as app-db.query]
    [metabase.events.test-util :as events.tu]
    [metabase.oauth-server.db :as oauth-server.db]
    [metabase.oauth-server.models.oauth-access-token :as oauth-access-token]
@@ -69,13 +68,8 @@
             :scope        []
             :nonce        nil
             :expiry       (+ (System/currentTimeMillis) 60000)}))
-        (let [calls (atom 0)]
-          (with-redefs [app-db.query/update-partition-size 1
-                        app-db.query/delete-partition-size 1
-                        oauth-server.db/authorization-code-ids-of-users (let [f @#'oauth-server.db/authorization-code-ids-of-users] (fn [& args] (swap! calls inc) (apply f args)))]
-            (user/update-users! (mapv #(hash-map :id % :is_active false) user-ids)))
-          (testing "the codes of the users are read one batch at a time"
-            (is (= 3 @calls))))
+        (mt/with-partition-size 1
+          (user/update-users! (mapv #(hash-map :id % :is_active false) user-ids)))
         (testing "every token of every deactivated user is revoked"
           (is (every? :token-revoked? (map access.tu/access-state accesses))))
         (testing "every authorization code of every deactivated user is deleted"

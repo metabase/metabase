@@ -333,6 +333,24 @@ describe("ConversationStatsPage", () => {
       for (const title of chartTitles("Conversations")) {
         expect(await screen.findByText(title)).toBeInTheDocument();
       }
+
+      // Each chart renders the rows of its own breakout query. The second row is checked
+      // so a chart that only shows its first row, or another chart's rows, fails.
+      const secondRowByChart: [string, string][] = [
+        ["Conversations by day", DAY_BUCKETS[1]],
+        ["Conversations by source", "Internal"],
+        ["Conversations by profile", "SQL"],
+        ["Groups with most conversations", "data"],
+        ["Users with most conversations", "Robert Tableton"],
+        ["IP addresses with most conversations", "10.0.0.2"],
+      ];
+      for (const [title, label] of secondRowByChart) {
+        const card = await findChartCard(title);
+        const visualization = within(card).getByTestId("visualization");
+        expect(
+          await within(visualization).findByRole("button", { name: label }),
+        ).toBeInTheDocument();
+      }
     });
 
     it.each([
