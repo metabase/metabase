@@ -385,9 +385,12 @@
 (defmethod audit/spec :model/TableUserSettings [_model]
   {:track          [:table_id]
    :track-redacted [:caveats :caveats_set :collection_id :data_authority :data_layer :data_layer_set :data_source
-                    :data_source_set :description :description_set :display_name :entity_type :field_order
-                    :is_published :owner_email :owner_user_id :points_of_interest :points_of_interest_set
-                    :show_in_getting_started :visibility_type :visibility_type_set]
+                    :data_source_set :description :description_set :display_name :eav_definition :eav_definition_set
+                    :entity_type :field_order :grain :grain_description :grain_description_set :grain_set
+                    :history_definition :history_definition_set :is_published :load_strategy :load_strategy_set
+                    :mutability :mutability_set :owner_email :owner_user_id :period_granularity
+                    :period_granularity_set :points_of_interest :points_of_interest_set :scd_type :scd_type_set
+                    :show_in_getting_started :table_role :table_role_set :visibility_type :visibility_type_set]
    :skip           []
    :topics         {}
    :subject        (fn [{:keys [object previous-object]}]
