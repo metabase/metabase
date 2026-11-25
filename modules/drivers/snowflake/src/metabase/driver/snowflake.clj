@@ -11,6 +11,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -1383,6 +1384,27 @@
            (map #(driver.common/unquote-ident (str/trim %) \"))
            (remove str/blank?)
            vec))))
+
+;;; ------------------------------------------------ Table samples -------------------------------------------------
+
+;; `SAMPLE BLOCK (p)` reads each block of rows, usually one micro-partition, with a probability of p/100. A table alias
+;; goes before `SAMPLE`, and the source table here has none.
+(defmethod sql.qp/table-sample->honeysql :snowflake
+  [driver table-expr {:keys [percent] :as table-sample}]
+  (if percent
+    [:raw [table-expr " SAMPLE BLOCK (" [:inline percent] ")"]]
+    ((get-method sql.qp/table-sample->honeysql :sql) driver table-expr table-sample)))
+
+;; Only for `:snowflake` itself, so that a child driver keeps its own `table-rows-sample`.
+(defmethod driver/database-supports? [:snowflake :table-random-sample]
+  [driver _feature _db]
+  (= driver :snowflake))
+
+;; Sync gives a table a row count estimate only from `SHOW TABLES`, which has no views, and no count for external
+;; tables, so the block sample declines for those.
+(defmethod driver/table-random-sample :snowflake
+  [_driver table fields rff opts]
+  (table-rows-sample/block-sample table fields rff opts))
 
 ;; `CLUSTERING_KEY` lives in the current database's INFORMATION_SCHEMA; a blank schema falls back to `current_schema()`.
 (defmethod driver/fetch-table-indexes :snowflake

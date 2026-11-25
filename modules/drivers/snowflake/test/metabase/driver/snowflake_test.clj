@@ -34,6 +34,7 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.secrets.core :as secret]
@@ -2484,3 +2485,41 @@
       (is (= ["https://localhost/"]
              (#'driver.snowflake/authenticator-values {k "//acct.snowflakecomputing.com/?authenticator=https://localhost/"}))
           (str "should be found in " k)))))
+
+(deftest table-sample-compile-test
+  ;; no Snowflake warehouse needed -- this only compiles the query -- but the QP pipeline reads the app DB
+  (mt/initialize-if-needed! :db)
+  (let [mp     (lib.tu/merged-mock-metadata-provider
+                meta/metadata-provider
+                {:database {:engine :snowflake, :details {:db "test-data"}}})
+        venues (lib.metadata/table mp (meta/id :venues))]
+    (testing "a stage with :table-sample reads the source table with SAMPLE BLOCK"
+      (is (re-find #"FROM \"PUBLIC\"\.\"VENUES\" SAMPLE BLOCK \(2\.5\) LIMIT 10"
+                   (:query (qp.compile/compile (-> (lib/query mp venues)
+                                                   (lib/limit 10)
+                                                   (assoc-in [:stages 0 :table-sample] {:percent 2.5})))))))))
+
+(deftest ^:parallel table-random-sample-feature-test
+  (testing "Only :snowflake itself declares the better sample, so that a child driver keeps its own table-rows-sample"
+    (is (true? (driver/database-supports? :snowflake :table-random-sample nil)))))
+
+(deftest table-random-sample-test
+  (mt/test-driver :snowflake
+    (let [table  (t2/select-one :model/Table :id (mt/id :venues))
+          fields [(t2/select-one :model/Field :id (mt/id :venues :name))]
+          sample (fn [opts]
+                   (let [sqls    (atom [])
+                         execute qp.pipeline/*execute*]
+                     (binding [qp.pipeline/*execute* (fn [driver query respond]
+                                                       (swap! sqls conj (get-in query [:stages 0 :native]))
+                                                       (execute driver query respond))]
+                       (assoc (driver/table-random-sample :snowflake table fields (constantly conj) opts)
+                              :sqls @sqls))))]
+      (testing "the driver reads a block sample of about the sample size, with a limit it does not usually reach"
+        (let [{:keys [method fraction result sqls]} (sample {:rows 100 :row-count 100})]
+          (is (= :block method))
+          (is (= 1.0 fraction))
+          (is (=? [#"(?s).*SAMPLE BLOCK \(100\.0\) LIMIT 200"] sqls))
+          (is (= 100 (count result)))))
+      (testing "the driver declines, so that sync reads the first rows, when there is no row count estimate"
+        (is (= {:method :first-rows :sqls []} (sample {:rows 100 :row-count nil})))))))
