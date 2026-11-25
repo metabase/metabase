@@ -1171,7 +1171,7 @@ describe("issue 54603", () => {
     H.modal().within(() => {
       cy.findByText("Remove this filter?").should("be.visible");
       cy.findByText(/active subscription/i).should("be.visible");
-      cy.findByText(/archive/i).should("be.visible");
+      cy.findByText(/delete/i).should("be.visible");
 
       // Cancel keeps the filter.
       cy.findByRole("button", { name: "Cancel" }).click();

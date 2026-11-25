@@ -296,8 +296,8 @@ export const ParameterSidebar = (): JSX.Element | null => {
         message={c(
           "Warning shown when deleting a dashboard filter that has active subscriptions referencing it. The number can be 1 or more.",
         ).ngettext(
-          msgid`${affectedSubscriptions.length} active subscription uses this filter. Removing it will archive the subscription and email its recipients.`,
-          `${affectedSubscriptions.length} active subscriptions use this filter. Removing it will archive these subscriptions and email their recipients.`,
+          msgid`An active subscription uses this filter. Removing it will delete the subscription and email affected users (recipients, dashboard creator, and subscription creator). External recipients will not be notified.`,
+          `${affectedSubscriptions.length} active subscriptions use this filter. Removing it will delete these subscriptions and email affected users (recipients, dashboard creator, and subscription creator). External recipients will not be notified.`,
           affectedSubscriptions.length,
         )}
         confirmButtonText={t`Remove filter`}

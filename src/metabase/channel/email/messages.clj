@@ -361,15 +361,6 @@
                   :email           email
                   :notification-id notification-id}))))
 
-(defn pulse->alert-condition-kwd
-  "Given an `alert` return a keyword representing what kind of goal needs to be met."
-  [{:keys [alert_above_goal alert_condition] :as _alert}]
-  (if (= "goal" alert_condition)
-    (if (true? alert_above_goal)
-      :meets
-      :below)
-    :rows))
-
 (defn- send-email-sync!
   ([recipients subject template-name template-context]
    (send-email-sync! recipients subject template-name template-context false))
@@ -449,12 +440,16 @@
                true))
 
 (defn send-broken-subscription-notification!
-  "Email dashboard and subscription creators information about a broken subscription due to bad parameters"
+  "Email dashboard creator, pulse creator, and email recipients about a broken subscription being deleted due to bad parameters"
   [{:keys [dashboard-id dashboard-name pulse-creator dashboard-creator affected-users bad-parameters disable_links]}]
   (let [{:keys [siteUrl] :as context} (common-context)]
     (email/send-message!
-     :subject (trs "Subscription to {0} removed" dashboard-name)
-     :recipients (distinct (map :email [pulse-creator dashboard-creator]))
+     :subject (trs "Subscription to {0} deleted" dashboard-name)
+     :recipients (->> affected-users
+                      (concat [pulse-creator dashboard-creator])
+                      (keep :email)
+                      distinct)
+     :bcc? true
      :message-type :html
      :message (channel.template/render
                "broken_subscription_notification"
@@ -474,12 +469,16 @@
                                                       notification-type
                                                       (update :notification-type name)))
                                                   (into
-                                                   [{:notification-type :email
-                                                     :recipient         (:common_name dashboard-creator)
-                                                     :role              "Dashboard Creator"}
-                                                    {:notification-type :email
-                                                     :recipient         (:common_name pulse-creator)
-                                                     :role              "Subscription Creator"}]
-                                                   (map #(assoc % :role "Subscriber") affected-users)))
+                                                   (cond-> []
+                                                     dashboard-creator
+                                                     (conj {:notification-type :email
+                                                            :recipient         (:common_name dashboard-creator)
+                                                            :role              "Dashboard Creator"})
+
+                                                     pulse-creator
+                                                     (conj {:notification-type :email
+                                                            :recipient         (:common_name pulse-creator)
+                                                            :role              "Subscription Creator"}))
+                                                   (map #(assoc % :role "Recipient") affected-users)))
                        :dashboardUrl             (format "%s/dashboard/%s" siteUrl dashboard-id)
                        :disable_links            disable_links})))))

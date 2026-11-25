@@ -15,7 +15,7 @@
   "Given a pulse and bad parameters, return relevant notification data:
   - The name of the pulse
   - Which selected parameter values are broken
-  - The user info for the creator of the pulse
+  - The user info for the creator of the pulse (if active)
   - The users affected by the pulse
   - The pulse's channels, hydrated with `:recipients`
   `user-id->user` is the creator and recipient users by id, `channel-id->user-ids` the recipient user ids by channel
@@ -65,16 +65,14 @@
   "Given a dashboard id and original parameters, return data (if any) on any broken subscriptions. This will be a seq
   of maps, each containing:
   - The pulse id that was broken
-  - name and email data for the dashboard creator and pulse creator
+  - name and email data for the dashboard creator and pulse creator (if active)
   - Affected recipient information
   - Basic descriptive data on the affected dashboard, pulse, and parameters for use in downstream notifications"
   [dashboard-id original-dashboard-params]
   (when-some [broken-pulses (broken-pulses dashboard-id original-dashboard-params)]
     (let [{dashboard-name        :name
            dashboard-description :description
-           dashboard-creator     :creator} (t2/hydrate
-                                            (pulse.db/dashboard-name-description-creator dashboard-id)
-                                            :creator)
+           dashboard-creator-id  :creator_id} (pulse.db/dashboard-name-description-creator dashboard-id)
           pulse-id->channels   (group-by :pulse_id (t2/hydrate (pulse.db/pulse-channels-for-pulses (map :id broken-pulses))
                                                                :recipients))
           channel-ids          (into [] (comp cat (map :id)) (vals pulse-id->channels))
@@ -83,9 +81,10 @@
                                      (update-vals #(map :user_id %)))
                                  {})
           user-id->user        (pulse.db/users-names-and-emails-by-id
-                                (into (vec (distinct (keep :creator_id broken-pulses)))
-                                      (comp cat (distinct))
-                                      (vals channel-id->user-ids)))]
+                                (distinct
+                                 (concat (keep :creator_id broken-pulses)
+                                         [dashboard-creator-id]
+                                         (sequence cat (vals channel-id->user-ids)))))]
       (for [broken-pulse broken-pulses]
         (assoc
          (bad-pulse-notification-data user-id->user channel-id->user-ids broken-pulse
@@ -93,7 +92,7 @@
          :dashboard-id dashboard-id
          :dashboard-name dashboard-name
          :dashboard-description dashboard-description
-         :dashboard-creator (select-keys dashboard-creator [:first_name :last_name :email :common_name])
+         :dashboard-creator (user-id->user dashboard-creator-id)
          ;; We will not include links to Metabase for subscriptions created in modular embeddings
          :disable_links (:disable_links broken-pulse))))))
 
@@ -174,8 +173,7 @@
     #{}))
 
 (defn handle-broken-subscriptions!
-  "Archive every subscription on `dashboard-id` whose parameters no longer exist on the dashboard, and email each
-  one's creator and the dashboard's creator.
+  "Archive every subscription on `dashboard-id` whose parameters no longer exist on the dashboard, and email affected users
   Must run after the update: it compares the dashboard's current resolved params against each pulse's stored params.
   Takes the dashboard's `:resolved-params` from before the update as `original-dashboard-params`.
   Returns what [[archived-subscription]] describes for each archived subscription, in archive order."

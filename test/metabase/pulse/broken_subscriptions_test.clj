@@ -29,7 +29,7 @@
            :model/Pulse {bad-pulse-id :id
                          :as          bad-pulse} {:name         "Bad Pulse"
                                                   :dashboard_id dash-id
-                                                  :creator_id   (mt/user->id :trashbird)
+                                                  :creator_id   (mt/user->id :lucky)
                                                   :parameters   [(assoc param :value ["Twitter", "Facebook"])]}
            :model/PulseCard _ {:pulse_id          bad-pulse-id
                                :card_id           card-id
@@ -56,7 +56,7 @@
            ;; Non broken pulse
            :model/Pulse {good-pulse-id :id} {:name         "Good Pulse"
                                              :dashboard_id dash-id
-                                             :creator_id   (mt/user->id :trashbird)}
+                                             :creator_id   (mt/user->id :lucky)}
            :model/PulseCard _ {:pulse_id          good-pulse-id
                                :card_id           card-id
                                :dashboard_card_id dash-card-id}
@@ -70,7 +70,7 @@
           (testing "We can identify the broken parameter ids"
             (is (=? [{:archived     false
                       :name         "Bad Pulse"
-                      :creator_id   (mt/user->id :trashbird)
+                      :creator_id   (mt/user->id :lucky)
                       :id           bad-pulse-id
                       :parameters
                       [{:name "Source" :slug "source" :id "_SOURCE_PARAM_ID_" :type :string/= :value ["Twitter" "Facebook"]}]
@@ -95,7 +95,7 @@
               (testing "We only detect the bad pulse and not the good one"
                 (is (true? (contains? bad-pulse-ids bad-pulse-id)))
                 (is (false? (contains? bad-pulse-ids good-pulse-id))))
-              (is (=? [{:pulse-creator     {:email "trashbird@metabase.com"}
+              (is (=? [{:pulse-creator     {:email "lucky@metabase.com"}
                         :dashboard-creator {:email "rasta@metabase.com"}
                         :pulse-id          bad-pulse-id
                         :pulse-name        "Bad Pulse"
@@ -106,7 +106,7 @@
                                              :recipient         "Crowberto Corv"}
                                             {:notification-type :email
                                              :recipient         "Rasta Toucan"}]}
-                       {:pulse-creator     {:email "trashbird@metabase.com"}
+                       {:pulse-creator     nil
                         :affected-users    [{:notification-type :slack
                                              :recipient         "#my-channel"}]
                         :dashboard-creator {:email "rasta@metabase.com"}
