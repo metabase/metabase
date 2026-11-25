@@ -1,4 +1,4 @@
-/* eslint-disable no-console -- build script */
+/* eslint-disable no-console, metabase/no-literal-metabase-strings -- build script */
 import { existsSync, readFileSync, readdirSync, statSync } from "fs";
 import { dirname, join, relative, resolve } from "path";
 
@@ -148,6 +148,11 @@ for (const name of Object.keys(pkg.dependencies ?? {})) {
   if (!usedDependencies.has(name)) {
     errors.push(`${name}: declared in dependencies but not imported by dist`);
   }
+}
+
+const entry = readFileSync(join(distDir, "index.js"), "utf-8");
+if (!/export\s*\{[^}]*\bMetabaseUIProvider\b/.test(entry)) {
+  errors.push("dist/index.js does not export MetabaseUIProvider");
 }
 
 // Mantine's baseline is patched out of @mantine/core/styles.css; it must ship exactly once.

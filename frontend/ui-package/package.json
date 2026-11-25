@@ -42,7 +42,7 @@
   },
   "scripts": {
     "build": "vite build && bun run scripts/build-types.ts",
-    "type-check": "../../node_modules/typescript7/bin/tsc --noEmit -p tsconfig.json && ../../node_modules/typescript7/bin/tsc --noEmit -p tsconfig.node.json",
+    "type-check": "../../node_modules/typescript7/bin/tsc --noEmit -p tsconfig.json && ../../node_modules/typescript7/bin/tsc --noEmit -p tsconfig.node.json && ../../node_modules/typescript7/bin/tsc --noEmit -p tsconfig.spec.json",
     "check:dist": "bun run scripts/check-dist.ts",
     "check:package-versions": "bun run scripts/check-package-versions.ts",
     "pack": "bun run build && bun run scripts/pack.ts",

@@ -5,7 +5,23 @@ import { tmpdir } from "os";
 import { basename, join, resolve } from "path";
 
 const packageDir = resolve(import.meta.dirname, "..");
-const keep = process.argv.includes("--keep");
+const USAGE =
+  "Usage: bun run smoke-ui-package -- [--no-browser | --release-only] [--keep]";
+const FLAGS = ["--keep", "--release-only", "--no-browser"];
+const args = process.argv.slice(2);
+const unknown = args.filter((arg) => !FLAGS.includes(arg));
+const keep = args.includes("--keep");
+const releaseOnly = args.includes("--release-only");
+const skipBrowser = args.includes("--no-browser");
+if (unknown.length > 0 || (releaseOnly && skipBrowser)) {
+  console.error(
+    unknown.length > 0
+      ? `Unknown argument: ${unknown.join(" ")}`
+      : "--no-browser and --release-only cannot be combined",
+  );
+  console.error(USAGE);
+  process.exit(1);
+}
 
 function run(cmd: string, args: string[], cwd: string, quiet = false) {
   console.log(`\n$ ${cmd} ${args.join(" ")}  (${cwd})`);
@@ -52,7 +68,8 @@ const tarball = join(packDir, tarballs[0]);
 const appDir = mkdtempSync(join(tmpdir(), "metabase-ui-smoke-"));
 cpSync(join(packageDir, "smoke-app"), appDir, {
   recursive: true,
-  filter: (src) => !/\/(node_modules|dist)$/.test(src),
+  filter: (src) =>
+    !/\/(node_modules|dist|test-results|playwright-report)$/.test(src),
 });
 
 try {
@@ -83,6 +100,11 @@ try {
 
   must("bun", ["run", "type-check"], appDir);
   must("bun", ["run", "build"], appDir);
+
+  if (!skipBrowser) {
+    must("bun", ["run", "playwright", "install", "chromium"], appDir);
+    must("bun", ["run", releaseOnly ? "test:release" : "test"], appDir);
+  }
 
   const assets = readdirSync(join(appDir, "dist/assets"));
   for (const weight of ["regular", "700", "900"]) {
