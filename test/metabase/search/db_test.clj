@@ -1,10 +1,12 @@
 (ns metabase.search.db-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.search.db :as search.db]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -50,3 +52,14 @@
              (let [result (search.db/card-result-metadata #{})]
                (is (zero? (call-count)))
                result))))))
+
+(deftest table-exists-in-the-app-database-only-test
+  (when (= :mysql (mdb/db-type))
+    (testing "A table of the same name in another database on the server does not count"
+      (let [table-name (str "search_index__probe_" (u/lower-case-en (u/generate-nano-id)))]
+        (t2/query ["CREATE DATABASE IF NOT EXISTS mb_search_other"])
+        (try
+          (t2/query [(format "CREATE TABLE mb_search_other.%s (id INT)" table-name)])
+          (is (false? (search.db/table-exists? table-name)))
+          (finally
+            (t2/query ["DROP DATABASE mb_search_other"])))))))

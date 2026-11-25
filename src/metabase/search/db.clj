@@ -307,7 +307,9 @@
 (mu/defn table-exists?
   "Whether a table named `table-name` exists in the app DB."
   [table-name :- :string]
-  (t2/exists? :information_schema.tables :table_name table-name))
+  ;; MySQL's `information_schema` lists the tables of every database the user can see.
+  (t2/exists? :information_schema.tables {:where (cond-> [:and [:= :table_name table-name]]
+                                                   (= :mysql (mdb/db-type)) (conj [:= :table_schema :%database]))}))
 
 (mu/defn mysql-index-names :- [:set :string]
   "The names of the indexes on the table `table-name` in the current MySQL database."
