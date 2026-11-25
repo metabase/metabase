@@ -3,9 +3,9 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
    [metabase.session.core :as session]
@@ -71,18 +71,64 @@
           (start-preview! session-key {:user_id (mt/user->id :crowberto)} 400)
           (is (= rows-before (count (start-rows)))))))))
 
-(deftest audit-log-skips-a-previewers-writes-test
+(deftest audit-log-names-the-previewing-admin-test
   (mt/with-temp [:model/User {user-id :id} {}]
-    (let [rows-before (t2/count :model/AuditLog :topic "user-joined")
+    (let [rows        #(t2/select :model/AuditLog :topic "user-joined" {:order-by [[:id :asc]]})
+          rows-before (count (rows))
           join!       #(events/publish-event! :event/user-joined {:user-id user-id})]
-      (testing "guard: outside a preview, an event that the audit log records is recorded"
+      (testing "guard: outside a preview, the row names the user of the event"
         (join!)
-        (is (= (inc rows-before) (t2/count :model/AuditLog :topic "user-joined"))))
-      (testing "during a preview, the same event records nothing"
+        (is (= (inc rows-before) (count (rows))))
+        (is (= user-id (:user_id (last (rows))))))
+      (testing "during a preview, the same event is recorded under the admin"
         (binding [api/*previewing-admin-id* (mt/user->id :crowberto)]
-          (join!)
-          (is (nil? (audit-log/audit-row :event/user-joined {:user-id user-id :model :model/User :model-id user-id}))))
-        (is (= (inc rows-before) (t2/count :model/AuditLog :topic "user-joined")))))))
+          (join!))
+        (is (= (+ rows-before 2) (count (rows))))
+        (is (= (mt/user->id :crowberto) (:user_id (last (rows)))))))))
+
+(defn- venues-count-query
+  "A query counting the venues, with a filter no other query has, so it is saved as a new query."
+  []
+  {:database (mt/id)
+   :type     :query
+   :query    {:source-table (mt/id :venues)
+              :aggregation  [[:count]]
+              :filter       [:!= [:field (mt/id :venues :name) nil] (str (random-uuid))]}})
+
+(defn- last-query-execution []
+  (t2/select-one :model/QueryExecution {:order-by [[:id :desc]]}))
+
+(deftest a-tenant-users-preview-logs-the-admins-tenant-test
+  (mt/with-additional-premium-features #{:tenants}
+    (mt/with-temporary-setting-values [synchronous-batch-updates true
+                                       use-tenants               true]
+      (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Log tenant" :slug "log-tenant"}
+                     :model/User {user-id :id} {:tenant_id tenant-id}
+                     :model/Collection {collection-id :id} {}
+                     :model/Card {card-id :id} {:collection_id collection-id
+                                                :dataset_query (venues-count-query)}]
+        (let [{:keys [token]} (start-preview! (admin-session-key) {:user_id user-id})
+              admin-row       {:user_id (mt/user->id :crowberto), :tenant_id nil}]
+          (testing "the view log row of a refused open"
+            (as-preview token :get 403 (str "card/" card-id))
+            (is (= admin-row
+                   (select-keys (t2/select-one :model/ViewLog :model "card" :model_id card-id) [:user_id :tenant_id]))))
+          (testing "the query log row of a refused run"
+            (as-preview token :post 403 "dataset" (venues-count-query))
+            (is (= {:executor_id (mt/user->id :crowberto), :tenant_id nil}
+                   (select-keys (last-query-execution) [:executor_id :tenant_id])))))))))
+
+(deftest a-sandboxed-preview-keeps-how-its-query-ran-test
+  (met/with-gtaps! {:gtaps      {:venues {:remappings {:category [:dimension
+                                                                  [:field (mt/id :venues :category_id) nil]]}}}
+                    :attributes {"category" "50"}}
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (let [{:keys [token]} (start-preview! (admin-session-key) {:user_id (mt/user->id :rasta)})]
+        (as-preview token :post 202 "dataset" (venues-count-query))
+        (is (=? {:executor_id     (mt/user->id :crowberto)
+                 :is_sandboxed    true
+                 :sandbox_details seq}
+                (last-query-execution)))))))
 
 (def ^:private skipped-tables
   "Tables whose rows change with no read involved, or that aren't data of the app."
@@ -144,6 +190,18 @@
   show as nobody's activity (the tech doc, \"5. Audit and logging\")."
   #{"report_card" "report_dashboard" "metabase_table"})
 
+(defn- query-log-table?
+  "Whether `table-name` is the query log or one of its partitions, which Postgres lists beside it."
+  [table-name]
+  (str/starts-with? table-name "query_execution"))
+
+(defn- log-user-column
+  "The column that names whose activity a row of the log table `table-name` is, or nil when it is no log table."
+  [table-name]
+  (cond
+    (query-log-table? table-name)          :executor_id
+    (#{"view_log" "audit_log"} table-name) :user_id))
+
 (def ^:private shared-counter-lock-names
   "The `metabase_cluster_lock` rows that updating the `shared-tables` counters adds the first time it takes each lock."
   #{;; card view counts (metabase.view-log.events.view-log) and card last-used times
@@ -156,21 +214,23 @@
 
 (defn- read-everything!
   "Do the main reads with `request-fn`, which takes the method, the status, the endpoint and a body: open a question
-  and a dashboard, open a collection, change a dashboard filter, run a saved question and an ad hoc query, and open a
-  question the person may not read."
-  [request-fn {:keys [collection-id card-id dashboard-id dashcard-id hidden-card-id]}]
+  and a dashboard, open a collection, change a dashboard filter, run a saved question and an ad hoc query, download a
+  question's results, open a metric whose dimensions were never synced, which records a card update in the audit log,
+  and open a question the person may not read."
+  [request-fn {:keys [collection-id card-id dashboard-id dashcard-id metric-id hidden-card-id ad-hoc-query]}]
   (request-fn :get 200 (str "card/" card-id))
   (request-fn :get 200 (str "dashboard/" dashboard-id))
   (request-fn :get 200 (str "collection/" collection-id))
+  (request-fn :get 200 (format "collection/%d/items" collection-id))
   (request-fn :post 202 (format "dashboard/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id)
               {:parameters [{:id "a" :value ["Marcus"]}]})
   (request-fn :post 202 (format "card/%d/query" card-id) {})
-  (request-fn :post 202 "dataset" {:database (mt/id)
-                                   :type     :query
-                                   :query    {:source-table (mt/id :venues) :aggregation [[:count]]}})
+  (request-fn :post 202 "dataset" ad-hoc-query)
+  (request-fn :post 200 (format "card/%d/query/csv" card-id) {})
+  (request-fn :get 200 (str "metric/" metric-id))
   (request-fn :get 403 (str "card/" hidden-card-id)))
 
-(deftest a-preview-writes-nothing-tied-to-the-person-test
+(deftest a-preview-logs-its-reads-under-the-admin-test
   (mt/with-temporary-setting-values [synchronous-batch-updates true]
     (mt/with-temp [:model/Collection {collection-id :id :as collection} {}
                    :model/Collection {hidden-collection-id :id} {}
@@ -191,6 +251,9 @@
                                                      :dataset_query {:database (mt/id)
                                                                      :type     :query
                                                                      :query    {:source-table (mt/id :venues)}}}
+                   :model/Card {metric-id :id} {:collection_id collection-id
+                                                :type          :metric
+                                                :dataset_query (venues-count-query)}
                    :model/Dashboard {dashboard-id :id} {:collection_id collection-id
                                                         :parameters    [{:name "Name" :slug "name" :id "a" :type :string/contains}]}
                    :model/DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
@@ -200,29 +263,64 @@
                                                                                  :target       [:dimension [:template-tag "name"]]}]}]
       (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
       (let [person-id     (mt/user->id :rasta)
+            admin-id      (mt/user->id :crowberto)
+            admin-tenant  (t2/select-one-fn :tenant_id :model/User :id admin-id)
             ids           {:collection-id collection-id, :card-id card-id, :dashboard-id dashboard-id
-                           :dashcard-id dashcard-id, :hidden-card-id hidden-card-id}
+                           :dashcard-id dashcard-id, :metric-id metric-id, :hidden-card-id hidden-card-id
+                           :ad-hoc-query (venues-count-query)}
             {:keys [token]} (start-preview! (admin-session-key) {:user_id person-id})
             snapshot      (app-db-snapshot)]
         (read-everything! (partial as-preview token) ids)
-        (let [changes (changes-since snapshot)]
-          (testing "the view log has no row of the person, and none for a refused open"
-            (is (empty? (rows-of changes "view_log"))))
+        (let [changes    (changes-since snapshot)
+              added-rows #(get-in changes [% :added])]
+          (testing "every new log row names the admin, with the admin's tenant, and no log row is removed"
+            (is (= [] (for [[table-name {:keys [added]}] changes
+                            :let                         [user-column (log-user-column table-name)]
+                            :when                        user-column
+                            row                          added
+                            :when                        (not= [admin-id admin-tenant]
+                                                               [(get row user-column) (:tenant_id row)])]
+                        [table-name row])))
+            (is (= [] (for [[table-name {:keys [removed]}] changes
+                            :when                          (log-user-column table-name)
+                            row                            removed]
+                        [table-name row]))))
+          (testing "the view log has each view, and the refused open"
+            (is (set/subset? #{["card" card-id true]
+                               ["dashboard" dashboard-id true]
+                               ["collection" collection-id true]
+                               ["card" hidden-card-id false]}
+                             (into #{} (map (juxt :model :model_id :has_access)) (added-rows "view_log")))))
+          (testing "the query log has each run and the download"
+            (is (= ["ad-hoc" "csv-download" "dashboard" "question"]
+                   (sort (map :context (added-rows "query_execution"))))))
+          (testing "the view log and query log rows show Auth Method preview"
+            (is (= #{"preview"}
+                   (into #{} (map :auth_method) (concat (added-rows "view_log") (added-rows "query_execution"))))))
+          (testing "the metric's first dimension sync is in the audit log"
+            (is (= [["card-update" metric-id]]
+                   (map (juxt :topic :model_id) (added-rows "audit_log")))))
+          (testing "a new query's saved text and average run time are written"
+            (let [ad-hoc-hash (->> (added-rows "query_execution")
+                                   (some #(when (= "ad-hoc" (:context %)) (:hash %))))
+                  saved       (->> (added-rows "query")
+                                   (filter #(= ad-hoc-hash (:query_hash %))))]
+              (is (=? [{:query                  some?
+                        :average_execution_time some?}]
+                      saved))))
           (testing "the person's recent views are untouched"
             (is (empty? (rows-of changes "recent_views"))))
           (testing "no saved dashboard filter value is written"
             (is (empty? (rows-of changes "user_parameter_value"))))
-          (testing "the query log has no row"
-            (is (empty? (rows-of changes "query_execution"))))
-          (testing "the audit log has no row"
-            (is (empty? (rows-of changes "audit_log"))))
           (testing "no row of any table is tied to the person"
             (is (= [] (for [[table-name {:keys [added removed]}] changes
                             row                                  (set/union added removed)
                             :when                                (tied-to-user? person-id row)]
                         [table-name row]))))
-          (testing "only the tables of shared counters and the cluster locks change"
-            (is (= #{} (set/difference (set (keys changes)) shared-tables #{"metabase_cluster_lock"}))))
+          (testing "only the tables of the logs, saved queries, shared counters and cluster locks change"
+            (is (= #{} (set/difference (into #{} (remove log-user-column) (keys changes))
+                                       shared-tables
+                                       #{"metabase_cluster_lock" "query"}))))
           (testing "the only cluster lock rows added are the shared counters', and none is removed"
             (let [{:keys [added removed]} (get changes "metabase_cluster_lock")]
               (is (= #{} (set/difference (set (map :lock_name added)) shared-counter-lock-names)))
