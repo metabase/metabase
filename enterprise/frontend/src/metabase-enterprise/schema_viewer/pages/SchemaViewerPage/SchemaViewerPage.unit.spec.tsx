@@ -7,6 +7,7 @@ import {
 } from "__support__/server-mocks";
 import {
   act,
+  createEvent,
   createMockDOMRect,
   fireEvent,
   renderWithProviders,
@@ -214,19 +215,34 @@ function getInfoPanel() {
   return screen.getByTestId("graph-info-panel");
 }
 
-// userEvent dispatches mouse events without a `view`, which React Flow's
-// node drag handler dereferences on `mousedown`. A real browser always sets it.
+type CanvasMouseEventType = "mouseDown" | "mouseUp" | "click" | "dblClick";
+
+// userEvent dispatches mouse events without a `view`, which React Flow's node
+// drag handler dereferences on `mousedown`. A real browser always sets it. The
+// view is set on the event after it is built: the MouseEvent constructor only
+// accepts the jsdom window itself, which the node:test harness does not expose.
+function dispatchCanvasMouseEvent(
+  type: CanvasMouseEventType,
+  element: Element,
+  detail: number,
+) {
+  const event = createEvent[type](element, { bubbles: true, detail });
+  Object.defineProperty(event, "view", {
+    value: element.ownerDocument.defaultView,
+  });
+  fireEvent(element, event);
+}
+
 function clickOnCanvas(element: Element, { detail = 1 } = {}) {
-  const init = { view: window, bubbles: true, detail };
-  fireEvent.mouseDown(element, init);
-  fireEvent.mouseUp(element, init);
-  fireEvent.click(element, init);
+  dispatchCanvasMouseEvent("mouseDown", element, detail);
+  dispatchCanvasMouseEvent("mouseUp", element, detail);
+  dispatchCanvasMouseEvent("click", element, detail);
 }
 
 function doubleClickOnCanvas(element: Element) {
   clickOnCanvas(element, { detail: 1 });
   clickOnCanvas(element, { detail: 2 });
-  fireEvent.doubleClick(element, { view: window, bubbles: true, detail: 2 });
+  dispatchCanvasMouseEvent("dblClick", element, 2);
 }
 
 function clickTableHeader(tableId: TableId, name: string) {
