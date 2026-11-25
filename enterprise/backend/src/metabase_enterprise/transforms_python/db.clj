@@ -2,16 +2,30 @@
   "Application database queries for the transforms-python module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
+   [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(mu/defn synced-python-libraries-clause :- [:fn vector?]
+  "The clause over the PythonLibrary table aliased `alias` selecting the libraries remote sync syncs."
+  [alias :- :keyword
+   _opts :- ::remote-sync.schema/synced-filter-opts]
+  [:= (u/qualified-key alias :is_default) false])
+
+(mu/defn tables
+  "The Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (mdb/select-batched #(t2/select :model/Table :id [:in %]) table-ids))
+
 (mu/defn table-database-ids
   "The set of Database IDs of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in table-ids]))
+  (mdb/select-batched-set #(t2/select-fn-set :db_id [:model/Table :db_id] :id [:in %]) table-ids))
 
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
@@ -23,12 +37,6 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :engine :model/Database :id [:auto/param database-id]))
 
-(mu/defn update-run-message!
-  "Set the message of the TransformRun with `run-id`."
-  [run-id  :- ms/PositiveInt
-   message :- [:maybe :string]]
-  (t2/update! :model/TransformRun :id run-id {:message message}))
-
 (mu/defn python-library
   "The PythonLibrary with `library-id`, or nil."
   [library-id :- ms/PositiveInt]
@@ -38,20 +46,6 @@
   "The PythonLibrary at `path`, or nil."
   [path :- :string]
   (t2/select-one :model/PythonLibrary :path path))
-
-(mu/defn upsert-python-library-source!
-  "Insert or update the PythonLibrary at `path`, setting its source to `source` and, on insert only, the columns in
-  `insert-values`. Returns the ID of the row."
-  [path          :- :string
-   source        :- :string
-   insert-values :- [:map {:closed true}
-                     [:entity_id  {:optional true} :string]
-                     [:is_default {:optional true} :boolean]]]
-  (mdb/update-or-insert! :model/PythonLibrary
-                         {:path path}
-                         (fn [existing]
-                           (cond-> {:path path :source source}
-                             (nil? existing) (merge insert-values)))))
 
 (mu/defn library-sources-by-path
   "A map of path to source for every PythonLibrary."
@@ -68,3 +62,8 @@
              :parent_id nil
              :nfc_path nil
              {:order-by [[:database_position :asc]]}))
+
+(mu/defn synced-python-library-items :- [:sequential ::transforms-python.schema/python-library]
+  "The PythonLibraries with `ids`, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (mdb/select-batched #(t2/select [:model/PythonLibrary :id :path] :id [:in %]) ids))

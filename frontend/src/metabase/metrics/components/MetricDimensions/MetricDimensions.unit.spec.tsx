@@ -6,12 +6,14 @@ import {
   setupMetricEndpoint,
 } from "__support__/server-mocks";
 import {
+  act,
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { metricApi } from "metabase/api/metric";
 import type { ListMetricDimensionsResponse } from "metabase-types/api";
 import {
@@ -783,4 +785,432 @@ describe("MetricDimensions", () => {
     });
     expect(getListPanel().getByText("Country")).toBeInTheDocument();
   });
+
+  describe("curation flow", () => {
+    const SEEDED = [
+      ["ID", "type/BigInteger", "type/PK"],
+      ["User ID", "type/Integer", "type/FK"],
+      ["Product ID", "type/Integer", "type/FK"],
+      ["Subtotal", "type/Float", null],
+      ["Tax", "type/Float", null],
+      ["Total", "type/Float", null],
+      ["Discount", "type/Float", "type/Discount"],
+      ["Created At", "type/DateTime", "type/CreationTimestamp"],
+      ["Quantity", "type/Integer", "type/Quantity"],
+    ].map(([name, effectiveType, semanticType], index) =>
+      createMockMetricDimension({
+        id: `00000000-0000-4000-8000-00000000000${index}`,
+        display_name: String(name),
+        effective_type: String(effectiveType),
+        semantic_type: semanticType,
+        status: "status/active",
+        group: MAIN_GROUP,
+        sources: [{ type: "field", "field-id": 300 + index }],
+      }),
+    );
+    const SEEDED_NAMES = SEEDED.map((dimension) => dimension.display_name);
+    const TAX_ID = SEEDED[4].id;
+    const CREATED_AT_SEEDED_ID = SEEDED[7].id;
+    const QUANTITY_ID = SEEDED[8].id;
+    const PRODUCT_CATEGORY = createMockAddableMetricDimension({
+      id: "77777777-7777-4777-8777-777777777777",
+      display_name: "Category",
+      effective_type: "type/Text",
+      semantic_type: "type/Category",
+      sources: [{ type: "field", "field-id": 401 }],
+      mapping_target: ["field", { "source-field": 302 }, 401],
+    });
+    const ADDABLE_GROUPS = [
+      createMockAddableDimensionGroup({
+        group: createMockMetricDimensionGroup({
+          id: "product",
+          type: "connection",
+          display_name: "Product",
+        }),
+        dimensions: [
+          createMockAddableMetricDimension({
+            id: "88888888-8888-4888-8888-888888888888",
+            display_name: "Vendor",
+            effective_type: "type/Text",
+            semantic_type: "type/Company",
+            sources: [{ type: "field", "field-id": 402 }],
+            mapping_target: ["field", { "source-field": 302 }, 402],
+          }),
+          PRODUCT_CATEGORY,
+        ],
+      }),
+      createMockAddableDimensionGroup({
+        group: createMockMetricDimensionGroup({
+          id: "user",
+          type: "connection",
+          display_name: "User",
+        }),
+        dimensions: [
+          createMockAddableMetricDimension({
+            id: "99999999-9999-4999-8999-999999999999",
+            display_name: "City",
+            effective_type: "type/Text",
+            semantic_type: "type/City",
+            sources: [{ type: "field", "field-id": 501 }],
+            mapping_target: ["field", { "source-field": 301 }, 501],
+          }),
+        ],
+      }),
+    ];
+
+    let trackSimpleEvent: jest.SpiedFunction<typeof Analytics.trackSimpleEvent>;
+
+    beforeEach(() => {
+      trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+      trackSimpleEvent.mockClear();
+      mockRowRects();
+    });
+
+    afterEach(() => {
+      trackSimpleEvent.mockRestore();
+      jest.restoreAllMocks();
+    });
+
+    function getRowNames() {
+      return getListPanel()
+        .queryAllByTestId(/^dimension-row-/)
+        .map((row) =>
+          row.getAttribute("data-testid")?.replace("dimension-row-", ""),
+        );
+    }
+
+    function getTrackedEvents(event: string) {
+      return trackSimpleEvent.mock.calls
+        .map(([payload]) => payload)
+        .filter((payload) => payload.event === event);
+    }
+
+    async function getLastPostBody(name: string): Promise<unknown> {
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called(name)).toBe(true);
+      });
+      const body = fetchMock.callHistory.lastCall(name)?.options?.body;
+      return JSON.parse(String(body));
+    }
+
+    it("searches, reorders by drag and drop, adds, renames, describes, sets and removes the default, sets the time grouping, and bulk removes dimensions", async () => {
+      setup({ added: SEEDED, addable: ADDABLE_GROUPS });
+      await waitForLoaderToBeRemoved();
+
+      expect(getTrackedEvents("metric_dimensions_tab_viewed")).toEqual([
+        { event: "metric_dimensions_tab_viewed", target_id: METRIC_ID },
+      ]);
+
+      expect(getRowNames()).toEqual(SEEDED_NAMES);
+      expect(getListPanel().queryByText("Vendor")).not.toBeInTheDocument();
+      expect(getListPanel().queryByText("Default")).not.toBeInTheDocument();
+
+      // search
+      const search = getListPanel().getByPlaceholderText("Search…");
+      await userEvent.type(search, "Disc");
+      await waitFor(() => {
+        expect(getRowNames()).toEqual(["Discount"]);
+      });
+      await userEvent.clear(search);
+      await waitFor(() => {
+        expect(getRowNames()).toEqual(SEEDED_NAMES);
+      });
+
+      // drag Quantity to the top
+      await dragRowAbove("Quantity", "ID");
+      expect(
+        await getLastPostBody(`metric-${METRIC_ID}-dimensions-reorder`),
+      ).toEqual({
+        dimension_ids: [
+          QUANTITY_ID,
+          ...SEEDED.slice(0, 8).map((dimension) => dimension.id),
+        ],
+      });
+      await waitFor(() => {
+        expect(getRowNames()).toEqual([
+          "Quantity",
+          ...SEEDED_NAMES.slice(0, 8),
+        ]);
+      });
+      await waitFor(() => {
+        expect(getTrackedEvents("metric_dimensions_reordered")).toEqual([
+          {
+            event: "metric_dimensions_reordered",
+            target_id: METRIC_ID,
+            result: "success",
+          },
+        ]);
+      });
+
+      // add a dimension from a connected table
+      await userEvent.click(
+        getListPanel().getByRole("button", { name: "Available dimensions" }),
+      );
+      const addPanel = within(
+        await screen.findByTestId("add-dimensions-panel"),
+      );
+      expect(await addPanel.findByText("Product")).toBeInTheDocument();
+      expect(addPanel.getByText("User")).toBeInTheDocument();
+      await userEvent.click(addPanel.getByRole("button", { name: /Category/ }));
+      expect(
+        await getLastPostBody(`metric-${METRIC_ID}-dimensions-add`),
+      ).toEqual({
+        dimensions: [
+          { ...PRODUCT_CATEGORY, display_name: "Product - Category" },
+        ],
+      });
+      expect(
+        await getListPanel().findByTestId("dimension-row-Product - Category"),
+      ).toBeInTheDocument();
+      expect(getTrackedEvents("metric_dimension_added")).toEqual([
+        {
+          event: "metric_dimension_added",
+          target_id: METRIC_ID,
+          event_detail: PRODUCT_CATEGORY.id,
+          result: "success",
+        },
+      ]);
+      await userEvent.click(addPanel.getByRole("button", { name: "Done" }));
+      expect(getRowNames()).toHaveLength(SEEDED.length + 1);
+      expect(
+        screen.queryByTestId("add-dimensions-panel"),
+      ).not.toBeInTheDocument();
+
+      // rename it
+      const categoryUpdateRoute = `metric-${METRIC_ID}-dimension-${PRODUCT_CATEGORY.id}-update`;
+      let settings = within(await openSettings(/Product - Category/));
+      expect(
+        settings.getByText("Settings for Product - Category"),
+      ).toBeInTheDocument();
+      const nameInput = settings.getByLabelText("Display name");
+      await userEvent.clear(nameInput);
+      await userEvent.type(nameInput, "Product type");
+      await userEvent.tab();
+      expect(await getLastPostBody(categoryUpdateRoute)).toEqual({
+        display_name: "Product type",
+      });
+      expect(
+        await getListPanel().findByTestId("dimension-row-Product type"),
+      ).toBeInTheDocument();
+      expect(
+        await settings.findByText("Settings for Product type"),
+      ).toBeInTheDocument();
+
+      // describe it
+      await userEvent.type(
+        settings.getByLabelText("Description"),
+        "Category of the ordered product",
+      );
+      await userEvent.tab();
+      await waitFor(() => {
+        expect(fetchMock.callHistory.calls(categoryUpdateRoute)).toHaveLength(
+          2,
+        );
+      });
+      expect(await getLastPostBody(categoryUpdateRoute)).toEqual({
+        description: "Category of the ordered product",
+      });
+      await waitFor(() => {
+        expect(getTrackedEvents("metric_dimension_updated")).toEqual([
+          {
+            event: "metric_dimension_updated",
+            target_id: METRIC_ID,
+            event_detail: PRODUCT_CATEGORY.id,
+            result: "success",
+          },
+          {
+            event: "metric_dimension_updated",
+            target_id: METRIC_ID,
+            event_detail: PRODUCT_CATEGORY.id,
+            result: "success",
+          },
+        ]);
+      });
+
+      // make it the default
+      const setDefaultRoute = `metric-${METRIC_ID}-dimensions-set-default`;
+      await clickWhenEnabled(
+        settings.getByRole("button", { name: "Set as default" }),
+      );
+      expect(await getLastPostBody(setDefaultRoute)).toEqual({
+        dimension_id: PRODUCT_CATEGORY.id,
+      });
+      expect(
+        await getDimensionRow("Product type").findByText("Default"),
+      ).toBeInTheDocument();
+      expect(settings.getByText("Default dimension")).toBeInTheDocument();
+      expect(getListPanel().getAllByText("Default")).toHaveLength(1);
+      expect(getTrackedEvents("metric_dimension_set_default")).toEqual([
+        {
+          event: "metric_dimension_set_default",
+          target_id: METRIC_ID,
+          event_detail: PRODUCT_CATEGORY.id,
+          result: "success",
+        },
+      ]);
+
+      // remove the default (UXW-4988)
+      await clickWhenEnabled(
+        await settings.findByRole("button", { name: "Remove default" }),
+      );
+      expect(await getLastPostBody(setDefaultRoute)).toEqual({
+        dimension_id: null,
+      });
+      await waitFor(() => {
+        expect(getListPanel().queryByText("Default")).not.toBeInTheDocument();
+      });
+      expect(settings.queryByText("Default dimension")).not.toBeInTheDocument();
+      expect(getTrackedEvents("metric_dimension_remove_default")).toEqual([
+        {
+          event: "metric_dimension_remove_default",
+          target_id: METRIC_ID,
+          event_detail: PRODUCT_CATEGORY.id,
+          result: "success",
+        },
+      ]);
+
+      // make it the default again
+      await clickWhenEnabled(
+        await settings.findByRole("button", { name: "Set as default" }),
+      );
+      await waitFor(() => {
+        expect(getListPanel().getAllByText("Default")).toHaveLength(1);
+      });
+      expect(await getLastPostBody(setDefaultRoute)).toEqual({
+        dimension_id: PRODUCT_CATEGORY.id,
+      });
+
+      // set the time grouping of Created At
+      settings = within(await openSettings(/Created At/));
+      const groupingSelect = await settings.findByLabelText("Time grouping");
+      expect(groupingSelect).toHaveValue("");
+      await userEvent.click(groupingSelect);
+      await userEvent.click(screen.getByRole("option", { name: "Week" }));
+      expect(
+        await getLastPostBody(
+          `metric-${METRIC_ID}-dimension-${CREATED_AT_SEEDED_ID}-update`,
+        ),
+      ).toEqual({ default_temporal_unit: "week" });
+      expect(groupingSelect).toHaveValue("Week");
+
+      // bulk remove
+      await userEvent.click(
+        getListPanel().getByRole("checkbox", { name: "Product type" }),
+      );
+      await userEvent.click(
+        getListPanel().getByRole("checkbox", { name: "Tax" }),
+      );
+      expect(
+        getListPanel().getByRole("button", { name: "Available dimensions" }),
+      ).toBeDisabled();
+      await userEvent.click(
+        getListPanel().getByRole("button", { name: "Remove" }),
+      );
+      expect(
+        await getLastPostBody(`metric-${METRIC_ID}-dimensions-remove`),
+      ).toEqual({ dimension_ids: [PRODUCT_CATEGORY.id, TAX_ID] });
+      await waitFor(() => {
+        expect(getRowNames()).toHaveLength(SEEDED.length - 1);
+      });
+      expect(getRowNames()).not.toContain("Product type");
+      expect(getRowNames()).not.toContain("Tax");
+      expect(getTrackedEvents("metric_dimension_removed")).toEqual([
+        {
+          event: "metric_dimension_removed",
+          target_id: METRIC_ID,
+          event_detail: PRODUCT_CATEGORY.id,
+          result: "success",
+        },
+        {
+          event: "metric_dimension_removed",
+          target_id: METRIC_ID,
+          event_detail: TAX_ID,
+          result: "success",
+        },
+      ]);
+    });
+  });
 });
+
+// The default buttons stay disabled while the list refetches after an edit
+async function clickWhenEnabled(button: HTMLElement) {
+  await waitFor(() => {
+    expect(button).toBeEnabled();
+  });
+  await userEvent.click(button);
+}
+
+const ROW_HEIGHT = 40;
+
+/**
+ * jsdom has no layout. Gives every sortable row a rect from its position in
+ * the list, so dnd-kit can find the row a dragged one crosses. The drag
+ * overlay's copy of a row starts where that row is.
+ */
+function mockRowRects() {
+  const original = Element.prototype.getBoundingClientRect;
+  jest
+    .spyOn(Element.prototype, "getBoundingClientRect")
+    .mockImplementation(function (this: Element) {
+      if (!(this instanceof HTMLElement) || this.role !== "listitem") {
+        return original.call(this);
+      }
+      const list = screen.getByTestId("metric-dimension-list");
+      const rowTestIds = within(list)
+        .getAllByTestId(/^dimension-row-/)
+        .map((row) => row.dataset.testid);
+      const testId = within(this).getByTestId(/^dimension-row-/).dataset.testid;
+      return DOMRect.fromRect({
+        x: 0,
+        y: rowTestIds.indexOf(testId) * ROW_HEIGHT,
+        width: 300,
+        height: ROW_HEIGHT,
+      });
+    });
+}
+
+function dispatchPointer(
+  target: EventTarget,
+  type: string,
+  coordinates: { clientX: number; clientY: number },
+) {
+  const event = new MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    button: 0,
+    ...coordinates,
+  });
+  Object.defineProperty(event, "isPrimary", { value: true });
+  act(() => {
+    target.dispatchEvent(event);
+  });
+}
+
+async function dragRowAbove(sourceName: string, targetName: string) {
+  const list = within(screen.getByTestId("metric-dimension-list"));
+  const rows = list.getAllByRole("listitem");
+  const sourceIndex = rows.findIndex((row) =>
+    within(row).queryByTestId(`dimension-row-${sourceName}`),
+  );
+  const targetIndex = rows.findIndex((row) =>
+    within(row).queryByTestId(`dimension-row-${targetName}`),
+  );
+  const handle = within(rows[sourceIndex]).getByTestId("dimension-drag-handle");
+  const startY = sourceIndex * ROW_HEIGHT + ROW_HEIGHT / 2;
+  // dnd-kit picks the row the dragged row overlaps most
+  const endY = targetIndex * ROW_HEIGHT + ROW_HEIGHT / 4;
+
+  dispatchPointer(handle, "pointerdown", { clientX: 10, clientY: startY });
+  dispatchPointer(document, "pointermove", {
+    clientX: 10,
+    clientY: startY - 20,
+  });
+  dispatchPointer(document, "pointermove", { clientX: 10, clientY: endY });
+  dispatchPointer(document, "pointerup", { clientX: 10, clientY: endY });
+  // The drag overlay renders a copy of the row until its drop animation ends
+  await waitFor(() => {
+    expect(screen.getAllByTestId(`dimension-row-${sourceName}`)).toHaveLength(
+      1,
+    );
+  });
+}

@@ -242,6 +242,12 @@
                {:visibility-type :details-only
                 :preview-display false})))))))
 
+(defn- table-database
+  "The Database of `table`: its hydrated `:db` when it carries one, else read from the app DB."
+  [table]
+  (or (:db table)
+      (driver-api/table->database table)))
+
 (defn describe-table-fields-xf
   "Returns a transducer for computing metadata about the fields in a table"
   [driver table]
@@ -249,7 +255,7 @@
                           (when (:schema table)
                             {:table-schema (:schema table)}))]
     (comp
-     (describe-fields-xf driver (driver-api/table->database table) table-info)
+     (describe-fields-xf driver (table-database table) table-info)
      (map-indexed (fn [i col] (dissoc (assoc col :database-position i) :table-schema))))))
 
 (defmulti describe-table-fields
@@ -341,7 +347,7 @@
    db
    nil
    (fn [^Connection conn]
-     (describe-table* driver conn table))))
+     (describe-table* driver conn (assoc table :db db)))))
 
 (defmulti describe-fields-sql
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fields]],
@@ -755,15 +761,19 @@
   (if (driver/database-supports? driver :describe-fields database)
     ;; on `conn` rather than through `driver/describe-fields`, which checks out more pooled connections and runs
     ;; pre-processing JSON detection doesn't need (e.g. Postgres's enum lookup)
-    (let [sql-args (m/mapply describe-fields-sql driver (cond-> {:table-names [(:name table)]
-                                                                 :details     (driver.conn/effective-details database)}
-                                                          (:schema table) (assoc :schema-names [(:schema table)])))]
-      (into []
-            (comp
-             ;; `:table-names` can match more than this table, e.g. MySQL compares names without case
-             (filter #(= (:name table) (:table-name %)))
-             (describe-fields-xf driver database))
-            (jdbc/reducible-query {:connection conn} sql-args {:identifiers identity})))
+    (let [[sql & params] (m/mapply describe-fields-sql driver (cond-> {:table-names [(:name table)]
+                                                                       :details     (driver.conn/effective-details database)}
+                                                                (:schema table) (assoc :schema-names [(:schema table)])))]
+      ;; through [[sql-jdbc.execute/execute-prepared-statement!]], like the other sync queries, so a driver's handling
+      ;; of statement errors (e.g. MotherDuck's reruns) applies here too
+      (with-open [stmt          (sql-jdbc.sync.common/prepare-statement driver conn sql params)
+                  ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
+        (into []
+              (comp
+               ;; `:table-names` can match more than this table, e.g. MySQL compares names without case
+               (filter #(= (:name table) (:table-name %)))
+               (describe-fields-xf driver database))
+              (jdbc/reducible-result-set rs {:identifiers identity}))))
     (describe-table-fields driver conn table nil)))
 
 (defn- table->unfold-json-fields
@@ -858,11 +868,14 @@
                                   nil
                                   (fn [^Connection conn]
                                     (let [unfold-json-fields (table->unfold-json-fields driver conn database table)
+                                          ;; Only the sample of JSON rows uses the keys, so a table without JSON columns
+                                          ;; skips the query.
                                           ;; Just pass in `nil` here, that's what we do in the normal sync process and it seems to work correctly.
                                           ;; We don't currently have a driver-agnostic way to get the physical database name. `(:name database)` is
                                           ;; wrong, because it's a human-friendly name rather than a physical name. `(get-in
                                           ;; database [:details :db])` works for most drivers but not H2.
-                                          pks                (get-table-pks driver conn nil table)]
+                                          pks                (when (seq unfold-json-fields)
+                                                               (get-table-pks driver conn nil table))]
                                       [unfold-json-fields pks])))]
     (if (empty? unfold-json-fields)
       #{}

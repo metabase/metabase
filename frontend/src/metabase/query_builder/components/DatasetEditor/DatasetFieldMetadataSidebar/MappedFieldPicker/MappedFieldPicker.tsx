@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
 import { useField } from "formik";
 import { useCallback, useRef } from "react";
@@ -40,7 +41,7 @@ export function MappedFieldPicker({
 
   const selectedField = field && selectedFieldId ? field : null;
 
-  const selectButtonRef = useRef<HTMLButtonElement>(undefined);
+  const selectButtonRef = useRef<HTMLButtonElement>(null);
 
   const focusSelectButton = useCallback(() => {
     selectButtonRef.current?.focus();
@@ -63,19 +64,20 @@ export function MappedFieldPicker({
     return (
       <SelectButton
         classNames={{
-          root: cx(
+          input: cx(
             MappedFieldPickerS.StyledSelectButton,
             {
               [MappedFieldPickerS.hasValue]: selectedField,
             },
             className,
           ),
-          icon: MappedFieldPickerS.StyledSelectIcon,
+          section: selectedField
+            ? MappedFieldPickerS.StyledSelectSectionOnBrand
+            : undefined,
         }}
         hasValue={!!selectedField}
         tabIndex={tabIndex}
-        // Unjustified type cast. FIXME
-        ref={selectButtonRef as any}
+        ref={selectButtonRef}
         onClear={() => onChange(null)}
       >
         <span className={MappedFieldPickerS.StyledSelectButtonContent}>

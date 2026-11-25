@@ -1,0 +1,6 @@
+# A failed create
+// A create fails, and the caller deletes the workspace that the parent kept. Only the success body is checked here:
+// cleanup_required is on the 409, 412 and 500 bodies, and workspace_id only on the 500 of a kept workspace. This flow
+// does not read them.
+mbcode -> parent: createWorkspace {id, databases.database_id, databases.status}
+mbcode -> parent: deleteWorkspace

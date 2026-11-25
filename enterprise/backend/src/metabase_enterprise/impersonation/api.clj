@@ -1,6 +1,7 @@
 (ns metabase-enterprise.impersonation.api
   (:require
    [metabase-enterprise.impersonation.db :as impersonation.db]
+   [metabase-enterprise.impersonation.models :as impersonation.models]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.util.malli.schema :as ms]))
@@ -25,15 +26,11 @@
     (impersonation.db/impersonation-for-group-and-database group_id db_id)
     (impersonation.db/all-impersonations)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :delete "/:id"
+(api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a Connection Impersonation entry."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (impersonation.db/impersonation id))
-  (impersonation.db/delete-impersonation! id)
+  (impersonation.models/delete-connection-impersonations! [id])
   api/generic-204-no-content)

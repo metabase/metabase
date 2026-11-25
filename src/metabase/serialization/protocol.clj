@@ -1,8 +1,9 @@
 (ns metabase.serialization.protocol
-  "The store serialization reads and writes the rows of models through, in bulk.")
+  "The store serialization reads the rows of models through, in bulk. An import writes through the spec of each model
+  (see [[metabase.serialization.writes]]).")
 
 (defprotocol Store
-  "Rows of serialized models read and written in bulk, where a non-nil `columns` names the only columns a caller needs."
+  "Rows of serialized models read in bulk, where a non-nil `columns` names the only columns a caller needs."
   (select-by-pks [store model pks columns]
     "The rows of `model` whose primary key is in the set `pks`.")
   (select-by-refs [store model refs columns]
@@ -13,12 +14,6 @@
   (select-by-parent-pks [store model parent-pks columns]
     "The rows of `model` whose parent, the row its spec's `:parent` names, has its primary key in the set
     `parent-pks`.")
-  (insert-rows! [store model rows]
-    "Inserts `rows` of `model`, running its hooks, and returns the inserted instances.")
-  (update-row! [store model pk changes]
-    "Updates the row of `model` whose primary key is `pk` with `changes`, running the model's hooks.")
-  (delete-rows! [store model pks]
-    "Deletes the rows of `model` whose primary key is in the set `pks`, running the model's hooks.")
   (transact [store opts f]
     "What `f` returns when called in one transaction, or a savepoint inside one, with `opts` like
     `{:isolation :repeatable-read}` or `{:retries 3}`."))

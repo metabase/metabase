@@ -5,18 +5,27 @@
    [metabase-enterprise.serialization.db :as serialization.db]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
 (defn- in-collections
-  "The clause matching rows in `collection-set`, nil standing for the root collection."
-  [collection-set]
-  (let [ids (vec (remove nil? collection-set))]
-    (cond-> [:or [:= 1 0]]
-      (seq ids)                  (conj [:in :collection_id ids])
-      (some nil? collection-set) (conj [:= :collection_id nil]))))
+  "The clause matching rows whose `column`, `:collection_id` by default, is in `collection-set`, nil standing for the
+  root collection."
+  ([collection-set]
+   (in-collections :collection_id collection-set))
+  ([column collection-set]
+   (let [ids (vec (remove nil? collection-set))]
+     (cond-> [:or [:= 1 0]]
+       (seq ids)                  (conj [:in column ids])
+       (some nil? collection-set) (conj [:= column nil])))))
+
+(defn- in-ids
+  "The clause matching rows whose `column` is one of `ids`; with no `ids`, no row."
+  [column ids]
+  [:in column (if (seq ids) (vec ids) [nil])])
 
 (defn- order-columns
   "The columns the rows of `model` export in order of: its `entity_id`, which every app DB compares byte by byte so that
@@ -45,6 +54,9 @@
 (defmethod where :model/Card [_ {:keys [collection-set]}]
   [:and (when (seq collection-set) (in-collections collection-set)) not-in-exploration-document])
 
+(defmethod where :model/CardTest [_ {:keys [card-ids]}]
+  (when card-ids (in-ids :card_id card-ids)))
+
 (defmethod where :model/Document [_ {:keys [collection-set]}]
   [:and (when (seq collection-set) (in-collections collection-set)) [:= :exploration_id nil]])
 
@@ -67,32 +79,32 @@
      (nil? ids)           [:= :personal_owner_id nil])
    [:or [:= :type nil] [:not= :type "trash"]]])
 
-(defn- of-tables
-  "The clause matching rows of the Tables with `table-ids`, through `column`."
-  [column table-ids]
-  [:in column (if (seq table-ids) (vec table-ids) [nil])])
-
 (defn- of-fields-of-tables
   "The clause matching rows of the Fields of the Tables with `table-ids`."
   [table-ids]
-  [:in :field_id ^:allow-subquery {:select [:id] :from [:metabase_field] :where (of-tables :table_id table-ids)}])
+  [:in :field_id ^:allow-subquery {:select [:id] :from [:metabase_field] :where (in-ids :table_id table-ids)}])
 
 (defmethod where :model/Table [_ {:keys [collection-set table-ids]}]
   (cond
-    table-ids                (of-tables :id table-ids)
-    (seq collection-set)     [:and (in-collections collection-set) [:= :is_published true]]))
+    table-ids                (in-ids :id table-ids)
+    (seq collection-set)     [:exists ^:allow-subquery {:select [1]
+                                                        :from   [[(t2/table-name :model/TableUserSettings) :s]]
+                                                        :where  [:and
+                                                                 [:= :s.table_id (u/qualified-key (t2/table-name :model/Table) :id)]
+                                                                 [:= :s.is_published true]
+                                                                 (in-collections :s.collection_id collection-set)]}]))
 
 (defmethod where :model/Field [_ {:keys [table-ids]}]
-  (when table-ids (of-tables :table_id table-ids)))
+  (when table-ids (in-ids :table_id table-ids)))
 
 (defmethod where :model/TableUserSettings [_ {:keys [table-ids]}]
-  (when table-ids (of-tables :table_id table-ids)))
+  (when table-ids (in-ids :table_id table-ids)))
 
 (defmethod where :model/Segment [_ {:keys [table-ids]}]
-  (when table-ids (of-tables :table_id table-ids)))
+  (when table-ids (in-ids :table_id table-ids)))
 
 (defmethod where :model/Measure [_ {:keys [table-ids]}]
-  (when table-ids (of-tables :table_id table-ids)))
+  (when table-ids (in-ids :table_id table-ids)))
 
 (defmethod where :model/FieldUserSettings [_ {:keys [table-ids]}]
   (when table-ids (of-fields-of-tables table-ids)))
@@ -109,14 +121,20 @@
   "The honey SQL clause of the rows of `model` an export of `opts` takes (see [[select-rows]])."
   [model {:keys [ids skip-archived] :as opts}]
   [:and
-   (when ids [:in (first (t2/primary-keys model)) (if (seq ids) (vec ids) [nil])])
+   (when ids (in-ids (first (t2/primary-keys model)) ids))
    (when (and skip-archived (archived-column? model)) [:not :archived])
    (where model opts)])
 
+(defmethod where :model/SegmentTest [_ opts]
+  ;; The tests of the Segments that an export with the same options takes. `:ids` names segment tests, not Segments.
+  [:in :segment_id ^:allow-subquery {:select [:id]
+                                     :from   [:segment]
+                                     :where  (where-clause :model/Segment (dissoc opts :ids))}])
+
 (defn select-rows
   "A reducible of the realized rows of `model` an export of `opts` takes, in stable export order: the ones with the
-  primary keys `:ids` when given, the ones [[where]] picks for the `:collection-set` or `:table-ids` given, and
-  unarchived ones with `:skip-archived`."
+  primary keys `:ids` when given, the ones [[where]] picks for the `:collection-set`, `:table-ids` or `:card-ids`
+  given, and unarchived ones with `:skip-archived`. SegmentTests follow the Segments the same options pick."
   [model opts]
   (if (= model :model/Setting)
     (setting/exportable-settings)

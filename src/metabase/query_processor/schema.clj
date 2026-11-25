@@ -15,7 +15,7 @@
 (mr/def ::unnormalized-query
   "A legacy, MBQL 5, or internal query that has not been normalized yet, so its `:type` or `:lib/type` is still a string, e.g. as decoded from JSON."
   [:and
-   [:map {:closed false, ::mr/deliberately-open true, :description "a query whose type key is still a string"}
+   [:map {:closed false, :description "a query whose type key is still a string"}
     [:type     {:optional true} [:enum "query" "native" "internal"]]
     [:lib/type {:optional true} [:= "mbql/query"]]]
    [:fn {:error/message "Query with a :type or :lib/type key"} (some-fn :type :lib/type)]])
@@ -75,7 +75,7 @@
    [:native_form             {:optional true} :metabase.query-processor.compile/compiled]
    [:dataset                 {:optional true} :boolean]
    [:model                   {:optional true} :boolean]
-   [:viz-settings            {:optional true} :metabase.lib.schema.common/visualization-settings]
+   [:viz-settings            {:optional true} :metabase.lib.schema.visualization/visualization-settings]
    [:format-rows?            {:optional true} :boolean]
    [:csv-include-bom?        {:optional true} :boolean]
    [:results_timezone        {:optional true} [:maybe :string]]
@@ -103,7 +103,7 @@
 
 (mr/def ::accumulator
   "The running accumulator of a QP reducing function, whose shape is whatever that (possibly caller-supplied) reducing function accumulates."
-  [:schema {::mr/deliberately-open true, :description "a reducing function's running accumulator"} :any])
+  [:maybe :metabase.util.malli/object])
 
 (mr/def ::rf
   "Schema for a reducing function."

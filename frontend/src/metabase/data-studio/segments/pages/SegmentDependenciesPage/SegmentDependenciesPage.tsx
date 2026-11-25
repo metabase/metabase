@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Card } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
@@ -24,12 +25,16 @@ export function SegmentDependenciesPage({
   onRemove,
   children,
 }: SegmentDependenciesPageProps) {
+  const buildQuestion = useQuestionFromOptsBuilder();
   return (
     <PageContainer data-testid="segment-dependencies-page">
       <SegmentHeader
         segment={segment}
         tabUrls={tabUrls}
-        previewUrl={getDatasetQueryPreviewUrl(segment.definition)}
+        previewUrl={getDatasetQueryPreviewUrl(
+          segment.definition,
+          buildQuestion,
+        )}
         onRemove={onRemove}
         breadcrumbs={breadcrumbs}
       />

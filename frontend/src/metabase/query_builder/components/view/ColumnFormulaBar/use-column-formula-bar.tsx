@@ -1,23 +1,21 @@
 import type { EditorView } from "@codemirror/view";
-import { useDisclosure } from "@mantine/hooks";
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import {
   FormulaEditor,
+  type FormulaSourceStatus,
   type NamedExpression,
+  editExpression,
+  findExpression,
+  isDefaultFormulaName,
 } from "metabase/querying/components/FormulaEditor";
+import { format } from "metabase/querying/expressions";
+import { isNotNull } from "metabase/utils/types";
+import type { ClickAction, ClickObject } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
 import {
@@ -26,24 +24,23 @@ import {
   useFormulaBarSlot,
 } from "../FormulaBar";
 
-type ColumnFormulaBarOptions = {
-  question: Question;
-  readOnly?: boolean;
-  isActive?: boolean;
-  onQuestionChange: (question: Question) => void;
-};
-
-type ColumnFormulaBar = {
-  /** Opens an empty formula, or focuses the current draft. */
-  open: (() => void) | undefined;
-  bar: ReactNode;
-};
+import type {
+  ColumnFormulaBar,
+  ColumnFormulaBarOptions,
+  ColumnFormulaDraft,
+} from "./types";
+import {
+  findColumnExpression,
+  findColumnLastStageExpression,
+  withEditFormulaAction,
+} from "./utils";
 
 export function useColumnFormulaBar({
   question,
   readOnly = false,
   isActive = true,
   onQuestionChange,
+  onEditSummaryFormula,
 }: ColumnFormulaBarOptions): ColumnFormulaBar {
   const formulaBarSlot = useFormulaBarSlot();
   const {
@@ -51,30 +48,11 @@ export function useColumnFormulaBar({
     open: claimOwnership,
     close: releaseOwnership,
   } = useFormulaBarOwnership();
-  const [editorKey, setEditorKey] = useState(0);
-  const [isOpen, { open: openEditor, close: closeEditor }] = useDisclosure();
+  const [draft, setDraft] = useState<ColumnFormulaDraft | null>(null);
   const [shouldRestoreFocus, setShouldRestoreFocus] = useState(false);
+  const nextKey = useRef(0);
   const viewRef = useRef<EditorView | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
-  const open = useCallback(() => {
-    if (isOwner && isOpen) {
-      viewRef.current?.focus();
-      return;
-    }
-    triggerRef.current =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
-    setEditorKey((key) => key + 1);
-    claimOwnership();
-    openEditor();
-  }, [isOpen, isOwner, claimOwnership, openEditor]);
-  const close = () => {
-    setShouldRestoreFocus(true);
-    releaseOwnership();
-    closeEditor();
-    viewRef.current = null;
-  };
 
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const isEnabled =
@@ -85,23 +63,6 @@ export function useColumnFormulaBar({
     !question.isArchived() &&
     formulaBarSlot != null;
 
-  useEffect(() => {
-    if (!isEnabled || !isOwner) {
-      closeEditor();
-      viewRef.current = null;
-      releaseOwnership();
-    }
-  }, [isEnabled, isOwner, releaseOwnership, closeEditor]);
-
-  useEffect(() => {
-    if (!isOpen && shouldRestoreFocus) {
-      setShouldRestoreFocus(false);
-      if (triggerRef.current?.isConnected) {
-        triggerRef.current.focus();
-      }
-    }
-  }, [isOpen, shouldRestoreFocus]);
-
   const { query, stageIndex } = useMemo(
     () =>
       isEnabled
@@ -109,33 +70,180 @@ export function useColumnFormulaBar({
         : { query: question.query(), stageIndex: -1 },
     [question, isEnabled],
   );
-  const databaseId = Lib.databaseID(query);
-  const { data: database } = useGetDatabaseQuery(
-    isOpen && databaseId != null ? { id: databaseId } : skipToken,
+  const editedExpression = useMemo(
+    () =>
+      draft?.kind === "edit"
+        ? findExpression(query, stageIndex, draft.clause)
+        : undefined,
+    [query, stageIndex, draft],
+  );
+  const openDraft =
+    draft?.kind === "new" || isNotNull(editedExpression) ? draft : null;
+
+  const open = useCallback(() => {
+    if (isOwner && draft?.kind === "new") {
+      viewRef.current?.focus();
+      return;
+    }
+    triggerRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    viewRef.current = null;
+    nextKey.current += 1;
+    setDraft({ kind: "new", key: nextKey.current });
+    claimOwnership();
+  }, [isOwner, draft, claimOwnership]);
+
+  const edit = useCallback(
+    (expression: Lib.ExpressionClause) => {
+      const isOpen =
+        draft?.kind === "edit" && Lib.isSameClause(draft.clause, expression);
+      if (isOwner && isOpen) {
+        viewRef.current?.focus();
+        return;
+      }
+      triggerRef.current = null;
+      viewRef.current = null;
+      nextKey.current += 1;
+      const key = nextKey.current;
+      setDraft({
+        kind: "edit",
+        key,
+        clause: expression,
+        source: "",
+        sourceStatus: "loading",
+      });
+      claimOwnership();
+      // The printed formula only lands in its own draft, not in one that replaced it since.
+      const showSource = (source: string, sourceStatus: FormulaSourceStatus) =>
+        setDraft((current) =>
+          current?.kind === "edit" && current.key === key
+            ? { ...current, source, sourceStatus }
+            : current,
+        );
+      format(expression, { query, stageIndex, printWidth: Infinity }).then(
+        (source) => showSource(source, "ready"),
+        () => showSource("", "failed"),
+      );
+    },
+    [isOwner, draft, query, stageIndex, claimOwnership],
   );
 
-  const handleSubmit = ({ name, clause }: NamedExpression) => {
-    const uniqueName = getUniqueExpressionName(query, stageIndex, name);
-    const nextQuery = Lib.expression(query, stageIndex, uniqueName, clause);
-    onQuestionChange(question.setQuery(nextQuery));
+  const close = useCallback(() => {
+    setShouldRestoreFocus(true);
+    releaseOwnership();
+    setDraft(null);
+    viewRef.current = null;
+  }, [releaseOwnership]);
+
+  useEffect(() => {
+    if (!isEnabled || !isOwner) {
+      setDraft(null);
+      viewRef.current = null;
+      releaseOwnership();
+    }
+  }, [isEnabled, isOwner, releaseOwnership]);
+
+  const isEditedExpressionGone =
+    isOwner && draft?.kind === "edit" && !editedExpression;
+  useEffect(() => {
+    if (isEditedExpressionGone) {
+      close();
+    }
+  }, [isEditedExpressionGone, close]);
+
+  useEffect(() => {
+    if (!draft && shouldRestoreFocus) {
+      setShouldRestoreFocus(false);
+      if (triggerRef.current?.isConnected) {
+        triggerRef.current.focus();
+      }
+    }
+  }, [draft, shouldRestoreFocus]);
+
+  const databaseId = Lib.databaseID(query);
+  const { data: database } = useGetDatabaseQuery(
+    draft && databaseId != null ? { id: databaseId } : skipToken,
+  );
+
+  const mapClickActions = useCallback(
+    (actions: ClickAction[], { column, value }: ClickObject) => {
+      // only header clicks: a click on a cell or a chart point has a value
+      if (!column || value !== undefined) {
+        return actions;
+      }
+      const expression = findColumnExpression(query, stageIndex, column);
+      if (expression) {
+        return withEditFormulaAction(actions, () => edit(expression));
+      }
+      const groupingExpression = findColumnLastStageExpression(
+        question.query(),
+        column,
+      );
+      if (groupingExpression && onEditSummaryFormula) {
+        return withEditFormulaAction(actions, () =>
+          onEditSummaryFormula(groupingExpression),
+        );
+      }
+      return actions;
+    },
+    [question, query, stageIndex, edit, onEditSummaryFormula],
+  );
+
+  const handleEditorCreate = (view: EditorView) => {
+    viewRef.current = view;
+    view.dispatch({ selection: { anchor: view.state.doc.length } });
+  };
+
+  const handleSubmit = (expression: NamedExpression) => {
+    if (openDraft?.kind === "edit" && editedExpression) {
+      // Replacing an unchanged formula still rewrites the clauses that refer to it, so skip it.
+      const isChanged =
+        openDraft.source !== viewRef.current?.state.doc.toString().trim();
+      if (isChanged) {
+        const { displayName } = Lib.displayInfo(
+          query,
+          stageIndex,
+          editedExpression.clause,
+        );
+        const { query: nextQuery } = editExpression(
+          query,
+          stageIndex,
+          editedExpression.clause,
+          expression,
+          !isDefaultFormulaName(displayName, openDraft.source),
+        );
+        onQuestionChange(question.setQuery(nextQuery), { isNewColumn: false });
+      }
+    } else {
+      const { name, clause } = expression;
+      const uniqueName = getUniqueExpressionName(query, stageIndex, name);
+      const nextQuery = Lib.expression(query, stageIndex, uniqueName, clause);
+      onQuestionChange(question.setQuery(nextQuery), { isNewColumn: true });
+    }
     close();
   };
 
+  const isEditing = openDraft?.kind === "edit";
+  // the editor mounts once the edited formula has its text, as it reads it only on mount
+  const isLoading = isEditing && openDraft.sourceStatus === "loading";
   const bar =
     formulaBarSlot &&
     createPortal(
       <FormulaBarFrame>
-        {isEnabled && isOwner && isOpen ? (
+        {isEnabled && isOwner && openDraft && !isLoading ? (
           <FormulaEditor
-            key={editorKey}
+            key={openDraft.key}
             query={query}
             stageIndex={stageIndex}
             database={database}
             expressionMode="expression"
-            submitLabel={t`Add column`}
-            onEditorCreate={(view) => {
-              viewRef.current = view;
-            }}
+            expressionIndex={editedExpression?.index}
+            initialSource={isEditing ? openDraft.source : undefined}
+            sourceStatus={isEditing ? openDraft.sourceStatus : undefined}
+            submitLabel={isEditing ? t`Update` : t`Add column`}
+            onEditorCreate={handleEditorCreate}
             onSubmit={handleSubmit}
             onCancel={close}
           />
@@ -144,5 +252,9 @@ export function useColumnFormulaBar({
       formulaBarSlot,
     );
 
-  return { open: isEnabled ? open : undefined, bar };
+  return {
+    open: isEnabled ? open : undefined,
+    mapClickActions: isEnabled ? mapClickActions : undefined,
+    bar,
+  };
 }

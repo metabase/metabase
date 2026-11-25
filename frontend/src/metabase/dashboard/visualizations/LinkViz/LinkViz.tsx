@@ -1,13 +1,18 @@
+import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { useToggle } from "metabase/common/hooks/use-toggle";
+import CS from "metabase/css/core/index.css";
 import { getParameterValues } from "metabase/dashboard/selectors";
 import { fillParametersInText } from "metabase/dashboard/visualizations/parameter-substitution";
+import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResults } from "metabase/nav/components/search/SearchResults";
 import { useSelector } from "metabase/redux";
-import { Popover, TextInput } from "metabase/ui";
+import { Box, Flex, Popover, TextInput } from "metabase/ui";
 import { getUrlTarget, modelToUrl } from "metabase/urls";
 import type {
   Dashboard,
@@ -23,14 +28,7 @@ import {
   RestrictedEntityDisplay,
   UrlLinkDisplay,
 } from "./EntityDisplay";
-import {
-  CardLink,
-  DisplayLinkCardWrapper,
-  EditLinkCardWrapper,
-  ExternalLink,
-  SearchResultsContainer,
-  StyledRecentsList,
-} from "./LinkViz.styled";
+import S from "./LinkViz.module.css";
 import { settings } from "./LinkVizSettings";
 import { isUrlString } from "./utils";
 
@@ -43,6 +41,8 @@ const MODELS_TO_SEARCH: SearchModel[] = [
   "table",
   "document",
 ];
+
+const linkClassName = cx(S.link, CS.textBold, CS.textBrandHover);
 
 export interface LinkVizProps {
   dashcard: VirtualDashboardCard;
@@ -138,14 +138,15 @@ function LinkVizInner({
 
     return (
       <DisplayLinkCardWrapper>
-        <CardLink
+        <Link
+          className={linkClassName}
           data-testid="entity-view-display-link"
           to={modelToUrl(linkEntity)}
           rel="noreferrer"
           role="link"
         >
           <EntityDisplay entity={linkEntity} showDescription />
-        </CardLink>
+        </Link>
       </DisplayLinkCardWrapper>
     );
   }
@@ -177,9 +178,9 @@ function LinkVizInner({
           </Popover.Target>
           <Popover.Dropdown>
             {!interpolatedUrl?.trim?.().length && !entity ? (
-              <StyledRecentsList onClick={handleEntitySelect} />
+              <RecentsList className={S.results} onClick={handleEntitySelect} />
             ) : (
-              <SearchResultsContainer>
+              <Box className={S.results}>
                 <SearchResults
                   searchText={url?.trim()}
                   forceEntitySelect
@@ -187,7 +188,7 @@ function LinkVizInner({
                   models={MODELS_TO_SEARCH}
                   context="entity-picker"
                 />
-              </SearchResultsContainer>
+              </Box>
             )}
           </Popover.Dropdown>
         </Popover>
@@ -199,6 +200,7 @@ function LinkVizInner({
   return (
     <DisplayLinkCardWrapper data-testid="custom-view-text-link">
       <ExternalLink
+        className={linkClassName}
         href={interpolatedUrl ?? ""}
         target={getUrlTarget(url)}
         rel="noreferrer"
@@ -206,6 +208,34 @@ function LinkVizInner({
         <UrlLinkDisplay url={interpolatedUrl} />
       </ExternalLink>
     </DisplayLinkCardWrapper>
+  );
+}
+
+type LinkCardWrapperProps = {
+  children: React.ReactNode;
+  "data-testid"?: string;
+};
+
+function EditLinkCardWrapper({ children, ...props }: LinkCardWrapperProps) {
+  return (
+    <Flex
+      direction="column"
+      justify="center"
+      w="100%"
+      h="100%"
+      px="lg"
+      {...props}
+    >
+      {children}
+    </Flex>
+  );
+}
+
+function DisplayLinkCardWrapper({ children, ...props }: LinkCardWrapperProps) {
+  return (
+    <Flex w="100%" h="100%" align="center" px="sm" {...props}>
+      {children}
+    </Flex>
   );
 }
 

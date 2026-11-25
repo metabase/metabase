@@ -1,7 +1,9 @@
 // Shared lint policy. Keep ESLint and oxlint file scopes and options together.
+import fs from "node:fs";
 import path from "node:path";
 
 import globals from "globals";
+import JSON5 from "json5";
 
 import {
   SIDE_EFFECT_FREE_PATHS,
@@ -19,6 +21,33 @@ import {
 } from "./no-module-side-effects-options.js";
 import presets from "./recommended-rules.json" with { type: "json" };
 const __dirname = path.resolve(import.meta.dirname, "../..");
+// Type-aware rules only give stable results for files in the root tsconfig's program.
+// tsgolint gives any other file a fallback program whose types depend on what else is
+// being linted, so derive the scope from tsconfig.json instead of repeating it.
+const rootTsconfig = JSON5.parse(
+  fs.readFileSync(path.join(__dirname, "tsconfig.json"), "utf8"),
+);
+const TYPE_AWARE_RULE_FILES = rootTsconfig.include.map((pattern) => {
+  if (!pattern.endsWith("/**/*")) {
+    throw new Error(`Unsupported tsconfig.json include pattern: ${pattern}`);
+  }
+  return `${pattern}.{ts,tsx}`;
+});
+const TYPE_AWARE_RULE_IGNORES = [
+  ...rootTsconfig.exclude.map((pattern) =>
+    pattern.includes("*") ? pattern : `${pattern}/**`,
+  ),
+  // tsconfig include globs skip dot-directories such as .storybook.
+  "**/.*/**",
+  // Tests and stories: @types/jest and other test libraries return `any` widely.
+  "**/*.spec.{ts,tsx}",
+  "**/test/**",
+  "**/tests/**",
+  "**/test-utils.{ts,tsx}",
+  "**/*.stories.{ts,tsx}",
+  "**/stories-data.{ts,tsx}",
+];
+
 const TEST_FILES_NAME_PATTERN_ERROR_MESSAGE = `Please name your test setup and utils files with a ".spec.*" in the filename, or put them under "/tests", e.g. "setup.spec.ts", "MyComponent.setup.spec.ts", or "tests/setup.ts". This is to ensure they won't be imported in the SDK build.`;
 
 // ttag string extraction only understands contexts chained inline, e.g. c("...").t`...`;
@@ -86,15 +115,6 @@ const baseMetabaseRestrictedConfig = {
     {
       name: "@mantine/core",
       message: "Please import from `metabase/ui` instead.",
-    },
-    {
-      name: "@emotion/styled",
-      message: "Please style components using css modules.",
-    },
-    {
-      name: "@emotion/react",
-      message:
-        "Please use components from `metabase/ui` instead and style them using css modules.",
     },
     {
       name: "@storybook/test",
@@ -304,6 +324,10 @@ const configs = [
             "ora",
             "cross-fetch",
           ],
+          // icepick returns `any` from helpers like `getIn`. Use optional
+          // chaining, spreads, immer, `getAtPath` from "metabase/utils/get-at-path",
+          // or `deepMerge` from "metabase/utils/deep-merge" instead.
+          modules: ["icepick"],
         },
       ],
 
@@ -428,6 +452,17 @@ const configs = [
       ],
       "@typescript-eslint/no-unsafe-declaration-merging": "off",
       "no-unused-vars": "off", // Disable base rule for TS files
+    },
+  },
+  {
+    files: TYPE_AWARE_RULE_FILES,
+    ignores: TYPE_AWARE_RULE_IGNORES,
+    rules: {
+      "@typescript-eslint/no-unsafe-argument": "error",
+      "@typescript-eslint/no-unsafe-assignment": "error",
+      "@typescript-eslint/no-unsafe-call": "error",
+      "@typescript-eslint/no-unsafe-member-access": "error",
+      "@typescript-eslint/no-unsafe-return": "error",
     },
   },
   {
@@ -659,15 +694,6 @@ const configs = [
               message: "Please import routing from `metabase/router` instead.",
             },
             dayjsRestrictedPath,
-            {
-              name: "@emotion/styled",
-              message: "Please style components using css modules.",
-            },
-            {
-              name: "@emotion/react",
-              message:
-                "Please use components from `metabase/ui` instead and style them using css modules.",
-            },
           ],
         },
       ],
@@ -708,15 +734,6 @@ const configs = [
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
-            },
-            {
-              name: "@emotion/styled",
-              message: "Please style components using css modules.",
-            },
-            {
-              name: "@emotion/react",
-              message:
-                "Please use components from `metabase/ui` instead and style them using css modules.",
             },
             {
               name: "@storybook/test",

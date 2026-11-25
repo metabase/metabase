@@ -141,11 +141,18 @@
        (remove #(str/includes? (.getName ^File %) "___"))
        (into [] (comp (map load-yaml) (filter #(= model (entity-model %)))))))
 
+(defn- table-publication
+  "The `:is_published` and `:collection_id` of the Table in `table-dir`, from its `___tableusersettings` side-car."
+  [^File table-dir]
+  (let [f (io/file table-dir (str (.getName table-dir) "___tableusersettings.yaml"))]
+    (when (.exists f)
+      (select-keys (load-yaml f) [:is_published :collection_id]))))
+
 (defn- load-table
   "Load one Table directory into `{:table :fields :measures}`, or nil if its self-yaml is missing."
   [^File table-dir]
   (when-let [self (table-self-yaml table-dir)]
-    {:table    (load-yaml self)
+    {:table    (merge (load-yaml self) (table-publication table-dir))
      :fields   (load-yamls-of-model (io/file table-dir "fields")   "Field")
      :measures (load-yamls-of-model (io/file table-dir "measures") "Measure")}))
 

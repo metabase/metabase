@@ -1,6 +1,5 @@
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
-import { merge } from "icepick";
 import { shallowEqual } from "react-redux";
 import _ from "underscore";
 
@@ -16,9 +15,11 @@ import {
   isQuestionDirty,
   isQuestionRunnable,
 } from "metabase/querying/common/utils/question";
+import type { MetabotCardBaseline } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import { filterTimelinesByXAxes } from "metabase/timelines/panel/utils";
+import { deepMerge } from "metabase/utils/deep-merge";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import { getIsPKFromSourcePredicate } from "metabase/visualizations/components/ObjectDetail/utils";
@@ -49,10 +50,11 @@ import type {
   DatasetColumn,
   DatasetQuery,
   Field,
-  NormalizedFieldId,
+  FieldId,
   Series,
   TimelineEventsVisibility,
 } from "metabase-types/api";
+import type { DeepPartial } from "metabase-types/utils/types";
 
 import { cleanIndexFlags } from "../model-indexes/actions";
 import { getWritableColumnProperties } from "../utils";
@@ -93,6 +95,9 @@ export const getLoadingControls = (state: QueryBuilderStoreState) =>
 
 export const getSummaryGeneratedExpressions = (state: QueryBuilderStoreState) =>
   getUiControls(state).summaryGeneratedExpressions;
+
+export const getSummaryFormulaToEdit = (state: QueryBuilderStoreState) =>
+  getUiControls(state).summaryFormulaToEdit;
 
 export const getIsShowingTemplateTagsEditor = (state: QueryBuilderStoreState) =>
   getUiControls(state).isShowingTemplateTagsEditor;
@@ -157,6 +162,12 @@ export const getIsBookmarked = (
 
 export const getQueryStartTime = (state: QueryBuilderStoreState) =>
   state.qb.queryStartTime;
+
+export const getPendingMetabotCard = (state: QueryBuilderStoreState) =>
+  state.qb.pendingMetabotCard;
+
+export const getMetabotCardBaselines = (state: QueryBuilderStoreState) =>
+  state.qb.metabotCardBaselines;
 
 export const getDatabaseId = createSelector(
   [getCard],
@@ -255,7 +266,12 @@ export const getQueryResults = createSelector(
 
     function applyMetadataDiff<T extends DatasetColumn | Field>(column: T): T {
       const columnDiff = metadataDiff[column.name];
-      return columnDiff ? merge(column, columnDiff) : column;
+      if (!columnDiff) {
+        return column;
+      }
+      // The diff only holds writable column properties that exist on both
+      // `DatasetColumn` and `Field`, so it is a partial of `T`.
+      return deepMerge(column, columnDiff as DeepPartial<T>);
     }
 
     return [
@@ -321,7 +337,7 @@ export const getTableMetadata = createSelector(
   (tableId, tables) => (tableId != null ? tables[tableId] : undefined),
 );
 
-const NO_FIELD_IDS: NormalizedFieldId[] = [];
+const NO_FIELD_IDS: FieldId[] = [];
 
 const getTableFieldIds = (state: QueryBuilderStoreState) => {
   const tableId = getSourceTableId(state);
@@ -401,15 +417,15 @@ export const getRowIndexToPKMap = createSelector(
   },
 );
 
-function areLegacyQueriesEqual(
+function areQueriesEqual(
   queryA: DatasetQuery | undefined,
   queryB: DatasetQuery | undefined,
-  tableFieldIds: NormalizedFieldId[],
+  tableFieldIds: FieldId[],
 ) {
   if (queryA == null || queryB == null) {
     return false;
   }
-  return Lib.areLegacyQueriesEqual(
+  return Lib.areQueriesEqual(
     queryA,
     queryB,
     tableFieldIds.filter((id): id is number => typeof id === "number"),
@@ -429,7 +445,7 @@ function areComposedEntitiesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableFieldIds: NormalizedFieldId[];
+  tableFieldIds: FieldId[];
 }) {
   const isQuestion = originalQuestion?.type() === "question";
   if (!originalQuestion || !lastRunQuestion || !currentQuestion || isQuestion) {
@@ -438,12 +454,12 @@ function areComposedEntitiesEquivalent({
 
   const composedOriginal = originalQuestion.composeQuestionAdhoc();
 
-  const isLastRunComposed = areLegacyQueriesEqual(
+  const isLastRunComposed = areQueriesEqual(
     lastRunQuestion.datasetQuery(),
     composedOriginal.datasetQuery(),
     tableFieldIds,
   );
-  const isCurrentComposed = areLegacyQueriesEqual(
+  const isCurrentComposed = areQueriesEqual(
     currentQuestion.datasetQuery(),
     composedOriginal.datasetQuery(),
     tableFieldIds,
@@ -451,7 +467,7 @@ function areComposedEntitiesEquivalent({
 
   const isLastRunEquivalentToCurrent =
     isLastRunComposed &&
-    areLegacyQueriesEqual(
+    areQueriesEqual(
       currentQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableFieldIds,
@@ -459,7 +475,7 @@ function areComposedEntitiesEquivalent({
 
   const isCurrentEquivalentToLastRun =
     isCurrentComposed &&
-    areLegacyQueriesEqual(
+    areQueriesEqual(
       lastRunQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableFieldIds,
@@ -477,10 +493,10 @@ export function areQueriesEquivalent({
   originalQuestion?: Question | null;
   lastRunQuestion?: Question | null;
   currentQuestion?: Question | null;
-  tableFieldIds: NormalizedFieldId[];
+  tableFieldIds: FieldId[];
 }) {
   return (
-    areLegacyQueriesEqual(
+    areQueriesEqual(
       lastRunQuestion?.datasetQuery(),
       currentQuestion?.datasetQuery(),
       tableFieldIds,
@@ -634,6 +650,35 @@ export const isResultsMetadataDirty = createSelector(
   },
 );
 
+/**
+ * The query, display, visualization settings and parameters of a question.
+ * Comparing them tells whether the user has changed a question Metabot opened.
+ */
+export const toMetabotCardBaseline = (
+  question: Question,
+): MetabotCardBaseline => {
+  const card = question.card();
+  return {
+    dataset_query: card.dataset_query,
+    display: card.display,
+    visualization_settings: card.visualization_settings,
+    // as `updateQuestion` writes them, since a loaded card may have none
+    parameters: question.applyTemplateTagParameters().card().parameters,
+  };
+};
+
+/** Whether Metabot opened the current question and it still matches one of its baselines. */
+export const getIsUntouchedMetabotCard = createSelector(
+  [getQuestion, getMetabotCardBaselines],
+  (question, baselines) => {
+    if (!question || baselines.length === 0) {
+      return false;
+    }
+    const current = toMetabotCardBaseline(question);
+    return baselines.some((baseline) => _.isEqual(baseline, current));
+  },
+);
+
 export const getShouldShowUnsavedChangesWarning = createSelector(
   [
     getQueryBuilderMode,
@@ -642,6 +687,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     getQuestion,
     getOriginalQuestion,
     getUiControls,
+    getIsUntouchedMetabotCard,
   ],
   (
     queryBuilderMode,
@@ -650,6 +696,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
     question,
     originalQuestion,
     uiControls,
+    isUntouchedMetabotCard,
   ) => {
     const isEditingModelOrMetric = queryBuilderMode === "dataset";
 
@@ -665,7 +712,7 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
       const rawQuery = Lib.rawNativeQuery(question.query());
 
       if (isNewQuestion) {
-        return rawQuery.length > 0;
+        return rawQuery.length > 0 && !isUntouchedMetabotCard;
       }
 
       const rawOriginalQuery = Lib.rawNativeQuery(originalQuestion.query());
@@ -950,7 +997,9 @@ export const getIsVisualized = createSelector(
       question.display() !== "list") ||
       (settings != null &&
         (settings["table.pivot"] ||
-          (question.display() === "table" && settings["table.pivot_column"])))), // last case - pivot_column is set but display is set to table viz (#56094)
+          (question.display() === "table" &&
+            // "table.pivot_column" is typed `any` via the settings index signature; it is a column name string
+            (settings["table.pivot_column"] as string | undefined))))), // last case - pivot_column is set but display is set to table viz (#56094)
 );
 
 export const getIsLiveResizable = createSelector(

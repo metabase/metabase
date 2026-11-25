@@ -4,6 +4,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.example-question-generator :as native-generator]
+   [metabase.metabot.models.metabot-prompt :as metabot-prompt]
    [metabase.metabot.tools.entity-details :as metabot.tools.entity-details]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.metabot.usage :as metabot.usage]
@@ -89,17 +90,14 @@
                 (generate-questions-with-fallback {:metrics metric-inputs, :tables model-inputs})
                 ->prompt (fn [{:keys [questions]} {::keys [origin]}]
                            (let [base {:metabot_id metabot-id
-                                       :model      (:type origin)
                                        :card_id    (:id origin)}]
                              (map #(assoc base :prompt %) questions)))
                 ;; Realize into vectors so we don't redo `->prompt` work when counting and inserting.
                 metric-prompts (vec (mapcat ->prompt metric_questions metrics))
                 model-prompts  (vec (mapcat ->prompt table_questions models))
                 total          (+ (count metric-prompts) (count model-prompts))]
-            (when (seq metric-prompts)
-              (metabot.db/insert-prompts! metric-prompts))
-            (when (seq model-prompts)
-              (metabot.db/insert-prompts! model-prompts))
+            (when (pos? total)
+              (metabot-prompt/create-metabot-prompts! (into metric-prompts model-prompts)))
             (if (zero? total)
               {:status :ai-produced-no-prompts}
               {:status :generated :prompt_count total})))))))
@@ -107,4 +105,4 @@
 (defn delete-all-metabot-prompts
   "Drop suggested prompts for instance of Metabot."
   [metabot-id]
-  (metabot.db/delete-prompts-for-metabot! metabot-id))
+  (metabot-prompt/delete-metabot-prompts! (metabot.db/prompt-ids-for-metabots [metabot-id])))

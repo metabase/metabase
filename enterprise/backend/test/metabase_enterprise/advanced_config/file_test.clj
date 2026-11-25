@@ -2,11 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.match :as match]
    [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
@@ -192,15 +192,8 @@
           (#'advanced-config.file/config bad-config {:expand-templates? true})
           (catch Throwable e
             (letfn [(contains-password? [form]
-                      (let [seen-password? (atom false)]
-                        (walk/postwalk
-                         (fn [form]
-                           (when (and (string? form)
-                                      (str/includes? form "~~~SeCrEt123~~~"))
-                             (reset! seen-password? true))
-                           form)
-                         form)
-                        @seen-password?))]
+                      (match/match-one form
+                        (s :guard (and (string? s) (str/includes? s "~~~SeCrEt123~~~"))) true))]
               (is (not (contains-password? (ex-message e))))
               (is (not (contains-password? (ex-data e)))))))))))
 

@@ -56,7 +56,14 @@ function getColumnSplitToSync(
 export function canPivotSummary(question: Question, stageIndex: number) {
   const isLastStage =
     stageIndex === -1 || stageIndex === Lib.stageCount(question.query()) - 1;
-  return isLastStage && (question.database()?.supportsPivots() ?? true);
+  if (!isLastStage) {
+    return false;
+  }
+  const features = Lib.databaseDisplayInfo(question.query())?.features;
+  return (
+    features == null ||
+    (features.includes("expressions") && features.includes("left-join"))
+  );
 }
 
 /**

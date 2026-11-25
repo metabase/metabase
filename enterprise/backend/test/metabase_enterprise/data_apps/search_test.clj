@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.config :as data-apps.config]
+   [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.appdb.index :as search.index]
@@ -41,7 +42,6 @@
   [user]
   (mt/with-current-user (mt/user->id user)
     (-> (search/search-context {:current-user-id       api/*current-user-id*
-                                :current-user-perms    @api/*current-user-permissions-set*
                                 :is-superuser?         api/*is-superuser?*
                                 :is-impersonated-user? false
                                 :is-sandboxed-user?    false
@@ -65,100 +65,105 @@
 
 (deftest search-finds-the-data-apps-the-user-can-read-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {slug-match-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"}
-                   :model/DataApp {granted-id :id} {:name "plovers" :display_name "Sandpiper counts"}
-                   :model/PermissionsGroup {group-id :id} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
-      (grant-app-access! group-id granted-id)
-      (with-each-engine
-        (fn []
-          (testing "an admin finds every app, by its slug or its display name"
-            (is (= #{slug-match-id granted-id}
-                   (set (keys (found-data-apps :crowberto :models "data-app"))))))
-          (testing "another user finds the apps whose collection one of their groups can read, with display name and slug"
-            (is (= {granted-id {:name "Sandpiper counts" :data_app_slug "plovers"}}
-                   (found-data-apps :rasta :models "data-app"))))
-          (testing "a user in no group with access finds none"
-            (is (= {} (found-data-apps :lucky :models "data-app"))))
-          (testing "a search that names no models, as global search does, finds them too"
-            (is (= #{slug-match-id granted-id}
-                   (set (keys (found-data-apps :crowberto)))))))))))
+    (mt/with-model-cleanup [:model/DataApp :model/Collection]
+      (let [[{slug-match-id :id}] (data-app/create-data-apps! [(merge (mt/with-temp-defaults :model/DataApp) {:slug "sandpiper-sightings" :name "Shorebirds"})])
+            [{granted-id :id}] (data-app/create-data-apps! [(merge (mt/with-temp-defaults :model/DataApp) {:slug "plovers" :name "Sandpiper counts"})])]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+          (grant-app-access! group-id granted-id)
+          (with-each-engine
+            (fn []
+              (testing "an admin finds every app, by its slug or its display name"
+                (is (= #{slug-match-id granted-id}
+                       (set (keys (found-data-apps :crowberto :models "data-app"))))))
+              (testing "another user finds the apps whose collection one of their groups can read, with display name and slug"
+                (is (= {granted-id {:name "Sandpiper counts" :data_app_slug "plovers"}}
+                       (found-data-apps :rasta :models "data-app"))))
+              (testing "a user in no group with access finds none"
+                (is (= {} (found-data-apps :lucky :models "data-app"))))
+              (testing "a search that names no models, as global search does, finds them too"
+                (is (= #{slug-match-id granted-id}
+                       (set (keys (found-data-apps :crowberto)))))))))))))
 
 (deftest search-finds-disabled-and-outdated-data-apps-the-user-can-read-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {current-id :id} {:name "sandpiper-dunlin" :display_name "Dunlin" :version 2}
-                   :model/DataApp {outdated-id :id} {:name "sandpiper-knot" :display_name "Knot" :version 1}
-                   :model/DataApp {disabled-id :id} {:name "sandpiper-sanderling" :display_name "Sanderling" :version 2 :enabled false}
-                   :model/PermissionsGroup {group-id :id} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
-      (grant-app-access! group-id current-id)
-      (grant-app-access! group-id outdated-id)
-      (grant-app-access! group-id disabled-id)
-      (with-redefs [data-apps.config/supported-app-version 2]
-        (with-each-engine
-          (fn []
-            (doseq [params [[] [:models "data-app"]]]
-              (testing (str "an admin searching with " (pr-str params) " finds disabled and outdated apps too")
-                (is (= #{current-id outdated-id disabled-id}
-                       (set (keys (apply found-data-apps :crowberto params))))))
-              (testing (str "another user searching with " (pr-str params) " finds outdated apps, but no disabled one")
-                (is (= #{current-id outdated-id}
-                       (set (keys (apply found-data-apps :rasta params)))))))))))))
+    (mt/with-model-cleanup [:model/DataApp :model/Collection]
+      (let [[{current-id :id}] (data-app/create-data-apps! [(merge (mt/with-temp-defaults :model/DataApp) {:slug "sandpiper-dunlin" :name "Dunlin" :version 2})])
+            [{outdated-id :id}] (data-app/create-data-apps! [(merge (mt/with-temp-defaults :model/DataApp) {:slug "sandpiper-knot" :name "Knot" :version 1})])
+            [{disabled-id :id}] (data-app/create-data-apps! [(merge (mt/with-temp-defaults :model/DataApp) {:slug "sandpiper-sanderling" :name "Sanderling" :version 2 :enabled false})])]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+          (grant-app-access! group-id current-id)
+          (grant-app-access! group-id outdated-id)
+          (grant-app-access! group-id disabled-id)
+          (with-redefs [data-apps.config/supported-app-version 2]
+            (with-each-engine
+              (fn []
+                (doseq [params [[] [:models "data-app"]]]
+                  (testing (str "an admin searching with " (pr-str params) " finds disabled and outdated apps too")
+                    (is (= #{current-id outdated-id disabled-id}
+                           (set (keys (apply found-data-apps :crowberto params))))))
+                  (testing (str "another user searching with " (pr-str params) " finds outdated apps, but no disabled one")
+                    (is (= #{current-id outdated-id}
+                           (set (keys (apply found-data-apps :rasta params)))))))))))))))
 
 (deftest search-without-models-finds-only-the-data-apps-the-user-can-read-test
   (mt/with-premium-features #{:data-apps :tenants}
     (mt/with-temporary-setting-values [use-tenants true]
-      (mt/with-temp [:model/Tenant tenant {:name "Tenant"}
-                     :model/User tenant-user {:tenant_id (:id tenant)}
-                     :model/DataApp {enabled-id :id} {:name "plovers" :display_name "Sandpiper counts"}
-                     :model/DataApp {disabled-id :id} {:name "sandpiper-drafts" :display_name "Drafts"
-                                                       :enabled false}
-                     :model/DataApp {ungranted-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"}
-                     :model/PermissionsGroup {group-id :id} {}
-                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
-        (grant-app-access! group-id enabled-id)
-        (grant-app-access! group-id disabled-id)
-        (with-each-engine
-          (fn []
-            (testing "an admin finds every app"
-              (is (= #{enabled-id disabled-id ungranted-id} (set (keys (found-data-apps :crowberto))))))
-            (testing "another user finds only the enabled apps whose collection one of their groups can read"
-              (is (= #{enabled-id} (set (keys (found-data-apps :rasta))))))
-            (testing "a user in no group with access finds none"
-              (is (= {} (found-data-apps :lucky))))
-            (testing "a tenant user finds none"
-              (is (= {} (found-data-apps (:id tenant-user)))))))))))
+      (mt/with-model-cleanup [:model/DataApp :model/Collection]
+        (let [[{enabled-id :id}] (data-app/create-data-apps! [(merge (mt/with-temp-defaults :model/DataApp) {:slug "plovers" :name "Sandpiper counts"})])
+              [{disabled-id :id}] (data-app/create-data-apps! [(merge (mt/with-temp-defaults :model/DataApp) {:slug "sandpiper-drafts" :name "Drafts"
+                                                                                                              :enabled false})])
+              [{ungranted-id :id}] (data-app/create-data-apps! [(merge (mt/with-temp-defaults :model/DataApp) {:slug "sandpiper-sightings" :name "Shorebirds"})])]
+          (mt/with-temp [:model/Tenant tenant {:name "Tenant"}
+                         :model/User tenant-user {:tenant_id (:id tenant)}
+                         :model/PermissionsGroup {group-id :id} {}
+                         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+            (grant-app-access! group-id enabled-id)
+            (grant-app-access! group-id disabled-id)
+            (with-each-engine
+              (fn []
+                (testing "an admin finds every app"
+                  (is (= #{enabled-id disabled-id ungranted-id} (set (keys (found-data-apps :crowberto))))))
+                (testing "another user finds only the enabled apps whose collection one of their groups can read"
+                  (is (= #{enabled-id} (set (keys (found-data-apps :rasta))))))
+                (testing "a user in no group with access finds none"
+                  (is (= {} (found-data-apps :lucky))))
+                (testing "a tenant user finds none"
+                  (is (= {} (found-data-apps (:id tenant-user)))))))))))))
 
 (deftest type-filter-offers-data-apps-only-to-users-who-can-read-one-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {enabled-id :id} {:name "plovers" :display_name "Sandpiper counts"}
-                   :model/DataApp {disabled-id :id} {:name "sandpiper-drafts" :display_name "Drafts"
-                                                     :enabled false}
-                   :model/PermissionsGroup {other-group-id :id} {}
-                   :model/PermissionsGroup {group-id :id} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
-      (grant-app-access! other-group-id enabled-id)
-      (grant-app-access! group-id disabled-id)
-      (with-each-engine
-        (fn []
-          (testing "an admin is offered data apps"
-            (is (offers-data-app-type? :crowberto)))
-          (testing "a user in no group with access is not offered data apps"
-            (is (not (offers-data-app-type? :lucky))))
-          (testing "a user whose groups can read only a disabled app's collection is not offered data apps"
-            (is (not (offers-data-app-type? :rasta)))))))))
+    (mt/with-model-cleanup [:model/DataApp :model/Collection]
+      (let [[{enabled-id :id}] (data-app/create-data-apps! [(merge (mt/with-temp-defaults :model/DataApp) {:slug "plovers" :name "Sandpiper counts"})])
+            [{disabled-id :id}] (data-app/create-data-apps! [(merge (mt/with-temp-defaults :model/DataApp) {:slug "sandpiper-drafts" :name "Drafts"
+                                                                                                            :enabled false})])]
+        (mt/with-temp [:model/PermissionsGroup {other-group-id :id} {}
+                       :model/PermissionsGroup {group-id :id} {}
+                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+          (grant-app-access! other-group-id enabled-id)
+          (grant-app-access! group-id disabled-id)
+          (with-each-engine
+            (fn []
+              (testing "an admin is offered data apps"
+                (is (offers-data-app-type? :crowberto)))
+              (testing "a user in no group with access is not offered data apps"
+                (is (not (offers-data-app-type? :lucky))))
+              (testing "a user whose groups can read only a disabled app's collection is not offered data apps"
+                (is (not (offers-data-app-type? :rasta)))))))))))
 
 (deftest type-filter-offers-no-data-apps-without-the-feature-test
   (mt/with-premium-features #{}
-    (mt/with-temp [:model/DataApp {app-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"}
-                   :model/PermissionsGroup {group-id :id} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
-      (grant-app-access! group-id app-id)
-      (with-each-engine
-        (fn []
-          (doseq [user [:crowberto :rasta :lucky]]
-            (testing (str user " is not offered data apps")
-              (is (not (offers-data-app-type? user))))))))))
+    (mt/with-model-cleanup [:model/DataApp :model/Collection]
+      (let [[{app-id :id}] (data-app/create-data-apps! [(merge (mt/with-temp-defaults :model/DataApp) {:slug "sandpiper-sightings" :name "Shorebirds"})])]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+          (grant-app-access! group-id app-id)
+          (with-each-engine
+            (fn []
+              (doseq [user [:crowberto :rasta :lucky]]
+                (testing (str user " is not offered data apps")
+                  (is (not (offers-data-app-type? user))))))))))))
 
 (defn- without-app-db-index
   "Run `thunk` as on an app DB that cannot hold the search index, such as MySQL and MariaDB."
@@ -169,46 +174,59 @@
 
 (deftest semantic-type-filter-offers-data-apps-only-to-users-who-can-read-one-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {app-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"}
-                   :model/PermissionsGroup {group-id :id} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
-      (grant-app-access! group-id app-id)
-      (doseq [[app-db with-app-db] [["this app DB" (fn [thunk] (thunk))]
-                                    ["an app DB without the search index" without-app-db-index]]]
-        (with-app-db
-          (fn []
-            (testing app-db
-              (testing "an admin is offered data apps"
-                (is (semantic-engine-offers-data-app-type? :crowberto)))
-              (testing "a user in a group with access is offered data apps"
-                (is (semantic-engine-offers-data-app-type? :rasta)))
-              (testing "a user in no group with access is not offered data apps"
-                (is (not (semantic-engine-offers-data-app-type? :lucky)))))))))))
+    (mt/with-model-cleanup [:model/DataApp :model/Collection]
+      (let [[{app-id :id}] (data-app/create-data-apps! [(merge (mt/with-temp-defaults :model/DataApp) {:slug "sandpiper-sightings" :name "Shorebirds"})])]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+          (grant-app-access! group-id app-id)
+          (doseq [[app-db with-app-db] [["this app DB" (fn [thunk] (thunk))]
+                                        ["an app DB without the search index" without-app-db-index]]]
+            (with-app-db
+              (fn []
+                (testing app-db
+                  (testing "an admin is offered data apps"
+                    (is (semantic-engine-offers-data-app-type? :crowberto)))
+                  (testing "a user in a group with access is offered data apps"
+                    (is (semantic-engine-offers-data-app-type? :rasta)))
+                  (testing "a user in no group with access is not offered data apps"
+                    (is (not (semantic-engine-offers-data-app-type? :lucky)))))))))))))
 
 (deftest search-by-ids-finds-the-requested-data-app-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {app-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"}
-                   :model/DataApp {other-id :id} {:name "plovers" :display_name "Sandpiper counts"}
-                   :model/PermissionsGroup {group-id :id} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
-      (grant-app-access! group-id app-id)
-      (grant-app-access! group-id other-id)
-      (with-each-engine
-        (fn []
-          (doseq [user [:crowberto :rasta]]
-            (testing (str user " finds only the data app with the requested id")
-              (is (= #{app-id}
-                     (set (keys (found-data-apps user :models "data-app" :ids app-id))))))))))))
+    (mt/with-model-cleanup [:model/DataApp :model/Collection]
+      (let [[{app-id :id}] (data-app/create-data-apps! [(merge (mt/with-temp-defaults :model/DataApp) {:slug "sandpiper-sightings" :name "Shorebirds"})])
+            [{other-id :id}] (data-app/create-data-apps! [(merge (mt/with-temp-defaults :model/DataApp) {:slug "plovers" :name "Sandpiper counts"})])]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+          (grant-app-access! group-id app-id)
+          (grant-app-access! group-id other-id)
+          (with-each-engine
+            (fn []
+              (doseq [user [:crowberto :rasta]]
+                (testing (str user " finds only the data app with the requested id")
+                  (is (= #{app-id}
+                         (set (keys (found-data-apps user :models "data-app" :ids app-id))))))))))))))
 
 (deftest search-finds-no-data-apps-without-the-feature-test
   (mt/with-premium-features #{}
-    (mt/with-temp [:model/DataApp _ {:name "sandpiper-sightings" :display_name "Shorebirds"}]
-      (with-each-engine
-        #(is (= {} (found-data-apps :crowberto :models "data-app")))))))
+    (mt/with-model-cleanup [:model/DataApp :model/Collection]
+      (let [_ (data-app/create-data-apps! [(merge (mt/with-temp-defaults :model/DataApp) {:slug "sandpiper-sightings" :name "Shorebirds"})])]
+        (with-each-engine
+          #(is (= {} (found-data-apps :crowberto :models "data-app"))))))))
 
+;; Delete capture purges the index only once the delete commits, which never happens inside `with-temp`'s
+;; rollback-only transaction, so this test inserts and deletes for real.
+;; Search results alone can't show a stale document: deleting the app deletes its resource collection, and the
+;; permission check then hides the hit. So the test also reads the index row, when there is an index.
 (deftest deleting-a-data-app-removes-it-from-the-index-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {app-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"}]
-      (is (contains? (found-data-apps :crowberto :models "data-app") app-id))
-      (t2/delete! :model/DataApp :id app-id)
-      (is (= {} (found-data-apps :crowberto :models "data-app"))))))
+    (mt/with-model-cleanup [:model/DataApp]
+      (let [app-id   (:id (first (data-app/create-data-apps! [(assoc (mt/with-temp-defaults :model/DataApp)
+                                                                     :slug "sandpiper-sightings"
+                                                                     :name "Shorebirds")])))
+            indexed? #(when-let [table (search.index/active-table)]
+                        (t2/exists? table :model "data-app" :model_id (str app-id)))]
+        (is (contains? (found-data-apps :crowberto :models "data-app") app-id))
+        (data-app/delete-data-apps! [app-id])
+        (is (= {} (found-data-apps :crowberto :models "data-app")))
+        (is (not (indexed?)))))))

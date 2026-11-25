@@ -1138,6 +1138,25 @@ describe("editing a formula chip", () => {
     expect(getInput("values")).toHaveFocus();
   });
 
+  it("opens a Group by formula that a column header asked for, once", async () => {
+    const { store } = await setupFormulaQuery();
+    const [expression] = Lib.expressions(FORMULA_QUERY, -1);
+    act(() => {
+      store.dispatch(setUIControls({ summaryFormulaToEdit: expression }));
+    });
+
+    await expectFormula('datetimeAdd([Created At], 1, "day")');
+    expect(getFormulaChip("Order date: Year")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Cancel formula" }),
+    );
+    await expectClosed();
+  });
+
   it("updates a Group by formula and keeps its grouping, name, and ownership", async () => {
     const { onQueryChange } = await setupFormulaQuery();
     await userEvent.click(getFormulaChip("Order date: Year"));

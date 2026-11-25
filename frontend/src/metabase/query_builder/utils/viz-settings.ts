@@ -51,7 +51,7 @@ export function hasResultsOfQuestion(
   const lastRunQuery = rawSeries?.[0]?.card.dataset_query;
   return (
     isNotNull(lastRunQuery) &&
-    Lib.areLegacyQueriesEqual(question.datasetQuery(), lastRunQuery)
+    Lib.areQueriesEqual(question.datasetQuery(), lastRunQuery)
   );
 }
 

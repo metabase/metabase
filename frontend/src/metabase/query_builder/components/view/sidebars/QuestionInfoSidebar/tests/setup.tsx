@@ -1,5 +1,6 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  type AuditInfo,
   setupAuditInfoEndpoint,
   setupCardEndpoints,
   setupCardsUsingModelEndpoint,
@@ -15,7 +16,11 @@ import {
   createMockState,
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import {
+  renderWithProviders,
+  waitForLoaderToBeRemoved,
+  waitForSidesheetToOpen,
+} from "__support__/ui";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Settings, User } from "metabase-types/api";
@@ -37,6 +42,7 @@ export interface SetupOpts {
   settings?: Settings;
   user?: Partial<User>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  auditInfo?: Partial<AuditInfo>;
 }
 
 export const setup = async ({
@@ -44,6 +50,7 @@ export const setup = async ({
   settings = createMockSettings(),
   user,
   enterprisePlugins = [],
+  auditInfo,
 }: SetupOpts = {}) => {
   const currentUser = createMockUser(user);
   setupCardEndpoints(card);
@@ -51,7 +58,7 @@ export const setup = async ({
   setupUsersEndpoints([currentUser]);
   setupRevisionsEndpoints([]);
   setupPerformanceEndpoints([]);
-  setupAuditInfoEndpoint();
+  setupAuditInfoEndpoint({ auditInfo });
   setupListDatabaseSchemasEndpoint(SAMPLE_DB_ID, ["PUBLIC"]);
 
   const state = createMockState({
@@ -84,5 +91,6 @@ export const setup = async ({
     },
   );
 
+  await waitForSidesheetToOpen();
   await waitForLoaderToBeRemoved();
 };

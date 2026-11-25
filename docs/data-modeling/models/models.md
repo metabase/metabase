@@ -55,6 +55,8 @@ Models you create are automatically [pinned to the current collection](../../exp
 
 ### Create a model from a saved question
 
+You can only turn a question saved to a [collection](../../exploration-and-organization/collections.md) into a model. If the question is saved to a dashboard, [move the question to a collection](../../questions/introduction.md#moving-questions-from-collections-to-dashboards-and-vice-versa) first.
+
 1. [Ask a question][question] using either the query builder or the SQL editor, or select an existing saved question that you want to convert to a model.
 2. Save the question.
 3. Click on the **...** > **Turn this into a model**.
@@ -102,7 +104,7 @@ You can specify whether a column should appear in the table view, or just in a d
 - Table and detail views
 - Detail views only
 
-### Display as
+### Display as text, link, or image
 
 - Text
 - Link (it's a URL people should be able to click on)
@@ -196,7 +198,7 @@ FROM model;
 {% endraw %}
 ```
 
-Simply typing `{% raw %}{{#}} {% endraw %}` will allow you to search for models (for example, you could type in `{% raw %}{{#customer}}{% endraw %}` to search models, questions, and tables with the word "customer" in the title).
+To search for models, type `{% raw %}{{#{% endraw %}` followed by at least one character of the model's name or ID. For example, type `{% raw %}{{#customer{% endraw %}` to search models and questions with the word "customer" in the title. Typing `{% raw %}{{#{% endraw %}` by itself won't display the list.
 
 You can also use the data reference sidebar to browse the models available. To open the data reference sidebar, click on the **book** icon.
 

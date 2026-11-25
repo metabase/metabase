@@ -7,19 +7,18 @@ const rspack = require("@rspack/core");
 const { ReactRefreshRspackPlugin } = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
-const {
-  COMPRESSION_CONFIG,
-} = require("./frontend/build/shared/rspack/compression");
-const {
-  bundleStatsPlugins,
-} = require("./frontend/build/shared/rspack/bundle-stats");
 
 const {
   IS_DEV_MODE,
   LICENSE_TEXT,
   WEBPACK_BUNDLE,
 } = require("./frontend/build/shared/constants");
-const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
+const {
+  bundleStatsPlugins,
+} = require("./frontend/build/shared/rspack/bundle-stats");
+const {
+  COMPRESSION_CONFIG,
+} = require("./frontend/build/shared/rspack/compression");
 const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   getBannerOptions,
@@ -27,6 +26,11 @@ const {
 const {
   CssVarsDeclarationPlugin,
 } = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
+const {
+  FONT_FACES_VIRTUAL_MODULE,
+  fontAssetName,
+  fontFacesRule,
+} = require("./frontend/build/shared/rspack/fonts");
 const {
   DropStylesEntryScriptPlugin,
 } = require("./frontend/build/shared/rspack/plugins/DropStylesEntryScriptPlugin");
@@ -72,8 +76,6 @@ const TEST_CUSTOM_DOMAINS =
     .map((domain) => domain.trim())
     .filter(Boolean) ?? [];
 
-const BABEL_LOADER = { loader: "babel-loader", options: BABEL_CONFIG };
-
 const SWC_LOADER = {
   loader: "builtin:swc-loader",
   options: {
@@ -91,7 +93,6 @@ const SWC_LOADER = {
       },
       experimental: {
         plugins: [
-          ["@swc/plugin-emotion", { sourceMap: isDevMode }],
           // instrumentation slows builds significantly and should only run in the nightly coverage CI job.
           ...(process.env.INSTRUMENT_COVERAGE === "true"
             ? [["swc-plugin-coverage-instrument", {}]]
@@ -217,12 +218,6 @@ const config = {
     rules: [
       SIDE_EFFECT_FREE_RULE,
       {
-        // swc breaks styles for the whole app if we process this file
-        test: /css\/core\/fonts\.styled\.ts$/,
-        exclude: /node_modules|cljs/,
-        use: [BABEL_LOADER],
-      },
-      {
         // Embedding onboarding flow requires sharing snippets from
         // docs, so we treat TypeScript files inside docs/ as raw text
         test: /\.tsx?$/,
@@ -231,17 +226,18 @@ const config = {
       },
       {
         test: /\.(tsx?|jsx?)$/,
-        exclude: [
-          /node_modules/,
-          /cljs/,
-          /css\/core\/fonts\.styled\.ts/,
-          SDK_DOCS_SNIPPETS_PATH,
-        ],
+        exclude: [/node_modules/, /cljs/, SDK_DOCS_SNIPPETS_PATH],
         use: [SWC_LOADER],
         type: "javascript/auto",
       },
       {
         test: /\.svg$/,
+        // The SVG font faces are matched by the font rule below, which emits
+        // them untouched. Running svgo here too would rewrite them first, and
+        // the content hash the SDK build references is taken from the bytes a
+        // loader leaves behind, so the two builds would name the same face
+        // differently and the SDK would point at a file nothing emitted.
+        exclude: /[\\/]frontend[\\/]fonts[\\/]/,
         type: "asset/resource",
         resourceQuery: { not: [/component|source/] },
         // No `[query]`: a `?url` import must emit the same name as the SDK
@@ -257,6 +253,17 @@ const config = {
         // build references.
         generator: { filename: "[hash][ext]" },
       },
+      {
+        test: /\.(woff2?|ttf|otf|eot|svg)$/,
+        include: /[\\/](?:frontend[\\/]fonts|font-subsets)[\\/]/,
+        type: "asset/resource",
+        generator: {
+          /** @param {{ filename: string }} pathData */
+          filename: (pathData) => fontAssetName(pathData, "fonts"),
+        },
+      },
+      // `metabase.util.fonts` reads the ranges to declare the chunks in pages it renders itself.
+      fontFacesRule({ unicodeRangesAsset: "font-unicode-ranges.json" }),
       {
         test: /\.css$/,
         use: [
@@ -355,6 +362,7 @@ const config = {
   },
 
   plugins: [
+    new rspack.experiments.VirtualModulesPlugin(FONT_FACES_VIRTUAL_MODULE),
     ...bundleStatsPlugins("stats-main.json"),
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({

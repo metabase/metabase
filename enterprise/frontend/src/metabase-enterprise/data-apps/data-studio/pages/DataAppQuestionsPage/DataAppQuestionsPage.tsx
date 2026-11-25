@@ -28,7 +28,7 @@ export function DataAppQuestionsPage() {
         model="card"
         emptyMessage={t`No questions yet`}
         getItemUrl={(cardId) =>
-          Urls.dataStudioDataAppQuestion(app.name, cardId)
+          Urls.dataStudioDataAppQuestion(app.slug, cardId)
         }
       />
     </PageContainer>

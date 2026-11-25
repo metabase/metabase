@@ -1,6 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
@@ -13,13 +13,12 @@ import { QueryVisualization } from "metabase/querying/components/QueryVisualizat
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
 import { useDispatch } from "metabase/redux";
-import { setUIControls } from "metabase/redux/query-builder";
+import { editSummary, setUIControls } from "metabase/redux/query-builder";
 import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
   DatabaseId,
@@ -37,7 +36,6 @@ import ViewMainContainerS from "./ViewMainContainer.module.css";
 
 interface ViewMainContainerProps {
   question: Question;
-  query: NativeQuery;
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
@@ -63,7 +61,7 @@ interface ViewMainContainerProps {
   runQuery: () => void;
   toggleEditor: () => void;
   handleResize: () => void;
-  setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  setQuery: (query: Lib.Query) => void;
   runQuestionQuery: (opts?: {
     overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;
@@ -111,21 +109,35 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const { ref: mainRef, height: mainHeight } = useElementSize();
   const { ref: footerRef, height: footerHeight } = useElementSize();
 
+  const handleEditSummaryFormula = useCallback(
+    (expression: Lib.ExpressionClause) => {
+      dispatch(editSummary());
+      dispatch(setUIControls({ summaryFormulaToEdit: expression }));
+    },
+    [dispatch],
+  );
   const columnFormula = useColumnFormulaBar({
     question,
     readOnly: props.readOnly,
     isActive: queryBuilderMode === "view",
-    onQuestionChange: (nextQuestion) => {
-      dispatch(setUIControls({ scrollToLastColumn: true }));
+    onQuestionChange: (nextQuestion, { isNewColumn }) => {
+      if (isNewColumn) {
+        dispatch(setUIControls({ scrollToLastColumn: true }));
+      }
       updateQuestion(nextQuestion, { run: true });
     },
+    onEditSummaryFormula: handleEditSummaryFormula,
   });
   const { isNative } = Lib.queryDisplayInfo(question.query());
-  const onAddColumn = columnFormula.open;
+  const { open: onAddColumn, mapClickActions } = columnFormula;
   const clickActionMode = useMemo(
     () =>
-      new Mode(getQueryMode, { hasColumnShortcutActions: true, onAddColumn }),
-    [onAddColumn],
+      new Mode(getQueryMode, {
+        hasColumnShortcutActions: true,
+        onAddColumn,
+        mapActions: mapClickActions,
+      }),
+    [onAddColumn, mapClickActions],
   );
 
   if (queryBuilderMode === "notebook") {

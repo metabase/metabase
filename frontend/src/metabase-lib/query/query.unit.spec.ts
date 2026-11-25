@@ -36,16 +36,6 @@ describe("fromJsQuery", () => {
   });
 });
 
-describe("toLegacyQuery", () => {
-  it("should serialize a query", () => {
-    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
-    const legacyQuery = Lib.toLegacyQuery(query);
-    const restoredQuery = Lib.fromJsQuery(SAMPLE_PROVIDER, legacyQuery);
-    expect(legacyQuery.database).toBe(SAMPLE_DATABASE.id);
-    expect(Lib.primarySourceTableId(restoredQuery)).toBe(ORDERS_ID);
-  });
-});
-
 describe("suggestedName", () => {
   it("should suggest a query name", () => {
     const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
@@ -679,14 +669,14 @@ describe("createTestNativeQuery", () => {
       });
 
       expect(Lib.rawNativeQuery(query)).toBe(queryText);
-      expect(Lib.templateTags(query)).toEqual({
-        x: {
+      expect(Lib.templateTags(query)).toEqual([
+        {
           id: expect.any(String),
           type,
           name: "x",
           "display-name": "X",
         },
-      });
+      ]);
     },
   );
 
@@ -697,22 +687,22 @@ describe("createTestNativeQuery", () => {
       templateTags: {
         x: {
           type: "dimension",
-          dimension: PRODUCTS.CATEGORY,
+          "field-id": PRODUCTS.CATEGORY,
         },
       },
     });
 
     expect(Lib.rawNativeQuery(query)).toBe(queryText);
-    expect(Lib.templateTags(query)).toEqual({
-      x: {
+    expect(Lib.templateTags(query)).toEqual([
+      {
         id: expect.any(String),
         type: "dimension",
         name: "x",
         "display-name": "X",
-        dimension: ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+        "field-id": PRODUCTS.CATEGORY,
         "widget-type": "text",
       },
-    });
+    ]);
   });
 
   it("should create a native query with a temporal unit template tag", () => {
@@ -722,25 +712,21 @@ describe("createTestNativeQuery", () => {
       templateTags: {
         x: {
           type: "temporal-unit",
-          dimension: PRODUCTS.CREATED_AT,
+          "field-id": PRODUCTS.CREATED_AT,
         },
       },
     });
 
     expect(Lib.rawNativeQuery(query)).toBe(queryText);
-    expect(Lib.templateTags(query)).toEqual({
-      x: {
+    expect(Lib.templateTags(query)).toEqual([
+      {
         id: expect.any(String),
         type: "temporal-unit",
         name: "x",
         "display-name": "X",
-        dimension: [
-          "field",
-          PRODUCTS.CREATED_AT,
-          { "base-type": "type/DateTime" },
-        ],
+        "field-id": PRODUCTS.CREATED_AT,
       },
-    });
+    ]);
   });
 
   it("should create a native query with a snippet tag", () => {
@@ -756,8 +742,8 @@ describe("createTestNativeQuery", () => {
     });
 
     expect(Lib.rawNativeQuery(query)).toBe(queryText);
-    expect(Lib.templateTags(query)).toEqual({
-      "snippet: foo": {
+    expect(Lib.templateTags(query)).toEqual([
+      {
         id: expect.any(String),
         type: "snippet",
         name: "snippet: foo",
@@ -765,7 +751,7 @@ describe("createTestNativeQuery", () => {
         "snippet-name": "foo",
         "display-name": "Snippet: Foo",
       },
-    });
+    ]);
   });
 
   it("should create a native query with a card tag", () => {
@@ -780,15 +766,15 @@ describe("createTestNativeQuery", () => {
     });
 
     expect(Lib.rawNativeQuery(query)).toBe(queryText);
-    expect(Lib.templateTags(query)).toEqual({
-      "#1-users": {
+    expect(Lib.templateTags(query)).toEqual([
+      {
         id: expect.any(String),
         type: "card",
         name: "#1-users",
         "display-name": "#1 Users",
         "card-id": 1,
       },
-    });
+    ]);
   });
 
   it("should add default, required properties", () => {
@@ -806,8 +792,8 @@ describe("createTestNativeQuery", () => {
     });
 
     expect(Lib.rawNativeQuery(query)).toBe(queryText);
-    expect(Lib.templateTags(query)).toEqual({
-      x: {
+    expect(Lib.templateTags(query)).toEqual([
+      {
         id: expect.any(String),
         type: "text",
         name: "x",
@@ -816,6 +802,6 @@ describe("createTestNativeQuery", () => {
         "widget-type": "string/contains",
         "display-name": "X",
       },
-    });
+    ]);
   });
 });

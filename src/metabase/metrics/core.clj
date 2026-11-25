@@ -102,6 +102,25 @@
   [entity]
   (some? (lib-metric/get-persisted-dimensions entity)))
 
+(defmulti initialized-dimension-ids
+  "The ids of those of `entities`, all of `metadata-type`, whose dimensions have been initialized in durable storage."
+  {:arglists '([metadata-type entities])}
+  (fn [metadata-type _entities] metadata-type))
+
+(defmethod initialized-dimension-ids :default
+  [_metadata-type entities]
+  (into #{} (comp (filter dimensions-initialized?) (map :id)) entities))
+
+(defmulti save-all-dimensions!
+  "Persists `changes`, each `[entity dimensions dimension-mappings]` of an entity of `metadata-type`."
+  {:arglists '([metadata-type changes])}
+  (fn [metadata-type _changes] metadata-type))
+
+(defmethod save-all-dimensions! :default
+  [_metadata-type changes]
+  (doseq [[entity dimensions dimension-mappings] changes]
+    (save-dimensions! entity dimensions dimension-mappings)))
+
 (defn- dimension-owner-key
   "The salt that scopes an entity's computed dimension ids to that entity; see
    [[metabase.lib-metric.dimension.jvm/compute-dimension-pairs]].
@@ -116,25 +135,24 @@
 
 ;;; ------------------------------------------------- Hydration -------------------------------------------------
 
-(defn- save-dimensions-if-changed!
-  "Persist `new-dims`/`new-mappings` only when they differ from the currently stored set."
-  [entity old-dims old-mappings new-dims new-mappings]
+(defn- changed-dimensions
+  "`[new-dims new-mappings]` when they differ from the currently stored set, else nil."
+  [old-dims old-mappings new-dims new-mappings]
   (when (or (lib-metric/dimensions-changed? old-dims new-dims)
             (lib-metric/mappings-changed? old-mappings new-mappings))
-    (save-dimensions! entity new-dims new-mappings)))
+    [new-dims new-mappings]))
 
-(defn- sync-measure-dimensions!
+(defn- measure-dimension-changes
   "Measures are fully synced on every load: recompute from the visible columns and reconcile with the
    persisted set — preserving the UUIDs (and user edits) of dimensions that already existed, adding
    new columns, and marking removed columns `:status/orphaned`. Measures have no curation API."
-  [entity computed-pairs persisted-dims persisted-mappings]
+  [computed-pairs persisted-dims persisted-mappings]
   (let [{:keys [dimensions dimension-mappings]}
         (lib-metric/reconcile-dimensions-and-mappings computed-pairs persisted-dims persisted-mappings)]
-    (save-dimensions-if-changed! entity
-                                 (lib-metric/extract-persisted-dimensions (or persisted-dims []))
-                                 persisted-mappings
-                                 (lib-metric/extract-persisted-dimensions dimensions)
-                                 dimension-mappings)))
+    (changed-dimensions (lib-metric/extract-persisted-dimensions (or persisted-dims []))
+                        persisted-mappings
+                        (lib-metric/extract-persisted-dimensions dimensions)
+                        dimension-mappings)))
 
 (defn- table-prefixed-dimension
   [dimension]
@@ -241,30 +259,27 @@
                 (= :source/joins (get-in % [:dimension :lib/source])))
            computed-pairs))
 
-(defn- seed-metric-dimensions!
+(defn- seed-metric-dimensions
   "First initialization of a v2 metric: seed dimensions from the entity's own columns and explicit
    query joins, leaving implicitly-joinable FK columns out.
 
    When nothing could be computed (e.g. the metric's source model has no `result_metadata` yet),
    persists nothing and leaves `:dimensions` NULL so a later read retries — writing an empty vector
    would mark the metric initialized and permanently freeze it at zero dimensions."
-  [entity computed-pairs]
+  [computed-pairs]
   (when (seq computed-pairs)
     (let [{:keys [dimensions dimension-mappings]}
           (lib-metric/reconcile-dimensions-and-mappings (metric-seed-pairs computed-pairs) nil nil)]
-      (save-dimensions! entity
-                        (lib-metric/extract-persisted-dimensions
-                         dimensions)
-                        dimension-mappings))))
+      [(lib-metric/extract-persisted-dimensions dimensions) dimension-mappings])))
 
-(defn- refresh-metric-dimensions!
+(defn- refresh-metric-dimensions
   "A v2 metric that already has curated dimensions: the stored dimensions/mappings are authoritative
    (never re-added, overwritten, or auto-extended); only `:status` is refreshed (a dimension whose
    column disappeared becomes `:status/orphaned`, and back to `:status/active` if it returns)."
-  [entity computed-pairs persisted-dims persisted-mappings]
+  [computed-pairs persisted-dims persisted-mappings]
   (let [{:keys [dimensions dimension-mappings]}
         (lib-metric/reconcile-existing-dimensions computed-pairs persisted-dims persisted-mappings)]
-    (save-dimensions-if-changed! entity persisted-dims persisted-mappings dimensions dimension-mappings)))
+    (changed-dimensions persisted-dims persisted-mappings dimensions dimension-mappings)))
 
 (defn compute-dimensions
   "Reconcile an entity's freshly-computed dimensions against what is persisted and return the
@@ -305,12 +320,30 @@
         {:dimensions         (lib-metric/extract-persisted-dimensions dimensions)
          :dimension_mappings dimension-mappings}))))
 
+(defn- dimension-changes
+  "`[dimensions dimension-mappings]` that syncing `entity` persists, computed with `metadata-provider`, or nil when
+   nothing changes, where `initialized?` tells whether a metric's dimensions have been initialized in durable storage."
+  [metadata-provider entity initialized?]
+  (when-let [query (lib-metric/dimensionable-query entity)]
+    (let [computed-pairs     (lib-metric/compute-dimension-pairs metadata-provider (dimension-owner-key entity) query)
+          persisted-dims     (lib-metric/get-persisted-dimensions entity)
+          persisted-mappings (lib-metric/get-persisted-dimension-mappings entity)]
+      (case (:lib/type entity)
+        :metadata/measure
+        (measure-dimension-changes computed-pairs persisted-dims persisted-mappings)
+
+        :metadata/metric
+        (cond
+          (initialized? entity) (refresh-metric-dimensions computed-pairs persisted-dims persisted-mappings)
+          (nil? persisted-dims) (seed-metric-dimensions computed-pairs)
+          :else                 [(lib-metric/extract-persisted-dimensions persisted-dims) persisted-mappings])))))
+
 (defn sync-dimensions!
   "Sync an entity's dimensions to the database. Behaviour differs by entity type:
 
-   - `:metadata/measure` — fully synced on every load; see [[sync-measure-dimensions!]].
-   - `:metadata/metric` (v2 Cards) — curated; seeded once via [[seed-metric-dimensions!]], then kept
-     authoritative via [[refresh-metric-dimensions!]].
+   - `:metadata/measure`: fully synced on every load (see [[measure-dimension-changes]]).
+   - `:metadata/metric` (v2 Cards): curated, seeded once via [[seed-metric-dimensions]] and then kept
+     authoritative via [[refresh-metric-dimensions]].
 
    Arguments:
    - `metadata-type` - `:metadata/metric` or `:metadata/measure`
@@ -321,22 +354,25 @@
   (when-let [entity (first (lib.metadata.protocols/metadatas
                             (lib-metric/metadata-provider)
                             {:lib/type metadata-type :id #{id}}))]
-    (when-let [query (lib-metric/dimensionable-query entity)]
-      (let [computed-pairs     (lib-metric/compute-dimension-pairs (lib-metric/metadata-provider) (dimension-owner-key entity) query)
-            persisted-dims     (lib-metric/get-persisted-dimensions entity)
-            persisted-mappings (lib-metric/get-persisted-dimension-mappings entity)]
-        (case metadata-type
-          :metadata/measure
-          (sync-measure-dimensions! entity computed-pairs persisted-dims persisted-mappings)
+    (when-let [[dimensions dimension-mappings] (dimension-changes (lib-metric/metadata-provider) entity dimensions-initialized?)]
+      (save-dimensions! entity dimensions dimension-mappings))))
 
-          :metadata/metric
-          (if (dimensions-initialized? entity)
-            (refresh-metric-dimensions! entity computed-pairs persisted-dims persisted-mappings)
-            (if (nil? persisted-dims)
-              (seed-metric-dimensions! entity computed-pairs)
-              (save-dimensions! entity
-                                (lib-metric/extract-persisted-dimensions persisted-dims)
-                                persisted-mappings))))))))
+(defn sync-all-dimensions!
+  "[[sync-dimensions!]] of the entities of `metadata-type` with `ids`, read at once, whose changes are saved with one
+   [[save-all-dimensions!]]."
+  [metadata-type ids]
+  (when (seq ids)
+    (let [mp          (lib-metric/metadata-provider)
+          entities    (lib.metadata.protocols/metadatas mp {:lib/type metadata-type :id (set ids)})
+          initialized (initialized-dimension-ids metadata-type entities)
+          changes     (into []
+                            (keep (fn [entity]
+                                    (when-let [[dimensions dimension-mappings]
+                                               (dimension-changes mp entity #(contains? initialized (:id %)))]
+                                      [entity dimensions dimension-mappings])))
+                            entities)]
+      (when (seq changes)
+        (save-all-dimensions! metadata-type changes)))))
 
 (defn sync-metric-dimensions-for-database!
   "Compute and persist dimensions for every metric Card in `database-id` that doesn't have any yet."

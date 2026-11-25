@@ -36,7 +36,7 @@
                 :linkType "question"
                 :targetId 1
                 :parameterMapping
-                {(keyword "[\"dimension\",[\"field\",54,{\"source-field\":53}]]")
+                {"[\"dimension\",[\"field\",54,{\"source-field\":53}]]"
                  {:id     "[\"dimension\",[\"field\",54,{\"source-field\":53}]]"
                   :source {:type "column", :id "Category_ID", :name "Category ID"}
                   :target {:type      "dimension"
@@ -82,7 +82,7 @@
                {"[\"dimension\",[\"field\",3,{\"source-field\":3}]]"
                 {:id     "[\"dimension\",[\"field\",3,{\"source-field\":3}]]"
                  :target {:type      "dimension"
-                          :dimension [:dimension [:field 3 {:source-field 3}]]
+                          :dimension ["dimension" [:field 3 {:source-field 3}]]
                           :id        "[\"dimension\",[\"field\",3,{\"source-field\":3}]]"}}}}}}}
            (import-settings
             {:column_settings
@@ -92,7 +92,7 @@
                 {"[\"dimension\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],{\"source-field\":[\"my-db\",null,\"orders\",\"subtotal\"]}]]"
                  {:id     "[\"dimension\",[\"field\",[\"my-db\",null,\"orders\",\"invoice\"],{\"source-field\":[\"my-db\",null,\"orders\",\"subtotal\"]}]]"
                   :target {:type      "dimension"
-                           :dimension [:dimension
+                           :dimension ["dimension"
                                        [:field
                                         ["my-db" nil "orders" "invoice"]
                                         {:source-field ["my-db" nil "orders" "subtotal"]}]]

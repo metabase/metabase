@@ -6,7 +6,9 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.liquibase.versions :as versions]
+   [metabase.app-db.query :as mdb.query]
    [metabase.driver.test-util :as driver.tu]
+   [metabase.global-system.test-util :as global-system.tu]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.random :as u.random]
    [metabase.util.yaml :as u.yaml]
@@ -15,6 +17,17 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn do-with-application-db-as-root
+  "Install `app-db` as the root application DB for the extent of `thunk`. See [[global-system.tu/do-with-root]]."
+  [app-db thunk]
+  (global-system.tu/do-with-root (mdb/application-db-handle) app-db thunk))
+
+(defmacro with-application-db-as-root
+  "Run `body` with `app-db` installed as the root application DB. See [[do-with-application-db-as-root]]."
+  {:style/indent [:defn]}
+  [app-db & body]
+  `(do-with-application-db-as-root ~app-db (^:once fn* [] ~@body)))
 
 (p/deftype+ ClojureJDBCSpecDataSource [jdbc-spec]
   pretty/PrettyPrintable
@@ -72,6 +85,16 @@
   "Execute `body` with the system time zone of the app db temporarily changed to the time zone named by `timezone-id`."
   [timezone-id & body]
   `(do-with-app-db-timezone-id! ~timezone-id (fn [] ~@body)))
+
+(defmacro with-partition-size
+  "Run `body` with every read, create, update and delete partition size of the app DB set to `n`."
+  [n & body]
+  `(let [n# ~n]
+     (with-redefs [mdb.query/select-partition-size n#
+                   mdb.query/create-partition-size n#
+                   mdb.query/update-partition-size n#
+                   mdb.query/delete-partition-size n#]
+       ~@body)))
 
 (defn liquibase-file->included-ids
   "Read a liquibase migration file and returns all the migration id that is applied to `db-type`.

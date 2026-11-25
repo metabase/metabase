@@ -6,15 +6,19 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.secrets.db :as secrets.db]
+   [metabase.secrets.schema :as secrets.schema]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -49,30 +53,6 @@
   {:added "0.42.0"}
   [id]
   (secrets.db/latest-secret id))
-
-(defn upsert-secret-value!
-  "Inserts a new secret value, or updates an existing one, for the given parameters.
-   * if there is no existing Secret instance, inserts with the given field values
-   * if there is an existing latest Secret instance, then inserts a new version with the given parameters."
-  {:added "0.42.0"}
-  [existing-id nm kind src value]
-  (let [insert-new     (fn [id v]
-                         (let [inserted (secrets.db/insert-secret! (cond-> {:version    v
-                                                                            :name       nm
-                                                                            :kind       kind
-                                                                            :source     src
-                                                                            :value      value
-                                                                            :creator_id api/*current-user-id*}
-                                                                     id
-                                                                     (assoc :id id)))]
-                           ;; Toucan doesn't support composite primary keys, so adding a new record with incremented
-                           ;; version for an existing ID won't return a result from t2/insert!, hence we may need to
-                           ;; manually select it here
-                           (secrets.db/secret-version (or id (u/the-id inserted)) v)))
-        latest-version (when existing-id (latest-for-id existing-id))]
-    (if latest-version
-      (insert-new (u/the-id latest-version) (inc (:version latest-version)))
-      (insert-new nil 1))))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -276,26 +256,6 @@
 
 ;;; ---------------------------------------------- Database Details ----------------------------------------------
 
-(defn delete-orphaned-secrets!
-  "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
-  simply delete any Secret whose ID appears in the details blobs (`:details`, `:write_data_details`, and
-  `:admin_details`), since every Secret instance that is currently created is exclusively associated with a single
-  Database.
-
-  In the future, if/when we allow arbitrary association of secret instances to database instances, this will need to
-  change and become more complicated (likely by consulting a many-to-many join table)."
-  [{:keys [id details write_data_details admin_details] :as database}]
-  (when-let [possible-secret-prop-names (seq (keys (secret-conn-props-by-name (driver.u/database->driver database))))]
-    (doseq [secret-id (reduce (fn [acc prop-name]
-                                (let [id-kw (->id-kw prop-name)]
-                                  (into acc
-                                        (keep #(get % id-kw))
-                                        [details write_data_details admin_details])))
-                              #{}
-                              possible-secret-prop-names)]
-      (log/infof "Deleting secret ID %s from app DB because the owning database (%s) is being deleted" secret-id id)
-      (secrets.db/delete-secret! secret-id))))
-
 (defn- hydrate-redacted-secret
   [db-details conn-prop-nm _conn-prop]
   (let [kws (->possible-secret-property-names conn-prop-nm)
@@ -365,12 +325,64 @@
         (m/update-existing :write_data_details clean)
         (m/update-existing :admin_details clean))))
 
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn upsert-secret-value! :- ::secrets.schema/secret
+  "Insert the value `value` as a new Secret, or as the next version of the Secret with `existing-id` when it has one,
+  and return the stored version."
+  [existing-id :- [:maybe ms/PositiveInt]
+   nm          :- [:maybe :string]
+   kind        :- [:maybe [:or :keyword :string]]
+   src         :- [:maybe [:or :keyword :string]]
+   value       :- [:maybe [:or bytes? :string]]]
+  (let [insert-new     (fn [id v]
+                         (let [inserted (secrets.db/insert-secret! (cond-> {:version    v
+                                                                            :name       nm
+                                                                            :kind       kind
+                                                                            :source     src
+                                                                            :value      value
+                                                                            :creator_id api/*current-user-id*}
+                                                                     id
+                                                                     (assoc :id id)))]
+                           ;; Toucan doesn't support composite primary keys, so adding a new record with incremented
+                           ;; version for an existing ID won't return a result from t2/insert!, hence we may need to
+                           ;; manually select it here
+                           (secrets.db/secret-version (or id (u/the-id inserted)) v)))
+        latest-version (when existing-id (latest-for-id existing-id))]
+    (if latest-version
+      (insert-new (u/the-id latest-version) (inc (:version latest-version)))
+      (insert-new nil 1))))
+
+(mu/defn delete-secrets! :- ms/IntGreaterThanOrEqualToZero
+  "Delete every version of the Secrets with `ids`, returning the number deleted; an empty `ids` deletes nothing."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (secrets.db/delete-secrets! ids)
+    0))
+
+(defn delete-secrets-for-databases!
+  "Delete the Secrets that `databases` own, in one statement, as they are deleted: every Secret whose id appears in
+  their `:details`, `:write_data_details` or `:admin_details`, since each Secret belongs to a single Database."
+  [databases]
+  (let [secret-ids (into #{}
+                         (mapcat (fn [{:keys [details write_data_details admin_details] :as database}]
+                                   (for [prop-name (keys (secret-conn-props-by-name (driver.u/database->driver database)))
+                                         :let      [id-kw (->id-kw prop-name)]
+                                         details   [details write_data_details admin_details]
+                                         :let      [secret-id (get details id-kw)]
+                                         :when     secret-id]
+                                     secret-id)))
+                         databases)]
+    (when (seq secret-ids)
+      (log/infof "Deleting secret IDs %s from app DB because their owning databases are being deleted" (sort secret-ids))
+      (secrets.db/delete-secrets! (vec secret-ids)))))
+
 (defn- handle-secrets-for-details-key
   "Process secret-type connection properties in `details-key` of `database`, converting raw secret
   values into Secret records and storing only the secret ID. Returns the updated database."
-  [database details-key]
+  [database original details-key]
   (if-let [details (get database details-key)]
-    (let [original-details (get (t2/original database) details-key)
+    (let [original-details (get original details-key)
           updated-details  (reduce-over-details-secret-values
                             (keyword (:engine database))
                             details
@@ -391,7 +403,7 @@
                                       (assoc cleared-details id-kw id))
                                     (do
                                       (when secret-id
-                                        (secrets.db/delete-secret! secret-id))
+                                        (delete-secrets! [secret-id]))
                                       (dissoc cleared-details id-kw)))
                                   ;; Don't throw out a secret even if the client didn't send it back
                                   (m/assoc-some cleared-details id-kw secret-id)))))]
@@ -400,7 +412,7 @@
 
 (defn handle-incoming-client-secrets!
   "Converts incoming secret values in `:details`, `:write_data_details`, and `:admin_details` into Secrets.
-   This is a transformation on `:model/Database` `before-insert` and `before-update`.
+   `original` is the stored Database it updates, or nil for a new one; the Database write functions call this.
 
    Only the Secret id should be stored in the details maps. All other secret props should be cleared.
 
@@ -416,8 +428,13 @@
    In this case, we want to look for a `:private-key-id` in the `original-details` which would indicate
    that we have stored a Secret before. We upsert the secret-value (which could be `-path` or `-value`).
    We clear out all the possible secret-keys `-value`, `-options`, `-path` and store the `-id`."
-  [database]
+  [database original]
   (-> database
-      (handle-secrets-for-details-key :details)
-      (handle-secrets-for-details-key :write_data_details)
-      (handle-secrets-for-details-key :admin_details)))
+      (handle-secrets-for-details-key original :details)
+      (handle-secrets-for-details-key original :write_data_details)
+      (handle-secrets-for-details-key original :admin_details)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Secret [_model]
+  {:skip? false})

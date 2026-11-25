@@ -5,13 +5,22 @@
    [metabase.test.util :as tu]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.settings :as warehouse-schema.settings]
    [toucan2.core :as t2]))
 
+(defn- do-with-new-table!
+  "Calls `f` with the id of a Table named `table-name` that [[table/create-tables!]] creates, and deletes it after."
+  [table-name f]
+  (let [[{table-id :id}] (table/create-tables! [{:db_id (mt/id) :name table-name :active true}])]
+    (try
+      (f table-id)
+      (finally
+        (table/delete-tables! [table-id])))))
+
 (defn- get-humanized-display-name! [actual-name strategy]
   (tu/with-temporary-setting-values [humanization-strategy strategy]
-    (mt/with-temp [:model/Table {table-id :id} {:name actual-name}]
-      (t2/select-one-fn :display_name :model/Table, :id table-id))))
+    (do-with-new-table! actual-name #(t2/select-one-fn :display_name :model/Table, :id %))))
 
 (deftest humanized-display-name-test
   (testing "check that we get the expected :display_name with humanization *enabled*"
@@ -33,19 +42,21 @@
                                                            :simple   "Fussybird Sightings"
                                                            :none     "fussybird_sightings"}}]
       (tu/with-temporary-setting-values [humanization-strategy "simple"]
-        (mt/with-temp [:model/Table {table-id :id} {:name actual-name}]
-          (letfn [(display-name [] (t2/select-one-fn :display_name :model/Table, :id table-id))]
-            (testing "initial display name"
-              (is (= (:initial expected)
-                     (display-name))))
-            (testing "switch to :simple"
-              (warehouse-schema.settings/humanization-strategy! "simple")
-              (is (= (:simple expected)
-                     (display-name))))
-            (testing "switch to :none"
-              (warehouse-schema.settings/humanization-strategy! "none")
-              (is (= (:none expected)
-                     (display-name))))))))))
+        (do-with-new-table!
+         actual-name
+         (fn [table-id]
+           (letfn [(display-name [] (t2/select-one-fn :display_name :model/Table, :id table-id))]
+             (testing "initial display name"
+               (is (= (:initial expected)
+                      (display-name))))
+             (testing "switch to :simple"
+               (warehouse-schema.settings/humanization-strategy! "simple")
+               (is (= (:simple expected)
+                      (display-name))))
+             (testing "switch to :none"
+               (warehouse-schema.settings/humanization-strategy! "none")
+               (is (= (:none expected)
+                      (display-name)))))))))))
 
 (deftest do-not-overwrite-custom-names-test
   (testing "check that if we give a field a custom display_name that changing strategy doesn't overwrite it"

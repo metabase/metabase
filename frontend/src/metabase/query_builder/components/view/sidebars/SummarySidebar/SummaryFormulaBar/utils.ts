@@ -1,5 +1,7 @@
 import {
   type NamedExpression,
+  editExpression,
+  findExpression,
   isDefaultFormulaName,
 } from "metabase/querying/components/FormulaEditor";
 import { checkNotNull } from "metabase/utils/types";
@@ -78,7 +80,6 @@ function getDimensionFormulas(
   stageIndex: number,
   wellId: SummaryDimensionWellId,
 ): SummaryFormula[] {
-  const expressions = Lib.expressions(query, stageIndex);
   return getDimensionItems(query, stageIndex).flatMap(({ expression }) => {
     if (!expression) {
       return [];
@@ -87,9 +88,7 @@ function getDimensionFormulas(
       {
         wellId,
         clause: expression,
-        index: expressions.findIndex((clause) =>
-          Lib.isSameClause(clause, expression),
-        ),
+        index: findExpression(query, stageIndex, expression)?.index ?? -1,
         name: Lib.displayInfo(query, stageIndex, expression).displayName,
       },
     ];
@@ -179,23 +178,18 @@ function withPreviousBucket(
  * A name given on the chip stays through an edit. A name generated from the formula follows
  * the new formula, unless it still describes it.
  */
-function getEditedFormulaName(
-  query: Lib.Query,
-  stageIndex: number,
-  formula: SummaryFormula,
+function getEditedAggregationName(
+  name: string | undefined,
   sourceName: string,
   hasCustomName: boolean,
 ): string {
-  const { name } = formula;
   if (name == null) {
     return sourceName;
   }
   if (hasCustomName || isDefaultFormulaName(name, sourceName)) {
     return name;
   }
-  return formula.wellId === "values"
-    ? sourceName
-    : getUniqueExpressionName(query, stageIndex, sourceName);
+  return sourceName;
 }
 
 function rebucketFormulaBreakouts(
@@ -262,25 +256,30 @@ export function editSummaryFormula(
   query: Lib.Query,
   stageIndex: number,
   formula: SummaryFormula,
-  { name: sourceName, clause }: NamedExpression,
+  expression: NamedExpression,
   hasCustomName: boolean,
 ): { query: Lib.Query; options: SummaryQueryChangeOptions } {
-  const nextName = getEditedFormulaName(
-    query,
-    stageIndex,
-    formula,
-    sourceName,
-    hasCustomName,
-  );
-  const nextQuery = Lib.replaceClause(
+  if (formula.wellId === "values" || formula.name == null) {
+    const name = getEditedAggregationName(
+      formula.name,
+      expression.name,
+      hasCustomName,
+    );
+    const nextQuery = Lib.replaceClause(
+      query,
+      stageIndex,
+      formula.clause,
+      Lib.withExpressionName(expression.clause, name),
+    );
+    return { query: nextQuery, options: { editedFormula: true } };
+  }
+  const { query: nextQuery, name: nextName } = editExpression(
     query,
     stageIndex,
     formula.clause,
-    Lib.withExpressionName(clause, nextName),
+    expression,
+    hasCustomName,
   );
-  if (formula.wellId === "values" || formula.name == null) {
-    return { query: nextQuery, options: { editedFormula: true } };
-  }
   const renamedFormula =
     nextName === formula.name ? undefined : { name: formula.name, nextName };
   return {

@@ -8,6 +8,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
@@ -85,6 +86,17 @@
       (log/errorf "Error normalizing query: %s" (ex-message e))
       {}))))
 
+(defn query-first-stage
+  "The first stage of `query`, a query in MBQL 5 or legacy form, read without a metadata provider or the app DB; nil for
+  an empty query."
+  [query]
+  (when (and (map? query) (seq query))
+    (let [query (normalize-mbql query)]
+      (-> (cond-> query
+            (= :mbql-version/legacy (lib/normalized-mbql-version query)) lib/->mbql5)
+          :stages
+          first))))
+
 (defn- transform-query-in [query]
   (when-not (map? query)
     (throw (ex-info (format "Query must be a map, got ^%s %s" (.getCanonicalName (class query)) (pr-str query))
@@ -113,3 +125,9 @@
 (def transform-query
   "Toucan 2 transform spec for Card `dataset_query` and other columns that store MBQL."
   {:in transform-query-in, :out transform-query-out})
+
+(def transform-visualization-settings
+  "Toucan 2 transform spec for the `visualization_settings` of Cards and DashboardCards, normalized both ways."
+  (let [normalize #(lib/normalize ::lib.schema.visualization/visualization-settings %)]
+    {:in  (comp mi/json-in normalize)
+     :out (comp normalize mi/json-out-without-keywordization)}))

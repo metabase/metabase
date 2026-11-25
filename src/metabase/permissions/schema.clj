@@ -1,5 +1,6 @@
 (ns metabase.permissions.schema
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -52,19 +53,22 @@
 
 (mr/def ::application-permissions-revision
   "A ApplicationPermissionsRevision as selected from the app DB: every column of `:application_permissions_revision`."
-  [:merge
-   ::application-permissions-revision.update
-   [:map {:closed true}
-    [:id         ms/PositiveInt]]])
-
-(mr/def ::application-permissions-revision.update
-  "What an update (or insert) of a ApplicationPermissionsRevision accepts: every column of `:application_permissions_revision` except `id`, all optional."
   [:map {:closed true}
+   [:id         ms/PositiveInt]
    [:before     {:optional true} [:maybe ::application-permissions-revision.before]]
    [:after      {:optional true} [:maybe ::application-permissions-revision.after]]
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:remark     {:optional true} [:maybe :string]]])
+
+(mr/def ::application-permissions-revision.create
+  "What creating an ApplicationPermissionsRevision takes: the revision number, the groups before the change, the change
+  and the user who made it."
+  [:map {:closed true}
+   [:id      ms/PositiveInt]
+   [:before  [:maybe ::application-permissions-revision.before]]
+   [:after   [:maybe ::application-permissions-revision.after]]
+   [:user_id ::lib.schema.id/user]])
 
 (mr/def ::collection-permission-graph.groups
   "Collection permissions by group, or the part of them a change touches: group id -> collection id (or `:root`) -> level."
@@ -85,53 +89,70 @@
 
 (mr/def ::collection-permission-graph-revision
   "A CollectionPermissionGraphRevision as selected from the app DB: every column of `:collection_permission_graph_revision`."
-  [:merge
-   ::collection-permission-graph-revision.update
-   [:map {:closed true}
-    [:id         ms/PositiveInt]]])
-
-(mr/def ::collection-permission-graph-revision.update
-  "What an update (or insert) of a CollectionPermissionGraphRevision accepts: every column of `:collection_permission_graph_revision` except `id`, all optional."
   [:map {:closed true}
+   [:id         ms/PositiveInt]
    [:before     {:optional true} [:maybe ::collection-permission-graph-revision.before]]
    [:after      {:optional true} [:maybe ::collection-permission-graph-revision.after]]
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:remark     {:optional true} [:maybe :string]]])
 
+(mr/def ::collection-permission-graph-revision.update
+  "What an update of a CollectionPermissionGraphRevision takes: its `:id` and the columns to set."
+  [:map {:closed true}
+   [:id         ms/PositiveInt]
+   [:before     {:optional true} [:maybe ::collection-permission-graph-revision.before]]
+   [:after      {:optional true} [:maybe ::collection-permission-graph-revision.after]]
+   [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
+   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:remark     {:optional true} [:maybe :string]]])
+
+(mr/def ::collection-permission-graph-revision.create
+  "What creating a CollectionPermissionGraphRevision takes: the columns of an update but the creation time, with the
+  revision number as its `:id`, and the user who made it."
+  [:merge
+   (mut/dissoc ::collection-permission-graph-revision.update :created_at)
+   [:map {:closed true}
+    [:user_id ::lib.schema.id/user]]])
+
 (mr/def ::data-permissions
   "A DataPermissions as selected from the app DB: every column of `:data_permissions`."
-  [:merge
-   ::data-permissions.update
-   [:map {:closed true}
-    [:id                  ms/PositiveInt]
-    [:unique_perms_helper {:optional true} [:maybe :int]]]])
-
-(mr/def ::data-permissions.update
-  "What an update (or insert) of a DataPermissions accepts: every column of `:data_permissions` except `id`, all optional."
   [:map {:closed true}
+   [:id          ms/PositiveInt]
    [:group_id    {:optional true} [:maybe ms/PositiveInt]]
    [:perm_type   {:optional true} [:maybe [:or :keyword :string]]]
    [:db_id       {:optional true} [:maybe ::lib.schema.id/database]]
    [:schema_name {:optional true} [:maybe :string]]
    [:table_id    {:optional true} [:maybe ::lib.schema.id/table]]
-   [:perm_value  {:optional true} [:maybe [:or :keyword :string]]]])
+   [:perm_value  {:optional true} [:maybe [:or :keyword :string]]]
+   [:unique_perms_helper {:optional true} [:maybe :int]]])
+
+(mr/def ::data-permissions.create
+  "What creating a DataPermissions takes: the group, the Database, the type and value of the permission, and the schema
+  and Table it is limited to, if any."
+  [:map {:closed true}
+   [:group_id    ms/PositiveInt]
+   [:db_id       ::lib.schema.id/database]
+   [:perm_type   [:or :keyword :string]]
+   [:perm_value  [:or :keyword :string]]
+   [:schema_name {:optional true} [:maybe :string]]
+   [:table_id    {:optional true} [:maybe ::lib.schema.id/table]]])
 
 (mr/def ::permissions
   "A Permissions as selected from the app DB: every column of `:permissions`."
-  [:merge
-   ::permissions.update
-   [:map {:closed true}
-    [:id            ms/PositiveInt]]])
-
-(mr/def ::permissions.update
-  "What an update (or insert) of a Permissions accepts: every column of `:permissions` except `id`, all optional."
   [:map {:closed true}
+   [:id            ms/PositiveInt]
    [:object        {:optional true} [:maybe :string]]
    [:group_id      {:optional true} [:maybe ms/PositiveInt]]
    [:perm_value    {:optional true} [:maybe [:or :keyword :string]]]
    [:perm_type     {:optional true} [:maybe [:or :keyword :string]]]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])
+
+(mr/def ::permissions.create
+  "What creating a Permissions takes: the group it is granted to and the permissions path it grants."
+  [:map {:closed true}
+   [:group_id ms/PositiveInt]
+   [:object   :string]])
 
 (mr/def ::data-access-token
   "A persisted [[metabase.permissions.data-access-token/data-access-token]]: the lens a piece of content was produced
@@ -145,11 +166,13 @@
 (mr/def ::permissions-group
   "A PermissionsGroup as selected from the app DB: every column of `:permissions_group`, plus `:members` some
   callers hydrate onto it."
-  [:merge
-   ::permissions-group.update
-   [:map {:closed true}
-    [:id                ms/PositiveInt]
-    [:members           {:optional true} [:sequential [:map {:closed true} [:email :string] [:entity_id :string]]]]]])
+  [:map {:closed true}
+   [:id                ms/PositiveInt]
+   [:name              {:optional true} [:maybe :string]]
+   [:entity_id         {:optional true} [:maybe :string]]
+   [:magic_group_type  {:optional true} [:maybe [:or :keyword :string]]]
+   [:is_tenant_group   {:optional true} [:maybe :boolean]]
+   [:members           {:optional true} [:sequential [:map {:closed true} [:email :string] [:entity_id :string]]]]])
 
 (mr/def ::permissions-group.member
   "A member of a PermissionsGroup as `metabase.permissions.db/group-members` selects it: the User columns the group
@@ -168,23 +191,32 @@
    [:common_name      {:optional true} [:maybe :string]]])
 
 (mr/def ::permissions-group.update
-  "What an update (or insert) of a PermissionsGroup accepts: every column of `:permissions_group` except `id`, all optional."
+  "What an update of a PermissionsGroup takes: its `:id` and the columns to set."
   [:map {:closed true}
+   [:id                ms/PositiveInt]
    [:name              {:optional true} [:maybe :string]]
    [:entity_id         {:optional true} [:maybe :string]]
    [:magic_group_type  {:optional true} [:maybe [:or :keyword :string]]]
    [:is_tenant_group   {:optional true} [:maybe :boolean]]])
 
+(mr/def ::permissions-group.create
+  "What creating a PermissionsGroup takes: its name, and whether it is a tenant group."
+  [:map {:closed true}
+   [:name            :string]
+   [:is_tenant_group {:optional true} :boolean]])
+
 (mr/def ::permissions-group-membership
   "A PermissionsGroupMembership as selected from the app DB: every column of `:permissions_group_membership`."
-  [:merge
-   ::permissions-group-membership.update
-   [:map {:closed true}
-    [:id               ms/PositiveInt]]])
+  [:map {:closed true}
+   [:id               ms/PositiveInt]
+   [:user_id          {:optional true} [:maybe ::lib.schema.id/user]]
+   [:group_id         {:optional true} [:maybe ms/PositiveInt]]
+   [:is_group_manager {:optional true} [:maybe :boolean]]])
 
 (mr/def ::permissions-group-membership.update
-  "What an update (or insert) of a PermissionsGroupMembership accepts: every column of `:permissions_group_membership` except `id`, all optional."
+  "What an update of a PermissionsGroupMembership takes: its `:id` and the columns to set."
   [:map {:closed true}
+   [:id               ms/PositiveInt]
    [:user_id          {:optional true} [:maybe ::lib.schema.id/user]]
    [:group_id         {:optional true} [:maybe ms/PositiveInt]]
    [:is_group_manager {:optional true} [:maybe :boolean]]])
@@ -228,16 +260,70 @@
 
 (mr/def ::permissions-revision
   "A PermissionsRevision as selected from the app DB: every column of `:permissions_revision`."
-  [:merge
-   ::permissions-revision.update
-   [:map {:closed true}
-    [:id         ms/PositiveInt]]])
-
-(mr/def ::permissions-revision.update
-  "What an update (or insert) of a PermissionsRevision accepts: every column of `:permissions_revision` except `id`, all optional."
   [:map {:closed true}
+   [:id         ms/PositiveInt]
    [:before     {:optional true} [:maybe ::permissions-revision.before]]
    [:after      {:optional true} [:maybe ::permissions-revision.after]]
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:remark     {:optional true} [:maybe :string]]])
+
+(mr/def ::permissions-revision.create
+  "What creating a PermissionsRevision takes: the revision number, the groups before the change, the change and the
+  user who made it."
+  [:map {:closed true}
+   [:id      ms/PositiveInt]
+   [:before  [:maybe ::permissions-revision.before]]
+   [:after   [:maybe ::permissions-revision.after]]
+   [:user_id ::lib.schema.id/user]])
+
+(mr/def ::collection-options
+  "Options of the Collection permission checks taking a nil collection id: `:root-namespace` names the namespace of the
+  root Collection a nil collection id stands for, nil for the default namespace. It is per entity, so the caller
+  checking the entity sets it."
+  [:map {:closed true}
+   [:root-namespace [:maybe [:or :keyword :string]]]])
+
+(mr/def ::collection-user-info
+  "The user a Collection permission question is about: a nil `:user-id` in a context without a user, where only a
+  superuser one, such as `request/as-admin`, has permissions."
+  [:map {:closed true}
+   [:user-id          [:maybe pos-int?]]
+   [:is-superuser?    :boolean]
+   [:is-data-analyst? :boolean]])
+
+(mr/def ::collection-filter-options
+  "Options of the Collection where-clauses:
+
+  - `:permission-level`, `:read` (the default) or `:write`;
+  - `:include-archived-items`, `:exclude` (the default), `:only` or `:all`;
+  - `:include-trash-collection?`, whether the trash counts, false by default;
+  - `:archive-operation-id`, only the Collections archived together by one operation, and the trash;
+  - `:root-namespace`, the namespace whose root Collection a nil collection id stands for, nil for the default one. It
+    is per entity, so the caller filtering the entity sets it."
+  [:map {:closed true}
+   [:permission-level          {:optional true} [:enum :read :write]]
+   [:include-archived-items    {:optional true} [:enum :only :exclude :all]]
+   [:include-trash-collection? {:optional true} :boolean]
+   [:archive-operation-id      {:optional true} [:maybe :string]]
+   [:root-namespace            [:maybe [:or :keyword :string]]]])
+
+(mr/def ::data-user-info
+  "The user a data permission question is about: a nil `:user-id` in a context without a user, where only a superuser
+  one, such as `request/as-admin`, has permissions."
+  [:map {:closed true}
+   [:user-id          [:maybe pos-int?]]
+   [:is-superuser?    :boolean]
+   [:is-data-analyst? :boolean]])
+
+(mr/def ::table-filter-options
+  "The options of the Table filters: with `:active-only?`, the rows of an inactive Table don't count, and with
+  `:include-published-via-collection?`, a Table published into a Collection the user reads grants
+  `:perms/create-queries :query-builder` on EE."
+  [:map {:closed true}
+   [:active-only?                      :boolean]
+   [:include-published-via-collection? :boolean]])
+
+(mr/def ::permission-mapping
+  "Map of permission type to the permission value the user needs, or a more permissive one."
+  [:map-of ::data-permission-type ::data-permission-value])

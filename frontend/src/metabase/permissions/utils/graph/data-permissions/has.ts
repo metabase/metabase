@@ -12,6 +12,7 @@ import type {
   SchemaEntityId,
   TableId,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards/common";
 
 import { isSchemaEntityId } from "../../data-entity-id";
 import { getDatabaseSchema, getDatabaseSchemas } from "../../metadata";
@@ -91,16 +92,21 @@ export function hasPermissionValueInGraph(
     return true;
   }
 
-  function _hasPermissionValueInGraph(permissionsGraphSection: any) {
+  function _hasPermissionValueInGraph(
+    permissionsGraphSection: unknown,
+  ): boolean {
+    if (!isObject(permissionsGraphSection)) {
+      return false;
+    }
     for (const key in permissionsGraphSection) {
-      const isMatch = permissionsGraphSection[key] === permissionValue;
+      const child = permissionsGraphSection[key];
+      const isMatch = child === permissionValue;
       if (isMatch) {
         return true;
       }
 
       const isGraphObjWithMatch =
-        typeof permissionsGraphSection[key] === "object" &&
-        _hasPermissionValueInGraph(permissionsGraphSection[key]);
+        typeof child === "object" && _hasPermissionValueInGraph(child);
       if (isGraphObjWithMatch) {
         return true;
       }

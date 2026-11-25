@@ -50,17 +50,14 @@
       user can edit the data model of (default false)"
   :feature :sandboxes
   [ids opts]
-  (for [table (schema.table/batch-fetch-query-metadatas* ids opts)]
-    (if (only-sandboxed-perms? table)
-      (filter-fields-for-sandboxing
-       table
-       ;; if the user has sandboxed perms, temporarily upgrade their perms to read perms for the Table so they can
-       ;; fetch the metadata
-       (perms/with-additional-table-permission :perms/view-data (:db_id table) (u/the-id table) :unrestricted
-         (perms/with-additional-table-permission :perms/create-queries (:db_id table) (u/the-id table) :query-builder
-           table)))
-      ;; Not sandboxed, so user can fetch full metadata
-      table)))
+  (let [tables          (vec (schema.table/batch-fetch-query-metadatas* ids opts))
+        sandboxed-ids   (into #{} (map :table_id) (sandbox.api.util/enforced-sandboxes-for-tables (map :id tables)))
+        fields-by-table (col-filter/batch-filter-fields-by-table
+                         (into {} (comp (filter (comp sandboxed-ids :id)) (map (juxt :id :fields))) tables))]
+    (mapv (fn [{:keys [id] :as table}]
+            (cond-> table
+              (contains? fields-by-table id) (assoc :fields (get fields-by-table id))))
+          tables)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

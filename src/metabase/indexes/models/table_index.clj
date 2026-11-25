@@ -8,11 +8,16 @@
 
   `:structured` and `:status` are validated at the transform layer (on read and write), so every writer is covered."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.indexes.db :as indexes.db]
    [metabase.indexes.schema :as schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -69,8 +74,7 @@
   (let [changes (t2/changes idx)
         status  (pending-status-for-changes changes)]
     (cond-> idx
-      status (assoc :status status
-                    :error_message nil))))
+      status (-> t2/changes (assoc :status status :error_message nil)))))
 
 (defn applicable?
   "True when an index request should be applied to a transform's target table."
@@ -111,6 +115,48 @@
    (when transform-id
      (indexes.db/table-index-with-status-exists? transform-id rebuild-forcing-statuses))))
 
+(defn exists-for-transform?
+  "True when `transform-id` already has a request for `index-name`."
+  [transform-id index-name]
+  (indexes.db/table-index-exists-for-transform? transform-id index-name))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-table-indexes! :- [:sequential ::schema/table-index]
+  "Insert the TableIndex `models` in one transaction and return them."
+  [models :- [:sequential ::schema/table-index.create]]
+  (mdb/create-batched! :model/TableIndex models {}))
+
+(mu/defn update-table-indexes! :- :nil
+  "Apply `updates`, each the `:id` of a TableIndex and the columns to change, in one transaction."
+  [updates :- [:sequential ::schema/table-index.update]]
+  (mdb/update-batched! :model/TableIndex updates {}))
+
+(mu/defn delete-table-indexes! :- :nil
+  "Delete the TableIndexes with `ids` in one transaction."
+  [ids :- [:sequential ms/PositiveInt]]
+  (mdb/delete-batched! :model/TableIndex ids {}))
+
+(mu/defn mark-table-index-failed! :- [:maybe :int]
+  "Mark the TableIndex named `index-name` of the Transform with `transform-id` failed with `error-message`, returning
+  the number marked."
+  [transform-id  :- ::lib.schema.id/transform
+   index-name    :- :string
+   error-message :- :string]
+  (indexes.db/mark-table-index-failed! transform-id index-name error-message))
+
+(mu/defn mark-table-indexes-executed! :- :nil
+  "Apply `changes`, a status and an error message, to the TableIndexes with `ids` as the outcome of the run that just
+  executed them."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- [:map {:closed true}
+               [:status        {:optional true} [:maybe [:or :keyword :string]]]
+               [:error_message {:optional true} [:maybe :string]]]]
+  (when (seq ids)
+    (indexes.db/update-table-index-statuses! (indexes.db/table-index-statuses (vec ids))
+                                             (assoc changes :last_executed_at :%now)))
+  nil)
+
 (defn mark-runnable-indexes-running!
   "Mark hydrated index requests that this run will apply as running.
 
@@ -118,32 +164,38 @@
   [index-request-ids]
   (let [ids (set index-request-ids)]
     (when (seq ids)
-      (indexes.db/mark-table-indexes-running! ids runnable-statuses))
+      (indexes.db/mark-table-indexes-running! (filterv (comp runnable-statuses :status)
+                                                       (indexes.db/table-index-statuses (vec ids)))
+                                              runnable-statuses
+                                              {:status :running :error_message nil}))
     ids))
 
 (defn mark-unverified-running-indexes-failed!
   "Mark rows from [[mark-runnable-indexes-running!]] that are still running as failed."
   [ids message]
   (when (seq ids)
-    (indexes.db/mark-running-table-indexes-failed! ids message)))
+    (indexes.db/mark-running-table-indexes-failed! (filterv #(= :running (:status %))
+                                                            (indexes.db/table-index-statuses (vec ids)))
+                                                   {:status :failed :error_message message :last_executed_at :%now})))
 
 (defn mark-for-revalidation!
-  "Flip `transform-id`'s applicable index requests to `:update-pending` and clear stale errors, so the next run
-  re-applies them against the current schema. Skips `:delete-pending` rows so a pending deletion isn't revived."
-  [transform-id]
-  (when transform-id
-    (when-let [ids (seq (map :id (select-applicable-for-transform transform-id)))]
-      (indexes.db/mark-table-indexes-update-pending! ids))))
-
-(defn exists-for-transform?
-  "True when `transform-id` already has a request for `index-name`."
-  [transform-id index-name]
-  (indexes.db/table-index-exists-for-transform? transform-id index-name))
+  "Flip the applicable index requests of the Transforms with `transform-ids` to `:update-pending` and clear stale errors,
+  so the next run re-applies them against the current schema. Skips `:delete-pending` rows so a pending deletion isn't
+  revived."
+  [transform-ids]
+  (when-let [transform-ids (not-empty (vec (remove nil? transform-ids)))]
+    (when-let [rows (not-empty (indexes.db/applicable-table-index-statuses-for-transforms transform-ids))]
+      (indexes.db/update-table-index-statuses! rows {:status :update-pending :error_message nil}))))
 
 ;; Nested in its parent transform's entity (see the Transform spec's `:children`). Only the index definition
 ;; travels; lifecycle is local, so an imported index starts fresh as `:create-pending`. `:structured` holds physical
 ;; column names (no references), so it copies verbatim. `:created_by` is skipped: the user may
 ;; not resolve on import.
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TableIndex [_model]
+  {:skip? true})
 
 (defmethod serialization/spec :model/TableIndex [_]
   {:schema    ::schema/external-table-index
@@ -152,3 +204,7 @@
    :skip      [:status :error_message :last_executed_at :created_by]
    :parent    {:model :model/Transform :key :transform_id :order :index_name}
    :transform {:transform_id serialization/import-only-transform}})
+
+(defmethod remote-sync/spec :model/TableIndex
+  [_model]
+  {:synced-filter-clause indexes.db/synced-table-indexes-clause})

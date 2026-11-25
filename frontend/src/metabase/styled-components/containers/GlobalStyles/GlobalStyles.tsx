@@ -1,9 +1,7 @@
-// eslint-disable-next-line eslint-js/no-restricted-imports
-import { Global, css } from "@emotion/react";
 import { type JSX, useMemo } from "react";
 
-import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
-import { defaultFontFiles } from "metabase/css/core/fonts.styled";
+import "metabase/css/core/base.css";
+import "fonts.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   isPublicEmbedding,
@@ -11,10 +9,13 @@ import {
 } from "metabase/embedding/config";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
+import { GlobalStyleSheet } from "metabase/styled-components/components/GlobalStyleSheet";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
-import { getSitePath } from "metabase/utils/dom";
-import { getFontFamilyValue } from "metabase/utils/fonts";
+import {
+  getCustomFontFaceStyles,
+  getFontFamilyValue,
+} from "metabase/utils/fonts";
 import { getSaveDomImageStyles } from "metabase/viz-core";
 
 import { getFont, getFontFiles } from "../../selectors";
@@ -24,7 +25,6 @@ export const GlobalStyles = (): JSX.Element => {
   const fontFiles = useSelector(getFontFiles);
   const whitelabelColors = useSetting("application-colors");
 
-  const sitePath = getSitePath();
   const theme = useMantineTheme();
   const { colorScheme } = theme.other;
 
@@ -34,36 +34,26 @@ export const GlobalStyles = (): JSX.Element => {
   }, [theme, whitelabelColors]);
 
   const styles = useMemo(() => {
-    return css`
+    const fontFaces = getCustomFontFaceStyles(fontFiles);
+
+    return `
       ${cssVariables}
       :root {
         --mb-default-font-family: ${getFontFamilyValue(font)};
       }
 
-      ${defaultFontFiles({ baseUrl: sitePath })}
-      ${fontFiles?.map(
-        (file) => css`
-          @font-face {
-            font-family: "Custom";
-            src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
-            font-weight: ${file.fontWeight};
-            font-style: normal;
-            font-display: swap;
-          }
-        `,
-      )}
-    ${getSaveDomImageStyles(isEmbeddingSdk())}
-    body {
+      ${fontFaces}
+      ${getSaveDomImageStyles(isEmbeddingSdk())}
+      body {
         font-size: 0.875em;
-        ${isStaticEmbedding() || isPublicEmbedding()
-          ? ""
-          : `color-scheme: ${colorScheme};`}
-        ${rootStyle}
+        ${
+          isStaticEmbedding() || isPublicEmbedding()
+            ? ""
+            : `color-scheme: ${colorScheme};`
+        }
       }
-
-      ${baseStyle}
     `;
-  }, [cssVariables, font, sitePath, fontFiles, colorScheme]);
+  }, [cssVariables, font, fontFiles, colorScheme]);
 
-  return <Global styles={styles} />;
+  return <GlobalStyleSheet styles={styles} />;
 };

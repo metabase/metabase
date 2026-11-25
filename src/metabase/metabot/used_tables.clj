@@ -23,7 +23,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.models.metabot-used-table :as metabot-used-table]
    [metabase.metabot.query-analyzer :as nqa]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.util :as u]
@@ -195,7 +195,7 @@
   ([metadata-providerable message-id parts]
    (let [outputs-by-id (into {}
                              (comp (filter #(= :tool-output (:type %)))
-                                   (map (juxt :id identity)))
+                                   (u/index-by :id))
                              parts)
          pairs         (into []
                              (comp (filter #(= :tool-input (:type %)))
@@ -325,7 +325,7 @@
     (try
       (let [rows (extract-used-tables-with-timing! message-id parts)]
         (when (seq rows)
-          (metabot.db/insert-used-tables! rows)))
+          (metabot-used-table/create-metabot-used-tables! rows)))
       (catch Exception e
         (log/warn "Failed to record metabot used tables for message" message-id (ex-message e))))))
 

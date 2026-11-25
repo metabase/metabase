@@ -27,6 +27,8 @@
 (defn- nest-expressions [query]
   (-> query
       nest-expressions-mbql5
+      ;; existing usage -- do not use going forward
+      #_{:clj-kondo/ignore [:deprecated-var]}
       lib/->legacy-MBQL
       :query))
 

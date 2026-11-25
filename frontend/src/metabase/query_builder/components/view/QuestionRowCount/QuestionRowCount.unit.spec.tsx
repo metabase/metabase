@@ -14,7 +14,6 @@ import {
   waitFor,
 } from "__support__/ui";
 import { formatNumber } from "metabase/utils/formatting";
-import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -64,10 +63,7 @@ async function setup({
     databases,
     questions: "id" in card ? [card] : [],
   });
-  const question =
-    "id" in card
-      ? checkNotNull(metadata.question(card.id))
-      : new Question(card, metadata);
+  const question = new Question(card, metadata);
 
   if (isReadOnly) {
     setupUnauthorizedDatabasesEndpoints(databases);

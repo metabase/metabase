@@ -21,6 +21,8 @@ If your LDAP setup uses other attributes for these, you can change them in the *
 
 Your LDAP directory must have the email field populated for each entry that will become a Metabase user, otherwise Metabase won't be able to create the account, nor will that person be able to log in. If either name field is missing, Metabase will use a default of "Unknown," and the person can change their name in their [account settings](./account-settings.md).
 
+On self-hosted Metabases, you can also set these attribute names with the environment variables [`MB_LDAP_ATTRIBUTE_EMAIL`](../configuring-metabase/environment-variables.md#mb_ldap_attribute_email), [`MB_LDAP_ATTRIBUTE_FIRSTNAME`](../configuring-metabase/environment-variables.md#mb_ldap_attribute_firstname), and [`MB_LDAP_ATTRIBUTE_LASTNAME`](../configuring-metabase/environment-variables.md#mb_ldap_attribute_lastname), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ## Enabling LDAP authentication
 
 To enable LDAP authentication, go to **Admin** > **Settings** > **Authentication** > **LDAP** and click **Set up**. Fill out the form, then click **Save and enable**.
@@ -37,11 +39,15 @@ Until you save your server settings, the **Attributes** and **Group mapping** se
 
 Then save your changes. Metabase will automatically pull the [required attributes](#required-ldap-attributes) from your LDAP directory.
 
+On self-hosted Metabases, you can also set these server settings with the environment variables [`MB_LDAP_HOST`](../configuring-metabase/environment-variables.md#mb_ldap_host), [`MB_LDAP_PORT`](../configuring-metabase/environment-variables.md#mb_ldap_port), [`MB_LDAP_SECURITY`](../configuring-metabase/environment-variables.md#mb_ldap_security), [`MB_LDAP_BIND_DN`](../configuring-metabase/environment-variables.md#mb_ldap_bind_dn), and [`MB_LDAP_PASSWORD`](../configuring-metabase/environment-variables.md#mb_ldap_password).
+
 ## User provisioning
 
 User provisioning is enabled by default. When someone logs in via LDAP, Metabase creates an account for them if they don't have one, and reactivates their account if it is deactivated. The switch saves on its own, so you don't need to click **Save changes** after you change it.
 
 If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in.
+
+On self-hosted Pro and Enterprise plans, you can also turn user provisioning on or off with the [`MB_LDAP_USER_PROVISIONING_ENABLED`](../configuring-metabase/environment-variables.md#mb_ldap_user_provisioning_enabled) environment variable or in the [config file](../configuring-metabase/config-file.md).
 
 ## User schema
 
@@ -52,6 +58,8 @@ The **User schema** section on this same page is where you can adjust settings r
 **User search base** is required. Enter the _distinguished name_ (DN) of the entry in your LDAP server that Metabase should use as the starting point when searching for users.
 
 For example, let's say you're configuring LDAP for your company, WidgetCo, where your base DN is `dc=widgetco,dc=com`. If entries for employees are all stored within an organizational unit in your LDAP server named `People`, you'll want to supply the user search base field with the DN `ou=People,dc=widgetco,dc=com`. This tells Metabase to begin searching for matching entries at that location within the LDAP server.
+
+On self-hosted Metabases, you can also set the user search base with the [`MB_LDAP_USER_BASE`](../configuring-metabase/environment-variables.md#mb_ldap_user_base) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 ### User filter
 
@@ -64,6 +72,8 @@ You'll see the following grayed-out default value in the **User filter** field:
 When a person logs into Metabase, this command confirms that the login they supplied matches either a UID _or_ email field in your LDAP server, _and_ that the matching entry has an objectClass of `inetOrgPerson`.
 
 This default command will work for most LDAP servers, since `inetOrgPerson` is a widely-adopted objectClass. But if your company for example uses a different objectClass to categorize employees, this field is where you can set a different command for how Metabase finds and authenticates an LDAP entry upon a person logging in.
+
+On self-hosted Metabases, you can also set the user filter with the [`MB_LDAP_USER_FILTER`](../configuring-metabase/environment-variables.md#mb_ldap_user_filter) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 ## Group mapping
 
@@ -81,6 +91,8 @@ To map an LDAP group to a Metabase group:
 Metabase saves each mapping as soon as you add, edit, or remove it. To edit a mapping, hover over it and click the pencil icon.
 
 Some LDAP directories list each person's groups on their own entry. If yours does, leave **Group search base** empty. Otherwise, enter the DN where your group entries live.
+
+On self-hosted Metabases, you can also set the group mapping toggle, the mappings themselves, and the group search base with the environment variables [`MB_LDAP_GROUP_SYNC`](../configuring-metabase/environment-variables.md#mb_ldap_group_sync), [`MB_LDAP_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md#mb_ldap_group_mappings), and [`MB_LDAP_GROUP_BASE`](../configuring-metabase/environment-variables.md#mb_ldap_group_base).
 
 ![Group Mapping](images/ldap-group-mapping.png)
 
@@ -110,11 +122,15 @@ If the mapping points to a built-in group such as Administrators, Metabase doesn
 
 If your directory doesn't list each person's groups on their own entry, Metabase looks up membership on the group entries instead. **Group membership filter** sets that lookup filter. Metabase replaces the placeholders `{dn}` and `{uid}` with the person's distinguished name and UID.
 
+On self-hosted Metabases, you can also set the filter with the [`MB_LDAP_GROUP_MEMBERSHIP_FILTER`](../configuring-metabase/environment-variables.md#mb_ldap_group_membership_filter) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ## Syncing user attributes with LDAP
 
 {% include plans-blockquote.html feature="LDAP advanced features" is_plural=true %}
 
-You can manage [user attributes][user-attributes-def] such as names, emails, and roles from your LDAP directory. When you set up [row and column security][row-and-column-security], your LDAP directory will be able to [pass these attributes][user-attributes-docs] to Metabase.
+Metabase always reads people's email, first name, and last name from your LDAP directory. If you turn on [group mapping](#group-mapping), Metabase also reads their groups. You can also sync other [user attributes][user-attributes-def], such as roles, from your LDAP directory.
+
+To choose which user attributes to sync, list them, separated by commas, in the [`MB_LDAP_SYNC_USER_ATTRIBUTES_ALLOWLIST`](../configuring-metabase/environment-variables.md#mb_ldap_sync_user_attributes_allowlist) environment variable or as `ldap-sync-user-attributes-allowlist` in the [config file](../configuring-metabase/config-file.md). By default, the list is empty, so Metabase doesn't sync any user attributes. To turn off user attribute syncing entirely, set [`MB_LDAP_SYNC_USER_ATTRIBUTES`](../configuring-metabase/environment-variables.md#mb_ldap_sync_user_attributes) to `false`.
 
 ## Troubleshooting login issues
 
@@ -126,9 +142,7 @@ You can manage [user attributes][user-attributes-def] such as names, emails, and
 - [Using LDAP for authentication and access control](https://www.metabase.com/learn/metabase-basics/administration/permissions/ldap-auth-access-control).
 - [Permissions overview](../permissions/start.md).
 
-[row-and-column-security]: ../permissions/row-and-column-security.md
 [google-saml-docs]: ./saml-google.md
 [jwt-docs]: ./authenticating-with-jwt.md
 [saml-docs]: ./authenticating-with-saml.md
-[user-attributes-docs]: ../permissions/row-and-column-security.md#choosing-user-attributes-for-row-and-column-security
 [user-attributes-def]: https://www.metabase.com/glossary/attribute#user-attributes-in-metabase

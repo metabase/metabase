@@ -2,6 +2,7 @@
   "Application database queries for the Slack bot module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -26,22 +27,24 @@
   "The non-deleted assistant MetabotMessages of `conversation-id` posted as one of `slack-msg-ids`."
   [conversation-id :- :string
    slack-msg-ids   :- [:set :string]]
-  (t2/select :model/MetabotMessage
-             :conversation_id conversation-id
-             :role "assistant"
-             :deleted_at nil
-             :slack_msg_id [:in slack-msg-ids]))
+  (mdb/select-batched #(t2/select :model/MetabotMessage
+                                  :conversation_id conversation-id
+                                  :role "assistant"
+                                  :deleted_at nil
+                                  :slack_msg_id [:in %])
+                      slack-msg-ids))
 
 (mu/defn deleted-assistant-slack-msg-ids
   "The Slack message ids among `slack-msg-ids` of deleted assistant MetabotMessages of `conversation-id`."
   [conversation-id :- :string
    slack-msg-ids   :- [:set :string]]
-  (t2/select-fn-set :slack_msg_id
-                    :model/MetabotMessage
-                    :conversation_id conversation-id
-                    :role "assistant"
-                    :deleted_at [:not= nil]
-                    :slack_msg_id [:in slack-msg-ids]))
+  (mdb/select-batched-set #(t2/select-fn-set :slack_msg_id
+                                             :model/MetabotMessage
+                                             :conversation_id conversation-id
+                                             :role "assistant"
+                                             :deleted_at [:not= nil]
+                                             :slack_msg_id [:in %])
+                          slack-msg-ids))
 
 (mu/defn assistant-state-messages
   "The id, role, state, error, and finished flag of the non-deleted assistant MetabotMessages of `conversation-id`,

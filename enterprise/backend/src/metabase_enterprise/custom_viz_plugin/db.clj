@@ -2,7 +2,7 @@
   "Application database queries for the custom-viz-plugin module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
-   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
+   [metabase.app-db.core :as app-db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -37,9 +37,11 @@
   "The CustomVizPlugins, with only `columns` unless nil, whose identifier is one of `identifiers`, oldest first."
   [identifiers :- [:sequential {:min 1} :string]
    columns     :- [:maybe [:sequential :keyword]]]
-  (t2/select (if columns (into [:model/CustomVizPlugin] columns) :model/CustomVizPlugin)
-             :identifier [:in [:auto/param (vec identifiers)]]
-             {:order-by [[:id :asc]]}))
+  (let [modelable (if columns (into [:model/CustomVizPlugin] columns) :model/CustomVizPlugin)]
+    (vec (sort-by :id (app-db/select-batched #(t2/select modelable
+                                                         :identifier [:in [:auto/param %]]
+                                                         {:order-by [[:id :asc]]})
+                                             identifiers)))))
 
 (mu/defn plugin-identifier-exists?
   "Whether a CustomVizPlugin with `identifier` exists."
@@ -56,18 +58,21 @@
   [plugin-id :- ms/PositiveInt]
   (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id plugin-id))
 
-(mu/defn insert-plugin!
-  "Insert `plugin` and return the new instance."
-  [plugin :- ::custom-viz-plugin.schema/custom-viz-plugin.update]
-  (t2/insert-returning-instance! :model/CustomVizPlugin plugin))
+(mu/defn non-blob-plugins-by-ids :- [:map-of ms/PositiveInt :map]
+  "The CustomVizPlugins with `plugin-ids`, without their bundles, by id."
+  [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (into {}
+        (map (juxt :id identity))
+        (app-db/select-batched #(t2/select non-blob-columns :id [:in [:auto/param %]]) plugin-ids)))
 
-(mu/defn update-plugin!
-  "Apply `changes` to the CustomVizPlugin with `plugin-id`, returning the number updated."
-  [plugin-id :- ms/PositiveInt
-   changes   :- ::custom-viz-plugin.schema/custom-viz-plugin.update]
-  (t2/update! :model/CustomVizPlugin :id plugin-id changes))
+(mu/defn update-plugins! :- :nil
+  "Apply each of `updates`, the `:id` of a CustomVizPlugin and the columns to change, with one statement for each set of
+  columns that rows have in common."
+  [updates :- [:sequential :map]]
+  (app-db/update-grouped! :model/CustomVizPlugin updates)
+  nil)
 
-(mu/defn delete-plugin!
-  "Delete the CustomVizPlugin with `plugin-id`, returning the number deleted."
-  [plugin-id :- ms/PositiveInt]
-  (t2/delete! :model/CustomVizPlugin :id plugin-id))
+(mu/defn delete-plugins!
+  "Delete the CustomVizPlugins with `plugin-ids`, returning the number deleted."
+  [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/CustomVizPlugin :id [:in [:auto/param %]]) plugin-ids))

@@ -5,9 +5,13 @@ import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionItemsEndpoint,
+  setupLibraryEndpoints,
+  setupRootCollectionItemsEndpoint,
 } from "__support__/server-mocks";
-import { fireEvent, getIcon, screen, waitFor } from "__support__/ui";
+import { fireEvent, getIcon, screen, waitFor, within } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { METAKEY, isTouchDevice } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -17,10 +21,12 @@ import {
   columnFinder,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { CardType, IconName } from "metabase-types/api";
+import type { Card, CardType, IconName } from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockCollection,
+  createMockCollectionItem,
   createMockSearchResult,
 } from "metabase-types/api/mocks";
 import {
@@ -97,6 +103,7 @@ async function setup(opts: SetupOpts = {}) {
 
 const setupEmptyQuery = async () => {
   const question = Question.create({
+    metadata: createMockMetadata(),
     DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
   });
   const query = question.query();
@@ -200,6 +207,7 @@ describe("DataStep", () => {
       createMockCardQueryMetadata({ databases: [createSampleDatabase()] }),
     );
     const emptyQuery = Question.create({
+      metadata: createMockMetadata(),
       DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
     }).query();
     const { getNextQuery } = await setup({
@@ -223,6 +231,259 @@ describe("DataStep", () => {
     await waitFor(() => {
       expect(Lib.allSourceCardIds(getNextQuery())).toEqual([card.id]);
     });
+  });
+
+  it("should show the contents of the clicked collection when collections share a name (metabase#24660)", async () => {
+    const parentCollections = [31, 32].map((id) =>
+      createMockCollectionItem({
+        id,
+        model: "collection",
+        name: "Parent",
+        collection_id: null,
+        location: "/",
+        here: ["card"],
+        below: ["card"],
+      }),
+    );
+    setupCollectionItemsEndpoint({
+      collection: { id: "root" },
+      collectionItems: parentCollections,
+    });
+    setupCollectionItemsEndpoint({
+      collection: { id: 31 },
+      collectionItems: [
+        createMockCollectionItem({
+          id: 1,
+          model: "card",
+          name: "Orders",
+          collection_id: 31,
+        }),
+      ],
+    });
+    setupCollectionItemsEndpoint({
+      collection: { id: 32 },
+      collectionItems: [
+        createMockCollectionItem({
+          id: 2,
+          model: "card",
+          name: "Orders, Count",
+          collection_id: 32,
+        }),
+      ],
+    });
+    setupLibraryEndpoints();
+    await setupEmptyQuery();
+
+    await userEvent.click(
+      within(await screen.findByTestId("mini-picker")).getByText("Browse all"),
+    );
+    const modal = await screen.findByRole("dialog");
+    await userEvent.click(await within(modal).findByText("Our analytics"));
+    const modalParents = await within(modal).findAllByText("Parent");
+    expect(modalParents).toHaveLength(2);
+    await userEvent.click(modalParents[1]);
+    expect(await within(modal).findByText("Orders, Count")).toBeInTheDocument();
+    await userEvent.click(modalParents[0]);
+    expect(await within(modal).findByText("Orders")).toBeInTheDocument();
+    expect(within(modal).queryByText("Orders, Count")).not.toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    await userEvent.click(
+      screen.getByPlaceholderText(/search for tables and more/i),
+    );
+    const miniPicker = await screen.findByTestId("mini-picker");
+    await userEvent.click(await within(miniPicker).findByText("Our analytics"));
+    const miniPickerParents = await within(miniPicker).findAllByText("Parent");
+    expect(miniPickerParents).toHaveLength(2);
+    await userEvent.click(miniPickerParents[1]);
+    expect(
+      await within(miniPicker).findByText("Orders, Count"),
+    ).toBeInTheDocument();
+    expect(within(miniPicker).queryByText("Orders")).not.toBeInTheDocument();
+  });
+
+  describe("picking a card from the data picker modal search", () => {
+    const ORDERS_COUNT_QUERY = Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+        },
+      ],
+    });
+    const ROOT_QUESTION = createMockCard({
+      id: 11,
+      name: "Root question 1",
+      type: "question",
+      dataset_query: ORDERS_COUNT_QUERY,
+    });
+    const ROOT_MODEL = createMockCard({
+      id: 12,
+      name: "Root model 2",
+      type: "model",
+      dataset_query: ORDERS_COUNT_QUERY,
+    });
+    const ROOT_METRIC = createMockCard({
+      id: 13,
+      name: "Root metric 1",
+      type: "metric",
+      dataset_query: ORDERS_COUNT_QUERY,
+    });
+    const DASHBOARD_QUESTION = createMockCard({
+      id: 14,
+      name: "Orders Dashboard question 1",
+      type: "question",
+      dashboard_id: 1,
+      dataset_query: ORDERS_COUNT_QUERY,
+    });
+    const CARDS = [ROOT_QUESTION, ROOT_MODEL, ROOT_METRIC, DASHBOARD_QUESTION];
+    const SEARCH_MODELS: Record<CardType, "card" | "dataset" | "metric"> = {
+      question: "card",
+      model: "dataset",
+      metric: "metric",
+    };
+    const SEARCH_ITEMS = CARDS.map((card) =>
+      createMockSearchResult({
+        id: card.id,
+        name: card.name,
+        model: SEARCH_MODELS[card.type],
+        database_id: SAMPLE_DB_ID,
+        collection: createMockCollection(ROOT_COLLECTION),
+        dashboard:
+          card.dashboard_id != null
+            ? {
+                id: card.dashboard_id,
+                name: "Orders in a dashboard",
+                moderation_status: null,
+              }
+            : null,
+      }),
+    );
+
+    const setupCardPicking = async () => {
+      CARDS.forEach((card) => {
+        setupCardEndpoints(card);
+        const database = createSampleDatabase();
+        setupCardQueryMetadataEndpoint(
+          card,
+          createMockCardQueryMetadata({
+            databases: [database],
+            tables: database.tables,
+          }),
+        );
+      });
+      setupRootCollectionItemsEndpoint({
+        rootCollectionItems: CARDS.filter(
+          (card) => card.dashboard_id == null,
+        ).map((card) =>
+          createMockCollectionItem({
+            id: card.id,
+            name: card.name,
+            model: SEARCH_MODELS[card.type],
+          }),
+        ),
+      });
+      const emptyQuery = Question.create({
+        metadata: createMockMetadata(),
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+      }).query();
+      const result = await setup({
+        step: createMockNotebookStep({ query: emptyQuery }),
+        searchItems: SEARCH_ITEMS,
+        filterSearchByScope: true,
+        applyQueryUpdates: true,
+      });
+      await userEvent.click(await screen.findByText("Browse all"));
+      expect(
+        await screen.findByRole("dialog", { name: "Pick your starting data" }),
+      ).toBeInTheDocument();
+      return result;
+    };
+
+    const searchInModal = async (text: string) => {
+      await userEvent.type(await screen.findByPlaceholderText("Search…"), text);
+      await screen.findByText(`Search results for "${text}"`);
+    };
+
+    const pickSearchResult = async (name: string) => {
+      const results = await screen.findAllByTestId("result-item");
+      const result = results.find((item) => within(item).queryByText(name));
+      await userEvent.click(within(checkNotNull(result)).getByText(name));
+    };
+
+    const expectPickedSource = async (
+      card: Card,
+      getNextQuery: () => Lib.Query,
+    ) => {
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("dialog", { name: "Pick your starting data" }),
+        ).not.toBeInTheDocument(),
+      );
+      if (card.type === "metric") {
+        // a metric is picked as its source table, aggregated by the metric
+        await waitFor(() =>
+          expect(Lib.toJsQuery(getNextQuery())).toMatchObject({
+            stages: [
+              {
+                "source-table": ORDERS_ID,
+                aggregation: [["metric", expect.anything(), card.id]],
+              },
+            ],
+          }),
+        );
+      } else {
+        expect(
+          await within(await screen.findByTestId("data-step-cell")).findByText(
+            card.name,
+          ),
+        ).toBeInTheDocument();
+        expect(Lib.allSourceCardIds(getNextQuery())).toEqual([card.id]);
+      }
+    };
+
+    it.each([ROOT_QUESTION, ROOT_MODEL, ROOT_METRIC])(
+      "should use the $type picked from the search of Our analytics as the source",
+      async (card) => {
+        const { getNextQuery } = await setupCardPicking();
+
+        await userEvent.click(await screen.findByText("Our analytics"));
+        await searchInModal("Root");
+        expect(await screen.findAllByTestId("result-item")).toHaveLength(3);
+        await pickSearchResult(card.name);
+
+        await expectPickedSource(card, getNextQuery);
+      },
+    );
+
+    it.each([ROOT_QUESTION, ROOT_MODEL, ROOT_METRIC, DASHBOARD_QUESTION])(
+      "should use the $name picked from the search everywhere as the source",
+      async (card) => {
+        const { getNextQuery } = await setupCardPicking();
+
+        await searchInModal("o");
+        await userEvent.click(
+          within(screen.getByTestId("search-scope-selector")).getByRole(
+            "radio",
+            { name: "Everywhere" },
+          ),
+        );
+        await waitFor(async () =>
+          expect(await screen.findAllByTestId("result-item")).toHaveLength(4),
+        );
+        await pickSearchResult(card.name);
+
+        await expectPickedSource(card, getNextQuery);
+        const searchCall = fetchMock.callHistory.lastCall("path:/api/search");
+        const searchParams = new URL(checkNotNull(searchCall?.request?.url))
+          .searchParams;
+        expect(searchParams.get("collection")).toBeNull();
+        expect(searchParams.get("include_dashboard_questions")).toBe("true");
+      },
+    );
   });
 
   it("should remove joins when changing a table", async () => {
@@ -343,6 +604,39 @@ describe("DataStep", () => {
       expect(getNextColumn("ID").selected).toBeTruthy();
       expect(getNextColumn("TAX").selected).toBeFalsy();
       expect(getNextColumn("TOTAL").selected).toBeTruthy();
+    });
+
+    it("should keep a custom column when de-selecting a table column (metabase#20229)", async () => {
+      const baseQuery = Lib.createTestQuery(
+        SAMPLE_PROVIDER,
+        DEFAULT_TEST_QUERY,
+      );
+      const total = columnFinder(
+        baseQuery,
+        Lib.expressionableColumns(baseQuery, 0),
+      )("ORDERS", "TOTAL");
+      const query = Lib.expression(
+        baseQuery,
+        0,
+        "Adjective",
+        Lib.expressionClause("case", [
+          Lib.expressionClause(">", [total, 100]),
+          "expensive",
+          "cheap",
+        ]),
+      );
+      const step = createMockNotebookStep({ query });
+      const { getNextQuery } = await setup({ step });
+
+      await userEvent.click(screen.getByLabelText("Pick columns"));
+      await userEvent.click(screen.getByLabelText("Tax"));
+
+      const nextQuery = getNextQuery();
+      const returnedColumnNames = Lib.returnedColumns(nextQuery, 0).map(
+        (column) => Lib.displayInfo(nextQuery, 0, column).name,
+      );
+      expect(returnedColumnNames).toContain("Adjective");
+      expect(returnedColumnNames).not.toContain("TAX");
     });
 
     it("should allow selecting all columns", async () => {

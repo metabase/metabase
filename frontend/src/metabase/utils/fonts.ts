@@ -1,19 +1,21 @@
+import type { FontFile } from "metabase-types/api";
 import type { MetabaseFontFamily } from "metabase-types/api/fonts";
 
 type PredefinedFontName = Exclude<MetabaseFontFamily, "Custom">;
 
 // NOTE: This map is NOT the source of truth for the fonts Metabase ships.
-// The canonical list is computed by `src/metabase/util/fonts.clj`, which
-// scans `resources/frontend_client/app/fonts/` at runtime and exposes the
-// result via the `available-fonts` setting — that's what populates the
-// main admin appearance dropdown.
+// The canonical list is the one hard-coded in `src/metabase/util/fonts.clj`,
+// exposed through the `available-fonts` setting, which is what populates the
+// main admin appearance dropdown. It is hard-coded rather than read off the
+// build output so the whitelabel setting validates the same way in a checkout
+// with no frontend build.
 //
 // This map is consumed by the embedding ThemeEditor (its dropdown and the
 // `MetabaseFontFamily` union above) and by `getFontFamilyValue` to pick a
 // per-font CSS fallback chain on a best-effort basis for cases when selected
 // font may lack some glyphs.
 //
-// When adding or removing a directory under `resources/frontend_client/app/fonts/`,
+// When adding or removing a directory under `frontend/fonts/`,
 // please keep this map and `MetabaseFontFamily` in sync.
 export const PREDEFINED_FONT_FAMILIES_FALLBACK_MAP: Record<
   PredefinedFontName,
@@ -59,4 +61,21 @@ export function getFontFamilyValue(font: string): string {
       : "sans-serif";
 
   return [...families.map((name) => JSON.stringify(name)), fallback].join(", ");
+}
+
+/** The `@font-face` rules for the instance's custom font files. */
+export function getCustomFontFaceStyles(fontFiles: FontFile[] | null): string {
+  return (fontFiles ?? [])
+    .map(
+      (file) => `
+        @font-face {
+          font-family: "Custom";
+          src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
+          font-weight: ${file.fontWeight};
+          font-style: normal;
+          font-display: swap;
+        }
+      `,
+    )
+    .join("\n");
 }

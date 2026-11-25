@@ -147,7 +147,7 @@ const nativeQuestionWithDateParameterDetails = {
         name: "date",
         "display-name": "Date",
         type: "dimension",
-        dimension: ["field", ORDERS.CREATED_AT, null],
+        "field-id": ORDERS.CREATED_AT,
         "widget-type": "date/all-options",
       },
     },
@@ -192,7 +192,7 @@ const nativeTemporalUnitQuestionDetails = {
         name: "unit",
         id: "eb345703-001c-4b2a-b7d5-71cb3efe4beb",
         "display-name": "Unit",
-        dimension: ["field", ORDERS.CREATED_AT, null],
+        "field-id": ORDERS.CREATED_AT,
         required: true,
       },
     },
@@ -637,7 +637,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       cy.get("@targetDashboardId").then((targetDashboardId) => {
         H.modal().within(() => {
           cy.findByPlaceholderText("e.g. http://acme.com/id/{{user_id}}").type(
-            `http://localhost:4000/dashboard/${targetDashboardId}?${parameterDetails.slug}={{UNIT}}`,
+            `${Cypress.config("baseUrl")}/dashboard/${targetDashboardId}?${parameterDetails.slug}={{UNIT}}`,
             { parseSpecialCharSequences: false },
           );
           cy.button("Done").click();
@@ -855,7 +855,9 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       cy.log("exclude an unrelated temporal unit");
       H.dashboardParameterSidebar().findByText("All").click();
       H.popover().findByLabelText("Month").click();
-      H.popover().findByLabelText("Month").should("not.be.checked");
+      H.popover()
+        .findByLabelText("Month")
+        .should("have.attr", "aria-checked", "false");
       H.dashboardParameterSidebar()
         .findByLabelText("Default value")
         .should("contain.text", "Year");

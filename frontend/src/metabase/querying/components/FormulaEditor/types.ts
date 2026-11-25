@@ -3,6 +3,11 @@ import type { EditorView } from "@codemirror/view";
 import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
+export type StageExpression = {
+  clause: Lib.ExpressionClause;
+  index: number;
+};
+
 export type NamedExpression = {
   name: string;
   clause: Lib.ExpressionClause;

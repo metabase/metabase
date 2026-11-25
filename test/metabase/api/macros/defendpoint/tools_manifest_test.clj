@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import (clojure.lang ExceptionInfo)))
 
@@ -91,6 +93,60 @@
                [:map [:id [:int {:description "Internal ID"}]]])]
       (is (= "Internal ID"
              (get-in jss [:properties :id :description]))))))
+
+(deftest ^:parallel maybe-publishes-nullable-type-test
+  (testing "[:maybe X] publishes without `oneOf`, which a type-coercing client fails for a falsy value valid for X"
+    (is (= {:type                 "object"
+            :properties           {:flag   {:type ["boolean" "null"], :description "A flag."}
+                                   :limit  {:type ["integer" "null"], :minimum 1}
+                                   :sample {:type ["integer" "null"], :example 5}
+                                   :mode   {:type ["string" "null"], :enum ["a" "b" nil]}
+                                   :pick   {:anyOf [{:type "string", :const "x"} {:type "null"}], :description "Pick."}
+                                   :filter {:type                 ["object" "null"]
+                                            :properties           {:x {:type "string"}}
+                                            :required             [:x]
+                                            :additionalProperties false}
+                                   :either {:type ["string" "integer" "null"], :description "A string or an id."}
+                                   :value  {:anyOf [{} {:type "null"}]}}
+            :required             [:flag :limit :sample :mode :pick :filter :either :value]
+            :additionalProperties false}
+           (tools-manifest/strict-tool-input-schema
+            (tools-manifest/malli->json-schema
+             [:map
+              [:flag {:optional true} [:maybe [:boolean {:description "A flag."}]]]
+              [:limit {:optional true} [:maybe [:int {:min 1}]]]
+              ;; Malli emits the OpenAPI `:example`, an annotation like `:description`
+              [:sample {:optional true} [:maybe {:json-schema/example 5} :int]]
+              [:mode {:optional true} [:maybe [:enum "a" "b"]]]
+              [:pick {:optional true} [:maybe {:description "Pick."} [:= {:json-schema/type "string"} "x"]]]
+              [:filter {:optional true} [:maybe [:map [:x :string]]]]
+              [:either {:optional true} [:maybe [:or {:description "A string or an id."} :string :int]]]
+              [:value {:optional true} [:maybe :any]]]))))))
+
+(deftest ^:parallel localized-description-test
+  (testing "a localized description stays a localized string, which is translated for each caller when serialized"
+    (let [pick (deferred-tru "Pick one.")]
+      (is (= {:anyOf [{:anyOf [{:type "integer"} {:type "boolean"}]} {:type "null"}], :description pick}
+             (get-in (tools-manifest/malli->json-schema
+                      [:map [:k [:maybe (mu/with-api-error-message [:or :int :boolean] pick)]]])
+                     [:properties :k])))
+      (is (= {:anyOf [{:anyOf [{:type "integer", :description pick} {:type "boolean"}]} {:type "null"}]}
+             (get-in (tools-manifest/malli->json-schema [:map [:k [:maybe [:or [:int {:description pick}] :boolean]]]])
+                     [:properties :k]))))))
+
+(deftest ^:parallel maybe-description-test
+  (testing "a [:maybe] and its schema both describe the property, so both descriptions are published, outer first"
+    (is (= {:type ["integer" "null"], :description "Outer. An id."}
+           (get-in (tools-manifest/malli->json-schema
+                    [:map [:k [:maybe {:description "Outer."} [:int {:description "An id."}]]]])
+                   [:properties :k])))))
+
+(deftest ^:parallel multi-publishes-any-of-test
+  (testing "a :multi publishes its branches as `anyOf`, since OpenAI's strict tool mode rejects `oneOf`"
+    (is (= {:anyOf [{:type "string"} {:type "integer"}]}
+           (get-in (tools-manifest/malli->json-schema
+                    [:map [:op [:multi {:dispatch string?} [true :string] [false :int]]]])
+                   [:properties :op])))))
 
 (mr/def ::ref-target-a [:enum "x" "y"])
 (mr/def ::ref-target-b [:map [:nested ::ref-target-a]])
@@ -495,9 +551,8 @@
           :endpoint       {:method "GET" :path "/api/test/v1/test-search"}
           :inputSchema    {:type       "object"
                            :properties {:q     {:type "string"}
-                                        :limit {:oneOf [{:type        "integer"
-                                                         :description "Maximum number of results to return"}
-                                                        {:type "null"}]}}
+                                        :limit {:type        ["integer" "null"]
+                                                :description "Maximum number of results to return"}}
                            :required   [:q :limit]
                            :additionalProperties false}
           :outputSchema {:type       "object"
@@ -532,7 +587,7 @@
           :endpoint       {:method "PUT" :path "/api/test/v1/test-resource/{id}"}
           :inputSchema    {:type       "object"
                            :properties {:id      {:type "integer"}
-                                        :dry-run {:oneOf [{:type "boolean"} {:type "null"}]}
+                                        :dry-run {:type ["boolean" "null"]}
                                         :name    {:type "string"}}
                            :required   [:id :dry-run :name]
                            :additionalProperties false}}

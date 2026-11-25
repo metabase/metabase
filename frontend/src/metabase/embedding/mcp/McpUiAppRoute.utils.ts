@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import type { SqlParameterValues } from "embedding-sdk-bundle/types/question";
 import { b64_to_utf8 } from "metabase/utils/encoding";
 import type { SeriesCard, VisualizationSettings } from "metabase-types/api";

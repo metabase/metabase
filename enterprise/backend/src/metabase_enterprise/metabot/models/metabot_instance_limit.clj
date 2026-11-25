@@ -1,7 +1,11 @@
 (ns metabase-enterprise.metabot.models.metabot-instance-limit
   (:require
    [metabase-enterprise.metabot.db :as metabot.db]
+   [metabase-enterprise.metabot.schema :as metabot-ee.schema]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -9,7 +13,9 @@
 
 (doto :model/MetabotInstanceLimit
   (derive :metabase/model)
-  (derive ::mi/write-policy.superuser))
+  (derive ::mi/read-policy.superuser)
+  (derive ::mi/write-policy.superuser)
+  (derive ::mi/create-policy.superuser))
 
 (defn instance-limit
   "Returns the limit for a given tenant, or the instance-wide limit when `tenant-id` is nil.
@@ -17,10 +23,18 @@
   [tenant-id]
   (metabot.db/instance-limit tenant-id))
 
-(defn set-instance-limit!
+(defn all-tenant-limits
+  "Returns all tenant-level limits (where tenant_id is not null), ordered by tenant_id."
+  []
+  (metabot.db/tenant-limits))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn set-instance-limit! :- [:maybe ::metabot-ee.schema/metabot-instance-limit]
   "Sets or removes the limit for a given tenant (or instance-wide when `tenant-id` is nil).
    Pass nil for `max-usage` to remove the limit. Returns the updated row, or nil if removed."
-  [tenant-id max-usage]
+  [tenant-id :- [:maybe ms/PositiveInt]
+   max-usage :- ::metabot-ee.schema/metabot-limit.max-usage]
   (if (nil? max-usage)
     (metabot.db/delete-instance-limit! tenant-id)
     (if-let [existing (instance-limit tenant-id)]
@@ -28,7 +42,7 @@
       (metabot.db/insert-instance-limit! {:tenant_id tenant-id :max_usage max-usage})))
   (instance-limit tenant-id))
 
-(defn all-tenant-limits
-  "Returns all tenant-level limits (where tenant_id is not null), ordered by tenant_id."
-  []
-  (metabot.db/tenant-limits))
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/MetabotInstanceLimit [_model]
+  {:skip? false})
