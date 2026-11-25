@@ -21,4 +21,5 @@
   synced-models
   synced-name]
  [remote-sync.worktrees
+  ensure-built-ins!
   worktree-exists?])

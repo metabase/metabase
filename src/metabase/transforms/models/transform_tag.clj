@@ -47,6 +47,13 @@
   "The `built_in_type` of the built-in TransformTags."
   ["hourly" "daily" "weekly" "monthly"])
 
+(def ^:private built-in-entity-ids
+  "The entity id of each built-in TransformTag, by its `built_in_type`, as the migration that added them created them."
+  {"hourly"  "wYLcUPbtF7jVPO0duGGHR"
+   "daily"   "dUW7nvQHQBdA0Rx0gJckI"
+   "weekly"  "qPGCJu7t97kn-X07_fgSj"
+   "monthly" "DeeJHc81qKhD9qWINISO8"})
+
 (defn- built-in-names
   "A map from each `built_in_type` to its translated name, as a string."
   []
@@ -145,6 +152,21 @@
                                             (check-names-free rows)))
                          :after-create #(events/publish-event! :event/transform-tag-create (events/create-event % opts))})))
 
+(defn ensure-built-in-transform-tags!
+  "Create each built-in TransformTag the remote sync worktree this thread works in lacks, by entity id, renamed or not,
+  as the migration that added them created the main app's, retrying once after a concurrent call created some."
+  []
+  (mdb/with-conflict-retry
+    (t2/with-transaction [_conn]
+      (when-let [missing (let [present (transforms.db/tag-entity-ids (vec (vals built-in-entity-ids)))]
+                           (seq (remove (comp present built-in-entity-ids) built-in-types)))]
+        (create-transform-tags! (mapv (fn [built-in-type]
+                                        {:name          built-in-type
+                                         :entity_id     (built-in-entity-ids built-in-type)
+                                         :built_in_type built-in-type})
+                                      missing)))))
+  nil)
+
 (defn- without-built-in-names
   "`changes`, the changes of an import, without the name of `stored`, a built-in tag, unless they set its type."
   [stored changes]
@@ -226,4 +248,5 @@
   [_model]
   {:synced-items           transforms.db/synced-transform-tag-items
    :synced-filter-clause   transforms.db/synced-transform-tags-clause
-   :built-in-filter-clause transforms.db/built-in-transform-tags-clause})
+   :built-in-filter-clause transforms.db/built-in-transform-tags-clause
+   :ensure-built-ins       ensure-built-in-transform-tags!})

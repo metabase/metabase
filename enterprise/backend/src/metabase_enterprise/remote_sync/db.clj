@@ -1,6 +1,6 @@
 (ns metabase-enterprise.remote-sync.db
-  "Application database queries for the remote sync module, each a direct Toucan 2 call, so that no other namespace of
-  the module runs a query itself."
+  "Application database queries for the remote sync module, each a direct Toucan 2 call or one JDBC statement, so that
+  no other namespace of the module runs a query itself."
   (:require
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.app-db.core :as mdb]
@@ -13,11 +13,21 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defenterprise worktree-exists?
   "Whether the remote sync worktree with `worktree-id` exists."
   :feature :remote-sync
   [worktree-id]
   (t2/exists? :model/RemoteSyncWorktree :id [:auto/param worktree-id]))
+
+(mu/defn worktree-users :- [:sequential :map]
+  "The users working in the worktrees with `worktree-ids`, with their `current_worktree_id`."
+  [worktree-ids :- [:sequential ms/PositiveInt]]
+  (t2/select [:model/User :id :email :first_name :last_name :current_worktree_id]
+             :current_worktree_id [:in worktree-ids]
+             :is_active true
+             {:order-by [[:id :asc]]}))
 
 (mu/defn synced-rows
   "The rows of `model` remote sync syncs with the columns its export takes, ordered by primary key."
@@ -176,3 +186,39 @@
   "A map of User ID to User for `user-ids`."
   [user-ids :- [:sequential [:maybe ::lib.schema.id/user]]]
   (mdb/select-batched-map #(t2/select-pk->fn identity :model/User :id [:in %]) user-ids))
+
+(mu/defn worktrees :- [:sequential ::remote-sync.schema/worktree]
+  "Every worktree but the default one, the main app, by branch."
+  []
+  (t2/select :model/RemoteSyncWorktree :is_default false {:order-by [[:branch :asc] [:id :asc]]}))
+
+(mu/defn worktree :- [:maybe ::remote-sync.schema/worktree]
+  "The worktree with `worktree-id`, or nil."
+  [worktree-id :- ms/PositiveInt]
+  (t2/select-one :model/RemoteSyncWorktree :id [:auto/param worktree-id]))
+
+(mu/defn worktree-branch :- [:maybe :string]
+  "The branch of the worktree with `worktree-id`, or nil."
+  [worktree-id :- ms/PositiveInt]
+  (t2/select-one-fn :branch :model/RemoteSyncWorktree :id [:auto/param worktree-id]))
+
+(mu/defn worktree-count :- :int
+  "The number of worktrees but the default one, the main app."
+  []
+  (t2/count :model/RemoteSyncWorktree :is_default false))
+
+(mu/defn insert-worktree! :- ::remote-sync.schema/worktree
+  "Insert the worktree `worktree` and return it."
+  [worktree :- ::remote-sync.schema/worktree.update]
+  (t2/insert-returning-instance! :model/RemoteSyncWorktree worktree))
+
+(mu/defn update-worktree!
+  "Set the columns `changes` of the worktree with `worktree-id`."
+  [worktree-id :- ms/PositiveInt
+   changes     :- ::remote-sync.schema/worktree.update]
+  (t2/update! :model/RemoteSyncWorktree :id [:auto/param worktree-id] changes))
+
+(mu/defn delete-worktree!
+  "Delete the worktree with `worktree-id`, the database deleting its content and moving its users to the main app."
+  [worktree-id :- ms/PositiveInt]
+  (t2/delete! :model/RemoteSyncWorktree :id [:auto/param worktree-id]))

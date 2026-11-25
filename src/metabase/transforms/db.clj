@@ -42,6 +42,11 @@
    _opts :- ::remote-sync.schema/synced-filter-opts]
   [:= (u/qualified-key alias :built_in_type) nil])
 
+(mu/defn tag-entity-ids :- [:set :string]
+  "Those of the `entity-ids` some TransformTag has."
+  [entity-ids :- [:sequential :string]]
+  (set (t2/select-fn-set :entity_id :model/TransformTag :entity_id [:in entity-ids])))
+
 (mu/defn built-in-transform-tags-clause :- [:fn vector?]
   "The clause over the TransformTag table aliased `alias` selecting the built-in tags every instance has."
   [alias :- :keyword]

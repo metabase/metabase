@@ -6,9 +6,9 @@ description: Where a rule about a Toucan 2 model lives and how to write it. Hook
 # Model rules
 
 Every writer of a `:model/X` row calls the model's write functions: REST endpoints, MCP and Metabot tools, the Agent
-API, revision revert, SerDes import, remote-sync pull, sync, the loaders, scheduled tasks. A write function takes a
-list and runs a number of statements that does not grow with it. Hooks run no statement, so a write of many rows
-never becomes a query per row.
+API, revision revert, SerDes import, remote-sync pull, sync, the loaders, scheduled tasks. A write function takes one
+row, or a list once a caller writes several, and then runs a number of statements that does not grow with it. Hooks
+run no statement, so a write of many rows never becomes a query per row.
 
 ## Where a rule lives
 
@@ -117,13 +117,16 @@ A check that needs another row runs in the write function, before the statement,
 
 The `Writes` section of the model file, directly before `Specs`, holds the only production writers of the model.
 
-- One function per operation and model, each taking a list. No single-row twin (callers pass `[x]`), no `foo*`
-  layer, no `-where!` and no per-writer `-for-<consumer>!` variant.
-  - `create-<model>s! [rows opts]` returns the created rows.
-  - `update-<model>s! [updates opts]` takes rows of `:id` and the columns to change, and returns nil.
-  - `delete-<model>s! [ids opts]` returns nil.
-- A caller calls the function once with everything it has, never in a loop: a loop publishes one event per row.
-- Each is one call of a helper in `metabase.app-db.core`, which opens the transaction, partitions the input and writes:
+- One function per operation and model, and no `foo*` layer, no `-where!` and no per-writer `-for-<consumer>!`
+  variant. It takes one row until a caller writes several: bulk is not the default.
+  - `create-<model>! [row opts]` returns the created row; `update-<model>! [update opts]` and `delete-<model>! [id
+    opts]` return nil.
+  - The first caller that writes several rows (SerDes import, remote sync pull, a bulk endpoint, an event consumer)
+    brings the list version, `create-<model>s! [rows opts]`, `update-<model>s! [updates opts]` or `delete-<model>s!
+    [ids opts]`. In the same change the singular one goes, and its callers pass `[x]`: never both.
+- A caller calls the list version once with everything it has, never in a loop: a loop publishes one event per row.
+- A list version is one call of a helper in `metabase.app-db.core`, which opens the transaction, partitions the input
+  and writes:
 
 ```clojure
 (mu/defn update-data-apps! :- :nil
@@ -159,7 +162,7 @@ The `Writes` section of the model file, directly before `Specs`, holds the only 
 - A model the helper does not fit stays hand-written in the same order (transaction, partition, checks, statement,
   one event) and says why: a parent that writes its parts, a row whose default read hides columns the event needs
   (User), a keyed upsert, a delete that must not read its rows.
-- A write that fits no list keeps a named case function (`increment-view-counts!`).
+- A write that is none of create, update and delete keeps a named case function (`increment-view-counts!`).
 - Optional last `opts`: a closed map of data, holding only keys the function uses; no `opts` argument when none is.
   - `:writer`, an enum: `:import`, `:revert`, `:replacement`, `:sync`, `:cascade`. Absent means a user's write. A
     function may branch on it (`update-cards!` skips result-metadata inference for any writer).
