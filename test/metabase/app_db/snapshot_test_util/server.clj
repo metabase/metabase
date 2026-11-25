@@ -9,9 +9,7 @@
   (:require
    [metabase.util.log :as log])
   (:import
-   (org.testcontainers DockerClientFactory)
    (org.testcontainers.containers Container$ExecResult GenericContainer)
-   (org.testcontainers.images RemoteDockerImage)
    (org.testcontainers.utility DockerImageName)))
 
 (set! *warn-on-reflection* true)
@@ -88,14 +86,6 @@
           (< deadline (System/currentTimeMillis))    (throw (ex-info "Database container never became ready"
                                                                      {:command ready, :err (.getStderr r)}))
           :else                                      (do (Thread/sleep 500) (recur)))))))
-
-(defn image-identity!
-  "Resolve the configured image for `flavor` and return its local Docker content ID. May pull a missing image."
-  [flavor]
-  (when-let [image (:image (flavor->server flavor))]
-    (let [resolved (.get (RemoteDockerImage. (DockerImageName/parse image)))]
-      (with-open [command (.inspectImageCmd (.client (DockerClientFactory/instance)) ^String resolved)]
-        (.getId (.exec command))))))
 
 (defn do-with-server!
   "Start the pinned server for `flavor`, call `(f server)`, and stop it again.
