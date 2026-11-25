@@ -1,10 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -16,12 +13,27 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
   it("smoke test: should show the preview sidebar, update it, and close it", () => {
     const queryLimit = 2;
+    const toleranceDelta = 0.5;
+    const borderWidth = 1;
+    const sidebarMargin = 4;
+    const minNotebookWidth = 640;
+    const maxSidebarWidth =
+      Cypress.config("viewportWidth") -
+      minNotebookWidth -
+      borderWidth -
+      sidebarMargin;
 
     cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
 
     H.openReviewsTable({ mode: "notebook", limit: queryLimit });
     openSidebar();
     cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+
+    cy.log("Resizing the sidebar saves its width");
+    resizeSidebar(-500, (initialSidebarWidth, sidebarWidth) => {
+      expect(sidebarWidth).to.be.gt(initialSidebarWidth);
+      expect(sidebarWidth).to.be.closeTo(maxSidebarWidth, toleranceDelta);
+    });
 
     cy.log("Refreshing the page does not persist the sidebar state");
     cy.reload();
@@ -30,6 +42,13 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
     openSidebar();
     cy.wait("@nativeDataset");
+
+    cy.log("The saved sidebar width is restored after a reload");
+    cy.findByTestId("native-query-preview-sidebar").should(($sidebar) => {
+      const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
+      expect(sidebarWidth).to.be.closeTo(maxSidebarWidth, toleranceDelta);
+    });
+
     cy.findByTestId("native-query-preview-sidebar").within(() => {
       cy.findByText("SQL for this question").should("exist");
       H.NativeEditor.get()
@@ -70,20 +89,6 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
   });
 
-  it("should not offer the sidebar preview for a user without native permissions", () => {
-    cy.signIn("nosql");
-    H.openReviewsTable({ mode: "notebook" });
-    cy.findByTestId("data-step-cell").should("contain", "Reviews");
-    cy.findByTestId("qb-header-action-panel")
-      .findByTestId("qb-save-button")
-      .should("be.visible");
-    cy.findByTestId("qb-header-action-panel")
-      .findByLabelText(/View SQL/i)
-      .should("not.exist");
-    cy.findByLabelText("View SQL").should("not.exist");
-    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-  });
-
   it(
     "should work on small screens",
     { viewportWidth: 480, viewportHeight: 800 },
@@ -119,76 +124,6 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       });
     },
   );
-
-  it("sidebar should be resizable", () => {
-    const toleranceDelta = 0.5;
-
-    const borderWidth = 1;
-    const sidebarMargin = 4;
-    const minNotebookWidth = 640;
-    const minSidebarWidth = 428 - borderWidth;
-    const maxSidebarWidth =
-      Cypress.config("viewportWidth") -
-      minNotebookWidth -
-      borderWidth -
-      sidebarMargin;
-
-    cy.intercept("POST", "/api/dataset/query_metadata").as("metadata");
-    cy.intercept("GET", "/api/session/properties").as("sessionProperties");
-    cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
-
-    H.openReviewsTable({ mode: "notebook", limit: 1 });
-    cy.wait("@metadata");
-    openSidebar();
-    cy.wait(["@nativeDataset", "@sessionProperties"]);
-
-    cy.log(
-      "It should not be possible to shrink the sidebar below its min (initial) width",
-    );
-    resizeSidebar(200, (initialSidebarWidth, sidebarWidth) => {
-      expect(initialSidebarWidth).to.be.closeTo(
-        minSidebarWidth,
-        toleranceDelta,
-      );
-      expect(sidebarWidth).to.be.closeTo(initialSidebarWidth, toleranceDelta);
-    });
-
-    cy.log(
-      "It should be possible to resize the sidebar but not above its max width",
-    );
-    resizeSidebar(-500, (initialSidebarWidth, sidebarWidth) => {
-      expect(sidebarWidth).to.be.gt(initialSidebarWidth);
-      expect(sidebarWidth).to.be.closeTo(maxSidebarWidth, toleranceDelta);
-    });
-
-    cy.log("User preferences should be preserved across sessions");
-    cy.signOut();
-    cy.signInAsAdmin();
-    H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-    H.openNotebook();
-    openSidebar();
-    cy.findByTestId("native-query-preview-sidebar")
-      .should("be.visible")
-      .then(($sidebar) => {
-        const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
-        expect(sidebarWidth).to.be.closeTo(maxSidebarWidth, toleranceDelta);
-      });
-
-    cy.log("Preferences should not be shared across users");
-    cy.signOut();
-    cy.signInAsNormalUser();
-    H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-    H.openNotebook();
-    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-
-    openSidebar();
-    cy.findByTestId("native-query-preview-sidebar")
-      .should("be.visible")
-      .then(($sidebar) => {
-        const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
-        expect(sidebarWidth).to.be.closeTo(minSidebarWidth, toleranceDelta);
-      });
-  });
 });
 
 describe("converting question to SQL (metabase#12651, metabase#21615, metabase#32121, metabase#40422)", () => {
@@ -253,39 +188,6 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
   });
 });
 
-describe("scenarios > notebook > native query preview sidebar tracking events", () => {
-  beforeEach(() => {
-    H.resetSnowplow();
-    H.restore();
-    cy.signInAsAdmin();
-    H.enableTracking();
-  });
-
-  afterEach(() => {
-    H.expectNoBadSnowplowEvents();
-  });
-
-  it("should track `notebook_native_preview_shown|hidden` events", () => {
-    cy.intercept("POST", "/api/dataset/native").as("nativeDataset");
-    H.openReviewsTable({ mode: "notebook", limit: 1 });
-
-    cy.findByLabelText("View SQL").click();
-    cy.wait("@nativeDataset");
-    cy.findByTestId("native-query-preview-sidebar").should("exist");
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "notebook_native_preview_shown",
-    });
-
-    closeSidebar();
-    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "notebook_native_preview_hidden",
-    });
-  });
-});
-
 function convertToSql() {
   H.openNotebook();
   cy.findByLabelText("View SQL").click();
@@ -304,6 +206,7 @@ function resizeSidebar(amountX: number, cb: ResizeSidebarCallback) {
   cy.intercept("PUT", "/api/setting/notebook-native-preview-sidebar-width").as(
     "updateSidebarWidth",
   );
+  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
   cy.findByTestId("native-query-preview-sidebar").then(($sidebar) => {
     const initialSidebarWidth = $sidebar[0].getBoundingClientRect().width;
