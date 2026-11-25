@@ -189,6 +189,30 @@
      (delete-auth-identities! (auth-identity.db/auth-identity-ids user-id "emailed-secret-password-reset"))
      (models.session/end-sessions-for-users! [user-id] "password-change" (:ended-by opts)))))
 
+(mu/defn force-password-reset! :- [:map {:closed true}
+                                   [:had-password? :boolean]]
+  "Lock `user-id` out until they set a new password, for an admin responding to a compromised account.
+
+  Expires their `password` AuthIdentity, so `authenticate` refuses their current password from now on with
+  `:password-reset-required` (see [[metabase.auth-identity.provider/password-reset-required?]]), which lets sign-in tell them why; deletes any
+  outstanding password-reset token, which whoever compromised the account may hold; and ends every session they have,
+  recording `ended-by` as the admin who ended them. Access comes back only through a new reset token, and the reset
+  flow refuses the current password as the new one. [[set-password!]] clears the expiry.
+
+  Returns whether the user had a password to expire. A user who signs in only through SSO has none: their sessions
+  still end, but signing in again is up to their identity provider."
+  [user-id  :- ms/PositiveInt
+   ended-by :- [:maybe ms/PositiveInt]]
+  ;; atomic for the same reason as `set-password!`: a lockout that ends the sessions but leaves the password working,
+  ;; or the reverse, is not a lockout
+  (t2/with-transaction [_]
+    (let [password-auth-identity-id (auth-identity.db/auth-identity-id user-id "password")]
+      (when password-auth-identity-id
+        (update-auth-identities! [{:id password-auth-identity-id, :expires_at (t/instant)}])
+        (delete-auth-identities! (auth-identity.db/auth-identity-ids user-id "emailed-secret-password-reset")))
+      (models.session/end-sessions-for-users! [user-id] "forced-password-change" ended-by)
+      {:had-password? (some? password-auth-identity-id)})))
+
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/AuthIdentity [_model]

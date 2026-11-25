@@ -120,13 +120,60 @@ describe("people table", () => {
   });
 });
 
-describe("user strategy button", () => {
-  it("should appear when viewing internal users page", async () => {
-    setup();
+describe("settings menu", () => {
+  it("should offer the user strategy and a force password reset for everyone", async () => {
+    setup({ settings: { "email-configured?": true } });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "People settings" }),
+    );
 
     expect(
-      await screen.findByRole("button", { name: /gear/i }),
-    ).toBeInTheDocument();
+      await screen.findByRole("menuitem", { name: "Pick a user strategy" }),
+    ).toHaveAttribute("href", "/admin/people/user-strategy");
+    expect(
+      screen.getByRole("menuitem", { name: "Force password reset" }),
+    ).toHaveAttribute("href", "/admin/people/force-reset");
+  });
+
+  it("should link the gear straight to the user strategy when email is not set up", async () => {
+    setup({ settings: { "email-configured?": false } });
+
+    expect(await screen.findByText("Internal users")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "People settings" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /gear/ })).toHaveAttribute(
+      "href",
+      "/admin/people/user-strategy",
+    );
+  });
+
+  it("should not replace the menu with a standalone force password reset button", async () => {
+    setup();
+
+    expect(await screen.findByText("Invite someone")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Force password reset/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should be hidden when the current user is not an admin", async () => {
+    setup({ currentUser: createMockUser({ is_superuser: false }) });
+
+    expect(await screen.findByText("Internal users")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "People settings" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should be hidden on the tenant users page", async () => {
+    setup({ external: true });
+
+    expect(await screen.findByText("Tenant users")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "People settings" }),
+    ).not.toBeInTheDocument();
   });
 });
 

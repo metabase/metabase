@@ -60,6 +60,12 @@
 (mr/def :event/user-login  ::user)
 (mr/def :event/user-joined ::user)
 
+(mr/def :event/password-reset-forced
+  ;; the admin who forced the reset, and the user it locked out
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:object  [:fn #(t2/instance-of? :model/User %)]]])
+
 (mr/def :event/user-invited
   [:map {:closed true}
    [:object [:map

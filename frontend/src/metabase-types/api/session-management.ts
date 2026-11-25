@@ -31,6 +31,7 @@ export const SESSION_END_REASONS = [
   "admin",
   "logout",
   "password-change",
+  "forced-password-change",
   "user-deactivated",
   "tenant-deactivated",
   "sso-logout",
