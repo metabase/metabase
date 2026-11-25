@@ -10,6 +10,7 @@ import { EventTablePicker } from "./EventTablePicker";
 import { ViewSqlButton } from "./ViewSqlButton";
 import { CountingMenu } from "./toolbar/CountingMenu";
 import { DateRangeButton } from "./toolbar/DateRangeButton";
+import { DrillPill } from "./toolbar/DrillPill";
 import { FiltersButton } from "./toolbar/FiltersButton";
 import { GranularityButton } from "./toolbar/GranularityButton";
 
@@ -20,6 +21,8 @@ type AnalysisToolbarProps = {
   /** Undefined until the analysis's settings are computed. */
   settings: CommonSettings | undefined;
   options: CommonSettingsOptions;
+  /** What the drilled cell's actors have in common. Undefined without a drill. */
+  drillLabel: string | undefined;
   /** Undefined until the analysis's query is built. */
   query: Lib.Query | undefined;
   /** The query the analysis's filters are on. Undefined until it's known. */
@@ -40,6 +43,7 @@ export const AnalysisToolbar = ({
   isTablePickerInitiallyOpened,
   settings,
   options,
+  drillLabel,
   query,
   baseQuery,
   areFiltersExpanded,
@@ -76,6 +80,12 @@ export const AnalysisToolbar = ({
       >
         {t`Setup`}
       </Button>
+      {drillLabel !== undefined && (
+        <DrillPill
+          label={drillLabel}
+          onRemove={() => onChangeSettings({ drill: null })}
+        />
+      )}
     </Group>
     <Group gap="sm">
       {settings !== undefined && (

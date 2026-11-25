@@ -47,8 +47,14 @@ const HABIT_DEFAULTS = {
   date_range: "past90days",
   counting: "person",
   granularity: "day",
+  drill: null,
   "habit.active": null,
   "habit.values": "count",
+};
+
+const DRILL: Lib.AnalysisDrill = {
+  type: "actors",
+  dimensions: [{ column: "periods", value: 6 }],
 };
 
 describe("computeAnalysisSettings", () => {
@@ -65,6 +71,7 @@ describe("computeAnalysisSettings", () => {
         date_range: "2026-01-01~2026-03-31",
         counting: "person",
         granularity: "week",
+        drill: DRILL,
         "habit.active": EVENT,
         "habit.values": "percent",
       }),
@@ -73,6 +80,7 @@ describe("computeAnalysisSettings", () => {
       date_range: "2026-01-01~2026-03-31",
       counting: "person",
       granularity: "week",
+      drill: DRILL,
       "habit.active": EVENT,
       "habit.values": "percent",
     });
@@ -161,6 +169,8 @@ describe("computeAnalysisSettings", () => {
     ],
     ["an active event that isn't an object", { "habit.active": "signup" }],
     ["values Habit doesn't offer", { "habit.values": "ratio" }],
+    ["a drill without dimensions", { drill: { ...DRILL, dimensions: [] } }],
+    ["a drill of an unknown type", { drill: { ...DRILL, type: "segment" } }],
   ])("falls back to the default for %s", (_description, stored) => {
     expect(computeAnalysisSettings("habit", CONTEXT, stored)).toEqual(
       HABIT_DEFAULTS,

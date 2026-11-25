@@ -3,6 +3,7 @@ import { isOneOf } from "metabase-types/guards";
 
 import { getTableQuery, readBaseQuery } from "../base-query";
 import { parseDateRange } from "../date-range";
+import { isAnalysisDrill } from "../drills/drill";
 
 import type {
   AnalysisSettingDefinitions,
@@ -36,5 +37,10 @@ export const getCommonSettings = ({
     getDefault: () => granularities[0],
     isValid: (_context, settings) =>
       isOneOf(granularities, settings.granularity),
+  },
+  drill: {
+    getDefault: () => null,
+    isValid: (_context, settings) =>
+      settings.drill === null || isAnalysisDrill(settings.drill),
   },
 });

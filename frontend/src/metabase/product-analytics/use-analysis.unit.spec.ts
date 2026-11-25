@@ -92,6 +92,7 @@ describe("useAnalysis", () => {
       date_range: "past90days",
       counting: "person",
       granularity: "week",
+      drill: null,
       "habit.active": null,
       "habit.values": "count",
     });
@@ -184,6 +185,7 @@ describe("useAnalysis", () => {
       date_range: "past90days",
       counting: "person",
       granularity: "day",
+      drill: null,
       "habit.active": null,
       "habit.values": "count",
     });

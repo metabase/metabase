@@ -21,6 +21,7 @@ const SETTINGS: HabitSettings = {
   date_range: "past90days",
   counting: "person",
   granularity: "week",
+  drill: null,
   "habit.active": null,
   "habit.values": "count",
 };
@@ -102,6 +103,28 @@ describe("getAnalysisState", () => {
         (column) => Lib.displayInfo(query, -1, column).name,
       ),
     ).toEqual(["periods", "people"]);
+  });
+
+  it("gives the planner the drill, which lists the drilled cell's people", () => {
+    const query = Lib.buildProductAnalyticsQuery(
+      setup({
+        settings: {
+          ...SETTINGS,
+          drill: {
+            type: "actors",
+            dimensions: [{ column: "periods", value: 6 }],
+          },
+        },
+      }),
+    );
+
+    expect(
+      Lib.returnedColumns(query, -1).map(
+        (column) => Lib.displayInfo(query, -1, column).name,
+      ),
+    ).toEqual(["USER_ID", "periods"]);
+    expect(Lib.aggregations(query, -1)).toHaveLength(0);
+    expect(Lib.filters(query, -1)).toHaveLength(1);
   });
 
   it("filters events to the date range", () => {

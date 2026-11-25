@@ -601,6 +601,70 @@ describe("NewAnalysisPage", () => {
     });
   });
 
+  describe("drill", () => {
+    const DRILL: Lib.AnalysisDrill = {
+      type: "actors",
+      dimensions: [{ column: "periods", value: 6 }],
+    };
+    const DRILL_LABEL = "People active on 6 days";
+    const DRILLED_ROUTE = `${SET_UP_TABLE_ROUTE}#${encodeSettings({ drill: DRILL })}`;
+
+    it("runs a query for the drilled cell's people, and names the cell in the toolbar", async () => {
+      setup({ initialRoute: DRILLED_ROUTE });
+
+      expect(await screen.findByText(DRILL_LABEL)).toBeInTheDocument();
+      await waitFor(() => expect(getRunRequests()).toHaveLength(1));
+      const query: unknown = await getRunRequests()[0].request?.json();
+      expect(query).toMatchObject({
+        stages: [{}, { filters: [["=", {}, ["field", {}, "periods"], 6]] }],
+      });
+      expect(query).not.toMatchObject({
+        stages: [{}, { aggregation: expect.anything() }],
+      });
+    });
+
+    it("goes back to the result when the drill is removed", async () => {
+      const { router } = setup({ initialRoute: DRILLED_ROUTE });
+      await waitFor(() => expect(getRunRequests()).toHaveLength(1));
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: `Remove ${DRILL_LABEL}` }),
+      );
+
+      expect(screen.queryByText(DRILL_LABEL)).not.toBeInTheDocument();
+      expect(getStoredSettings(router)).toEqual({ drill: null });
+      await waitFor(() => expect(getRunRequests()).toHaveLength(2));
+      expect(await getRunRequests()[1].request?.json()).toMatchObject({
+        stages: [{}, { aggregation: [expect.anything()] }],
+      });
+    });
+
+    it("is cleared by a change to another setting, and comes back with browser back", async () => {
+      const { router } = setup({ initialRoute: DRILLED_ROUTE });
+      await userEvent.click(
+        await screen.findByRole("button", { name: "by day" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Week" }),
+      );
+
+      expect(
+        await screen.findByRole("button", { name: "by week" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(DRILL_LABEL)).not.toBeInTheDocument();
+      expect(getStoredSettings(router)).toEqual({
+        drill: null,
+        granularity: "week",
+      });
+
+      act(() => router?.back());
+      expect(await screen.findByText(DRILL_LABEL)).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "by day" }),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("setup panel", () => {
     const ACTIVE_EVENT_TITLE = "What event counts as showing up?";
 

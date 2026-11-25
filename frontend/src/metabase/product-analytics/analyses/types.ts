@@ -37,6 +37,8 @@ export type CommonSettings = {
   date_range: string;
   counting: Grain;
   granularity: Granularity;
+  /** The clicked cell whose actors show instead of the result. */
+  drill: Lib.AnalysisDrill | null;
 };
 
 /** What a kind of analysis can count and bucket by. The first of each is the default. */
@@ -71,4 +73,12 @@ export type AnalysisConfig<K extends ProductAnalyticsKind> = {
   getVizSettings: (
     settings: AnalysisSettingsByKind[K],
   ) => VisualizationSettings;
+  /**
+   * What the drill's actors have in common, e.g. "People active on 6 days".
+   * `null` when it can't be described, and then the cell offers no drill.
+   */
+  describeDrill: (
+    settings: AnalysisSettingsByKind[K],
+    drill: Lib.AnalysisDrill,
+  ) => string | null;
 };

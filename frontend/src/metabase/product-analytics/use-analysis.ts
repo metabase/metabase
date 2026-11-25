@@ -66,13 +66,14 @@ function buildAnalysis<K extends ProductAnalyticsKind>(
       table,
       baseQuery,
     });
+    const isDrilled = settings.drill !== null;
     return {
       settings,
       baseQuery,
       analysis: {
         title: config.getTitle(settings),
-        display: config.getDisplay(settings),
-        vizSettings: config.getVizSettings(settings),
+        display: isDrilled ? "table" : config.getDisplay(settings),
+        vizSettings: isDrilled ? {} : config.getVizSettings(settings),
       },
       query: Lib.buildProductAnalyticsQuery(analysisState),
     };
