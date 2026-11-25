@@ -1,6 +1,8 @@
 (ns metabase.sync.fetch-metadata-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.test :as mt])
@@ -56,3 +58,27 @@
                (mt/with-log-messages-for-level [messages [metabase.sync.fetch-metadata-test :debug]]
                  (is (thrown? Throwable (fetch-metadata/log-if-error "test" (throw e))))
                  (mapv :level (messages)))))))))
+
+(deftest include-nested-fields-for-table-skips-tables-without-json-test
+  (testing "the search for nested field columns runs only for a table that has a JSON column"
+    (let [searched (atom 0)
+          nested   {:name "doc → a", :database-type "text", :base-type :type/Text, :database-position 0
+                    :nfc-path [:doc :a]}
+          db       (lib.metadata/database (mt/metadata-provider))
+          table    (lib.metadata/table (mt/metadata-provider) (mt/id :venues))
+          id-field {:name "id", :database-type "int", :base-type :type/Integer, :database-position 0}
+          doc      {:name "doc", :database-type "jsonb", :base-type :type/JSON, :database-position 1}]
+      ;; `describe-nested-field-columns` is a multimethod, which `mt/with-dynamic-fn-redefs` cannot replace
+      (with-redefs [driver.u/supports?                          (fn [_driver feature _db]
+                                                                  (= feature :nested-field-columns))
+                    sql-jdbc.sync/describe-nested-field-columns (fn [_driver _db _table]
+                                                                  (swap! searched inc)
+                                                                  #{nested})]
+        (testing "no JSON column: no search, and the fields are returned as they are"
+          (is (= #{id-field}
+                 (fetch-metadata/include-nested-fields-for-table #{id-field} db table)))
+          (is (zero? @searched)))
+        (testing "a JSON column: the search runs and its fields are added"
+          (is (= #{id-field doc nested}
+                 (fetch-metadata/include-nested-fields-for-table #{id-field doc} db table)))
+          (is (= 1 @searched)))))))
