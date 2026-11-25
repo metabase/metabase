@@ -37,9 +37,11 @@
   "The CustomVizPlugins, with only `columns` unless nil, whose identifier is one of `identifiers`, oldest first."
   [identifiers :- [:sequential {:min 1} :string]
    columns     :- [:maybe [:sequential :keyword]]]
-  (t2/select (if columns (into [:model/CustomVizPlugin] columns) :model/CustomVizPlugin)
-             :identifier [:in [:auto/param (vec identifiers)]]
-             {:order-by [[:id :asc]]}))
+  (let [modelable (if columns (into [:model/CustomVizPlugin] columns) :model/CustomVizPlugin)]
+    (vec (sort-by :id (app-db/select-batched #(t2/select modelable
+                                                         :identifier [:in [:auto/param %]]
+                                                         {:order-by [[:id :asc]]})
+                                             identifiers)))))
 
 (mu/defn plugin-identifier-exists?
   "Whether a CustomVizPlugin with `identifier` exists."
@@ -61,7 +63,7 @@
   [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (into {}
         (map (juxt :id identity))
-        (t2/select non-blob-columns :id [:in [:auto/param plugin-ids]])))
+        (app-db/select-batched #(t2/select non-blob-columns :id [:in [:auto/param %]]) plugin-ids)))
 
 (mu/defn update-plugins! :- :nil
   "Apply each of `updates`, the `:id` of a CustomVizPlugin and the columns to change, with one statement for each set of
@@ -73,4 +75,4 @@
 (mu/defn delete-plugins!
   "Delete the CustomVizPlugins with `plugin-ids`, returning the number deleted."
   [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/CustomVizPlugin :id [:in [:auto/param plugin-ids]]))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/CustomVizPlugin :id [:in [:auto/param %]]) plugin-ids))

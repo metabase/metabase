@@ -187,7 +187,7 @@
                                          {:table (->> (collections-rest.db/published-table-collection-ids)
                                                       (map :collection_id)
                                                       (into #{}))}))
-            collections-with-details (map collections.children/prep-collection-for-export collections)]
+            collections-with-details (collections.children/prep-collections-for-export collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -332,13 +332,13 @@
   (let [cards (cond->> (dashboard-question-candidates id)
                 (some? card-ids) (filter #(contains? card-ids (:id %))))]
     (t2/with-transaction [_conn]
-      (let [updates (mapv (fn [{:as card :keys [in_dashboards]}]
-                            (let [changes {:dashboard_id (-> in_dashboards first :id)}]
-                              (api/update-check card changes)
-                              (queries.card/place-updated-dashboard-question! card changes false)
-                              (assoc (queries.card/card-changes changes) :id (:id card))))
-                          cards)]
-        (queries.card/update-cards! updates)
+      (let [card-changes (mapv (fn [{:as card :keys [in_dashboards]}]
+                                 [card {:dashboard_id (-> in_dashboards first :id)}])
+                               (t2/hydrate (vec cards) :can_write))]
+        (queries/check-allowed-to-update-cards! card-changes)
+        (queries.card/place-updated-dashboard-questions! card-changes false)
+        (queries.card/update-cards! (mapv (fn [[card changes]] (assoc (queries.card/card-changes changes) :id (:id card)))
+                                          card-changes))
         (mapv :id cards)))))
 
 (api.macros/defendpoint :post "/:id/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse

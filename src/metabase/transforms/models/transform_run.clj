@@ -42,19 +42,18 @@
    :run_method mi/transform-keyword})
 
 ;; a run is only readable if its transform is; orphaned runs (transform deleted) are superuser-only
-(methodical/defmethod t2/simple-hydrate [:model/TransformRun :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k
-             (boolean
-              (or api/*is-superuser?*
-                  (boolean (when-let [transform-id (:transform_id instance)]
-                             (some-> (transforms.db/transform transform-id) (t2/hydrate :can_read) mi/can-read?)))))))
-
-(mi/define-simple-hydration-method add-transform-runs
-  :transform-runs
-  "Add transform-runs for a transform. Must have :id field."
-  [transform]
-  (transforms.db/runs-for-transform (:id transform)))
+(methodical/defmethod t2/batched-hydrate [:model/TransformRun :can_read]
+  "Whether the current user can read each of `runs`: a superuser any, others those of a Transform they read, the
+  Transforms loaded and answered together."
+  [_model k runs]
+  (let [transforms (when-not api/*is-superuser?*
+                     (u/index-by :id (t2/hydrate (transforms.db/transforms
+                                                  (into [] (comp (remove nil?) (keep :transform_id) (distinct)) runs))
+                                                 :can_read)))]
+    (for [run runs]
+      (when run
+        (vary-meta run assoc k (boolean (or api/*is-superuser?*
+                                            (some-> (get transforms (:transform_id run)) mi/can-read?))))))))
 
 (mr/def ::canceled-run
   "A TransformRun force-canceled by [[cancel-old-canceling-runs!]], with the time its cancelation was requested."
@@ -264,16 +263,15 @@
                                                       :is_active nil}))
      (cancel/delete-cancelation! run-id))))
 
-(mu/defn- publish-timeout-event! :- :nil
-  "Publish `:event/transform-run-timeout` for `run`. Wrapped so that audit-log handler
-  failures don't bubble into the caller's timeout flow."
-  [run :- ::transforms.schema/transform-run]
-  (try
-    (events/publish-event! :event/transform-run-timeout
-                           (cond-> {:object run}
-                             (:user_id run) (assoc :user-id (:user_id run))))
-    (catch Throwable t
-      (log/warnf "Failed to publish transform-run-timeout event for run %s: %s" (pr-str (:id run)) (ex-message t))))
+(mu/defn- publish-timeout-events! :- :nil
+  "Publish one `:event/transform-run-timeout` for `runs`, catching a failure of its handlers so that it does not fail
+  the caller's timeout flow."
+  [runs :- [:sequential ::transforms.schema/transform-run]]
+  (when (seq runs)
+    (try
+      (events/publish-event! :event/transform-run-timeout {:objects runs})
+      (catch Throwable t
+        (log/warnf "Failed to publish transform-run-timeout event for runs %s: %s" (pr-str (mapv :id runs)) (ex-message t)))))
   nil)
 
 (mu/defn timeout-run! :- :int
@@ -291,11 +289,11 @@
      (when (pos? <>)
        (analytics/inc! :metabase-transforms/timeouts-total {:type "transform"})
        (when-let [run (transforms.db/run run-id)]
-         (publish-timeout-event! run))))))
+         (publish-timeout-events! [run]))))))
 
 (mu/defn- reap-transform-runs! :- [:maybe [:sequential ::transforms.schema/transform-run]]
-  "Reap active transform runs by `stale-column` into a timeout carrying `message`, publishing a timeout
-  event per run. See [[metabase.run-tracking.core/reap-orphaned!]]."
+  "Reap the active transform runs that [[metabase.run-tracking.core/reap-orphaned!]] finds by `stale-column` into a
+  timeout carrying `message`, publishing one timeout event for all of them."
   [stale-column :- [:enum :start_time :last_heartbeat]
    age          :- ms/PositiveInt
    unit         :- :keyword
@@ -312,12 +310,12 @@
                               :tags           {:type "transform"}
                               :latency-column stale-column
                               :timeout-ms     (rt/unit->ms age unit)}})]
-    (doseq [run reaped]
-      (publish-timeout-event! (assoc run
-                                     :status    :timeout
-                                     :is_active nil
-                                     :end_time  end-time
-                                     :message   message)))
+    (publish-timeout-events! (mapv #(assoc %
+                                           :status    :timeout
+                                           :is_active nil
+                                           :end_time  end-time
+                                           :message   message)
+                                   reaped))
     (cancel/delete-old-canceling-runs!)
     reaped))
 

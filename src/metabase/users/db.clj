@@ -146,12 +146,14 @@
   "The user id, group id (as `:id`), and group manager flag of the PermissionsGroupMemberships of the Users with
   `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select [:model/PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager] :user_id [:in user-ids]))
+  (app-db/select-batched #(t2/select [:model/PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
+                                     :user_id [:in %])
+                         user-ids))
 
 (mu/defn user-group-ids-for-users
   "The user id and group id of the PermissionsGroupMemberships of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select [:model/PermissionsGroupMembership :user_id :group_id] :user_id [:in user-ids]))
+  (app-db/select-batched #(t2/select [:model/PermissionsGroupMembership :user_id :group_id] :user_id [:in %]) user-ids))
 
 (mu/defn user-count
   "The number of Users."
@@ -166,13 +168,13 @@
 (mu/defn tenant-collection-ids
   "A map of Tenant id to tenant Collection id for the Tenants with `tenant-ids`."
   [tenant-ids :- [:set ms/PositiveInt]]
-  (t2/select-pk->fn :tenant_collection_id :model/Tenant :id [:in tenant-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn :tenant_collection_id :model/Tenant :id [:in %]) tenant-ids))
 
 (mu/defn users-with-all-columns :- [:sequential :map]
-  "The Users with `user-ids`, at most one partition of them, with every column of `:core_user` that an event may carry."
+  "The Users with `user-ids`, with every column of `:core_user` that an event may carry."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (mapv #(dissoc % :password :password_salt :reset_token :reset_triggered :settings)
-        (t2/select [:model/User :*] :id [:in [:auto/param (vec user-ids)]])))
+        (app-db/select-batched #(t2/select [:model/User :*] :id [:in [:auto/param %]]) user-ids)))
 
 (mu/defn users-by-ids :- [:map-of ::lib.schema.id/user :map]
   "A map from id to the User, as [[users-with-all-columns]] reads it, for each of the Users with `user-ids`."
@@ -204,21 +206,22 @@
   [user-ids  :- [:sequential ::lib.schema.id/user]
    user-type :- :keyword]
   (if (seq user-ids)
-    (vec (t2/select-pks-vec :model/User :id [:in user-ids] :type [:auto/param user-type]))
+    (app-db/select-batched #(t2/select-pks-vec :model/User :id [:in %] :type [:auto/param user-type]) user-ids)
     []))
 
 (mu/defn deactivated-with-tenant-user-ids
   "The ids of the inactive Users of the Tenants with `tenant-ids` that were deactivated with them."
   [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (vec (t2/select-pks-vec :model/User
-                          :is_active false
-                          :tenant_id [:in [:auto/param (vec tenant-ids)]]
-                          :deactivated_with_tenant true)))
+  (app-db/select-batched #(t2/select-pks-vec :model/User
+                                             :is_active false
+                                             :tenant_id [:in [:auto/param %]]
+                                             :deactivated_with_tenant true)
+                         tenant-ids))
 
 (mu/defn active-user-ids-of-tenant
   "The ids of the active Users of the Tenants with `tenant-ids`."
   [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (vec (t2/select-pks-vec :model/User :is_active true :tenant_id [:in [:auto/param (vec tenant-ids)]])))
+  (app-db/select-batched #(t2/select-pks-vec :model/User :is_active true :tenant_id [:in [:auto/param %]]) tenant-ids))
 
 (mu/defn active-tenant-user-ids
   "The ids of the active Users of every Tenant."
@@ -245,12 +248,13 @@
                                [:user_id      ::lib.schema.id/user]
                                [:dashboard_id ::lib.schema.id/dashboard]
                                [:parameter_id :string]]]]
-  (t2/delete! :model/UserParameterValue
-              {:where (into [:or] (for [p parameters]
-                                    [:and
-                                     [:= :user_id (:user_id p)]
-                                     [:= :dashboard_id (:dashboard_id p)]
-                                     [:= :parameter_id (:parameter_id p)]]))}))
+  (app-db/sum-batched app-db/delete-partition-size (fn [batch]
+                                                     (t2/delete! :model/UserParameterValue
+                                                                 {:where (into [:or] (for [p batch]
+                                                                                       [:and
+                                                                                        [:= :user_id (:user_id p)]
+                                                                                        [:= :dashboard_id (:dashboard_id p)]
+                                                                                        [:= :parameter_id (:parameter_id p)]]))})) parameters))
 
 (mu/defn insert-user-parameter-values!
   "Insert the UserParameterValue `rows`."
@@ -262,7 +266,7 @@
   "The UserParameterValues of the User with `user-id` for the Dashboards with `dashboard-ids`."
   [user-id       :- ::lib.schema.id/user
    dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select :model/UserParameterValue :dashboard_id [:in dashboard-ids] :user_id user-id))
+  (app-db/select-batched #(t2/select :model/UserParameterValue :dashboard_id [:in %] :user_id user-id) dashboard-ids))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."

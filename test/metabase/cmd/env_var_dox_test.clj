@@ -88,21 +88,42 @@
 (deftest ^:parallel format-config-name-test
   (testing "Read-only settings are flagged as environment-variable-only, whatever their visibility"
     (is (= env-var-only-note
-           (#'sut/format-config-name {:munged-name "show-google-sheets-integration"
+           (#'sut/format-config-name {:name :show-google-sheets-integration
+                                      :munged-name "show-google-sheets-integration"
                                       :setter :none
                                       :visibility :public})))
     (testing "including internal ones, which otherwise get no line at all"
       (is (= env-var-only-note
-             (#'sut/format-config-name {:munged-name "audit-max-retention-days"
+             (#'sut/format-config-name {:name :audit-max-retention-days
+                                        :munged-name "audit-max-retention-days"
                                         :setter :none
                                         :visibility :internal})))))
   (testing "Internal settings with a setter get no config file line"
-    (is (nil? (#'sut/format-config-name {:munged-name "internal-setting"
+    (is (nil? (#'sut/format-config-name {:name :internal-setting
+                                         :munged-name "internal-setting"
                                          :visibility :internal}))))
   (testing "Settable, non-internal settings get their config file name"
     (is (= "[Configuration file name](./config-file.md): `admin-email`"
-           (#'sut/format-config-name {:munged-name "admin-email"
-                                      :visibility :authenticated})))))
+           (#'sut/format-config-name {:name :admin-email
+                                      :munged-name "admin-email"
+                                      :visibility :authenticated}))))
+  (testing "A setting whose name ends in `?` keeps the `?` in its config file name"
+    (is (= "[Configuration file name](./config-file.md): `bcc-enabled?`"
+           (#'sut/format-config-name {:name :bcc-enabled?
+                                      :munged-name "bcc-enabled"
+                                      :visibility :public})))))
+
+(deftest ^:parallel question-mark-setting-names-test
+  (let [setting {:name :metabot-enabled?
+                 :munged-name "metabot-enabled"
+                 :export? true
+                 :visibility :public}]
+    (testing "The config file and serialization use the real setting name, with its `?`"
+      (is (= "metabot-enabled?" (sut/config-file-name setting)))
+      (is (= "[Exported as](../installation-and-operation/serialization.md): `metabot-enabled?`."
+             (#'sut/format-export setting))))
+    (testing "The environment variable can't contain `?`, so it drops it"
+      (is (= "MB_METABOT_ENABLED" (#'sut/format-prefix setting))))))
 
 (deftest ^:parallel format-env-var-entry-with-false-doc-test
   (testing "format-env-var-entry doesn't crash when env-var has :doc false"

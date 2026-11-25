@@ -64,8 +64,12 @@
 
 (defmethod mi/can-update? :model/Timeline
   [timeline changes]
-  (and (mi/can-write? timeline)
-       (collection/can-move? timeline changes)))
+  (mi/can-update-all? :model/Timeline [timeline] changes))
+
+(defmethod mi/can-update-all? :model/Timeline
+  [_model timelines changes]
+  (and (every? mi/can-write? timelines)
+       (collection/can-move-all-or-404? timelines changes)))
 
 ;;; ---------------------------------------------------- Hooks -------------------------------------------------------
 
@@ -82,9 +86,10 @@
   "Load timelines based on `collection-id` passed in (nil means the root collection). Hydrates the events on each
   timeline at `:events` on the timeline."
   [collection-id {:keys [timeline/events? timeline/archived?] :as options}]
-  (cond-> (t2/hydrate (timeline.db/timelines-for-collection collection-id (boolean archived?)) :creator [:collection :can_write])
-    (nil? collection-id) (->> (map collection.root/hydrate-root-collection))
-    events? (timeline-event/include-events options)))
+  (let [root (when (nil? collection-id) (collection.root/hydrated-root-collection))]
+    (cond-> (t2/hydrate (timeline.db/timelines-for-collection collection-id (boolean archived?)) :creator [:collection :can_write])
+      (nil? collection-id) (->> (map #(collection.root/hydrate-root-collection % root)))
+      events? (timeline-event/include-events options))))
 
 ;;; ------------------------------------------------------ Writes ------------------------------------------------------
 

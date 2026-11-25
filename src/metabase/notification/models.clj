@@ -200,13 +200,20 @@
 
 (defmethod mi/can-update? :model/Notification
   [instance changes]
-  (and
-   (or (not (contains? changes :creator_id))
-       (= (:creator_id changes) (:creator_id instance))
-       (mi/superuser?))
-   (mi/can-write? instance)
-   (or (mi/superuser?)
-       (current-user-can-read-payload? (merge instance changes)))))
+  (mi/can-update-all? :model/Notification [instance] changes))
+
+(defmethod mi/can-update-all? :model/Notification
+  [_model notifications changes]
+  (let [allowed?  (fn [instance]
+                    (and (or (not (contains? changes :creator_id))
+                             (= (:creator_id changes) (:creator_id instance))
+                             (mi/superuser?))
+                         (mi/can-write? instance)))
+        readable? (payload-readable-fn (when-not (mi/superuser?)
+                                         (into [] (comp (filter allowed?) (map #(merge % changes))) notifications)))]
+    (every? #(and (allowed? %)
+                  (or (mi/superuser?) (readable? (merge % changes))))
+            notifications)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Notification :can_write]
   "Whether the current user writes each of `notifications`: a superuser, or the creator with subscription permissions
@@ -843,10 +850,14 @@
                                      [:sequential ::notification.schema/notification]]]
   (t2/hydrate notification-or-notifications :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))
 
-(mu/defn notifications-for-card :- [:sequential ::FullyHydratedNotification]
-  "Find all active card notifications for a given card-id."
-  [card-id :- pos-int?]
-  (hydrate-notification (notification.db/active-card-notifications-for-card card-id)))
+(mu/defn notifications-for-cards :- [:map-of ::lib.schema.id/card [:sequential ::FullyHydratedNotification]]
+  "The active card notifications of the Cards with `card-ids`, fully hydrated, by the id of their Card."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (let [notifications (when (seq card-ids)
+                        (notification.db/active-card-notifications-for-cards card-ids))]
+    (if (seq notifications)
+      (group-by (comp :card_id :payload) (hydrate-notification notifications))
+      {})))
 
 (defn notifications-for-event
   "Find all active notifications for a given event."

@@ -20,6 +20,7 @@
    [metabase.users.models.user :as user]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -514,9 +515,8 @@
                                                                                                                                         :data_layer :final})])
                 [{inside-id :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id         (mt/id)
                                                                                                                                        :name          "mcpboost inside"
-                                                                                                                                       :active        true
-                                                                                                                                       :is_published  true
-                                                                                                                                       :collection_id (:id data)})])]
+                                                                                                                                       :active        true})])]
+            (table-user-settings/create-table-user-settings! [{:table_id inside-id :is_published true :collection_id (:id data)}])
             (mt/with-current-user (mt/user->id :crowberto)
               (let [content (tools.search/search-tool {:term_queries ["mcpboost"] :type ["table"]}
                                                       {:token-scopes #{"agent:content:read"}})]

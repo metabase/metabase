@@ -9,12 +9,12 @@ import {
   useUpdatePasswordMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { CopyButton } from "metabase/common/components/CopyButton";
+import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Button, Modal, Text, TextInput } from "metabase/ui";
+import { Button, Modal, Text } from "metabase/ui";
 import { generatePassword } from "metabase/utils/password";
 import MetabaseSettings from "metabase/utils/settings";
 import type { User } from "metabase-types/api";
@@ -85,12 +85,7 @@ const UserPasswordResetModalInner = ({
         message={
           <>
             <Text pb="xl">{t`Share this link with the user. It will expire in 48 hours.`}</Text>
-            <TextInput
-              value={resetUrl}
-              readOnly
-              rightSection={<CopyButton value={resetUrl} />}
-              onClick={(e) => e.currentTarget.select()}
-            />
+            <CopyTextInput value={resetUrl} />
           </>
         }
       />

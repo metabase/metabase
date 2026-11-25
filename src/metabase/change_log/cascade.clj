@@ -94,8 +94,7 @@
                            :let  [columns (cond->> (referenced-columns fks child)
                                             child-pk (cons child-pk))
                                   rows    (remove (get found k #{})
-                                                  (mapcat #(change-log.db/rows-where child column % columns)
-                                                          (partition-all mdb/delete-partition-size values)))]
+                                                  (change-log.db/rows-where child column (vec values) columns))]
                            :when (seq rows)]
                        [k rows])]
         (recur (into (vec queue) (for [[[child _ action] rows] children :when (= "delete" action)] [child rows]))

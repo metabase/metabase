@@ -12,6 +12,7 @@
    [metabase.indexed-entities.task.index-values :as task.index-values]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
+   [metabase.search.test-util :as search.tu]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task.impl :as task]
    [metabase.test :as mt]
@@ -354,3 +355,20 @@
         (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(model-index/create-model-indexes! rows))))))
       (testing "deleting model indexes"
         (counted (fn [n] (let [ids (fresh! n)] (events.tu/statement-count! #(model-index/delete-model-indexes! ids)))))))))
+
+(deftest add-values-statement-count-test
+  (testing "indexing 10 values runs as many statements as indexing 40, search ingestion included"
+    (mt/with-model-cleanup [:model/ModelIndex :model/Card]
+      (search.tu/with-temp-index-table
+        (let [model-id   (t2/insert-returning-pk! :model/Card (assoc (mt/with-temp-defaults :model/Card) :type :model))
+              statements (fn [n]
+                           (let [[model-index] (model-index/create-model-indexes! [{:model-id   model-id
+                                                                                    :pk-ref     (mt/$ids $products.id)
+                                                                                    :value-ref  (mt/$ids $products.title)
+                                                                                    :creator-id (mt/user->id :rasta)}])]
+                             (with-redefs-fn {#'model-index/fetch-values (constantly [nil (for [i (range n)] [(inc i) (str "Value " i)])])}
+                               (fn []
+                                 (u/prog1 (events.tu/statement-count! #(model-index/add-values! model-index))
+                                   (is (= n (t2/count :model/ModelIndexValue :model_index_id (:id model-index)))))))))]
+          (statements 2)
+          (is (= (statements 10) (statements 40))))))))

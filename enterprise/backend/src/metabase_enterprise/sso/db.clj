@@ -24,7 +24,7 @@
 (mu/defn group-ids-by-name
   "The IDs of the PermissionsGroups named one of `group-names`."
   [group-names :- [:set :string]]
-  (t2/select-pks-set :model/PermissionsGroup :name [:in group-names]))
+  (mdb/select-batched-set #(t2/select-pks-set :model/PermissionsGroup :name [:in %]) group-names))
 
 (mu/defn expires-at-clause
   "A HoneySQL form for the database's now plus `seconds`, the expiry the before-insert hook gives a new SsoRelayState."

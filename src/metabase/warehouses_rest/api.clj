@@ -89,12 +89,13 @@
           schemas-by-db (reduce
                          (fn [m {:keys [db_id schema]}]
                            (update m db_id (fnil conj []) schema))
-                         {} rows)]
+                         {} rows)
+          readable-ones (schema.table/readable-schemas (map (juxt :db_id :schema) rows))]
       (for [db dbs]
         (let [db-id       (:id db)
               raw-schemas (get schemas-by-db db-id [])
               readable    (->> raw-schemas
-                               (filter (partial schema.table/can-read-schema? db-id))
+                               (filter #(contains? readable-ones [db-id %]))
                                (map #(if (nil? %) "" %))
                                distinct
                                sort
@@ -198,14 +199,15 @@
                                                 include-analytics? include-stubs?)]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
       include-tables?              (add-tables :can-query? can-query?)
-      include-schemas?             add-schemas
       can-query?                   (#(filter mi/can-query? (t2/hydrate % :can_query)))
       true                         add-can-upload-to-dbs
       true                         (t2/hydrate :router_user_attribute :router_anonymous_access_granted)
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) (t2/hydrate % :can_write)))
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
-      include-only-uploadable?     (#(filter uploadable-db? %)))))
+      include-only-uploadable?     (#(filter uploadable-db? %))
+      include-schemas?             add-schemas
+      true                         database/add-json-access)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API

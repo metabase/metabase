@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.request.session :as session]
    [metabase.segments.models.segment :as segment]
@@ -289,3 +290,25 @@
               (t2/select-one :model/Segment :id (:id plain))))
       (is (=? {:archived true :show_in_getting_started false :caveats "Careful"}
               (t2/select-one :model/Segment :id (:id archived)))))))
+
+(deftest can-query-needs-query-permissions-on-definition-test
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-temp [:model/User    {analyst-id :id} {:is_data_analyst true}
+                   :model/Segment segment          {:name       "Test Segment"
+                                                    :creator_id (mt/user->id :rasta)
+                                                    :definition (price-definition)}]
+      (mt/with-test-user :rasta
+        (testing "no data permissions"
+          (is (false? (mi/can-query? (t2/hydrate segment :can_query)))))
+        (testing "view data with query builder permissions"
+          (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                        :perms/create-queries :query-builder}
+            (is (true? (mi/can-query? (t2/hydrate segment :can_query)))))))
+      (mt/when-ee-evailable
+       (mt/with-premium-features #{:advanced-permissions}
+         (testing "data analyst who reads the Table by managing its metadata, without query permissions"
+           (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
+                                                                         :perms/create-queries :no}
+             (session/with-current-user analyst-id
+               (is (true? (mi/can-read? (t2/hydrate segment :can_read))))
+               (is (false? (mi/can-query? (t2/hydrate segment :can_query))))))))))))

@@ -82,6 +82,8 @@ function getRequestBodies(url: string, method: "POST" | "PUT" | "DELETE") {
 describe("BrowseMetrics (OSS)", () => {
   afterEach(() => {
     jest.restoreAllMocks();
+    // The spies on metabase/analytics keep their calls after a restore
+    jest.clearAllMocks();
   });
 
   it("displays an empty message when no metrics are found", async () => {
@@ -108,6 +110,28 @@ describe("BrowseMetrics (OSS)", () => {
     expect(
       within(header).getByRole("link", { name: "Create a new metric" }),
     ).toHaveAttribute("href", "/metric/new");
+  });
+
+  it("tracks metric_create_started and opens the new metric page from the header button", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+    const { router } = setup({ metricCount: 2 });
+
+    await findMetricsTable();
+    const header = await screen.findByTestId("browse-metrics-header");
+    expect(trackSimpleEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({ event: "metric_create_started" }),
+    );
+    await userEvent.click(
+      within(header).getByRole("link", { name: "Create a new metric" }),
+    );
+
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "metric_create_started",
+      triggered_from: "browse_metrics",
+    });
+    await waitFor(() => {
+      expect(router?.location.pathname).toBe("/metric/new");
+    });
   });
 
   it("should not show the Create metric button in an empty state if the user does not have data access", async () => {

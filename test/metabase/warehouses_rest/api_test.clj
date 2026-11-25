@@ -25,6 +25,7 @@
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.premium-features.core :as premium-features]
+   [metabase.request.core :as request]
    [metabase.secrets.core :as secret]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sync.analyze :as analyze]
@@ -51,6 +52,7 @@
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.api :as api.database]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database]
@@ -1122,6 +1124,30 @@
       (let [tables (:tables (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" db-id)))]
         (is (= #{"t1" "t2" "t3" "t4" "t5" "t6"} (set (map :name tables)))
             "every table is returned to a non-admin user with table-granular perms, without tripping the backstop")))))
+
+(deftest fetch-database-metadata-metrics-statement-count-test
+  (testing "GET /api/database/:id/metadata takes as many statements for many tables with a metric as for few, as a non-admin"
+    (let [metadata! (fn [n]
+                      (mt/with-temp [:model/Database {db-id :id} {}]
+                        (mt/with-model-cleanup [:model/Card]
+                          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+                          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :query-builder)
+                          (doseq [i (range n)]
+                            (let [table-id (t2/insert-returning-pk! :model/Table {:db_id db-id :schema "public" :name (str "t" i) :active true})
+                                  _        (t2/insert! :model/Field {:table_id table-id :name "id" :base_type :type/Integer
+                                                                     :database_type "INTEGER"})
+                                  mp       (lib-be/application-database-metadata-provider db-id)]
+                              (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card)
+                                                             {:name          (str "metric " i)
+                                                              :type          :metric
+                                                              :database_id   db-id
+                                                              :dataset_query (lib/aggregate (lib/query mp (lib.metadata/table mp table-id))
+                                                                                            (lib/count))}))))
+                          (t2/with-call-count [call-count]
+                            (is (= n (count (mapcat :metrics (:tables (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" db-id)))))))
+                            (call-count)))))]
+      (metadata! 1)
+      (is (= (metadata! 2) (metadata! 6))))))
 
 (deftest fetch-database-fields-test
   (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]
@@ -2372,13 +2398,16 @@
 
 (deftest get-schema-tables-publishing-test
   (testing "GET /api/database/:id/schema/:schema"
-    (testing "should return is_published as true for published tables"
-      (mt/with-temp [:model/Database {database-id :id} {}
-                     :model/Table    _ {:db_id database-id :schema "public" :name "published-table" :is_published true}
-                     :model/Table    _ {:db_id database-id :schema "public" :name "unpublished-table" :is_published false}]
-        (let [tables (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public"))]
-          (is (true? (:is_published (m/find-first #(= "published-table" (:name %)) tables))))
-          (is (false? (:is_published (m/find-first #(= "unpublished-table" (:name %)) tables)))))))))
+    (testing "should return collection for published tables"
+      (mt/with-model-cleanup [:model/Collection]
+        (let [[{collection-id :id}] (collection/create-collections! [{:name "Published Tables"}])]
+          (mt/with-temp [:model/Database   {database-id :id} {}
+                         :model/Table      {table-id :id} {:db_id database-id :schema "public" :name "published-table"}
+                         :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id collection-id}
+                         :model/Table      _ {:db_id database-id :schema "public" :name "unpublished-table"}]
+            (let [tables (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public"))]
+              (is (=? {:collection {:id collection-id}} (m/find-first #(= "published-table" (:name %)) tables)))
+              (is (=? {:collection nil} (m/find-first #(= "unpublished-table" (:name %)) tables))))))))))
 
 (deftest get-schema-tables-permissions-test
   (testing "GET /api/database/:id/schema/:schema against permissions"
@@ -3503,3 +3532,75 @@
 
       'metabase.warehouse-schema-rest.api.field "/by-name" :put
       #{"db" "schema" "table" "field"})))
+
+(defn- insert-restricted-databases!
+  "Inserts `n` Databases with a Table in each schema of `schemas`, gives All Users nothing on them and the group with
+  `group-id` query builder access to the Tables in the schemas of `queryable`, and returns their ids."
+  [n group-id schemas queryable]
+  (vec (for [_ (range n)]
+         (let [db-id     (first (t2/insert-returning-pks! :model/Database
+                                                          [(merge (mt/with-temp-defaults :model/Database)
+                                                                  {:engine :h2 :details {:db "mem:statement-count-test"}})]))
+               table-ids (t2/insert-returning-pks! :model/Table
+                                                   (for [schema schemas]
+                                                     (merge (mt/with-temp-defaults :model/Table)
+                                                            {:db_id db-id :schema schema :active true})))]
+           (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :blocked)
+           (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :no)
+           (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+           (data-perms/set-table-permissions! group-id :perms/create-queries
+                                              (zipmap table-ids
+                                                      (for [schema schemas]
+                                                        (if (contains? queryable schema) :query-builder :no))))
+           db-id))))
+
+(defn- request-statement-count
+  "The number of statements the request `args` of rasta costs."
+  [& args]
+  (t2/with-call-count [call-count]
+    (apply mt/user-http-request :rasta args)
+    (call-count)))
+
+(deftest ^:synchronized database-list-statement-count-test
+  (testing "GET /api/database costs as many statements for 6 restricted Databases as for 2"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+      (mt/with-model-cleanup [:model/Database]
+        (doseq [path ["database" "database?include=schemas" "database?include=tables"]]
+          (testing path
+            (insert-restricted-databases! 2 group-id ["A" "B"] #{"A"})
+            (mt/user-http-request :rasta :get 200 path)
+            (let [small (request-statement-count :get 200 path)]
+              (insert-restricted-databases! 4 group-id ["A" "B"] #{"A"})
+              (is (= small (request-statement-count :get 200 path))))))))))
+
+(deftest schemas-readable-in-bulk-test
+  (testing "GET /api/database/:id/schemas and ?include=schemas list the schemas the per-schema check reads"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+      (mt/with-model-cleanup [:model/Database]
+        (let [[db-id]  (insert-restricted-databases! 1 group-id ["A" "B" "C" nil] #{"A" "C"})
+              per-row  (request/with-current-user (mt/user->id :rasta)
+                         (vec (sort (map #(or % "")
+                                         (filter #(schema.table/can-read-schema? db-id %) ["A" "B" "C" nil])))))
+              listed   (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))
+              included (->> (mt/user-http-request :rasta :get 200 "database?include=schemas")
+                            :data
+                            (some #(when (= db-id (:id %)) %))
+                            :schemas)]
+          (is (= ["A" "C"] per-row))
+          (is (= per-row listed))
+          (is (= per-row included)))))))
+
+(deftest schemas-statement-count-test
+  (testing "GET /api/database/:id/schemas costs as many statements for 8 schemas as for 2"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+      (mt/with-model-cleanup [:model/Database]
+        (let [counts (fn [schemas]
+                       (let [[db-id] (insert-restricted-databases! 1 group-id schemas (set (take-nth 2 schemas)))
+                             path    (format "database/%d/schemas" db-id)]
+                         (mt/user-http-request :rasta :get 200 path)
+                         (request-statement-count :get 200 path)))]
+          (is (= (counts ["S0" "S1"])
+                 (counts ["S0" "S1" "S2" "S3" "S4" "S5" "S6" "S7"]))))))))

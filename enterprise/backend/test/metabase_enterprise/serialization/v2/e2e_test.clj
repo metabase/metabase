@@ -1310,6 +1310,24 @@
           (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
           (is (t2/exists? :model/Card :name "Preview Card")))))))
 
+(deftest table-transform-id-yaml-round-trip-test
+  (testing "Tables export without transform_id, and older exports that still carry it load"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db (ts/create! :model/Database :name "my-db" :engine :h2)]
+            (ts/create! :model/Table :name "customers" :schema "PUBLIC" :db_id (:id db))
+            (storage/store! (into [] (extract/extract {:include-h2? true :no-settings true}))
+                            (storage.files/file-writer dump-dir))))
+        (let [^File file (m/find-first #(str/ends-with? (.getName ^File %) "customers.yaml") (file-seq (io/file dump-dir)))
+              exported   (yaml/from-file file)]
+          (is (=? {:name "customers"} exported))
+          (is (not (contains? exported :transform_id)))
+          (dump/spit-yaml! file (assoc exported :transform_id "TransformEntityId0001")))
+        (ts/with-db dest-db
+          (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+          (is (t2/exists? :model/Table :name "customers")))))))
+
 (defn- create-native-transform!
   "Create, in the current app DB, a Transform named `transform-name` in the collection `collection-id`, by the User
   `creator`, that selects `1 AS ID` from Database `db` into the table `PUBLIC`.`target-name`."
@@ -2006,7 +2024,8 @@
                                    :creator_id   (:id creator)
                                    :name         "Elsewhere is tested"
                                    :expectations segment-test-expectations)
-              _        (t2/update! :model/Table :id (:table_id segment) {:is_published true :collection_id (:id library)})
+              _        (ts/create! :model/TableUserSettings
+                                   :table_id (:table_id segment) :is_published true :collection_id (:id library))
               exported (fn [opts model k]
                          (into #{}
                                (comp (filter #(= model (-> % :serdes/meta last :model)))

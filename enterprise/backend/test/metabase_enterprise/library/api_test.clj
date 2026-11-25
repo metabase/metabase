@@ -43,9 +43,8 @@
            (is (= ["collection"] (:here response)))
            (is (= [] (:below response))))
          (testing "With content in the library"
-           (mt/with-temp [:model/Table _ {:display_name  "Table in Data"
-                                          :collection_id data-id
-                                          :is_published  true}
+           (mt/with-temp [:model/Table {table-id :id} {:display_name  "Table in Data"}
+                          :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id data-id}
                           :model/Card _  {:name          "Card in Metrics"
                                           :collection_id metrics-id
                                           :type          :metric}
@@ -86,13 +85,12 @@
            (mt/with-temp [:model/Collection {subfolder-id :id} {:type     collection/library-data-collection-type
                                                                 :location (collection/children-location data-folder)
                                                                 :archived true}
-                          :model/Table      _                 {:collection_id subfolder-id
-                                                               :is_published  true}]
+                          :model/Table      {table-id :id}    {}
+                          :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id subfolder-id}]
              (is (= [] (below)))))
          (testing "A published table archived by sync doesn't count"
-           (mt/with-temp [:model/Table _ {:collection_id (:id data-folder)
-                                          :is_published  true
-                                          :archived_at   (t/offset-date-time)}]
+           (mt/with-temp [:model/Table {table-id :id} {:archived_at   (t/offset-date-time)}
+                          :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id (:id data-folder)}]
              (is (= [] (below))))))))))
 
 (deftest get-library-below-respects-permissions-test
@@ -106,8 +104,8 @@
                below          (fn [user] (:below (mt/user-http-request user :get 200 "ee/library")))]
            (mt/with-temp [:model/Collection {client-a-id :id} {:type     collection/library-data-collection-type
                                                                :location (collection/children-location data-folder)}
-                          :model/Table      _                 {:collection_id client-a-id
-                                                               :is_published  true}
+                          :model/Table      {table-id :id}    {}
+                          :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id client-a-id}
                           :model/Collection {team-a-id :id}   {:type     collection/library-metrics-collection-type
                                                                :location (collection/children-location metrics-folder)}
                           :model/Card       _                 {:collection_id team-a-id

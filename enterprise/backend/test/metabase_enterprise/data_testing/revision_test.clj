@@ -455,7 +455,7 @@
 
 (deftest card-test-revert-of-a-test-of-a-card-with-no-query-test
   (mt/with-premium-features #{:transforms-testing}
-    (testing "A non-admin who may edit a card with no query is refused a revert of its test"
+    (testing "A non-admin who may edit a card with no query may revert the name of its test"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection {coll :id}    {}
                        :model/Card       {card-id :id} {:collection_id coll :dataset_query {}}]
@@ -469,12 +469,8 @@
                   (is (= {} (t2/select-one-fn :dataset_query :model/Card :id card-id)))
                   (mt/with-current-user (mt/user->id :rasta)
                     (is (true? (boolean (mi/can-write? (t2/hydrate (t2/select-one :model/Card :id card-id) :can_write)))))))
-                (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :post 403 "revision/revert" body)))
-                (is (= "Renamed" (t2/select-one-fn :name :model/CardTest :id card-test-id)))
-                (testing "control: an admin reverts, since a revert of the name alone is not validated"
-                  (mt/user-http-request :crowberto :post 200 "revision/revert" body)
-                  (is (= "Original" (t2/select-one-fn :name :model/CardTest :id card-test-id))))))))))))
+                (mt/user-http-request :rasta :post 200 "revision/revert" body)
+                (is (= "Original" (t2/select-one-fn :name :model/CardTest :id card-test-id)))))))))))
 
 (deftest card-test-revert-without-the-feature-answers-402-and-writes-nothing-test
   (testing "Without :transforms-testing, a revert that passes the checks gets 402 and changes nothing"

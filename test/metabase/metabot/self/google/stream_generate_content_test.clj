@@ -116,19 +116,17 @@
                        :error  {:class :recoverable :code :x}}}])))))
 
 (deftest ^:parallel parts->contents-tool-result-without-output-key-test
-  (testing "a result map that carries no :output is printed rather than sent as an empty response"
+  (testing "a result without :output sends empty text and none of its other keys"
+    (doseq [part [{:type :tool-output :id "call-1" :function "search" :result {:rows [1 2]}}
+                  {:type :tool-output :id "call-1" :function "search"}]]
+      (is (= [{:role  "user"
+               :parts [{:functionResponse {:name "search" :response {:output ""}}}]}]
+             (sgc/parts->contents [part])))))
+  (testing "a failed result without :output sends the fallback text under `error`"
     (is (= [{:role  "user"
-             :parts [{:functionResponse {:name     "search"
-                                         :response {:output "{:rows [1 2]}"}}}]}]
+             :parts [{:functionResponse {:name "search" :response {:error "Tool execution failed"}}}]}]
            (sgc/parts->contents
-            [{:type :tool-output :id "call-1" :function "search" :result {:rows [1 2]}}])))))
-
-(deftest ^:parallel parts->contents-tool-output-with-neither-result-nor-error-test
-  (testing "a tool output with nothing in it sends a 'nil' response"
-    (is (= [{:role  "user"
-             :parts [{:functionResponse {:name "search" :response {:output "nil"}}}]}]
-           (sgc/parts->contents
-            [{:type :tool-output :id "call-1" :function "search"}])))))
+            [{:type :tool-output :id "call-1" :function "search" :result {:error {:class :recoverable :code :x}}}])))))
 
 (deftest ^:parallel parts->contents-parallel-tool-calls-test
   (testing "two tool calls and their two results each merge into one content keeping the model/user alternation"
@@ -863,7 +861,7 @@
                   {:error {:code 503 :message "The model is overloaded." :status "UNAVAILABLE"}}]]
       (is (=? [{:type :start}
                {:type :text :text "partial"}
-               {:type :error :error {:message "The model is overloaded."}}]
+               {:type :error :error {:message "The model is overloaded." :code 503 :status "UNAVAILABLE"}}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
 
 (deftest ^:parallel in-stream-error-without-a-message-test

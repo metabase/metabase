@@ -116,6 +116,7 @@
      metabase.actions.test-util/with-actions-test-data-and-actions-enabled
      metabase.actions.test-util/with-actions-test-data-tables
      metabase.analytics.snowplow-test/with-fake-snowplow-collector
+     metabase.app-db.test-util/with-partition-size
      metabase.channel.email-test/with-expected-messages
      metabase.channel.email-test/with-fake-inbox
      metabase.test.data.users/with-group
@@ -151,6 +152,7 @@
      metabase.test/with-model-cleanup
      metabase.test/with-non-admin-groups-no-root-collection-for-namespace-perms
      metabase.test/with-non-admin-groups-no-root-collection-perms
+     metabase.test/with-partition-size
      metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
      metabase.test/with-temporary-raw-setting-values
@@ -907,6 +909,10 @@
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}
             :metabase/modules  {:level :off}}}
+
+ :config-in-call
+ {;; defrecord has no docstring slot, yet kondo's CLJS pass asks for one on every record.
+  cljs.core/defrecord {:linters {:missing-docstring {:level :off}}}}
 
  ;;
  ;; TEST CONFIG

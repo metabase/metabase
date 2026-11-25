@@ -26,5 +26,4 @@
       (oauth-access-token/revoke-oauth-access-tokens-for-users! batch)
       (oauth-refresh-token/revoke-oauth-refresh-tokens-for-users! batch))
     (oauth-authorization-code/delete-oauth-authorization-codes!
-     (into [] (mapcat (comp oauth-server.db/authorization-code-ids-of-users vec))
-           (partition-all app-db/delete-partition-size user-ids)))))
+     (oauth-server.db/authorization-code-ids-of-users user-ids))))

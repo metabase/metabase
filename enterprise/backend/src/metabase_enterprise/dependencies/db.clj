@@ -2,6 +2,7 @@
   "Application database queries for the dependencies module, so the rest of the module only touches `toucan2.core` for
   model definitions, hydration methods, and transactions."
   (:require
+   [clojure.string :as str]
    [malli.util :as mut]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
@@ -156,13 +157,14 @@
   [source-entity-type  :- ::dependencies.schema/entity-type
    source-entity-ids   :- [:sequential ::deps.dependency-types/entity-id]
    {:keys [user-id is-superuser? is-data-analyst?]} :- ::dependencies.schema/visible-opts]
-  (t2/select :model/AnalysisFindingError
-             {:where [:and
-                      [:= :source_entity_type (name source-entity-type)]
-                      [:in :source_entity_id source-entity-ids]
-                      (visible-entities-expr :analyzed_entity_type :analyzed_entity_id
-                                             {:user-id user-id :is-superuser? is-superuser?
-                                              :is-data-analyst? is-data-analyst?})]}))
+  (mdb/select-batched #(t2/select :model/AnalysisFindingError
+                                  {:where [:and
+                                           [:= :source_entity_type (name source-entity-type)]
+                                           [:in :source_entity_id %]
+                                           (visible-entities-expr :analyzed_entity_type :analyzed_entity_id
+                                                                  {:user-id user-id :is-superuser? is-superuser?
+                                                                   :is-data-analyst? is-data-analyst?})]})
+                      source-entity-ids))
 
 (mu/defn finding-errors-for-entities-with-visible-sources
   "The AnalysisFindingErrors analyzing any of the entities `entity-type` `entity-ids`, excluding those whose source
@@ -170,15 +172,16 @@
   [entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:sequential ::deps.dependency-types/entity-id]
    {:keys [user-id is-superuser? is-data-analyst?]} :- ::dependencies.schema/visible-opts]
-  (t2/select :model/AnalysisFindingError
-             {:where [:and
-                      [:= :analyzed_entity_type (name entity-type)]
-                      [:in :analyzed_entity_id entity-ids]
-                      [:or
-                       [:= :source_entity_type nil]
-                       (visible-entities-expr :source_entity_type :source_entity_id
-                                              {:user-id user-id :is-superuser? is-superuser?
-                                               :is-data-analyst? is-data-analyst?})]]}))
+  (mdb/select-batched #(t2/select :model/AnalysisFindingError
+                                  {:where [:and
+                                           [:= :analyzed_entity_type (name entity-type)]
+                                           [:in :analyzed_entity_id %]
+                                           [:or
+                                            [:= :source_entity_type nil]
+                                            (visible-entities-expr :source_entity_type :source_entity_id
+                                                                   {:user-id user-id :is-superuser? is-superuser?
+                                                                    :is-data-analyst? is-data-analyst?})]]})
+                      entity-ids))
 
 ;;; ------------------------------------------ Dependency item list queries -------------------------------------------
 ;;; The /graph/unreferenced and /graph/breaking endpoints union together one SELECT per entity type, each producing
@@ -400,8 +403,9 @@
   whose rows hold only those columns."
   [entity-type :- ::deps.dependency-types/dependency-types
    ids         :- [:set ::deps.dependency-types/entity-id]]
-  (let [model (dependencies/entity-model entity-type)]
-    (t2/select (if-let [columns (narrow-columns entity-type)] (into [model] columns) model) :id [:in ids])))
+  (let [model     (dependencies/entity-model entity-type)
+        modelable (if-let [columns (narrow-columns entity-type)] (into [model] columns) model)]
+    (mdb/select-batched #(t2/select modelable :id [:in %]) ids)))
 
 (mu/defn app-db-reachable? :- :boolean
   "Whether the app DB answers a query on a connection of its own, outside any transaction of this thread."
@@ -454,23 +458,15 @@
   (let [model (into [(dependencies/entity-model entity-type)] columns)]
     (into [] (mapcat #(t2/select model :id [:in %])) (partition-all 1000 ids))))
 
-(mu/defn entity-with-columns
-  "The `columns` of the entity of the entity type `entity-type` with `id`, or nil."
-  [entity-type :- ::deps.dependency-types/dependency-types
-   columns     :- [:sequential :keyword]
-   id          :- ::deps.dependency-types/entity-id]
-  (t2/select-one (into [(dependencies/entity-model entity-type)] columns)
-                 :id id))
-
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+(mu/defn cards :- [:map-of ::lib.schema.id/card (ms/InstanceOf :model/Card)]
+  "The Cards with `card-ids`, by Card id."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Card :id [:in %]) card-ids))
 
 (mu/defn card-types-by-id
   "A map of Card ID to type for `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-fn->fn :id :type [:model/Card :id :type] :id [:in card-ids]))
+  (mdb/select-batched-map #(t2/select-fn->fn :id :type [:model/Card :id :type] :id [:in %]) card-ids))
 
 (mu/defn column-value :- [:maybe ms/PositiveInt]
   "The `column` of the row of `model` with `id`, or nil."
@@ -484,22 +480,34 @@
   [model  :- :keyword
    column :- :keyword
    ids    :- [:sequential {:min 1} ms/PositiveInt]]
-  (into {} (t2/select-fn->fn :id column [model :id column] :id [:in ids])))
+  (mdb/select-batched-map #(t2/select-fn->fn :id column [model :id column] :id [:in %]) ids))
 
 (mu/defn field-table-ids :- [:map-of ::lib.schema.id/field [:maybe ::lib.schema.id/table]]
   "The `:table_id` of each of the Fields with `field-ids`, by Field id."
   [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
-  (into {} (t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in field-ids])))
+  (mdb/select-batched-map #(t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in %]) field-ids))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
-(mu/defn dependencies-from
-  "The `:id`, `:to_entity_type`, and `:to_entity_id` of the Dependencies of the entity `entity-type` `entity-id`."
+(mu/defn dependencies-from-entities
+  "The `:id`, `:from_entity_id`, `:to_entity_type`, and `:to_entity_id` of the Dependencies of the entities
+  `entity-type` `entity-ids`."
   [entity-type :- ::dependencies.schema/entity-type
-   entity-id   :- ms/PositiveInt]
-  (t2/select [:model/Dependency :id :to_entity_type :to_entity_id]
-             :from_entity_type entity-type
-             :from_entity_id entity-id))
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (mdb/select-batched #(t2/select [:model/Dependency :id :from_entity_id :to_entity_type :to_entity_id]
+                                  :from_entity_type entity-type
+                                  :from_entity_id [:in [:auto/param %]])
+                      entity-ids))
+
+(mu/defn dependencies-on-entities
+  "The `:id`, `:from_entity_type`, `:from_entity_id`, and `:to_entity_id` of the Dependencies on the entities
+  `entity-type` `entity-ids`."
+  [entity-type :- ::dependencies.schema/entity-type
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (mdb/select-batched #(t2/select [:model/Dependency :id :from_entity_type :from_entity_id :to_entity_id]
+                                  :to_entity_type entity-type
+                                  :to_entity_id [:in [:auto/param %]])
+                      entity-ids))
 
 (mu/defn insert-dependencies!
   "Insert the Dependency `rows`, returning the number inserted."
@@ -509,40 +517,18 @@
                          [:from_entity_id   {:optional true} [:maybe ms/PositiveInt]]
                          [:to_entity_type   {:optional true} [:maybe [:or :keyword :string]]]
                          [:to_entity_id     {:optional true} [:maybe ms/PositiveInt]]]]]
-  (t2/insert! :model/Dependency rows))
+  (transduce (map #(t2/insert! :model/Dependency (vec %))) + 0 (partition-all mdb/create-partition-size rows)))
 
 (mu/defn delete-dependencies!
   "Delete the Dependencies with `dependency-ids`, returning the number deleted."
   [dependency-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Dependency :id [:in dependency-ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/Dependency :id [:in %]) dependency-ids))
 
 (mu/defn delete-dependencies-for-entities!
   "Delete the Dependencies of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Dependency :from_entity_type entity-type :from_entity_id [:in entity-ids]))
-
-(mu/defn direct-dependent-ids :- ::dependencies.schema/type->ids
-  "The entities that directly depend on the entity `entity-type` `entity-id`, as `{entity-type #{entity-id}}`."
-  [entity-type :- ::dependencies.schema/entity-type
-   entity-id   :- ms/PositiveInt]
-  (u/group-by :from_entity_type :from_entity_id conj #{}
-              (t2/select [:model/Dependency :from_entity_type :from_entity_id]
-                         :to_entity_type entity-type
-                         :to_entity_id   entity-id)))
-
-(mu/defn delete-dependencies-for-dependents!
-  "Delete the Dependencies of the entities `from-type` `from-ids` on the entity `to-type` `to-id`, returning the
-  number deleted."
-  [from-type :- ::dependencies.schema/entity-type
-   from-ids  :- [:sequential ms/PositiveInt]
-   to-type   :- ::dependencies.schema/entity-type
-   to-id     :- ms/PositiveInt]
-  (t2/delete! :model/Dependency
-              :from_entity_type from-type
-              :from_entity_id   [:in from-ids]
-              :to_entity_type   to-type
-              :to_entity_id     to-id))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/Dependency :from_entity_type entity-type :from_entity_id [:in %]) entity-ids))
 
 ;;; -------------------------------------------- Statuses, shared by the jobs --------------------------------------------
 
@@ -587,18 +573,6 @@
                                     [:= :d.from_entity_type (u/qualified-key table :entity_type)]
                                     [:= :d.from_entity_id (u/qualified-key table :entity_id)]]}]}))))
 
-(mu/defn- clear-stale! :- :boolean
-  "Record that a job processed the entity `entity-type` `entity-id` with its logic of `current-version`, clearing the
-  `stale` count of its status in the status `model` when it is still the `stale` the job picked it with, so a write
-  while it was processed has the job process it again, returning whether it cleared it."
-  [model           :- StatusModel
-   entity-type     :- ::dependencies.schema/entity-type
-   entity-id       :- ms/PositiveInt
-   stale           :- ms/IntGreaterThanOrEqualToZero
-   current-version :- ms/PositiveInt]
-  (pos? (t2/update! model :entity_type entity-type :entity_id entity-id :stale stale
-                    {:stale 0 :fail_count 0 :analysis_version current-version})))
-
 (mu/defn- record-failure! :- :boolean
   "Record that a job failed to process the entity `entity-type` `entity-id`, giving up on it until a write changes it
   once it failed `max-failures` times in a row, returning whether it gave up."
@@ -618,15 +592,16 @@
 
 (mu/defn mark-data-app-dependency-statuses-stale!
   "Mark the DependencyStatuses of the DataApps whose resource collection is one of the Collections with
-  `collection-ids` stale, in one UPDATE."
+  `collection-ids` stale, in one UPDATE for each `mdb/update-partition-size` of them."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/query {:update (t2/table-name :model/DependencyStatus)
-             :set    (assoc fresh-attempts :stale one-more-write)
-             :where  [:and
-                      [:= :entity_type (name :data-app)]
-                      [:in :entity_id ^:allow-subquery {:select [:id]
-                                                        :from   [(t2/table-name :model/DataApp)]
-                                                        :where  [:in :resource_collection_id collection-ids]}]]}))
+  (doseq [batch (partition-all mdb/update-partition-size (distinct collection-ids))]
+    (t2/query {:update (t2/table-name :model/DependencyStatus)
+               :set    (assoc fresh-attempts :stale one-more-write)
+               :where  [:and
+                        [:= :entity_type (name :data-app)]
+                        [:in :entity_id ^:allow-subquery {:select [:id]
+                                                          :from   [(t2/table-name :model/DataApp)]
+                                                          :where  [:in :resource_collection_id (vec batch)]}]]})))
 
 (mu/defn mark-result-metadata-statuses-stale!
   "Mark the ResultMetadataStatuses of the entities `type->ids` stale, so the result metadata job re-derives them."
@@ -744,7 +719,7 @@
   "Delete the DependencyStatuses of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/DependencyStatus :entity_type entity-type :entity_id [:in entity-ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/DependencyStatus :entity_type entity-type :entity_id [:in %]) entity-ids))
 
 (mu/defn record-dependency-failure! :- :boolean
   "Record that the dependency job failed to compute the dependencies of the entity `entity-type` `entity-id`, giving up on it until a write changes it once it failed
@@ -761,14 +736,17 @@
   []
   (t2/select [:model/DependencyStatus :entity_type :entity_id] :terminal true))
 
-(mu/defn clear-dependency-status! :- :boolean
-  "Record that the dependency job computed the dependencies of the entity `entity-type` `entity-id` with the analysis
-  of `current-version`, clearing its count of `stale` writes unless a write raised it, returning whether it cleared it."
+(mu/defn clear-dependency-statuses!
+  "Record that the dependency job computed the dependencies of the entities `entity-type` whose ids are the keys of
+  `id->stale` with the analysis of `current-version`, clearing each count of `stale` writes unless a write raised it,
+  with one update for each distinct count and partition of ids."
   [entity-type     :- ::dependencies.schema/entity-type
-   entity-id       :- ms/PositiveInt
-   stale           :- ms/IntGreaterThanOrEqualToZero
+   id->stale       :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
    current-version :- ms/PositiveInt]
-  (clear-stale! :model/DependencyStatus entity-type entity-id stale current-version))
+  (doseq [[stale ids] (u/group-by val key conj [] id->stale)
+          batch       (partition-all mdb/update-partition-size ids)]
+    (t2/update! :model/DependencyStatus :entity_type entity-type :entity_id [:in (vec batch)] :stale stale
+                {:stale 0 :fail_count 0 :analysis_version current-version})))
 
 (mu/defn dependency-pending? :- :boolean
   "Whether an entity of the type `entity-type` has no DependencyStatus, or one that counts a write or records a version
@@ -806,13 +784,16 @@
    max-failures :- ms/PositiveInt]
   (record-failure! :model/ResultMetadataStatus :card card-id max-failures))
 
-(mu/defn clear-result-metadata-status! :- :boolean
-  "Record that the result metadata job re-derived the Card with `card-id` with the logic of `current-version`, clearing
-  its count of `stale` writes unless a write raised it, returning whether it cleared it."
-  [card-id         :- ::lib.schema.id/card
-   stale           :- ms/IntGreaterThanOrEqualToZero
+(mu/defn clear-result-metadata-statuses!
+  "Record that the result metadata job re-derived the Cards whose ids are the keys of `id->stale` with the logic of
+  `current-version`, clearing each count of `stale` writes unless a write raised it, with one update for each distinct
+  count and partition of ids."
+  [id->stale       :- [:map-of ::lib.schema.id/card ms/IntGreaterThanOrEqualToZero]
    current-version :- ms/PositiveInt]
-  (clear-stale! :model/ResultMetadataStatus :card card-id stale current-version))
+  (doseq [[stale ids] (u/group-by val key conj [] id->stale)
+          batch       (partition-all mdb/update-partition-size ids)]
+    (t2/update! :model/ResultMetadataStatus :entity_type :card :entity_id [:in (vec batch)] :stale stale
+                {:stale 0 :fail_count 0 :analysis_version current-version})))
 
 (mu/defn result-metadata-deleted-card-ids :- [:sequential ::lib.schema.id/card]
   "Up to `batch-size` IDs of deleted Cards that still have a ResultMetadataStatus."
@@ -822,70 +803,80 @@
 (mu/defn delete-result-metadata-statuses!
   "Delete the ResultMetadataStatuses of the Cards with `card-ids`, returning the number deleted."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/delete! :model/ResultMetadataStatus :entity_type :card :entity_id [:in card-ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/ResultMetadataStatus :entity_type :card :entity_id [:in %]) card-ids))
 
 (mu/defn remapped-table-ids :- [:set ::lib.schema.id/table]
   "The IDs of the Tables of the Fields remapped to one of the Fields with `field-ids` as their human-readable field."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (or (t2/select-fn-set :table_id [:model/Field :metabase_field.table_id]
-                        {:from  [(t2/table-name :model/Field)]
-                         :join  [:dimension [:= :dimension.field_id :metabase_field.id]]
-                         :where [:in :dimension.human_readable_field_id field-ids]})
-      #{}))
+  (into #{} (mdb/select-batched #(t2/select-fn-set :table_id [:model/Field :metabase_field.table_id]
+                                                   {:from  [(t2/table-name :model/Field)]
+                                                    :join  [:dimension [:= :dimension.field_id :metabase_field.id]]
+                                                    :where [:in :dimension.human_readable_field_id %]})
+                                field-ids)))
 
 (mu/defn internal-remap-field-ids :- [:set ::lib.schema.id/field]
   "The ids of the Fields among `field-ids` that have an internal remap, which shows their FieldValues' human-readable
   values."
   [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
-  (or (t2/select-fn-set :field_id :model/Dimension :field_id [:in field-ids] :type "internal") #{}))
+  (into #{} (mdb/select-batched #(t2/select-fn-set :field_id :model/Dimension :field_id [:in %] :type "internal")
+                                field-ids)))
 
-(mu/defn card-state :- [:maybe ::dependencies.schema/card-state]
-  "The `updated_at` and `result_metadata` of the Card with `card-id`, locking its row until the transaction ends when
-  `lock?`, or nil."
-  [card-id :- ::lib.schema.id/card
-   lock?   :- :boolean]
-  (some-> (t2/select-one [:model/Card :updated_at :result_metadata]
-                         (cond-> {:where [:= :id card-id]} lock? (assoc :for :update)))
-          (select-keys [:updated_at :result_metadata])))
+(mu/defn card-states :- [:map-of ::lib.schema.id/card ::dependencies.schema/card-state]
+  "The `updated_at` and `result_metadata` of each of the Cards with `card-ids`, by Card id, read in the order of their
+  ids and, when `lock?`, locking their rows in that order until the transaction ends, the id read as `:card_id` since a
+  Card read with its `:id` and some of the columns its schema governs must have all of them."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]
+   lock?    :- :boolean]
+  (into {}
+        (map (fn [card] [(:card_id card) (select-keys card [:updated_at :result_metadata])]))
+        (mdb/select-batched #(t2/select [:model/Card [:id :card_id] :updated_at :result_metadata]
+                                        (cond-> {:where [:in :id %] :order-by [[:id :asc]]} lock? (assoc :for :update)))
+                            (sort card-ids))))
 
 ;;; ------------------------------------------- Analysis finding job -------------------------------------------
 
-(defn- upsert-finding-sql
-  "The statement, as `[sql & params]`, that inserts the AnalysisFinding of `entity-type` `entity-id` or sets its `result`
-  when its unique key exists, stamping `analyzed_at` with the database clock only when the `result` differs, on the app
-  DB `db-type`."
-  [db-type entity-type entity-id result]
-  (case db-type
-    :postgres
-    [(str "INSERT INTO analysis_finding (entity_type, entity_id, result, analyzed_at) VALUES (?, ?, ?, now()) "
-          "ON CONFLICT (entity_type, entity_id) DO UPDATE SET "
-          "analyzed_at = CASE WHEN analysis_finding.result <> EXCLUDED.result THEN now() "
-          "ELSE analysis_finding.analyzed_at END, result = EXCLUDED.result")
-     entity-type entity-id result]
+(defn- upsert-findings-sql
+  "The statement, as `[sql & params]`, that inserts the AnalysisFinding of each of the `[entity-id result]` pairs
+  `rows` of `entity-type` or sets its `result` when its unique key exists, stamping `analyzed_at` with the database
+  clock only when the `result` differs, on the app DB `db-type`."
+  [db-type entity-type rows]
+  (let [placeholders (fn [row-sql] (str/join ", " (repeat (count rows) row-sql)))
+        params       (into [] (mapcat (fn [[entity-id result]] [(name entity-type) entity-id result])) rows)]
+    (case db-type
+      :postgres
+      (into [(str "INSERT INTO analysis_finding (entity_type, entity_id, result, analyzed_at) VALUES "
+                  (placeholders "(?, ?, ?, now())")
+                  " ON CONFLICT (entity_type, entity_id) DO UPDATE SET "
+                  "analyzed_at = CASE WHEN analysis_finding.result <> EXCLUDED.result THEN now() "
+                  "ELSE analysis_finding.analyzed_at END, result = EXCLUDED.result")]
+            params)
 
-    :mysql
-    [(str "INSERT INTO analysis_finding (entity_type, entity_id, result, analyzed_at) VALUES (?, ?, ?, now(6)) "
-          "ON DUPLICATE KEY UPDATE "
-          "analyzed_at = IF(result <> VALUES(result), now(6), analyzed_at), result = VALUES(result)")
-     entity-type entity-id result]
+      :mysql
+      (into [(str "INSERT INTO analysis_finding (entity_type, entity_id, result, analyzed_at) VALUES "
+                  (placeholders "(?, ?, ?, now(6))")
+                  " ON DUPLICATE KEY UPDATE "
+                  "analyzed_at = IF(result <> VALUES(result), now(6), analyzed_at), result = VALUES(result)")]
+            params)
 
-    :h2
-    [(str "MERGE INTO analysis_finding t USING (VALUES (CAST(? AS VARCHAR(254)), CAST(? AS INTEGER), "
-          "CAST(? AS BOOLEAN))) AS s(entity_type, entity_id, result) "
-          "ON t.entity_type = s.entity_type AND t.entity_id = s.entity_id "
-          "WHEN MATCHED THEN UPDATE SET "
-          "analyzed_at = CASE WHEN t.result <> s.result THEN now() ELSE t.analyzed_at END, result = s.result "
-          "WHEN NOT MATCHED THEN INSERT (entity_type, entity_id, result, analyzed_at) "
-          "VALUES (s.entity_type, s.entity_id, s.result, now())")
-     entity-type entity-id result]))
+      :h2
+      (into [(str "MERGE INTO analysis_finding t USING (VALUES "
+                  (placeholders "(CAST(? AS VARCHAR(254)), CAST(? AS INTEGER), CAST(? AS BOOLEAN))")
+                  ") AS s(entity_type, entity_id, result) "
+                  "ON t.entity_type = s.entity_type AND t.entity_id = s.entity_id "
+                  "WHEN MATCHED THEN UPDATE SET "
+                  "analyzed_at = CASE WHEN t.result <> s.result THEN now() ELSE t.analyzed_at END, result = s.result "
+                  "WHEN NOT MATCHED THEN INSERT (entity_type, entity_id, result, analyzed_at) "
+                  "VALUES (s.entity_type, s.entity_id, s.result, now())")]
+            params))))
 
-(mu/defn upsert-finding!
-  "Insert or update the AnalysisFinding of the entity `entity-type` `entity-id` with `result`, in one statement, stamping
-  `analyzed_at` when it inserts or the `result` changes."
+(mu/defn upsert-findings!
+  "Insert or update the AnalysisFinding of each entity of `entity-type` that `id->result` maps to its `result`, with
+  one statement for each `mdb/create-partition-size` of them, stamping `analyzed_at` when it inserts or the `result`
+  changes."
   [entity-type :- ::dependencies.schema/entity-type
-   entity-id   :- ms/PositiveInt
-   result      :- :boolean]
-  (t2/query (upsert-finding-sql (mdb/db-type) (name entity-type) entity-id result))
+   id->result  :- [:map-of ms/PositiveInt :boolean]]
+  (doseq [rows (partition-all mdb/create-partition-size id->result)]
+    (t2/query (upsert-findings-sql (mdb/db-type) entity-type rows)))
   nil)
 
 (mu/defn take-pending-analysis-finding-statuses! :- [:sequential ::dependencies.schema/pending-status]
@@ -907,14 +898,17 @@
    max-failures :- ms/PositiveInt]
   (record-failure! :model/AnalysisFindingStatus entity-type entity-id max-failures))
 
-(mu/defn clear-analysis-finding-status! :- :boolean
-  "Record that the analysis job analyzed the entity `entity-type` `entity-id` with the analysis of `current-version`,
-  clearing its count of `stale` writes unless a write raised it, returning whether it cleared it."
+(mu/defn clear-analysis-finding-statuses!
+  "Record that the analysis job analyzed the entities `entity-type` whose ids are the keys of `id->stale` with the
+  analysis of `current-version`, clearing each count of `stale` writes unless a write raised it, with one update for
+  each distinct count and partition of ids."
   [entity-type     :- ::dependencies.schema/entity-type
-   entity-id       :- ms/PositiveInt
-   stale           :- ms/IntGreaterThanOrEqualToZero
+   id->stale       :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
    current-version :- ms/PositiveInt]
-  (clear-stale! :model/AnalysisFindingStatus entity-type entity-id stale current-version))
+  (doseq [[stale ids] (u/group-by val key conj [] id->stale)
+          batch       (partition-all mdb/update-partition-size ids)]
+    (t2/update! :model/AnalysisFindingStatus :entity_type entity-type :entity_id [:in (vec batch)] :stale stale
+                {:stale 0 :fail_count 0 :analysis_version current-version})))
 
 (mu/defn analysis-finding-deleted-entity-ids :- [:sequential ms/PositiveInt]
   "Up to `batch-size` IDs of deleted entities of `entity-type` that still have an AnalysisFindingStatus."
@@ -926,7 +920,7 @@
   "Delete the AnalysisFindingStatuses of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/AnalysisFindingStatus :entity_type entity-type :entity_id [:in entity-ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/AnalysisFindingStatus :entity_type entity-type :entity_id [:in %]) entity-ids))
 
 ;; A transform has no `archived` column, and a segment lives under its table rather than in a collection.
 (def ^:private failed-entity-columns
@@ -990,10 +984,10 @@
 (mu/defn insert-finding-errors!
   "Insert the AnalysisFindingError `rows`, returning the number inserted."
   [rows :- [:sequential (mut/select-keys ::dependencies.schema/analysis-finding-error.update [:analyzed_entity_type :analyzed_entity_id :error_type :error_detail :source_entity_type :source_entity_id])]]
-  (t2/insert! :model/AnalysisFindingError rows))
+  (transduce (map #(t2/insert! :model/AnalysisFindingError (vec %))) + 0 (partition-all mdb/create-partition-size rows)))
 
-(mu/defn delete-finding-errors-for-entity!
-  "Delete the AnalysisFindingErrors of the entity `entity-type` `entity-id`, returning the number deleted."
+(mu/defn delete-finding-errors-for-entities!
+  "Delete the AnalysisFindingErrors of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- ::dependencies.schema/entity-type
-   entity-id   :- ms/PositiveInt]
-  (t2/delete! :model/AnalysisFindingError :analyzed_entity_type entity-type :analyzed_entity_id entity-id))
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/AnalysisFindingError :analyzed_entity_type entity-type :analyzed_entity_id [:in %]) entity-ids))

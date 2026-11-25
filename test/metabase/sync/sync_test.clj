@@ -133,8 +133,7 @@
     :archived_at false
     :deactivated_at false
     :updated_at  true
-    :owner_user_id false
-    :transform_id false}))
+    :owner_user_id false}))
 
 (defn- field-defaults []
   (merge
@@ -232,8 +231,7 @@
           :display_name        "Movie"
           :initial_sync_status "complete"
           :fields              [(field:movie-id) (field:movie-studio) (field:movie-title)]
-          :description         nil
-          :collection_id       false}))
+          :description         nil}))
 
 (defn- expected-studio-table []
   (merge (table-defaults)
@@ -242,8 +240,7 @@
           :display_name        "Studio"
           :initial_sync_status "complete"
           :fields              [(field:studio-name) (field:studio-studio)]
-          :description         ""
-          :collection_id       false}))
+          :description         ""}))
 
 (deftest sync-database-test
   (doseq [supports-schemas? [true false]]

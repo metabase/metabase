@@ -38,6 +38,7 @@
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses.models.database :as database]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -105,7 +106,7 @@
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
        [:include-editable-data-model {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
-  (let [hydrations (cond-> [:db]
+  (let [hydrations (cond-> [:db :collection]
                      (premium-features/any-transforms-enabled?) (conj :transform))]
     (as-> (warehouse-schema-rest.db/matching-tables
            {:term                       term
@@ -123,9 +124,10 @@
       (if include-editable-data-model
         (schema.table/filter-tables-by-data-model-perms tables)
         (mi/readable tables))
-      (into [] (comp (if can-query (filter mi/can-query?) identity)
-                     (map schema.table/present-table))
-            (cond-> tables can-query (t2/hydrate :can_query))))))
+      (cond->> (cond-> tables can-query (t2/hydrate :can_query))
+        can-query (filter mi/can-query?))
+      (schema.table/present-tables tables)
+      (mapv (fn [table db] (assoc table :db db)) tables (database/add-json-access (map :db tables))))))
 
 (def ^:private GetTableQuery
   "The query params of `GET /api/table/:id`, which `GET /api/table/by-name` takes too."
@@ -358,16 +360,24 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (warehouse-schema-rest.db/active-unretired-field-ids-for-table id))]
-    (for [origin-field (t2/hydrate (warehouse-schema-rest.db/active-fields-targeting field-ids) [:table :db] :can_read)
-          :when (and (-> origin-field :table :active)
-                     (mi/can-read? origin-field))
-          :let [origin-field (update origin-field :table schema.table/present-table)]]
-      ;; it's silly to be hydrating some of these tables/dbs
-      {:relationship   :Mt1
-       :origin_id      (:id origin-field)
-       :origin         origin-field
-       :destination_id (:fk_target_field_id origin-field)
-       :destination    (t2/hydrate (warehouse-schema-rest.db/field (:fk_target_field_id origin-field)) :table)})))
+    (let [origin-fields (t2/hydrate (warehouse-schema-rest.db/active-fields-targeting field-ids) [:table :db] :can_read)
+          origin-fields (map (fn [field db] (cond-> field (:table field) (assoc-in [:table :db] db)))
+                             origin-fields
+                             (database/add-json-access (map (comp :db :table) origin-fields)))
+          destinations  (when (seq origin-fields)
+                          (u/index-by :id (t2/hydrate (warehouse-schema-rest.db/fields-by-ids
+                                                       (into [] (comp (map :fk_target_field_id) (distinct))
+                                                             origin-fields))
+                                                      :table)))]
+      (for [origin-field origin-fields
+            :when (and (-> origin-field :table :active)
+                       (mi/can-read? origin-field))
+            :let [origin-field (update origin-field :table schema.table/present-table)]]
+        {:relationship   :Mt1
+         :origin_id      (:id origin-field)
+         :origin         origin-field
+         :destination_id (:fk_target_field_id origin-field)
+         :destination    (get destinations (:fk_target_field_id origin-field))}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

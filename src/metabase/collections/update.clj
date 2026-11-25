@@ -5,6 +5,7 @@
   module-linter's non-rest -> rest barrier, mirroring `metabase.collections.create`."
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
@@ -39,10 +40,12 @@
   "The `[card notifications]` pairs of the Cards in the Collection with `collection-id` that have alerts, which archiving
   the Collection deletes."
   [collection-id]
-  (vec (for [card          (collections.db/cards-in-collection collection-id)
-             :let          [notifications (seq (notification.card/card-notifications card))]
-             :when         notifications]
-         [card notifications])))
+  (let [cards   (collections.db/cards-in-collection collection-id)
+        by-card (notification.card/card-notifications cards)]
+    (vec (for [card  cards
+               :let  [notifications (seq (get by-card (:id card)))]
+               :when notifications]
+           [card notifications]))))
 
 (defn- delete-stopped-alerts!
   "Deletes the alerts of `stopped`, which archiving a Collection stops: the Cards in it follow its archive, so their
@@ -52,10 +55,11 @@
     (models.notification/delete-notifications! (vec notification-ids))))
 
 (defn- notify-stopped-alerts!
-  "Tells the recipients of the alerts of `stopped`, which archiving a Collection deleted, as archiving their Card does."
+  "Tells the recipients of the alerts of `stopped`, which archiving a Collection deleted, once the archive commits, as
+  archiving their Card does."
   [stopped actor]
-  (doseq [[card notifications] stopped]
-    (notification.card/notify-card-notifications-deleted! :card-archived actor card notifications)))
+  (mdb/do-after-commit
+   #(notification.card/notify-card-notifications-deleted! :card-archived actor stopped)))
 
 (defn- check-can-restore
   "Throws unless the current user may restore `collection` and what its archive took down, into the Collection that

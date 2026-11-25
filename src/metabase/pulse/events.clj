@@ -4,7 +4,6 @@
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
@@ -19,11 +18,6 @@
   [change]
   (when (= :update (u.events/operation change))
     (:id (:object change))))
-
-(defn- partitioned-read
-  "The rows that `read-fn` returns for `ids`, read in batches of `size`, the partition size of the write the rows feed."
-  [size read-fn ids]
-  (into [] (mapcat #(read-fn (vec %))) (partition-all size ids)))
 
 (defn- new-pulse-cards
   "The PulseCards to add so that the `subscriptions` of each Dashboard, rows of
@@ -48,15 +42,15 @@
   PulseCards with the dashcards those Dashboards have, with a number of reads that does not grow with the Dashboards."
   [{:keys [changes]}]
   (when-let [dashboard-ids (not-empty (into [] (comp (keep dashboard-id-of) (distinct)) changes))]
-    (when-let [subscriptions (not-empty (partitioned-read mdb/update-partition-size pulse.db/subscriptions-for-dashboards dashboard-ids))]
+    (when-let [subscriptions (not-empty (pulse.db/subscriptions-for-dashboards dashboard-ids))]
       (let [dashboards    (into {} (map (juxt :id identity))
-                                (partitioned-read mdb/update-partition-size pulse.db/dashboards-by-id (distinct (map :dashboard-id subscriptions))))
+                                (pulse.db/dashboards-by-id (distinct (map :dashboard-id subscriptions))))
             subscriptions (filter #(contains? dashboards (:dashboard-id %)) subscriptions)
             dashcards     (when (seq subscriptions)
                             (group-by :dashboard_id
-                                      (partitioned-read mdb/create-partition-size pulse.db/dashcards-with-cards-for-dashboards (keys dashboards))))
+                                      (pulse.db/dashcards-with-cards-for-dashboards (keys dashboards))))
             pulse-ids     (vec (distinct (map :pulse-id subscriptions)))
-            max-positions (when (seq pulse-ids) (into {} (mapcat #(pulse.db/max-pulse-card-positions (vec %))) (partition-all mdb/create-partition-size pulse-ids)))
+            max-positions (when (seq pulse-ids) (pulse.db/max-pulse-card-positions pulse-ids))
             stale         (into []
                                 (comp (filter (fn [{:keys [dashboard-id name collection-id]}]
                                                 (let [dashboard (get dashboards dashboard-id)]

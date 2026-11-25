@@ -11,6 +11,7 @@
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -139,7 +140,7 @@
                 orig  @gate
                 calls (atom 0)]
             (try
-              (reset! gate (fn [_doc] (swap! calls inc) true))
+              (reset! gate (fn [_docs] (fn [_doc] (swap! calls inc) true)))
               (mt/user-http-request :rasta :get 200 (format "document/%s" document-id))
               (is (= 1 @calls))
               (finally
@@ -256,6 +257,62 @@
               (is (contains? (set embedded-ids) (get new-cards-by-name "Card 1")))
               (is (contains? (set embedded-ids) (get new-cards-by-name "Card 2")))
               (is (contains? (set embedded-ids) (get new-cards-by-name "Archived Card"))))))))))
+
+(defn- copy-statement-count!
+  "The number of app DB statements of copying a Document with `n` cards, the first `n-archived` of them archived, as
+  `user`."
+  [user n n-archived]
+  (let [mp         (mt/metadata-provider)
+        query      (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        collection (collection/user->personal-collection (mt/user->id user))]
+    (mt/with-temp [:model/Document {doc-id :id} {:name         "Source Document"
+                                                 :collection_id (:id collection)
+                                                 :content_type prose-mirror/prose-mirror-content-type}]
+      (doseq [i (range n)]
+        (t2/insert! :model/Card {:name                   (str "Card " i)
+                                 :type                   :question
+                                 :document_id            doc-id
+                                 :collection_id          (:id collection)
+                                 :creator_id             (mt/user->id user)
+                                 :database_id            (mt/id)
+                                 :dataset_query          query
+                                 :display                "table"
+                                 :visualization_settings {}
+                                 :archived               (< i n-archived)
+                                 :archived_directly      (< i n-archived)}))
+      (events.tu/real-statement-count!
+       #(mt/user-http-request user :post 200 (format "document/%d/copy" doc-id)
+                              {:collection_id (:id collection)})))))
+
+(deftest copy-document-statement-count-test
+  (testing "POST /api/document/:id/copy costs the same number of statements for more cards, archived or not"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (doseq [user [:crowberto :rasta]]
+        (copy-statement-count! user 2 1)
+        (testing (str "as " (name user))
+          (is (= (copy-statement-count! user 3 1)
+                 (copy-statement-count! user 9 7)))
+          (is (= (copy-statement-count! user 3 0)
+                 (copy-statement-count! user 9 0))))))))
+
+(deftest copy-document-keeps-cards-and-archived-state-test
+  (testing "POST /api/document/:id/copy copies every card in order with its archived state"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Source Document"
+                                                   :content_type prose-mirror/prose-mirror-content-type}
+                     :model/Card {live-id :id} {:name "Live" :document_id doc-id
+                                                :dataset_query (let [mp (mt/metadata-provider)]
+                                                                 (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
+                     :model/Card {gone-id :id} {:name "Gone" :document_id doc-id
+                                                :dataset_query (let [mp (mt/metadata-provider)]
+                                                                 (lib/query mp (lib.metadata/table mp (mt/id :users))))
+                                                :archived true :archived_directly true}]
+        (let [copied (mt/user-http-request :crowberto :post 200 (format "document/%d/copy" doc-id) {})
+              by-name (m/index-by :name (t2/select :model/Card :document_id (:id copied)))]
+          (is (= #{"Live" "Gone"} (set (keys by-name))))
+          (is (=? {:archived false :archived_directly false} (get by-name "Live")))
+          (is (=? {:archived true :archived_directly true} (get by-name "Gone")))
+          (is (not-any? #{live-id gone-id} (map :id (vals by-name)))))))))
 
 (deftest copy-document-permissions-test
   (testing "POST /api/document/:id/copy - permission checks"
