@@ -741,7 +741,7 @@
                  (t2/update! (t2/table-name :model/FieldValues) {:id fv-id}
                              {:last_scanned_at (t/minus (t/offset-date-time) (t/days 2))})
                  (is (zero? (:probed (scan))))
-                 (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:field-values-full-scan-days 1}}
+                 (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:change-token-full-pass-days 1}}
                    (is (pos-int? (:probed (scan))))))
                (testing "new token: reads the lists and stores the new token"
                  (reset! token "t2")
