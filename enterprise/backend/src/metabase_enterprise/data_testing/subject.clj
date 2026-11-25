@@ -14,6 +14,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.model-persistence.core :as model-persistence]
+   [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -125,6 +126,18 @@
                                      :action  (tru "The action is archived. Restore it to test it.")
                                      (tru "The subject of this test is archived. Restore it to test it."))
                                    {}))))
+
+(mu/defn check-not-impersonated :- :nil
+  "Throw `::data-testing.errors/impersonated-user` when the current user's connection to `database` is impersonated.
+  Throws a 403 when no current user is bound."
+  [database :- ::lib.schema.metadata/database]
+  ;; A run executes its statements on a connection of its own, outside the query processor, which checks an
+  ;; impersonated user's native SQL statement by statement.
+  (when (perms/impersonation-enforced-for-db? (:id database))
+    (throw (data-testing.errors/ex
+            ::data-testing.errors/impersonated-user
+            (tru "A user whose connection to this database is impersonated can''t create or run data tests, or change what they test.")
+            {}))))
 
 (def output-token
   "The token that expectation SQL writes for the output of a subject that has no table of its own."

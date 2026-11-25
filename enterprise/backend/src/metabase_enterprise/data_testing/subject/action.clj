@@ -43,6 +43,9 @@
             (tru "Only query actions can be tested.")
             {})))
   (let [database (data-testing.subject/testable-database (:database_id action))]
+    ;; Compiling the query of an impersonated user refuses a statement that is not a SELECT, so the user is refused
+    ;; here first, as the user of any other test is.
+    (data-testing.subject/check-not-impersonated database)
     (refused-with-status-400 #(actions/check-actions-enabled action)
                              ::data-testing.errors/actions-disabled
                              (tru "Actions cannot run on the action''s database:"))
