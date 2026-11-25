@@ -2,11 +2,19 @@
   "Helper functions and macros for writing tests for automagic dashboards."
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [toucan2.core :as t2]))
+
+(defn mbql5-cell-query
+  "Convert `filter-clause`, a legacy MBQL filter clause, to an MBQL 5 cell query. X-Rays take MBQL 5 cell queries
+  only; this lets existing tests keep their legacy clauses. An MBQL 5 clause is only normalized."
+  [filter-clause]
+  (lib/normalize ::ads/root.cell-query (cond-> filter-clause
+                                         (not (map? (second filter-clause))) lib/->mbql5)))
 
 (defmacro with-rollback-only-transaction
   "Execute body and cleanup all dashboard elements created."

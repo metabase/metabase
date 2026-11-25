@@ -1,5 +1,6 @@
 (ns metabase.oauth-server.consent-page-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.test :as mt]
@@ -94,6 +95,23 @@
   (testing "at the domain root the action still targets /oauth/authorize/decision"
     (let [html (render!)]
       (is (re-find #"action=\"http://localhost:3000/oauth/authorize/decision\"" html)))))
+
+(deftest consent-page-declares-every-font-chunk-test
+  (testing "a bundled font split by unicode-range is declared whole, so non-latin text renders in it"
+    (mt/with-premium-features #{:whitelabel}
+      (with-redefs [u.fonts/emitted-filenames (delay {"Roboto" ["Roboto-Regular.a1b2c3d4.woff2"
+                                                                "Roboto-Regular.rest.e5f6a7b8.woff2"
+                                                                "Roboto-Bold.c3d4e5f6.woff2"
+                                                                "Roboto-Bold.rest.a7b8c9d0.woff2"]})
+                    u.fonts/unicode-ranges    (delay {"latin" "U+20-FF" "rest" "U+100-10FFFF"})]
+        (let [html (mt/with-temporary-setting-values [application-font "Roboto"]
+                     (render!))]
+          (doseq [[file unicode-range] [["Roboto-Regular.a1b2c3d4.woff2"      "U+20-FF"]
+                                        ["Roboto-Regular.rest.e5f6a7b8.woff2" "U+100-10FFFF"]
+                                        ["Roboto-Bold.c3d4e5f6.woff2"         "U+20-FF"]
+                                        ["Roboto-Bold.rest.a7b8c9d0.woff2"    "U+100-10FFFF"]]]
+            (is (str/includes? html (str "/app/dist/fonts/Roboto/" file "') format('woff2'); unicode-range: "
+                                         unicode-range ";")))))))))
 
 (defn- render-with-scopes! [scopes]
   (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
