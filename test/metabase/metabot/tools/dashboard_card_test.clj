@@ -152,14 +152,18 @@
         (is (str/includes? output (str "these rows are only those of its main question, question " card-id ".")))))))
 
 (deftest visualizer-dashcard-test
-  (testing "a dashcard that the visualizer built from several questions says that only its main question ran"
-    (mt/with-temp [:model/Card          {card-id :id}      {:dataset_query (venues-count)}
-                   :model/Dashboard     {dashboard-id :id} {}
-                   :model/DashboardCard {dashcard-id :id}  {:dashboard_id           dashboard-id
-                                                            :card_id                card-id
-                                                            :visualization_settings {:visualization {:display "bar"}}}]
-      (is (str/includes? (:output (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id}))
-                         (str "these rows are only those of its main question, question " card-id "."))))))
+  (mt/with-temp [:model/Card          {card-id :id}      {:dataset_query (venues-count)}
+                 :model/Card          {other-id :id}     {:dataset_query (venues-count)}
+                 :model/Dashboard     {dashboard-id :id} {}
+                 :model/DashboardCard {dashcard-id :id}  {:dashboard_id           dashboard-id
+                                                          :card_id                card-id
+                                                          :visualization_settings {:visualization {:display "bar"}}}]
+    (let [run (fn [] (:output (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id})))]
+      (testing "a dashcard that the visualizer built from one question says nothing of other questions"
+        (is (not (str/includes? (run) "combines more than one question"))))
+      (testing "a dashcard that the visualizer built from several questions says that only its main question ran"
+        (mt/with-temp [:model/DashboardCardSeries _ {:dashboardcard_id dashcard-id, :card_id other-id, :position 0}]
+          (is (str/includes? (run) (str "these rows are only those of its main question, question " card-id "."))))))))
 
 (deftest pivot-card-runs-as-plain-query-test
   (testing "a pivot card runs through the plain QP, which keeps the row limit"

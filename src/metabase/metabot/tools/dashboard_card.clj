@@ -144,7 +144,7 @@
         unknown                   (map (comp llm-shape/escape-xml :name) unsent)]
     (cond
       (empty? filters)
-      "No dashboard filter is connected to this card, so it ran as it shows on the user's screen."
+      "No dashboard filter is connected to this card, so no filter values were applied."
 
       (nil? values)
       (str "No dashboard filter values were applied: the values on the user's screen are unknown, so these rows can"
@@ -166,8 +166,8 @@
   "The line saying that only `card` ran, when `dashcard` shows more than one question on the user's screen, or nil.
    The line names the card by its `card-type`, such as question, and its ID."
   [dashcard card card-type]
-  (when (or (get-in dashcard [:visualization_settings :visualization])
-            (metabot.db/dashcard-has-series? (:id dashcard)))
+  ;; The visualizer saves a card's other questions as series too, so one built from a single question has none
+  (when (metabot.db/dashcard-has-series? (:id dashcard))
     (format (str "This card combines more than one question on the user's screen, and these rows are only those of"
                  " its main question, %s %d.")
             card-type (:id card))))
