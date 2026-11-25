@@ -178,24 +178,26 @@
                   [[database name] (long total_rows)])))
         rows))
 
-(def ^:private row-count-estimates-timeout-seconds
-  "The time limit of the row count query."
-  15)
+(def ^:private max-schemas-in-filter
+  "Above this many databases, the row count query reads all of `system.tables` instead of naming them, which keeps the
+  query under ClickHouse's maximum query size."
+  1000)
 
 (defn- query-row-count-estimates
-  "The row counts of the tables of the databases `schemas` from `system.tables`. `total_rows` is the exact count when
-  ClickHouse can tell it quickly, as for the MergeTree family, and NULL otherwise."
+  "The row counts of the tables of the databases `schemas` from `system.tables`. `total_rows` is the number of rows in
+  the table's parts when ClickHouse can tell it quickly, as for the MergeTree family, and NULL otherwise. It counts rows
+  that a lightweight `DELETE` marked or that a merge would collapse, which is close enough for an estimate. There is no
+  JDBC time limit: the driver sends it as `max_execution_time`, which a read-only user cannot set; it reads metadata."
   [driver db schemas]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver db nil
-   (fn [^Connection conn]
-     (row-count-estimates
-      (jdbc/query {:connection conn}
-                  (into [(str "SELECT database, name, total_rows FROM system.tables"
-                              " WHERE total_rows > 0 AND database IN ("
-                              (str/join ", " (repeat (count schemas) "?")) ")")]
-                        schemas)
-                  {:timeout row-count-estimates-timeout-seconds})))))
+  (let [named? (<= (count schemas) max-schemas-in-filter)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver db nil
+     (fn [^Connection conn]
+       (row-count-estimates
+        (jdbc/query {:connection conn}
+                    (into [(cond-> "SELECT database, name, total_rows FROM system.tables WHERE total_rows > 0"
+                             named? (str " AND database IN (" (str/join ", " (repeat (count schemas) "?")) ")"))]
+                          (when named? schemas))))))))
 
 (defn- with-row-count-estimates
   "`tables` with the `:estimated_row_count` of each table, nil for a table with none. The estimate is extra
