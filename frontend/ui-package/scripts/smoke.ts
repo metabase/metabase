@@ -6,13 +6,14 @@ import { basename, join, resolve } from "path";
 
 const packageDir = resolve(import.meta.dirname, "..");
 const USAGE =
-  "Usage: bun run smoke-ui-package -- [--no-browser | --release-only] [--keep]";
-const FLAGS = ["--keep", "--release-only", "--no-browser"];
+  "Usage: bun run smoke-ui-package -- [--no-browser | --release-only] [--with-deps] [--keep]";
+const FLAGS = ["--keep", "--release-only", "--no-browser", "--with-deps"];
 const args = process.argv.slice(2);
 const unknown = args.filter((arg) => !FLAGS.includes(arg));
 const keep = args.includes("--keep");
 const releaseOnly = args.includes("--release-only");
 const skipBrowser = args.includes("--no-browser");
+const withDeps = args.includes("--with-deps");
 if (unknown.length > 0 || (releaseOnly && skipBrowser)) {
   console.error(
     unknown.length > 0
@@ -102,7 +103,17 @@ try {
   must("bun", ["run", "build"], appDir);
 
   if (!skipBrowser) {
-    must("bun", ["run", "playwright", "install", "chromium"], appDir);
+    must(
+      "bun",
+      [
+        "run",
+        "playwright",
+        "install",
+        ...(withDeps ? ["--with-deps"] : []),
+        "chromium",
+      ],
+      appDir,
+    );
     must("bun", ["run", releaseOnly ? "test:release" : "test"], appDir);
   }
 
