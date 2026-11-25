@@ -3128,7 +3128,7 @@
               search   sql-jdbc.sync/describe-nested-field-columns
               table-id #(t2/select-one-pk :model/Table :db_id (:id database) :name "j")
               token    #(get (driver/table-change-tokens :postgres (driver.u/lib-database (:id database))
-                                                         [(t2/select-one :model/Table (table-id))])
+                                                         [(t2/select-one :model/Table :id (table-id))])
                              (table-id))
               settle!  #(let [last-token (atom ::none)]
                           (poll token (fn [t] (let [same? (= t @last-token)] (reset! last-token t) same?))))
@@ -3146,7 +3146,8 @@
           (testing "a sync with a token that is not the stored one searches and stores it"
             (t2/update! (t2/table-name :model/Table) {:id (table-id)} {:nested_fields_token nil})
             (is (= 1 (sync!)))
-            (is (= (token) (t2/select-one-fn :nested_fields_token :model/Table (table-id)))))
+            (is (str/starts-with? (t2/select-one-fn :nested_fields_token :model/Table :id (table-id))
+                                  (str (token) "|"))))
           (testing "no search while the table does not change, and the nested fields stay"
             (is (= 0 (sync!)))
             (is (active? "doc → a")))
@@ -3162,4 +3163,13 @@
             (sync!)
             (t2/update! (t2/table-name :model/Table) {:id (table-id)}
                         {:nested_fields_searched_at (t/minus (t/offset-date-time) (t/days 8))})
-            (is (= 1 (sync!)))))))))
+            (is (= 1 (sync!))))
+          (testing "turning JSON unfolding off and on again for the database, with no write, searches again"
+            (let [unfolding! #(t2/update! :model/Database :id (:id database)
+                                          {:details (assoc details :dbname db-name :json-unfolding %)})]
+              (unfolding! false)
+              (sync!)
+              (is (not (active? "doc → a")))
+              (unfolding! true)
+              (is (= 1 (sync!)))
+              (is (active? "doc → a")))))))))

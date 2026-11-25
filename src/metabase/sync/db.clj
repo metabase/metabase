@@ -125,6 +125,22 @@
    table-name  :- :string]
   (t2/select-one-pk :model/Table :db_id database-id :name table-name :active true))
 
+(mu/defn nested-field-search-states :- [:map-of ::lib.schema.id/table :int]
+  "For each Table with `table-ids`, a number that changes when what the search of its JSON columns for nested fields
+  would find can change without a change to its rows: which of its JSON Fields have JSON unfolding on, and how many of
+  its active Fields came from a search."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (let [rows (app-db/select-batched #(t2/select [:model/Field :table_id :id :base_type :json_unfolding :nfc_path]
+                                                :table_id [:in %]
+                                                :active true)
+                                    table-ids)]
+    (into {}
+          (map (fn [[table-id fields]]
+                 [table-id (hash [(sort (keep #(when (and (isa? (:base_type %) :type/JSON) (:json_unfolding %)) (:id %))
+                                              fields))
+                                  (count (filter (comp seq :nfc_path) fields))])]))
+          (group-by :table_id rows))))
+
 (mu/defn active-tables-by-lower-names
   "The active Tables of the Database with `database-id` whose lower-cased name is one of `lower-names`, hidden ones
   included, each with its lower-cased name and schema as the database computes them under `:lower_name` and

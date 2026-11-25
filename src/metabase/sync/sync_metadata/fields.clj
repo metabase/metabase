@@ -196,7 +196,13 @@
                                                           (sync-util/name-for-logging database))
                      (driver/table-change-tokens driver database tables))]
         (when (map? tokens)
-          tokens)))))
+          (let [states (sync.db/nested-field-search-states (mapv :id tables))]
+            ;; The stored value joins the table's token with the state of its JSON unfolding, so that turning the
+            ;; unfolding of the database or of a Field on or off makes sync search again.
+            (into {}
+                  (map (fn [{:keys [id]}]
+                         [id (some-> (get tokens id) (str "|" (get states id 0)))]))
+                  tables)))))))
 
 (defn- nested-fields-searched-since?
   "Whether the JSON columns of `table` were searched for nested fields with `token`, within the full-pass period of

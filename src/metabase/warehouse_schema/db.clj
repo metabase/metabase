@@ -308,6 +308,9 @@
   [table-id->token :- [:map-of ::lib.schema.id/table [:maybe :string]]]
   (app-db/sum-batched app-db/update-partition-size
                       (fn [part]
+                        ;; the change log leaves these columns out on purpose (see the `change-log/spec` of
+                        ;; `:model/Table`)
+                        #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
                         (t2/update! (t2/table-name :model/Table) :id [:in (mapv key part)]
                                     {:nested_fields_token       (into [:case] (mapcat (fn [[k v]] [[:= :id k] v])) part)
                                      :nested_fields_searched_at :%now}))
