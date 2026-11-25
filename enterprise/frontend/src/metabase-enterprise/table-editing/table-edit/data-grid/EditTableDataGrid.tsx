@@ -105,14 +105,18 @@ export const EditTableDataGrid = ({
     ],
   );
 
-  // Column widths are measured in a separate React root
+  // Column widths are measured from values in a separate React root, so it never renders an editor
+  const measurementContextValue = useMemo(
+    () => ({ ...contextValue, editingCell: null }),
+    [contextValue],
+  );
   const measurementRenderWrapper = useCallback(
     (children: React.ReactElement) => (
-      <EditTableDataGridContextProvider value={contextValue}>
+      <EditTableDataGridContextProvider value={measurementContextValue}>
         {children}
       </EditTableDataGridContextProvider>
     ),
-    [contextValue],
+    [measurementContextValue],
   );
 
   const handleBodyCellClick = useCallback(

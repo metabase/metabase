@@ -235,6 +235,7 @@ type SetupOpts = {
   isTableWritable?: boolean;
   initialRoute?: string;
   dataset?: Dataset;
+  updateForm?: DescribeActionFormResponse | Promise<DescribeActionFormResponse>;
 };
 
 function setup({
@@ -246,6 +247,7 @@ function setup({
     data: { cols: COLS, rows: ROWS },
     row_count: ROWS.length,
   }),
+  updateForm = UPDATE_FORM,
 }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1000, height: 1000 });
   // Edit mode builds its filter and sort URLs from `window.location`.
@@ -262,7 +264,7 @@ function setup({
   setupDatabaseEndpoints(database);
   fetchMock.get("path:/api/database", { data: [database], total: 1 });
   setupAdhocQueryEndpoint(dataset, { name: "dataset" });
-  fetchMock.post("path:/api/ee/action-v2/execute-form", UPDATE_FORM, {
+  fetchMock.post("path:/api/ee/action-v2/execute-form", updateForm, {
     body: { action: TableActionId.UpdateRow },
     matchPartialBody: true,
   });
@@ -578,6 +580,8 @@ describe("EditTableDataContainer", () => {
 
     it("keeps text typed into a cell while another cell's save lands", async () => {
       const { store } = await setupGrid();
+      // An untouched cell must stay mounted while editors open and close
+      const alphaCellContent = within(getCell(0, "name")).getByText("Alpha");
       const saveResponse = defer<void>();
       fetchMock.modifyRoute("execute-bulk", {
         response: async (callLog: CallLog) => {
@@ -611,6 +615,135 @@ describe("EditTableDataContainer", () => {
       expect(within(getCell(2, "name")).getByRole("textbox")).toHaveValue(
         "Charlie Delta",
       );
+      expect(alphaCellContent).toBeInTheDocument();
+    });
+
+    it("shows the latest value in an open editor when its cell changes underneath", async () => {
+      const { store } = await setupGrid();
+      const saveResponse = defer<void>();
+      fetchMock.modifyRoute("execute-bulk", {
+        response: async (callLog: CallLog) => {
+          await saveResponse.promise;
+          const { outputs } = executeBulk(callLog);
+          // As if a database trigger rewrote the name when the score changed
+          return {
+            outputs: outputs.map((output) => ({
+              ...output,
+              row: { ...output.row, name: "Bravo Jr." },
+            })),
+          };
+        },
+      });
+
+      try {
+        await userEvent.click(getCell(1, "score"));
+        const scoreInput = within(getCell(1, "score")).getByRole("textbox");
+        await userEvent.clear(scoreInput);
+        await userEvent.type(scoreInput, "25{Enter}");
+        await waitFor(() =>
+          expect(fetchMock.callHistory.calls("execute-bulk")).toHaveLength(1),
+        );
+        await userEvent.click(getCell(1, "name"));
+        expect(within(getCell(1, "name")).getByRole("textbox")).toHaveValue(
+          "Bravo",
+        );
+      } finally {
+        // A pending save would keep the shared afterEach waiting
+        saveResponse.resolve();
+      }
+      await waitForGridToSettle(store, { datasetRequests: 1 });
+
+      expect(within(getCell(1, "name")).getByRole("textbox")).toHaveValue(
+        "Bravo Jr.",
+      );
+    });
+
+    it("keeps a draft in an editor reopened while its own save lands", async () => {
+      const { store } = await setupGrid();
+      const saveResponse = defer<void>();
+      fetchMock.modifyRoute("execute-bulk", {
+        response: async (callLog: CallLog) => {
+          await saveResponse.promise;
+          const { outputs } = executeBulk(callLog);
+          // The server can send a saved value back normalized, like a timestamp with its time zone
+          return {
+            outputs: outputs.map((output) => ({
+              ...output,
+              row: { ...output.row, name: "Bravo" },
+            })),
+          };
+        },
+      });
+
+      try {
+        await userEvent.click(getCell(1, "name"));
+        await userEvent.type(
+          within(getCell(1, "name")).getByRole("textbox"),
+          " {Enter}",
+        );
+        await waitFor(() =>
+          expect(fetchMock.callHistory.calls("execute-bulk")).toHaveLength(1),
+        );
+        await userEvent.click(getCell(1, "name"));
+        await userEvent.type(
+          within(getCell(1, "name")).getByRole("textbox"),
+          "Jr.",
+        );
+      } finally {
+        // A pending save would keep the shared afterEach waiting
+        saveResponse.resolve();
+      }
+      await waitForGridToSettle(store, { datasetRequests: 1 });
+
+      expect(within(getCell(1, "name")).getByRole("textbox")).toHaveValue(
+        "Bravo Jr.",
+      );
+    });
+
+    it("closes the editor when a refetch moves another record into its row", async () => {
+      const { store } = await setupGrid();
+      await userEvent.click(getCell(1, "name"));
+      await userEvent.type(
+        within(getCell(1, "name")).getByRole("textbox"),
+        " Jr.",
+      );
+      fetchMock.modifyRoute("dataset", {
+        response: createMockDataset({
+          data: { cols: COLS, rows: [ROWS[2], ROWS[0], ROWS[1]] },
+        }),
+      });
+
+      await act(async () => {
+        store.dispatch(Api.util.invalidateTags(["dataset"]));
+      });
+      await waitForGridToSettle(store, { datasetRequests: 2 });
+
+      expect(
+        within(getCell(1, "name")).queryByRole("textbox"),
+      ).not.toBeInTheDocument();
+      expect(getCell(1, "name")).toHaveTextContent("Alpha");
+    });
+
+    it("keeps cells mounted and read-only cells closed when the form arrives after a click", async () => {
+      const updateForm = defer<DescribeActionFormResponse>();
+      const { store } = setup({ updateForm: updateForm.promise });
+      let alphaCellContent: HTMLElement | undefined;
+
+      try {
+        alphaCellContent = await waitFor(() =>
+          within(getCell(0, "name")).getByText("Alpha"),
+        );
+        await userEvent.click(getCell(1, "id"));
+      } finally {
+        // A pending form request would keep the shared afterEach waiting
+        updateForm.resolve(UPDATE_FORM);
+      }
+      await waitForGridToSettle(store, { datasetRequests: 1 });
+
+      expect(alphaCellContent).toBeInTheDocument();
+      expect(
+        within(getCell(1, "id")).queryByRole("textbox"),
+      ).not.toBeInTheDocument();
     });
 
     it("does not make a cell editable when the form description marks its column readonly", async () => {

@@ -197,6 +197,8 @@ export const EditTableDataContainer = () => {
         <EditTableDataOverlay {...loadingOverlayProps} />
         {datasetData && (
           <EditTableDataGrid
+            // Another table starts with no open editor and no save states
+            key={tableId}
             handleRowUpdate={handleRowUpdate}
             updateFormDescription={updateFormDescription}
             data={datasetData}

@@ -68,9 +68,10 @@
   visibility: visible;
 }
 
-/* The checked states are listed too, so the Checkbox's own state borders don't win */
+/* The checked and disabled states are listed too, so the Checkbox's own state borders don't win */
 .checkboxInput,
 .checkboxInput:checked,
-.checkboxInput[data-indeterminate] {
+.checkboxInput[data-indeterminate],
+.checkboxInput:disabled {
   border-color: var(--mb-color-border-neutral);
 }

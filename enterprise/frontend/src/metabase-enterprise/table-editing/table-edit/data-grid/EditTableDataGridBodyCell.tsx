@@ -1,6 +1,6 @@
 import type { CellContext } from "@tanstack/react-table";
 import cx from "classnames";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { BodyCell } from "metabase/data-grid";
 import { useDataGridTheme } from "metabase/data-grid/hooks";
@@ -44,12 +44,26 @@ export function EditTableDataGridBodyCell({
   const parameter = parametersByName.get(column.id);
   const isEditing =
     parameter != null &&
+    !parameter.readonly &&
     editingCell?.columnId === column.id &&
     editingCell?.rowIndex === row.index;
+  const cellState = getCellState(column.id, row.index);
+
+  // An open editor remounts on value changes from elsewhere, but keeps its draft when its own save lands
+  const [editorSync, setEditorSync] = useState({ value, key: 0 });
+  const hasValueChangedUnderEditor = isEditing && value !== editorSync.value;
+  if (hasValueChangedUnderEditor) {
+    const isOwnSaveLanding = cellState === EditDataGridCellState.Updating;
+    setEditorSync({
+      value,
+      key: isOwnSaveLanding ? editorSync.key : editorSync.key + 1,
+    });
+  }
 
   if (isEditing) {
     return (
       <ParameterActionInput
+        key={editorSync.key}
         parameter={parameter}
         autoFocus
         initialValue={value?.toString()}
@@ -75,7 +89,6 @@ export function EditTableDataGridBodyCell({
 
   const { wrap, isTruncated = false, onExpand } = column.columnDef.meta ?? {};
   const isReadonly = Boolean(parameter?.readonly);
-  const cellState = getCellState(column.id, row.index);
   const editableCellClassName = cx(S.cell, {
     [S.updatingCell]: cellState === EditDataGridCellState.Updating,
     [S.errorCell]: cellState === EditDataGridCellState.Error,
