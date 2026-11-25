@@ -571,21 +571,24 @@
 (defn do-with-run-errors
   "Call `thunk`, which runs a page of rows through [[query-execution]], and return what it returns.
    Throw this tool's declared errors for failures of the query or its database, cancellation and timeouts, call
-   `no-permission!` for a permission failure, and rethrow a failure inside Metabase."
+   `no-permission!` for a permission failure, a 403 included, and rethrow a failure inside Metabase."
   [no-permission! thunk]
   (try
     (thunk)
     (catch clojure.lang.ExceptionInfo e
-      (let [{:keys [error query-error permissions-error? caller-facing? timeout-ms]} (ex-data e)]
-        (case error
-          ;; The QP's refusal is ours to state plainly. Its text can name a question the user can't read.
-          :query-failed    (cond
-                             permissions-error? (no-permission!)
-                             caller-facing?     (sql.common/query-failed! {:error-message query-error})
-                             :else              (throw e))
-          :query-canceled  (query-canceled! {})
-          :query-timed-out (query-timed-out! {:seconds (quot timeout-ms 1000)})
-          (throw e))))))
+      (let [{:keys [error query-error permissions-error? caller-facing? timeout-ms status-code]} (ex-data e)]
+        (if (= 403 status-code)
+          ;; A runner's own read checks throw before the QP runs anything
+          (no-permission!)
+          (case error
+            ;; The QP's refusal is ours to state plainly. Its text can name a question the user can't read.
+            :query-failed    (cond
+                               permissions-error? (no-permission!)
+                               caller-facing?     (sql.common/query-failed! {:error-message query-error})
+                               :else              (throw e))
+            :query-canceled  (query-canceled! {})
+            :query-timed-out (query-timed-out! {:seconds (quot timeout-ms 1000)})
+            (throw e)))))))
 
 (defn- run-page!
   "Run `query` for one page of rows through [[query-execution/execute-page!]], with the errors of
@@ -718,11 +721,11 @@
 (defn rows-output
   "A map `{:output :returned :truncated?}` of the text the model reads for `page`, a page of rows, the number of rows
    that text shows, and whether the run has more rows than it shows.
-   The text opens with `open-tag`, the `<query_results ...` start of the opening tag, which this closes with the
-   counts, and the lines `notes` follow the rows.
+   The `<query_results>` tag carries the `[name value]` pairs `attrs`, in order, and then the counts.
+   The lines `notes` follow the rows.
    A truncated page, or one whose rows are too long to show, gets advice to change the query and run it again only
    with `rerun-advice?`."
-  [open-tag {:keys [cols rows truncated?]} notes rerun-advice?]
+  [attrs {:keys [cols rows truncated?]} {:keys [notes rerun-advice?]}]
   (let [shown-cols            (vec (take max-columns cols))
         {:keys [table shown]} (rows-table shown-cols rows)
         truncated?            (or truncated? (< shown (count rows)))
@@ -731,7 +734,10 @@
      :truncated? truncated?
      ;; Cells are XML-escaped, so no value can close <data> early and the tags need no random boundary.
      :output     (apply te/lines
-                        (format "%s returned=\"%d\" truncated=\"%s\">" open-tag shown truncated?)
+                        (str "<query_results"
+                             (str/join (for [[attr value] (concat attrs [["returned" shown] ["truncated" truncated?]])]
+                                         (str " " attr "=\"" (llm-shape/escape-xml (str value)) "\"")))
+                             ">")
                         "<data>"
                         (cond
                           table     table
@@ -762,16 +768,18 @@
    user's screen, gets no advice to aggregate it and run it again: for the user's own query, that means building a
    new one."
   [query-id page saved-card]
-  (rows-output (format "<query_results query_id=\"%s\"" (llm-shape/escape-xml query-id))
+  (rows-output [["query_id" query-id]]
                page
-               [(when-let [{:keys [id type]} saved-card]
-                  (str (format (str "This ran the saved version of %s %d: edits and filter values on the user's"
-                                    " screen are not applied. Link to it as `metabase://%s/%d`, not as a query.")
-                               (name type) id (name type) id)
-                       " If the user is viewing it, run its query ID to read the query on the user's screen."))]
-               ;; A viewed saved question or model is a client ID too, through the chart that seeding stores under its
-               ;; ID
-               (not (contains? (shared/current-client-ids) query-id))))
+               {:notes         [(when-let [{:keys [id type]} saved-card]
+                                  (str (format (str "This ran the saved version of %s %d: edits and filter values on"
+                                                    " the user's screen are not applied. Link to it as"
+                                                    " `metabase://%s/%d`, not as a query.")
+                                               (name type) id (name type) id)
+                                       " If the user is viewing it, run its query ID to read the query on the user's"
+                                       " screen."))]
+                ;; A viewed saved question or model is a client ID too, through the chart that seeding stores under
+                ;; its ID
+                :rerun-advice? (not (contains? (shared/current-client-ids) query-id))}))
 
 (defn- run-query
   "Run the stored query `query_id` names and return the tool's result.

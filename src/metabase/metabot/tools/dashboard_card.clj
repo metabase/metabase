@@ -128,22 +128,20 @@
 (defn- filters-note
   "The line saying which filter values the run applied to `card` on `dashcard`: those of the filters connected to it."
   [dashboard dashcard card values]
-  (let [connected (into #{}
-                        (comp (filter #(= (:id card) (:card_id %)))
-                              (map :parameter_id))
-                        (:parameter_mappings dashcard))
-        id->value (into {} (map (juxt :id :value)) values)
-        filters   (filter #(contains? connected (:id %)) (:parameters dashboard))
-        applied   (for [{:keys [id name]} filters
-                        :when (contains? id->value id)
-                        :let  [value (get id->value id)]]
-                    (str (llm-shape/escape-xml name) " = "
-                         (if (llm-shape/dashboard-filter-cleared? value)
-                           "(cleared)"
-                           (llm-shape/escape-xml (llm-shape/dashboard-filter-value value)))))
-        unknown   (for [{:keys [id name]} filters
-                        :when (not (contains? id->value id))]
-                    (llm-shape/escape-xml name))]
+  (let [connected                 (into #{}
+                                        (comp (filter #(= (:id card) (:card_id %)))
+                                              (map :parameter_id))
+                                        (:parameter_mappings dashcard))
+        id->value                 (into {} (map (juxt :id :value)) values)
+        filters                   (filter #(contains? connected (:id %)) (:parameters dashboard))
+        {sent true, unsent false} (group-by #(contains? id->value (:id %)) filters)
+        applied                   (for [{:keys [id name]} sent
+                                        :let  [value (get id->value id)]]
+                                    (str (llm-shape/escape-xml name) " = "
+                                         (if (llm-shape/dashboard-filter-cleared? value)
+                                           "(cleared)"
+                                           (llm-shape/escape-xml (llm-shape/dashboard-filter-value value)))))
+        unknown                   (map (comp llm-shape/escape-xml :name) unsent)]
     (cond
       (empty? filters)
       "No dashboard filter is connected to this card, so it ran as it shows on the user's screen."
@@ -159,57 +157,49 @@
                                     (str/join "; " applied) "."))
                              (when (seq unknown)
                                (str "No value was applied for " (str/join ", " unknown) ": "
-                                    (if (next unknown) "their values" "its value")
-                                    " on the user's screen "
-                                    (if (next unknown) "are" "is")
+                                    (if (next unknown)
+                                      "their values on the user's screen are"
+                                      "its value on the user's screen is")
                                     " unknown, so these rows can differ from the card on screen."))])))))
 
 (defn- combined-note
-  "The line saying that only `card` ran, when `dashcard` shows more than one question on the user's screen, or nil."
-  [dashcard card]
+  "The line saying that only `card`, a `card-type` such as question, ran, when `dashcard` shows more than one question
+   on the user's screen, or nil."
+  [dashcard card card-type]
   (when (or (get-in dashcard [:visualization_settings :visualization])
             (metabot.db/dashcard-has-series? (:id dashcard)))
     (format (str "This card combines more than one question on the user's screen, and these rows are only those of"
                  " its main question, %s %d.")
-            (name (:type card)) (:id card))))
-
-(defn- run-dashcard-page!
-  "Run `runnable`, the `{:dashboard :dashcard :card :parameters}` to run, for one page of at most `row-limit` rows."
-  [runnable dashcard-id row-limit]
-  (try
-    (query-execution/execute-dashcard-page! runnable row-limit :metabot (run-query/run-options))
-    (catch clojure.lang.ExceptionInfo e
-      ;; The runner's own read checks throw before the QP runs anything
-      (if (= 403 (:status-code (ex-data e)))
-        (no-permission! {:dashcard-id dashcard-id})
-        (throw e)))))
+            card-type (:id card))))
 
 (defn- run-dashboard-card
+  "Run the dashcard `dashcard_id` on the dashboard the user is viewing, with the filter values on their screen, for at
+   most `row_limit` rows.
+   Returns `{:output :structured-output}`, and throws this namespace's refusals and those of `run_query`."
   [{:keys [dashcard_id row_limit]}]
   (run-query/check-rows-may-reach-model!)
   (let [item (viewed-dashboard)]
     (cond
       (nil? item)                 (no-viewed-dashboard! {})
       (not (pos-int? (:id item))) (automatic-dashboard! {}))
-    (let [{:keys [dashboard dashcard card]} (runnable-dashcard (:id item) dashcard_id)
-          values                            (filter-values item dashboard)
-          page                              (run-query/do-with-run-errors
-                                             #(no-permission! {:dashcard-id dashcard_id})
-                                             #(run-dashcard-page! {:dashboard  dashboard
-                                                                   :dashcard   dashcard
-                                                                   :card       card
-                                                                   :parameters values}
-                                                                  dashcard_id
-                                                                  (or row_limit run-query/default-row-limit)))
-          card-type                         (name (:type card))
+    (let [{:keys [dashboard dashcard card] :as runnable} (runnable-dashcard (:id item) dashcard_id)
+          values                                         (filter-values item dashboard)
+          page                                           (run-query/do-with-run-errors
+                                                          #(no-permission! {:dashcard-id dashcard_id})
+                                                          #(query-execution/execute-dashcard-page!
+                                                            (assoc runnable :parameters values)
+                                                            (or row_limit run-query/default-row-limit)
+                                                            :metabot
+                                                            (run-query/run-options)))
+          card-type                                      (name (:type card))
           {:keys [output returned truncated?]}
           (run-query/rows-output
-           (format "<query_results dashcard_id=\"%d\" %s_id=\"%d\"" dashcard_id card-type (:id card))
+           [["dashcard_id" dashcard_id] [(str card-type "_id") (:id card)]]
            page
-           [(filters-note dashboard dashcard card values)
-            (combined-note dashcard card)
-            (format "Link to the %s as `metabase://%s/%d`." card-type card-type (:id card))]
-           false)]
+           {:notes         [(filters-note dashboard dashcard card values)
+                            (combined-note dashcard card card-type)
+                            (format "Link to the %s as `metabase://%s/%d`." card-type card-type (:id card))]
+            :rerun-advice? false})]
       {:output            output
        :structured-output {:dashcard-id dashcard_id
                            :card-id     (:id card)
