@@ -1,11 +1,6 @@
 import type { MatcherOptions } from "@testing-library/cypress";
 
-import type {
-  MeasureId,
-  SegmentId,
-  TableId,
-  TransformId,
-} from "metabase-types/api";
+import type { SegmentId, TableId, TransformId } from "metabase-types/api";
 
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 import { MetricPage } from "./e2e-metric-page-helpers";
@@ -120,7 +115,6 @@ export const DataStudio = {
     overviewTab: () => DataStudio.Tables.header().findByText("Overview"),
     fieldsTab: () => DataStudio.Tables.header().findByText("Fields"),
     segmentsTab: () => DataStudio.Tables.header().findByText("Segments"),
-    measuresTab: () => DataStudio.Tables.header().findByText("Measures"),
     dependenciesTab: () =>
       DataStudio.Tables.header().findByText("Dependencies"),
     visitOverviewPage: (tableId: TableId) =>
@@ -135,8 +129,6 @@ export const DataStudio = {
       cy.visit(`/data-studio/library/tables/${tableId}/segments/new`),
     visitMeasuresPage: (tableId: TableId) =>
       cy.visit(`/data-studio/library/tables/${tableId}/measures`),
-    visitMeasurePage: (tableId: TableId, measureId: MeasureId) =>
-      cy.visit(`/data-studio/library/tables/${tableId}/measures/${measureId}`),
     visitNewMeasurePage: (tableId: TableId) =>
       cy.visit(`/data-studio/library/tables/${tableId}/measures/new`),
     moreMenuViewTable: () =>
