@@ -260,9 +260,12 @@
   [driver & {:keys [schema-names table-names]}]
   ;; One read of `system.columns` for all Tables, where [[driver/describe-table]] makes one JDBC metadata call for each.
   ;; The same columns are left out as there: `AggregateFunction` columns, and the inner tables of materialized views.
-  (let [filters (keep identity [(in-clause "c.database" schema-names)
+  ;; A nil schema matches every database, as the JDBC metadata call of [[driver/describe-table]] does with one.
+  (let [any-db? (or (nil? schema-names) (boolean (seq (filter nil? schema-names))))
+        filters (keep identity [(when-not any-db?
+                                  (in-clause "c.database" schema-names))
                                 (in-clause "c.table" table-names)
-                                (when (nil? schema-names)
+                                (when any-db?
                                   (in-clause "c.database NOT" (sort (sql-jdbc.sync/excluded-schemas driver))))])]
     (into [(str "SELECT c.database AS `table-schema`, c.table AS `table-name`, c.name AS `name`,"
                 " c.type AS `database-type`, toInt32(c.position) - 1 AS `database-position`,"

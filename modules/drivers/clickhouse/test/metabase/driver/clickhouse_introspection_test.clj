@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-introspection-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.clickhouse-introspection-test]}}}}}}
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.clickhouse-introspection :as clickhouse-introspection]
@@ -686,4 +687,11 @@
           (check-describe-fields-matches-describe-table)))
       (testing "test-data"
         (mt/dataset test-data
-          (check-describe-fields-matches-describe-table))))))
+          (check-describe-fields-matches-describe-table)))
+      (testing "a nil schema stands for the current database, as for a Table a transform just wrote"
+        (mt/dataset test-data
+          (let [{:keys [schema name]} (t2/select-one :model/Table :id (mt/id :venues))
+                fields                #(set (driver/describe-fields :clickhouse (driver.u/lib-database (mt/id))
+                                                                    :schema-names [%] :table-names [name]))]
+            (is (seq (fields schema)))
+            (is (set/subset? (fields schema) (fields nil)))))))))
