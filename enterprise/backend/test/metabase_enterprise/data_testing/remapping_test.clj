@@ -195,7 +195,7 @@
       ;; Input completeness is checked against the transform's references, never an expectation's, so
       ;; nothing stands in for ORDERS. Guard B covers the expectation's own SQL for exactly this.
       (is (thrown-with-msg?
-           ExceptionInfo #"(?i)Expectation \"leaks\" reads table\(s\) this test does not stand in for: orders"
+           ExceptionInfo #"(?i)^The SQL of expectation \"leaks\" reads table\(s\) this test does not stand in for: orders"
            (validate inputs [{:type :empty :name "leaks" :sql "SELECT * FROM ORDERS"}] source))))
     (testing "an expectation reading the transform's output or a declared input is accepted, as its rewrite"
       (is (= {"output" "SELECT * FROM TMP_OUT"
@@ -206,7 +206,7 @@
                        source))))
     (testing "an expectation whose SQL cannot be parsed is refused as an authoring error, not a parser escape"
       (is (thrown-with-msg?
-           ExceptionInfo #"Expectation \"broken\" has SQL that could not be parsed"
+           ExceptionInfo #"^The SQL of expectation \"broken\" could not be parsed: "
            (validate inputs [{:type :empty :name "broken" :sql "SELECT * FROM WHERE ("}] source))))
     (testing "an expectation with no SQL of its own is nothing to check"
       (is (= {} (validate inputs

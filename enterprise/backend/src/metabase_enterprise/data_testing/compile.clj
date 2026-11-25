@@ -142,11 +142,16 @@
                             {:tables replacements}
                             {:allow-unused? true})))
 
-(defn- placeholder-name
-  "A pattern of the names [[rewrite-query]] gives the placeholders of a query for one rewrite, with the number of each
-  as the group. The nonce keeps the names apart from anything the query already holds."
+(defn- placeholder-prefix
+  "The prefix of the names [[rewrite-query]] gives the placeholders of a query for one rewrite, each name the prefix and
+  the placeholder's number. The nonce keeps the names apart from anything the query already holds."
   [nonce]
-  (re-pattern (str "\\bmb_param_" nonce "_(\\d+)\\b")))
+  (str "mb_param_" nonce "_"))
+
+(defn- placeholder-name
+  "A pattern of the names [[placeholder-prefix]] starts, with the number of each as the group."
+  [nonce]
+  (re-pattern (str "\\b" (Pattern/quote (placeholder-prefix nonce)) "(\\d+)\\b")))
 
 (mu/defn- bind-in-order :- ::compiled-query
   "`sql`, which holds the names [[rewrite-query]] gave the placeholders of a query whose values are `params`, with each
@@ -181,7 +186,7 @@
     (if (empty? params)
       (update compiled :query #(check (replace-tables driver % replacements)))
       (let [nonce                           (format "%08x" (rand-int Integer/MAX_VALUE))
-            {named :sql named-count :count} (sql-tools/name-placeholders driver query (str "mb_param_" nonce "_"))]
+            {named :sql named-count :count} (sql-tools/name-placeholders driver query (placeholder-prefix nonce))]
         (when (not= named-count (count params))
           (throw (data-testing.errors/ex
                   ::data-testing.errors/parameters-not-kept

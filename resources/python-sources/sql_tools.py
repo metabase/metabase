@@ -2157,6 +2157,29 @@ def _not_read_only_reason(stmts, sql: str, dialect: str):
     return _statement_reason(stmts[0], sql, dialect)
 
 
+def _rebuild_problem(sql: str, rebuilt: str, stmt_type: str, dialect: str, check_rebuild: str):
+    """`(reason, detail)` for why `rebuilt`, SQLGlot's reconstruction of the statement `sql` of `stmt_type`, fails the
+    checks of `check_rebuild`, "rebuild" or "rebuild-strict", else None."""
+    # The checks of `sql` read `sql`, and the caller runs `rebuilt`. SQLGlot's writer does not always produce text that
+    # reads back as the tree it wrote: an E'' string holding `\\` comes back with one backslash, so its quote moves,
+    # and a dollar-quoted alias comes back bare.
+    strict = check_rebuild == "rebuild-strict"
+    if strict:
+        changed = _value_changing_form(sql, dialect)
+        if changed is not None:
+            return changed
+    # A rebuild equal to `sql` reads as `sql` did, so it is not parsed again.
+    if rebuilt != sql:
+        again = json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect))
+        if not again.get("allowed_stmt_type?") or (strict and again.get("sql") != rebuilt):
+            return ("rebuild-differs", again.get("reason"))
+    if dialect == "postgres" and _postgres_statement_count(rebuilt, True) > 1:
+        return ("rebuild-differs", "multiple-statements")
+    if strict and dialect == "postgres" and _postgres_statement_count(rebuilt, False) > 1:
+        return ("backslash-quote", None)
+    return None
+
+
 def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None, check_rebuild: str = None) -> str:
     """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
     and returns the query reconstructed from the parsed AST.
@@ -2191,37 +2214,14 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
         rebuilt = None
         if len(stmts) == 1:
             rebuilt = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
-            # The checks above read `sql`, and the caller runs `rebuilt`. SQLGlot's writer does not always produce
-            # text that reads back as the tree it wrote: an E'' string holding `\\` comes back with one backslash, so
-            # its quote moves, and a dollar-quoted alias comes back bare.
-            if problem is None and check_rebuild and isinstance(_unbracketed(stmts[0]), allowed_types):
-                changed = _value_changing_form(sql, dialect) if check_rebuild == "rebuild-strict" else None
-                # A rebuild equal to `sql` reads as `sql` did, so it is not parsed again.
-                again = (
-                    None
-                    if changed is not None or rebuilt == sql
-                    else json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect))
-                )
-                if changed is not None:
-                    problem = changed
-                elif again is not None and (
-                    not again.get("allowed_stmt_type?")
-                    or (check_rebuild == "rebuild-strict" and again.get("sql") != rebuilt)
-                ):
-                    problem = ("rebuild-differs", again.get("reason"))
-                elif dialect == "postgres" and _postgres_statement_count(rebuilt, True) > 1:
-                    problem = ("rebuild-differs", "multiple-statements")
-                elif (
-                    check_rebuild == "rebuild-strict"
-                    and dialect == "postgres"
-                    and _postgres_statement_count(rebuilt, False) > 1
-                ):
-                    problem = ("backslash-quote", None)
+            allowed = isinstance(_unbracketed(stmts[0]), allowed_types)
+            if problem is None and check_rebuild and allowed:
+                problem = _rebuild_problem(sql, rebuilt, stmt_type, dialect, check_rebuild)
         if problem is not None:
             result["reason"], result["reason_detail"] = problem
         if rebuilt is not None:
             result["is_single_stmt?"] = True
-            if isinstance(_unbracketed(stmts[0]), allowed_types) and problem is None:
+            if allowed and problem is None:
                 result["allowed_stmt_type?"] = True
             result["sql"] = rebuilt
     except Exception as e:

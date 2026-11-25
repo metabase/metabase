@@ -135,9 +135,17 @@
            [:tuple [:= :input] ::data-testing.schema/table]
            [:tuple [:= :expectation] :string]]])
 
+(defn- sql-source-label
+  "`source`, a [[::sql-source]], as a message names it."
+  [[kind x :as source]]
+  (case (when source kind)
+    nil          (tru "the query under test")
+    :input       (tru "input {0}" (table-label x))
+    :expectation (tru "expectation {0}" (pr-str x))))
+
 (mu/defn- check-rewrite
-  "Throw unless every table `rewritten` reads is one of `temp-tables`. `source` names the query for the author: nil is
-  the query under test, `[:expectation name]` the expectation that carries the SQL."
+  "Throw unless every table `rewritten`, the rewritten SQL of `source`, reads is one of `temp-tables`. `source` is nil, the
+  query under test, or an expectation."
   [driver      :- :keyword
    rewritten   :- :string
    temp-tables :- [:set :string]
@@ -148,21 +156,13 @@
                              (data-testing.compile/dangling-qualifiers driver rewritten)))]
     (throw (data-testing.errors/ex
             ::data-testing.errors/unremapped-reference
-            (if-let [[_ expectation-name] source]
-              (tru "Expectation {0} reads table(s) this test does not stand in for: {1}. An expectation may only read the output of the query under test and its declared inputs."
-                   (pr-str expectation-name) (str/join ", " surviving))
+            (if source
+              (tru "The SQL of {0} reads table(s) this test does not stand in for: {1}. An expectation may only read the output of the query under test and its declared inputs."
+                   (sql-source-label source) (str/join ", " surviving))
               (tru "The test could not fully remap the query under test to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
                    (str/join ", " surviving)))
             (cond-> {:references (vec surviving)}
               source (assoc :expectation (second source)))))))
-
-(defn- sql-source-label
-  "`source`, a [[::sql-source]], as a message names it."
-  [[kind x :as source]]
-  (case (when source kind)
-    nil          (tru "the query under test")
-    :input       (tru "input {0}" (table-label x))
-    :expectation (tru "expectation {0}" (pr-str x))))
 
 (defn- refusal-reason
   "Why the statement check refused SQL, as `reason` and `detail` from the parser, in words its author can act on."
@@ -297,8 +297,8 @@
       (if (sql-parsing/parse-error? e)
         (throw (data-testing.errors/ex
                 ::data-testing.errors/unparseable-source
-                (tru "Expectation {0} has SQL that could not be parsed: {1}"
-                     (pr-str expectation-name) (sql-parsing/parse-error-message e))
+                (tru "The SQL of {0} could not be parsed: {1}"
+                     (sql-source-label [:expectation expectation-name]) (sql-parsing/parse-error-message e))
                 {:expectation expectation-name}))
         (throw e)))))
 

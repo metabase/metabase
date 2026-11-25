@@ -460,6 +460,29 @@
     (not (read-only? (first stmts)))                                   ["writes-or-locks" nil]
     :else                                                              (statement-reason (first stmts) sql dialect)))
 
+(declare single-stmt-of-type)
+
+(defn- rebuild-problem
+  "`[reason detail]` for why `rebuilt`, sqlglot's regenerated SQL of the statement `sql` of `stmt-type`, fails the
+  checks of `check-rebuild`, `\"rebuild\"` or `\"rebuild-strict\"`, else nil. Port of `_rebuild_problem`."
+  [dialect ^String sql ^String rebuilt stmt-type check-rebuild]
+  ;; The checks of `sql` read `sql`, and the caller runs `rebuilt`. sqlglot's generator does not always produce text
+  ;; that reads back as the tree it wrote: an E'' string holding `\\` comes back with one backslash, so its quote
+  ;; moves, and a dollar-quoted alias comes back bare.
+  (let [strict? (= check-rebuild "rebuild-strict")]
+    (or (when strict?
+          (value-changing-form sql dialect))
+        ;; A rebuild equal to `sql` reads as `sql` did, so it is not parsed again.
+        (when (not= rebuilt sql)
+          (let [again (single-stmt-of-type dialect rebuilt stmt-type nil)]
+            (when (or (not (:allowed_stmt_type? again))
+                      (and strict? (not= rebuilt (:sql again))))
+              ["rebuild-differs" (:reason again)])))
+        (when (and (= dialect "postgres") (> (postgres-statement-count rebuilt true) 1))
+          ["rebuild-differs" "multiple-statements"])
+        (when (and strict? (= dialect "postgres") (> (postgres-statement-count rebuilt false) 1))
+          ["backslash-quote" nil]))))
+
 (defn single-stmt-of-type
   "Whether `sql` is a single read statement (`\"read\"`, a SELECT), a single read-only SELECT (`\"read-only\"`), or a
   single write statement (anything else: INSERT, UPDATE, DELETE), with the statement as regenerated SQL.
@@ -488,40 +511,19 @@
             problem (cond
                       read-only-type?        (not-read-only-reason stmts sql dialect)
                       (= 1 (count stmts))    (statement-reason stmt sql dialect))
-            rebuilt (when (= 1 (count stmts))
-                      (when-not stmt
-                        (throw (ex-info "'NoneType' object has no attribute 'sql'" {})))
-                      (ast/sql stmt dialect))
-            problem (if (or problem (nil? check-rebuild) (nil? rebuilt)
-                            (not (ast/instance-of-any? allowed (unbracketed stmt))))
-                      problem
-                      ;; The checks above read `sql`, and the caller runs `rebuilt`. sqlglot's generator does not
-                      ;; always produce text that reads back as the tree it wrote: an E'' string holding `\\` comes back
-                      ;; with one backslash, so its quote moves, and a dollar-quoted alias comes back bare.
-                      (let [changed (when (= check-rebuild "rebuild-strict") (value-changing-form sql dialect))
-                            ;; A rebuild equal to `sql` reads as `sql` did, so it is not parsed again.
-                            again   (when (and (nil? changed) (not= rebuilt sql))
-                                      (single-stmt-of-type dialect rebuilt stmt-type nil))]
-                        (cond
-                          changed
-                          changed
-
-                          (and again (or (not (:allowed_stmt_type? again))
-                                         (and (= check-rebuild "rebuild-strict") (not= rebuilt (:sql again)))))
-                          ["rebuild-differs" (:reason again)]
-
-                          (and (= dialect "postgres") (> (postgres-statement-count rebuilt true) 1))
-                          ["rebuild-differs" "multiple-statements"]
-
-                          (and (= check-rebuild "rebuild-strict")
-                               (= dialect "postgres")
-                               (> (postgres-statement-count rebuilt false) 1))
-                          ["backslash-quote" nil])))]
+            rebuilt  (when (= 1 (count stmts))
+                       (when-not stmt
+                         (throw (ex-info "'NoneType' object has no attribute 'sql'" {})))
+                       (ast/sql stmt dialect))
+            allowed? (and rebuilt (ast/instance-of-any? allowed (unbracketed stmt)))
+            problem  (if (and (nil? problem) check-rebuild allowed?)
+                       (rebuild-problem dialect sql rebuilt stmt-type check-rebuild)
+                       problem)]
         (when problem
           (vswap! result assoc :reason (first problem) :reason_detail (second problem)))
         (when rebuilt
           (vswap! result assoc :is_single_stmt? true)
-          (when (and (ast/instance-of-any? allowed (unbracketed stmt)) (nil? problem))
+          (when (and allowed? (nil? problem))
             (vswap! result assoc :allowed_stmt_type? true))
           (vswap! result assoc :sql rebuilt)))
       ;; Python's `except Exception` also catches the RecursionError of SQL nested too deeply.
