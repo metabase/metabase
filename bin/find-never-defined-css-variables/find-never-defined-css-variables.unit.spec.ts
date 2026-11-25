@@ -16,16 +16,16 @@ describe("extractVariableDefinitionsFromFileContent", () => {
     expect(result).toEqual(new Set(["--color-brand", "--color-text"]));
   });
 
-  it("should extract CSS-in-JS variable definitions", () => {
+  it("should extract variable definitions from style strings and objects in JS", () => {
     const content = `
-      const MyContainer1 = styled.div\`
+      const containerStyles = \`
         color: var(--should-not-be-extracted);
         --theme-primary: "blue",
       \`;
 
-      const MyContainer2 = styled.div({
+      const containerVariables = {
         --theme-secondary: "#fff",
-      })
+      };
     `;
     const result = extractVariableDefinitionsFromFileContent(content);
     expect(result).toEqual(new Set(["--theme-primary", "--theme-secondary"]));
@@ -79,16 +79,16 @@ describe("extractVariableUsagesFromFileContent", () => {
     expect(result).toEqual(new Set(["--mantine-shadow-xs_outline"]));
   });
 
-  it("should extract usage from css-in-js syntax", () => {
+  it("should extract usage from style strings and objects in JS", () => {
     const content = `
-      const MyDiv1 = styled.div\`
+      const boxStyles = \`
         --should-not-be-extracted: blue;
         color: var(--theme-color);
       \`;
 
-      const MyDiv2 = styled.div({
+      const boxVariables = {
         background: var(--theme-background);
-      })
+      };
     `;
     const result = extractVariableUsagesFromFileContent(content);
     expect(result).toEqual(new Set(["--theme-color", "--theme-background"]));
