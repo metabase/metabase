@@ -18,6 +18,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
+  PEOPLE_ID,
   PRODUCTS_ID,
   createOrdersCreatedAtDatasetColumn,
   createOrdersDiscountDatasetColumn,
@@ -404,6 +405,203 @@ describe("SummarizeSidebar", () => {
     ).toHaveLength(3);
     expect(getNextBreakouts()).toEqual([]);
   });
+
+  it("should pin breakouts of the query table by name and of other tables with the table, and return removed ones to the unpinned list", async () => {
+    await setup({
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+            breakouts: [
+              {
+                type: "column",
+                name: "TOTAL",
+                binning: { strategy: "default" },
+              },
+              { type: "column", name: "STATE", sourceFieldId: ORDERS.USER_ID },
+            ],
+          },
+        ],
+      }),
+    });
+
+    const pinnedTotal = within(getPinnedColumnList()).getByLabelText("Total");
+    expect(pinnedTotal).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByText("Orders → Total")).not.toBeInTheDocument();
+    expect(
+      within(getPinnedColumnList()).getByLabelText("User → State"),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(
+      within(getUnpinnedColumnList()).queryByText("Total"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(getUnpinnedColumnList()).queryByText("State"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(pinnedTotal).getByLabelText("Remove dimension"),
+    );
+    expect(
+      within(getPinnedColumnList()).queryByText("Total"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(getUnpinnedColumnList()).getByLabelText("Total"),
+    ).toHaveAttribute("aria-selected", "false");
+
+    await userEvent.click(
+      within(
+        within(getPinnedColumnList()).getByLabelText("User → State"),
+      ).getByLabelText("Remove dimension"),
+    );
+    expect(screen.queryByText("User → State")).not.toBeInTheDocument();
+    expect(
+      within(getUnpinnedColumnList()).getByLabelText("State"),
+    ).toHaveAttribute("aria-selected", "false");
+
+    await userEvent.click(
+      within(screen.getByTestId("aggregation-item")).getByLabelText(
+        "close icon",
+      ),
+    );
+    expect(screen.getByTestId("add-aggregation-button")).toHaveTextContent(
+      "Add a function or metric",
+    );
+  });
+
+  it("should add a breakout instead of replacing the others when picking a binning for a column", async () => {
+    const { getNextBreakouts } = await setup();
+
+    await userEvent.click(screen.getByText("Total"));
+    await waitFor(() =>
+      expect(getNextBreakouts()).toMatchObject([
+        { displayName: "Total: Auto binned" },
+      ]),
+    );
+
+    const quantity = screen.getByLabelText("Quantity");
+    await userEvent.hover(quantity);
+    await userEvent.click(within(quantity).getByLabelText("Binning strategy"));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "10 bins" }),
+    );
+
+    await waitFor(() => expect(getNextBreakouts()).toHaveLength(2));
+    expect(getNextBreakouts()).toMatchObject([
+      { displayName: "Total: Auto binned" },
+      { displayName: "Quantity: 10 bins" },
+    ]);
+
+    const total = screen.getByLabelText("Total");
+    expect(total).toHaveAttribute("aria-selected", "true");
+    expect(
+      within(total).getByLabelText("Binning strategy"),
+    ).toBeInTheDocument();
+    const selectedQuantity = screen.getByLabelText("Quantity");
+    expect(selectedQuantity).toHaveAttribute("aria-selected", "true");
+    expect(
+      within(selectedQuantity).getByLabelText("Binning strategy"),
+    ).toBeInTheDocument();
+    const discount = screen.getByLabelText("Discount");
+    expect(discount).toHaveAttribute("aria-selected", "false");
+    expect(
+      within(discount).getByLabelText("Add dimension"),
+    ).toBeInTheDocument();
+    expect(
+      within(discount).getByLabelText("Binning strategy"),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    {
+      title: "num-bins",
+      tableId: ORDERS_ID,
+      columnName: "TOTAL",
+      displayName: "Total",
+      binnings: [
+        { strategy: "num-bins", numBins: 10 },
+        { strategy: "num-bins", numBins: 50 },
+      ] as const,
+      bucket1Name: "100 bins",
+      bucket2Name: "10 bins",
+      expectedBreakouts: ["Total: 100 bins", "Total: 10 bins"],
+    },
+    {
+      title: "bin-width",
+      tableId: PEOPLE_ID,
+      columnName: "LATITUDE",
+      displayName: "Latitude",
+      binnings: [
+        { strategy: "bin-width", binWidth: 20 },
+        { strategy: "bin-width", binWidth: 10 },
+      ] as const,
+      bucket1Name: "Bin every 1 degree",
+      bucket2Name: "Bin every 0.1 degrees",
+      expectedBreakouts: ["Latitude: 1°", "Latitude: 0.1°"],
+    },
+  ])(
+    "should allow to modify $title binning for breakouts of the same column",
+    async ({
+      tableId,
+      columnName,
+      displayName,
+      binnings,
+      bucket1Name,
+      bucket2Name,
+      expectedBreakouts,
+    }) => {
+      const { getNextBreakouts } = await setup({
+        query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: tableId },
+              aggregations: [{ type: "operator", operator: "count", args: [] }],
+              breakouts: binnings.map((binning) => ({
+                type: "column",
+                name: columnName,
+                binning,
+              })),
+            },
+          ],
+        }),
+      });
+
+      const [firstBreakout] = within(getPinnedColumnList()).getAllByLabelText(
+        displayName,
+      );
+      await userEvent.click(
+        within(firstBreakout).getByLabelText("Binning strategy"),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: bucket1Name }),
+      );
+      await waitFor(() =>
+        expect(getNextBreakouts()).toMatchObject([
+          { displayName: expectedBreakouts[0] },
+          {},
+        ]),
+      );
+
+      const [, secondBreakout] = within(
+        getPinnedColumnList(),
+      ).getAllByLabelText(displayName);
+      await userEvent.click(
+        within(secondBreakout).getByLabelText("Binning strategy"),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: bucket2Name }),
+      );
+      await waitFor(() =>
+        expect(getNextBreakouts()).toMatchObject(
+          expectedBreakouts.map((name) => ({ displayName: name })),
+        ),
+      );
+      expect(getNextBreakouts()).toHaveLength(2);
+      expect(
+        within(getPinnedColumnList()).getAllByLabelText(displayName),
+      ).toHaveLength(2);
+    },
+  );
 
   it("should add an aggregation", async () => {
     const { getNextAggregations } = await setup({

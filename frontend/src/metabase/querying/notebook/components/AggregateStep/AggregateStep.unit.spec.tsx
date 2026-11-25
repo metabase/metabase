@@ -14,6 +14,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  within,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -361,6 +362,30 @@ describe("AggregateStep", () => {
         displayName: "Average of Quantity",
       }),
     );
+  });
+
+  it("should allow picking a temporal bucket for a distinct values aggregation (metabase#13098)", async () => {
+    setupWithQueryUpdates({
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [{ source: { type: "table", id: ORDERS_ID } }],
+      }),
+    });
+
+    await userEvent.click(screen.getByText("Pick a function or metric"));
+    await userEvent.click(
+      await screen.findByText("Number of distinct values of ..."),
+    );
+    const createdAt = await screen.findByLabelText("Created At");
+    await userEvent.hover(createdAt);
+    await userEvent.click(within(createdAt).getByLabelText("Temporal bucket"));
+    await userEvent.click(await screen.findByRole("button", { name: "More…" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Hour of day" }),
+    );
+
+    expect(
+      await screen.findByText("Distinct values of Created At: Hour of day"),
+    ).toBeInTheDocument();
   });
 
   it("should change an aggregation operator", async () => {
