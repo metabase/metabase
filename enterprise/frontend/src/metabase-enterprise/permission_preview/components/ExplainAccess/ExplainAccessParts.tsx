@@ -135,7 +135,8 @@ function RowName({
       </Ellipsified>
       {database && (
         <Ellipsified
-          flex="0 1000 auto"
+          // Takes only the room the name leaves: shrinking both, even unevenly, cuts the name by a fraction of a pixel
+          flex="1 1 0"
           miw={0}
           fz="sm"
           lh="1rem"

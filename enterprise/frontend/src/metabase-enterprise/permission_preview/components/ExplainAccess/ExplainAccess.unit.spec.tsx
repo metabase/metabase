@@ -1074,6 +1074,16 @@ describe("ExplainAccess", () => {
         screen.queryByTitle("Orders · Sample Database"),
       ).not.toBeInTheDocument();
     });
+
+    it("sizes a table's database from the room the name leaves, so the name isn't cut first", async () => {
+      await setupDataCard();
+      const row = getRow("Orders, Full access");
+
+      // jsdom lays nothing out: a database that shrinks from its own width takes a fraction of a pixel off the name
+      expect(within(row).getByText("· Sample Database")).toHaveStyle({
+        flex: "1 1 0",
+      });
+    });
   });
 
   describe("the reason of a value", () => {
