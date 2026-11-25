@@ -257,13 +257,11 @@
                                [:in :collection_id (mapv key entries)]]})))))))
 
 (defn- curated-table-ids
-  "The ids of the curated tables, as strings matching `model_id`: the published-final tables.
-  Fresh ingestion only sets a table's `root_collection_type` when it is published, so table curation reduces to
-  published-final. The index's `root_collection_type` is not a reliable table signal (migration 4 set it from
-  collection_id without an is_published check), so it is never used for table curation.
-  Scans only active published-final tables via a streamed reduce, so it stays bounded.
+  "The ids of the curated tables, the active published-final ones, as strings matching `model_id`.
   Throws outside tests if the appdb lookup fails; a silent skip would corrupt curation in prod."
   []
+  ;; the index's root_collection_type can't stand in for this: migration 4 set it on tables from collection_id
+  ;; without checking is_published
   (try
     (into [] (map (comp str :id)) (semantic-search.db/published-final-table-ids-reducible))
     (catch Exception e
@@ -299,12 +297,19 @@
 
 (defn- update-model-rows-in-batches!
   "Apply `set-map` to the index table's `model` rows for `model-ids`, chunked so a large id list never
-  becomes one oversized statement. `model-ids` are already strings."
-  [execute! kw-tbl model model-ids set-map]
-  (doseq [chunk (partition-all 5000 model-ids)]
-    (execute! {:update kw-tbl
-               :set    set-map
-               :where  [:and [:= :model ^:allow-raw-sql [:inline model]] [:in :model_id (vec chunk)]]})))
+  becomes one oversized statement.
+  The `model-ids` are already strings.
+  An `extra-where` clause, when given, narrows the rows further."
+  ([execute! kw-tbl model model-ids set-map]
+   (update-model-rows-in-batches! execute! kw-tbl model model-ids set-map nil))
+  ([execute! kw-tbl model model-ids set-map extra-where]
+   (doseq [chunk (partition-all 5000 model-ids)]
+     (execute! {:update kw-tbl
+                :set    set-map
+                :where  (cond-> [:and
+                                 [:= :model ^:allow-raw-sql [:inline model]]
+                                 [:in :model_id (vec chunk)]]
+                          extra-where (conj extra-where))}))))
 
 (defn- add-data-authority-and-curated-columns!
   "Migration 5: add `data_authority` and the precomputed `curated` flag to index tables.
@@ -319,8 +324,7 @@
   Known limitation: the backfill writes the `curated` column (used for filtering) but not `legacy_input`, from
   which results are reconstructed — so migrated rows surface the new is_curated/data_layer LLM annotations only
   after their next reindex; the curated *filter* is correct immediately. Changing the rule needs a new migration
-  to recompute this, like [[drop-data-authority-column!]].
-  Migration 7 drops the `data_authority` column again."
+  to recompute this, as [[drop-data-authority-column!]] does when it drops the `data_authority` column again."
   [tx index-metadata]
   (let [curated-expr (collections.curation/curated-honeysql
                       (fn [signal] (if (= signal :is_published) [:inline false] signal)))
@@ -391,12 +395,14 @@
   "Migration 7: stop counting authoritative tables as curated, and drop the `data_authority` column.
   An `authoritative` data authority used to make a table curated. The value is gone from the appdb, so table
   rows indexed as authoritative lose `curated` unless they are published-final.
+  Only those rows change; other table rows already have the right `curated`.
   Both the `curated` column (used for filtering) and `legacy_input` (from which results are reconstructed) change,
   so results stop showing those tables as curated before their next reindex.
   Empty (freshly migrated, not-yet-populated) index tables skip the recompute, since ingestion populates them."
   [tx index-metadata]
   (let [;; resolved lazily so the appdb sweep only runs once a non-empty index table is found
         tables          (delay (curated-table-ids))
+        authoritative   [:= :data_authority ^:allow-raw-sql [:inline "authoritative"]]
         ;; some older rows hold legacy_input double-encoded, as a JSON string; deleting a key from one fails
         legacy-object   [:case [:= [:jsonb_typeof :legacy_input] ^:allow-raw-sql [:inline "string"]]
                          [:cast [sql.pg-ops/hash>> :legacy_input ^:allow-raw-sql [:inline "{}"]] :jsonb]
@@ -412,11 +418,10 @@
          (when-not (index-empty? execute! kw-tbl)
            (execute! {:update kw-tbl
                       :set    {:curated false :legacy_input (with-curated false)}
-                      :where  [:and
-                               [:= :model ^:allow-raw-sql [:inline "table"]]
-                               [:= :data_authority ^:allow-raw-sql [:inline "authoritative"]]]})
+                      :where  [:and [:= :model ^:allow-raw-sql [:inline "table"]] authoritative]})
            (update-model-rows-in-batches! execute! kw-tbl "table" @tables
-                                          {:curated true :legacy_input (with-curated true)}))
+                                          {:curated true :legacy_input (with-curated true)}
+                                          authoritative))
          (jdbc/execute! tx [(format "ALTER TABLE %s DROP COLUMN IF EXISTS data_authority"
                                     (semantic.util/quote-table table-name))]))))))
 

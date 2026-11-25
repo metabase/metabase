@@ -551,52 +551,52 @@
       (semantic.tu/with-test-db! {:mode :mock-initialized}
         (mt/with-temp [:model/Database {db-id :id} {}
                        :model/Table {pub :id} {:db_id db-id :active true :data_layer :final}
-                       :model/TableUserSettings _ {:table_id pub :is_published true}]
+                       :model/TableUserSettings _ {:table_id pub :is_published true}
+                       :model/Table {pub-plain :id} {:db_id db-id :active true :data_layer :final}
+                       :model/TableUserSettings _ {:table_id pub-plain :is_published true}]
           (let [pgvector       (semantic.env/get-pgvector-datasource!)
                 index-metadata (semantic.env/get-index-metadata)
                 meta-tbl       (keyword (:metadata-table-name index-metadata))
                 table-name     (active-index-table-name! pgvector index-metadata)
                 kw-tbl         (keyword table-name)
+                query!         #(jdbc/execute! pgvector % {:builder-fn jdbc.rs/as-unqualified-maps})
                 columns        #(into #{} (map :column_name)
-                                      (jdbc/execute! pgvector
-                                                     ["SELECT column_name FROM information_schema.columns WHERE table_name = ?"
-                                                      (semantic.util/table-name-part table-name)]
-                                                     {:builder-fn jdbc.rs/as-unqualified-maps}))]
+                                      (query! ["SELECT column_name FROM information_schema.columns WHERE table_name = ?"
+                                               (semantic.util/table-name-part table-name)]))
+                rows           #(query! (sql/format {:select [:model_id :curated :legacy_input] :from [kw-tbl]}
+                                                    :quoted true))]
             ;; an index table from before migration 7 still has the column
             (jdbc/execute! pgvector [(format "ALTER TABLE %s ADD COLUMN data_authority text"
                                              (semantic.util/quote-table table-name))])
             ;; the last flag stores legacy_input double-encoded, as a JSON string, which some older rows hold
-            (doseq [[model model-id authority double-encoded?] [["table" (str pub) "authoritative" false]
-                                                                ["table" "999999" "authoritative" false]
-                                                                ["table" "999997" "authoritative" true]
-                                                                ["table" "999998" "ingested"      false]
-                                                                ["card"  "1"      nil             false]]]
-              (insert-index-row! pgvector kw-tbl {:model          [:inline model]
-                                                  :model_id       [:inline model-id]
-                                                  :data_authority [:inline authority]
-                                                  :curated        [:inline true]
-                                                  :legacy_input   [:cast [:inline (cond-> (json/encode {:curated        true
-                                                                                                        :data_authority authority})
-                                                                                    double-encoded? json/encode)]
-                                                                   :jsonb]}))
+            (doseq [[model model-id authority double-encoded?] [["table" (str pub)       "authoritative" false]
+                                                                ["table" (str pub-plain) "unconfigured"  false]
+                                                                ["table" "999999"        "authoritative" false]
+                                                                ["table" "999997"        "authoritative" true]
+                                                                ["table" "999998"        "ingested"      false]
+                                                                ["card"  "1"             nil             false]]]
+              (let [legacy-input (cond-> (json/encode {:curated true :data_authority authority})
+                                   double-encoded? json/encode)]
+                (insert-index-row! pgvector kw-tbl {:model          [:inline model]
+                                                    :model_id       [:inline model-id]
+                                                    :data_authority [:inline authority]
+                                                    :curated        [:inline true]
+                                                    :legacy_input   [:cast [:inline legacy-input] :jsonb]})))
             (jdbc/execute! pgvector (sql/format {:update meta-tbl :set {:index_version 6}}))
             (semantic.core/init! (semantic.tu/mock-documents) nil)
-            (testing "in the curated column and in legacy_input, which results are rebuilt from"
-              (is (= {(str pub) [true true]
-                      "999999"  [false false]
-                      "999997"  [false false]
-                      "999998"  [true true]
-                      "1"       [true true]}
-                     (->> (jdbc/execute! pgvector
-                                         (sql/format {:select [:model_id :curated :legacy_input] :from [kw-tbl]}
-                                                     :quoted true)
-                                         {:builder-fn jdbc.rs/as-unqualified-maps})
-                          (map (fn [{:keys [model_id curated legacy_input]}]
-                                 [model_id [curated (:curated (json/decode+kw (str legacy_input)))]]))
-                          (into {})))))
-            (testing "and legacy_input no longer carries the retired authoritative"
-              (is (not-any? #(re-find #"authoritative" (str %))
-                            (jdbc/execute! pgvector (sql/format {:select [:legacy_input] :from [kw-tbl]} :quoted true)))))
+            (let [by-id (u/index-by :model_id #(update % :legacy_input (comp json/decode+kw str)) (rows))]
+              (testing "in the curated column and in legacy_input, which results are rebuilt from"
+                (is (= {(str pub)       [true true]
+                        (str pub-plain) [true true]
+                        "999999"        [false false]
+                        "999997"        [false false]
+                        "999998"        [true true]
+                        "1"             [true true]}
+                       (update-vals by-id (juxt :curated (comp :curated :legacy_input))))))
+              (testing "and legacy_input no longer carries the retired authoritative"
+                (is (not-any? #(= "authoritative" (get-in % [:legacy_input :data_authority])) (vals by-id))))
+              (testing "but rows that weren't authoritative are left as they were"
+                (is (= "unconfigured" (get-in by-id [(str pub-plain) :legacy_input :data_authority])))))
             (is (not (contains? (columns) "data_authority")))))))))
 
 (deftest official-collection-dashboard-ids-test
