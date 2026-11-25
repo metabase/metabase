@@ -67,6 +67,7 @@
   #{:custom-viz-plugin-create :custom-viz-plugin-update :custom-viz-plugin-delete
     :transform-test-create :transform-test-update :transform-test-delete
     :card-test-create :card-test-update :card-test-delete
+    :action-test-create :action-test-update :action-test-delete
     :segment-test-create :segment-test-update :segment-test-delete
     :test-suite-create :test-suite-update :test-suite-delete})
 
