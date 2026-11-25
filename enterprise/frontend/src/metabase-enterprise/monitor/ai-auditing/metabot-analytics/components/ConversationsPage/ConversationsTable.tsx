@@ -230,38 +230,28 @@ function getColumns(): TreeTableColumnDef<ConversationRow>[] {
       cell: ({ row }) => formatNumber(row.original.message_count),
     },
     {
-      id: "input_tokens",
+      id: "uncached_tokens",
       header: ({ column }) => (
-        <Tooltip label={t`Input tokens not served from the provider cache.`}>
+        <Tooltip
+          label={t`Sum of input tokens and output tokens, without cached tokens.`}
+        >
           <SortableHeaderPill
-            name={t`Input tokens`}
+            name={t`Tokens`}
             sort={column.getIsSorted() || undefined}
           />
         </Tooltip>
       ),
       width: "auto",
-      minWidth: 130,
+      minWidth: 100,
       enableSorting: true,
       sortDescFirst: false,
-      accessorFn: (convo) => convo.input_tokens,
-      cell: ({ row }) => formatNumber(row.original.input_tokens),
-    },
-    {
-      id: "output_tokens",
-      header: t`Output tokens`,
-      width: "auto",
-      minWidth: 140,
-      enableSorting: true,
-      sortDescFirst: false,
-      accessorFn: (convo) => convo.output_tokens,
-      cell: ({ row }) => formatNumber(row.original.output_tokens),
+      accessorFn: (convo) => convo.uncached_tokens,
+      cell: ({ row }) => formatNumber(row.original.uncached_tokens),
     },
     {
       id: "cache_read_tokens",
       header: ({ column }) => (
-        <Tooltip
-          label={t`Input tokens served from the provider cache. Not part of Input tokens.`}
-        >
+        <Tooltip label={t`Cached input tokens. Not part of Tokens.`}>
           <SortableHeaderPill
             name={t`Cached tokens`}
             sort={column.getIsSorted() || undefined}

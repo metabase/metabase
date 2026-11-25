@@ -67,9 +67,8 @@
    "title"             [:c.title]
    "message_count"     [:message_count]
    "total_tokens"      [:total_tokens]
-   "input_tokens"      [:input_tokens]
+   "uncached_tokens"   [:uncached_tokens]
    "cache_read_tokens" [:cache_read_tokens]
-   "output_tokens"     [:output_tokens]
    "user"              [[:lower [:min :u.first_name]]
                         [:lower [:min :u.last_name]]]
    "profile_id"        [:profile_id]
@@ -87,12 +86,12 @@
                      :where  [:= :aul.conversation_id :c.id]}
    0])
 
-(defn- input-tokens-expr
-  "The input tokens that were not served from the provider cache: `prompt-sum` minus `cache-read-sum`.
-  `prompt_tokens` holds the cache read tokens for every provider; the clamp only guards against a row that breaks
-  that rule."
-  [prompt-sum cache-read-sum]
-  [:greatest [:- prompt-sum cache-read-sum] 0])
+(defn- uncached-tokens-expr
+  "The tokens that were not served from the provider cache: the input tokens (`prompt-sum` minus `cache-read-sum`)
+  plus the output tokens (`completion-sum`). `prompt_tokens` holds the cache read tokens for every provider; the
+  clamp only guards against a row that breaks that rule."
+  [prompt-sum cache-read-sum completion-sum]
+  [:+ [:greatest [:- prompt-sum cache-read-sum] 0] completion-sum])
 
 (def ^:private conversation-list-select
   "Conversation rows with aggregate stats, including deleted attempts. Messages
@@ -113,10 +112,11 @@
                                   :order-by [[:mm.created_at :asc] [:mm.id :asc]]
                                   :limit    1}
                 :profile_id]
-               [(input-tokens-expr (usage-sum-expr :aul.prompt_tokens) (usage-sum-expr :aul.cache_read_tokens))
-                :input_tokens]
-               [(usage-sum-expr :aul.cache_read_tokens) :cache_read_tokens]
-               [(usage-sum-expr :aul.completion_tokens) :output_tokens]]
+               [(uncached-tokens-expr (usage-sum-expr :aul.prompt_tokens)
+                                      (usage-sum-expr :aul.cache_read_tokens)
+                                      (usage-sum-expr :aul.completion_tokens))
+                :uncached_tokens]
+               [(usage-sum-expr :aul.cache_read_tokens) :cache_read_tokens]]
    :from      [[:metabot_conversation :c]]
    :left-join [[:metabot_message :m] [:= :m.conversation_id :c.id]
                [:core_user :u]       [:= :u.id :c.user_id]]
@@ -162,21 +162,21 @@
                             where (assoc :where where))))))
 
 (mu/defn token-usage-for-conversation :- [:map
-                                          [:input_tokens      ms/IntGreaterThanOrEqualToZero]
-                                          [:cache_read_tokens ms/IntGreaterThanOrEqualToZero]
-                                          [:output_tokens     ms/IntGreaterThanOrEqualToZero]]
-  "The token sums of the LLM calls of the MetabotConversation with `conversation-id`: input tokens not served from
-  the provider cache, cache read tokens, and output tokens. The same split as the columns of
+                                          [:uncached_tokens   ms/IntGreaterThanOrEqualToZero]
+                                          [:cache_read_tokens ms/IntGreaterThanOrEqualToZero]]
+  "The token sums of the LLM calls of the MetabotConversation with `conversation-id`: the input and output tokens
+  not served from the provider cache, and the cache read tokens. The same split as the columns of
   [[conversation-list-select]]."
   [conversation-id :- :string]
   (let [sum-expr (fn [col] [:coalesce [:sum col] 0])
-        row      (t2/query-one {:select [[(input-tokens-expr (sum-expr :prompt_tokens) (sum-expr :cache_read_tokens))
-                                          :input_tokens]
-                                         [(sum-expr :cache_read_tokens) :cache_read_tokens]
-                                         [(sum-expr :completion_tokens) :output_tokens]]
+        row      (t2/query-one {:select [[(uncached-tokens-expr (sum-expr :prompt_tokens)
+                                                                (sum-expr :cache_read_tokens)
+                                                                (sum-expr :completion_tokens))
+                                          :uncached_tokens]
+                                         [(sum-expr :cache_read_tokens) :cache_read_tokens]]
                                 :from   [:ai_usage_log]
                                 :where  [:= :conversation_id conversation-id]})]
-    (update-vals (select-keys row [:input_tokens :cache_read_tokens :output_tokens]) long)))
+    (update-vals (select-keys row [:uncached_tokens :cache_read_tokens]) long)))
 
 (mu/defn messages-for-conversation
   "The MetabotMessages of the MetabotConversation with `conversation-id`, oldest first."

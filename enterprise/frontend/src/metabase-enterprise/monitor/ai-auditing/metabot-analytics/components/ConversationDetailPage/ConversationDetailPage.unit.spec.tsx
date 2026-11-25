@@ -92,9 +92,8 @@ function createConversation(
     user: null,
     message_count: 2,
     total_tokens: 30,
-    input_tokens: 20,
+    uncached_tokens: 30,
     cache_read_tokens: 0,
-    output_tokens: 10,
     profile_id: "internal",
     slack_permalink: null,
     messages,
@@ -149,19 +148,16 @@ describe("ConversationDetailPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the input, output and cached tokens, and no total", async () => {
+  it("shows the tokens without cache and the cached tokens, and no total", async () => {
     setup({
       ...createConversation([userMessage("u1", null, "hello")]),
       total_tokens: 12345,
-      input_tokens: 4321,
+      uncached_tokens: 5556,
       cache_read_tokens: 6789,
-      output_tokens: 1235,
     });
 
-    expect(await screen.findByText("Input tokens")).toBeInTheDocument();
-    expect(screen.getByText("4,321")).toBeInTheDocument();
-    expect(screen.getByText("Output tokens")).toBeInTheDocument();
-    expect(screen.getByText("1,235")).toBeInTheDocument();
+    expect(await screen.findByText("Tokens")).toBeInTheDocument();
+    expect(screen.getByText("5,556")).toBeInTheDocument();
     expect(screen.getByText("Cached tokens")).toBeInTheDocument();
     expect(screen.getByText("6,789")).toBeInTheDocument();
     expect(screen.queryByText("Total tokens")).not.toBeInTheDocument();

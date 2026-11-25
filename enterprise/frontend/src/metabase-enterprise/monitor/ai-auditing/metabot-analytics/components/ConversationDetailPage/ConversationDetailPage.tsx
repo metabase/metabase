@@ -44,6 +44,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { question as ML_getUrl } from "metabase/urls/questions";
@@ -133,9 +134,8 @@ export function ConversationDetailPage() {
   }
 
   const {
-    input_tokens,
+    uncached_tokens,
     cache_read_tokens,
-    output_tokens,
     message_count,
     search_count,
     query_count,
@@ -176,15 +176,13 @@ export function ConversationDetailPage() {
                 value={formatNumber(search_count)}
               />
               <StatCard
-                label={t`Input tokens`}
-                value={formatNumber(input_tokens)}
-              />
-              <StatCard
-                label={t`Output tokens`}
-                value={formatNumber(output_tokens)}
+                label={t`Tokens`}
+                tooltip={t`Sum of input tokens and output tokens, without cached tokens.`}
+                value={formatNumber(uncached_tokens)}
               />
               <StatCard
                 label={t`Cached tokens`}
+                tooltip={t`Cached input tokens. Not part of Tokens.`}
                 value={formatNumber(cache_read_tokens)}
               />
             </SimpleGrid>
@@ -261,12 +259,22 @@ export function ConversationDetailPage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({
+  label,
+  value,
+  tooltip,
+}: {
+  label: string;
+  value: string;
+  tooltip?: string;
+}) {
   return (
     <Card withBorder shadow="none" p="lg">
-      <Text size="sm" c="text-secondary">
-        {label}
-      </Text>
+      <Tooltip label={tooltip} disabled={!tooltip}>
+        <Text size="sm" c="text-secondary" display="inline-block">
+          {label}
+        </Text>
+      </Tooltip>
       <Title order={2} mt="xxs">
         {value}
       </Title>
