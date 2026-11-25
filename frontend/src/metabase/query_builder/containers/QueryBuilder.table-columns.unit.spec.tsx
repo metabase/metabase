@@ -433,6 +433,8 @@ describe("QueryBuilder > table columns settings", () => {
         }),
       );
       await waitFor(() => expect(getDatasetCalls()).toHaveLength(runCount + 1));
+      // let the run end, so that it cannot undo the change below
+      await act(() => fetchMock.callHistory.flush(true));
       expect(
         await within(screen.getByTestId("table-root")).findByText("117.03"),
       ).toBeInTheDocument();
@@ -455,6 +457,7 @@ describe("QueryBuilder > table columns settings", () => {
       await waitFor(() =>
         expect(getReturnedColumnNamesOfLastRun()).toContain("User → Address"),
       );
+      await act(() => fetchMock.callHistory.flush(true));
       await userEvent.click(
         screen.getByRole("button", { name: "Done picking columns" }),
       );
@@ -519,6 +522,7 @@ describe("QueryBuilder > table columns settings", () => {
           "User → Name",
         ]),
       );
+      await act(() => fetchMock.callHistory.flush(true));
       await userEvent.click(
         screen.getByRole("button", { name: "Done picking columns" }),
       );
