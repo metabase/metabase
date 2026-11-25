@@ -406,7 +406,7 @@
             batch query uses only the field name, which is not a column"
     (let [calls-to-fetch-distinct-for-table (atom [])
           calls-to-fetch-distinct-per-field (atom [])]
-      (mt/with-temp [:model/Database {db-id :id}          {:engine :h2}
+      (mt/with-temp [:model/Database {db-id :id}            {:engine :h2}
                      :model/Table    {tbl-id :id :as table} {:db_id                   db-id
                                                              :name                    "t"
                                                              :database_require_filter false}
