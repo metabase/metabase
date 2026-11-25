@@ -14,11 +14,13 @@ import {
   within,
 } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
+import { serializeCardForUrl } from "metabase/common/utils/card";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import type { DatasetQuery } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -29,6 +31,7 @@ import {
 import {
   ORDERS,
   ORDERS_ID,
+  PRODUCTS_ID,
   createOrdersIdDatasetColumn,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -49,6 +52,9 @@ import {
 } from "./test-utils";
 
 registerVisualizations();
+
+// A field id that is not in the sample database metadata
+const MISSING_FIELD_ID = 9999;
 
 describe("QueryBuilder", () => {
   beforeEach(() => {
@@ -75,6 +81,103 @@ describe("QueryBuilder", () => {
         });
 
         expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
+      });
+
+      it("renders the notebook of a question whose custom column references a missing field (metabase#28221)", async () => {
+        const customColumnName = "Non-existing field";
+        const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              joins: [
+                {
+                  source: { type: "table", id: PRODUCTS_ID },
+                  strategy: "left-join",
+                  conditions: [
+                    {
+                      operator: "=",
+                      left: { type: "column", name: "PRODUCT_ID" },
+                      right: { type: "column", name: "ID" },
+                    },
+                  ],
+                },
+              ],
+              expressions: [
+                {
+                  name: customColumnName,
+                  value: { type: "column", fieldId: ORDERS.TAX },
+                },
+              ],
+            },
+          ],
+        });
+        // Point the custom column at a field that the metadata does not have
+        const queryJson = JSON.stringify(Lib.toJsQuery(query));
+        const taxReference = `},${ORDERS.TAX}]`;
+        expect(queryJson.split(taxReference)).toHaveLength(2);
+        const datasetQuery: DatasetQuery = JSON.parse(
+          queryJson.replace(taxReference, `},${MISSING_FIELD_ID}]`),
+        );
+        const card = createMockCard({
+          id: 2,
+          name: "Reproduce 28221",
+          dataset_query: datasetQuery,
+        });
+
+        await setup({
+          card,
+          initialRoute: `/question/${card.id}/notebook`,
+        });
+
+        expect(
+          await screen.findByDisplayValue("Reproduce 28221"),
+        ).toBeVisible();
+        expect(
+          await within(screen.getByTestId("step-expression-0-0")).findByText(
+            customColumnName,
+          ),
+        ).toBeVisible();
+      });
+
+      it("removes a breakout of a pivot question in the notebook (metabase#28874)", async () => {
+        const card = createMockUnsavedCard({
+          display: "pivot",
+          dataset_query: Lib.toJsQuery(
+            Lib.createTestQuery(SAMPLE_PROVIDER, {
+              stages: [
+                {
+                  source: { type: "table", id: ORDERS_ID },
+                  aggregations: [
+                    { type: "operator", operator: "count", args: [] },
+                  ],
+                  breakouts: [
+                    { type: "column", name: "CREATED_AT", unit: "year" },
+                    { type: "column", name: "PRODUCT_ID" },
+                  ],
+                },
+              ],
+            }),
+          ),
+        });
+
+        await setup({
+          card,
+          initialRoute: `/question/notebook#${serializeCardForUrl(card)}`,
+        });
+
+        const summarizeStep = await screen.findByTestId("step-summarize-0-0");
+        const productId = await within(summarizeStep).findByText("Product ID");
+        await userEvent.click(within(productId).getByLabelText("close icon"));
+
+        await waitFor(() =>
+          expect(
+            within(summarizeStep).queryByText("Product ID"),
+          ).not.toBeInTheDocument(),
+        );
+        expect(
+          within(summarizeStep).getByText("Created At: Year"),
+        ).toBeInTheDocument();
+        expect(within(summarizeStep).getByText("Count")).toBeInTheDocument();
       });
 
       it("renders time series grouping widget for date field breakout", async () => {
