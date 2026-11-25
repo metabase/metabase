@@ -35,6 +35,8 @@
 (defn- do-with-index-lock [thunk]
   (if (= :mysql (mdb/db-type))
     ;; MySQL index DDL commits implicitly, so keep the cluster lock on a separate connection.
+    ;; A rebuild then holds three app DB connections at once: the lock's, the transaction that streams source rows, and
+    ;; the one that writes batches. With a pool smaller than that, the rebuild times out waiting for a connection.
     (cluster-lock/with-detached-cluster-lock {:lock cluster-lock-name}
       (thunk))
     (cluster-lock/with-cluster-lock cluster-lock-name
