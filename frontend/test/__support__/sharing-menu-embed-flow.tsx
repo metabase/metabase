@@ -293,6 +293,30 @@ export async function openEmbedFlow() {
   return screen.findByTestId("sdk-iframe-embed-setup-modal-content");
 }
 
+/** The `resource` claim of the token on the preview's embed element, if any. */
+function getPreviewTokenResource(
+  preview: HTMLElement,
+  resourceType: ResourceType,
+): unknown {
+  const token = preview
+    // The embed is a custom element (`metabase-dashboard` or
+    // `metabase-question`) with no role or label to query it by.
+    .querySelector(
+      resourceType === "dashboard" ? "metabase-dashboard" : "metabase-question",
+    )
+    ?.getAttribute("token");
+  const payload = token?.split(".")[1];
+  if (!payload) {
+    return null;
+  }
+  const claims: unknown = JSON.parse(
+    Buffer.from(payload, "base64url").toString("utf-8"),
+  );
+  return typeof claims === "object" && claims != null && "resource" in claims
+    ? claims.resource
+    : null;
+}
+
 export function getResourceRequests(method: "GET" | "PUT") {
   return fetchMock.callHistory.calls(
     method === "GET" ? "get-resource" : "put-resource",
@@ -425,9 +449,16 @@ export function describeEmbedFlowFromSharingMenu(
       expect(await screen.findByText("Price")).toBeVisible();
       expect(screen.getByText("Created At")).toBeVisible();
       expect(screen.getByText("Category")).toBeVisible();
-      expect(
-        await screen.findByTestId("iframe-embed-container"),
-      ).toBeInTheDocument();
+      // The guest preview embeds that resource: its element carries a signed
+      // token whose `resource` claim names it.
+      const preview = await screen.findByTestId("iframe-embed-container");
+      await waitFor(() =>
+        expect(getPreviewTokenResource(preview, resourceType)).toEqual(
+          resourceType === "dashboard"
+            ? { dashboard: DASHBOARD_ID }
+            : { question: CARD_ID },
+        ),
+      );
 
       await userEvent.click(screen.getByRole("button", { name: "Get code" }));
 
