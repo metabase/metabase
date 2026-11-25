@@ -7,7 +7,7 @@ import {
   setupDatabaseListEndpoint,
   setupTableQueryMetadataEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { Route } from "metabase/router";
 import type { WritebackImplicitQueryAction } from "metabase-types/api";
@@ -107,6 +107,17 @@ function setupSavedAction(initialAction: WritebackImplicitQueryAction) {
   });
 }
 
+function getActionLoadCount() {
+  return fetchMock.callHistory.calls("action-2-get").length;
+}
+
+async function waitForActionReload(loadCountBefore: number) {
+  await waitFor(() =>
+    expect(getActionLoadCount()).toBeGreaterThan(loadCountBefore),
+  );
+  await act(() => fetchMock.callHistory.flush(true));
+}
+
 function getLastUpdate() {
   const body = fetchMock.callHistory.lastCall("action-2-put")?.options?.body;
   return body == null ? undefined : JSON.parse(String(body));
@@ -173,11 +184,13 @@ describe("ActionDefinitionPage", () => {
     const updateRadio = await screen.findByRole("radio", { name: "Update" });
     expect(updateRadio).toBeEnabled();
     expect(updateRadio).not.toBeChecked();
+    const loadCountBeforeSave = getActionLoadCount();
     await userEvent.click(updateRadio);
 
     await waitFor(() =>
       expect(getLastUpdate()).toEqual({ id: 2, kind: "row/update" }),
     );
+    await waitForActionReload(loadCountBeforeSave);
     expect(
       await screen.findByText("Action operation updated"),
     ).toBeInTheDocument();
@@ -185,11 +198,13 @@ describe("ActionDefinitionPage", () => {
       expect(screen.getByRole("radio", { name: "Update" })).toBeChecked(),
     );
 
+    const loadCountBeforeUndo = getActionLoadCount();
     await userEvent.click(screen.getByRole("button", { name: "Undo" }));
 
     await waitFor(() =>
       expect(getLastUpdate()).toEqual({ id: 2, kind: "row/create" }),
     );
+    await waitForActionReload(loadCountBeforeUndo);
     expect(await screen.findByText("Change undone")).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.getByRole("radio", { name: "Insert" })).toBeChecked(),
