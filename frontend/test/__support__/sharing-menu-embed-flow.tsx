@@ -68,6 +68,9 @@ export const CARD_ID = 8;
 
 const NOW = new Date("2026-03-01T10:00:00Z").getTime();
 const HOUR_MS = 60 * 60 * 1000;
+// Created half an hour before the first publication, so that the two
+// durations the events report differ.
+const CREATED_AT = new Date(NOW - HOUR_MS / 2).toISOString();
 
 const PARAMETERS: Parameter[] = [
   createMockParameter({
@@ -151,7 +154,7 @@ export function setupSharingMenuEmbedFlow({
       name: "Embeddable dashboard",
       parameters: PARAMETERS,
       dashcards: [createMockDashboardCard({ dashboard_id: DASHBOARD_ID })],
-      created_at: new Date(NOW).toISOString(),
+      created_at: CREATED_AT,
       ...stored,
     });
   const card = (): Card =>
@@ -159,7 +162,7 @@ export function setupSharingMenuEmbedFlow({
       id: CARD_ID,
       name: "Embeddable question",
       parameters: PARAMETERS,
-      created_at: new Date(NOW).toISOString(),
+      created_at: CREATED_AT,
       ...stored,
     });
   const getStoredResource = () =>
@@ -493,7 +496,7 @@ export function describeEmbedFlowFromSharingMenu(
         expect(trackSchemaEvent).toHaveBeenLastCalledWith("embed_flow", {
           event: "static_embed_unpublished",
           artifact: resourceType,
-          time_since_creation: 3600,
+          time_since_creation: 5400,
           time_since_initial_publication: 3600,
         });
 
@@ -539,7 +542,7 @@ export function describeEmbedFlowFromSharingMenu(
           event: "static_embed_published",
           artifact: resourceType,
           new_embed: false,
-          time_since_creation: 0,
+          time_since_creation: 1800,
           time_since_initial_publication: 0,
           params: { disabled: 3, locked: 0, enabled: 0 },
           is_example_dashboard: false,
@@ -556,7 +559,7 @@ export function describeEmbedFlowFromSharingMenu(
           event: "static_embed_published",
           artifact: resourceType,
           new_embed: false,
-          time_since_creation: 3600,
+          time_since_creation: 5400,
           time_since_initial_publication: 3600,
           params: { disabled: 1, locked: 1, enabled: 1 },
           is_example_dashboard: false,
