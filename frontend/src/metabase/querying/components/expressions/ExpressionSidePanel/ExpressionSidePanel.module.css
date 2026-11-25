@@ -57,11 +57,16 @@
   padding: 0 var(--mantine-spacing-xl);
 }
 
-/* Everything below the switch. The 32px top padding is the gap under it. */
+/* Everything below the switch. The list scrolls up to 16px under the switch,
+   and starts 32px below that: 48px in all. */
 .scrollArea {
   flex: 1;
   min-height: 0;
-  margin-top: var(--mantine-spacing-xxl);
+  margin-top: var(--mantine-spacing-lg);
+}
+
+.scrollContent {
+  padding-top: var(--mantine-spacing-xxl);
 }
 
 /* The grey band between sections, 32px from the rows on either side */
@@ -92,50 +97,24 @@
   color: var(--mb-color-text-primary);
 }
 
-/* A group of rows. The 16px side padding plus the row's 8px lines up with
-   the 24px section title. Groups after the first get a line and 16px above. */
+/* A group of rows. Groups after the first get a line 24px below the rows
+   above (the section's 16px gap plus 8px), and 24px of space under it. */
 .block {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  padding: 0 var(--mantine-spacing-lg);
 
   & + & {
-    padding-top: var(--mantine-spacing-lg);
+    margin-top: var(--mantine-spacing-sm);
+    padding-top: var(--mantine-spacing-xl);
     box-shadow: inset 0 0.5px 0 var(--mb-color-border-neutral);
   }
 }
 
-/* A snippet row */
-.row {
-  display: flex;
-  align-items: center;
-  gap: var(--mantine-spacing-sm);
-  width: 100%;
-  height: 32px;
-  padding: 0 var(--mantine-spacing-sm);
-  border-radius: var(--mantine-radius-xs);
-  font-size: var(--mantine-font-size-md);
-  line-height: 1.22;
-  color: var(--mb-color-text-primary);
-
-  &:hover {
-    background-color: var(--mb-color-background_surface-primary-hover);
-  }
-}
-
-.icon {
-  flex: 0 0 auto;
-}
-
-/* A template's name */
-.label {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: left;
+/* Functions are inset 16px, so that the NavLink's 8px padding lines its
+   icon up with the 24px section title. Snippets span the whole panel. */
+.functionBlock {
+  padding: 0 var(--mantine-spacing-lg);
 }
 
 /* "Didn't find any results" */
@@ -148,95 +127,119 @@
 .hint {
   flex-shrink: 0;
   margin-left: auto;
+  padding-left: var(--mantine-spacing-sm);
   color: var(--mb-color-text-secondary);
   font-size: 12px;
+  font-weight: 400;
   white-space: nowrap;
 }
 
-/* A function in the list: the icon and the name, and the description below,
-   lined up with the name. The block's 16px plus 8px lines it up with the 24px
-   section title. The whole row is the hover target. */
-.function {
+/* A function: the app's NavLink (secondary variant) with a description.
+   Only what the NavLink doesn't do on its own is here. */
+.functionLink {
+  align-items: flex-start;
+  text-align: left;
+}
+
+/* The type icon and the chevron sit on the name's line, not in the middle
+   of a two-line row. Their height is the name's line height. */
+.functionLinkSection {
+  height: calc(var(--mantine-font-size-md) * 1.22); /* md line height */
+}
+
+/* The name: 14px regular, like a menu item */
+.functionLinkLabel {
+  display: flex;
+  align-items: center;
+  line-height: var(--mantine-line-height-md);
+  color: var(--mb-color-text-primary);
+}
+
+/* The description: 12px, 4px below the name and lined up with it */
+.functionLinkDescription {
+  margin-top: var(--mantine-spacing-xs);
+  font-size: var(--mantine-font-size-sm);
+  line-height: var(--mantine-line-height-sm);
+  color: var(--mb-color-text-secondary);
+}
+
+/* A function this database doesn't support: greyed out; its page says so */
+.functionLink[data-unsupported] {
+  .functionLinkSection,
+  .functionLinkLabel,
+  .functionLinkDescription {
+    color: var(--mb-color-text-disabled);
+  }
+}
+
+/* A snippet, styled after the SQL editor's snippets: full width, 24px at the
+   sides and 12px above and below, and the description 24px in, under the
+   name */
+.snippet {
   display: flex;
   flex-direction: column;
   gap: var(--mantine-spacing-xs);
   width: 100%;
-  padding: var(--mantine-spacing-md) var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-xl);
   text-align: left;
+
+  /* Hover: the insert icon, and the icon and the name in the strong brand
+     color */
+  &:hover {
+    background-color: var(--mb-color-background_surface-primary-hover);
+
+    .snippetIconDefault {
+      display: none;
+    }
+
+    .snippetIconHover {
+      display: block;
+    }
+
+    .snippetIcon,
+    .snippetName {
+      color: var(--mb-color-text-brand-strong);
+    }
+  }
 }
 
-.functionHeader {
+/* The icon and the name, 8px apart */
+.snippetHeader {
   display: flex;
   align-items: center;
   gap: var(--mantine-spacing-sm);
   min-width: 0;
 }
 
-/* The 16px square with the 10px f: light brand, strong brand on hover */
-.functionIcon {
+/* The snippet icon, which turns into "insert" (an arrow to a line) on hover */
+.snippetIcon {
   display: flex;
   flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: var(--mantine-radius-xxs);
-  background-color: var(--mb-color-background_surface-brand-subtle);
-  color: var(--mb-color-icon-brand);
-}
-
-/* The name, such as between(): 14px code font, brand on hover */
-.functionName {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--mb-default-monospace-font-family);
-  font-size: var(--mantine-font-size-md);
-  font-weight: 500;
-  line-height: 1.22;
-  color: var(--mb-color-text-primary);
-}
-
-.parentheses {
-  font-weight: 450;
-  color: var(--mb-color-text-disabled);
-}
-
-/* The description, 24px in (the icon and the gap), darker on hover */
-.functionDescription {
-  display: block;
-  padding-left: var(--mantine-spacing-xl);
-  font-size: var(--mantine-font-size-md);
-  line-height: 20px;
   color: var(--mb-color-text-secondary);
 }
 
-.function:hover:not(.disabled) {
-  .functionIcon {
-    background-color: var(--mb-color-background_surface-brand-strong);
-    color: var(--mb-color-text-primary-inverse);
-  }
-
-  .functionName {
-    color: var(--mb-color-text-brand-strong);
-  }
-
-  .functionDescription {
-    color: var(--mb-color-text-primary);
-  }
+.snippetIconHover {
+  display: none;
 }
 
-/* A function this database doesn't support: greyed out; its page says so */
-.function.disabled {
-  .functionIcon {
-    background-color: var(--mb-color-background_surface-secondary);
-    color: var(--mb-color-icon-disabled);
-  }
+/* The name: 14px bold */
+.snippetName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--mantine-font-size-md);
+  font-weight: 700;
+  line-height: var(--mantine-line-height-md);
+  color: var(--mb-color-text-primary);
+}
 
-  .functionName,
-  .functionDescription {
-    color: var(--mb-color-text-disabled);
-  }
+/* The description: 12px, 24px in (the icon and the gap) */
+.snippetDescription {
+  padding-left: var(--mantine-spacing-xl);
+  font-size: var(--mantine-font-size-sm);
+  line-height: var(--mantine-line-height-sm);
+  color: var(--mb-color-text-secondary);
 }
 
 /* A function's page below its header: the old editor's help popover, laid

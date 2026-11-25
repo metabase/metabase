@@ -1,3 +1,4 @@
+import cx from "classnames";
 import {
   type ChangeEvent,
   Fragment,
@@ -22,7 +23,6 @@ import {
   ScrollArea,
   SegmentedControl,
   TextInput,
-  UnstyledButton,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
@@ -30,20 +30,13 @@ import type { Database } from "metabase-types/api";
 import S from "./ExpressionSidePanel.module.css";
 import { FunctionDetail } from "./FunctionDetail";
 import { FunctionRow } from "./FunctionRow";
-import {
-  type SidePanelIconName,
-  type SidePanelTab,
-  getTemplatesTabLabel,
-} from "./content";
-import { SIDE_PANEL_ICONS } from "./icons";
+import { SnippetRow } from "./SnippetRow";
+import { type SidePanelTab, getTemplatesTabLabel } from "./content";
 import {
   type SidePanelFunctionRow,
   type SidePanelRow,
-  type SidePanelTemplateRow,
   getSidePanelView,
 } from "./utils";
-
-const ICON_SIZE = 16;
 
 /**
  * Opens the panel at a function's page, by its clause name, or at the list.
@@ -166,7 +159,12 @@ export function ExpressionSidePanel({
           />
         </div>
 
-        <ScrollArea className={S.scrollArea} type="hover" scrollbars="y">
+        <ScrollArea
+          className={S.scrollArea}
+          classNames={{ content: S.scrollContent }}
+          type="hover"
+          scrollbars="y"
+        >
           {sections.length === 0 && (
             <div className={S.empty}>{t`Didn't find any results`}</div>
           )}
@@ -175,12 +173,13 @@ export function ExpressionSidePanel({
               {index > 0 && <div className={S.divider} />}
               <section className={S.section}>
                 <h5 className={S.sectionTitle}>{section.name}</h5>
-                {/* Functions are one list per section, without lines. */}
-                {(tab === "functions"
-                  ? [section.blocks.flat()]
-                  : section.blocks
-                ).map((rows, blockIndex) => (
-                  <div key={blockIndex} className={S.block}>
+                {section.blocks.map((rows, blockIndex) => (
+                  <div
+                    key={blockIndex}
+                    className={cx(S.block, {
+                      [S.functionBlock]: tab === "functions",
+                    })}
+                  >
                     {rows.map((row) => (
                       <Row
                         key={row.key}
@@ -320,37 +319,5 @@ function Row({
       <FunctionRow row={row} database={database} onOpen={onFunctionOpen} />
     );
   }
-  return <TemplateRow row={row} onClick={onTemplateClick} />;
-}
-
-function TemplateRow({
-  row,
-  onClick,
-}: {
-  row: SidePanelTemplateRow;
-  onClick: (code: string) => void;
-}) {
-  return (
-    <UnstyledButton
-      className={S.row}
-      onClick={() => onClick(row.code)}
-      data-testid="expression-side-panel-template"
-    >
-      <PanelIcon name={row.icon} />
-      <span className={S.label}>{row.name}</span>
-      {row.hint != null && <span className={S.hint}>{row.hint}</span>}
-    </UnstyledButton>
-  );
-}
-
-function PanelIcon({ name }: { name: SidePanelIconName }) {
-  const IconComponent = SIDE_PANEL_ICONS[name];
-  return (
-    <IconComponent
-      className={S.icon}
-      width={ICON_SIZE}
-      height={ICON_SIZE}
-      aria-hidden
-    />
-  );
+  return <SnippetRow row={row} onInsert={onTemplateClick} />;
 }
