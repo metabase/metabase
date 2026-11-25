@@ -454,6 +454,36 @@ describe("QueryBuilder", () => {
       await waitFor(() => expect(document.title).toBe("Question · Metabase"));
     });
 
+    describe("opening a saved source at its URL", () => {
+      it.each([
+        {
+          title: "a saved question",
+          card: createMockCard({
+            id: 2,
+            name: "Orders, Count",
+            type: "question",
+            dataset_query: TEST_CARD.dataset_query,
+          }),
+          route: "/question/2-orders-count",
+        },
+        {
+          title: "a native question",
+          card: { ...TEST_NATIVE_CARD, id: 3, name: "Native source" },
+          route: "/question/3-native-source",
+        },
+      ])("opens $title without unsaved changes", async ({ card, route }) => {
+        await setup({
+          card,
+          dataset: createMockDataset({ running_time: 123 }),
+          initialRoute: route,
+        });
+
+        expect(await screen.findByDisplayValue(card.name)).toBeInTheDocument();
+        expect(await screen.findByTestId("execution-time")).toBeInTheDocument();
+        expect(screen.queryByTestId("qb-save-button")).not.toBeInTheDocument();
+      });
+    });
+
     describe("query execution time", () => {
       it("renders query execution time for mbql questions", async () => {
         await setup({
