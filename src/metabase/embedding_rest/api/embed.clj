@@ -101,7 +101,7 @@
     (api.embed.common/check-embedding-enabled-for-card card)
     (api.embed.common/card-context card
                                    (:embedding_params card)
-                                   (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
+                                   (api.embed.common/unsigned-token->token-params unsigned-token)
                                    query-params)))
 
 (defn ^:private run-query-for-card-token-async
@@ -199,7 +199,7 @@
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
     (api.embed.common/dashcard-context dashboard dashcard card
                                        (:embedding_params dashboard)
-                                       (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
+                                       (api.embed.common/unsigned-token->token-params unsigned-token)
                                        query-params)))
 
 (defn- process-query-for-dashcard-with-signed-token

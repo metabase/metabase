@@ -57,7 +57,7 @@
   (let [unsigned-token   (check-and-unsign token)
         card-id          (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
         card             (api/check-404 (embedding-rest.db/card card-id))
-        token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+        token-params     (api.embed.common/unsigned-token->token-params unsigned-token)
         embedding-params (token-embedding-params unsigned-token)]
     (api.embed.common/card-context card embedding-params token-params
                                    (api.embed.common/parse-query-params query-params))))
@@ -188,7 +188,7 @@
         dashcard         (api/check-404 (embedding-rest.db/dashcard dashcard-id))
         card             (api/check-404 (embedding-rest.db/active-card card-id))
         embedding-params (token-embedding-params unsigned-token)
-        token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
+        token-params     (api.embed.common/unsigned-token->token-params unsigned-token)]
     (api.embed.common/dashcard-context dashboard dashcard card embedding-params token-params
                                        (api.embed.common/parse-query-params query-params))))
 

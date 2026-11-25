@@ -12,6 +12,7 @@
    [java-time.api :as t]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.common :as api.embed.common]
+   [metabase.embedding-rest.api.embed :as api.embed]
    [metabase.embedding.util :as embedding.util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -30,6 +31,7 @@
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [metabase.util.random :as u.random]
    [toucan2.core :as t2])
   (:import
@@ -1291,6 +1293,27 @@
                        "/card/" (:card_id dashcard))]
           (is (some? (client/client-full-response :get url)))
           (is (<= 400 (:status (client/client-full-response :get url)) 499)))))))
+
+(deftest non-map-token-params-throw-400-without-schema-validation-test
+  (testing "with input schema validation off, as in prod, a non-map signed :params throws a 400 with a message"
+    (with-embedding-enabled-and-new-secret-key!
+      (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
+        (t2/update! :model/Card :id (:card_id dashcard) {:enable_embedding true})
+        (letfn [(thrown [thunk]
+                  (try
+                    (mu/disable-enforcement (thunk))
+                    nil
+                    (catch clojure.lang.ExceptionInfo e
+                      {:message (ex-message e), :status-code (:status-code (ex-data e))})))]
+          (testing "dashcard routes"
+            (is (= {:message "Token params must be a map.", :status-code 400}
+                   (thrown #(#'api.embed/resolve-dashcard-context
+                             (sign {:resource {:dashboard (:dashboard_id dashcard)} :params []})
+                             (u/the-id dashcard) (:card_id dashcard) {})))))
+          (testing "card routes"
+            (is (= {:message "Token params must be a map.", :status-code 400}
+                   (thrown #(#'api.embed/resolve-card-context
+                             (card-token (:card_id dashcard) {:params []}) {}))))))))))
 
 ;;; ------------------------------- GET /api/embed/card/:token/params/:param/values --------------------------------
 

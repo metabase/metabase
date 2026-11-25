@@ -515,6 +515,13 @@
         (update :dashcards #(map keep-parameter-mappings %))
         (update :dashcards #(map keep-inline-parameters %)))))
 
+(defn unsigned-token->token-params
+  "Get the signed `:params` map from an unsigned token. Throws a 400 when they are not a map."
+  [unsigned-token]
+  (let [token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
+    (api/check-400 (map? token-params) (tru "Token params must be a map."))
+    token-params))
+
 (defn unsigned-token->dashboard-id
   "Get the Dashboard ID from an unsigned token, translating an `entity_id` to a numeric id if necessary."
   [unsigned-token]
