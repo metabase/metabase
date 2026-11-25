@@ -55,8 +55,10 @@ import {
   PRODUCTS_ID,
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
+  SAMPLE_DB_ID,
   createOrdersCreatedAtDatasetColumn,
   createOrdersIdDatasetColumn,
+  createOrdersTableDatasetColumns,
   createPeopleStateDatasetColumn,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -448,6 +450,18 @@ describe("QueryBuilder", () => {
       expect(await screen.findByDisplayValue("Custom")).toBeInTheDocument();
     });
 
+    const ORDERS_DATASET = createMockDataset({
+      database_id: SAMPLE_DB_ID,
+      status: "completed",
+      row_count: 1,
+      data: createMockDatasetData({
+        cols: createOrdersTableDatasetColumns(),
+        rows: [
+          [2, 1871, 123, 110.93, 6.1, 117.03, null, "2025-01-02T00:00:00Z", 3],
+        ],
+      }),
+    });
+
     /**
      * Saves a new question to "Our analytics" and opens the "add to a
      * dashboard" modal from the toast, with a dashboard picked in it.
@@ -466,6 +480,7 @@ describe("QueryBuilder", () => {
       const { router } = await setup({
         card: TEST_UNSAVED_STRUCTURED_CARD,
         collections: [rootCollection, TEST_COLLECTION],
+        dataset: ORDERS_DATASET,
         withUndos: true,
       });
       setupCollectionItemsEndpoint({
@@ -566,6 +581,14 @@ describe("QueryBuilder", () => {
       ).toBeInTheDocument();
       // a new question, not the saved one
       expect(screen.getByTestId("qb-save-button")).toBeInTheDocument();
+      // let the run of the reopened question end, then look at its table
+      await act(() => fetchMock.callHistory.flush(true));
+      const table = await screen.findByTestId("table-root");
+      expect(table).toBeVisible();
+      expect(
+        within(table).getByRole("columnheader", { name: "User ID" }),
+      ).toBeInTheDocument();
+      expect(within(table).getByText("1871")).toBeInTheDocument();
     };
 
     it("should not show the 'add to a dashboard' modal again after it was canceled and the user navigated away", async () => {
