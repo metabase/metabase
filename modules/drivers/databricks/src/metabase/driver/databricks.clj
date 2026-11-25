@@ -338,6 +338,15 @@
       (not (str/blank? wif-client-id)) (assoc :Identity_Federation_Client_Id wif-client-id)
       expiry-ms                        (assoc :password-expiry-timestamp expiry-ms))))
 
+(defn- use-thrift-client
+  "The `UseThriftClient` value in `additional-options`, or 0."
+  [additional-options]
+  (or (some->> additional-options
+               (re-find #"(?i)(?:^|;)\s*UseThriftClient\s*=\s*(\d+)")
+               second
+               parse-long)
+      0))
+
 (defmethod sql-jdbc.conn/connection-details->spec :databricks
   [_driver {:keys [catalog host http-path token client-id oauth-secret log-level additional-options]
             :as details}]
@@ -353,11 +362,7 @@
          :HttpPath       http-path
          :UserAgentEntry (format "Metabase/%s" (:tag driver-api/mb-version-info))
          :UseNativeQuery 1
-         :UseThriftClient (if-let [[_ use-thrift] (and additional-options
-                                                       (re-matches #"UseThriftClient=(.*)"
-                                                                   additional-options))]
-                            (parse-long use-thrift)
-                            0)}]
+         :UseThriftClient (use-thrift-client additional-options)}]
     (merge base-spec
            (when log-level
              {:LogLevel log-level})
