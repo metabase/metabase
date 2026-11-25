@@ -7,41 +7,38 @@
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.schema :as models.schema]
-   [metabase.types.core :as types]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema]))
 
 (mr/def ::table-role
-  "A Table's `table_role`: a role in [[types/table-role-hierarchy]]."
-  [:and
-   ::lib.schema.common/keyword
-   [:fn {:error/message "valid table role"}
-    #(isa? types/table-role-hierarchy % :role/*)]])
+  "A Table's `table_role`: a role in [[metabase.types.core/table-role-hierarchy]]."
+  [:ref ::lib.schema.metadata/table.table-role])
 
 (mr/def ::period-granularity
   "A Table's `period_granularity`."
-  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] types/table-period-granularities))
+  [:ref ::lib.schema.metadata/table.period-granularity])
 
 (mr/def ::mutability
   "A Table's `mutability`."
-  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] types/table-mutabilities))
+  [:ref ::lib.schema.metadata/table.mutability])
 
 (mr/def ::load-strategy
   "A Table's `load_strategy`."
-  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}] types/table-load-strategies))
+  [:ref ::lib.schema.metadata/table.load-strategy])
 
 (mr/def ::scd-type
   "A Table's `scd_type`, the slowly changing dimension type of its rows."
-  [:int {:min 0 :max 7}])
+  [:ref ::lib.schema.metadata/table.scd-type])
 
 (mr/def ::attribute-scd-type
   "A Field's `attribute_scd_type`, how a slowly changing dimension tracks changes to it."
   [:ref ::lib.schema.metadata/column.attribute-scd-type])
 
 (mr/def ::history-definition
-  "A Table's `history_definition`: the Fields that version its rows."
+  "A Table's `history_definition`: the Fields that version its rows. Lib metadata has the same keys in kebab-case, see
+  `::lib.schema.metadata/table.history-definition`."
   [:map {:closed true}
    [:durable_key  {:optional true} [:maybe ::lib.schema.id/field]]
    [:valid_from   {:optional true} [:maybe ::lib.schema.id/field]]
@@ -50,7 +47,8 @@
    [:version      {:optional true} [:maybe ::lib.schema.id/field]]])
 
 (mr/def ::eav-definition
-  "A Table's `eav_definition`: the Fields, and the Table of definitions, of an entity-attribute-value table."
+  "A Table's `eav_definition`: the Fields, and the Table of definitions, of an entity-attribute-value table. Lib
+  metadata has the same keys in kebab-case, see `::lib.schema.metadata/table.eav-definition`."
   [:map {:closed true}
    [:entity_key       {:optional true} [:maybe ::lib.schema.id/field]]
    [:property_name    {:optional true} [:maybe ::lib.schema.id/field]]
