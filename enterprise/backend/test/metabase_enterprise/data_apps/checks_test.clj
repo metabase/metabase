@@ -4,10 +4,12 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu :refer [do-with-app-collection]]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.queries.models.card :as card]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -122,7 +124,13 @@
                 (run-query 400 (card-query card-id) options)))))
      (testing "an app the user can't read is refused"
        (is (= "You don't have permissions to do that."
-              (mt/user-http-request :rasta :post 403 "dataset" as-data-app (card-query card-id))))))))
+              (mt/user-http-request :rasta :post 403 "dataset" as-data-app (card-query card-id)))))
+     (testing "a disabled app is not found by a user with access, and still runs for a superuser"
+       (group-access/add-groups! (t2/select-one :model/DataApp :slug "birds") [(:id (perms/all-users-group))])
+       (is (= "completed" (:status (mt/user-http-request :rasta :post 202 "dataset" as-data-app (card-query card-id)))))
+       (mt/user-http-request :crowberto :put 200 "ee/apps/birds" {:enabled false})
+       (is (= "Not found." (mt/user-http-request :rasta :post 404 "dataset" as-data-app (card-query card-id))))
+       (is (= "completed" (:status (run-query 202 (card-query card-id)))))))))
 
 (deftest foreign-keys-are-followed-test
   (do-with-app-card!

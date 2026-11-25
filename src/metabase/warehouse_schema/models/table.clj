@@ -18,7 +18,6 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.card-schema :as card-schema]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.replacement.spec :as replacement]
    [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
@@ -28,7 +27,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.app-db-copy :as warehouse-schema.app-db-copy]
-   [metabase.warehouse-schema.audit :as warehouse-schema.audit]
    [metabase.warehouse-schema.collection-items :as warehouse-schema.collection-items]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
@@ -151,7 +149,6 @@
 (t2/deftransforms :model/Table
   (merge
    {:entity_type             mi/transform-keyword
-    :is_published            mi/transform-boolean
     :show_in_getting_started mi/transform-boolean
     :visibility_type         mi/transform-keyword
     :data_layer              (mi/transform-validator-with-fixes
@@ -192,12 +189,6 @@
              (not= (keyword (:data_layer changes)) (keyword (:data_layer original))))
     (throw (ex-info (tru "Cannot update both visibility_type and data_layer") {:status-code 400}))))
 
-(defn- check-publication
-  "Throws a 400 when `table` is in a Collection without being published."
-  [{:keys [is_published collection_id]}]
-  (when (and (not is_published) (some? collection_id))
-    (throw (ex-info (tru "Only a published Table can be in a Collection.") {:status-code 400}))))
-
 (defn- visibility-changes
   "The other half of the `visibility_type`/`data_layer` pair, derived from the half `changes` changes in `original`."
   [{:keys [visibility_type data_layer] :as changes} original]
@@ -222,7 +213,6 @@
 
 (t2/define-before-insert :model/Table
   [table]
-  (check-publication table)
   (merge table
          (apply dissoc
                 {:display_name   (humanization/name->human-readable-name (:name table))
@@ -235,8 +225,6 @@
   (let [changes  (t2/changes table)
         original (t2/original table)]
     (check-changes changes original)
-    (when (some #(contains? changes %) [:is_published :collection_id])
-      (check-publication table))
     (merge table (visibility-changes changes original) (activity-changes changes original))))
 
 (defn- group-perm-defaults
@@ -319,6 +307,30 @@
                               (perms/at-least-as-permissive? :perms/create-queries (get create-queries %) :query-builder))))
           tables)))
 
+(defn- remap-target-table-ids
+  "The ids of the other Tables that a query of each of `tables` joins for external remaps, by Table id, read only for
+  a user who is not a superuser."
+  [tables]
+  (if (or (empty? tables) (mi/superuser?))
+    {}
+    (warehouse-schema.db/external-remap-target-table-ids (into #{} (map :id) tables))))
+
+(defn- queryable-with-remaps-table-ids
+  "The ids of the `tables` the current user can query, as [[queryable-table-ids]] answers, together with every Table
+  a query of them joins for external remaps."
+  [tables]
+  (let [targets   (remap-target-table-ids tables)
+        queryable (queryable-table-ids (into (vec tables)
+                                             (mapcat (fn [{:keys [id db_id]}]
+                                                       (map (fn [target-id] {:id target-id :db_id db_id})
+                                                            (get targets id))))
+                                             tables))]
+    (into #{}
+          (comp (map :id)
+                (filter #(and (contains? queryable %)
+                              (every? queryable (get targets %)))))
+          tables)))
+
 (methodical/defmethod t2/batched-hydrate [:model/Table :can_read]
   "Whether the current user can see the metadata of each of `tables`: those they can query, and those whose metadata
   they manage."
@@ -336,11 +348,12 @@
                                                 (= :yes (get manage (:id table)))))))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :can_query]
-  "Whether the current user can run queries against each of `tables`."
+  "Whether the current user can run queries against each of `tables`, including the Tables they join for external
+  remaps."
   [_model k tables]
   (let [rows (into [] (remove nil?) tables)]
     (run! check-permission-keys rows)
-    (let [queryable (queryable-table-ids rows)]
+    (let [queryable (queryable-with-remaps-table-ids rows)]
       (for [table tables]
         (when table
           (assoc table k (contains? queryable (:id table))))))))
@@ -358,16 +371,14 @@
   "Whether the current user can change the metadata of each of `tables`, answered together, which nobody can when a
   read-only instance syncs the Table."
   [_model k tables]
-  (let [rows        (into [] (remove nil?) tables)
-        _           (run! check-permission-keys rows)
-        publication (when (remote-sync/read-only?)
-                      (warehouse-schema.db/table-publication-columns (into [] (comp (map :id) (distinct)) rows)))
-        writable    (table-ids-with-writable-metadata rows)]
+  (let [rows     (into [] (remove nil?) tables)
+        _        (run! check-permission-keys rows)
+        unsynced (collection/remote-sync-writable-table-ids rows)
+        writable (table-ids-with-writable-metadata rows)]
     (for [table tables]
       (when table
-        (assoc table k (boolean (and (contains? writable (:id table))
-                                     (collection/remote-sync-writable-table?
-                                      (merge table (get publication (:id table)))))))))))
+        (assoc table k (and (contains? writable (:id table))
+                            (contains? unsynced (:id table))))))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -408,19 +419,28 @@
         (update-vals (fn [fvs] (->> fvs (map (juxt :field_id :values)) (into {})))))
    :id))
 
+(methodical/defmethod t2/model-for-automagic-hydration [:model/Table :collection]
+  "A Table has no `collection_id` of its own, so its Collection hydrates by the method below."
+  [_original-model _k]
+  nil)
+
+(methodical/defmethod t2/batched-hydrate [:model/Table :collection]
+  "Hydrate the Collection each of the tables is published into, nil for one that is not published."
+  [_model k tables]
+  (mi/instances-with-hydrated-data
+   tables k
+   #(warehouse-schema.db/collections-by-published-table-id (into #{} (keep :id) tables))
+   :id
+   {:default nil}))
+
 (methodical/defmethod t2/batched-hydrate [:model/Table :transform]
   "Hydrate transforms that created the tables."
   [_model k tables]
   (mi/instances-with-hydrated-data
    tables k
-   #(let [transform-ids (->> tables (keep :transform_id) distinct)
-          id->transform (when (seq transform-ids)
-                          (warehouse-schema.db/transforms-by-id transform-ids))]
-      (into {}
-            (keep (fn [{:keys [id transform_id]}]
-                    (when transform_id
-                      [id (get id->transform transform_id)])))
-            tables))
+   #(if-let [table-ids (not-empty (into #{} (keep :id) tables))]
+      (warehouse-schema.db/transforms-by-target-table-id table-ids)
+      {})
    :id
    {:default nil}))
 
@@ -494,14 +514,6 @@
 
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
-(defn- check-allowed-contents
-  "Throws unless each Collection among `collection-ids` can hold Tables, all read in one query and checked in the order
-  of their first appearance."
-  [collection-ids]
-  (when-let [ids (not-empty (into [] (comp (remove nil?) (distinct)) collection-ids))]
-    (let [collections (warehouse-schema.db/collections-for-content-checks (set ids))]
-      (run! #(collection/check-allowed-content :table (collections %)) ids))))
-
 (defn- add-default-field-orders
   "Each of the Table `rows` with the default field order of its Database's driver unless it has one, the engines of
   the Databases read in one query."
@@ -521,19 +533,6 @@
       (set-new-table-permissions! (first tables))
       (set-new-tables-permissions! db-id tables))))
 
-(defn- check-new-tables
-  "Throw unless every one of the new Table `rows` satisfies this rule:
-
-  - its Collection, if it has one, can hold Tables"
-  [rows]
-  (check-allowed-contents (map :collection_id rows)))
-
-(defn- prepare-new-tables
-  "Check the new Table `rows` and return them with the default field order of their driver."
-  [rows]
-  (check-new-tables rows)
-  (add-default-field-orders rows))
-
 (defn- tables-created!
   "Give the new `tables` the default permissions of a new Table and publish their create event."
   [tables]
@@ -542,11 +541,10 @@
 
 (mu/defn create-tables! :- [:sequential ::warehouse-schema.schema/table]
   "Insert the Table `rows` in one transaction, publishing their create event, and return the inserted Tables, with the
-  default field order of their driver and the default permissions of a new Table; a Collection that cannot hold Tables
-  throws."
+  default field order of their driver and the default permissions of a new Table."
   [rows :- [:sequential ::warehouse-schema.schema/table.create]]
   (mdb/create-batched! :model/Table rows
-                       {:before-create prepare-new-tables
+                       {:before-create add-default-field-orders
                         :after-create  tables-created!}))
 
 (defn- ordered-field-positions
@@ -589,13 +587,6 @@
                                                                                    [id (updated-table previous (dissoc row :id))])))
                                                                          updates)))))
 
-(defn- moved-collection-ids
-  "The ids of the Collections that `rows`, the id of a Table of `stored`, `{id row}`, and its changes, move Tables to."
-  [stored rows]
-  (for [{:keys [id collection_id]} rows
-        :when (and collection_id (not= collection_id (:collection_id (stored id))))]
-    collection_id))
-
 (defn- reordered-tables
   "The id and new field order of each of `rows` that gives its Table, one of `stored`, another field order."
   [stored rows]
@@ -606,30 +597,20 @@
     {:id id :field_order (some-> field_order keyword)}))
 
 (defn- tables-by-ids
-  "The Tables with `ids` by id, read in batches of [[mdb/delete-partition-size]] ids, so that any number of them stays
-  under the parameter limit of a statement."
+  "The Tables with `ids` by id."
   [ids]
-  (into {} (map #(warehouse-schema.db/tables-by-ids (vec %))) (partition-all mdb/delete-partition-size ids)))
-
-(defn- check-table-updates
-  "Throw unless every one of `updates`, the id of one of the `id->stored` Tables and its changes, satisfies this rule:
-
-  - the Collection it moves the Table to can hold Tables"
-  [updates id->stored]
-  (check-allowed-contents (moved-collection-ids id->stored updates)))
+  (warehouse-schema.db/tables-by-ids (vec ids)))
 
 (defn- prepare-table-updates!
-  "Check `updates` over the `id->stored` Tables, set the positions of the Fields of the Tables they give another field
-  order, and return `updates`."
+  "Set the positions of the Fields of the Tables, among the `id->stored` ones, that `updates` give another field order,
+  and return `updates`."
   [updates id->stored]
-  (check-table-updates updates id->stored)
   (update-field-positions! (reordered-tables id->stored updates))
   updates)
 
 (mu/defn update-tables! :- :nil
   "Apply `updates`, each the `:id` of a Table and the columns to change, in one transaction, publishing their update
-  event with the `:context` and `:writer` of `opts`; a Collection that cannot hold Tables throws, and a new field order
-  sets the positions of their Fields."
+  event with the `:context` and `:writer` of `opts`; a new field order sets the positions of their Fields."
   ([updates :- [:sequential ::warehouse-schema.schema/table.update]]
    (update-tables! updates nil))
   ([updates :- [:sequential ::warehouse-schema.schema/table.update]
@@ -681,11 +662,6 @@
   [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
   (warehouse-schema.db/increment-table-view-counts! count->ids))
 
-(defmethod collection/archive-in-collections! :model/Table
-  [_model collection-ids opts]
-  (when-let [table-ids (not-empty (warehouse-schema.db/published-table-ids-in-collections (vec collection-ids)))]
-    (update-tables! (for [id (distinct table-ids)] {:id id :collection_id nil :is_published false}) opts)))
-
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defn- import-owner-ids
@@ -704,15 +680,6 @@
                 {:label name :key name}))
         entities))
 
-(defn- import-dependencies
-  "The Collection and Transform each of the Table `entities` depends on, if any."
-  [entities]
-  (mapv (fn [{:keys [collection_id transform_id]}]
-          (cond-> []
-            collection_id (conj [:model/Collection collection_id])
-            transform_id  (conj [:model/Transform transform_id])))
-        entities))
-
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/Table [_model]
@@ -723,9 +690,8 @@
   {:track [:name :description :entity_type :active :db_id :display_name :visibility_type :schema :points_of_interest
            :caveats :show_in_getting_started :field_order :is_upload :database_require_filter :estimated_row_count
            :deactivated_at :archived_at :is_writable :data_authority :data_source :data_layer :owner_email
-           :owner_user_id :collection_id :is_published :transform_id :transform_target :table_role :grain
-           :grain_description :period_granularity :mutability :load_strategy :scd_type :history_definition
-           :eav_definition]
+           :owner_user_id :transform_target :table_role :grain :grain_description :period_granularity :mutability
+           :load_strategy :scd_type :history_definition :eav_definition]
    :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper]})
 
 (defmethod serialization/spec :model/Table [_]
@@ -734,7 +700,7 @@
    :copy                [:name :description :entity_type :active :display_name :visibility_type :schema
                          :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                          :database_require_filter :is_writable :data_authority :data_source :data_layer
-                         :owner_email :is_published]
+                         :owner_email]
    :skip                [:estimated_row_count :initial_sync_status :view_count :transform_target
                          :is_defective_duplicate :unique_table_helper
                          ;; structural metadata
@@ -743,14 +709,10 @@
    :transform           {:archived_at    serialization/date-transform
                          :deactivated_at serialization/date-transform
                          :db_id          serialization/database-transform
-                         :collection_id  (serialization/fk-transform :model/Collection)
-                         :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)
-                         :transform_id   (serialization/fk-transform :model/Transform)}
-   :defaults            {:is_published            false
-                         :is_upload               false
+                         :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)}
+   :defaults            {:is_upload               false
                          :show_in_getting_started false}
    :storage-paths       storage-paths
-   :import-dependencies import-dependencies
    :insert!             create-tables!
    :update!             #(do (update-tables! %) %)
    :delete!             delete-tables!
@@ -758,19 +720,14 @@
 
 (defmethod audit/spec :model/Table [_model]
   {:track          [:id :name :db_id]
-   :track-redacted [:active :archived_at :caveats :collection_id :data_authority :data_layer :data_source
+   :track-redacted [:active :archived_at :caveats :data_authority :data_layer :data_source
                     :database_require_filter :deactivated_at :description :display_name :eav_definition
                     :entity_type :estimated_row_count :field_order :grain :grain_description :history_definition
-                    :initial_sync_status :is_defective_duplicate :is_published :is_upload :is_writable
-                    :load_strategy :mutability :owner_email :owner_user_id :period_granularity :points_of_interest
-                    :scd_type :schema :show_in_getting_started :table_role :transform_id :transform_target
-                    :unique_table_helper :visibility_type]
+                    :initial_sync_status :is_defective_duplicate :is_upload :is_writable :load_strategy :mutability
+                    :owner_email :owner_user_id :period_granularity :points_of_interest :scd_type :schema
+                    :show_in_getting_started :table_role :transform_target :unique_table_helper :visibility_type]
    :skip           [:view_count]
-   :topics         {}
-   :moments        [{:topic :table-publish, :when warehouse-schema.audit/published?
-                     :details warehouse-schema.audit/moment-details}
-                    {:topic :table-unpublish, :when warehouse-schema.audit/unpublished?
-                     :details warehouse-schema.audit/moment-details}]})
+   :topics         {}})
 
 (defmethod search/spec :model/Table
   [_model]
@@ -779,16 +736,16 @@
                    ;; so we moved that to the where clause
                    :archived        false
                    ;; For published tables with no collection, we want to show "root" as the collection id
-                   :collection-id   true
+                   :collection-id   :settings.collection_id
                    :creator-id      false
                    :database-id     :db_id
                    :view-count      true
                    :created-at      true
                    :updated-at      true
-                   :is-published        :is_published
+                   :is-published        [:coalesce :settings.is_published false]
                    :collection-type     :collection.type
                    :collection-location :collection.location
-                   :root-collection-type {:fn collection/root-collection-type}
+                   :root-collection-type {:batch-fn collection/root-collection-types}
                    :data-layer          :data_layer
                    :data-authority      :data_authority}
     :search-terms {:name         search/explode-camel-case
@@ -804,8 +761,8 @@
                    ;; For published tables with no collection, show "Our analytics" as the collection name
                    :collection-name            [:coalesce :collection.name
                                                 [:case
-                                                 [:and :this.is_published
-                                                  [:= :this.collection_id nil]] "Our analytics"
+                                                 [:and :settings.is_published
+                                                  [:= :settings.collection_id nil]] "Our analytics"
                                                  :else nil]]}
     :where        [:and
                    :this.active
@@ -813,7 +770,8 @@
                    [:= :db.router_database_id nil]
                    [:not= :this.db_id [:inline audit/audit-db-id]]]
     :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
-                   :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}}})
+                   :settings   [:model/TableUserSettings [:= :settings.table_id :this.id]]
+                   :collection [:model/Collection [:and [:= :settings.is_published true] [:= :collection.id :settings.collection_id]]]}}})
 
 (defmethod dependencies/spec :model/Table [_model]
   {:type  :table

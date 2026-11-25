@@ -37,11 +37,11 @@
 (mu/defn user-ids-with-used-password :- [:set ::lib.schema.id/user]
   "The ids among `user-ids` of the Users whose `password` AuthIdentity has been used to log in."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (set (when (seq user-ids)
-         (t2/select-fn-set :user_id [:model/AuthIdentity :user_id]
-                           :user_id      [:in [:auto/param user-ids]]
-                           :provider     "password"
-                           :last_used_at [:not= nil]))))
+  (into #{} (mdb/select-batched #(t2/select-fn-set :user_id [:model/AuthIdentity :user_id]
+                                                   :user_id      [:in [:auto/param %]]
+                                                   :provider     "password"
+                                                   :last_used_at [:not= nil])
+                                user-ids)))
 
 (mu/defn insert-auth-identity!
   "Insert the AuthIdentity `row`, returning the number inserted."

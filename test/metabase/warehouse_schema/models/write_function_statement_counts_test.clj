@@ -141,18 +141,6 @@
       (is (= (delete! 2) (delete! 6))))))
 
 (deftest table-write-functions-statement-counts-do-not-grow-with-rows-test
-  (testing "creating Tables in Collections of their own"
-    (let [create! (fn [n]
-                    (mt/with-model-cleanup [:model/Collection]
-                      (mt/with-temp [:model/Database {db-id :id} {}]
-                        (let [collection-ids (t2/insert-returning-pks! :model/Collection
-                                                                       (for [i (range n)] {:name (str "C" i) :slug (str "c" i)}))]
-                          (counted! #(table/create-tables!
-                                      (vec (map-indexed (fn [i collection-id]
-                                                          {:db_id db-id :name (str "T" i) :active true :is_published true :collection_id collection-id})
-                                                        collection-ids))))))))]
-      (create! 1)
-      (is (= (create! 2) (create! 6)))))
   (testing "creating Tables that differ in their columns"
     (let [create! (fn [n]
                     (mt/with-temp [:model/Database {db-id :id} {}]
@@ -162,15 +150,13 @@
                                            (odd? i) (assoc :field_order :alphabetical :is_upload true))))))))]
       (create! 1)
       (is (= (create! 2) (create! 6)))))
-  (testing "moving Tables to a Collection and changing their field order"
+  (testing "changing field order of Tables"
     (let [update! (fn [n]
-                    (mt/with-model-cleanup [:model/Collection]
-                      (mt/with-temp [:model/Database {db-id :id} {}]
-                        (let [table-ids      (insert-tables! db-id n)
-                              collection-id (t2/insert-returning-pk! :model/Collection {:name "C" :slug "c"})]
-                          (doseq [table-id table-ids] (insert-fields! table-id "F" 2 {}))
-                          (t2/update! :model/Table :id [:in (vec (take-nth 2 table-ids))] {:field_order :alphabetical})
-                          (counted! #(table/update-tables! (for [id table-ids] {:id id :field_order :alphabetical :collection_id collection-id :is_published true})))))))]
+                    (mt/with-temp [:model/Database {db-id :id} {}]
+                      (let [table-ids (insert-tables! db-id n)]
+                        (doseq [table-id table-ids] (insert-fields! table-id "F" 2 {}))
+                        (t2/update! :model/Table :id [:in (vec (take-nth 2 table-ids))] {:field_order :alphabetical})
+                        (counted! #(table/update-tables! (for [id table-ids] {:id id :field_order :alphabetical}))))))]
       (update! 1)
       (testing "half the Tables already hold the field order, so Toucan writes them separately: at most 2 statements per row"
         (is (<= (- (update! 6) (update! 2)) (* 4 2))))))
@@ -316,6 +302,33 @@
       (update! 1)
       (is (= (update! 2) (update! 6))))))
 
+(deftest upsert-field-user-settings-for-fields-statement-counts-do-not-grow-with-rows-test
+  (testing "upserting the settings of Fields with and without settings, some ending a foreign key or a remapping"
+    (let [upsert! (fn [n]
+                    (mt/with-temp [:model/Database db {}
+                                   :model/Table {table-id :id} {:db_id (:id db)}]
+                      (let [[target-id] (insert-fields! table-id "Target" 1 {})
+                            bare        (insert-fields! table-id "B" n {})
+                            with-set    (insert-fields! table-id "S" n {})
+                            fks         (insert-fields! table-id "K" n {:semantic_type :type/FK :fk_target_field_id target-id})]
+                        (t2/insert! :model/FieldUserSettings (for [id with-set] {:field_id id :description "d" :description_set true}))
+                        (t2/insert! :model/FieldUserSettings (for [id fks]
+                                                               {:field_id id :fk_target_field_id target-id :fk_target_field_id_set true}))
+                        (t2/insert! :model/Dimension (for [id (concat fks bare)]
+                                                       (if (some #{id} fks)
+                                                         {:field_id id :type :external :name "E" :human_readable_field_id target-id}
+                                                         {:field_id id :type :internal :name "I"})))
+                        (let [fields   (t2/select :model/Field :id [:in (concat bare with-set fks)])
+                              settings (fn [{:keys [name]}]
+                                         (case (first name)
+                                           \B {:semantic_type :type/Quantity :display_name "N"}
+                                           \S {:description "e"}
+                                           \K {:semantic_type :type/Category}))]
+                          (counted! #(field-user-settings/upsert-field-user-settings-for-fields!
+                                      (mapv (juxt identity settings) fields)))))))]
+      (upsert! 1)
+      (is (= (upsert! 2) (upsert! 6))))))
+
 (deftest field-user-settings-position-delete-and-clear-statement-counts-do-not-grow-with-rows-test
   (testing "setting custom positions, for Fields with and without settings"
     (let [assign! (fn [n]
@@ -351,6 +364,20 @@
       (is (= (clear! 2) (clear! 6))))))
 
 (deftest table-user-settings-write-functions-statement-counts-do-not-grow-with-rows-test
+  (testing "publishing Tables into Collections of their own"
+    (let [create! (fn [n]
+                    (mt/with-model-cleanup [:model/Collection]
+                      (mt/with-temp [:model/Database {db-id :id} {}]
+                        (let [table-ids      (insert-tables! db-id n)
+                              collection-ids (t2/insert-returning-pks! :model/Collection
+                                                                       (for [i (range n)] {:name (str "C" i) :slug (str "c" i)}))]
+                          (counted! #(table-user-settings/create-table-user-settings!
+                                      (mapv (fn [table-id collection-id]
+                                              {:table_id table-id :is_published true :collection_id collection-id})
+                                            table-ids
+                                            collection-ids)))))))]
+      (create! 1)
+      (is (= (create! 2) (create! 6)))))
   (testing "creating TableUserSettings, some that hold no user value"
     (let [create! (fn [n]
                     (mt/with-temp [:model/Database {db-id :id} {}]

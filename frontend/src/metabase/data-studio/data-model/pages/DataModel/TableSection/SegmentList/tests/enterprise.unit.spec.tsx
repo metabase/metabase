@@ -52,7 +52,7 @@ describe("SegmentList", () => {
         segments: [],
         isAdmin: true,
         remoteSyncType: "read-only",
-        table: { is_published: false },
+        table: { collection: null },
       });
 
       expect(

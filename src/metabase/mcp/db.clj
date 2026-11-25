@@ -6,6 +6,7 @@
   — see [[user-id->tenant-id]]. It lives here because here is the only place that knows the value reaches
   HoneySQL."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mcp.permissions :as mcp.perms]
@@ -26,7 +27,7 @@
   "The `model` rows whose primary keys are in `ids`. `ids` is expected non-empty — an empty `:in` is a SQL
   error rather than an empty result, so callers guard it."
   [model ids]
-  (t2/select model :id [:in ids]))
+  (mdb/select-batched #(t2/select model :id [:in %]) ids))
 
 (defn select-users-where
   "The `:model/User` rows matching the HoneySQL `where` clause.
@@ -52,14 +53,15 @@
   `field-ids` is expected non-empty — an empty `:in` is a SQL error rather than an empty result,
   so callers guard it."
   [field-ids]
-  (t2/select [:model/Field :id :database_is_nullable :fingerprint]
-             :id [:in field-ids]
-             :database_is_nullable true))
+  (mdb/select-batched #(t2/select [:model/Field :id :database_is_nullable :fingerprint]
+                                  :id [:in %]
+                                  :database_is_nullable true)
+                      field-ids))
 
-(defn active-user-exists?
-  "Whether an active User with `user-id` exists."
-  [user-id]
-  (t2/exists? :model/User :id user-id :is_active true))
+(defn active-user-ids
+  "The ids among `user-ids` of active Users."
+  [user-ids]
+  (mdb/select-batched-set #(t2/select-pks-set :model/User :id [:in %] :is_active true) user-ids))
 
 (defn dashboard-parameters
   "The `parameters` of the Dashboard with `dashboard-id`, or nil."
@@ -87,7 +89,8 @@
   "The subset of `database-ids` matching the HoneySQL `browsable-where` clause, as a set. `database-ids` is
   expected non-empty — an empty `:in` is a SQL error rather than an empty result, so callers guard it."
   [database-ids browsable-where]
-  (t2/select-pks-set :model/Database {:where [:and [:in :id database-ids] browsable-where]}))
+  (mdb/select-batched-set #(t2/select-pks-set :model/Database {:where [:and [:in :id %] browsable-where]})
+                          database-ids))
 
 (defn unarchived-models-in-database
   "The `columns` of the unarchived Models of the Database with `database-id`, in name order."
@@ -98,31 +101,34 @@
   "The active Tables with `table-ids`. `table-ids` is expected non-empty — an empty `:in` is a SQL error
   rather than an empty result, so callers guard it."
   [table-ids]
-  (t2/select :model/Table :id [:in table-ids] :active true))
+  (mdb/select-batched #(t2/select :model/Table :id [:in %] :active true) table-ids))
 
 (defn active-visible-fields-for-tables
   "The id, name, table id, and position of the active, non-hidden Fields of the Tables with `table-ids`, in
   table position then id order. `table-ids` is expected non-empty — an empty `:in` is a SQL error rather than
   an empty result, so callers guard it."
   [table-ids]
-  (t2/select [:model/Field :id :name :table_id :position]
-             :table_id [:in table-ids]
-             :active true
-             :visibility_type [:not-in ["hidden" "sensitive" "retired"]]
-             {:order-by [[:position :asc] [:id :asc]]}))
+  (vec (sort-by (juxt :position :id)
+                (mdb/select-batched #(t2/select [:model/Field :id :name :table_id :position]
+                                                :table_id [:in %]
+                                                :active true
+                                                :visibility_type [:not-in ["hidden" "sensitive" "retired"]]
+                                                {:order-by [[:position :asc] [:id :asc]]})
+                                    table-ids))))
 
 (defn collections-for-read-check
   "The Collections with `ids`, carrying the columns [[metabase.models.interface/can-read?]] consults.
   `:namespace` and `:type` are selected for that check, not for display."
   [ids]
-  (t2/select [:model/Collection :id :name :namespace :type] :id [:in ids]))
+  (mdb/select-batched #(t2/select [:model/Collection :id :name :namespace :type] :id [:in %]) ids))
 
 (defn collection-id->name+location
   "Map of collection id -> `[name location]` for the Collections with `ids`."
   [ids]
-  (t2/select-fn->fn :id (juxt :name :location)
-                    [:model/Collection :id :name :location]
-                    :id [:in ids]))
+  (mdb/select-batched-map #(t2/select-fn->fn :id (juxt :name :location)
+                                             [:model/Collection :id :name :location]
+                                             :id [:in %])
+                          ids))
 
 (defn snippets-by-archived-state
   "The NativeQuerySnippets in the given archived state, ordered by lower-cased name. Selects only the
@@ -250,15 +256,14 @@
 (mu/defn group-ids-with-permission :- [:set ms/PositiveInt]
   "The ids among `group-ids` of the groups that have an McpGroupPermission."
   [group-ids :- [:sequential ms/PositiveInt]]
-  (or (when (seq group-ids)
-        (t2/select-fn-set :group_id [:model/McpGroupPermission :group_id] :group_id [:in group-ids]))
-      #{}))
+  (into #{} (mdb/select-batched #(t2/select-fn-set :group_id [:model/McpGroupPermission :group_id] :group_id [:in %])
+                                group-ids)))
 
 (mu/defn group-permissions
   "The McpGroupPermissions of the groups among `group-ids`."
   [group-ids :- [:sequential ms/PositiveInt]]
   (when (seq group-ids)
-    (t2/select :model/McpGroupPermission :group_id [:in [:auto/param group-ids]])))
+    (mdb/select-batched #(t2/select :model/McpGroupPermission :group_id [:in [:auto/param %]]) group-ids)))
 
 (mu/defn insert-group-permissions!
   "Insert the McpGroupPermission `rows` in one statement."
@@ -271,13 +276,14 @@
 
 (mu/defn update-group-permissions!
   "Set the McpGroupPermission of the group of each of `rows` to the values of its row, one statement per distinct
-  change."
+  change and partition of groups."
   [rows :- [:sequential [:map {:closed true}
                          [:group_id    ms/PositiveInt]
                          [:mcp_enabled {:optional true} :boolean]
                          [:tool_access {:optional true} ::mcp.perms/tool-access]]]]
   (doseq [[changes rows] (group-by #(dissoc % :group_id) rows)]
-    (t2/update! :model/McpGroupPermission :group_id [:in [:auto/param (mapv :group_id rows)]] changes)))
+    (doseq [chunk (partition-all mdb/update-partition-size (mapv :group_id rows))]
+      (t2/update! :model/McpGroupPermission :group_id [:in [:auto/param (vec chunk)]] changes))))
 
 (mu/defn delete-hidden-group-permissions!
   "Delete the McpGroupPermission rows of the groups the mode selected by `advanced?` hides."
@@ -286,7 +292,7 @@
               {:where [:not (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
 (defn user-id->tenant-id
-  "Map of user id to `tenant_id` for `user-ids`, in one query. An empty collection asks nothing of the
+  "Map of user id to `tenant_id` for `user-ids`. An empty collection asks nothing of the
   database and answers `{}` — `[:in ()]` is not valid SQL.
 
   Throws unless `user-ids` is a collection of integers. The ids are spliced into an `[:in …]` clause,
@@ -305,6 +311,4 @@
     (throw (ex-info "MCP: user ids must be a collection of integers" {:user-ids user-ids})))
   (when-let [invalid (seq (remove int? user-ids))]
     (throw (ex-info "MCP: user ids must be a collection of integers" {:invalid (vec invalid)})))
-  (if (seq user-ids)
-    (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids])
-    {}))
+  (mdb/select-batched-map #(t2/select-pk->fn :tenant_id :model/User :id [:in %]) user-ids))

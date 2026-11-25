@@ -2,6 +2,7 @@
   "Application database queries for the permissions REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -100,17 +101,9 @@
                                               (when excluded-database-id [:not= :id excluded-database-id])
                                               [:= :router_database_id nil]]}))
 
-(mu/defn data-permissions-reducible
-  "A reducible of the type, group id, value, database id, schema, and table id of the DataPermissions rows of
-  non-destination Databases, optionally narrowed to `perm-type`, `db-id`, `group-id`, `group-ids`, and excluding
-  `excluded-database-id` (nil for no restriction), ordered by group and database."
-  [{:keys [perm-type db-id group-id group-ids excluded-database-id]}
-   :- [:map {:closed true}
-       [:perm-type              {:optional true} [:maybe [:or :keyword :string]]]
-       [:db-id                  {:optional true} [:maybe ::lib.schema.id/database]]
-       [:group-id               {:optional true} [:maybe ms/PositiveInt]]
-       [:group-ids              {:optional true} [:maybe [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
-       [:excluded-database-id   {:optional true} [:maybe ::lib.schema.id/database]]]]
+(defn- data-permissions-partition-reducible
+  "The reducible rows [[data-permissions-reducible]] gives for one partition of `group-ids`."
+  [perm-type db-id group-id group-ids excluded-database-id]
   (t2/reducible-query
    {:select   [[:perm_type :type]
                [:group_id :group-id]
@@ -133,7 +126,24 @@
                                                               [:= :router_db.id :db_id]]}]])
     :order-by [:group_id :db_id]}))
 
+(mu/defn data-permissions-reducible
+  "A reducible of the type, group id, value, database id, schema, and table id of the DataPermissions rows of
+  non-destination Databases, optionally narrowed to `perm-type`, `db-id`, `group-id`, `group-ids`, and excluding
+  `excluded-database-id` (nil for no restriction), ordered by group and database."
+  [{:keys [perm-type db-id group-id group-ids excluded-database-id]}
+   :- [:map {:closed true}
+       [:perm-type              {:optional true} [:maybe [:or :keyword :string]]]
+       [:db-id                  {:optional true} [:maybe ::lib.schema.id/database]]
+       [:group-id               {:optional true} [:maybe ms/PositiveInt]]
+       [:group-ids              {:optional true} [:maybe [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
+       [:excluded-database-id   {:optional true} [:maybe ::lib.schema.id/database]]]]
+  (eduction
+   (mapcat #(data-permissions-partition-reducible perm-type db-id group-id % excluded-database-id))
+   (if (seq group-ids)
+     (mdb/select-partitions (sort (distinct group-ids)))
+     [group-ids])))
+
 (mu/defn tables-for-databases
   "The id, Database id, and schema of the Tables of the Databases with `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select [:model/Table :id :db_id :schema] :db_id [:in database-ids]))
+  (mdb/select-batched #(t2/select [:model/Table :id :db_id :schema] :db_id [:in %]) database-ids))

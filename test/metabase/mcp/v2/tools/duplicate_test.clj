@@ -186,7 +186,7 @@
 (deftest duplicate-native-question-without-authoring-perms-test
   (testing "GHY-4218: copying is not authoring. A caller who can read and run a native card but
             lacks native query-building perms can duplicate it, matching `POST /api/card/:id/copy`
-            and `documents.models.document/clone-card!` (UXW-5037). The old
+            and `documents.models.document/clone-cards!` (UXW-5037). The old
             `check-allowed-to-create-card!` ran run-permissions on the source's own query and
             refused with \"you do not have permissions to run its query\" — a query the caller can
             plainly run through the source card"

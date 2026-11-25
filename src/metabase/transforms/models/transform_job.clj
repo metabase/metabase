@@ -124,6 +124,13 @@
   (let [answer (boolean (api/entitled-data-analyst?))]
     (mapv #(vary-meta % assoc k answer) jobs)))
 
+(methodical/defmethod t2/batched-hydrate [:model/TransformJob :can_query]
+  "Whether the current user may run each of `jobs`, which needs read access to it."
+  [_model k jobs]
+  (for [job (t2/hydrate jobs :can_read)]
+    (when job
+      (assoc job k (mi/can-read? job)))))
+
 (methodical/defmethod t2/batched-hydrate [:model/TransformJob :can_write]
   [_model k jobs]
   (let [lookup? (and (not api/*is-superuser?*) (api/entitled-data-analyst?) (seq jobs))

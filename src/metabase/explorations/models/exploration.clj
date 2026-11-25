@@ -22,6 +22,19 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(defn hydrate-can-read-from-parents
+  "The `instances` with `k` in their metadata set to whether the current user can read the row of `parent-model` that
+  `parent-key` of each references, which is what reading it takes, those rows loaded and their `:can_read` hydrated at
+  once."
+  [k instances parent-key parent-model]
+  (let [parents (u/index-by :id (t2/hydrate (explorations.db/rows parent-model
+                                                                  (into [] (comp (remove nil?) (keep parent-key) (distinct))
+                                                                        instances))
+                                            :can_read))]
+    (for [instance instances]
+      (when instance
+        (vary-meta instance assoc k (boolean (some-> (get parents (parent-key instance)) mi/can-read?)))))))
+
 (defn hydrate-can-write-from-parents
   "The `instances` with `k` set to whether the current user can write the row of `parent-model` that `parent-key` of
   each references, which is what writing it takes, those rows loaded and their `:can_write` hydrated at once."
@@ -73,10 +86,14 @@
 
 (defmethod mi/can-update? :model/Exploration
   [exploration changes]
+  (mi/can-update-all? :model/Exploration [exploration] changes))
+
+(defmethod mi/can-update-all? :model/Exploration
+  [_model explorations changes]
   (boolean
-   (and (mi/can-write? exploration)
-        (mi/archive-followers-updatable? exploration changes :model/Document
-                                         (partial explorations.db/summary-documents-following (:id exploration))))))
+   (and (every? mi/can-write? explorations)
+        (mi/archive-followers-updatable? explorations changes :model/Document
+                                         explorations.db/summary-documents-following-explorations))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :creator]
   [_model k explorations]

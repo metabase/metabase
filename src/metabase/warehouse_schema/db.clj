@@ -4,6 +4,7 @@
   methods, and transactions."
   (:require
    [malli.util :as mut]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.collections.listing :as collections.listing]
@@ -149,22 +150,17 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (app-db/select-batched #(t2/select :model/Field :id [:in %]) field-ids))
 
 (mu/defn fields-by-ids :- [:map-of ::lib.schema.id/field :map]
   "The Fields with `field-ids`, by id."
   [field-ids :- [:sequential [:maybe ::lib.schema.id/field]]]
-  (into {} (t2/select-fn->fn :id identity :model/Field :id [:in field-ids])))
+  (u/index-by :id (app-db/select-batched #(t2/select :model/Field :id [:in %]) field-ids)))
 
 (mu/defn field-table-id-rows
   "The ID and ::warehouse-schema.schema/table ID of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :table_id] :id [:in field-ids]))
-
-(mu/defn field-table-id
-  "The ::warehouse-schema.schema/table ID of the ::warehouse-schema.schema/field with `field-id`."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id))
+  (app-db/select-batched #(t2/select [:model/Field :id :table_id] :id [:in %]) field-ids))
 
 (mu/defn field-id-by-name
   "The ID of the ::warehouse-schema.schema/field named `field-name` under `parent-id` in the ::warehouse-schema.schema/table with `table-id`, or nil."
@@ -207,39 +203,45 @@
   `:smart`, `:database`, or `:alphabetical`)."
   [table-ids   :- [:set ::lib.schema.id/table]
    field-order :- [:enum :custom :smart :database :alphabetical]]
-  (t2/select [:model/Field :id :table_id] :table_id [:in table-ids]
-             {:order-by (into [[:table_id :asc]] (field-order-order-by field-order))}))
+  (app-db/select-batched #(t2/select [:model/Field :id :table_id] :table_id [:in %]
+                                     {:order-by (into [[:table_id :asc]] (field-order-order-by field-order))})
+                         (sort table-ids)))
 
 (mu/defn active-fields-for-tables
-  "The active, unretired Fields of the Tables with `table-ids`, in field order."
+  "The active, unretired Fields of the Tables with `table-ids`, in field order within each Table."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field
-             :active true
-             :table_id [:in table-ids]
-             :visibility_type [:not= "retired"]
-             {:order-by field-order-rule}))
+  (app-db/select-batched #(t2/select :model/Field
+                                     :active true
+                                     :table_id [:in %]
+                                     :visibility_type [:not= "retired"]
+                                     {:order-by field-order-rule})
+                         table-ids))
 
 (mu/defn pk-field-ids-by-table
   "A map of ::warehouse-schema.schema/table ID to the ID of its visible primary key ::warehouse-schema.schema/field for `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select-fn->fn :table_id :id :model/Field
-                    :table_id [:in table-ids]
-                    :semantic_type (app-db/isa :type/PK)
-                    :visibility_type [:not-in ["sensitive" "retired"]]
-                    {:from [[(t2/table-name :model/Field) :f]]}))
+  (app-db/select-batched-map #(t2/select-fn->fn :table_id :id :model/Field
+                                                :table_id [:in %]
+                                                :semantic_type (app-db/isa :type/PK)
+                                                :visibility_type [:not-in ["sensitive" "retired"]]
+                                                {:from [[(t2/table-name :model/Field) :f]]})
+                             table-ids))
 
 (mu/defn fields-targeting
   "The Fields whose foreign key targets one of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :fk_target_field_id [:in field-ids]))
+  (app-db/select-batched #(t2/select :model/Field :fk_target_field_id [:in %]) field-ids))
 
 (mu/defn nested-fields-matching
   "The Fields whose Table and `nfc_path` match one of `table-id+patterns`, each a Table id and a SQL LIKE pattern."
   [table-id+patterns :- [:sequential [:tuple ::lib.schema.id/table :string]]]
-  (t2/select :model/Field {:where (into [:or]
-                                        (map (fn [[table-id pattern]]
-                                               [:and [:= :table_id [:auto/param table-id]] [:like :nfc_path [:auto/param pattern]]]))
-                                        table-id+patterns)}))
+  (into []
+        (m/distinct-by :id)
+        (app-db/select-batched #(t2/select :model/Field {:where (into [:or]
+                                                                      (map (fn [[table-id pattern]]
+                                                                             [:and [:= :table_id [:auto/param table-id]] [:like :nfc_path [:auto/param pattern]]]))
+                                                                      %)})
+                               table-id+patterns)))
 
 (mu/defn field-ids-of-database :- [:set ::lib.schema.id/field]
   "The ids of the Fields of the Tables of the Database with `database-id`."
@@ -254,7 +256,8 @@
   [field-ids :- [:sequential ::lib.schema.id/field]
    kase      :- [:enum :lower :upper]
    columns   :- [:sequential :keyword]]
-  (t2/update! :model/Field :id [:in field-ids] (into {} (map (fn [column] [column [kase column]])) columns)))
+  (let [changes (into {} (map (fn [column] [column [kase column]])) columns)]
+    (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/Field :id [:in %] changes) field-ids)))
 
 (mu/defn update-fields!
   "Apply `rows`, each the id of a Field and the columns to change, one update per distinct change."
@@ -264,64 +267,66 @@
 (mu/defn delete-fields!
   "Delete the Fields with `field-ids`, returning the number deleted."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/delete! :model/Field :id [:in field-ids]))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/Field :id [:in %]) field-ids))
 
 (mu/defn child-field-ids :- [:set ::lib.schema.id/field]
   "The ids of the Fields nested directly under the Fields with `parent-ids`."
   [parent-ids :- [:set ::lib.schema.id/field]]
-  (set (t2/select-pks-set :model/Field :parent_id [:in parent-ids])))
+  (set (app-db/select-batched #(t2/select-pks-set :model/Field :parent_id [:in %]) parent-ids)))
 
 (mu/defn field-ids-for-tables :- [:set ::lib.schema.id/field]
   "The ids of the Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (if (seq table-ids)
-    (set (t2/select-pks-set :model/Field :table_id [:in table-ids]))
-    #{}))
+  (set (app-db/select-batched #(t2/select-pks-set :model/Field :table_id [:in %]) table-ids)))
 
 (mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
   "The Database id of each of the Tables with `table-ids`, by Table id."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (if (seq table-ids)
-    (t2/select-pk->fn :db_id :model/Table :id [:in table-ids])
-    {}))
+  (app-db/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in %]) table-ids))
+
+(defn- update-by-cases!
+  "Set `column` of the rows of `model` whose `key-column` is a key of `key->value` to its value there, one statement
+  per partition, returning the number updated."
+  [model key-column column key->value]
+  (app-db/sum-batched app-db/update-partition-size (fn [part]
+                                                     (t2/update! model key-column [:in (mapv key part)]
+                                                                 {column (into [:case] (mapcat (fn [[k v]] [[:= key-column k] v])) part)})) key->value))
 
 (mu/defn update-field-custom-positions!
   "Set the `custom_position` of each ::warehouse-schema.schema/field in `field-id->position`, returning the number
   updated."
   [field-id->position :- [:map-of ::lib.schema.id/field :int]]
-  (t2/update! :model/Field :id [:in (keys field-id->position)]
-              {:custom_position (into [:case] (mapcat (fn [[id position]] [[:= :id id] position])) field-id->position)}))
+  (update-by-cases! :model/Field :id :custom_position field-id->position))
 
 (mu/defn update-field-positions!
   "Set the `position` of each ::warehouse-schema.schema/field in `field-id->position`, returning the number updated."
   [field-id->position :- [:map-of ::lib.schema.id/field :int]]
-  (t2/update! :model/Field :id [:in (keys field-id->position)]
-              {:position (into [:case] (mapcat (fn [[id position]] [[:= :id id] position])) field-id->position)}))
+  (update-by-cases! :model/Field :id :position field-id->position))
 
 (mu/defn clear-fk-targets-to-fields!
   "Clear the target, and an FK semantic type, of every ::warehouse-schema.schema/field targeting one of the Fields
   with `field-ids`, returning the number updated."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/update! :model/Field {:fk_target_field_id [:in field-ids] :semantic_type :type/FK} {:semantic_type nil})
-  (t2/update! :model/Field {:fk_target_field_id [:in field-ids]} {:fk_target_field_id nil}))
+  (let [parts (mapv vec (partition-all app-db/update-partition-size field-ids))]
+    (run! #(t2/update! :model/Field {:fk_target_field_id [:in %] :semantic_type :type/FK} {:semantic_type nil}) parts)
+    (transduce (map #(t2/update! :model/Field {:fk_target_field_id [:in %]} {:fk_target_field_id nil})) + 0 parts)))
 
 (mu/defn field-database-ids :- [:map-of ::lib.schema.id/field ::lib.schema.id/database]
   "The ::warehouses.schema/database ID of each ::warehouse-schema.schema/field in `field-ids`, by Field id."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (if (seq field-ids)
-    (into {}
-          (map (juxt :id :db_id))
-          (t2/query {:select [:f.id :t.db_id]
-                     :from   [[(t2/table-name :model/Field) :f]]
-                     :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                     :where  [:in :f.id (vec field-ids)]}))
-    {}))
+  (into {}
+        (map (juxt :id :db_id))
+        (app-db/select-batched #(t2/query {:select [:f.id :t.db_id]
+                                           :from   [[(t2/table-name :model/Field) :f]]
+                                           :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
+                                           :where  [:in :f.id %]})
+                               field-ids)))
 
 (mu/defn set-fields-active!
   "Set the active flag of the Fields with `field-ids`, returning the number updated."
   [field-ids :- [:sequential ::lib.schema.id/field]
    active?   :- :boolean]
-  (t2/update! :model/Field :id [:in field-ids] {:active active?}))
+  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/Field :id [:in %] {:active active?}) field-ids))
 
 (mu/defn user-renamed-field-names :- [:set :string]
   "The lower-cased names, among `names`, of the Fields of the Table with `table-id` whose display name a user set.
@@ -329,15 +334,17 @@
   [table-id :- ::lib.schema.id/table
    names    :- [:set :string]]
   (set
-   (t2/select-fn-set (comp u/lower-case-en :name)
-                     :model/Field
-                     {:select    [:f.name]
-                      :from      [[(t2/table-name :model/Field) :f]]
-                      :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]
-                      :where     [:and
-                                  [:= :f.table_id table-id]
-                                  [:in [:lower :f.name] names]
-                                  [:not= :u.display_name nil]]})))
+   (app-db/select-batched
+    #(t2/select-fn-set (comp u/lower-case-en :name)
+                       :model/Field
+                       {:select    [:f.name]
+                        :from      [[(t2/table-name :model/Field) :f]]
+                        :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]
+                        :where     [:and
+                                    [:= :f.table_id table-id]
+                                    [:in [:lower :f.name] %]
+                                    [:not= :u.display_name nil]]})
+    names)))
 
 (mu/defn field-names-reducible
   "A reducible of the id, name, and display name of every ::warehouse-schema.schema/field, plus its user-set display
@@ -364,10 +371,11 @@
 (mu/defn field-ids-with-user-settings-for-tables :- [:set ::lib.schema.id/field]
   "The ids of the Fields of the Tables with `table-ids` that have a FieldUserSettings row."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (set (t2/select-fn-set :field_id :model/FieldUserSettings
-                         {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
-                          :join  [[(t2/table-name :model/Field) :f] [:= :f.id :u.field_id]]
-                          :where [:in :f.table_id (vec table-ids)]})))
+  (set (app-db/select-batched #(t2/select-fn-set :field_id :model/FieldUserSettings
+                                                 {:from  [[(t2/table-name :model/FieldUserSettings) :u]]
+                                                  :join  [[(t2/table-name :model/Field) :f] [:= :f.id :u.field_id]]
+                                                  :where [:in :f.table_id %]})
+                              table-ids)))
 
 (mu/defn update-field-user-settings!
   "Apply `changes` to the FieldUserSettings of the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
@@ -385,8 +393,7 @@
   "Set the `custom_position` of the FieldUserSettings of each Field in `field-id->position`, returning the number
   updated."
   [field-id->position :- [:map-of ::lib.schema.id/field :int]]
-  (t2/update! :model/FieldUserSettings :field_id [:in (keys field-id->position)]
-              {:custom_position (into [:case] (mapcat (fn [[id position]] [[:= :field_id id] position])) field-id->position)}))
+  (update-by-cases! :model/FieldUserSettings :field_id :custom_position field-id->position))
 
 (mu/defn unset-user-settings-fk-target!
   "Unset the user-set FK target of the ::warehouse-schema.schema/field with `field-id` in its settings, returning the
@@ -406,23 +413,28 @@
   "The FieldUserSettings that name one of the Fields with `field-ids` as their FK target, or whose Field targets one
   of them with a user-set FK semantic type."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/FieldUserSettings
-             {:where [:or
-                      [:in :fk_target_field_id field-ids]
-                      [:and [:= :semantic_type "type/FK"] (targeting-fields-clause field-ids)]]}))
+  (into []
+        (m/distinct-by :id)
+        (app-db/select-batched #(t2/select :model/FieldUserSettings
+                                           {:where [:or
+                                                    [:in :fk_target_field_id %]
+                                                    [:and [:= :semantic_type "type/FK"] (targeting-fields-clause %)]]})
+                               field-ids)))
 
 (mu/defn clear-user-settings-fk-targets-to-fields!
   "Unset the user-set FK semantic type and target of every ::warehouse-schema.schema/field targeting one of the Fields
   with `field-ids`, by its settings or by its own row, returning the number updated."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (let [changes {:semantic_type nil, :semantic_type_set false, :fk_target_field_id nil, :fk_target_field_id_set false}]
-    (+ (t2/update! :model/FieldUserSettings {:fk_target_field_id [:in field-ids]} changes)
-       (t2/update! :model/FieldUserSettings
-                   :semantic_type :type/FK
-                   :field_id [:in ^:allow-subquery {:select [:id]
-                                                    :from   [(t2/table-name :model/Field)]
-                                                    :where  [:in :fk_target_field_id field-ids]}]
-                   changes))))
+  (let [changes {:semantic_type nil, :semantic_type_set false, :fk_target_field_id nil, :fk_target_field_id_set false}
+        parts   (mapv vec (partition-all app-db/update-partition-size field-ids))]
+    (+ (transduce (map #(t2/update! :model/FieldUserSettings {:fk_target_field_id [:in %]} changes)) + 0 parts)
+       (transduce (map #(t2/update! :model/FieldUserSettings
+                                    :semantic_type :type/FK
+                                    :field_id [:in ^:allow-subquery {:select [:id]
+                                                                     :from   [(t2/table-name :model/Field)]
+                                                                     :where  [:in :fk_target_field_id %]}]
+                                    changes))
+                  + 0 parts))))
 
 (defn- empty-field-user-settings-clause
   "The clause over FieldUserSettings selecting those, among those of the Fields with `field-ids`, that hold no user
@@ -437,23 +449,23 @@
 (mu/defn empty-field-user-settings
   "The FieldUserSettings, among those of the Fields with `field-ids`, that hold no user value and no true flag."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/FieldUserSettings {:where (empty-field-user-settings-clause field-ids)}))
+  (app-db/select-batched #(t2/select :model/FieldUserSettings {:where (empty-field-user-settings-clause %)}) field-ids))
 
 (mu/defn delete-empty-field-user-settings!
   "Delete the FieldUserSettings, among those of the Fields with `field-ids`, that hold no user value and no true flag,
   returning the number deleted."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/delete! :model/FieldUserSettings {:where (empty-field-user-settings-clause field-ids)}))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/FieldUserSettings {:where (empty-field-user-settings-clause %)}) field-ids))
 
 (mu/defn field-user-settings-for-fields
   "The FieldUserSettings of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/FieldUserSettings :field_id [:in field-ids]))
+  (app-db/select-batched #(t2/select :model/FieldUserSettings :field_id [:in %]) field-ids))
 
 (mu/defn field-user-settings-by-ids
   "The FieldUserSettings with `ids`."
   [ids :- [:sequential pos-int?]]
-  (t2/select :model/FieldUserSettings :id [:in ids]))
+  (app-db/select-batched #(t2/select :model/FieldUserSettings :id [:in %]) ids))
 
 (mu/defn insert-field-user-settings-returning-instances!
   "Insert the FieldUserSettings `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
@@ -465,7 +477,7 @@
   "Apply `changes` to the FieldUserSettings with `ids`, returning the number updated."
   [ids     :- [:sequential pos-int?]
    changes :- (mut/dissoc ::warehouse-schema.schema/field-user-settings.update :id)]
-  (t2/update! :model/FieldUserSettings :id [:in ids] changes))
+  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/FieldUserSettings :id [:in %] changes) ids))
 
 (mu/defn update-field-user-settings-rows!
   "Apply `rows`, each the id of a FieldUserSettings and the columns to change, one update per distinct change."
@@ -488,17 +500,17 @@
 (mu/defn table-ids-with-user-settings :- [:set ::lib.schema.id/table]
   "The ids, among `table-ids`, of the Tables that already have a TableUserSettings row."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (set (t2/select-fn-set :table_id :model/TableUserSettings :table_id [:in table-ids])))
+  (set (app-db/select-batched #(t2/select-fn-set :table_id :model/TableUserSettings :table_id [:in %]) table-ids)))
 
 (mu/defn table-user-settings-for-tables
   "The TableUserSettings of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/TableUserSettings :table_id [:in table-ids]))
+  (app-db/select-batched #(t2/select :model/TableUserSettings :table_id [:in %]) table-ids))
 
 (mu/defn table-user-settings-by-ids
   "The TableUserSettings with `ids`."
   [ids :- [:sequential pos-int?]]
-  (t2/select :model/TableUserSettings :id [:in ids]))
+  (app-db/select-batched #(t2/select :model/TableUserSettings :id [:in %]) ids))
 
 (mu/defn insert-table-user-settings-returning-instances!
   "Insert the TableUserSettings `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
@@ -524,13 +536,13 @@
 (mu/defn empty-table-user-settings
   "The TableUserSettings, among those of the Tables with `table-ids`, that hold no user value and no true flag."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/TableUserSettings {:where (empty-table-user-settings-clause table-ids)}))
+  (app-db/select-batched #(t2/select :model/TableUserSettings {:where (empty-table-user-settings-clause %)}) table-ids))
 
 (mu/defn delete-empty-table-user-settings!
   "Delete the TableUserSettings, among those of the Tables with `table-ids`, that hold no user value and no true flag,
   returning the number deleted."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/delete! :model/TableUserSettings {:where (empty-table-user-settings-clause table-ids)}))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/TableUserSettings {:where (empty-table-user-settings-clause %)}) table-ids))
 
 (mu/defn insert-table-user-settings-row! :- ::warehouse-schema.schema/table-user-settings
   "Insert the TableUserSettings `row` in a savepoint, so that a duplicate key leaves the enclosing transaction usable, returning the inserted instance."
@@ -557,7 +569,7 @@
 (mu/defn full-field-values-for-fields
   "The full FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil))
+  (app-db/select-batched #(t2/select :model/FieldValues :field_id [:in %] :type :full :hash_key nil) field-ids))
 
 (mu/defn full-field-values-rows
   "The ::warehouse-schema.schema/field ID and values of the full FieldValues of the ::warehouse-schema.schema/field with `field-id`."
@@ -567,13 +579,14 @@
 (mu/defn full-field-values-for-tables
   "The ::warehouse-schema.schema/field ID, values, and ::warehouse-schema.schema/table ID of the full FieldValues of the normal Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/FieldValues :field_id :values :field.table_id]
-             {:join  [[(t2/table-name :model/Field) :field]
-                      [:= :metabase_fieldvalues.field_id :field.id]]
-              :where [:and
-                      [:in :field.table_id table-ids]
-                      [:= :field.visibility_type "normal"]
-                      [:= :metabase_fieldvalues.type "full"]]}))
+  (app-db/select-batched #(t2/select [:model/FieldValues :field_id :values :field.table_id]
+                                     {:join  [[(t2/table-name :model/Field) :field]
+                                              [:= :metabase_fieldvalues.field_id :field.id]]
+                                      :where [:and
+                                              [:in :field.table_id %]
+                                              [:= :field.visibility_type "normal"]
+                                              [:= :metabase_fieldvalues.type "full"]]})
+                         table-ids))
 
 (mu/defn full-field-values-with-human-readable-values
   "The values and human-readable values of the full FieldValues of the ::warehouse-schema.schema/field with `field-id` if it has
@@ -592,11 +605,20 @@
   (t2/select-one-fn :max-last-used-at [:model/FieldValues [[:max :last_used_at] :max-last-used-at]]
                     {:where [:= :field_id field-id]}))
 
+(mu/defn field-values-last-used-at-by-field :- [:map-of ::lib.schema.id/field ms/TemporalInstant]
+  "The latest `last_used_at` of any FieldValues of each of the Fields with `field-ids` that has any, by Field id."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (app-db/select-batched-map
+   #(t2/select-fn->fn :field_id :max-last-used-at [:model/FieldValues :field_id [[:max :last_used_at] :max-last-used-at]]
+                      {:where    [:in :field_id [:auto/param %]]
+                       :group-by [:field_id]})
+   field-ids))
+
 (mu/defn full-field-values-by-field
   "The `columns` of the full FieldValues of the Fields with `field-ids`."
   [columns   :- [:or :keyword [:sequential :keyword]]
    field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select columns :field_id [:in field-ids] :type :full))
+  (app-db/select-batched #(t2/select columns :field_id [:in %] :type :full) field-ids))
 
 (mu/defn dimension-for-field
   "The Dimension of the ::warehouse-schema.schema/field with `field-id`, or nil."
@@ -612,19 +634,42 @@
 (mu/defn dimensions-reading-fields
   "The Dimensions whose human-readable values come from the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Dimension :human_readable_field_id [:in field-ids]))
+  (app-db/select-batched #(t2/select :model/Dimension :human_readable_field_id [:in %]) field-ids))
 
 (mu/defn rename-dimensions-for-fields!
   "Set the name of the Dimension of each ::warehouse-schema.schema/field in `field-id->name` to its name there,
   returning the number updated."
   [field-id->name :- [:map-of ::lib.schema.id/field :string]]
-  (t2/update! :model/Dimension :field_id [:in (keys field-id->name)]
-              {:name (into [:case] (mapcat (fn [[id dimension-name]] [[:= :field_id id] dimension-name])) field-id->name)}))
+  (update-by-cases! :model/Dimension :field_id :name field-id->name))
 
 (mu/defn dimensions-for-fields
   "The Dimensions of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Dimension :field_id [:in field-ids]))
+  (app-db/select-batched #(t2/select :model/Dimension :field_id [:in %]) field-ids))
+
+(mu/defn external-remap-target-table-ids :- [:map-of ::lib.schema.id/table [:set ::lib.schema.id/table]]
+  "The ids of the other Tables that a query of each of the Tables with `table-ids` joins to show the values of an
+  externally remapped active Field through its foreign key, by Table id, leaving out Tables without any."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (reduce (fn [m {:keys [table_id target_table_id]}]
+            (update m table_id (fnil conj #{}) target_table_id))
+          {}
+          (app-db/select-batched
+           #(t2/query {:select [[:f.table_id :table_id] [:target.table_id :target_table_id]]
+                       :from   [[(t2/table-name :model/Field) :f]]
+                       :join   [[(t2/table-name :model/Dimension) :d] [:and
+                                                                       [:= :d.field_id :f.id]
+                                                                       [:= :d.type "external"]]
+                                [(t2/table-name :model/Field) :target] [:= :target.id :f.fk_target_field_id]
+                                [(t2/table-name :model/Field) :readable] [:= :readable.id :d.human_readable_field_id]]
+                       :where  [:and
+                                [:in :f.table_id %]
+                                [:= :f.active true]
+                                [:not-in :f.visibility_type ["retired" "sensitive"]]
+                                [:not-in :target.visibility_type ["retired" "sensitive"]]
+                                [:not-in :readable.visibility_type ["retired" "sensitive"]]
+                                [:not= :target.table_id :f.table_id]]})
+           table-ids)))
 
 (mu/defn update-field-values!
   "Apply `rows`, each the id of a FieldValues and the columns to change, one update per distinct change."
@@ -678,55 +723,76 @@
                                     :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
                                     :where      [:= :t.db_id [:auto/param database-id]]}]])
 
-(defn- field-values-of-types-before-kvs
-  "The conditions on FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago."
-  [field-id types max-age-days]
-  [:field_id field-id :type [:in types]
-   :created_at [:< (h2x/add-interval-honeysql-form (app-db/db-type) :%now (- max-age-days) :day)]])
-
 (mu/defn field-values-ids-of-fields :- [:sequential ms/PositiveInt]
   "The ids of every FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (vec (apply t2/select-pks-vec :model/FieldValues (field-values-of-fields-kvs field-ids))))
+  (app-db/select-batched #(apply t2/select-pks-vec :model/FieldValues (field-values-of-fields-kvs %)) field-ids))
 
 (mu/defn field-values-ids-of-types :- [:sequential ms/PositiveInt]
   "The ids of the FieldValues of `types` of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]
    types     :- [:set :keyword]]
-  (vec (apply t2/select-pks-vec :model/FieldValues (field-values-of-types-kvs field-ids types))))
+  (app-db/select-batched #(apply t2/select-pks-vec :model/FieldValues (field-values-of-types-kvs % types)) field-ids))
 
 (mu/defn field-values-ids-of-tables :- [:sequential ms/PositiveInt]
   "The ids of the FieldValues of the Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (vec (apply t2/select-pks-vec :model/FieldValues (field-values-of-tables-kvs table-ids))))
+  (app-db/select-batched #(apply t2/select-pks-vec :model/FieldValues (field-values-of-tables-kvs %)) table-ids))
 
 (mu/defn field-values-ids-of-database :- [:sequential ms/PositiveInt]
   "The ids of the FieldValues of every Field of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (vec (apply t2/select-pks-vec :model/FieldValues (field-values-of-database-kvs database-id))))
 
-(mu/defn field-values-ids-of-types-before :- [:sequential ms/PositiveInt]
-  "The ids of the FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago."
-  [field-id     :- ::lib.schema.id/field
+(mu/defn field-values-ids-and-field-ids :- [:sequential [:map [:id ms/PositiveInt] [:field_id ::lib.schema.id/field]]]
+  "The id and Field id of every FieldValues of the Fields with `field-ids`."
+  [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
+  (app-db/select-batched #(t2/select [:model/FieldValues :id :field_id] :field_id [:in [:auto/param %]]) field-ids))
+
+(mu/defn expired-field-values-ids-of-database :- [:sequential ms/PositiveInt]
+  "The ids of the FieldValues of `types` of the active, normal-visibility Fields of the synced Tables of the Database
+  with `database-id` created more than `max-age-days` days ago."
+  [database-id  :- ::lib.schema.id/database
    types        :- [:set :keyword]
    max-age-days :- :int]
-  (vec (apply t2/select-pks-vec :model/FieldValues (field-values-of-types-before-kvs field-id types max-age-days))))
+  (vec (t2/select-pks-vec :model/FieldValues
+                          :type [:in types]
+                          {:where [:and
+                                   [:< :metabase_fieldvalues.created_at
+                                    (h2x/add-interval-honeysql-form (app-db/db-type) :%now (- max-age-days) :day)]
+                                   [:exists ^:allow-subquery
+                                    {:select [[[:inline 1] :one]]
+                                     :from   [[(t2/table-name :model/Field) :f]]
+                                     :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
+                                     :where  [:and
+                                              [:= :f.id :metabase_fieldvalues.field_id]
+                                              [:= :f.active true]
+                                              [:= :f.visibility_type "normal"]
+                                              [:= :t.db_id [:auto/param database-id]]
+                                              [:= :t.active true]
+                                              [:= :t.visibility_type nil]]}]]})))
 
 ;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
 
-(mu/defn table-publication-columns :- [:map-of ::lib.schema.id/table :map]
-  "The `:is_published` and `:collection_id` of the Tables with `table-ids`, by id."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (if (seq table-ids)
-    (t2/select-pk->fn #(select-keys % [:is_published :collection_id])
-                      [:model/Table :id :is_published :collection_id]
-                      :id [:in table-ids])
-    {}))
+(mu/defn collections-by-published-table-id
+  "A map of Table ID to the Collection it is published into, the root Collection for one published into none, for
+  the published Tables among `table-ids`."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (let [published (app-db/select-batched-map #(t2/select-fn->fn :table_id :collection_id
+                                                                [:model/TableUserSettings :table_id :collection_id]
+                                                                :table_id [:in %]
+                                                                :is_published true)
+                                             table-ids)
+        by-id     (when-let [collection-ids (not-empty (into #{} (keep val) published))]
+                    (app-db/select-batched-map #(t2/select-pk->fn identity :model/Collection :id [:in %])
+                                               collection-ids))
+        root      (delay (collection.root/hydrated-root-collection))]
+    (update-vals published #(if % (get by-id %) @root))))
 
 (mu/defn tables-by-ids :- [:map-of ::lib.schema.id/table :map]
   "The Tables with `table-ids`, by id."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (into {} (t2/select-fn->fn :id identity :model/Table :id [:in table-ids])))
+  (u/index-by :id (app-db/select-batched #(t2/select :model/Table :id [:in %]) table-ids)))
 
 (mu/defn table
   "The ::warehouse-schema.schema/table with `table-id`, or nil."
@@ -744,12 +810,13 @@
   [table-ids :- [:sequential ::lib.schema.id/table]
    kase      :- [:enum :lower :upper]
    columns   :- [:sequential :keyword]]
-  (t2/update! :model/Table :id [:in table-ids] (into {} (map (fn [column] [column [kase column]])) columns)))
+  (let [changes (into {} (map (fn [column] [column [kase column]])) columns)]
+    (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/Table :id [:in %] changes) table-ids)))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (app-db/select-batched #(t2/select :model/Table :id [:in %]) table-ids))
 
 (mu/defn table-by-name
   "The ::warehouse-schema.schema/table named `table-name` in `schema` of the ::warehouses.schema/database with `database-id`, or nil."
@@ -805,24 +872,32 @@
              {:order-by [[:display_name :asc]]}))
 
 (mu/defn unarchived-segments-for-tables
-  "The unarchived Segments of the Tables with `table-ids`, ordered by name."
+  "The unarchived Segments of the Tables with `table-ids`, ordered by name within each Table."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Segment :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
+  (app-db/select-batched #(t2/select :model/Segment :table_id [:in %] :archived false {:order-by [[:name :asc]]})
+                         table-ids))
 
 (mu/defn unarchived-measures-for-tables
-  "The unarchived Measures of the Tables with `table-ids`, ordered by name."
+  "The unarchived Measures of the Tables with `table-ids`, ordered by name within each Table."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Measure :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
+  (app-db/select-batched #(t2/select :model/Measure :table_id [:in %] :archived false {:order-by [[:name :asc]]})
+                         table-ids))
 
 (mu/defn unarchived-metric-cards-for-tables
-  "The unarchived metric Cards of the Tables with `table-ids`, ordered by name."
+  "The unarchived metric Cards of the Tables with `table-ids`, ordered by name within each Table, with their stored
+  columns only: no `:query_description`, which the Card computes per row from the metric's query."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Card :table_id [:in table-ids] :archived false :type :metric {:order-by [[:name :asc]]}))
+  (app-db/select-batched #(t2/select [:model/Card :*] :table_id [:in %] :archived false :type :metric
+                                     {:order-by [[:name :asc]]})
+                         table-ids))
 
-(mu/defn transforms-by-id
-  "A map of ID to Transform for `transform-ids`."
-  [transform-ids :- [:sequential ::lib.schema.id/transform]]
-  (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))
+(mu/defn transforms-by-target-table-id
+  "A map of Table ID to the Transform whose target is that Table, for `table-ids`."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (app-db/select-batched-map #(t2/select-fn->fn :target_table_id identity :model/Transform
+                                                :target_table_id [:in %]
+                                                {:order-by [[:id :asc]]})
+                             table-ids))
 
 (mu/defn table-names-reducible
   "A reducible of the id, name, and display name of every ::warehouse-schema.schema/table, plus the user's own
@@ -847,12 +922,13 @@
 (mu/defn collections-for-content-checks
   "The ID, namespace, type and `archived` flag of each of the Collections with `collection-ids`, by id."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (u/index-by :id (t2/select [:model/Collection :id :namespace :type :archived] :id [:in (vec collection-ids)])))
+  (u/index-by :id (app-db/select-batched #(t2/select [:model/Collection :id :namespace :type :archived] :id [:in %])
+                                         collection-ids)))
 
 (mu/defn database-engines :- [:map-of ::lib.schema.id/database :keyword]
   "The engine of each of the Databases with `database-ids`, by id."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-pk->fn :engine :model/Database :id [:in database-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn :engine :model/Database :id [:in %]) database-ids))
 
 (mu/defn database-name
   "The name of the ::warehouses.schema/database with `database-id`."
@@ -864,14 +940,16 @@
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in %])
+                             user-ids))
 
 (mu/defn synced-table-user-settings-items :- [:sequential ::warehouse-schema.schema/table-user-settings]
   "The TableUserSettings with `ids`, with their Table, and their Collection and its ancestors, as remote sync
   lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection)]
-    (-> (t2/select [:model/TableUserSettings :id :table_id :display_name :collection_id] :id [:in ids])
+    (-> (app-db/select-batched #(t2/select [:model/TableUserSettings :id :table_id :display_name :collection_id] :id [:in %])
+                               ids)
         (t2/hydrate :table [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
 
@@ -880,20 +958,20 @@
   sync lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection)]
-    (-> (t2/select [:model/FieldUserSettings :id :field_id :display_name] :id [:in ids])
+    (-> (app-db/select-batched #(t2/select [:model/FieldUserSettings :id :field_id :display_name] :id [:in %]) ids)
         (t2/hydrate [:field [:table [:collection :effective_ancestors]]])
         (->> (mapv (fn [settings]
-                     (update-in settings [:field :table] #(some-> % (collection.root/hydrate-root-collection root)))))))))
+                     (update-in settings [:field :table] #(some-> % (update :collection (fn [collection] (or collection root)))))))))))
 
 (mu/defn synced-dimension-items :- [:sequential ::warehouse-schema.schema/dimension]
   "The Dimensions with `ids`, with their Field, its Table, and that Table's Collection and ancestors, as remote sync
   lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection)]
-    (-> (t2/select [:model/Dimension :id :field_id :name] :id [:in ids])
+    (-> (app-db/select-batched #(t2/select [:model/Dimension :id :field_id :name] :id [:in %]) ids)
         (t2/hydrate [:field [:table [:collection :effective_ancestors]]])
         (->> (mapv (fn [dimension]
-                     (update-in dimension [:field :table] #(some-> % (collection.root/hydrate-root-collection root)))))))))
+                     (update-in dimension [:field :table] #(some-> % (update :collection (fn [collection] (or collection root)))))))))))
 
 (mu/defn dependency-table-items :- :map
   "The query of the Tables the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those the
@@ -922,22 +1000,23 @@
               [:t.id :table_id]
               [:t.display_name :name]
               :t.description
-              :t.collection_id
+              :s.collection_id
               [:t.db_id :database_id]
               [[:!= :t.archived_at nil] :archived]
               [(h2x/literal "table") :model]]
      :from   [[(t2/table-name :model/Table) :t]]
+     :join   [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
      :where  [:and
-              [:= :t.is_published true]
+              [:= :s.is_published true]
               (collections.listing/poison-when-pinned-clause pinned-state)
-              (collections.listing/visible-items-clause :t.collection_id archived? {:root-namespace nil})
+              (collections.listing/visible-items-clause :s.collection_id archived? {:root-namespace nil})
               (perms/visible-tables-filter-clause
                :t.id
                (api/current-user-info)
                {:perms/view-data      :unrestricted
                 :perms/create-queries :query-builder}
                {:active-only? false, :include-published-via-collection? true})
-              [:= :t.collection_id (:id collection)]
+              [:= :s.collection_id (:id collection)]
               (if archived?
                 [:!= :t.archived_at nil]
                 [:= :t.archived_at nil])]}))
@@ -946,33 +1025,29 @@
   "The non-hidden Tables with `table-ids` with their Database name and sync status."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/hydrate
-   (t2/select :model/Table
-              {:select [:t.id :t.name :t.description
-                        :t.display_name :t.active :t.visibility_type :t.schema
-                        [:db.name :database-name]
-                        [:db.id :db_id]
-                        [:db.initial_sync_status :initial-sync-status]]
-               :from [[(t2/table-name :model/Table) :t]]
-               :where [:and
-                       [:or
-                        [:= :visibility_type nil]
-                        [:!= :visibility_type "hidden"]]
-                       [:in :t.id table-ids]]
-               :left-join [[:metabase_database :db]
-                           [:= :db.id :t.db_id]]}) :can_read :can_write))
-
-(mu/defn published-table-ids-in-collections
-  "The ids of the published Tables in the Collections with `collection-ids`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pks-vec :model/Table :collection_id [:in collection-ids] :is_published true))
+   (app-db/select-batched
+    #(t2/select :model/Table
+                {:select [:t.id :t.name :t.description
+                          :t.display_name :t.active :t.visibility_type :t.schema
+                          [:db.name :database-name]
+                          [:db.id :db_id]
+                          [:db.initial_sync_status :initial-sync-status]]
+                 :from [[(t2/table-name :model/Table) :t]]
+                 :where [:and
+                         [:or
+                          [:= :visibility_type nil]
+                          [:!= :visibility_type "hidden"]]
+                         [:in :t.id %]]
+                 :left-join [[:metabase_database :db]
+                             [:= :db.id :t.db_id]]})
+    table-ids)
+   :can_read :can_write))
 
 (mu/defn table-user-settings-ids-of-published-tables-in-collections
   "The ids of the TableUserSettings of the published Tables in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pks-vec :model/TableUserSettings
-                     :table_id [:in ^:allow-subquery {:select [:id]
-                                                      :from   [(t2/table-name :model/Table)]
-                                                      :where  [:and [:in :collection_id collection-ids] [:= :is_published true]]}]))
+  (not-empty (app-db/select-batched #(t2/select-pks-vec :model/TableUserSettings :collection_id [:in %] :is_published true)
+                                    collection-ids)))
 
 (defn- table-ids-of-databases-query
   [database-ids]

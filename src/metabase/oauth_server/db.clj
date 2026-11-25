@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.oauth-server.schema :as oauth-server.schema]
    [metabase.util.malli :as mu]
@@ -73,17 +74,17 @@
 (mu/defn revoke-access-tokens-for-users!
   "Revoke the unrevoked OAuthAccessTokens of the Users with `user-ids`, returning the number revoked."
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
-  (t2/update! :model/OAuthAccessToken {:user_id [:in user-ids], :revoked_at nil} {:revoked_at :%now}))
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/OAuthAccessToken {:user_id [:in %], :revoked_at nil} {:revoked_at :%now}) user-ids))
 
 (mu/defn revoke-refresh-tokens-for-users!
   "Revoke the unrevoked OAuthRefreshTokens of the Users with `user-ids`, returning the number revoked."
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
-  (t2/update! :model/OAuthRefreshToken {:user_id [:in user-ids], :revoked_at nil} {:revoked_at :%now}))
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/OAuthRefreshToken {:user_id [:in %], :revoked_at nil} {:revoked_at :%now}) user-ids))
 
 (mu/defn authorization-code-ids-of-users :- [:sequential ms/PositiveInt]
   "The ids of every OAuthAuthorizationCode of the Users with `user-ids`."
   [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
-  (vec (t2/select-pks-vec :model/OAuthAuthorizationCode :user_id [:in user-ids])))
+  (mdb/select-batched #(t2/select-pks-vec :model/OAuthAuthorizationCode :user_id [:in %]) user-ids))
 
 (mu/defn oauth-client-pk
   "The primary key of the OAuthClient with `client-id`, or nil."

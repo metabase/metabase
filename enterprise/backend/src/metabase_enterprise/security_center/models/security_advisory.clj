@@ -102,10 +102,10 @@
       (do
         (when-let [changed-ids (not-empty (into [] (comp (remove #(= user-id (:acknowledged_by %))) (map :id)) advisories))]
           (security-center.db/update-advisories! changed-ids {:acknowledged_by user-id}))
+        (events/publish-event! :event/security-advisory-acknowledge
+                               {:objects advisories
+                                :user-id user-id})
         (doseq [advisory advisories]
-          (events/publish-event! :event/security-advisory-acknowledge
-                                 {:object  advisory
-                                  :user-id user-id})
           (analytics/track-event! :snowplow/simple_event
                                   {:event        "security_advisory_acknowledged"
                                    :event_detail (name (:severity advisory))}))

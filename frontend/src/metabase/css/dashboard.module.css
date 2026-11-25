@@ -138,11 +138,6 @@
   transition: all 0.15s linear;
 }
 
-/* Used in frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.styled.tsx */
-/* stylelint-disable-next-line block-no-empty */
-.DashDragging {
-}
-
 /* what for to print the dashboards */
 @media print {
   header,

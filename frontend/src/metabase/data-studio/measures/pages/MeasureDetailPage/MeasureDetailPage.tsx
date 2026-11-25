@@ -34,7 +34,7 @@ export function MeasureDetailPage({
   onRemove,
 }: MeasureDetailPageProps) {
   const canWriteMeasures = useSelector((state) =>
-    getUserCanWriteMeasures(state, table.is_published),
+    getUserCanWriteMeasures(state, table.collection != null),
   );
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 

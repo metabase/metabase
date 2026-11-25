@@ -57,7 +57,6 @@ const setup = (
       id: 5,
       display_name: "Orders",
       description: "Confirmed orders",
-      is_published: true,
       collection: createMockCollection({
         id: 10,
         name: "Data",

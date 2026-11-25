@@ -46,10 +46,16 @@
              :deleted_at nil
              {:group-by [:child_target_id]}))
 
-(mu/defn active-user-ids
-  "The ids among `user-ids` of active Users, or nil."
+(mu/defn active-users
+  "The `:user-id`, `:is-superuser?` and `:is-data-analyst?` of the active Users among `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pks-set :model/User :id [:in user-ids] :is_active true))
+  (app-db/select-batched #(t2/select [:model/User
+                                      [:id :user-id]
+                                      [:is_superuser :is-superuser?]
+                                      [:is_data_analyst :is-data-analyst?]]
+                                     :id [:in %]
+                                     :is_active true)
+                         user-ids))
 
 (mu/defn document
   "The Document with `id`, or nil."
@@ -71,9 +77,7 @@
   "The `model` rows with `ids` Comments target."
   [model :- [:enum :model/Document :model/Exploration]
    ids   :- [:set ms/PositiveInt]]
-  (if (seq ids)
-    (t2/select model :id [:in ids])
-    []))
+  (app-db/select-batched #(t2/select model :id [:in %]) ids))
 
 (mu/defn comment-by-id
   "The Comment with `id`, or nil."
@@ -86,17 +90,20 @@
   [creator-id        :- ::lib.schema.id/user
    parent-comment-id :- [:maybe ms/PositiveInt]
    mention-ids       :- [:maybe [:sequential ms/PositiveInt]]]
-  (t2/select-fn-set :email [:model/User :email]
-                    {:where [:or
-                             (if parent-comment-id
-                               [:in :id ^:allow-subquery {:from   [:comment]
-                                                          :select [:creator_id]
-                                                          :where  [:or
-                                                                   [:= :id parent-comment-id]
-                                                                   [:= :parent_comment_id parent-comment-id]]}]
-                               [:= :id creator-id])
-                             (when (seq mention-ids)
-                               [:in :id mention-ids])]}))
+  (let [recipients (if parent-comment-id
+                     [:in :id ^:allow-subquery {:from   [:comment]
+                                                :select [:creator_id]
+                                                :where  [:or
+                                                         [:= :id parent-comment-id]
+                                                         [:= :parent_comment_id parent-comment-id]]}]
+                     [:= :id creator-id])]
+    (into #{}
+          (mapcat #(t2/select-fn-set :email [:model/User :email]
+                                     {:where [:or
+                                              recipients
+                                              (when (seq %)
+                                                [:in :id %])]}))
+          (or (seq (app-db/select-partitions mention-ids)) [nil]))))
 
 (defn- restrict-to-visible-users
   "Narrow `clauses` (from `user/filter-clauses`) to the users the current user should see: superusers see
@@ -138,7 +145,7 @@
 (mu/defn users-by-id
   "A map of User id to the id, email, and name of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in %]) user-ids))
 
 (mu/defn reaction-id
   "The id of the CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`, or nil."
@@ -155,11 +162,13 @@
 (mu/defn delete-reactions!
   "Delete the CommentReactions with `ids`, returning the number deleted."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/CommentReaction :id [:in ids]))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/CommentReaction :id [:in %]) ids))
 
 (mu/defn reactions-for-comments
   "The CommentReactions on the Comments with `comment-ids`, ordered by comment, time, and emoji."
   [comment-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/CommentReaction
-             {:where    [:in :comment_id comment-ids]
-              :order-by [[:comment_id :asc] [:created_at :asc] [:emoji :asc]]}))
+  (vec (sort-by :comment_id
+                (app-db/select-batched #(t2/select :model/CommentReaction
+                                                   {:where    [:in :comment_id %]
+                                                    :order-by [[:comment_id :asc] [:created_at :asc] [:emoji :asc]]})
+                                       comment-ids))))

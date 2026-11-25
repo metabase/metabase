@@ -23,9 +23,9 @@ describe("parseBunFolderName", () => {
   });
 
   it("parses deeply scoped package names", () => {
-    expect(parseBunFolderName("@emotion+react@11.11.0")).toEqual({
-      name: "@emotion/react",
-      version: "11.11.0",
+    expect(parseBunFolderName("@mantine+core@8.3.1")).toEqual({
+      name: "@mantine/core",
+      version: "8.3.1",
     });
   });
 

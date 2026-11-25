@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
@@ -46,16 +47,12 @@
 (mu/defn metric-cards-by-ids
   "The metric Cards with `ids`."
   [ids :- [:sequential ::lib.schema.id/card]]
-  (if (seq ids)
-    (t2/select :model/Card :id [:in ids] :type "metric")
-    []))
+  (mdb/select-batched #(t2/select :model/Card :id [:in %] :type "metric") ids))
 
 (mu/defn measures-by-ids
   "The Measures with `ids`."
   [ids :- [:sequential ::lib.schema.id/measure]]
-  (if (seq ids)
-    (t2/select :model/Measure :id [:in ids])
-    []))
+  (mdb/select-batched #(t2/select :model/Measure :id [:in %]) ids))
 
 (mu/defn measure
   "The Measure with `id`, or nil."
@@ -75,7 +72,7 @@
   "The id and `columns` of the Fields with `field-ids`."
   [columns   :- [:sequential :keyword]
    field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select (into [:model/Field :id] columns) :id [:in field-ids]))
+  (mdb/select-batched #(t2/select (into [:model/Field :id] columns) :id [:in %]) field-ids))
 
 (mu/defn field
   "The Field with `field-id`, or nil."

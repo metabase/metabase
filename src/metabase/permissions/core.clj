@@ -45,6 +45,7 @@
  [metabase.permissions.collection-permissions
   collection-permission-at-least?
   collection-permissions-for-user
+  collection-permissions-for-users
   some-collection-permission-for-user
   visible-collections-filter-clause]
  [metabase.permissions.db
@@ -57,8 +58,10 @@
   data-app-collection?
   database-permissions-for-user
   download-perms-level
+  download-perms-levels
   every-table-in-database-permissions-for-user
   every-table-in-schema-permission-for-user
+  group-table-permissions
   index-database-permissions
   is-superuser?
   is-data-analyst?
@@ -68,8 +71,10 @@
   with-sandboxes-for-user
   some-table-in-database-permissions-for-user
   some-table-in-schema-permission-for-user
+  some-table-in-schemas-permissions-for-user
   some-table-permission-for-user
   set-database-permission!
+  set-database-permissions!
   set-table-permission!
   set-table-permissions!
   table-level-value
@@ -97,10 +102,13 @@
   current-user-has-application-permissions?
   grant-application-permissions!
   grant-collection-read-permissions!
+  grant-collection-read-permissions-to-groups!
   grant-collection-readwrite-permissions!
   grant-permissions!
   revoke-application-permissions!
-  revoke-collection-permissions!]
+  revoke-collection-permissions!
+  update-application-accesses!
+  update-collection-accesses!]
  [metabase.permissions.models.permissions-group
   group-display-name
   non-magic-groups

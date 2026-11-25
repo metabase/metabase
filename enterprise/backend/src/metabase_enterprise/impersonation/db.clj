@@ -29,13 +29,13 @@
 (mu/defn impersonations-for-groups
   "The ConnectionImpersonations of the groups with `group-ids`."
   [group-ids :- [:set ms/PositiveInt]]
-  (t2/select :model/ConnectionImpersonation :group_id [:in group-ids]))
+  (app-db/select-batched #(t2/select :model/ConnectionImpersonation :group_id [:in %]) group-ids))
 
 (mu/defn impersonations-for-groups-and-database
   "The ConnectionImpersonations of the groups with `group-ids` on the Database with `database-id`."
   [group-ids   :- [:set ms/PositiveInt]
    database-id :- ::lib.schema.id/database]
-  (t2/select :model/ConnectionImpersonation :group_id [:in group-ids] :db_id database-id))
+  (app-db/select-batched #(t2/select :model/ConnectionImpersonation :group_id [:in %] :db_id database-id) group-ids))
 
 (mu/defn impersonations-matching
   "The ConnectionImpersonations narrowed by the optional `database-id`, `group-id`, and `group-ids`, excluding the
@@ -44,12 +44,16 @@
    group-id              :- [:maybe ms/PositiveInt]
    group-ids             :- [:maybe [:sequential ms/PositiveInt]]
    excluded-database-id  :- [:maybe ::lib.schema.id/database]]
-  (t2/select :model/ConnectionImpersonation
-             {:where [:and
-                      (when database-id [:= :db_id database-id])
-                      (when group-id [:= :group_id group-id])
-                      (when group-ids [:in :group_id group-ids])
-                      (when excluded-database-id [:not [:= :db_id excluded-database-id]])]}))
+  (letfn [(select-impersonations [group-ids]
+            (t2/select :model/ConnectionImpersonation
+                       {:where [:and
+                                (when database-id [:= :db_id database-id])
+                                (when group-id [:= :group_id group-id])
+                                (when group-ids [:in :group_id group-ids])
+                                (when excluded-database-id [:not [:= :db_id excluded-database-id]])]}))]
+    (if (seq group-ids)
+      (app-db/select-batched select-impersonations group-ids)
+      (select-impersonations group-ids))))
 
 (mu/defn impersonation-exists-for-database?
   "Whether the Database with `database-id` has a ConnectionImpersonation."
@@ -79,18 +83,20 @@
   "The set of database-level view-data permission values `group-ids` hold on the Database with `database-id`."
   [database-id :- ::lib.schema.id/database
    group-ids   :- [:set ms/PositiveInt]]
-  (t2/select-fn-set :perm_value :model/DataPermissions
-                    {:where [:and
-                             [:= :db_id database-id]
-                             [:= :table_id nil]
-                             [:= :perm_type "perms/view-data"]
-                             [:in :group_id group-ids]]}))
+  (app-db/select-batched-set #(t2/select-fn-set :perm_value :model/DataPermissions
+                                                {:where [:and
+                                                         [:= :db_id database-id]
+                                                         [:= :table_id nil]
+                                                         [:= :perm_type "perms/view-data"]
+                                                         [:in :group_id %]]})
+                             group-ids))
 
 (mu/defn group-ids-for-user
   "The IDs of the PermissionsGroups the User with `user-id` belongs to, or nil when `user-id` is nil (e.g. no
   current user, such as an internal or unauthenticated context)."
   [user-id :- [:maybe ::lib.schema.id/user]]
-  (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
+  (when user-id
+    (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)))
 
 (mu/defn query-cache :- [:maybe ::impersonation.schema/impersonation-query-cache]
   "The ImpersonationQueryCache with the lookup key `lookup`, or nil."

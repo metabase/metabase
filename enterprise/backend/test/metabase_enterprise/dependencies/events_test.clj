@@ -8,7 +8,6 @@
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
-   [metabase.app-db.query :as app-db.query]
    [metabase.batch-processing.core :as grouper]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.events.test-util :as events.tu]
@@ -435,7 +434,7 @@
     (mt/with-premium-features #{:dependencies}
       (let [flushed   (atom 0)
             triggered (atom 0)]
-        (with-redefs [app-db.query/delete-partition-size 2]
+        (mt/with-partition-size 2
           (with-redefs-fn {#'deps.events/flush-marks!  (fn [_marks] (swap! flushed inc))
                            #'deps.events/trigger-jobs! (fn [] (swap! triggered inc))}
             #(#'deps.events/mark-events! (mapv (fn [i] {:model :model/Card :operation :create :object {:id i}}) (range 1 6)))))

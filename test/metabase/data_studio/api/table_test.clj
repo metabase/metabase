@@ -5,10 +5,12 @@
    [metabase.collections.models.collection :as collection]
    [metabase.data-studio.db :as data-studio.db]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
@@ -100,7 +102,8 @@
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table {writable-id :id} {:db_id db-id}
                  :model/Table {locked-id :id} {:db_id db-id}]
-    (mt/with-dynamic-fn-redefs [collection/remote-sync-writable-table? (fn [table] (not= locked-id (:id table)))]
+    (mt/with-dynamic-fn-redefs [collection/remote-sync-writable-table-ids (fn [tables]
+                                                                            (into #{} (comp (map :id) (remove #{locked-id})) tables))]
       (doseq [[endpoint body] {"edit"           {:data_layer "final"}
                                "sync-schema"    {}
                                "rescan-values"  {}
@@ -206,6 +209,39 @@
                 (is (= [t1 t2 t4 t5] (map :id @tables)))))))
         (finally
           (.shutdownNow pool))))))
+
+(mt/when-ee-evailable
+ (deftest bulk-table-actions-audit-statement-count-test
+   (mt/with-premium-features #{:audit-app :advanced-permissions}
+     (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}]
+       (mt/with-db-perms-for-group! (perms-group/all-users) db-id {:perms/manage-table-metadata :yes}
+         (mt/with-data-analyst-role! (mt/user->id :lucky)
+           (mt/with-model-cleanup [:model/Table :model/AuditLog]
+             (mt/with-dynamic-fn-redefs [quick-task/submit-task! (constantly nil)]
+               (doseq [[endpoint topic] [["rescan-values" "table-manual-scan"] ["sync-schema" "table-manual-sync"]]]
+                 (let [statements (fn [n]
+                                    (let [ids (t2/insert-returning-pks! :model/Table
+                                                                        (for [i (range n)]
+                                                                          {:name   (str endpoint "_" n "_" i)
+                                                                           :db_id  db-id
+                                                                           :active true}))]
+                                      (u/prog1 (events.tu/real-statement-count!
+                                                #(mt/user-http-request :lucky :post 204 (str "data-studio/table/" endpoint)
+                                                                       {:table_ids ids}))
+                                        (is (= (sort ids)
+                                               (sort (t2/select-fn-vec :model_id :model/AuditLog
+                                                                       :topic topic :model_id [:in ids])))))))]
+                   (statements 2)
+                   (testing (str "POST /api/data-studio/table/" endpoint " costs as many statements for 10 tables as for 40")
+                     (is (= (statements 10) (statements 40))))
+                   (testing "each audit row names its Table and the user"
+                     (let [table-id (t2/insert-returning-pk! :model/Table {:name (str endpoint "_one") :db_id db-id :active true})]
+                       (mt/user-http-request :lucky :post 204 (str "data-studio/table/" endpoint) {:table_ids [table-id]})
+                       (is (=? {:user_id  (mt/user->id :lucky)
+                                :model    "Table"
+                                :model_id table-id
+                                :details  {:id table-id :name (str endpoint "_one") :db_id db-id}}
+                               (mt/latest-audit-log-entry topic table-id)))))))))))))))
 
 (deftest ^:parallel non-admins-cant-trigger-bulk-discard-values-test
   (testing "Non-admins should not be allowed to trigger discard values"
@@ -407,11 +443,12 @@
   (testing "POST /api/data-studio/table/selection"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {t1 :id} {:db_id db-id :name "orders"
-                                             :display_name "Orders" :schema "PUBLIC" :is_published false}
+                                             :display_name "Orders" :schema "PUBLIC"}
                    :model/Table    {t2 :id} {:db_id db-id :name "products"
-                                             :display_name "Products" :schema "PUBLIC" :is_published true}
+                                             :display_name "Products" :schema "PUBLIC"}
+                   :model/TableUserSettings _ {:table_id t2 :is_published true}
                    :model/Table    _        {:db_id db-id :name "people"
-                                             :display_name "People" :schema "PUBLIC" :is_published false}]
+                                             :display_name "People" :schema "PUBLIC"}]
       (testing "returns a published table in selection with all required fields"
         (let [response (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
                                              {:table_ids [t2]})]
@@ -449,14 +486,14 @@
     (mt/with-temp [:model/Database  {db-id :id}    {}
                    ;; Orders table with FK to Products
                    :model/Table     {orders-id :id}   {:db_id db-id :name "orders"
-                                                       :display_name "Orders" :schema "PUBLIC" :is_published false}
+                                                       :display_name "Orders" :schema "PUBLIC"}
                    :model/Field     _                 {:table_id orders-id :name "id" :semantic_type :type/PK
                                                        :base_type :type/Integer}
                    :model/Field     {product-fk :id}  {:table_id orders-id :name "product_id" :semantic_type :type/FK
                                                        :base_type :type/Integer}
                    ;; Products table
                    :model/Table     {products-id :id} {:db_id db-id :name "products"
-                                                       :display_name "Products" :schema "PUBLIC" :is_published false}
+                                                       :display_name "Products" :schema "PUBLIC"}
                    :model/Field     _                 {:table_id products-id :name "id" :semantic_type :type/PK
                                                        :base_type :type/Integer}
                    :model/Field     {prod-name-f :id} {:table_id products-id :name "name" :semantic_type :type/Name
@@ -480,7 +517,7 @@
                                                   :schema       "PUBLIC"}]}
                   response))))
       (testing "if products is already published, it appears in published_downstream when selecting it"
-        (t2/update! :model/Table :id products-id {:is_published true})
+        (t2/insert! :model/TableUserSettings {:table_id products-id :is_published true})
         (let [response (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
                                              {:table_ids [products-id]})]
           (is (=? {:selected_table               {:id           products-id
@@ -495,8 +532,8 @@
           ;; but orders is already unpublished, so published_downstream_tables should be empty
           (is (= [] (:published_downstream_tables response)))))
       (testing "when orders is published and we select products, orders appears in published_downstream"
-        (t2/update! :model/Table :id orders-id {:is_published true})
-        (t2/update! :model/Table :id products-id {:is_published true})
+        (t2/insert! :model/TableUserSettings {:table_id orders-id :is_published true})
+        (t2/update! :model/TableUserSettings :table_id products-id {:is_published true})
         (let [response (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
                                              {:table_ids [products-id]})]
           (is (=? {:selected_table               {:id           products-id
@@ -519,16 +556,14 @@
     (mt/with-temp [:model/Database  {db-id :id}          {}
                    ;; Purchasers table
                    :model/Table     {purchasers-id :id}   {:db_id db-id :name "purchasers"
-                                                           :display_name "Purchasers" :schema "PUBLIC"
-                                                           :is_published false}
+                                                           :display_name "Purchasers" :schema "PUBLIC"}
                    :model/Field     _                    {:table_id purchasers-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {cust-name-f :id}    {:table_id purchasers-id :name "name"
                                                           :semantic_type :type/Name :base_type :type/Text}
                    ;; Orders table
                    :model/Table     {orders-id :id}      {:db_id db-id :name "orders"
-                                                          :display_name "Orders" :schema "PUBLIC"
-                                                          :is_published false}
+                                                          :display_name "Orders" :schema "PUBLIC"}
                    :model/Field     _                    {:table_id orders-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {order-name-f :id}   {:table_id orders-id :name "name"
@@ -537,8 +572,7 @@
                                                            :semantic_type :type/FK :base_type :type/Integer}
                    ;; Order items table
                    :model/Table     {items-id :id}       {:db_id db-id :name "order_items"
-                                                          :display_name "Order Items" :schema "PUBLIC"
-                                                          :is_published false}
+                                                          :display_name "Order Items" :schema "PUBLIC"}
                    :model/Field     _                    {:table_id items-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {order-fk :id}       {:table_id items-id :name "order_id"
@@ -574,16 +608,16 @@
     (mt/with-temp [:model/Database  {db-id :id}          {}
                    ;; Purchasers table (published)
                    :model/Table     {purchasers-id :id}   {:db_id db-id :name "purchasers"
-                                                           :display_name "Purchasers" :schema "PUBLIC"
-                                                           :is_published true}
+                                                           :display_name "Purchasers" :schema "PUBLIC"}
+                   :model/TableUserSettings _ {:table_id purchasers-id :is_published true}
                    :model/Field     _                    {:table_id purchasers-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {cust-name-f :id}    {:table_id purchasers-id :name "name"
                                                           :semantic_type :type/Name :base_type :type/Text}
                    ;; Orders table (published)
                    :model/Table     {orders-id :id}      {:db_id db-id :name "orders"
-                                                          :display_name "Orders" :schema "PUBLIC"
-                                                          :is_published true}
+                                                          :display_name "Orders" :schema "PUBLIC"}
+                   :model/TableUserSettings _ {:table_id orders-id :is_published true}
                    :model/Field     _                    {:table_id orders-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {order-name-f :id}   {:table_id orders-id :name "name"
@@ -592,8 +626,8 @@
                                                            :semantic_type :type/FK :base_type :type/Integer}
                    ;; Order items table (published)
                    :model/Table     {items-id :id}       {:db_id db-id :name "order_items"
-                                                          :display_name "Order Items" :schema "PUBLIC"
-                                                          :is_published true}
+                                                          :display_name "Order Items" :schema "PUBLIC"}
+                   :model/TableUserSettings _ {:table_id items-id :is_published true}
                    :model/Field     _                    {:table_id items-id :name "id"
                                                           :semantic_type :type/PK :base_type :type/Integer}
                    :model/Field     {order-fk :id}       {:table_id items-id :name "order_id"
@@ -621,3 +655,106 @@
           (doseq [table (:published_downstream_tables response)]
             (are [k] (contains? table k)
               :id :db_id :name :display_name :schema)))))))
+
+(deftest selection-by-database-ids-test
+  (testing "POST /api/data-studio/table/selection with database_ids"
+    (mt/with-temp [:model/Database  {db-id :id}         {}
+                   :model/Database  {other-db-id :id}   {}
+                   :model/Table     {orders-id :id}     {:db_id db-id :name "orders" :schema "PUBLIC"}
+                   :model/TableUserSettings _           {:table_id orders-id :is_published true}
+                   :model/Field     {customer-fk :id}   {:table_id orders-id :name "customer_id"
+                                                         :semantic_type :type/FK :base_type :type/Integer}
+                   :model/Table     {customers-id :id}  {:db_id db-id :name "customers" :schema "PUBLIC"}
+                   :model/Field     {customer-name :id} {:table_id customers-id :name "name"
+                                                         :semantic_type :type/Name :base_type :type/Text}
+                   :model/Table     {products-id :id}   {:db_id other-db-id :name "products" :schema "PUBLIC"}
+                   :model/Dimension _                   {:field_id customer-fk
+                                                         :human_readable_field_id customer-name
+                                                         :type :external}]
+      (testing "remapped Tables inside selected database are neither upstream nor downstream"
+        (is (= {:selected_table              nil
+                :published_downstream_tables []
+                :unpublished_upstream_tables []}
+               (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
+                                     {:database_ids [db-id]}))))
+      (testing "only Table of selected database is selected"
+        (is (=? {:selected_table              {:id products-id :db_id other-db-id :is_published false}
+                 :published_downstream_tables []
+                 :unpublished_upstream_tables []}
+                (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
+                                      {:database_ids [other-db-id]}))))
+      (testing "upstream and downstream Tables are returned once selection is narrowed to one Table"
+        (is (=? {:unpublished_upstream_tables [{:id customers-id}]}
+                (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
+                                      {:table_ids [orders-id]})))
+        (is (=? {:published_downstream_tables [{:id orders-id}]}
+                (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
+                                      {:table_ids [customers-id]})))))))
+
+(deftest selection-by-schema-ids-test
+  (testing "POST /api/data-studio/table/selection with schema_ids"
+    (mt/with-temp [:model/Database  {db-id :id}       {}
+                   :model/Table     {orders-id :id}   {:db_id db-id :name "orders" :schema "sales"}
+                   :model/TableUserSettings _         {:table_id orders-id :is_published true}
+                   :model/Field     {product-fk :id}  {:table_id orders-id :name "product_id" :semantic_type :type/FK
+                                                       :base_type :type/Integer}
+                   :model/Field     {customer-fk :id} {:table_id orders-id :name "customer_id" :semantic_type :type/FK
+                                                       :base_type :type/Integer}
+                   :model/Table     {customers-id :id} {:db_id db-id :name "customers" :schema "sales"}
+                   :model/Field     {customer-name :id} {:table_id customers-id :name "name"
+                                                         :semantic_type :type/Name :base_type :type/Text}
+                   :model/Table     {products-id :id} {:db_id db-id :name "products" :schema "catalog"}
+                   :model/Field     {product-name :id} {:table_id products-id :name "name"
+                                                        :semantic_type :type/Name :base_type :type/Text}
+                   :model/Dimension _                 {:field_id product-fk
+                                                       :human_readable_field_id product-name
+                                                       :type :external}
+                   :model/Dimension _                 {:field_id customer-fk
+                                                       :human_readable_field_id customer-name
+                                                       :type :external}]
+      (testing "upstream Table outside selected schema is returned, one inside is not"
+        (is (=? {:selected_table              nil
+                 :published_downstream_tables []
+                 :unpublished_upstream_tables [{:id products-id :schema "catalog" :name "products" :is_published false}]}
+                (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
+                                      {:schema_ids [(str db-id ":sales")]}))))
+      (testing "published downstream Table outside selected schema is returned"
+        (is (=? {:selected_table              {:id products-id :is_published false}
+                 :published_downstream_tables [{:id orders-id :schema "sales" :name "orders" :is_published true}]
+                 :unpublished_upstream_tables []}
+                (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
+                                      {:schema_ids [(str db-id ":catalog")]})))))))
+
+(deftest selection-is-published-test
+  (testing "POST /api/data-studio/table/selection returns boolean is_published"
+    (mt/with-temp [:model/Database  {db-id :id}        {}
+                   :model/Table     {no-settings :id}  {:db_id db-id :name "orders" :schema "PUBLIC"}
+                   :model/Field     {product-fk :id}   {:table_id no-settings :name "product_id"
+                                                        :semantic_type :type/FK :base_type :type/Integer}
+                   :model/Table     {unpublished :id}  {:db_id db-id :name "products" :schema "PUBLIC"}
+                   :model/TableUserSettings _          {:table_id unpublished :is_published false}
+                   :model/Field     {product-name :id} {:table_id unpublished :name "name"
+                                                        :semantic_type :type/Name :base_type :type/Text}
+                   :model/Dimension _                  {:field_id product-fk
+                                                        :human_readable_field_id product-name
+                                                        :type :external}
+                   :model/Table     {unset :id}        {:db_id db-id :name "people" :schema "PUBLIC"}
+                   :model/TableUserSettings _          {:table_id unset :owner_email "user@example.com"}
+                   :model/Table     {published :id}    {:db_id db-id :name "reviews" :schema "PUBLIC"}
+                   :model/TableUserSettings _          {:table_id published :is_published true}]
+      (let [selection (fn [table-id]
+                        (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
+                                              {:table_ids [table-id]}))]
+        (testing "false without settings"
+          (is (false? (get-in (selection no-settings) [:selected_table :is_published]))))
+        (testing "false with unpublished settings"
+          (is (false? (get-in (selection unpublished) [:selected_table :is_published]))))
+        (testing "false with settings that leave is_published unset"
+          (is (nil? (t2/select-one-fn :is_published :model/TableUserSettings :table_id unset)))
+          (is (false? (get-in (selection unset) [:selected_table :is_published]))))
+        (testing "true with published settings"
+          (is (true? (get-in (selection published) [:selected_table :is_published]))))
+        (testing "upstream Table with unpublished settings is listed as unpublished"
+          (is (= [{:id unpublished :is_published false}]
+                 (map #(select-keys % [:id :is_published])
+                      (:unpublished_upstream_tables (selection no-settings))))))))))

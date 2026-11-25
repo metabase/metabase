@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as app-db.query]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as provider]
@@ -979,7 +978,7 @@
           ids   (mapv :id users)]
       (let [read-sizes (atom [])
             read-users (mt/original-fn #'users.db/users-with-all-columns)]
-        (with-redefs [app-db.query/update-partition-size 2]
+        (mt/with-partition-size 2
           (mt/with-dynamic-fn-redefs [users.db/users-with-all-columns (fn [user-ids]
                                                                         (swap! read-sizes conj (count user-ids))
                                                                         (read-users user-ids))]
@@ -996,7 +995,7 @@
 
 (deftest create-users-across-partitions-test
   (mt/with-model-cleanup [:model/User]
-    (with-redefs [app-db.query/create-partition-size 2]
+    (mt/with-partition-size 2
       (let [emails      (vec (for [_ (range 5)] (str (random-uuid) "@example.com")))
             created     (atom nil)
             check-sizes (atom [])

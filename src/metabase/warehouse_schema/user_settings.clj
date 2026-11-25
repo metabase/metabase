@@ -31,13 +31,23 @@
                     :else                         (some? (get settings column)))))
         user-settable-field-columns))
 
+(def settings-only-table-columns
+  "The user-settable Table columns only `metabase_table_user_settings` holds."
+  #{:is_published :collection_id})
+
 (def user-settable-table-columns
-  "The Table columns users can set, whose values `metabase_table` holds while `metabase_table_user_settings` records
-  which ones a user set."
-  #{:display_name :description :entity_type :visibility_type :caveats :points_of_interest :data_layer :data_source
-    :owner_email :owner_user_id :field_order :show_in_getting_started :data_authority :is_published :collection_id
-    :table_role :grain :grain_description :period_granularity :mutability :load_strategy :scd_type :history_definition
-    :eav_definition})
+  "The Table columns users can set, whose values `metabase_table` holds, all but [[settings-only-table-columns]],
+  while `metabase_table_user_settings` records which ones a user set."
+  (into #{:display_name :description :entity_type :visibility_type :caveats :points_of_interest :data_layer
+          :data_source :owner_email :owner_user_id :field_order :show_in_getting_started :data_authority
+          :table_role :grain :grain_description :period_granularity :mutability :load_strategy :scd_type
+          :history_definition :eav_definition}
+        settings-only-table-columns))
+
+(defn table-row-columns
+  "The part of the user-settable Table columns `settings` that the row of the Table holds too."
+  [settings]
+  (apply dissoc settings settings-only-table-columns))
 
 (def table-set-flags
   "The user-settable Table columns something besides users also writes, and the structural metadata columns, mapped to

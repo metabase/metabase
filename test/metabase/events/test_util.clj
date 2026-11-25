@@ -3,7 +3,12 @@
   (:require
    [metabase.events.core :as events]
    [metabase.events.impl :as events.impl]
-   [toucan2.core]))
+   [toucan2.connection :as t2.conn]
+   [toucan2.core]
+   [toucan2.pipeline]
+   [toucan2.tools.identity-query])
+  (:import
+   (toucan2.tools.identity_query IdentityConnection)))
 
 (defn do-without-delivery!
   "Call `thunk` with the events of its writes not delivered, so that a count of its statements leaves out the
@@ -74,3 +79,14 @@
                   (finally
                     (toucan2.core/delete! model :id [:in ids])))))]
     (- (run on) (run off))))
+
+(defn real-statement-count!
+  "Call `thunk`, with the events of its writes delivered, and return the number of statements that reached the app DB,
+  leaving out the identity queries that `t2/with-call-count` also counts."
+  [thunk]
+  (let [real (atom 0)]
+    (binding [toucan2.pipeline/*call-count-thunk* (fn []
+                                                    (when-not (instance? IdentityConnection t2.conn/*current-connectable*)
+                                                      (swap! real inc)))]
+      (thunk))
+    @real))

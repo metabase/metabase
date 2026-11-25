@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.app-db.core :as mdb]
    [metabase.indexed-entities.schema :as indexed-entities.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -27,7 +28,8 @@
 (mu/defn model-indexes-except
   "The ModelIndexes whose id is not in `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/ModelIndex :id [:not-in ids]))
+  (let [excluded (set ids)]
+    (into [] (remove #(contains? excluded (:id %))) (t2/select :model/ModelIndex))))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -66,7 +68,7 @@
   returning the number deleted."
   [model-index-id :- ms/PositiveInt
    model-pks      :- [:sequential :int]]
-  (t2/delete! :model/ModelIndexValue :model_index_id model-index-id :model_pk [:in model-pks]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/ModelIndexValue :model_index_id model-index-id :model_pk [:in %]) model-pks))
 
 (mu/defn insert-model-index-values!
   "Insert the ModelIndexValue `rows`, returning the number inserted."

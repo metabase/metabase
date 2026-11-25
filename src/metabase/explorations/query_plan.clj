@@ -90,29 +90,41 @@
   [row]
   [(:block_id row) (:card_id row) (:dimension_id row) (:query_type row)])
 
-(defn- find-or-create-page!
-  "Return the id of the `ExplorationPage` for `k` (a [[page-key]]), creating it at
-  `position` if it doesn't exist yet. An existing page keeps its id and position.
-
-  Select-then-insert with no unique index backing it (`dimension_id` is a text column, which
-  MySQL can't uniquely index): two planners in here at once would both miss and both insert. Safe
-  only because [[lock-thread-for-planning!]] keeps them out — see there."
-  [[block-id card-id dim-id query-type] position]
-  (or (explorations.db/page-id-for-key block-id card-id dim-id query-type)
-      (:id (first (exploration-page/create-pages! [{:exploration_block_id block-id
-                                                    :card_id              card-id
-                                                    :dimension_id         dim-id
-                                                    :query_type           query-type
-                                                    :position             position}])))))
+(defn- comparable-page-key
+  "A [[page-key]] `k` with its dimension and query type as strings, as an ExplorationPage stores them."
+  [[block-id card-id dimension-id query-type]]
+  [block-id card-id (some-> dimension-id str) (some-> query-type name)])
 
 (defn- reconcile-pages!
-  "Find-or-create a page per distinct [[page-key]] in `rows` (first-seen order within a
-  page's block sets the `position` of newly-created pages); returns a `key -> page-id` map."
+  "Find or create a page per distinct [[page-key]] of `rows`, reading the pages of the rows' blocks once and creating
+  the missing ones in one call, and return a `key -> page-id` map, safe without a unique index only under
+  [[lock-thread-for-planning!]]."
   [rows]
-  (into {}
-        (mapcat (fn [[_block-id ks]]
-                  (map-indexed (fn [pos k] [k (find-or-create-page! k pos)]) ks)))
-        (group-by first (distinct (map page-key rows)))))
+  (let [by-block   (group-by first (distinct (map page-key rows)))
+        positioned (for [[_block-id ks] by-block
+                         [position k]   (map-indexed vector ks)]
+                     [k position])
+        existing   (into {}
+                         (map (fn [page]
+                                [(comparable-page-key [(:exploration_block_id page) (:card_id page)
+                                                       (:dimension_id page) (:query_type page)])
+                                 (:id page)]))
+                         (explorations.db/pages-for-blocks (vec (keys by-block))))
+        missing    (vec (remove (comp existing comparable-page-key first) positioned))
+        created    (when (seq missing)
+                     (exploration-page/create-pages!
+                      (for [[[block-id card-id dim-id query-type] position] missing]
+                        {:exploration_block_id block-id
+                         :card_id              card-id
+                         :dimension_id         dim-id
+                         :query_type           query-type
+                         :position             position})))
+        new-ids    (zipmap (map (comp comparable-page-key first) missing) (map :id created))]
+    (into {}
+          (map (fn [[k _position]]
+                 (let [ck (comparable-page-key k)]
+                   [k (or (existing ck) (new-ids ck))])))
+          positioned)))
 
 (defn- pages-with-comments
   "Subset of `page-ids` that a live (not soft-deleted) exploration comment still anchors to.
@@ -172,7 +184,7 @@
   duplicate delivery that overlaps the first. Neither the planner nor its caller can gate that alone:
   `runner/plan-thread!`'s `exists?` check only sees committed rows, and two overlapping planners have
   each seen an empty query table. So the persist step takes this lock and re-checks under it, and the
-  loser discards. [[find-or-create-page!]] is what makes it load-bearing rather than merely tidy: it
+  loser discards. [[reconcile-pages!]] is what makes it load-bearing rather than merely tidy: it
   has no unique index to fall back on, so two planners would each create the thread's pages — and a
   page's id is its identity, so the duplicate strands every comment and star anchored to the loser."
   [thread-id]

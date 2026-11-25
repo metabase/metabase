@@ -7,6 +7,11 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- New driver feature `:stage-ctes/nest-single-row-aggregation`. Drivers that use `:stage-ctes` can opt in to put an
+  aggregation with no breakouts over a previous stage in its own stage CTE. This is for databases like Postgres that
+  do not use an index for `MIN`/`MAX` when the aggregation is in a `SELECT` that has a `WITH` clause. The default is
+  `false`.
+
 - While a data test pins the clock (`metabase.query-processor.timezone/with-pinned-now`),
   `metabase.driver.sql.query-processor/current-datetime-honeysql-form` dispatches to one method for every driver. It
   calls the driver's own method to learn the type of its current-time form, and returns a literal of the pinned moment
@@ -108,9 +113,9 @@ summary: Changes to the Metabase driver interface, listed by release.
     (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) ["someClassNameProperty"]))
   ```
 
-- New driver features `:stage-ctes` and `:stage-ctes/nested`. These let drivers opt in to compiling multi-stage queries
-  with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria in the
-  comment for these features in `metabase.driver/features`.
+- New driver feature `:stage-ctes`. It lets drivers opt in to compiling multi-stage queries with CTEs instead of nested
+  subselects. Drivers should only do this if they satisfy all of the criteria in the comment for this feature in
+  `metabase.driver/features`.
 
 - `driver/native-query-table-refs` has been removed. Nothing calls it anymore, so drivers that implement it should
   delete their `defmethod`, which no longer compiles.

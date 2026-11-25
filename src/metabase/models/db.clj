@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (the model machinery still uses
   `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -41,4 +42,4 @@
 (mu/defn timeline-ids-of-events
   "The distinct Timeline ids of the TimelineEvents with `event-ids`."
   [event-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :timeline_id [:model/TimelineEvent :timeline_id] :id [:in event-ids]))
+  (mdb/select-batched-set #(t2/select-fn-set :timeline_id [:model/TimelineEvent :timeline_id] :id [:in %]) event-ids))

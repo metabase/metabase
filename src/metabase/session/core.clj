@@ -63,6 +63,12 @@
   (swap! session-last-update-times
          (fn [m] (into {} (filter (fn [[_ timer]] (<= (u/since-ms timer) activity-update-throttle-ms))) m))))
 
+(defn mark-session-active!
+  "Record that the session whose `key_hashed` is `key-hash` wrote its activity just now. Intended for use in tests."
+  [key-hash]
+  (swap! session-last-update-times assoc key-hash (u/start-timer))
+  nil)
+
 (defn clear-session-activity-cache!
   "Remove all entries from the session activity throttle cache. Intended for use in tests."
   []

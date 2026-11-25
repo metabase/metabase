@@ -35,6 +35,8 @@
   python-transform?
   transform-source-database
   transform-source-type]
+ [metabase.transforms.models.transform
+  assoc-permissions]
  [metabase.transforms.util
   add-source-readable
   is-temp-transform-table?]

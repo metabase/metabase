@@ -9,6 +9,7 @@
    [metabase-enterprise.dependencies.models.analysis-finding-error :as models.analysis-finding-error]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -48,12 +49,12 @@
   "The IDs of the cards `thunk` analyzes, in order."
   [thunk]
   (let [analyzed (atom [])
-        upsert!  (mt/original-fn #'models.analysis-finding/upsert-analysis!)]
-    (mt/with-dynamic-fn-redefs [models.analysis-finding/upsert-analysis!
-                                (fn [entity-type entity-id & args]
+        upsert!  (mt/original-fn #'models.analysis-finding/upsert-analyses!)]
+    (mt/with-dynamic-fn-redefs [models.analysis-finding/upsert-analyses!
+                                (fn [entity-type id->analysis]
                                   (when (= :card entity-type)
-                                    (swap! analyzed conj entity-id))
-                                  (apply upsert! entity-type entity-id args))]
+                                    (swap! analyzed into (keys id->analysis)))
+                                  (upsert! entity-type id->analysis))]
       (thunk))
     @analyzed))
 
@@ -63,17 +64,17 @@
           old       (java.time.OffsetDateTime/parse "2020-01-01T00:00:00Z")
           stored    #(t2/select-one [:model/AnalysisFinding :result :analyzed_at] :entity_type :card :entity_id entity-id)]
       (testing "the first call inserts the row with its time"
-        (dependencies.db/upsert-finding! :card entity-id true)
+        (dependencies.db/upsert-findings! :card {entity-id true})
         (is (= 1 (t2/count :model/AnalysisFinding :entity_type :card :entity_id entity-id)))
         (is (true? (:result (stored))))
         (is (some? (:analyzed_at (stored)))))
       (t2/update! :model/AnalysisFinding {:entity_type :card :entity_id entity-id} {:analyzed_at old})
       (testing "the same result keeps the stored time"
-        (dependencies.db/upsert-finding! :card entity-id true)
+        (dependencies.db/upsert-findings! :card {entity-id true})
         (is (= 1 (t2/count :model/AnalysisFinding :entity_type :card :entity_id entity-id)))
         (is (= (.toInstant old) (.toInstant ^java.time.OffsetDateTime (:analyzed_at (stored))))))
       (testing "a different result is stored with a newer time"
-        (dependencies.db/upsert-finding! :card entity-id false)
+        (dependencies.db/upsert-findings! :card {entity-id false})
         (is (= 1 (t2/count :model/AnalysisFinding :entity_type :card :entity_id entity-id)))
         (is (false? (:result (stored))))
         (is (.isAfter (.toInstant ^java.time.OffsetDateTime (:analyzed_at (stored))) (.toInstant old)))))))
@@ -206,7 +207,7 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-model-cleanup [:model/AnalysisFindingError]
           (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}]
-            (with-redefs-fn {#'deps.analysis-finding/upsert-analysis! (fn [_] (throw (ex-info "Broken" {})))}
+            (with-redefs-fn {#'deps.analysis-finding/analyze-entity (fn [_] (throw (ex-info "Broken" {})))}
               run-jobs!)
             (is (false? (t2/select-one-fn :result :model/AnalysisFinding
                                           :entity_type :card :entity_id card-id)))
@@ -271,7 +272,7 @@
                          :model/Card {good-id :id} {:dataset_query (lib/query mp products)}]
             (deps.test/synchronously-run-dependency-job!)
             (let [analysis         (mt/original-fn #'queries.dependencies/analysis)
-                  upsert-analysis! (mt/original-fn #'deps.analysis-finding/upsert-analysis!)
+                  analyze-entity (mt/original-fn #'deps.analysis-finding/analyze-entity)
                   fail-bad-check   (fn [card]
                                      (when (= bad-id (:id card))
                                        (throw (ex-info "connection lost" {})))
@@ -279,19 +280,19 @@
                   fail-bad-outside (fn [entity]
                                      (when (= bad-id (:id entity))
                                        (throw (ex-info "connection lost" {})))
-                                     (upsert-analysis! entity))]
+                                     (analyze-entity entity))]
               (mt/with-dynamic-fn-redefs [dependencies.db/app-db-reachable? (constantly false)]
                 (testing "when checking the entity fails"
                   (mt/with-dynamic-fn-redefs [queries.dependencies/analysis fail-bad-check]
                     (is (thrown-with-msg? Exception #"connection lost" (deps.analysis-finding/analyze-batch! 1000)))))
                 (testing "when the analysis fails outside the check"
-                  (mt/with-dynamic-fn-redefs [deps.analysis-finding/upsert-analysis! fail-bad-outside]
+                  (mt/with-dynamic-fn-redefs [deps.analysis-finding/analyze-entity fail-bad-outside]
                     (is (thrown-with-msg? Exception #"connection lost" (deps.analysis-finding/analyze-batch! 1000))))))
               (is (nil? (finding bad-id)))
               (is (empty? (models.analysis-finding-error/errors-for-entity :card bad-id)))
               (is (=? {:fail_count 0 :terminal false} (status :card bad-id)))
               (testing "and records and counts it while the app DB answers, without blocking the rest"
-                (mt/with-dynamic-fn-redefs [deps.analysis-finding/upsert-analysis! fail-bad-outside]
+                (mt/with-dynamic-fn-redefs [deps.analysis-finding/analyze-entity fail-bad-outside]
                   (deps.analysis-finding/analyze-batch! 1000))
                 (is (=? {:result false} (finding bad-id)))
                 (is (=? {:fail_count 1} (status :card bad-id)))
@@ -354,7 +355,7 @@
             (is (not (deps.test/run-analysis-finding-job!)) "and leave nothing to do")))))))
 
 (deftest ^:synchronized python-transform-records-clean-finding-test
-  (testing "GHY-3584: a Python transform has no query, so upsert-analysis! resolves its database from source_database_id and records a clean finding"
+  (testing "GHY-3584: a Python transform has no query, so its analysis resolves its database from source_database_id and records a clean finding"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/AnalysisFindingError]
         (mt/with-temp [:model/Transform {transform-id :id} {:source {:type            :python
@@ -362,7 +363,9 @@
                                                                      :source-tables   []
                                                                      :body            "def transform():\n    pass"}}]
           (lib-be/with-metadata-provider-cache
-            (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Transform :id transform-id)))
+            (models.analysis-finding/upsert-analyses!
+             :transform {transform-id (:analysis (deps.analysis-finding/analyze-entity
+                                                  (t2/select-one :model/Transform :id transform-id)))}))
           (is (=? {:result true}
                   (t2/select-one :model/AnalysisFinding :entity_type :transform :entity_id transform-id)))
           (is (empty? (models.analysis-finding-error/errors-for-entity :transform transform-id))))))))
@@ -377,8 +380,9 @@
                                                             :body            "def transform():\n    pass"}}]
           (let [transform-id (:id transform)]
             (lib-be/with-metadata-provider-cache
-              (deps.analysis-finding/upsert-analysis!
-               (t2/instance :model/Transform (assoc transform :source_database_id nil))))
+              (models.analysis-finding/upsert-analyses!
+               :transform {transform-id (:analysis (deps.analysis-finding/analyze-entity
+                                                    (t2/instance :model/Transform (assoc transform :source_database_id nil))))}))
             (is (false? (t2/select-one-fn :result :model/AnalysisFinding
                                           :entity_type :transform :entity_id transform-id)))
             (is (seq (models.analysis-finding-error/errors-for-entity :transform transform-id))
@@ -394,20 +398,23 @@
                                                             :body            "def transform():\n    pass"}}]
           (let [transform-id (:id transform)]
             (lib-be/with-metadata-provider-cache
-              (deps.analysis-finding/upsert-analysis!
-               (t2/instance :model/Transform (assoc transform :source_database_id nil))))
+              (models.analysis-finding/upsert-analyses!
+               :transform {transform-id (:analysis (deps.analysis-finding/analyze-entity
+                                                    (t2/instance :model/Transform (assoc transform :source_database_id nil))))}))
             (is (seq (models.analysis-finding-error/errors-for-entity :transform transform-id)))
             (lib-be/with-metadata-provider-cache
-              (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Transform :id transform-id)))
+              (models.analysis-finding/upsert-analyses!
+               :transform {transform-id (:analysis (deps.analysis-finding/analyze-entity
+                                                    (t2/select-one :model/Transform :id transform-id)))}))
             (is (empty? (models.analysis-finding-error/errors-for-entity :transform transform-id))
                 "re-analyzed normally: the database error is replaced by a clean result")))))))
 
 (deftest ^:synchronized analyze-batch-shares-one-metadata-provider-test
   (testing "Every entity in an analysis batch must share one MetadataProvider per database. Reading an entity attaches
            a provider to its query, so selecting the batch outside the cache gives each entity a private one. Nothing
-           reads through those providers today -- upsert-analysis! builds its own from the database id and passes it
+           reads through those providers today -- analyze-entity builds its own from the database id and passes it
            explicitly -- so this is a latent trap rather than a live leak: the moment an entity is analyzed through its
-           own query, a batch of 500 retains 500 providers' worth of fetched metadata. upsert-analysis! already throws
+           own query, a batch of 500 retains 500 providers' worth of fetched metadata. analyze-entity already throws
            when no cache is bound, so the cache is meant to cover this work; only the select sat outside it."
     (backfill-all-entity-analyses!)
     (let [providers   (atom [])
@@ -416,12 +423,12 @@
         (mt/with-temp [:model/Card {card1-id :id} {:dataset_query (native-card "select id from orders")}
                        :model/Card {card2-id :id} {:dataset_query (native-card "select id from products")}]
           (let [wanted #{card1-id card2-id}
-                upsert-analysis! (mt/original-fn #'deps.analysis-finding/upsert-analysis!)]
-            (mt/with-dynamic-fn-redefs [deps.analysis-finding/upsert-analysis!
+                analyze-entity (mt/original-fn #'deps.analysis-finding/analyze-entity)]
+            (mt/with-dynamic-fn-redefs [deps.analysis-finding/analyze-entity
                                         (fn [entity & args]
                                           (when (wanted (:id entity))
                                             (swap! providers conj (:lib/metadata (:dataset_query entity))))
-                                          (apply upsert-analysis! entity args))]
+                                          (apply analyze-entity entity args))]
               (run-jobs!)))
           (testing "both cards were selected, so the assertion below is meaningful"
             (is (= 2 (count @providers))))
@@ -436,11 +443,11 @@
   []
   (deps.test/synchronously-run-dependency-job!)
   (let [analyzed (atom #{})
-        upsert!  (mt/original-fn #'models.analysis-finding/upsert-analysis!)]
-    (mt/with-dynamic-fn-redefs [models.analysis-finding/upsert-analysis!
-                                (fn [entity-type entity-id & args]
-                                  (swap! analyzed conj [entity-type entity-id])
-                                  (apply upsert! entity-type entity-id args))]
+        upsert!  (mt/original-fn #'models.analysis-finding/upsert-analyses!)]
+    (mt/with-dynamic-fn-redefs [models.analysis-finding/upsert-analyses!
+                                (fn [entity-type id->analysis]
+                                  (swap! analyzed into (map (fn [id] [entity-type id])) (keys id->analysis))
+                                  (upsert! entity-type id->analysis))]
       (deps.test/run-analysis-finding-job!))
     @analyzed))
 
@@ -704,3 +711,59 @@
                                              :to_entity_type :table :to_entity_id products-id}]
            (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :category) :display_name "Category renamed"}]
              (assert-has-analyses {:card {card-id nil}}))))))))
+
+(deftest ^:synchronized analyze-batch-stores-mixed-findings-test
+  (testing "a batch stores the finding of each entity, with and without errors, and one failing entity does not block the others"
+    (backfill-all-entity-analyses!)
+    (let [mp       (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-model-cleanup [:model/AnalysisFindingError]
+          (mt/with-temp [:model/Card {clean-id :id}   {:dataset_query (lib/query mp products)}
+                         :model/Card {errors-id :id}  {:dataset_query (lib/query mp products)}
+                         :model/Card {failing-id :id} {:dataset_query (lib/query mp products)}]
+            (deps.test/synchronously-run-dependency-job!)
+            (let [analyze-entity (mt/original-fn #'deps.analysis-finding/analyze-entity)]
+              (mt/with-dynamic-fn-redefs [deps.analysis-finding/analyze-entity
+                                          (fn [entity]
+                                            (condp = (:id entity)
+                                              failing-id (throw (ex-info "connection lost" {}))
+                                              errors-id  {:entity-type :card
+                                                          :entity-id   errors-id
+                                                          :analysis    {:result          false
+                                                                        :finding-details #{(lib/validation-exception-error "Broken")}}}
+                                              (analyze-entity entity)))]
+                (deps.analysis-finding/analyze-batch! 1000)))
+            (is (=? {:result true} (finding clean-id)))
+            (is (empty? (models.analysis-finding-error/errors-for-entity :card clean-id)))
+            (is (=? {:result false} (finding errors-id)))
+            (is (=? [{:error_type :validation-exception-error :error_detail "Broken"}]
+                    (models.analysis-finding-error/errors-for-entity :card errors-id)))
+            (is (=? {:stale 0} (status :card clean-id)))
+            (is (=? {:stale 0} (status :card errors-id)))
+            (is (=? {:result false} (finding failing-id)))
+            (is (=? {:fail_count 1} (status :card failing-id)))))))))
+
+(deftest ^:synchronized analyze-batch-statement-count-test
+  (testing "analyzing 10 pending cards runs as many statements as analyzing 40"
+    (backfill-all-entity-analyses!)
+    (let [mp       (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))]
+      (mt/with-premium-features #{:dependencies}
+        (let [run! (fn [n]
+                     (let [ids (t2/insert-returning-pks!
+                                :model/Card
+                                (for [_ (range n)]
+                                  (merge (mt/with-temp-defaults :model/Card) {:dataset_query (lib/query mp products)})))]
+                       (try
+                         (deps.test/synchronously-run-dependency-job!)
+                         {:count (events.tu/real-statement-count! #(deps.analysis-finding/analyze-batch! 1000))
+                          :found (t2/count :model/AnalysisFinding :entity_type :card :entity_id [:in ids])}
+                         (finally
+                           (t2/delete! :model/AnalysisFinding :entity_type :card :entity_id [:in ids])
+                           (t2/delete! :model/Card :id [:in ids])))))]
+          (run! 2)
+          (let [small (run! 10)
+                large (run! 40)]
+            (is (= (:count small) (:count large)))
+            (is (= [10 40] [(:found small) (:found large)]))))))))

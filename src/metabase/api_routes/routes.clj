@@ -297,7 +297,8 @@
    "/upload"               (+auth 'metabase.upload.api)
    "/user"                 (+auth 'metabase.users-rest.api)
    "/user-key-value"       (+auth 'metabase.user-key-value.api)
-   "/util"                 'metabase.api.util})
+   "/util"                 'metabase.api.util
+   "/warehouse"            (+auth metabase.sync.api/warehouse-routes)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

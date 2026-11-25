@@ -752,20 +752,19 @@
   "Invalidate the model cache and result metadata for all models where `:based_on_upload` resolves to the given table."
   [table]
   ;; NOTE: It is important that this logic is kept in sync with `models-based-on-upload`
-  (when-let [model-ids (->> (upload.db/unarchived-models-for-table (:id table))
-                            (filter (comp #{(:id table)} based-on-upload/only-table-id))
-                            (map :id)
-                            seq)]
+  (when-let [models (->> (upload.db/unarchived-models-for-table (:id table))
+                         (filter (comp #{(:id table)} based-on-upload/only-table-id))
+                         seq)]
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage Lib.
-    (persisted-info/invalidate! model-ids)
+    (persisted-info/invalidate! (map :id models))
     ;; Also refresh the metadata, so that newly added columns are visible, and types are updated.
-    (doseq [id model-ids]
-      (let [card     (upload.db/card-query-and-metadata id)
-            ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
-            ;; the initial upload.
-            fix-name #(update % :display_name warehouse-schema.humanization/name->human-readable-name)
-            metadata (queries/refresh-metadata card {:update-fn fix-name})]
-        (queries.card/update-cards! [{:id id :result_metadata metadata}] {:writer :sync})))))
+    ;; Unclear why this is required, would expect it to get this from the field's display name, as it does for
+    ;; the initial upload.
+    (let [fix-name #(update % :display_name warehouse-schema.humanization/name->human-readable-name)]
+      (queries.card/update-cards! (vec (for [card models]
+                                         {:id              (:id card)
+                                          :result_metadata (queries/refresh-metadata card {:update-fn fix-name})}))
+                                  {:writer :sync}))))
 
 (defn- translate-type-keywords [m]
   (match/replace-all m
