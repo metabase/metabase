@@ -224,11 +224,13 @@ describe("TransformListPage (tree table)", () => {
         ],
       });
 
+      // wait for the collection row before checking that its transform is hidden
+      const analyticsRow = await within(getList()).findByText("Analytics");
       expect(
         within(getList()).queryByText("Analytics Transform"),
       ).not.toBeInTheDocument();
 
-      await userEvent.click(within(getList()).getByText("Analytics"));
+      await userEvent.click(analyticsRow);
 
       expect(getRowNames()).toEqual([
         "Other",
@@ -285,7 +287,7 @@ describe("TransformListPage (tree table)", () => {
     it("sorts transforms by name and output table in both directions", async () => {
       await setup({ collections: [reports], transforms });
 
-      await userEvent.click(within(getList()).getByText("Reports"));
+      await userEvent.click(await within(getList()).findByText("Reports"));
       expect(getRowNames()).toEqual([
         "Reports",
         "Alpha Transform",

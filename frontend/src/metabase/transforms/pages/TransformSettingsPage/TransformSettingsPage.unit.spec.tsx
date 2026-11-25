@@ -233,9 +233,12 @@ async function openChangeTargetModal() {
   await userEvent.click(
     await screen.findByRole("button", { name: /Change target/ }),
   );
-  return await screen.findByRole("dialog", {
+  const modal = await screen.findByRole("dialog", {
     name: "Change the target for this transform",
   });
+  // the form renders once the target database and its schemas have loaded
+  await within(modal).findByLabelText("New table name");
+  return modal;
 }
 
 async function moveTo(collectionName: string) {

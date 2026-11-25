@@ -248,9 +248,11 @@ describe("CreateTransformModal", () => {
         screen.queryByRole("dialog", { name: "Select a collection" }),
       ).not.toBeInTheDocument(),
     );
-    expect(
-      within(modal).getByTestId("collection-picker-button"),
-    ).toHaveTextContent("Analytics");
+    await waitFor(() =>
+      expect(
+        within(modal).getByTestId("collection-picker-button"),
+      ).toHaveTextContent("Analytics"),
+    );
 
     await userEvent.click(within(modal).getByRole("button", { name: "Save" }));
 
