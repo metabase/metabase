@@ -1,8 +1,11 @@
 (ns metabase-enterprise.metabot.models.metabot-group-limit
   (:require
    [metabase-enterprise.metabot.db :as metabot.db]
+   [metabase-enterprise.metabot.schema :as metabot-ee.schema]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -31,10 +34,13 @@
   (:max_usage
    (metabot.db/max-usage-for-user user-id)))
 
-(defn set-group-limit!
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn set-group-limit! :- [:maybe ::metabot-ee.schema/metabot-group-limit]
   "Sets or removes the limit for a specific group. Pass nil to remove (unlimited).
    Returns the updated row, or nil if removed."
-  [group-id max-usage]
+  [group-id  :- ms/PositiveInt
+   max-usage :- ::metabot-ee.schema/metabot-limit.max-usage]
   (if (nil? max-usage)
     (metabot.db/delete-group-limit! group-id)
     (if-let [existing (group-limit group-id)]

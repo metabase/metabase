@@ -374,7 +374,7 @@
             built its rows, must discard them rather than append a second set.
 
             This is the window the persist step's row lock closes. It matters most for pages:
-            `find-or-create-page!` is a select-then-insert with no unique index behind it
+            `reconcile-pages!` is a select-then-insert with no unique index behind it
             (`dimension_id` is a text column, which MySQL cannot uniquely index), so two planners
             inside it at once both miss and both insert — and a page's surrogate id is its identity,
             so the duplicate strands every comment and star anchored to the page that loses.
@@ -414,7 +414,7 @@
         (is (= 1 (t2/count :model/ExplorationQuery :exploration_thread_id (:id t)))
             "the losing planner discards its rows instead of appending them")
         (is (= 1 (t2/count :model/ExplorationPage :exploration_block_id (:id g) :dimension_id d1))
-            "and never reaches find-or-create-page!, so the thread's page is not duplicated")))))
+            "and never reaches reconcile-pages!, so the thread's page is not duplicated")))))
 
 (deftest gc-retains-pages-that-still-have-queries-test
   (testing "gc-orphan-pages! never deletes a page some query still points at — the page_id FK
@@ -464,3 +464,24 @@
                                             :exploration_block_id (:id block))]
             (is (= (range (count positions)) (sort positions))
                 (str "block " (:id block) " pages are numbered 0.." (dec (count positions))))))))))
+
+(deftest reconcile-pages-statement-count-test
+  (testing "reconciling 10 page keys runs as many statements as 40, half of them stored already"
+    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}
+                   :model/Exploration e {:name "x"}
+                   :model/ExplorationThread t {:exploration_id (:id e)}]
+      (let [cid        (:id metric)
+            g-id       (:id (mk-block! (:id t) cid d1 "Price" "type/Number"))
+            statements (fn [n]
+                         (let [rows (for [i (range n)]
+                                      {:block_id g-id :card_id cid :dimension_id (format "dim-%d-%d" n i) :query_type "default"})
+                               _    (#'query-plan/reconcile-pages! (take (quot n 2) rows))]
+                           (t2/with-call-count [call-count]
+                             (let [key->page (#'query-plan/reconcile-pages! rows)]
+                               (u/prog1 (call-count)
+                                 (is (= n (count (set (vals key->page)))))
+                                 (is (= (set (vals key->page))
+                                        (t2/select-pks-set :model/ExplorationPage :exploration_block_id g-id
+                                                           :dimension_id [:in (map :dimension_id rows)]))))))))]
+        (statements 2)
+        (is (= (statements 10) (statements 40)))))))

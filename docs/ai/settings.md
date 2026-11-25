@@ -30,7 +30,7 @@ You pick which AI providers Metabase can use:
 - If you're **self-hosting Metabase** and want to use Metabot, you'll need to [connect to an AI provider](#connect-to-an-ai-provider) with your own credentials.
 - On **Metabase Cloud**, you can [connect to an AI provider](#connect-to-an-ai-provider) with your own credentials, [use the Metabase AI service](#metabase-ai-service), or both.
 
-The providers you set up here power Metabase's built-in AI features. The [MCP server](mcp.md#turn-on-the-mcp-server) doesn't use them; your MCP client brings its own model.
+The providers you set up here power Metabase's built-in AI features. The [MCP server](mcp.md#turn-the-mcp-server-on-or-off) doesn't use them; your MCP client brings its own model.
 
 ### Metabase AI service
 
@@ -92,9 +92,9 @@ A connection that's missing a required setting shows a warning icon, and Metabot
 
 If you're self-hosting, you can configure a provider with [environment variables](../configuring-metabase/environment-variables.md) instead of the admin UI. These connections will show up in the list as read-only, along with the variable that set the connection.
 
-An environment variable can also override a single field of a connection you manage in the UI. For example, if you set only `MB_LLM_ANTHROPIC_API_BASE_URL`, the base URL comes from the environment, and the rest of the connection stays editable.
+An environment variable can also override a single field of a connection you manage in the UI. The variables apply to the connection whose key matches the provider type, which is normally the first connection you added for that provider. For example, if you set only [`MB_LLM_ANTHROPIC_API_BASE_URL`](../configuring-metabase/environment-variables.md#mb_llm_anthropic_api_base_url), the base URL comes from the environment, and the rest of the connection stays editable.
 
-A connection's credentials and its address have to come from the same place. For Ollama, if `MB_LLM_OLLAMA_API_BASE_URL` points a connection at a different server (such as Ollama Cloud at `https://ollama.com/v1`), Metabase won't send an API key entered in the UI there: set `MB_LLM_OLLAMA_API_KEY` too.
+For Ollama and OpenAI-compatible connections, the credentials and the address have to come from the same place. For example, if [`MB_LLM_OLLAMA_API_BASE_URL`](../configuring-metabase/environment-variables.md#mb_llm_ollama_api_base_url) points a connection at a different server (such as Ollama Cloud at `https://ollama.com/v1`), Metabase won't send an API key entered in the UI there: set [`MB_LLM_OLLAMA_API_KEY`](../configuring-metabase/environment-variables.md#mb_llm_ollama_api_key) too.
 
 To put the whole list under environment control, set [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers) to a JSON array of connections. The provider list is then read-only, so manage your connections by editing `MB_LLM_PROVIDERS` and restarting.
 
@@ -111,6 +111,8 @@ The **Models** card sets which model each AI feature runs on. It lists the model
 Metabot, [AI explorations](./metabot.md#ai-exploration), and [SQL generation](./metabot.md#inline-sql-editing) all run on the **Default model**.
 
 Embedded Metabot runs on the **Default model** too. There's no separate model setting on the **Embedded** tab, so both Metabots use whatever you pick here.
+
+If your default model supports it, you can turn on **Fast mode** to get faster responses from the default model at a higher price per token. Metabase only shows the **Fast mode** toggle for models that support it.
 
 ### Mini model
 
@@ -204,6 +206,21 @@ The **Disable all AI features** toggle at the bottom of the AI features page is 
 Use this toggle for an instance-wide shut-off without having to disconnect your provider or change each feature's own toggle. Turn it off again to restore your previous configuration.
 
 For more granular options, check out [AI usage controls](./usage-controls.md).
+
+## Configure AI with environment variables
+
+On self-hosted Metabases, you can also set these settings with [environment variables](../configuring-metabase/environment-variables.md).
+
+| Setting                                                                      | Environment variable                                                                                                                         |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Provider connections](#set-provider-credentials-with-environment-variables) | [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers)                                                      |
+| [Default model](#default-model)                                              | [`MB_LLM_METABOT_PROVIDER`](../configuring-metabase/environment-variables.md#mb_llm_metabot_provider)                                        |
+| [Fast mode](#default-model)                                                  | [`MB_LLM_FAST_MODE`](../configuring-metabase/environment-variables.md#mb_llm_fast_mode)                                                      |
+| [Mini model](#mini-model)                                                    | [`MB_LLM_MINI_MODEL`](../configuring-metabase/environment-variables.md#mb_llm_mini_model)                                                    |
+| [Enable Metabot](#enable-metabot)                                            | [`MB_METABOT_ENABLED`](../configuring-metabase/environment-variables.md#mb_metabot_enabled)                                                  |
+| [Allow Metabot to read query results](#allow-metabot-to-read-query-results)  | [`MB_METABOT_QUERY_EXECUTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_metabot_query_execution_enabled)                  |
+| [Enable Embedded Metabot](#enable-embedded-metabot)                          | [`MB_EMBEDDED_METABOT_ENABLED`](../configuring-metabase/environment-variables.md#mb_embedded_metabot_enabled)                                |
+| [Disable all AI features](#disable-all-ai-features)                          | [`MB_AI_FEATURES_ENABLED`](../configuring-metabase/environment-variables.md#mb_ai_features_enabled) (set to `false` to turn off AI features) |
 
 ## Tips for making the most of Metabot
 

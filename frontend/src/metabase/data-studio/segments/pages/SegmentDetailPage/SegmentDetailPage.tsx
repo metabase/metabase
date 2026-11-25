@@ -36,7 +36,7 @@ export function SegmentDetailPage({
 }: SegmentDetailPageProps) {
   const buildQuestion = useQuestionFromOptsBuilder();
   const canWriteSegments = useSelector((state) =>
-    getUserCanWriteSegments(state, table.is_published),
+    getUserCanWriteSegments(state, table.collection != null),
   );
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -49,7 +49,7 @@ export function SegmentDetailPage({
   const isDirty = useMemo(
     () =>
       description !== (savedSegment.description ?? "") ||
-      !Lib.areLegacyQueriesEqual(definition, savedSegment.definition),
+      !Lib.areQueriesEqual(definition, savedSegment.definition),
     [description, definition, savedSegment],
   );
 

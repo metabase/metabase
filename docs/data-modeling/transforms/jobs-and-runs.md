@@ -35,7 +35,7 @@ Jobs run one or more transforms on schedule based on transform tags.
 
 Jobs have two components: schedule and tags.
 
-- **Schedule** determines when the job will be executed: daily, hourly, etc. You can specify a custom cron schedule (e.g. "Every weekday at 9:05 AM"). The times are given in your Metabase's system timezone.
+- **Schedule** determines when the job will be executed: daily, hourly, etc. You can specify a custom cron schedule (e.g. "Every weekday at 9:05 AM"). Jobs run in your Metabase's [report timezone](../../configuring-metabase/localization.md#set-default-instance-report-timezone), or in the system timezone if no report timezone is set.
 - **Tags** determine _which_ transforms a job runs, not when the job runs. For example, you can create a `Weekdays` tag, add that tag to a few transforms, then create a job that runs all the transforms with the `Weekdays` tag every weekday at 9:05AM.
 
 Jobs will run all transforms tagged with any of the tags, plus any transforms that the tagged transforms depend on that aren't already up to date, see [Jobs include all dependent transforms](#jobs-include-all-dependent-transforms).
@@ -106,11 +106,15 @@ Metabase skips a dependency when the dependency:
 
 The job's page in **Data Studio > Data transformation > Jobs** lists every transform the job will run and in which order. The **Notes** column tells you when Metabase will skip a dependency, and flags dependencies that have no schedule of their own.
 
+Metabase runs up to three query-based transforms (SQL or query builder) from a job at the same time, and Python transforms one at a time. A transform still waits for the transforms it depends on. On self-hosted Pro and Enterprise plans, you can change how many query-based transforms run at once with the [`MB_TRANSFORM_RUN_JOB_SQL_CONCURRENCY`](../../configuring-metabase/environment-variables.md#mb_transform_run_job_sql_concurrency) environment variable.
+
 ## Runs
 
 ![Transform runs](../images/runs.png)
 
 You can see all past and current transform runs (both manual and scheduled) in **Data Studio > Data transformation > Runs**. Run times are in your Metabase server's timezone (hover the info icon next to **Started at** to see which).
+
+If a transform run takes longer than four hours, Metabase stops it and marks it as timed out. On self-hosted Pro and Enterprise plans, you can change this limit with the [`MB_TRANSFORM_TIMEOUT`](../../configuring-metabase/environment-variables.md#mb_transform_timeout) environment variable.
 
 You can click on any transform run to see more details about the run, like the error logs. To go to the transform definition from the transform run page, click on the icon next to the transform name in the right sidebar.
 

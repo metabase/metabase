@@ -24,6 +24,7 @@ import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import type { Database, Table, TokenFeatures, User } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockDatabase,
   createMockSchema,
   createMockTable,
@@ -610,7 +611,7 @@ describe("TablePicker", () => {
         schema: PUBLIC_SCHEMA.name,
         owner_user_id: currentUser.id,
         estimated_row_count: 3210,
-        is_published: true,
+        collection: createMockCollection(),
       });
 
       const row = await setupMetadataTable(table);
@@ -637,7 +638,7 @@ describe("TablePicker", () => {
         owner_user_id: null,
         owner_email: "owner@example.com",
         estimated_row_count: 0,
-        is_published: false,
+        collection: null,
       });
 
       const row = await setupMetadataTable(table);
@@ -664,7 +665,7 @@ describe("TablePicker", () => {
         owner_user_id: null,
         owner_email: null,
         estimated_row_count: null,
-        is_published: false,
+        collection: null,
       });
 
       const row = await setupMetadataTable(table);

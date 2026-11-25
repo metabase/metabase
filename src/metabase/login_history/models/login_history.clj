@@ -4,12 +4,12 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.login-history.app-db-copy :as login-history.app-db-copy]
    [metabase.login-history.db :as login-history.db]
+   [metabase.login-history.schema :as login-history.schema]
    [metabase.login-history.settings :as login-history.settings]
    [metabase.request.core :as request]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -47,17 +47,6 @@
 (doto :model/LoginHistory
   (derive :metabase/model))
 
-(mu/defn record-login-history!
-  "Record a login event in the LoginHistory table."
-  [session-id :- [:not uuid?]
-   user-id :- ms/PositiveInt
-   device-info :- request/DeviceInfo]
-  (let [login-history (merge {:user_id    user-id
-                              :session_id session-id}
-                             (dissoc device-info :embedded :token_exchange))]
-    (login-history.db/insert-login-history! login-history)
-    login-history))
-
 (t2/define-after-select :model/LoginHistory
   [{active :active, :as login-history}]
   ;; session ID is sensitive, so it's better if we don't even return it. What callers get instead is `active`, which
@@ -94,6 +83,14 @@
 
 (t2/define-before-update :model/LoginHistory [_login-history]
   (throw (RuntimeException. (tru "You can''t update a LoginHistory after it has been created."))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-login-history! :- ::login-history.schema/login-history.create
+  "Insert the LoginHistory `row` of a login and return `row`."
+  [row :- ::login-history.schema/login-history.create]
+  (login-history.db/insert-login-history! row)
+  row)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

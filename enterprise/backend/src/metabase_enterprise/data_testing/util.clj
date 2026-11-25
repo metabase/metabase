@@ -2,6 +2,8 @@
   "Helpers shared across the module."
   (:require
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -22,14 +24,27 @@
 
 (defmulti column-names-ignore-case?
   "Whether `driver` treats two column names that differ only in case as one name, so that a table cannot hold both.
-  False unless a driver says otherwise."
+  False by default."
   {:arglists '([driver])}
   identity
   :hierarchy #'driver/hierarchy)
 
 (defmethod column-names-ignore-case? :default [_driver] false)
 
-;; MySQL and MariaDB, SQL Server with its default collation, and DuckDB compare column names without regard to case.
-;; Redshift folds quoted names to lower case too, unless `enable_case_sensitive_identifier` is on.
-(doseq [driver [:mysql :sqlserver :motherduck :redshift]]
-  (defmethod column-names-ignore-case? driver [_driver] true))
+;; Every driver that runs data tests states its answer, so that a new one cannot take the default by omission. SQL
+;; Server ignores case under its default collation, and Redshift unless `enable_case_sensitive_identifier` is on.
+(doseq [[driver ignores-case?] {:h2         false
+                                :postgres   false
+                                :clickhouse false
+                                :mysql      true
+                                :sqlserver  true
+                                :motherduck true
+                                :redshift   true}]
+  (defmethod column-names-ignore-case? driver [_driver] ignores-case?))
+
+(mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
+  "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its
+  way out."
+  [schema :- :keyword]
+  {:in  (comp mi/json-in #(mu/validate-throw schema %) #(lib/normalize schema %))
+   :out (comp #(lib/normalize schema %) mi/json-out-with-keywordization)})

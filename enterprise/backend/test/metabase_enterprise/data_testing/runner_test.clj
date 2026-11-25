@@ -6,6 +6,8 @@
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase-enterprise.data-testing.util :as data-testing.u]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -549,6 +551,13 @@
     (testing "Postgres and H2 keep both names"
       (is (nil? (check :postgres)))
       (is (nil? (check :h2))))))
+
+(deftest every-driver-that-runs-data-tests-states-its-column-name-case-rule-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    ;; `methods` rather than `get-method`, which would find the method of a parent such as `:postgres`.
+    (is (contains? (methods data-testing.u/column-names-ignore-case?) driver/*driver*)
+        (str "Add a `column-names-ignore-case?` method for " driver/*driver* ": data testing compares column names "
+             "by it."))))
 
 ;;; --------------------------------------------- columns-read ---------------------------------------------
 

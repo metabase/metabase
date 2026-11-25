@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayOutputStream)
@@ -60,19 +61,20 @@
               _         (doto (create-test-jks-instance ks-pw {key-alias key-value})
                           (.store baos (.toCharArray ks-pw)))
               ks-bytes (.toByteArray baos)]
-          (mt/with-temp [:model/Database {:keys [details] :as database} {:engine  :secret-test-driver
-                                                                         :name    "Test DB with keystore"
-                                                                         :details {:host                    "localhost"
-                                                                                   :keystore-value          (mt/bytes->base64-data-uri ks-bytes)
-                                                                                   :keystore-password-value ks-pw}}]
-            (is (some? database))
-            (is (not (contains? details :keystore-value)) "keystore-value was removed from details")
-            (is (contains? details :keystore-id) "keystore-id was added to details")
-            (is (not (contains? details :keystore-password-value)) ":keystore-password-value was removed from details")
-            (is (contains? details :keystore-password-id) ":keystore-password-id was added to details")
-            (let [{ks-pw-bytes :value} (t2/select-one :model/Secret :id (:keystore-password-id details))
-                  ks-pw-str            (String. ^bytes ks-pw-bytes StandardCharsets/UTF_8)
-                  {:keys [value]}      (t2/select-one :model/Secret :id (:keystore-id details))
-                  ks                   (bytes->keystore value (.toCharArray ks-pw-str))]
-              (is (= (seq ks-bytes) (seq value)))
-              (assert-entries ks-pw-str ks {key-alias key-value}))))))))
+          (mt/with-model-cleanup [:model/Database :model/Secret]
+            (let [[{:keys [details] :as database}] (database/create-databases! [{:engine  :secret-test-driver
+                                                                                 :name    "Test DB with keystore"
+                                                                                 :details {:host                    "localhost"
+                                                                                           :keystore-value          (mt/bytes->base64-data-uri ks-bytes)
+                                                                                           :keystore-password-value ks-pw}}])]
+              (is (some? database))
+              (is (not (contains? details :keystore-value)) "keystore-value was removed from details")
+              (is (contains? details :keystore-id) "keystore-id was added to details")
+              (is (not (contains? details :keystore-password-value)) ":keystore-password-value was removed from details")
+              (is (contains? details :keystore-password-id) ":keystore-password-id was added to details")
+              (let [{ks-pw-bytes :value} (t2/select-one :model/Secret :id (:keystore-password-id details))
+                    ks-pw-str            (String. ^bytes ks-pw-bytes StandardCharsets/UTF_8)
+                    {:keys [value]}      (t2/select-one :model/Secret :id (:keystore-id details))
+                    ks                   (bytes->keystore value (.toCharArray ks-pw-str))]
+                (is (= (seq ks-bytes) (seq value)))
+                (assert-entries ks-pw-str ks {key-alias key-value})))))))))

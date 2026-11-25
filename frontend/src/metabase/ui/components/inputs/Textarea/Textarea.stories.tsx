@@ -32,7 +32,7 @@ const sampleArgs = {
 
 const argTypes = {
   variant: {
-    options: ["default", "unstyled"],
+    options: ["default", "unstyled", "read-only"],
     control: { type: "inline-radio" },
   },
   size: {
@@ -97,6 +97,25 @@ const STATES: {
   },
   { id: "disabled", label: "Disabled", props: { disabled: true } },
   { id: "read-only", label: "Read only", props: { readOnly: true } },
+  {
+    id: "read-only-variant",
+    label: 'variant="read-only"',
+    // a read-only field always shows a value, so it ignores the `filled` toggle
+    props: {
+      readOnly: true,
+      variant: "read-only",
+      defaultValue: sampleArgs.value,
+    },
+  },
+  {
+    id: "read-only-variant-focus",
+    label: 'variant="read-only" (focused)',
+    props: {
+      readOnly: true,
+      variant: "read-only",
+      defaultValue: sampleArgs.value,
+    },
+  },
 ];
 
 const LABEL_EXAMPLES: {
@@ -265,6 +284,7 @@ export const Overview = {
       focusWithin: [
         'textarea[data-state-row="focus"]',
         'textarea[data-state-row="error-focus"]',
+        'textarea[data-state-row="read-only-variant-focus"]',
       ],
     },
     controls: { include: ["filled", "theme"] },

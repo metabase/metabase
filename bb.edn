@@ -506,10 +506,11 @@
   {:group "Local dev"
    :doc "Regenerate the docs that are built from source. The backend suite runs every Clojure generator in one JVM."
    :examples [["./bin/mage docs-generate" "Regenerate every generated doc"]
-              ["./bin/mage docs-generate backend" "Environment variables, config template, API, AI providers, MCP tools, and CLI commands"]
+              ["./bin/mage docs-generate backend" "Environment variables, config template, API, AI providers, MCP tools, CLI commands, and database feature support"]
               ["./bin/mage docs-generate usage-analytics" "Usage analytics reference"]
               ["./bin/mage docs-generate embedding-sdk" "Embedding SDK reference (builds the SDK package first)"]
-              ["./bin/mage docs-generate embedding-eajs" "Modular embedding (EAJS) reference"]]
+              ["./bin/mage docs-generate embedding-eajs" "Modular embedding (EAJS) reference"]
+              ["./bin/mage docs-generate docker-tags" "Pin the Docker tags in the install docs to the newest release"]]
    :options [["-d" "--dir DIR" "Absolute path of the Metabase checkout to generate the docs in. Defaults to this checkout."]]
    :arg-schema [:or
                 [:tuple]
@@ -517,7 +518,8 @@
                          "backend"
                          "usage-analytics"
                          "embedding-sdk"
-                         "embedding-eajs"]]]
+                         "embedding-eajs"
+                         "docker-tags"]]]
    :requires [[mage.docs-generate :as docs-generate]]
    :task (task! (docs-generate/run! (first (:arguments parsed)) (:options parsed)))}
 

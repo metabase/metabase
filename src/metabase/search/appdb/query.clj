@@ -33,7 +33,8 @@
   so we can return its `:name`."
   [search-ctx qry]
   (let [collection-id-col :search_index.collection_id
-        permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
+        permitted-clause  (search.permissions/permitted-collections-clause
+                           search-ctx collection-id-col :search_index.model)
         personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)
         ;; Tables have their own dedicated permission filter (add-table-where-clauses) that checks both data
         ;; permissions and published-via-collection access, so we exclude them from collection filtering here.

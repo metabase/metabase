@@ -15,6 +15,7 @@ import {
 } from "__support__/ui";
 import { selectQuestionFromCard } from "metabase/metadata-store";
 import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 import type { Card, Settings } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
@@ -87,7 +88,7 @@ export const setup = async ({
     <QuestionSettingsSidebar question={question} />
   );
 
-  renderWithProviders(
+  const { router } = renderWithProviders(
     <Route path="*" element={<TestQuestionSettingsSidebar />} />,
     {
       withRouter: true,
@@ -97,4 +98,6 @@ export const setup = async ({
 
   await waitForSidesheetToOpen();
   await waitForLoaderToBeRemoved();
+
+  return { router: checkNotNull(router) };
 };

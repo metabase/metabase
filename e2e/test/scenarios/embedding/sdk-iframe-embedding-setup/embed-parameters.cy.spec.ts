@@ -28,7 +28,6 @@ describe(suiteTitle, () => {
     H.updateSetting("enable-embedding-modular", true);
     H.updateSetting("show-modular-embed-terms", false);
     H.updateSetting("show-static-embed-terms", false);
-    H.mockEmbedJsToDevServer();
   });
 
   afterEach(() => {

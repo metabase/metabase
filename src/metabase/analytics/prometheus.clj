@@ -316,8 +316,6 @@
                        {:description "Number of queries cached in lib.computed/weak-map."})
    (prometheus/gauge   :metabase-card/unique-cards-failed-conversion
                        {:description "Number of distinct cards which have :dataset_query {}, meaning MBQL 4 to 5 conversion failed."})
-   (prometheus/counter :metabase-card/conversions-requiring-cleaning
-                       {:description "Number of times this instance converted a card's MBQL 4 to 5 and `clean` made a real change"})
    (prometheus/gauge :metabase-database/status
                      {:description "Does a given database using driver pass a health check."
                       :labels [:driver :healthy :reason :connection-type]})
@@ -960,6 +958,11 @@
    (prometheus/gauge :metabase-security-center/vulnerable-advisories
                      {:description "Number of advisories where this Metabase instance is potentially affected."
                       :labels [:severity :acknowledged]})
+   (prometheus/gauge :metabase-security-center/health-checks
+                     {:description "1 when the Security Center health check last had this status, else 0."
+                      :labels [:check_id :severity :status]})
+   (prometheus/gauge :metabase-security-center/health-checks-last-run-timestamp-seconds
+                     {:description "Unix timestamp (seconds since epoch) of the last background run of the Security Center health checks."})
    ;; metaplow analytics metrics
    (prometheus/counter :metabase-metaplow/errors
                        {:description "Metaplow event pipeline errors by stage."

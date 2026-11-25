@@ -729,7 +729,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       visitAdhocQuestion(ONE_PK_QUERY);
       H.openObjectDetail(0);
       cy.findByTestId("object-detail").within(() => {
-        const expectedUrl = `http://localhost:4000/table/${PEOPLE_ID}-people/detail/1`;
+        const expectedUrl = `${Cypress.config("baseUrl")}/table/${PEOPLE_ID}-people/detail/1`;
 
         cy.findByText(/is connected to/).should("be.visible");
         cy.findByRole("link", { name: /Orders/ }).should("be.visible");
@@ -783,7 +783,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
         H.openObjectDetail(0);
 
         cy.findByTestId("object-detail").within(() => {
-          const expectedUrl = `http://localhost:4000/model/${slug}/detail/1`;
+          const expectedUrl = `${Cypress.config("baseUrl")}/model/${slug}/detail/1`;
 
           cy.findByLabelText("Copy link to this record").click();
           H.readClipboard().should("equal", expectedUrl);

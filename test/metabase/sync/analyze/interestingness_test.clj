@@ -1,12 +1,16 @@
 (ns metabase.sync.analyze.interestingness-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [java-time.api :as t]
    [metabase.driver.util :as driver.u]
    [metabase.interestingness.core :as interestingness]
    [metabase.interestingness.dimension :as dim]
    [metabase.sync.analyze.interestingness :as sync.interestingness]
+   [metabase.sync.analyze.test-util :as analyze.tu]
+   [metabase.sync.interface :as i]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
@@ -160,3 +164,58 @@
       (is (some? (score-of visible)))
       (is (nil? (score-of hidden))
           "the user-set visibility_type must still exclude the field after the rewrite"))))
+
+(defn- fingerprinted-field
+  "A text Field with a fingerprint of the latest version, not yet analyzed."
+  [_j]
+  {:fingerprint_version i/*latest-fingerprint-version*
+   :fingerprint         {:global {:distinct-count 2, :nil% 0.0}}
+   :last_analyzed       nil})
+
+(defn- analyzed-field
+  "[[fingerprinted-field]], analyzed already."
+  [j]
+  (assoc (fingerprinted-field j) :last_analyzed (t/offset-date-time)))
+
+(defn- score-fields-for-db!
+  [database]
+  (sync.interestingness/score-fields-for-db! database (constantly nil)))
+
+(deftest score-fields-statement-count-test
+  (testing "scoring interestingness issues as many statements for 16 Tables as for 4"
+    (testing "on first analysis"
+      (let [[small large] (analyze.tu/statement-counts-by-tables fingerprinted-field (constantly nil) score-fields-for-db!)]
+        (is (= small large))))
+    (testing "when nothing needs scoring"
+      (let [[small large] (analyze.tu/statement-counts-by-tables analyzed-field score-fields-for-db! score-fields-for-db!)]
+        (is (= small large))))))
+
+(deftest score-fields-for-db!-scores-every-table-test
+  (testing "scoring interestingness of a Database scores Fields of every Table in its sweep"
+    (mt/with-temp [:model/Database db      {}
+                   :model/Table    table-1 {:db_id (u/the-id db)}
+                   :model/Table    table-2 {:db_id (u/the-id db)}
+                   :model/Field    f1      (merge (fingerprinted-field 0) {:table_id (u/the-id table-1)})
+                   :model/Field    f2      (merge (fingerprinted-field 0) {:table_id (u/the-id table-2)})]
+      (is (= {:fields-scored 2, :fields-failed 0}
+             (score-fields-for-db! (driver.u/lib-database (u/the-id db)))))
+      (is (every? some? (t2/select-fn-vec :dimension_interestingness :model/Field :id [:in [(u/the-id f1) (u/the-id f2)]]))))))
+
+(deftest score-fields-for-db!-saves-other-tables-when-one-write-fails-test
+  (testing "scoring interestingness saves the scores of other Tables when saving those of one Table throws"
+    (mt/with-temp [:model/Database db      {}
+                   :model/Table    table-1 {:db_id (u/the-id db)}
+                   :model/Table    table-2 {:db_id (u/the-id db)}
+                   :model/Table    table-3 {:db_id (u/the-id db)}
+                   :model/Field    f1      (merge (fingerprinted-field 0) {:table_id (u/the-id table-1)})
+                   :model/Field    broken  (merge (fingerprinted-field 0) {:table_id (u/the-id table-2)})
+                   :model/Field    f3      (merge (fingerprinted-field 0) {:table_id (u/the-id table-3)})]
+      (let [update! (mt/original-fn #'field/update-fields!)]
+        (mt/with-dynamic-fn-redefs [field/update-fields! (fn [rows & opts]
+                                                           (when (some #(= (u/the-id broken) (:id %)) rows)
+                                                             (throw (ex-info "write failed" {})))
+                                                           (apply update! rows opts))]
+          (is (pos? (:fields-failed (score-fields-for-db! (driver.u/lib-database (u/the-id db))))))))
+      (is (= {(u/the-id f1) true (u/the-id broken) false (u/the-id f3) true}
+             (update-vals (t2/select-pk->fn :dimension_interestingness :model/Field :id [:in (map u/the-id [f1 broken f3])])
+                          some?))))))

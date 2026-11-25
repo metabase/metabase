@@ -14,6 +14,7 @@
    [metabase.comments.schema :as comments.schema]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -137,14 +138,32 @@
       ;; `:context` carries (its dimension values and the `:highlight_label` summarizing them).
       {:comments (render-comments (comment/apply-context-gate target_type target_id comments))})))
 
+(defn- reads-by-collection-only?
+  "Whether the content gate of `entity` answers yes for every user: any entity but a Document owned by an Exploration."
+  [entity]
+  (or (not= :model/Document (t2/model entity))
+      (nil? (:exploration_id entity))))
+
 (defn- mentioned-ids-who-can-read
-  "Restrict mentioned user ids to active users who can themselves read `entity`."
+  "Restrict mentioned user ids to active users who can themselves read `entity`: those with read access to its
+  Collection, with the Users and their Collection permissions read together, and, for a Document owned by an
+  Exploration, whose content gate answers for each user, those it lets through."
   [entity mention-ids]
   (when (seq mention-ids)
-    (->> (comments.db/active-user-ids mention-ids)
-         (filterv (fn [user-id]
-                    (request/with-current-user user-id
-                      (mi/can-read? (t2/hydrate entity :can_read))))))))
+    (let [users          (comments.db/active-users mention-ids)
+          collection-id  (:collection_id entity)
+          id->permission (perms/collection-permissions-for-users (mapv #(select-keys % [:user-id :is-superuser? :is-data-analyst?]) users)
+                                                                 [collection-id]
+                                                                 {:root-namespace nil})
+          user-ids       (into [] (comp (map :user-id)
+                                        (filter #(perms/collection-permission-at-least? (get-in id->permission [% collection-id]) :read)))
+                               users)]
+      (if (reads-by-collection-only? entity)
+        user-ids
+        (filterv (fn [user-id]
+                   (request/with-current-user user-id
+                     (mi/can-read? (t2/hydrate entity :can_read))))
+                 user-ids)))))
 
 (defn notify-comment!
   "Send a notification about comment"
@@ -173,8 +192,8 @@
                     :style            {:color_text_dark   channel.render/color-text-dark
                                        :color_text_light  channel.render/color-text-light
                                        :color_text_medium channel.render/color-text-medium}}]
-    (doseq [email recipients]
-      (events/publish-event! :event/comment-created (assoc payload :email email)))))
+    (when (seq recipients)
+      (events/publish-event! :event/comment-created {:events (mapv #(assoc payload :email %) recipients)}))))
 
 (defn notify-comment-id!
   "Send a notification using only comment id"
@@ -202,13 +221,13 @@
                                                       (= (:child_target_id <>) child_target_id))
                                                  "Parent comment doesn't belong to the same entity"))
                          (t2/hydrate :creator)))
-        comment    (-> (comments.db/insert-comment! {:target_type       target_type
-                                                     :target_id         target_id
-                                                     :child_target_id   child_target_id
-                                                     :context           context
-                                                     :parent_comment_id parent_comment_id
-                                                     :content           content
-                                                     :creator_id        api/*current-user-id*})
+        comment    (-> (first (comment/create-comments! [{:target_type       target_type
+                                                          :target_id         target_id
+                                                          :child_target_id   child_target_id
+                                                          :context           context
+                                                          :parent_comment_id parent_comment_id
+                                                          :content           content
+                                                          :creator_id        api/*current-user-id*}]))
                        (t2/hydrate :creator)
                        ;; New comments always have empty reactions map
                        (assoc :reactions []))]
@@ -233,7 +252,7 @@
       (api/check-400 (not (:deleted_at comment))
                      "Cannot edit content of a deleted comment"))
     (when (seq changes)
-      (comments.db/update-comment! comment-id changes))
+      (comment/update-comments! [(assoc changes :id comment-id)]))
     (let [updated-comment (-> (comments.db/comment-by-id comment-id)
                               (t2/hydrate :creator :reactions))]
       updated-comment)))
@@ -248,7 +267,7 @@
     (api/check-400 (not (entity-archived? entity)) "Cannot delete comments on archived entities")
     (api/check-400 (not (:deleted_at comment)) "Comment is already deleted")
     ;; Soft delete the comment
-    (comments.db/soft-delete-comment! comment-id)
+    (comment/soft-delete-comments! [comment-id])
     ;; Return 204 No Content
     api/generic-204-no-content))
 

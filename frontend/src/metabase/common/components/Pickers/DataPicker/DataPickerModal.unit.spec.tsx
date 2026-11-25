@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { useState } from "react";
 
 import {
   setupCollectionByIdEndpoint,
@@ -9,14 +10,19 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
+import { TableVisibilityToggle } from "metabase/metadata/pages/DataModelV1/components/TablePicker/components/TableVisibilityToggle";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   Collection,
@@ -71,6 +77,7 @@ type SetupOpts = {
   currentUser?: User;
   collections?: Collection[];
   collectionItems?: { collection: Collection; items: CollectionItem[] }[];
+  hasNestedQueries?: boolean;
 };
 
 async function setup({
@@ -86,6 +93,7 @@ async function setup({
     createMockCollection({ id: 3, name: "Collection B" }),
   ],
   collectionItems = [],
+  hasNestedQueries = true,
 }: SetupOpts = {}) {
   mockGetBoundingClientRect();
   process.env.OVERSCAN = "20";
@@ -114,9 +122,10 @@ async function setup({
       onClose={onClose}
     />,
     {
-      storeInitialState: currentUser
-        ? createMockState({ currentUser })
-        : undefined,
+      storeInitialState: createMockState({
+        ...(currentUser ? { currentUser } : {}),
+        settings: mockSettings({ "enable-nested-queries": hasNestedQueries }),
+      }),
     },
   );
 
@@ -540,6 +549,243 @@ describe("DataPickerModal", () => {
       expect(
         screen.queryByText("You can't combine data from different databases."),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("models", () => {
+    const SAMPLE_DATABASE = createMockDatabase({
+      id: 1,
+      name: "Sample Database",
+      tables: ["Orders", "People", "Products", "Reviews"].map((name, index) =>
+        createMockTable({
+          id: 10 + index,
+          db_id: 1,
+          schema: "PUBLIC",
+          display_name: name,
+        }),
+      ),
+    });
+    const COLLECTION_ITEMS = [
+      createMockCollectionItem({
+        id: 1,
+        name: "Orders Model",
+        model: "dataset",
+        collection_id: null,
+      }),
+      createMockCollectionItem({
+        id: 2,
+        name: "Orders, Count",
+        model: "card",
+        collection_id: null,
+      }),
+    ];
+    const SEARCH_ITEMS = [
+      createMockSearchResult({
+        id: 1,
+        name: "Orders Model",
+        model: "dataset",
+        collection: ROOT,
+      }),
+      createMockSearchResult({
+        id: 2,
+        name: "Orders, Count",
+        model: "card",
+        collection: ROOT,
+      }),
+      createMockSearchResult({
+        id: 10,
+        name: "Orders",
+        model: "table",
+        database_id: 1,
+        collection: ROOT,
+      }),
+    ];
+
+    function setupModels({ hasNestedQueries }: { hasNestedQueries: boolean }) {
+      return setup({
+        hasNestedQueries,
+        databases: [SAMPLE_DATABASE],
+        collections: [ROOT],
+        collectionItems: [{ collection: ROOT, items: COLLECTION_ITEMS }],
+        searchItems: SEARCH_ITEMS,
+      });
+    }
+
+    const getSearchResults = () =>
+      within(screen.getByTestId("item-picker-level-1")).getAllByTestId(
+        "result-item",
+      );
+
+    it("lists models with questions in a collection, and only tables in a database", async () => {
+      const { onChange } = await setupModels({ hasNestedQueries: true });
+
+      await userEvent.click(await screen.findByText("Our analytics"));
+      expect(await screen.findByText("Orders Model")).toBeInTheDocument();
+      expect(screen.getByText("Orders, Count")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Databases"));
+      await userEvent.click(await screen.findByText("Sample Database"));
+      for (const table of ["Orders", "People", "Products", "Reviews"]) {
+        expect(await screen.findByText(table)).toBeInTheDocument();
+      }
+      expect(screen.queryByText("Orders, Count")).not.toBeInTheDocument();
+
+      await typeSearchText("Ord");
+      expect(getLastSearchParams().getAll("models")).toEqual(["table"]);
+      await expectSearchResults(["Orders"]);
+      expect(getSearchResults()[0]).toHaveAttribute("data-model-type", "table");
+
+      await userEvent.click(getScopeRadio("Everywhere"));
+      await expectSearchResults(["Orders Model", "Orders, Count", "Orders"]);
+      expect(getLastSearchParams().getAll("models")).toEqual([
+        "card",
+        "dataset",
+        "metric",
+        "table",
+      ]);
+      expect(
+        getSearchResults().map((item) => item.getAttribute("data-model-type")),
+      ).toEqual(["dataset", "card", "table"]);
+
+      await userEvent.click(await findSearchResult("Orders Model"));
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1, model: "dataset" }),
+      );
+    });
+
+    it("does not list models when nested queries are disabled", async () => {
+      await setupModels({ hasNestedQueries: false });
+
+      await userEvent.click(await screen.findByText("Sample Database"));
+      for (const table of ["Orders", "People", "Products", "Reviews"]) {
+        expect(await screen.findByText(table)).toBeInTheDocument();
+      }
+
+      await typeSearchText("Ord");
+      await userEvent.click(getScopeRadio("Everywhere"));
+      await waitFor(() =>
+        expect(getLastSearchParams().getAll("models")).toEqual(["table"]),
+      );
+      expect(getLastSearchParams().get("collection")).toBeNull();
+      await expectSearchResults(["Orders"]);
+      expect(getSearchResults()[0]).toHaveAttribute("data-model-type", "table");
+      expect(screen.queryByText("Orders Model")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("hidden tables", () => {
+    const TABLES = ["Orders", "People", "Products", "Reviews"].map(
+      (name, index) =>
+        createMockTable({
+          id: 10 + index,
+          db_id: 1,
+          schema: "PUBLIC",
+          name: name.toUpperCase(),
+          display_name: name,
+        }),
+    );
+    const [ORDERS_TABLE] = TABLES;
+    const SCHEMA_TABLES_URL = "path:/api/database/1/schema/PUBLIC";
+    const SAMPLE_DATABASE = createMockDatabase({
+      id: 1,
+      name: "Sample Database",
+      tables: TABLES,
+    });
+
+    /**
+     * Keeps the visibility of the tables the way the backend does: the PUT that
+     * hides a table changes it, and the schema endpoint leaves hidden tables out
+     * unless it is asked for them.
+     */
+    function setupStatefulTables() {
+      const hiddenTableIds = new Set<number>();
+      fetchMock.get(SCHEMA_TABLES_URL, (call) => {
+        const includeHidden =
+          new URL(call.url).searchParams.get("include_hidden") === "true";
+        return TABLES.filter(
+          (table) => includeHidden || !hiddenTableIds.has(Number(table.id)),
+        );
+      });
+      fetchMock.put(`path:/api/table/${ORDERS_TABLE.id}`, (call) => {
+        const body = JSON.parse(String(call.options.body));
+        if (body.visibility_type === "hidden") {
+          hiddenTableIds.add(Number(ORDERS_TABLE.id));
+        }
+        return { ...ORDERS_TABLE, ...body };
+      });
+    }
+
+    function TestApp() {
+      const [isPickerOpen, setIsPickerOpen] = useState(false);
+      return (
+        <>
+          <button onClick={() => setIsPickerOpen(true)}>Open picker</button>
+          <TableVisibilityToggle table={ORDERS_TABLE} onUpdate={jest.fn()} />
+          <UndoListing />
+          {isPickerOpen && (
+            <DataPickerModal
+              title="Pick your starting data"
+              onChange={jest.fn()}
+              onClose={() => setIsPickerOpen(false)}
+            />
+          )}
+        </>
+      );
+    }
+
+    async function openSampleDatabase() {
+      await userEvent.click(
+        screen.getByRole("button", { name: "Open picker" }),
+      );
+      await userEvent.click(await screen.findByText("Databases"));
+      await userEvent.click(await screen.findByText("Sample Database"));
+    }
+
+    it("does not list a table after it was hidden, without a reload (metabase#19742)", async () => {
+      mockGetBoundingClientRect();
+      process.env.OVERSCAN = "20";
+      setupStatefulTables();
+      setupDatabasesEndpoints([SAMPLE_DATABASE]);
+      setupCollectionByIdEndpoint({ collections: [ROOT] });
+      setupCollectionsEndpoints({ collections: [ROOT], rootCollection: ROOT });
+      setupCollectionItemsEndpoint({ collection: ROOT, collectionItems: [] });
+      setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+      setupSearchEndpoints([]);
+      renderWithProviders(<TestApp />);
+
+      await openSampleDatabase();
+      for (const table of ["Orders", "People", "Products", "Reviews"]) {
+        expect(await screen.findByText(table)).toBeInTheDocument();
+      }
+      await userEvent.click(screen.getByRole("button", { name: "Close" }));
+      await waitFor(() =>
+        expect(screen.queryByText("Databases")).not.toBeInTheDocument(),
+      );
+
+      await userEvent.click(screen.getByLabelText("eye icon"));
+      // the toast shows once the hide mutation has finished
+      expect(
+        await within(await screen.findByTestId("undo-list")).findByText(
+          "Hid Orders",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        fetchMock.callHistory.calls(`path:/api/table/${ORDERS_TABLE.id}`, {
+          method: "PUT",
+        }),
+      ).toHaveLength(1);
+
+      await openSampleDatabase();
+      // the picker refetches the tables instead of showing the cached list
+      await waitFor(() =>
+        expect(fetchMock.callHistory.calls(SCHEMA_TABLES_URL)).toHaveLength(2),
+      );
+      await act(() => fetchMock.callHistory.flush(true));
+      for (const table of ["People", "Products", "Reviews"]) {
+        expect(await screen.findByText(table)).toBeInTheDocument();
+      }
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
     });
   });
 });

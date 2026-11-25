@@ -112,6 +112,19 @@
      :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :people)))
                              (lib/= (lib.metadata/field mp (mt/id :people :source)) "Google"))}))
 
+(def google-segment-inputs
+  "Test inputs for a segment test of [[from-google-segment]]: a people table of one person from Google and one from
+  Twitter."
+  [{:table   {:schema "public" :name "people"}
+    :format  "rows"
+    :columns [{:name "id" :cast_type "INTEGER"} {:name "source" :cast_type "VARCHAR"}]
+    :rows    [{"id" 1 "source" "Google"} {"id" 2 "source" "Twitter"}]}])
+
+(def google-segment-expectations
+  "Expectations for a segment test of [[from-google-segment]], which pass when the segment keeps no person whose source
+  is not Google."
+  [{:type "empty" :name "only people from Google" :sql "SELECT * FROM {{output}} WHERE source <> 'Google'"}])
+
 (defn segment-on
   "Segment attributes for a segment named `segment-name` on the table `table-id`, selecting every row."
   [table-id segment-name]
@@ -119,6 +132,12 @@
     {:name       segment-name
      :definition (lib/filter (lib/query mp (lib.metadata/table mp table-id))
                              (lib/= 1 1))}))
+
+(defn empty-segment-definition!
+  "Stores an empty definition on the segment `segment-id`, which the model refuses to save but older segments still
+  have."
+  [segment-id]
+  (t2/query-one {:update :segment :set {:definition "{}"} :where [:= :id segment-id]}))
 
 (defmacro with-transforms-enabled
   "Body with `features` licensed and the transforms setting on."
@@ -138,6 +157,19 @@
               :schema   "public"
               :name     (str (name table) "_summary")
               :database (mt/id)}}))
+
+(defn add-members!
+  "Insert `refs`, `[test-type entity-id]` pairs, as members of the suite `suite-id` at positions 0, 1, ..."
+  [suite-id refs]
+  (t2/insert! :model/TestSuiteMember (map-indexed (fn [i [test-type eid]]
+                                                    {:suite_id suite-id :test_type test-type :test_entity_id eid :position i})
+                                                  refs)))
+
+(defn member-refs
+  "The members of the suite `suite-id`, in order, as `[test-type test-entity-id]`."
+  [suite-id]
+  (into [] (t2/select-fn-vec (juxt :test_type :test_entity_id) :model/TestSuiteMember
+                             {:where [:= :suite_id suite-id] :order-by [[:position :asc]]})))
 
 (defn refusal-type
   "The `:error-type` of the typed refusal `thunk` throws, or nil when it does not throw. Rethrows any other exception."

@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [malli.core :as mc]
+   [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
@@ -232,13 +233,16 @@
    [:inputs       ::inputs]
    [:expectations ::expectations]])
 
-(defn- test-create
-  "What a client sends to create a test: the id of its subject under `subject-key`, of schema `subject-id-schema`."
-  [subject-key subject-id-schema]
-  [:merge
-   [:map {:closed true}
-    [subject-key subject-id-schema]]
-   (with-now definition subject-key ::now)])
+(defn test-create
+  "What a client sends to create a test: the id of its subject under `subject-key`, of schema `subject-id-schema`, and
+  its `now` of schema `now-schema`."
+  ([subject-key subject-id-schema]
+   (test-create subject-key subject-id-schema ::now))
+  ([subject-key subject-id-schema now-schema]
+   [:merge
+    [:map {:closed true}
+     [subject-key subject-id-schema]]
+    (with-now definition subject-key now-schema)]))
 
 (defn- saved-test
   "A saved test: the id of its subject under `subject-key`, of schema `subject-id-schema`, the subject itself when
@@ -259,53 +263,109 @@
              [:updated_at   {:optional true} ms/TemporalInstant]]
     subject-key ::now))
 
-(defn- test-update
+(defn test-update
   "What a client sends to update a test: any of its fields, with the id of its subject under `subject-key`, of schema
-  `subject-id-schema`. Omitted fields are left unchanged."
-  [subject-key subject-id-schema]
-  (with-now [:map {:closed true}
-             [subject-key   {:optional true} subject-id-schema]
-             [:name         {:optional true} ::lib.schema.common/non-blank-string]
-             [:description  {:optional true} [:maybe :string]]
-             [:inputs       {:optional true} ::inputs]
-             [:expectations {:optional true} ::expectations]]
-    subject-key ::now))
-
-(mr/def ::transform-test.create
-  "What a client sends to create a transform test."
-  (test-create :transform_id ::lib.schema.id/transform))
+  `subject-id-schema`, and its `now` of schema `now-schema`. Omitted fields are left unchanged."
+  ([subject-key subject-id-schema]
+   (test-update subject-key subject-id-schema ::now))
+  ([subject-key subject-id-schema now-schema]
+   (with-now [:map {:closed true}
+              [subject-key   {:optional true} subject-id-schema]
+              [:name         {:optional true} ::lib.schema.common/non-blank-string]
+              [:description  {:optional true} [:maybe :string]]
+              [:inputs       {:optional true} ::inputs]
+              [:expectations {:optional true} ::expectations]]
+     subject-key now-schema)))
 
 (mr/def ::transform-test
   "A saved transform test."
   (saved-test :transform_id ::lib.schema.id/transform :transform :metabase.transforms.schema/transform))
 
-(mr/def ::transform-test.update
-  "What a client sends to update a transform test. Omitted fields are left unchanged."
-  (test-update :transform_id ::lib.schema.id/transform))
-
-(mr/def ::card-test.create
-  "What a client sends to create a card test."
-  (test-create :card_id ::lib.schema.id/card))
-
 (mr/def ::card-test
   "A saved card test."
   (saved-test :card_id ::lib.schema.id/card :card :metabase.queries.schema/card))
-
-(mr/def ::card-test.update
-  "What a client sends to update a card test. Omitted fields are left unchanged."
-  (test-update :card_id ::lib.schema.id/card))
-
-(mr/def ::segment-test.create
-  "What a client sends to create a segment test."
-  (test-create :segment_id ::lib.schema.id/segment))
 
 (mr/def ::segment-test
   "A saved segment test."
   (saved-test :segment_id ::lib.schema.id/segment :segment :metabase.segments.schema/segment))
 
-(mr/def ::segment-test.update
-  "What a client sends to update a segment test. Omitted fields are left unchanged."
+(defn- without-now
+  "`snapshot`, a snapshot of a saved test, with a nil `:now` when it has none: a Revision written before tests had `now`
+  has none, and the test then read the real clock."
+  [snapshot]
+  (cond->> snapshot
+    (map? snapshot) (merge {:now nil})))
+
+(mr/def ::transform-test.revision
+  "A transform test as a Revision stores it: its tracked columns."
+  [:schema {:decode/normalize without-now} (test-update :transform_id ::lib.schema.id/transform)])
+
+(mr/def ::card-test.revision
+  "A card test as a Revision stores it: its tracked columns."
+  [:schema {:decode/normalize without-now} (test-update :card_id ::lib.schema.id/card)])
+
+(mr/def ::segment-test.revision
+  "A segment test as a Revision stores it: its tracked columns."
   (test-update :segment_id ::lib.schema.id/segment))
+
+(def ^:private row-now
+  "The `now` of a row a write takes, as an import reads it, before the column transform normalizes it: a moment or its
+  text."
+  [:fn {:error/message "must be a moment or the text of one"}
+   #(or (string? %) (instance? java.time.temporal.TemporalAccessor %))])
+
+(defn- write-create
+  "What a write creates a test with: what a client sends, with its `now` as the row gives it, and the creator and
+  entity id of the row."
+  [subject-key subject-id-schema]
+  [:merge
+   (test-create subject-key subject-id-schema row-now)
+   [:map {:closed true}
+    [:creator_id ::lib.schema.id/user]
+    [:entity_id  {:optional true} [:maybe :string]]]])
+
+(defn- write-update
+  "What a write changes in a test: its `:id` and what a client updates, with its `now` as the row gives it, and the
+  creator and entity id of the row."
+  [subject-key subject-id-schema]
+  [:merge
+   (test-update subject-key subject-id-schema row-now)
+   [:map {:closed true}
+    [:id         ms/PositiveInt]
+    [:creator_id {:optional true} ::lib.schema.id/user]
+    [:entity_id  {:optional true} [:maybe :string]]]])
+
+(mr/def ::transform-test.update
+  "What an update of a transform test takes: its `:id` and the columns to change."
+  (write-update :transform_id ::lib.schema.id/transform))
+
+(mr/def ::transform-test.create
+  "What creating a transform test takes."
+  (write-create :transform_id ::lib.schema.id/transform))
+
+(mr/def ::card-test.update
+  "What an update of a card test takes: its `:id` and the columns to change."
+  (write-update :card_id ::lib.schema.id/card))
+
+(mr/def ::card-test.create
+  "What creating a card test takes."
+  (write-create :card_id ::lib.schema.id/card))
+
+(mr/def ::segment-test.update
+  "What an update of a segment test takes: its `:id` and the columns to change."
+  (write-update :segment_id ::lib.schema.id/segment))
+
+(mr/def ::segment-test.create
+  "What creating a segment test takes."
+  (write-create :segment_id ::lib.schema.id/segment))
+
+(mr/def ::saved-test.create
+  "What creating a saved test of any subject type takes."
+  [:or ::transform-test.create ::card-test.create ::segment-test.create])
+
+(mr/def ::saved-test.update
+  "What an update of a saved test of any subject type takes."
+  [:or ::transform-test.update ::card-test.update ::segment-test.update])
 
 (mr/def ::saved-test
   "A saved test of any subject type."
@@ -387,6 +447,98 @@
    [:map {:closed true}
     [:last_run [:maybe ::data-test-run]]]])
 
+(mr/def ::test-suite.member.request
+  "A test in a suite, as a client names it: by its type and either its id or its entity id."
+  [:and
+   [:map {:closed true}
+    [:test_type      ::test-type]
+    [:test_id        {:optional true} ms/PositiveInt]
+    [:test_entity_id {:optional true} ::lib.schema.common/non-blank-string]]
+   [:fn {:error/message "must have exactly one of test_id and test_entity_id"}
+    (fn [member] (= 1 (count (select-keys member [:test_id :test_entity_id]))))]])
+
+(mr/def ::test-suite.update
+  "What an update of a test suite takes, without its members: its `:id` and the columns to change."
+  [:map {:closed true}
+   [:id          ms/PositiveInt]
+   [:name        {:optional true} ::lib.schema.common/non-blank-string]
+   [:description {:optional true} [:maybe :string]]])
+
+(mr/def ::test-suite.create
+  "What creating a test suite takes, without its members: the columns of an update without the `:id`, its name, creator
+  and the entity id of an import."
+  [:merge
+   (mut/dissoc ::test-suite.update :id)
+   [:map {:closed true}
+    [:name       ::lib.schema.common/non-blank-string]
+    [:creator_id ::lib.schema.id/user]
+    [:entity_id  {:optional true} [:maybe :string]]]])
+
+(mr/def ::test-suite-member.update
+  "What an update of a member of a test suite takes: its `:id` and the columns to change."
+  [:map {:closed true}
+   [:id             ms/PositiveInt]
+   [:suite_id       {:optional true} ms/PositiveInt]
+   [:test_type      {:optional true} [:or ::test-type :keyword]]
+   [:test_entity_id {:optional true} :string]
+   [:position       {:optional true} :int]])
+
+(mr/def ::test-suite-member.create
+  "A member of a test suite as it is stored: the columns of an update without the `:id`, its suite, its test, by type
+  and entity id, and its position."
+  [:merge
+   (mut/dissoc ::test-suite-member.update :id)
+   [:map {:closed true}
+    [:suite_id       ms/PositiveInt]
+    [:test_type      ::test-type]
+    [:test_entity_id :string]
+    [:position       :int]]])
+
+(mr/def ::test-suite
+  "A saved test suite, without its members."
+  [:map {:closed true}
+   [:id          ms/PositiveInt]
+   [:entity_id   :string]
+   [:name        ::lib.schema.common/non-blank-string]
+   [:description [:maybe :string]]
+   [:creator_id  ::lib.schema.id/user]
+   [:created_at  ms/TemporalInstant]
+   [:updated_at  ms/TemporalInstant]])
+
+(mr/def ::test-suite.synced-item
+  "A test suite as remote sync lists it."
+  [:map {:closed true}
+   [:id   ms/PositiveInt]
+   [:name :string]])
+
+(mr/def ::test-suite.member
+  "A test in a suite, by type and entity id. The test can be missing from this instance. `:test_type` is any keyword,
+  as a suite can name a type this version does not know."
+  [:map {:closed true}
+   [:id             ms/PositiveInt]
+   [:suite_id       ms/PositiveInt]
+   [:test_type      :keyword]
+   [:test_entity_id :string]
+   [:position       :int]])
+
+(mr/def ::test-suite.member.response
+  "A test in a suite as the API returns it. `:status` says whether the test exists and the caller can read it; only a
+  `:readable` member has its `:test_id` and `:name`."
+  [:map {:closed true}
+   [:test_type      :keyword]
+   [:test_entity_id :string]
+   [:position       :int]
+   [:status         [:enum :readable :unreadable :missing]]
+   [:test_id        {:optional true} ms/PositiveInt]
+   [:name           {:optional true} :string]])
+
+(mr/def ::test-suite.response
+  "A test suite as the API returns it, with its members in order."
+  [:merge
+   ::test-suite
+   [:map {:closed true}
+    [:members [:sequential ::test-suite.member.response]]]])
+
 (mr/def ::status
   "The outcome of a test run, or of one of its expectations.
 
@@ -424,6 +576,81 @@
    [:expectations [:sequential ::expectation-result]]
    [:tables       [:map-of :string :string]]])
 
+(mr/def ::test-suite-run.member-status
+  "The outcome of one member of a suite run. The suite passes only when every member is `:passed`.
+
+  `:missing`: no test has the member's type and entity id, its type is one this version does not know, or the thing it
+  tests is gone. `:forbidden`: the user who ran the suite may not run the test. `:refused`: the test's own run endpoint
+  would have refused the run, before or after it started. `:error`: loading the test's subject, checking the user's
+  permission, or the run failed for any other reason."
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword}
+   :passed :failed :refused :error :forbidden :missing])
+
+(mr/def ::test-suite-run.error
+  "Why a member did not pass or fail: the `:error_code` of a refusal, as the test's own run endpoint gives it, and a
+  message."
+  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+   [:error_code {:optional true} :string]
+   [:message    [:maybe :string]]])
+
+(mr/def ::test-suite-run.stored-member
+  "The outcome of one member of a suite run as the run history keeps it: no name and no result, which the reader of the
+  history may not be allowed to see."
+  [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
+   [:test_type        [:keyword {:decode/normalize lib.schema.common/normalize-keyword}]]
+   [:test_entity_id   :string]
+   [:position         :int]
+   [:status           ::test-suite-run.member-status]
+   [:data_test_run_id {:optional true} ms/PositiveInt]
+   [:error            {:optional true} ::test-suite-run.error]])
+
+(mr/def ::test-suite-run.stored-members
+  "The outcomes of the members of a suite run, in order."
+  [:sequential ::test-suite-run.stored-member])
+
+(mr/def ::test-suite-run.member
+  "The outcome of one member of a suite run, as the run endpoint returns it to the user who ran it: with the test's id
+  and name when that user may read the test, and the test's own run result when the member passed or failed."
+  [:merge
+   ::test-suite-run.stored-member
+   [:map {:closed true}
+    [:test_id {:optional true} ms/PositiveInt]
+    [:name    {:optional true} :string]
+    [:result  {:optional true} ::run-result]]])
+
+(mr/def ::test-suite-run
+  "A run of a test suite. `:members` is nil while the run is started, and stays nil when it ends in `:error`, or in
+  `:timeout` because the process running it stopped. `:suite_id` is nil once the suite is deleted."
+  [:map {:closed true}
+   [:id             ms/PositiveInt]
+   [:suite_id       [:maybe ms/PositiveInt]]
+   [:initiated_by   [:maybe ::lib.schema.id/user]]
+   [:status         ::run-status]
+   [:start_time     ms/TemporalInstant]
+   [:end_time       [:maybe ms/TemporalInstant]]
+   [:last_heartbeat ms/TemporalInstant]
+   [:members        [:maybe ::test-suite-run.stored-members]]])
+
+(mr/def ::test-suite-run.result
+  "The outcome of a suite run as the run endpoint returns it. `:status` is `:timeout` when the cluster reaper timed the
+  run out while it ran, which happens only when the process running it stopped heartbeating it."
+  [:map {:closed true}
+   [:id       ms/PositiveInt]
+   [:suite_id ms/PositiveInt]
+   [:status   [:enum :passed :failed :timeout]]
+   [:members  [:sequential ::test-suite-run.member]]])
+
+(mr/def ::test-suite-runs.response
+  "A page of the runs of a suite, each with the user who started it."
+  [:map {:closed true}
+   [:data   [:sequential [:merge
+                          ::test-suite-run
+                          [:map {:closed true}
+                           [:initiated_by_user [:maybe ::user]]]]]]
+   [:limit  pos-int?]
+   [:offset :int]
+   [:total  :int]])
+
 (mr/def ::connection
   "A connection from `driver/do-with-test-connection`: a JDBC connection, or the BigQuery client and session that stand
   in for one."
@@ -447,6 +674,43 @@
 (mr/def ::external-transform-test
   "A TransformTest as serialization writes it, with references in place of ids."
   (external-test ::transform-test :transform_id))
+
+(mr/def ::external-test-suite-member
+  "A TestSuiteMember as serialization writes it, nested in its suite. It names its test by type and entity id, which
+  serialization copies as they are: a suite can name a test the importing instance lacks."
+  [:map {:closed true}
+   [:test_type      [:or :keyword :string]]
+   [:test_entity_id :string]
+   [:position       :int]
+   [:serdes/meta    {:optional true} ::models.schema/external-meta]])
+
+(defn repeated-tests
+  "The tests that more than one of `members` names, each as \"<test type> test <entity id>\". A member counts only
+  when it has both a `:test_type`, a keyword or a string, and a `:test_entity_id`."
+  [members]
+  (into []
+        (keep (fn [[[test-type eid] n]]
+                (when (> n 1)
+                  (str test-type " test " eid))))
+        (frequencies (keep (fn [{:keys [test_type test_entity_id]}]
+                             (when (and test_type test_entity_id)
+                               [(name test_type) test_entity_id]))
+                           members))))
+
+(mr/def ::external-test-suite
+  "A TestSuite as serialization writes it, with its members nested in order. A test can be a member at most once."
+  [:schema {:registry lib.schema.id/external-registry}
+   [:merge
+    [:select-keys ::test-suite [:entity_id :name :creator_id]]
+    [:map {:closed true}
+     [:description {:optional true} [:maybe :string]]
+     [:members     {:optional true} [:maybe [:and
+                                             [:sequential [:ref ::external-test-suite-member]]
+                                             [:fn {:error/fn (fn [{members :value} _options]
+                                                               (str "names the same test more than once: "
+                                                                    (str/join ", " (repeated-tests members))))}
+                                              #(empty? (repeated-tests %))]]]]
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
 
 (mr/def ::external-card-test
   "A CardTest as serialization writes it, with references in place of ids."

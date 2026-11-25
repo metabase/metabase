@@ -2,6 +2,7 @@
   "The `:card` subject: a question, model or metric, whose result set expectation SQL names as `{{output}}`."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase.lib.core :as lib]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -10,6 +11,15 @@
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
+
+(defn check-testable
+  "Throws `::data-testing.errors/uncompilable-subject` when `card` has no query to test. Nil `card` passes."
+  [{query :dataset_query :as card}]
+  (when (and card (empty? query))
+    (throw (data-testing.errors/ex
+            ::data-testing.errors/uncompilable-subject
+            (tru "The card has no query, so there is no query to test.")
+            {}))))
 
 (defn- parameters-needing-a-value
   "The names, sorted, of the parameters that the compile failure `e` says need a value. Empty when the failure has

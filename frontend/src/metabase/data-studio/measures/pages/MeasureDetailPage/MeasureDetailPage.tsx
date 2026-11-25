@@ -34,7 +34,7 @@ export function MeasureDetailPage({
   onRemove,
 }: MeasureDetailPageProps) {
   const canWriteMeasures = useSelector((state) =>
-    getUserCanWriteMeasures(state, table.is_published),
+    getUserCanWriteMeasures(state, table.collection != null),
   );
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -47,7 +47,7 @@ export function MeasureDetailPage({
   const isDirty = useMemo(
     () =>
       description !== (savedMeasure.description ?? "") ||
-      !Lib.areLegacyQueriesEqual(definition, savedMeasure.definition),
+      !Lib.areQueriesEqual(definition, savedMeasure.definition),
     [description, definition, savedMeasure],
   );
 

@@ -49,6 +49,7 @@
    ::errors/unsupported-transform      422
    ::errors/unsupported-driver         422
    ::errors/uncompilable-subject       422
+   ::errors/archived-subject           422
    ::errors/query-failed               422
    ::errors/duplicate-output-columns   422
    ::errors/setup-failed               422
@@ -92,6 +93,7 @@
     (is (= #{::errors/unsupported-transform
              ::errors/unsupported-driver
              ::errors/uncompilable-subject
+             ::errors/archived-subject
              ::errors/query-failed
              ::errors/duplicate-output-columns
              ::errors/setup-failed
@@ -132,6 +134,7 @@
    ::errors/no-output                  "transform-test.no-output"
    ::errors/parameters-not-taken       "transform-test.parameters-not-taken"
    ::errors/impersonated-user          "transform-test.impersonated-user"
+   ::errors/archived-subject           "transform-test.archived-subject"
    ::errors/unsupported-transform      "transform-test.unsupported-transform"
    ::errors/unsupported-driver         "transform-test.unsupported-driver"
    ::errors/uncompilable-subject       "transform-test.uncompilable-subject"

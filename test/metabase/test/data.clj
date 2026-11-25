@@ -291,7 +291,7 @@
   current DB. Tables and Fields are copied as well."
   {:style/indent 0}
   [& body]
-  `(data.impl/do-with-temp-copy-of-db (^:once fn* [] ~@body)))
+  `(data.impl/do-with-temp-copy-of-db! (^:once fn* [] ~@body)))
 
 (defn- create-h2-db-script! [create-sample-content?]
   (schema-migrations-test.impl/with-temp-empty-app-db [conn :h2]

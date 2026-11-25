@@ -22,6 +22,7 @@
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
+   [metabase.users.models.user :as user]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -110,27 +111,28 @@
 
 (deftest run-one-iteration-happy-path-test
   (testing "A pending row gets executed, the linked stored_result holds result_data, and status flips to done"
-    (mt/with-temp [:model/User u {:email "happy@example.com"}
-                   :model/Card card {:type :metric
-                                     :creator_id (:id u)
-                                     :dataset_query (venues-count-query)}]
-      (let [thread (temp-thread! (:id u))
-            row    (pending-query! (:id thread) (:id card)
-                                   (venues-count-query))
-            final  (drain-until-terminal! (:id row))
-            result (t2/select-one :model/ExplorationQueryResult
-                                  :exploration_query_id (:id row))
-            sr     (stored-result-for (:id row))]
-        (is (= "done" (:status final)))
-        (is (some? (:started_at final)))
-        (is (some? (:finished_at final)))
-        (is (nil? (:error_message final)))
-        (is (some? result))
-        (is (some? (:stored_result_id result)))
-        (is (some? sr))
-        (is (pos? (count (:result_data sr))))
-        (is (= 1 (:row_count sr))
-            "the QP's top-level :row_count (1 row for an unbucketed count) is persisted on the snapshot")))))
+    (mt/with-model-cleanup [:model/User]
+      (let [[u] (user/create-users! [{:email "happy@example.com"}])]
+        (mt/with-temp [:model/Card card {:type :metric
+                                         :creator_id (:id u)
+                                         :dataset_query (venues-count-query)}]
+          (let [thread (temp-thread! (:id u))
+                row    (pending-query! (:id thread) (:id card)
+                                       (venues-count-query))
+                final  (drain-until-terminal! (:id row))
+                result (t2/select-one :model/ExplorationQueryResult
+                                      :exploration_query_id (:id row))
+                sr     (stored-result-for (:id row))]
+            (is (= "done" (:status final)))
+            (is (some? (:started_at final)))
+            (is (some? (:finished_at final)))
+            (is (nil? (:error_message final)))
+            (is (some? result))
+            (is (some? (:stored_result_id result)))
+            (is (some? sr))
+            (is (pos? (count (:result_data sr))))
+            (is (= 1 (:row_count sr))
+                "the QP's top-level :row_count (1 row for an unbucketed count) is persisted on the snapshot")))))))
 
 (deftest run-one-iteration-stores-resolved-source-ids-on-the-stored-result-test
   (mt/with-temp [:model/User u {:email "sr-resolved-source-ids@example.com"}
@@ -167,20 +169,21 @@
 
 (deftest run-one-iteration-writes-interestingness-score-test
   (testing "A 2-column result gets scored and the score lands on the result row"
-    (mt/with-temp [:model/User u {:email "score@example.com"}
-                   :model/Card card {:type :metric
-                                     :creator_id (:id u)
-                                     :dataset_query (venues-count-query)}]
-      (let [thread (temp-thread! (:id u))
-            row    (pending-query! (:id thread) (:id card)
-                                   (venues-count-query-with-breakout-on-category-id))
-            _      (drain-until-terminal! (:id row))
-            result (t2/select-one :model/ExplorationQueryResult
-                                  :exploration_query_id (:id row))
-            score  (:interestingness_score result)]
-        (is (some? result))
-        (is (double? score))
-        (is (<= 0.0 score 1.0))))))
+    (mt/with-model-cleanup [:model/User]
+      (let [[u] (user/create-users! [{:email "score@example.com"}])]
+        (mt/with-temp [:model/Card card {:type :metric
+                                         :creator_id (:id u)
+                                         :dataset_query (venues-count-query)}]
+          (let [thread (temp-thread! (:id u))
+                row    (pending-query! (:id thread) (:id card)
+                                       (venues-count-query-with-breakout-on-category-id))
+                _      (drain-until-terminal! (:id row))
+                result (t2/select-one :model/ExplorationQueryResult
+                                      :exploration_query_id (:id row))
+                score  (:interestingness_score result)]
+            (is (some? result))
+            (is (double? score))
+            (is (<= 0.0 score 1.0))))))))
 
 (deftest run-one-iteration-survives-scoring-failure-test
   (testing "A scoring exception leaves the row done with a nil score; the result blob is still written"
@@ -205,39 +208,41 @@
 
 (deftest run-one-iteration-writes-contextual-score-test
   (testing "When the thread has a prompt and the lego returns a score, it lands on the result row"
-    (mt/with-temp [:model/User u {:email "ctx-score@example.com"}
-                   :model/Card card {:type :metric
-                                     :creator_id (:id u)
-                                     :dataset_query (venues-count-query)}]
-      (let [thread (temp-thread! (:id u) "Why are venue counts dropping in this region?")
-            row    (pending-query! (:id thread) (:id card)
-                                   (venues-count-query-with-breakout-on-category-id))]
-        (mt/with-dynamic-fn-redefs [contextual-interestingness/score-and-describe-chart
-                                    (fn [_inputs] {:score 0.73})]
-          (drain-until-terminal! (:id row))
-          (let [result (t2/select-one :model/ExplorationQueryResult
-                                      :exploration_query_id (:id row))]
-            (is (= 0.73 (:contextual_interestingness_score result)))))))))
+    (mt/with-model-cleanup [:model/User]
+      (let [[u] (user/create-users! [{:email "ctx-score@example.com"}])]
+        (mt/with-temp [:model/Card card {:type :metric
+                                         :creator_id (:id u)
+                                         :dataset_query (venues-count-query)}]
+          (let [thread (temp-thread! (:id u) "Why are venue counts dropping in this region?")
+                row    (pending-query! (:id thread) (:id card)
+                                       (venues-count-query-with-breakout-on-category-id))]
+            (mt/with-dynamic-fn-redefs [contextual-interestingness/score-and-describe-chart
+                                        (fn [_inputs] {:score 0.73})]
+              (drain-until-terminal! (:id row))
+              (let [result (t2/select-one :model/ExplorationQueryResult
+                                          :exploration_query_id (:id row))]
+                (is (= 0.73 (:contextual_interestingness_score result)))))))))))
 
 (deftest run-one-iteration-hands-computed-stats-to-the-scorer-test
   (testing "The deep stats the runner already computed are handed to the contextual scorer, not recomputed"
-    (mt/with-temp [:model/User u {:email "ctx-stats@example.com"}
-                   :model/Card card {:type :metric
-                                     :creator_id (:id u)
-                                     :dataset_query (venues-count-query)}]
-      (let [thread (temp-thread! (:id u) "Why are venue counts dropping in this region?")
-            row    (pending-query! (:id thread) (:id card)
-                                   (venues-count-query-with-breakout-on-category-id))
-            seen   (atom nil)]
-        (mt/with-dynamic-fn-redefs [contextual-interestingness/score-and-describe-chart
-                                    (fn [inputs] (reset! seen inputs) {:score 0.5})]
-          (drain-until-terminal! (:id row))
-          (let [result (t2/select-one :model/ExplorationQueryResult
-                                      :exploration_query_id (:id row))]
-            (is (some? (:stats @seen))
-                "the scorer receives the already-computed stats")
-            (is (= (:chart_stats result) (:stats @seen))
-                "and they are the same deep stats persisted on the result row")))))))
+    (mt/with-model-cleanup [:model/User]
+      (let [[u] (user/create-users! [{:email "ctx-stats@example.com"}])]
+        (mt/with-temp [:model/Card card {:type :metric
+                                         :creator_id (:id u)
+                                         :dataset_query (venues-count-query)}]
+          (let [thread (temp-thread! (:id u) "Why are venue counts dropping in this region?")
+                row    (pending-query! (:id thread) (:id card)
+                                       (venues-count-query-with-breakout-on-category-id))
+                seen   (atom nil)]
+            (mt/with-dynamic-fn-redefs [contextual-interestingness/score-and-describe-chart
+                                        (fn [inputs] (reset! seen inputs) {:score 0.5})]
+              (drain-until-terminal! (:id row))
+              (let [result (t2/select-one :model/ExplorationQueryResult
+                                          :exploration_query_id (:id row))]
+                (is (some? (:stats @seen))
+                    "the scorer receives the already-computed stats")
+                (is (= (:chart_stats result) (:stats @seen))
+                    "and they are the same deep stats persisted on the result row")))))))))
 
 (deftest run-one-iteration-skips-contextual-when-prompt-blank-test
   (testing "Threads with no prompt → contextual_interestingness_score is nil and the lego is not called"
@@ -259,26 +264,27 @@
 
 (deftest run-one-iteration-survives-contextual-failure-test
   (testing "A throwing contextual scorer leaves the row done, heuristic still scored, contextual nil"
-    (mt/with-temp [:model/User u {:email "ctx-throw@example.com"}
-                   :model/Card card {:type :metric
-                                     :creator_id (:id u)
-                                     :dataset_query (venues-count-query)}]
-      (let [thread (temp-thread! (:id u) "anything")
-            row    (pending-query! (:id thread) (:id card)
-                                   (venues-count-query-with-breakout-on-category-id))]
-        (mt/with-dynamic-fn-redefs [contextual-interestingness/score-and-describe-chart
-                                    (fn [& _] (throw (ex-info "boom" {})))]
-          (let [final  (drain-until-terminal! (:id row))
-                result (t2/select-one :model/ExplorationQueryResult
-                                      :exploration_query_id (:id row))
-                sr     (stored-result-for (:id row))]
-            (is (= "done" (:status final)))
-            (is (some? result))
-            (is (some? sr))
-            (is (pos? (count (:result_data sr))))
-            (is (nil? (:contextual_interestingness_score result)))
-            (is (double? (:interestingness_score result))
-                "heuristic score still computed when contextual fails")))))))
+    (mt/with-model-cleanup [:model/User]
+      (let [[u] (user/create-users! [{:email "ctx-throw@example.com"}])]
+        (mt/with-temp [:model/Card card {:type :metric
+                                         :creator_id (:id u)
+                                         :dataset_query (venues-count-query)}]
+          (let [thread (temp-thread! (:id u) "anything")
+                row    (pending-query! (:id thread) (:id card)
+                                       (venues-count-query-with-breakout-on-category-id))]
+            (mt/with-dynamic-fn-redefs [contextual-interestingness/score-and-describe-chart
+                                        (fn [& _] (throw (ex-info "boom" {})))]
+              (let [final  (drain-until-terminal! (:id row))
+                    result (t2/select-one :model/ExplorationQueryResult
+                                          :exploration_query_id (:id row))
+                    sr     (stored-result-for (:id row))]
+                (is (= "done" (:status final)))
+                (is (some? result))
+                (is (some? sr))
+                (is (pos? (count (:result_data sr))))
+                (is (nil? (:contextual_interestingness_score result)))
+                (is (double? (:interestingness_score result))
+                    "heuristic score still computed when contextual fails")))))))))
 
 (deftest run-one-iteration-skips-contextual-without-other-tools-permission-test
   (testing "When the exploration creator lacks :permission/metabot-other-tools, the
