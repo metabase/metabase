@@ -320,7 +320,7 @@
                       {:keys [semantic_type fk_target_field_id]} (t2/select-one [:model/Field :semantic_type :fk_target_field_id]
                                                                                 :id (mt/id :checkins :user_id))]
                   {:step-info         (sync.util-test/only-step-keys step-info)
-                   :task-details      task_details
+                   :task-details      (sync.util-test/only-step-keys task_details)
                    :semantic-type     semantic_type
                    :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
         (testing "before"
@@ -345,7 +345,7 @@
                        {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
                       {:keys [semantic_type fk_target_field_id]} (t2/select-one :model/Field :id (mt/id :checkins :user_id))]
                   {:step-info         (sync.util-test/only-step-keys step-info)
-                   :task-details      task_details
+                   :task-details      (sync.util-test/only-step-keys task_details)
                    :semantic-type     semantic_type
                    :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
         (testing "before"

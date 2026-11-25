@@ -63,7 +63,8 @@
   [database :- i/DatabaseInstance]
   (log-if-error "db-metadata"
     (let [driver (driver.u/database->driver database)]
-      (driver/describe-database driver database))))
+      (sync-util/with-call-time :catalog-call-ms
+        (driver/describe-database driver database)))))
 
 (defn include-nested-fields-for-table
   "Add nested-field-columns for table to set of fields."
@@ -75,7 +76,10 @@
        (let [effective-table (assoc table :schema effective-schema :name effective-name)]
          (cond-> fields
            (driver.u/supports? driver :nested-field-columns database)
-           (set/union (sql-jdbc.sync/describe-nested-field-columns driver database effective-table))))))))
+           (set/union (do
+                        (sync-util/add-call-stats! {:nested-field-tables 1})
+                        (sync-util/with-call-time :nested-field-call-ms
+                          (sql-jdbc.sync/describe-nested-field-columns driver database effective-table))))))))))
 
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
@@ -89,12 +93,13 @@
        database table
        (fn [{effective-schema :schema effective-name :name}]
          (let [effective-table (assoc table :schema effective-schema :name effective-name)]
-           (if (driver.u/supports? driver :describe-fields database)
-             (set (driver/describe-fields driver
-                                          database
-                                          :table-names [effective-name]
-                                          :schema-names [effective-schema]))
-             (:fields (driver/describe-table driver database effective-table)))))))))
+           (sync-util/with-call-time :catalog-call-ms
+             (if (driver.u/supports? driver :describe-fields database)
+               (set (driver/describe-fields driver
+                                            database
+                                            :table-names [effective-name]
+                                            :schema-names [effective-schema]))
+               (:fields (driver/describe-table driver database effective-table))))))))))
 
 (def ^:private describe-table-batch-size
   "How many Tables [[describe-fields-using-describe-table]] reads from the app DB at a time."
@@ -134,9 +139,14 @@
     (let [driver             (driver.u/database->driver database)
           describe-fields-fn (if (driver.u/supports? driver :describe-fields database)
                                (do (log/debug "Using `describe-fields` (fast sync) to fetch fields metadata.")
-                                   driver/describe-fields)
+                                   (fn [driver database args]
+                                     (sync-util/timed-reducible
+                                      :catalog-call-ms
+                                      (sync-util/with-call-time :catalog-call-ms
+                                        (driver/describe-fields driver database args)))))
                                ;; In a future version we may remove [[driver/describe-table]]
-                               ;; and we'll just use [[driver/describe-fields]] here
+                               ;; and we'll just use [[driver/describe-fields]] here. Its catalog reads are timed
+                               ;; in [[table-fields-metadata]], one Table at a time.
                                (do (log/debug "Using `describe-table` (legacy sync) to fetch fields metadata.")
                                    describe-fields-using-describe-table))]
       (cond->> (describe-fields-fn driver database args)
@@ -178,7 +188,10 @@
       (when (driver.u/supports? driver :metadata/key-constraints database)
         (cond->> (if (ws.table-remapping/table-remappings-exist? (:id database))
                    (workspace-fk-metadata driver database args)
-                   (driver/describe-fks driver database args))
+                   (sync-util/timed-reducible
+                    :catalog-call-ms
+                    (sync-util/with-call-time :catalog-call-ms
+                      (driver/describe-fks driver database args))))
           ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
           (mu.fn/instrument-ns? *ns*)
           (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %))))))))
@@ -194,4 +207,5 @@
      database table
      (fn [{effective-schema :schema effective-name :name}]
        (let [effective-table (assoc table :schema effective-schema :name effective-name)]
-         (driver/describe-table-indexes (driver.u/database->driver database) database effective-table))))))
+         (sync-util/with-call-time :catalog-call-ms
+           (driver/describe-table-indexes (driver.u/database->driver database) database effective-table)))))))

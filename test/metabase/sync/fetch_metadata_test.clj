@@ -1,9 +1,14 @@
 (ns metabase.sync.fetch-metadata-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.fetch-metadata :as fetch-metadata]
-   [metabase.test :as mt])
+   [metabase.sync.util :as sync-util]
+   [metabase.sync.util-test :as sync.util-test]
+   [metabase.test :as mt]
+   [toucan2.core :as t2])
   (:import
    (com.mchange.v2.resourcepool CannotAcquireResourceException)
    (java.sql SQLException)))
@@ -56,3 +61,30 @@
                (mt/with-log-messages-for-level [messages [metabase.sync.fetch-metadata-test :debug]]
                  (is (thrown? Throwable (fetch-metadata/log-if-error "test" (throw e))))
                  (mapv :level (messages)))))))))
+
+(deftest sync-fields-records-catalog-time-test
+  (testing "the field sync step records the time of its catalog reads"
+    (is (=? {:catalog-call-ms nat-int?}
+            (:step-info (sync.util-test/sync-database! "sync-fields" (mt/db)))))))
+
+(deftest nested-field-columns-sample-is-counted-test
+  (testing "the read of sample rows for nested field columns is counted for the sync step that runs it"
+    (let [step-name (mt/random-name)
+          database  (driver.u/lib-database (mt/id))
+          table     (t2/select-one :model/Table :id (mt/id :venues))]
+      ;; `with-redefs` and not `mt/with-dynamic-fn-redefs`: `describe-nested-field-columns` is a multimethod
+      (with-redefs [driver.u/supports?                           (fn [_driver feature _database]
+                                                                   (= feature :nested-field-columns))
+                    sql-jdbc.sync/describe-nested-field-columns (fn [_driver _database _table]
+                                                                  (Thread/sleep 20)
+                                                                  #{})]
+        (let [results (sync-util/run-sync-operation
+                       (mt/random-name)
+                       database
+                       [(sync-util/create-sync-step step-name
+                                                    (fn [_]
+                                                      (fetch-metadata/include-nested-fields-for-table #{} database table)
+                                                      {:total-tables 1}))])]
+          (is (=? {:nested-field-tables 1
+                   :nested-field-call-ms     #(<= 15 % 500)}
+                  (get (into {} (:steps results)) step-name))))))))

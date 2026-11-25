@@ -109,6 +109,13 @@
    [:errors                 {:optional true} :int]
    [:probed                 {:optional true} :int]
    [:queries                {:optional true} :int]
+   [:too-large              {:optional true} :int]
+   [:catalog-call-ms        {:optional true} :int]
+   [:nested-field-call-ms   {:optional true} :int]
+   [:nested-field-tables    {:optional true} :int]
+   [:query-call-ms          {:optional true} :int]
+   [:query-calls            {:optional true} :int]
+   [:query-rows             {:optional true} :int]
    [:flavor                 {:optional true} [:maybe :string]]
    [:semantic-version       {:optional true} [:or
                                               [:sequential :int]
