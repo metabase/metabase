@@ -49686,9 +49686,25 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "last_sync_attempted_at" : {
+                      "anyOf" : [ {
+                        "description" : "value must be a valid date/time/datetime",
+                        "type" : "string",
+                        "format" : "date-time"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "last_sync_error" : {
+                      "anyOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
-                  "required" : [ "last_checked_at", "advisories" ]
+                  "required" : [ "last_checked_at", "last_sync_attempted_at", "last_sync_error", "advisories" ]
                 }
               }
             }
