@@ -1176,6 +1176,12 @@ describe("DataStep", () => {
   });
 
   describe("link to data source", () => {
+    afterEach(() => {
+      if (jest.isMockFunction(window.open)) {
+        jest.mocked(window.open).mockRestore();
+      }
+    });
+
     it("should show the tooltip on hover", async () => {
       await setup();
 
@@ -1335,6 +1341,7 @@ describe("DataStep", () => {
         `/table/${REVIEWS_ID}-reviews`,
         "_blank",
       );
+      expect(screen.queryByTestId("mini-picker")).not.toBeInTheDocument();
       mockWindowOpen.mockClear();
     });
 
