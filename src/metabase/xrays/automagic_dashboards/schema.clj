@@ -1,7 +1,6 @@
 (ns metabase.xrays.automagic-dashboards.schema
   (:require
    [malli.util :as mut]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -41,12 +40,8 @@
    [:model/Query   [:ref ::adhoc-question]]])
 
 (mr/def ::filter-clause
+  "An MBQL 5 filter clause."
   [:and
-   {:decode/normalize (fn [x]
-                        (when (sequential? x)
-                          (if (map? (second x))
-                            x
-                            (lib/->mbql5 x))))}
    [:ref ::lib.schema.mbql-clause/clause]
    [:ref ::lib.schema.expression/boolean]])
 
@@ -55,8 +50,8 @@
 
 (mr/def ::root.cell-query-input
   "A `::root.cell-query` before [[metabase.xrays.automagic-dashboards.comparison/comparison-dashboard]] and friends
-  normalize it with `(lib/normalize ::root.cell-query ...)`: a raw, possibly-legacy filter clause as callers (API
-  params decoded from JSON, or a hand-written test clause) actually pass it in."
+  normalize it with `(lib/normalize ::root.cell-query ...)`: an MBQL 5 filter clause that may still be in its JSON
+  form, with strings for the keywords."
   ::lib.schema.common/possibly-unnormalized-clause)
 
 (mr/def ::root

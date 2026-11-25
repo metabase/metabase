@@ -70,7 +70,7 @@ When a diff changes a shared helper, inspect its callers rather than reviewing t
 - [ ] Prefers a11y queries (`findByRole`, `findByLabelText`) over `findByText`
 - [ ] `findByText` only when an a11y query doesn't fit
 - [ ] `findByTestId` for `data-testid` attributes (never raw `cy.get("[data-testid='...']")`)
-- [ ] No CSS class names — especially generated ones from styled-components/Mantine (`.css-1abc2d`)
+- [ ] No CSS class names — especially generated ones from CSS modules/Mantine (`.m_87cf2631`)
 - [ ] No ad-hoc CSS attribute selectors in specs or new helpers (the visualization helpers in `e2e/support/helpers/e2e-visual-tests-helpers.js` are the **only** intentional exception — see "What NOT to flag")
 - [ ] No XPath
 - [ ] **Positional selectors** (`.eq()`, `.first()`, `.last()`, `:nth-child`) only when the order is the assertion itself, or guarded by a length assertion immediately before. **(lint catches `.last()` and `.eq(<negative)`; the rest is on the reviewer)**
@@ -147,7 +147,7 @@ Quick scan for common issues. **(lint)** marks patterns ESLint already catches i
 | Pattern                                                      | Issue                                                                                                                          |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | `cy.wait(2000)`                                              | Numeric wait — use intercept alias or `.should("be.visible")`                                                                  |
-| `cy.get(".css-1abc2d")`                                      | Generated CSS class — use a11y query / `findByText` / `findByTestId`                                                           |
+| `cy.get(".m_87cf2631")`                                      | Generated CSS class — use a11y query / `findByText` / `findByTestId`                                                           |
 | `cy.get("[data-testid='foo']")`                              | Always use `cy.findByTestId('foo')` instead                                                                                    |
 | `cy.get("path[fill='#abc']")` in a spec                      | Ad-hoc chart selector — use `e2e-visual-tests-helpers` or add a new helper there                                               |
 | `cy.get("li:nth-child(3)")`                                  | Positional in a CSS selector — anchor on text or role                                                                          |
