@@ -743,7 +743,9 @@ describe("formula option in the typeahead", () => {
     const getOptionTexts = () =>
       screen.queryAllByRole("option").map((option) => option.textContent);
     await waitFor(() => expect(getOptionTexts()).toContain("Total"));
-    expect(getOptionTexts()).not.toContain("Custom column");
+    expect(
+      screen.queryByRole("option", { name: /Custom column/ }),
+    ).not.toBeInTheDocument();
   });
 });
 
