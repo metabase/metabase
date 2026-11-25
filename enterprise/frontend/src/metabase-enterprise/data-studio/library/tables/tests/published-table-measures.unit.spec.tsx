@@ -10,6 +10,7 @@ import {
   PUBLISHED_ORDERS_URL,
   createOrdersMeasure,
   getRequestAggregations,
+  getSourceTableId,
   setupMeasurePages,
 } from "metabase/data-studio/measures/tests/setup";
 import { IsAdmin } from "metabase/route-guards";
@@ -125,6 +126,11 @@ describe("measures of a published table", () => {
     expect(getRequestAggregations(server.creates[0])).toEqual([
       ["sum", expect.anything(), ["field", expect.anything(), ORDERS.TOTAL]],
     ]);
+    expect(getSourceTableId(server.creates[0])).toBe(ORDERS_ID);
+    expect(
+      await screen.findByDisplayValue("Total Revenue"),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Sum of Total")).toBeInTheDocument();
   });
 
   it("shows collection breadcrumbs and goes back to the measures list", async () => {

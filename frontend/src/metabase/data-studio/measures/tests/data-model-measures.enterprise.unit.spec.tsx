@@ -6,13 +6,14 @@ import { getDataStudioMetadataRoutes } from "metabase/data-studio/data-model/rou
 import { IsAdmin } from "metabase/route-guards";
 import { Route } from "metabase/router";
 import { createMockRevision } from "metabase-types/api/mocks";
-import { ORDERS } from "metabase-types/api/mocks/presets";
+import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import {
   DATA_MODEL_ORDERS_URL,
   DATA_MODEL_PRODUCTS_URL,
   createOrdersMeasure,
   getRequestAggregations,
+  getSourceTableId,
   setupMeasurePages,
 } from "./setup";
 
@@ -134,9 +135,11 @@ describe("measures in the data model (enterprise)", () => {
       expect(getRequestAggregations(server.creates[0])).toEqual([
         ["sum", expect.anything(), ["field", expect.anything(), ORDERS.TOTAL]],
       ]);
+      expect(getSourceTableId(server.creates[0])).toBe(ORDERS_ID);
       expect(
         await screen.findByDisplayValue("Total Revenue"),
       ).toBeInTheDocument();
+      expect(await screen.findByText("Sum of Total")).toBeInTheDocument();
     });
 
     it("shows Explore in the menu once an aggregation is picked", async () => {
