@@ -204,7 +204,10 @@
             (f active))
           (do
             ;; Rule out the error coming from stale index metadata.
-            (sync-tracking-atoms!)
+            (try
+              (sync-tracking-atoms!)
+              (catch Exception sync-e
+                (.addSuppressed e sync-e)))
             (throw e)))))))
 
 (defn- drop-table! [table]

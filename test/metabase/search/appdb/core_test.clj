@@ -53,7 +53,17 @@
         (mt/with-dynamic-fn-redefs [search.db/scored-search-rows (fn [& _] (throw (ex-info "Boom" {})))]
           (let [e (search-with-tracking! {:active table} {})]
             (is (= "Boom" (ex-message e)))
-            (is (not (search/index-not-found? e)))))))))
+            (is (not (search/index-not-found? e))))))
+      (testing "when the sync after a failed query fails too, the query error is thrown, with the sync error suppressed"
+        (mt/with-dynamic-fn-redefs [search.db/scored-search-rows       (fn [& _] (throw (ex-info "Boom" {})))
+                                    search.index/sync-tracking-atoms! (fn [] (throw (ex-info "Sync failed" {})))]
+          (mc/reset! (search.index/indexes-handle) {:active table})
+          (let [^Throwable e (try
+                               (vec (search.tu/search-results "orders" {:search-engine "appdb"}))
+                               (catch Exception e
+                                 e))]
+            (is (= "Boom" (ex-message e)))
+            (is (= ["Sync failed"] (map ex-message (.getSuppressed e))))))))))
 
 (deftest locale-change-reindexes-after-commit-test
   (when (contains? #{:mysql :postgres} (mdb/db-type))

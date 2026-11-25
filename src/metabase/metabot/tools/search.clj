@@ -731,7 +731,7 @@
                        (catch Exception e
                          ;; A missing index is recoverable: the agent can find the data without search, or tell
                          ;; the user that search failed. `read_resource` does not use the search index. Any other
-                         ;; failure is not planned for, so it ends the turn as `:internal`.
+                         ;; failure is not planned for, so it stays `:internal`.
                          (when-not (search/index-not-found? e)
                            (throw e))
                          ;; The runtime logs a recoverable error at debug level, without its cause.

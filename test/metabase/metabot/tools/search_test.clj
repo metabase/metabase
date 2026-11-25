@@ -795,7 +795,7 @@
                     :output (str "Search failed.\n" no-retry-step)}
                    (invoke-search [#'search/search-tool] {:keyword_queries ["orders"]})))))))))
 
-(deftest ^:parallel search-failure-is-recoverable-only-for-a-missing-index-test
+(deftest search-failure-is-recoverable-only-for-a-missing-index-test
   (mt/with-test-user :crowberto
     (doseq [[description ex expected-error]
             [["a missing index" (ex-info "Search Index not found." {:search/index-not-found? true})
@@ -808,8 +808,10 @@
               {:class :unrecoverable :code :internal}]]
             queries [["orders"] ["orders" "invoices"]]]
       ;; Several queries run in futures, so this also checks that the futures do not change the outcome.
+      ;; Outside H2, appdb joins keyword queries into one query, so keep them separate.
       (testing (str description ", with " (count queries) " queries")
-        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [_] (throw ex))]
+        (with-redefs [search.engine/disjunction  (fn [_ terms] terms)
+                      search-core/ranked-results (fn [_] (throw ex))]
           (is (= expected-error
                  (:error (invoke-search [#'search/search-tool] {:keyword_queries queries})))))))))
 
