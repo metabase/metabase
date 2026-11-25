@@ -3104,3 +3104,46 @@
          (is (thrown-with-msg? Exception #"more parameters than we can handle"
                                (with-open [_stmt (sql-jdbc.execute/prepared-statement
                                                   :postgres conn "SELECT 1 -- ?" [1])]))))))))
+
+(deftest table-sample-compile-test
+  (mt/test-driver :postgres
+    (testing "a stage with :table-sample reads the source table with TABLESAMPLE SYSTEM"
+      (let [query (-> (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
+                      (lib/limit 10)
+                      (assoc-in [:stages 0 :table-sample] {:percent 2.5}))]
+        (is (re-find #"FROM \"public\".\"venues\" TABLESAMPLE SYSTEM \(2\.5\)"
+                     (:query (qp.compile/compile query))))))))
+
+(deftest table-random-sample-test
+  (mt/test-driver :postgres
+    ;; sync reads samples with no user; the namespace fixture binds a user who is not an admin
+    (mt/with-test-user :crowberto
+      (let [table  (t2/select-one :model/Table :id (mt/id :venues))
+            fields [(t2/select-one :model/Field :id (mt/id :venues :name))]
+            sample (fn [opts]
+                     (driver/table-random-sample :postgres table fields (constantly conj) opts))]
+        (testing "the driver reads a block sample of a table"
+          (is (driver.u/supports? :postgres :table-random-sample (mt/db)))
+          (let [{:keys [method fraction result]} (sample {:rows 200 :row-count 100})]
+            (is (= :block method))
+            (is (= 1.0 fraction))
+            (is (= 100 (count result)))))
+        (testing "the driver reads the first rows when there is no row count estimate"
+          (let [{:keys [method fraction result]} (sample {:rows 200 :row-count nil})]
+            (is (= :first-rows method))
+            (is (nil? fraction))
+            (is (= 100 (count result)))))
+        (testing "Redshift, which derives from Postgres, does not get the feature"
+          (is (not (driver/database-supports? :redshift :table-random-sample nil))))))))
+
+(deftest block-sample-relation-test
+  (mt/test-driver :postgres
+    (let [spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
+      (jdbc/execute! spec ["CREATE OR REPLACE VIEW public.venues_sample_view AS SELECT * FROM public.venues"])
+      (try
+        (testing "a table can be sampled with TABLESAMPLE, and a view cannot"
+          (is (true? (#'postgres/block-sampleable? :postgres (mt/id) "public" "venues")))
+          (is (false? (#'postgres/block-sampleable? :postgres (mt/id) "public" "venues_sample_view")))
+          (is (false? (#'postgres/block-sampleable? :postgres (mt/id) "public" "no_such_table"))))
+        (finally
+          (jdbc/execute! spec ["DROP VIEW IF EXISTS public.venues_sample_view"]))))))

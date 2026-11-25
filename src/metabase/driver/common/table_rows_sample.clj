@@ -31,14 +31,27 @@
     [:truncation-size {:optional true} :int]
     [:limit           {:optional true} :int]
     [:order-by        {:optional true} [:maybe [:sequential [:or ::lib.schema.order-by/order-by ::lib.ref/referenceable]]]]
+    [:table-sample    {:optional true} [:ref ::lib.schema/stage.table-sample]]
     [:rff             {:optional true} fn?]]])
+
+(def ^:private block-sample-margin
+  "How much more than the sample size a block sample reads, because the number of rows it gives varies, and the row
+  count estimate can be old."
+  1.25)
+
+(mu/defn block-sample-percent :- [:maybe [:double {:min 0 :max 100}]]
+  "The percent of a table that a block sample reads to give about `rows` rows, from the row count estimate
+  `row-count`, with a margin. Nil when there is no estimate."
+  [{:keys [rows row-count]} :- [:map [:rows pos-int?] [:row-count {:optional true} [:maybe :int]]]]
+  (when (some-> row-count pos?)
+    (min 100.0 (/ (* 100.0 block-sample-margin rows) row-count))))
 
 (mu/defn- table-rows-sample-query :- ::lib.schema/query
   "Returns the mbql query to query a table for sample rows"
   [mp    :- ::lib.schema.metadata/metadata-provider
    table :- ::lib.schema.metadata/table
    cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]
-   {:keys [truncation-size limit order-by] :or {limit max-sample-rows} :as _opts} :- ::table-rows-sample.options]
+   {:keys [truncation-size limit order-by table-sample] :or {limit max-sample-rows} :as _opts} :- ::table-rows-sample.options]
   (let [database             (lib.metadata/database mp)
         driver               (driver.u/database->driver database)
         col->expression-name (if (and truncation-size (driver.u/supports? driver :expressions database))
@@ -68,6 +81,8 @@
         (lib/limit limit)
         (cond-> (seq order-by)
           (as-> $query (reduce lib/order-by $query order-by)))
+        (cond-> table-sample
+          (assoc-in [:stages 0 :table-sample] table-sample))
         (assoc :middleware {:format-rows?           false
                             :skip-results-metadata? true})
         (assoc-in [:info :context] :table-rows-sample)
@@ -81,6 +96,8 @@
 
   Options: a map of
   `:truncation-size`: [optional] size to truncate text fields if the driver supports expressions.
+  `:table-sample`: [optional] `{:percent p}`, to read the table with the driver's built-in block sample of about `p`
+  percent of it. Only for a driver with its own [[metabase.driver.sql.query-processor/table-sample->honeysql]].
   `:rff`: [optional] a reducing function function (a function that given initial results metadata returns a reducing
   function) to reduce over the result set in the the query-processor rather than realizing the whole collection"
   ([table  :- :metabase.warehouse-schema.schema/table

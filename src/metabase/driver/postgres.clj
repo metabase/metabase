@@ -14,6 +14,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.postgres.ddl :as postgres.ddl]
@@ -132,7 +133,8 @@
                  ;; Index sync is turned off across the application as it is not used ATM.
                  #_:index-info
                  :database-replication
-                 :stage-ctes/nest-single-row-aggregation]]
+                 :stage-ctes/nest-single-row-aggregation
+                 :table-random-sample]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
@@ -177,6 +179,38 @@
         (str (str/capitalize message) \.))
 
       message)))
+
+;;; ------------------------------------------------ Table samples -------------------------------------------------
+
+(defmethod sql.qp/table-sample->honeysql :postgres
+  [_driver table-expr {:keys [percent]}]
+  [:raw [table-expr " TABLESAMPLE SYSTEM (" [:inline percent] ")"]])
+
+(defn- block-sampleable?
+  "Whether `schema`.`table-name` is a table, a partitioned table or a materialized view, which `TABLESAMPLE` can read.
+  A view or a foreign table cannot be read that way."
+  [driver database schema table-name]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.prepareStatement conn (str "SELECT 1 FROM pg_catalog.pg_class c"
+                                                   " JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace"
+                                                   " WHERE n.nspname = ? AND c.relname = ? AND c.relkind IN ('r', 'p', 'm')"))]
+       (.setString stmt 1 schema)
+       (.setString stmt 2 table-name)
+       (with-open [rset (.executeQuery stmt)]
+         (.next rset))))))
+
+(defmethod driver/table-random-sample :postgres
+  [driver {:keys [schema name db_id] :as table} fields rff opts]
+  (let [percent (table-rows-sample/block-sample-percent opts)
+        opts    (select-keys opts [:truncation-size])]
+    (if (and percent (block-sampleable? driver db_id schema name))
+      {:method   :block
+       :fraction (/ percent 100.0)
+       :result   (table-rows-sample/table-rows-sample table fields rff (assoc opts :table-sample {:percent percent}))}
+      {:method :first-rows
+       :result (driver/table-rows-sample driver table fields rff opts)})))
 
 (defmethod driver/db-default-timezone :postgres
   [driver database]

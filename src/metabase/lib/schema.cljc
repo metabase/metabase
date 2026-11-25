@@ -350,6 +350,13 @@
                           ((every-pred :page :limit) stage) (dissoc :limit)))}
    (complement (every-pred :page :limit))])
 
+(mr/def ::stage.table-sample
+  "The built-in block sample of the stage's source table that sync asks for, as a percent of the table. Only the SQL
+  compiler of a driver with its own `metabase.driver.sql.query-processor/table-sample->honeysql` reads it."
+  [:map
+   {:closed true}
+   [:percent [:double {:min 0 :max 100}]]])
+
 (mr/def ::stage.mbql
   [:and
    [:merge
@@ -369,7 +376,8 @@
      [:source-card        {:optional true} [:ref ::id/card]]
      [:page               {:optional true} [:ref ::page]]
      [:limit              {:optional true} nat-int?]
-     [:pivot              {:optional true} [:ref ::pivot]]]]
+     [:pivot              {:optional true} [:ref ::pivot]]
+     [:table-sample       {:optional true} [:ref ::stage.table-sample]]]]
    [:fn
     {:error/message "A query must have exactly one of :source-table or :source-card"}
     (complement (comp #(= (count %) 1) #{:source-table :source-card}))]

@@ -36,6 +36,25 @@
                        :limit        100}]}
             (#'table-rows-sample/table-rows-sample-query mp table fields opts)))))
 
+(deftest ^:parallel table-rows-sample-query-table-sample-test
+  (testing "the :table-sample option puts the sample on the stage, for the compiler to read"
+    (let [mp     meta/metadata-provider
+          table  (meta/table-metadata :orders)
+          fields (driver-api/fields mp (:id table))]
+      (is (=? {:stages [{:source-table (meta/id :orders)
+                         :table-sample {:percent 2.5}}]}
+              (#'table-rows-sample/table-rows-sample-query mp table fields {:table-sample {:percent 2.5}})))
+      (is (not (contains? (first (:stages (#'table-rows-sample/table-rows-sample-query mp table fields nil)))
+                          :table-sample))))))
+
+(deftest ^:parallel block-sample-percent-test
+  (testing "the percent of the table to sample, with a margin, from the sample size and the row count estimate"
+    (is (= 1.25 (table-rows-sample/block-sample-percent {:rows 10000 :row-count 1000000})))
+    (is (= 100.0 (table-rows-sample/block-sample-percent {:rows 10000 :row-count 9000})))
+    (testing "no percent without a row count estimate"
+      (is (nil? (table-rows-sample/block-sample-percent {:rows 10000 :row-count nil})))
+      (is (nil? (table-rows-sample/block-sample-percent {:rows 10000 :row-count 0}))))))
+
 (deftest ^:parallel table-rows-sample-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
     (let [expected [["20th Century Cafe"]
