@@ -997,11 +997,28 @@
 
 ;; `SAMPLE k` reads the rows whose sampling key falls in a fraction `k` of its range, from an index on it, so the rows
 ;; come from all over the table. A table can be sampled only when it declares a sampling key (`SAMPLE BY`).
+(defn- positions-prewhere
+  "The `PREWHERE` condition of a sample of `positions` on the virtual column `_part_offset`, which ClickHouse uses to
+  read only the granules of the ranges in each part. The numbers are integers, written in the SQL."
+  [{:keys [ranges every remainder]}]
+  (format "(%s) AND _part_offset %% %d = %d"
+          (str/join " OR " (map (fn [[from to]] (format "(_part_offset >= %d AND _part_offset < %d)" from to)) ranges))
+          every remainder))
+
+;; `SAMPLE k` reads the rows whose sampling key falls in a fraction `k` of its range, from an index on it, so the rows
+;; come from all over the table. A table can be sampled only when it declares a sampling key (`SAMPLE BY`). A sample of
+;; positions reads the same ranges of rows of each part with a `PREWHERE`, which comes right after the table.
 (defmethod sql.qp/table-sample->honeysql :clickhouse
-  [driver table-expr {:keys [percent] :as table-sample}]
-  (if percent
+  [driver table-expr {:keys [percent positions] :as table-sample}]
+  (cond
+    percent
     ;; a plain decimal fraction, since Java prints a double below 0.001 as 1.0E-4
     [:raw [table-expr " SAMPLE " (.toPlainString (.stripTrailingZeros ^BigDecimal (/ (bigdec percent) 100M)))]]
+
+    positions
+    [:raw [table-expr " PREWHERE " (positions-prewhere positions)]]
+
+    :else
     ((get-method sql.qp/table-sample->honeysql :sql) driver table-expr table-sample)))
 
 ;; Only for `:clickhouse` itself, so that a child driver keeps its own `table-rows-sample`.
@@ -1009,24 +1026,88 @@
   [driver _feature _db]
   (= driver :clickhouse))
 
-(def ^:private sampling-key-timeout-seconds
-  "The time limit of the catalog query for the sampling key of a table."
-  15)
+(def ^:private granule-rows
+  "The rows of a granule with the default `index_granularity`. A range of positions is one granule long and starts at a
+  multiple of it, so that it reads one granule of each part."
+  8192)
 
-(defn- sampling-key?
-  "Whether `table` declares a sampling key, which `SAMPLE` needs."
+(def ^:private target-granules
+  "About how many granules a sample of positions reads, over all parts."
+  50)
+
+(defn- part-positions
+  "The ranges of a sample of positions of a table whose active parts have `part-rows` rows, for about `rows` rows.
+
+  A range applies to every part, so the ranges are spread over the positions of the largest part, one at a random
+  granule of each of equal strata: a part gets ranges in proportion to its rows. There are about [[target-granules]]
+  times the rows of the largest part over all rows of ranges, at least one. The stride keeps about `rows` of the rows
+  in the ranges of all parts. Returns the `:ranges`, `:every` and `:remainder` of the sample, and the `:expected` rows."
+  [part-rows rows ^java.util.Random random]
+  (let [largest (reduce max 0 part-rows)
+        total   (reduce + part-rows)
+        n       (max 1 (Math/round (double (/ (* target-granules largest) total))))
+        width   (/ largest (double n))
+        ranges  (into []
+                      (comp (map (fn [i]
+                                   (let [start (* granule-rows (long (Math/floor (/ (* width (+ i (.nextDouble random)))
+                                                                                    granule-rows))))]
+                                     [start (+ start granule-rows)])))
+                            (distinct))
+                      (range n))
+        in-runs (reduce + (for [part part-rows
+                                [from to] ranges]
+                            (max 0 (- (min to part) from))))
+        every   (max 1 (long (quot in-runs rows)))]
+    {:ranges    ranges
+     :every     every
+     :remainder (.nextInt random every)
+     :expected  (quot in-runs every)}))
+
+(defn- merge-tree-engine?
+  "Whether the ClickHouse table engine `engine` stores parts with `_part_offset`: the MergeTree family."
+  [engine]
+  (boolean (some->> engine (re-find #"MergeTree$"))))
+
+(defn- sample-facts
+  "What a sample of `table` needs from the catalog: its sampling key, and the rows of its active parts when it is of the
+  MergeTree family, or nil when they cannot be read, for example with no right to read `system.parts`. No JDBC time
+  limit: the driver sends it as `max_execution_time`, which a read-only user cannot set; these queries read metadata."
   [table]
-  (-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:db_id table)))
-                  ["SELECT sampling_key FROM system.tables WHERE database = ? AND name = ?" (:schema table) (:name table)]
-                  {:timeout sampling-key-timeout-seconds})
-      first
-      :sampling_key
-      perf/not-empty
-      boolean))
+  (let [spec     (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:db_id table)))
+        {:keys [sampling_key engine]} (first (jdbc/query spec ["SELECT sampling_key, engine FROM system.tables
+                                                                WHERE database = ? AND name = ?"
+                                                               (:schema table) (:name table)]))]
+    {:sampling-key? (boolean (perf/not-empty sampling_key))
+     :part-rows     (when (merge-tree-engine? engine)
+                      (try
+                        (perf/not-empty
+                         (perf/mapv (comp long :rows)
+                                    (jdbc/query spec ["SELECT rows FROM system.parts
+                                                  WHERE database = ? AND table = ? AND active AND rows > 0"
+                                                      (:schema table) (:name table)])))
+                        (catch Exception e
+                          (log/debugf e "Could not read the parts of %s" (:name table))
+                          nil)))}))
 
-;; The native SAMPLE for a table with a sampling key. Other tables keep the first rows.
+;; The native SAMPLE for a table with a sampling key, and otherwise rows at positions inside the parts of a table of the
+;; MergeTree family. Other tables keep the first rows.
 (defmethod driver/table-random-sample :clickhouse
-  [_driver table fields rff opts]
-  (if (and (:row-count opts) (sampling-key? table))
-    (table-rows-sample/block-sample table fields rff opts)
-    {:method :first-rows}))
+  [_driver table fields rff {:keys [rows row-count] :as opts}]
+  (let [{:keys [sampling-key? part-rows]} (when row-count (sample-facts table))]
+    (cond
+      sampling-key?
+      (table-rows-sample/block-sample table fields rff opts)
+
+      part-rows
+      (let [{:keys [ranges every remainder expected]} (part-positions part-rows rows (java.util.Random.))]
+        {:method   :block
+         :runs     (count ranges)
+         :fraction (/ expected (double row-count))
+         :result   (table-rows-sample/table-rows-sample
+                    table fields rff
+                    (-> (perf/select-keys opts [:truncation-size])
+                        (assoc :table-sample {:positions {:ranges ranges :every every :remainder remainder}}
+                               :limit        (* 2 rows))))})
+
+      :else
+      {:method :first-rows})))

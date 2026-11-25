@@ -350,15 +350,34 @@
                           ((every-pred :page :limit) stage) (dissoc :limit)))}
    (complement (every-pred :page :limit))])
 
-(mr/def ::stage.table-sample
-  "A built-in block sample of the stage's source table, as a percent of the table. Sync sets it on its sample query for
-  a driver with its own `metabase.driver.sql.query-processor/table-sample->honeysql`, and the SQL compiler reads it. A
-  query from a client can carry it too: it then reads a sample of a table the user can read anyway, and compiling it
-  fails for a driver without the method."
+(mr/def ::stage.table-sample.positions
+  "Rows at the same ranges of positions inside each storage part of the table: `:ranges`, pairs of a first position and
+  the position after the last, and every `:every`th row of them, those whose position modulo `:every` is
+  `:remainder`."
   [:map
    {:decode/normalize common/normalize-map
     :closed           true}
-   [:percent [:and number? [:>= 0] [:<= 100]]]])
+   [:ranges    [:sequential {:min 1} [:tuple [:int {:min 0}] [:int {:min 1}]]]]
+   [:every     [:int {:min 1}]]
+   [:remainder [:int {:min 0}]]])
+
+(mr/def ::stage.table-sample
+  "A built-in sample of the stage's source table: `:percent`, a block sample of about that percent of the table, or
+  `:positions`, rows at positions inside each storage part (see `::stage.table-sample.positions`). Sync sets it on its
+  sample query, for a driver whose compiler reads it. A query from a client can carry it too: it then reads a sample of
+  a table the user can read anyway, and compiling it fails for a driver that does not support that kind of sample."
+  [:and
+   [:map
+    {:decode/normalize common/normalize-map
+     :closed           true}
+    [:percent   {:optional true} [:and number? [:>= 0] [:<= 100]]]
+    [:positions {:optional true} [:ref ::stage.table-sample.positions]]]
+   [:fn
+    {:error/message "A table sample has exactly one kind"}
+    #(= 1 (count %))]
+   [:fn
+    {:error/message "The remainder of a sample of positions is less than its stride"}
+    #(or (nil? (:positions %)) (< (get-in % [:positions :remainder]) (get-in % [:positions :every])))]])
 
 (mr/def ::stage.mbql
   [:and

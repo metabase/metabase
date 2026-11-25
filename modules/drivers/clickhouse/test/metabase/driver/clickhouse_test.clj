@@ -1783,3 +1783,60 @@
           (is (= {:method :first-rows}
                  (driver/table-random-sample :clickhouse venues (fields venues) (constantly conj)
                                              {:rows 20 :row-count nil}))))))))
+
+(deftest table-sample-positions-compile-test
+  (mt/initialize-if-needed! :db)
+  (let [mp     (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :clickhouse}})
+        venues (lib.metadata/table mp (meta/id :venues))]
+    (testing "a sample of positions reads the same ranges of rows of each part, every nth row"
+      (is (re-find (re-pattern (str "FROM `PUBLIC`\\.`VENUES` PREWHERE \\(\\(_part_offset >= 0 AND _part_offset < 8192\\)"
+                                    " OR \\(_part_offset >= 16384 AND _part_offset < 24576\\)\\)"
+                                    " AND _part_offset % 40 = 3 LIMIT 10"))
+                   (:query (qp.compile/compile
+                            (-> (lib/query mp venues)
+                                (lib/limit 10)
+                                (assoc-in [:stages 0 :table-sample]
+                                          {:positions {:ranges [[0 8192] [16384 24576]] :every 40 :remainder 3}})))))))))
+
+(deftest ^:parallel part-positions-test
+  (testing "about 50 ranges of 8,192 positions in all parts, in strata of the largest part, and a stride for the size"
+    (let [{:keys [ranges every remainder expected]}
+          (#'clickhouse/part-positions [1000000 1000000 1000000] 10000 (java.util.Random. 1))]
+      (testing "ranges over the largest part: 50 × 1,000,000 / 3,000,000, about 17 (two strata can share a granule)"
+        (is (<= 15 (count ranges) 17))
+        (is (every? (fn [[from to]] (and (zero? (mod from 8192)) (= 8192 (- to from)) (< from 1000000))) ranges))
+        (is (apply < (map first ranges))))
+      (testing "a stride that keeps about the sample size from the rows in the ranges of all parts"
+        (is (< 9000 expected 11000))
+        (is (< -1 remainder every)))))
+  (testing "one part much smaller than the others contributes in proportion to its rows"
+    (let [{:keys [ranges]} (#'clickhouse/part-positions [8192 2000000] 10000 (java.util.Random. 1))]
+      (is (<= 45 (count ranges) 50))))
+  (testing "at least one range, for a table of many equal parts"
+    (is (= 1 (count (:ranges (#'clickhouse/part-positions (repeat 200 100000) 10000 (java.util.Random. 1))))))))
+
+(deftest table-random-sample-part-runs-test
+  (mt/test-driver :clickhouse
+    (mt/with-test-user :crowberto
+      (let [spec   (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+            schema (:schema (t2/select-one :model/Table :id (mt/id :venues)))]
+        (jdbc/execute! spec [(format "DROP TABLE IF EXISTS `%s`.`kb_parts`" schema)])
+        (jdbc/execute! spec [(format "CREATE TABLE `%s`.`kb_parts` (id UInt64, yr UInt16) ENGINE = MergeTree ORDER BY id"
+                                     schema)])
+        (try
+          (jdbc/execute! spec [(format "SYSTEM STOP MERGES `%s`.`kb_parts`" schema)])
+          (doseq [y [2022 2024 2026]]
+            (jdbc/execute! spec [(format "INSERT INTO `%s`.`kb_parts` SELECT number + %d, %d FROM numbers(300000)"
+                                         schema (* (- y 2022) 1000000) y)]))
+          (mt/with-temp [:model/Table table {:db_id (mt/id) :name "kb_parts" :schema schema}
+                         :model/Field id    {:table_id (:id table) :name "id" :base_type :type/BigInteger}
+                         :model/Field yr    {:table_id (:id table) :name "yr" :base_type :type/Integer}]
+            (let [{:keys [method runs result]} (driver/table-random-sample :clickhouse table [id yr] (constantly conj)
+                                                                           {:rows 3000 :row-count 900000})]
+              (is (= :block method))
+              (is (pos? runs))
+              (testing "rows of all parts, so of all three years, about the sample size"
+                (is (= #{2022 2024 2026} (set (map second result))))
+                (is (< 2000 (count result) 6000)))))
+          (finally
+            (jdbc/execute! spec [(format "DROP TABLE IF EXISTS `%s`.`kb_parts`" schema)])))))))

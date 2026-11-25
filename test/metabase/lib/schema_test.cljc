@@ -453,3 +453,13 @@
                            :lib/type      :mbql.stage/native}]
                :lib/type :mbql/query}
               normalized)))))
+
+(deftest ^:parallel table-sample-has-exactly-one-kind-test
+  (are [table-sample valid?] (= valid? (mr/validate ::lib.schema/stage.table-sample table-sample))
+    {:percent 2.5}                                                     true
+    {:positions {:ranges [[0 8192] [16384 24576]] :every 40 :remainder 3}} true
+    {}                                                                 false
+    {:percent 2.5, :positions {:ranges [[0 8192]] :every 1 :remainder 0}} false
+    {:positions {:ranges [] :every 1 :remainder 0}}                    false
+    {:positions {:ranges [[0 8192]] :every 40 :remainder 40}}          false
+    {:percent 101}                                                     false))
