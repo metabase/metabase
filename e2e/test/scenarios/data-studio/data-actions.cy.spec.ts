@@ -121,6 +121,9 @@ describe(
           H.entityPickerModalItem(2, TABLE_DISPLAY_NAME).click();
           cy.findByRole("button", { name: "Continue" }).click();
         });
+        cy.findByTestId("implicit-action-definition")
+          .findByText(TABLE_DISPLAY_NAME)
+          .should("be.visible");
         cy.findByRole("button", { name: "Save" }).click();
         H.modal().findByRole("button", { name: "Save" }).click();
         cy.wait("@createAction")
