@@ -37,6 +37,8 @@ export const getChartSkeletonImage: (
   switch (display) {
     case "area":
       return <AreaSkeleton />;
+    // Combo charts are bars with a line over them, so draw the bars
+    case "combo":
     case "bar":
       return <BarSkeleton />;
     case "funnel":

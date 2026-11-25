@@ -20,6 +20,9 @@
   background-color: var(--mb-color-bg-dashboard-card);
   border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.75rem;
+  /* Skullet makes a skeleton's text transparent; the chart skeleton is drawn
+     in the current text color, so restore the card's */
+  color: var(--mb-color-text-primary);
 }
 
 .title {

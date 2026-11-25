@@ -653,8 +653,13 @@ export function DashCardVisualization({
       formatVisualizerClickObject(clicked, rawSeries, columnValuesMapping);
   }, [dashcard, rawSeries]);
 
+  // Until the card's metadata loads there's no question to take the display
+  // from, so fall back to the card's own, rather than drawing no skeleton
   const renderLoadingView = (loadingViewProps: LoadingViewProps) => (
-    <DashCardLoadingView {...loadingViewProps} display={question?.display()} />
+    <DashCardLoadingView
+      {...loadingViewProps}
+      display={question?.display() ?? loadingViewProps.display}
+    />
   );
 
   // An action button fills its borderless card and has its own rounded outline,

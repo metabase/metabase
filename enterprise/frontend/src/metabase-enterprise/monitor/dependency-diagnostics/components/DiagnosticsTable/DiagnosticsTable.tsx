@@ -1,6 +1,7 @@
 import type { Row, SortingState, Updater } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import {
@@ -86,20 +87,19 @@ export const DiagnosticsTable = function DiagnosticsTable({
 
   return (
     <MonitorTableCard aria-busy={isFetching} data-testid="dependency-list">
-      {isLoading ? (
-        <TreeTableSkeleton columnWidths={getColumnWidths(mode)} />
-      ) : (
-        <>
-          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
-          <TreeTable
-            instance={treeTableInstance}
-            emptyState={
-              <DiagnosticsEmptyState label={getNotFoundMessage(mode)} />
-            }
-            onRowClick={handleRowActivate}
-          />
-        </>
-      )}
+      <SkeletonSwap
+        loading={!!isLoading}
+        skeleton={<TreeTableSkeleton columnWidths={getColumnWidths(mode)} />}
+      >
+        <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+        <TreeTable
+          instance={treeTableInstance}
+          emptyState={
+            <DiagnosticsEmptyState label={getNotFoundMessage(mode)} />
+          }
+          onRowClick={handleRowActivate}
+        />
+      </SkeletonSwap>
     </MonitorTableCard>
   );
 };

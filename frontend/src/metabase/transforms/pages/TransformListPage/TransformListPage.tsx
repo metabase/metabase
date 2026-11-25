@@ -14,6 +14,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useHasTokenFeature } from "metabase/common/hooks";
@@ -354,9 +355,12 @@ export const TransformListPage = () => {
         </Flex>
 
         <Card withBorder p={0}>
-          {isLoading ? (
-            <TreeTableSkeleton columnWidths={[0.35, 0.15, 0.15, 0.2, 0.05]} />
-          ) : (
+          <SkeletonSwap
+            loading={isLoading}
+            skeleton={
+              <TreeTableSkeleton columnWidths={[0.35, 0.15, 0.15, 0.2, 0.05]} />
+            }
+          >
             <TreeTable
               instance={treeTableInstance}
               emptyState={
@@ -367,7 +371,7 @@ export const TransformListPage = () => {
               renderRowLink={renderRowLink}
               classNames={{ rowDisabled: S.rowDisabled }}
             />
-          )}
+          </SkeletonSwap>
         </Card>
       </Stack>
       {collectionModal?.type === "delete" ? (

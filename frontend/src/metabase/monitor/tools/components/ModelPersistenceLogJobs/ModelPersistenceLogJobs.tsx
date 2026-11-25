@@ -10,6 +10,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { dayjs } from "metabase/dayjs";
@@ -95,26 +96,22 @@ export function ModelPersistenceLogJobs() {
         aria-busy={isFetching}
         data-testid="model-persistence-log-jobs"
       >
-        {isLoading ? (
-          <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
-        ) : (
-          <>
-            <LoadingOverlay
-              visible={isFetching}
-              data-testid="loading-overlay"
-            />
-            <TreeTable
-              instance={treeTableInstance}
-              hierarchical={false}
-              ariaLabel={t`Model persistence log`}
-              emptyState={<MonitorEmptyState label={t`No log entries`} />}
-              getRowProps={() => ({
-                "data-testid": "model-persistence-log-job-row",
-              })}
-              onRowClick={handleRowActivate}
-            />
-          </>
-        )}
+        <SkeletonSwap
+          loading={isLoading}
+          skeleton={<TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />}
+        >
+          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+          <TreeTable
+            instance={treeTableInstance}
+            hierarchical={false}
+            ariaLabel={t`Model persistence log`}
+            emptyState={<MonitorEmptyState label={t`No log entries`} />}
+            getRowProps={() => ({
+              "data-testid": "model-persistence-log-job-row",
+            })}
+            onRowClick={handleRowActivate}
+          />
+        </SkeletonSwap>
       </MonitorTableCard>
 
       {!isLoading && hasPagination && (

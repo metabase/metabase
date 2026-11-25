@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
@@ -85,21 +86,20 @@ export const TaskRunsTable = ({
 
   return (
     <MonitorTableCard aria-busy={isFetching} data-testid="task-runs-table">
-      {isLoading ? (
-        <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
-      ) : (
-        <>
-          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
-          <TreeTable
-            instance={treeTableInstance}
-            hierarchical={false}
-            ariaLabel={t`Task runs`}
-            emptyState={<MonitorEmptyState label={t`No results`} />}
-            getRowProps={() => ({ "data-testid": "task-run" })}
-            onRowClick={handleRowActivate}
-          />
-        </>
-      )}
+      <SkeletonSwap
+        loading={isLoading}
+        skeleton={<TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />}
+      >
+        <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+        <TreeTable
+          instance={treeTableInstance}
+          hierarchical={false}
+          ariaLabel={t`Task runs`}
+          emptyState={<MonitorEmptyState label={t`No results`} />}
+          getRowProps={() => ({ "data-testid": "task-run" })}
+          onRowClick={handleRowActivate}
+        />
+      </SkeletonSwap>
     </MonitorTableCard>
   );
 };

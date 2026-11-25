@@ -5,6 +5,7 @@ import { useGetAdhocQueryQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
@@ -332,12 +333,11 @@ function DataAppLogTableContent({
     );
   }
 
-  if (!isLoaded) {
-    return <TreeTableSkeleton columnWidths={skeletonColumnWidths} />;
-  }
-
   return (
-    <>
+    <SkeletonSwap
+      loading={!isLoaded}
+      skeleton={<TreeTableSkeleton columnWidths={skeletonColumnWidths} />}
+    >
       <LoadingOverlay visible={isFetching} />
       <TreeTable
         instance={instance}
@@ -347,6 +347,6 @@ function DataAppLogTableContent({
         emptyState={<MonitorEmptyState label={t`No activity found`} />}
         getRowProps={() => ({ "data-testid": "data-app-log-row" })}
       />
-    </>
+    </SkeletonSwap>
   );
 }

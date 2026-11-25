@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { LoadingSkeleton } from "metabase/common/components/Skeletons";
+import {
+  LoadingSkeleton,
+  SkeletonSwap,
+} from "metabase/common/components/Skeletons";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import {
   CodeEditorSkeleton,
@@ -41,33 +44,28 @@ export function TransformsSectionLayout() {
 
   const isTransformDetailRoute = Boolean(params.transformId);
 
-  if (isLoadingDatabases) {
-    return (
-      <SectionLayout>
-        {isTransformDetailRoute ? (
-          <PageSkeleton tabCount={TRANSFORM_TAB_COUNT}>
-            <CodeEditorSkeleton withTopBar />
-          </PageSkeleton>
-        ) : (
-          <TransformListSkeleton />
-        )}
-      </SectionLayout>
-    );
-  }
-
-  if (transformsDatabases?.length === 0) {
-    return (
-      <SectionLayout>
-        <NoWritableDatabasesEmptyState />
-      </SectionLayout>
-    );
-  }
-
   return (
     <SectionLayout>
-      <LoadingAndErrorWrapper error={databasesError} noWrapper>
-        <Outlet />
-      </LoadingAndErrorWrapper>
+      <SkeletonSwap
+        loading={isLoadingDatabases}
+        skeleton={
+          isTransformDetailRoute ? (
+            <PageSkeleton tabCount={TRANSFORM_TAB_COUNT}>
+              <CodeEditorSkeleton withTopBar />
+            </PageSkeleton>
+          ) : (
+            <TransformListSkeleton />
+          )
+        }
+      >
+        {transformsDatabases?.length === 0 ? (
+          <NoWritableDatabasesEmptyState />
+        ) : (
+          <LoadingAndErrorWrapper error={databasesError} noWrapper>
+            <Outlet />
+          </LoadingAndErrorWrapper>
+        )}
+      </SkeletonSwap>
     </SectionLayout>
   );
 }

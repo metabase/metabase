@@ -863,6 +863,25 @@ class Visualization extends PureComponent<
       !isErrorShown &&
       !genericError;
 
+    const header = hasHeader ? (
+      <Box pt="0.625rem" px="sm" pb="xs" flex="0 0 auto">
+        <ChartCaption
+          series={series}
+          visualizerRawSeries={visualizerRawSeries}
+          settings={settings}
+          icon={headerIcon}
+          actionButtons={extra}
+          hasInfoTooltip={!isDashboard || !isEditing}
+          titleMenuItems={titleMenuItems}
+          width={width}
+          getHref={getHref}
+          onChangeCardAndRun={
+            canSelectTitle ? this.handleOnChangeCardAndRun : null
+          }
+        />
+      </Box>
+    ) : null;
+
     return (
       <ErrorBoundary
         onError={this.onErrorBoundaryError}
@@ -892,28 +911,11 @@ class Visualization extends PureComponent<
               </Box>
             </Box>
           )}
-          {!!hasHeader && (
-            <Box pt="0.625rem" px="sm" pb="xs" flex="0 0 auto">
-              <ChartCaption
-                series={series}
-                visualizerRawSeries={visualizerRawSeries}
-                settings={settings}
-                icon={headerIcon}
-                actionButtons={extra}
-                hasInfoTooltip={!isDashboard || !isEditing}
-                titleMenuItems={titleMenuItems}
-                width={width}
-                getHref={getHref}
-                onChangeCardAndRun={
-                  canSelectTitle ? this.handleOnChangeCardAndRun : null
-                }
-              />
-            </Box>
-          )}
           <DashCardCrossfade
             enabled={!!isDashboard}
             loading={isLoadingViewShown}
-            skeleton={renderLoadingView({
+            header={header}
+            loadingView={renderLoadingView({
               expectedDuration,
               isSlow,
               display: loadingDisplay,

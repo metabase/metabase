@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { useScrollToTop } from "metabase/common/hooks";
 import { useSortingStateChange } from "metabase/common/hooks/use-sorting-state-change";
 import { renderMetabotProfileLabel } from "metabase/metabot/constants";
@@ -138,21 +139,20 @@ export function ConversationsTable({
 
   return (
     <MonitorTableCard aria-busy={isFetching} data-testid="conversations-table">
-      {isLoading ? (
-        <TreeTableSkeleton columnWidths={SKELETON_COLUMN_WIDTHS} />
-      ) : (
-        <>
-          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
-          <TreeTable
-            instance={treeTableInstance}
-            hierarchical={false}
-            ariaLabel={t`Conversations`}
-            emptyState={<MonitorEmptyState label={t`No conversations found`} />}
-            getRowProps={() => ({ "data-testid": "conversation" })}
-            renderRowLink={renderRowLink}
-          />
-        </>
-      )}
+      <SkeletonSwap
+        loading={isLoading}
+        skeleton={<TreeTableSkeleton columnWidths={SKELETON_COLUMN_WIDTHS} />}
+      >
+        <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+        <TreeTable
+          instance={treeTableInstance}
+          hierarchical={false}
+          ariaLabel={t`Conversations`}
+          emptyState={<MonitorEmptyState label={t`No conversations found`} />}
+          getRowProps={() => ({ "data-testid": "conversation" })}
+          renderRowLink={renderRowLink}
+        />
+      </SkeletonSwap>
     </MonitorTableCard>
   );
 }

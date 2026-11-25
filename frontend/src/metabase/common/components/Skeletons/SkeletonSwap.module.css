@@ -1,0 +1,54 @@
+/* Each layer fills the space the skeleton or the content would, as a column,
+   so a table or chart that fills its parent still does */
+.root,
+.layer {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.root {
+  position: relative;
+}
+
+/* The content, drawing under the skeleton */
+.unseen {
+  opacity: 0;
+}
+
+/* The skeleton, over the content while it draws */
+.overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+.fadingIn {
+  animation: fade-in 200ms ease both;
+}
+
+.fadingOut {
+  animation: fade-out 200ms ease forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fadingIn,
+  .fadingOut {
+    animation-duration: 1ms;
+  }
+}

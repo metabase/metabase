@@ -5,7 +5,10 @@ import { useUpdateSnippetMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { LoadingSkeleton } from "metabase/common/components/Skeletons";
+import {
+  LoadingSkeleton,
+  SkeletonSwap,
+} from "metabase/common/components/Skeletons";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/common/hooks";
@@ -100,11 +103,14 @@ export function ArchivedSnippetListPage() {
         />
 
         <Card withBorder p={0}>
-          {isLoading ? (
-            <LoadingSkeleton>
-              <TreeTableSkeleton columnWidths={[0.6, 0.2, 0.05]} />
-            </LoadingSkeleton>
-          ) : (
+          <SkeletonSwap
+            loading={isLoading}
+            skeleton={
+              <LoadingSkeleton>
+                <TreeTableSkeleton columnWidths={[0.6, 0.2, 0.05]} />
+              </LoadingSkeleton>
+            }
+          >
             <TreeTable
               instance={treeTableInstance}
               emptyState={t`No archived snippets`}
@@ -133,7 +139,7 @@ export function ArchivedSnippetListPage() {
                 return props.children;
               }}
             />
-          )}
+          </SkeletonSwap>
         </Card>
       </Stack>
     </SectionLayout>

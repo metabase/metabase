@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
@@ -251,27 +252,28 @@ export const NotificationsTable = ({
       aria-busy={isFetching}
       data-testid="notifications-admin-table"
     >
-      {isLoading ? (
-        <TreeTableSkeleton
-          showCheckboxes
-          columnWidths={[0.06, 0.28, 0.18, 0.16, 0.16, 0.16]}
-        />
-      ) : (
-        <>
-          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
-          <TreeTable
-            instance={instance}
-            hierarchical={false}
+      <SkeletonSwap
+        loading={isLoading}
+        skeleton={
+          <TreeTableSkeleton
             showCheckboxes
-            onHeaderCheckboxClick={() => instance.table.toggleAllRowsSelected()}
-            headerCheckboxAriaLabel={t`Select all`}
-            ariaLabel={t`Notifications`}
-            onRowClick={handleRowActivate}
-            getRowProps={getRowProps}
-            emptyState={<MonitorEmptyState label={t`No alerts`} />}
+            columnWidths={[0.06, 0.28, 0.18, 0.16, 0.16, 0.16]}
           />
-        </>
-      )}
+        }
+      >
+        <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+        <TreeTable
+          instance={instance}
+          hierarchical={false}
+          showCheckboxes
+          onHeaderCheckboxClick={() => instance.table.toggleAllRowsSelected()}
+          headerCheckboxAriaLabel={t`Select all`}
+          ariaLabel={t`Notifications`}
+          onRowClick={handleRowActivate}
+          getRowProps={getRowProps}
+          emptyState={<MonitorEmptyState label={t`No alerts`} />}
+        />
+      </SkeletonSwap>
     </MonitorTableCard>
   );
 };

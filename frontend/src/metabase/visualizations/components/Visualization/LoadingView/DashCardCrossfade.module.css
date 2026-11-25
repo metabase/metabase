@@ -1,14 +1,31 @@
+/* The card's body fills the card below its caption, so its skeleton and
+   content do too */
+.root {
+  flex: 1 1 0;
+}
+
 /*
- * Skullet wraps the card's body in its own elements: a reveal, holding a pane
- * per state, holding the hand-drawn skeleton in an [skullet-own] wrapper.
- * Each fills the card below its title, like the body it wraps.
+ * Skullet wraps the skeleton in its own elements: a reveal, holding a pane,
+ * holding the skeleton's container and the "ghost" it's measured from. Each
+ * fills the card, as a column, like the visualization root it sits in.
  */
-.root,
-.root > [skullet-pane],
-.root > [skullet-pane] > [skullet-own] {
+.skullet,
+.skullet > [skullet-pane],
+.skullet > [skullet-pane] > [skullet-loading],
+.skullet > [skullet-pane] > [skullet-loading] > [skullet-ghost],
+.chart {
   display: flex;
   flex-direction: column;
   flex: 1 1 0;
   min-height: 0;
   min-width: 0;
+}
+
+/*
+ * Skullet makes the text of a skeleton transparent, and the chart-shaped
+ * skeleton painted as is would inherit that: it's drawn in the current text
+ * color, so restore the card's.
+ */
+.chart {
+  color: var(--mb-color-text-primary);
 }

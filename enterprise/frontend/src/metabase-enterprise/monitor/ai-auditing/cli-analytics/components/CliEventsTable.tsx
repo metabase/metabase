@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
@@ -304,10 +305,11 @@ function CliEventsTableInner({
           <Flex mih="60vh" align="center" justify="center">
             <LoadingAndErrorWrapper loading={false} error={error} />
           </Flex>
-        ) : !data ? (
-          <TreeTableSkeleton columnWidths={skeletonColumnWidths} />
         ) : (
-          <>
+          <SkeletonSwap
+            loading={!data}
+            skeleton={<TreeTableSkeleton columnWidths={skeletonColumnWidths} />}
+          >
             <LoadingOverlay
               visible={isFetching}
               data-testid="loading-overlay"
@@ -320,7 +322,7 @@ function CliEventsTableInner({
               emptyState={<MonitorEmptyState label={t`No calls found`} />}
               getRowProps={() => ({ "data-testid": "cli-event" })}
             />
-          </>
+          </SkeletonSwap>
         )}
       </MonitorTableCard>
 

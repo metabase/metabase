@@ -2,6 +2,7 @@ import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { useScrollToTop } from "metabase/common/hooks";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
@@ -93,28 +94,29 @@ export function DuplicatedContentTable({
       withBorder
       data-testid="duplicated-content-list"
     >
-      {isLoading ? (
-        <TreeTableSkeleton
-          showCheckboxes
-          columnWidths={SKELETON_COLUMN_WIDTHS}
-        />
-      ) : (
-        <>
-          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
-          <TreeTable
-            instance={treeTableInstance}
+      <SkeletonSwap
+        loading={!!isLoading}
+        skeleton={
+          <TreeTableSkeleton
             showCheckboxes
-            onHeaderCheckboxClick={() =>
-              treeTableInstance.table.toggleAllRowsSelected()
-            }
-            headerCheckboxAriaLabel={t`Select all`}
-            emptyState={
-              <MonitorEmptyState label={t`No duplicated content found`} />
-            }
-            onRowClick={handleRowActivate}
+            columnWidths={SKELETON_COLUMN_WIDTHS}
           />
-        </>
-      )}
+        }
+      >
+        <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+        <TreeTable
+          instance={treeTableInstance}
+          showCheckboxes
+          onHeaderCheckboxClick={() =>
+            treeTableInstance.table.toggleAllRowsSelected()
+          }
+          headerCheckboxAriaLabel={t`Select all`}
+          emptyState={
+            <MonitorEmptyState label={t`No duplicated content found`} />
+          }
+          onRowClick={handleRowActivate}
+        />
+      </SkeletonSwap>
     </Card>
   );
 }

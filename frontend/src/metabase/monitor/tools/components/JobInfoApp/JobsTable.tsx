@@ -2,6 +2,7 @@ import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
 import { useNavigate } from "metabase/router";
@@ -51,21 +52,20 @@ export const JobsTable = ({ isFetching, isLoading, jobs }: JobsTableProps) => {
 
   return (
     <MonitorTableCard aria-busy={isFetching} data-testid="jobs-table">
-      {isLoading ? (
-        <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
-      ) : (
-        <>
-          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
-          <TreeTable
-            instance={treeTableInstance}
-            hierarchical={false}
-            ariaLabel={t`Jobs`}
-            emptyState={<MonitorEmptyState label={t`No results`} />}
-            getRowProps={() => ({ "data-testid": "job" })}
-            onRowClick={handleRowActivate}
-          />
-        </>
-      )}
+      <SkeletonSwap
+        loading={isLoading}
+        skeleton={<TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />}
+      >
+        <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+        <TreeTable
+          instance={treeTableInstance}
+          hierarchical={false}
+          ariaLabel={t`Jobs`}
+          emptyState={<MonitorEmptyState label={t`No results`} />}
+          getRowProps={() => ({ "data-testid": "job" })}
+          onRowClick={handleRowActivate}
+        />
+      </SkeletonSwap>
     </MonitorTableCard>
   );
 };

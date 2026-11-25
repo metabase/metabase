@@ -5,7 +5,10 @@ import {
   type PillTab,
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
-import { LoadingSkeleton } from "metabase/common/components/Skeletons";
+import {
+  LoadingSkeleton,
+  SkeletonSwap,
+} from "metabase/common/components/Skeletons";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import {
@@ -118,23 +121,24 @@ export function RouteContent({
     );
   }
 
-  if (isInitialLoading) {
-    return (
-      <LoadingSkeleton gap={0} flex="0 1 auto" mih={0}>
-        {loader}
-      </LoadingSkeleton>
-    );
-  }
-
-  if (showEmpty) {
-    return (
-      <Flex flex={1} mih="60vh" align="center" justify="center">
-        {emptyState}
-      </Flex>
-    );
-  }
-
-  return children;
+  return (
+    <SkeletonSwap
+      loading={isInitialLoading}
+      skeleton={
+        <LoadingSkeleton gap={0} flex="0 1 auto" mih={0}>
+          {loader}
+        </LoadingSkeleton>
+      }
+    >
+      {showEmpty ? (
+        <Flex flex={1} mih="60vh" align="center" justify="center">
+          {emptyState}
+        </Flex>
+      ) : (
+        children
+      )}
+    </SkeletonSwap>
+  );
 }
 
 // Matches the chart heights of the usage pages: a timeline over two breakouts

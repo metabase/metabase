@@ -1,9 +1,7 @@
 import { useMemo } from "react";
 
-import {
-  REMEMBERED_SKELETON_KEY_PREFIX,
-  toSkeletonFiller,
-} from "metabase/common/components/Skeletons/remembered-skeletons";
+import { toSkeletonFiller } from "metabase/common/components/Skeletons/remembered-skeletons";
+import { REMEMBERED_SKELETON_KEY_PREFIX } from "metabase/ui/utils/remembered-skeletons";
 import type {
   Collection,
   CollectionId,
@@ -40,7 +38,10 @@ const MAX_SKETCHES = 50;
 
 const readSketches = (): Record<string, CollectionSketch> => {
   try {
-    return JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "{}");
+    // Written only by `updateCollectionSketch`, so it has this shape
+    return JSON.parse(
+      window.localStorage.getItem(STORAGE_KEY) ?? "{}",
+    ) as Record<string, CollectionSketch>;
   } catch {
     return {};
   }

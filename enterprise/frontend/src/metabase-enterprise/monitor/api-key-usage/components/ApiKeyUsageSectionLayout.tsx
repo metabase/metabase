@@ -8,7 +8,10 @@ import {
   type PillTab,
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
-import { LoadingSkeleton } from "metabase/common/components/Skeletons";
+import {
+  LoadingSkeleton,
+  SkeletonSwap,
+} from "metabase/common/components/Skeletons";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
@@ -67,15 +70,18 @@ function RouteContent({
     );
   }
 
-  if (isInitialLoading) {
-    return (
-      <LoadingSkeleton gap={0} flex="0 1 auto" mih={0}>
-        {isTableRoute ? <EventsTableSkeleton /> : <UsageOverviewSkeleton />}
-      </LoadingSkeleton>
-    );
-  }
-
-  return children;
+  return (
+    <SkeletonSwap
+      loading={isInitialLoading}
+      skeleton={
+        <LoadingSkeleton gap={0} flex="0 1 auto" mih={0}>
+          {isTableRoute ? <EventsTableSkeleton /> : <UsageOverviewSkeleton />}
+        </LoadingSkeleton>
+      }
+    >
+      {children}
+    </SkeletonSwap>
+  );
 }
 
 // Matches ApiKeyUsagePage: the key activity table, a timeline, and two breakouts

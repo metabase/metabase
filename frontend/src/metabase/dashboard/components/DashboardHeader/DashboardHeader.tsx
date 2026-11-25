@@ -162,6 +162,7 @@ export const DashboardHeader = () => {
     <MeasuredSkeleton
       loading={!dashboard}
       alwaysFromSample
+      crossfade
       classic={
         <DashboardHeaderSkeleton dashboardId={dashboardId} titled={titled} />
       }

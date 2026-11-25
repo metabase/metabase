@@ -10,6 +10,7 @@ import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
@@ -133,28 +134,29 @@ export const ErroringQuestionsTable = ({
       aria-busy={isFetching}
       data-testid="erroring-questions-table"
     >
-      {isLoading ? (
-        <TreeTableSkeleton showCheckboxes columnWidths={COLUMN_WIDTHS} />
-      ) : (
-        <>
-          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
-          <TreeTable
-            instance={treeTableInstance}
-            hierarchical={false}
-            showCheckboxes
-            onHeaderCheckboxClick={() =>
-              treeTableInstance.table.toggleAllRowsSelected()
-            }
-            headerCheckboxAriaLabel={t`Select all`}
-            ariaLabel={t`Erroring questions`}
-            isRowLoading={(row) => rerunningCardIds.has(row.original.id)}
-            emptyState={<MonitorEmptyState label={t`No results`} />}
-            getRowProps={() => ({ "data-testid": "erroring-question" })}
-            renderRowLink={renderRowLink}
-            onRowClick={handleRowClick}
-          />
-        </>
-      )}
+      <SkeletonSwap
+        loading={isLoading}
+        skeleton={
+          <TreeTableSkeleton showCheckboxes columnWidths={COLUMN_WIDTHS} />
+        }
+      >
+        <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+        <TreeTable
+          instance={treeTableInstance}
+          hierarchical={false}
+          showCheckboxes
+          onHeaderCheckboxClick={() =>
+            treeTableInstance.table.toggleAllRowsSelected()
+          }
+          headerCheckboxAriaLabel={t`Select all`}
+          ariaLabel={t`Erroring questions`}
+          isRowLoading={(row) => rerunningCardIds.has(row.original.id)}
+          emptyState={<MonitorEmptyState label={t`No results`} />}
+          getRowProps={() => ({ "data-testid": "erroring-question" })}
+          renderRowLink={renderRowLink}
+          onRowClick={handleRowClick}
+        />
+      </SkeletonSwap>
     </MonitorTableCard>
   );
 };

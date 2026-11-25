@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { Skeleton as SkulletSkeleton } from "skullet/react";
+import { type RevealSpec, instant, together } from "skullet";
+import { SkulletProvider, Skeleton as SkulletSkeleton } from "skullet/react";
 import { t } from "ttag";
 
 import { Box } from "metabase/ui";
@@ -13,7 +14,8 @@ import S from "./MeasuredSkeleton.module.css";
 const SKELETON_STYLE_PARAM = "skeletons";
 const SKELETON_STYLE_STORAGE_KEY = "metabase-prototype-skeleton-style";
 
-function isClassicSkeletonStyle(): boolean {
+/** Whether `?skeletons=classic` asked for the hand-drawn skeletons. */
+export function isClassicSkeletonStyle(): boolean {
   const style = new URLSearchParams(window.location.search).get(
     SKELETON_STYLE_PARAM,
   );
@@ -33,6 +35,17 @@ function isClassicSkeletonStyle(): boolean {
 // Skullet measures the sample whenever it holds an [skullet-own] element, which
 // it paints as is rather than drawing over; this one is never shown.
 const SAMPLE_ONLY_MARKER = { "skullet-own": "", style: { display: "none" } };
+
+// Skullet holds a skeleton back this long, so data that beats it never shows one
+const SKELETON_DELAY = 150;
+
+// Skullet's default ("smart") reveal, but whole rather than in sequence: at
+// once after a fast load or mid-gesture, else one crossfade.
+const CROSSFADE_REVEAL: RevealSpec = {
+  hold: SKELETON_DELAY,
+  choose: ({ input, waited }) =>
+    input || waited < SKELETON_DELAY ? instant : together,
+};
 
 export type MeasuredSkeletonProps = {
   loading: boolean;
@@ -62,6 +75,12 @@ export type MeasuredSkeletonProps = {
   children: ReactNode;
   /** For the wrapper skullet adds around the skeleton and the content. */
   className?: string;
+  /**
+   * Crossfade the whole skeleton into the content at once, rather than
+   * skullet's default of bringing the content in piece by piece, top to
+   * bottom. A load faster than the skeleton's delay still shows at once.
+   */
+  crossfade?: boolean;
 };
 
 /**
@@ -72,6 +91,7 @@ export function MeasuredSkeleton({
   loading,
   id,
   alwaysFromSample = false,
+  crossfade = false,
   classic,
   className,
   children,
@@ -80,7 +100,7 @@ export function MeasuredSkeleton({
     return <>{loading ? classic : children}</>;
   }
 
-  return (
+  const skeleton = (
     <Box
       display="contents"
       data-testid={loading ? "loading-indicator" : undefined}
@@ -96,42 +116,10 @@ export function MeasuredSkeleton({
       </SkulletSkeleton>
     </Box>
   );
-}
 
-export type CrossfadeSkeletonProps = {
-  loading: boolean;
-  /**
-   * Drawn as is while loading, rather than measured from the content. Carries
-   * its own `loading-indicator` test id and loading label, if any.
-   */
-  skeleton: ReactNode;
-  /** For the wrapper skullet adds around the skeleton and the content. */
-  className?: string;
-  children: ReactNode;
-};
-
-/**
- * A hand-drawn skeleton that skullet crossfades into the content once it
- * loads, for content whose shape can't be measured ahead of time. Under
- * `?skeletons=classic` the skeleton is swapped for the content at once.
- */
-export function CrossfadeSkeleton({
-  loading,
-  skeleton,
-  className,
-  children,
-}: CrossfadeSkeletonProps) {
-  if (isClassicSkeletonStyle()) {
-    return <>{loading ? skeleton : children}</>;
-  }
-
-  return (
-    <SkulletSkeleton
-      className={cx(S.root, className)}
-      loading={loading}
-      skeleton={skeleton}
-    >
-      {children}
-    </SkulletSkeleton>
+  return crossfade ? (
+    <SkulletProvider reveal={CROSSFADE_REVEAL}>{skeleton}</SkulletProvider>
+  ) : (
+    skeleton
   );
 }

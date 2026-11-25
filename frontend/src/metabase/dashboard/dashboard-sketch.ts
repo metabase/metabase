@@ -1,10 +1,8 @@
 import { useMemo } from "react";
 
-import {
-  REMEMBERED_SKELETON_KEY_PREFIX,
-  toSkeletonFiller,
-} from "metabase/common/components/Skeletons/remembered-skeletons";
+import { toSkeletonFiller } from "metabase/common/components/Skeletons/remembered-skeletons";
 import { isHeadingDashCard, isTextDashCard } from "metabase/dashboard/utils";
+import { REMEMBERED_SKELETON_KEY_PREFIX } from "metabase/ui/utils/remembered-skeletons";
 import type {
   CardDisplayType,
   Dashboard,
@@ -100,7 +98,10 @@ const getSketchCard = (dashcard: DashboardCard): DashboardSketchCard => {
 
 const readSketches = (): Record<string, DashboardSketch> => {
   try {
-    return JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "{}");
+    // Written only by `saveDashboardSketch`, so it has this shape
+    return JSON.parse(
+      window.localStorage.getItem(STORAGE_KEY) ?? "{}",
+    ) as Record<string, DashboardSketch>;
   } catch {
     return {};
   }

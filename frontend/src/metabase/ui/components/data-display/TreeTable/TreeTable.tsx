@@ -19,12 +19,16 @@ import {
   TooltipPortalTargetProvider,
   type TreeTableRowPinnedPosition,
 } from "metabase/ui";
+import { rememberList } from "metabase/ui/utils/remembered-skeletons";
 
 import S from "./TreeTable.module.css";
 import { TreeTableHeader } from "./TreeTableHeader";
 import { TreeTableRow } from "./TreeTableRow";
 import { CHECKBOX_COLUMN_WIDTH, DEFAULT_INDENT_WIDTH } from "./constants";
 import type { TreeNodeData, TreeTableProps } from "./types";
+
+// A skeleton never needs to draw more rows than fit on a screen
+const MAX_REMEMBERED_ROWS = 20;
 
 export function TreeTable<TData extends TreeNodeData>({
   instance,
@@ -120,6 +124,18 @@ export function TreeTable<TData extends TreeNodeData>({
     observer.observe(container);
     return () => observer.disconnect();
   }, [containerRef, setContainerWidth, showCheckboxes]);
+
+  // PROTOTYPE: so the next load's skeleton draws as many rows as this shows,
+  // or, with none, takes up as much room as the empty state
+  useEffect(() => {
+    rememberList({
+      rows: Math.min(rows.length, MAX_REMEMBERED_ROWS),
+      emptyHeight:
+        rows.length === 0
+          ? rootRef.current?.getBoundingClientRect().height
+          : undefined,
+    });
+  }, [rows.length]);
 
   const hasExpandableRows = useMemo(
     () => rows.some((row) => row.getCanExpand()),

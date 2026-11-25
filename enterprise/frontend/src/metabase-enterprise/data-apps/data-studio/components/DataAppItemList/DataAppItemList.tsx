@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useListCollectionItemsQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { useNavigate } from "metabase/router";
 import {
   Card,
@@ -84,9 +85,10 @@ export function DataAppItemList({
       />
       <Flex direction="column" flex={1} mih={0}>
         <Card withBorder p={0}>
-          {isLoading ? (
-            <TreeTableSkeleton columnWidths={[1]} />
-          ) : (
+          <SkeletonSwap
+            loading={isLoading}
+            skeleton={<TreeTableSkeleton columnWidths={[1]} />}
+          >
             <TreeTable
               instance={treeTableInstance}
               emptyState={
@@ -96,7 +98,7 @@ export function DataAppItemList({
               }
               onRowClick={handleRowActivate}
             />
-          )}
+          </SkeletonSwap>
         </Card>
       </Flex>
     </Stack>

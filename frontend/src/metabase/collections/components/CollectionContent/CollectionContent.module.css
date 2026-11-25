@@ -7,9 +7,17 @@
 }
 
 /* The page scrolls within its own height, so the measured skeleton's reveal
-   and panes, which wrap it, pass that height through. */
+   and panes, which wrap it, pass that height through, as do the skeleton's
+   container and the "ghost" it lays the sample out in while loading. */
 .page,
 .page > * > [skullet-reveal],
-.page > * > [skullet-reveal] > [skullet-pane] {
+.page > * > [skullet-reveal] > [skullet-pane],
+.page > * > [skullet-reveal] > [skullet-pane] > [skullet-loading],
+.page
+  > *
+  > [skullet-reveal]
+  > [skullet-pane]
+  > [skullet-loading]
+  > [skullet-ghost] {
   height: 100%;
 }
