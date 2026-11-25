@@ -9,6 +9,7 @@
   structure of those views. Scope each query to `current_database()` because a connection can access multiple
   databases."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.driver :as driver]
@@ -16,6 +17,7 @@
    [metabase.driver.postgres]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.quoting :as sql-jdbc.quoting]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
@@ -24,6 +26,7 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.util.connection :as u.connection]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -769,6 +772,79 @@
 ;;; |                                          Driver-managed table DDL                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- connection-spec
+  "The pooled connection spec for `db-id`, as the inherited `:sql-jdbc` DDL methods use it."
+  [db-id]
+  (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id)))
+
+(defn- execute-ddl!
+  "Run `sqls` in order on `db-id`, in one transaction. DDL is transactional on the endpoint."
+  [db-id sqls]
+  (jdbc/with-db-transaction [conn (connection-spec db-id)]
+    (doseq [sql sqls]
+      (jdbc/execute! conn sql))))
+
+(defn- schema+table
+  "Split a `schema.table` string or a `:schema/table` keyword into `[schema table]`. `schema` is nil when absent."
+  [table-name]
+  (let [kw (keyword table-name)]
+    (if-let [schema (namespace kw)]
+      [schema (name kw)]
+      (let [[a b] (str/split (name kw) #"\." 2)]
+        (if b
+          [a b]
+          [nil a])))))
+
+(defn- qualified-table
+  "`table-name` as a keyword HoneySQL quotes part by part: `:schema.table`.
+
+  Not `(keyword table-name)` straight through: HoneySQL munges dashes to underscores in a keyword's namespace but
+  not in its name, so a `:test-data/t` keyword would reach the database as `test_data.t`."
+  [table-name]
+  (sql-jdbc.quoting/dot-qualified table-name))
+
+(defn- pk-sequence-name
+  "The quoted, schema-qualified name of the sequence that feeds `column` of `table-name`: `schema.table_column_seq`.
+  The test data loader names its sequences the same way."
+  [driver table-name column]
+  (let [[schema table] (schema+table table-name)
+        sequence       (str table "_" (name column) "_seq")]
+    (if schema
+      (sql.u/quote-name driver :table schema sequence)
+      (sql.u/quote-name driver :table sequence))))
+
+(defn- owned-sequences
+  "The sequences `create-table!` made for `table-name`: those a column of the table defaults to, named as
+  [[pk-sequence-name]] names them. A sequence with another name belongs to someone else."
+  [driver conn table-name]
+  (let [[schema table] (schema+table table-name)
+        sql            (str "SELECT column_name, column_default FROM duckdb_columns()"
+                            " WHERE database_name = current_database()"
+                            " AND schema_name = " (if schema "?" "current_schema()")
+                            " AND table_name = ? AND column_default LIKE 'nextval(%'")
+        params         (if schema
+                         [schema table]
+                         [table])]
+    (into []
+          (keep (fn [{:keys [column_name column_default]}]
+                  (let [sequence (pk-sequence-name driver table-name column_name)]
+                    (when (str/includes? column_default sequence)
+                      sequence))))
+          (jdbc/query conn (into [sql] params)))))
+
+;; Drop the sequences the table's key columns were fed from as well, since DROP TABLE leaves them behind. They go
+;; after the table, not with CASCADE: a cascading DROP SEQUENCE drops the table that depends on it.
+(defmethod driver/drop-table! :motherduck
+  [driver db-id table-name]
+  (let [[drop-table-sql] (sql/format {:drop-table [:if-exists (qualified-table table-name)]}
+                                     :quoted  true
+                                     :dialect (sql.qp/quote-style driver))]
+    (jdbc/with-db-transaction [conn (connection-spec db-id)]
+      (let [sequences (owned-sequences driver conn table-name)]
+        (jdbc/execute! conn drop-table-sql)
+        (doseq [sequence sequences]
+          (jdbc/execute! conn (str "DROP SEQUENCE IF EXISTS " sequence)))))))
+
 ;; The endpoint does not support Postgres COPY FROM STDIN. Use SQL-JDBC's batched INSERTs.
 (defmethod driver/insert-into! :motherduck
   [driver db-id table-name column-names values]
@@ -818,7 +894,7 @@
     ;; Separately from the table, since the inherited method opens its own transaction. `IF NOT EXISTS` lets a
     ;; retry find the sequence an earlier attempt left behind.
     (when (seq sequences)
-      (execute-ddl! driver db-id (map #(str "CREATE SEQUENCE IF NOT EXISTS " %) sequences)))
+      (execute-ddl! db-id (map #(str "CREATE SEQUENCE IF NOT EXISTS " %) sequences)))
     (apply (get-method driver/create-table! :sql-jdbc)
            driver db-id table-name column-definitions
            (mapcat identity opts))))
@@ -843,11 +919,11 @@
                                     :dialect (sql.qp/quote-style driver))
                         first)))
        (sql-jdbc.quoting/with-quoting driver)
-       (execute-ddl! driver db-id)))
+       (execute-ddl! db-id)))
 
 (defmethod driver/alter-table-columns! :motherduck
   [driver db-id table-name column-definitions & opts]
   (->> column-definitions
        (perf/mapv (fn [[column type]]
                     (apply sql-jdbc.sync/alter-table-columns-sql driver table-name {column type} opts)))
-       (execute-ddl! driver db-id)))
+       (execute-ddl! db-id)))

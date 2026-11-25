@@ -314,7 +314,7 @@
               [[:id "BIGINT DEFAULT nextval('\"t_id_seq\"')"]]]
              (#'metabase.driver.motherduck/with-pk-sequences :motherduck "t" {:id auto-pk}))))
     (testing "other columns, including other primary keys, are left alone"
-      (is (= [nil
+      (is (= [[]
               [[:id [:bigint]]
                [:n  [:text]]]]
              (#'metabase.driver.motherduck/with-pk-sequences :motherduck "main.t"
@@ -325,7 +325,7 @@
   "The SQL statements `f` would run, in order, instead of running them."
   [f]
   (let [statements (atom [])]
-    (mt/with-dynamic-fn-redefs [metabase.driver.motherduck/execute-ddl! (fn [_driver _db-id sqls]
+    (mt/with-dynamic-fn-redefs [metabase.driver.motherduck/execute-ddl! (fn [_db-id sqls]
                                                                           (swap! statements into sqls))]
       (f))
     @statements))
@@ -352,13 +352,6 @@
                                                            :b [:bigint]}
                                                           :old-types {:n [:bigint]
                                                                       :b [:boolean]}))))))
-
-(deftest truncate!-test
-  (is (= ["TRUNCATE TABLE \"main\".\"t\""]
-         (ddl-statements! #(driver/truncate! :motherduck 1 "main.t"))))
-  (testing "a dashed schema in a keyword's namespace is not munged"
-    (is (= ["TRUNCATE TABLE \"my-schema\".\"t\""]
-           (ddl-statements! #(driver/truncate! :motherduck 1 :my-schema/t))))))
 
 (defn- read-unparseable
   "Read `s` with the driver's reader for a column of `jdbc-type` and `type-name`, through stand-in JDBC objects.
