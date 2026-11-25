@@ -770,7 +770,7 @@
 
 (defn dashboard-filter-cleared?
   "Whether the dashboard filter value `value` applies no filter, as the QP reads it.
-  That is nil, or a list of nothing but nils."
+  That is nil, or a list of nothing but nils, the empty list included."
   [value]
   (or (nil? value) (and (sequential? value) (every? nil? value))))
 

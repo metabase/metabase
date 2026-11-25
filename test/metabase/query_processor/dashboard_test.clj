@@ -125,7 +125,8 @@
                                                                card-id
                                                                [{:id "_PRICE_", :value 4}]
                                                                save?))]
-        (mt/with-dynamic-fn-redefs [user-parameter-value/store! (fn [_user-id _dashboard-id params] (swap! stored into params))]
+        (mt/with-dynamic-fn-redefs [user-parameter-value/store! (fn [_user-id _dashboard-id params]
+                                                                  (swap! stored into params))]
           (mt/with-current-user (mt/user->id :rasta)
             (is (= (resolve true) (resolve false)))
             (testing "only the resolution with saving on stored its value"
