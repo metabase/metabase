@@ -2484,3 +2484,31 @@
       (is (= ["https://localhost/"]
              (#'driver.snowflake/authenticator-values {k "//acct.snowflakecomputing.com/?authenticator=https://localhost/"}))
           (str "should be found in " k)))))
+
+(deftest ^:parallel change-token-test
+  (let [row {:last_altered "2026-01-01 00:00:00" :row_count 10 :bytes 2048 :altered_seconds_ago (* 8 24 60 60)}]
+    (testing "a table altered longer ago than the longest statement has a token of its time, rows and bytes"
+      (is (= "2026-01-01 00:00:00:10:2048" (#'driver.snowflake/change-token row))))
+    (testing "no token while a statement that set LAST_ALTERED may still be running"
+      (is (nil? (#'driver.snowflake/change-token (assoc row :altered_seconds_ago 60))))
+      (is (nil? (#'driver.snowflake/change-token (assoc row :altered_seconds_ago (* 7 24 60 60))))))
+    (testing "no token without LAST_ALTERED"
+      (is (nil? (#'driver.snowflake/change-token (assoc row :last_altered nil)))))))
+
+(deftest ^:parallel change-tokens-sql-test
+  (is (= ["SELECT table_schema, table_name, last_altered, row_count, bytes, DATEDIFF('second', last_altered, CURRENT_TIMESTAMP()) AS altered_seconds_ago FROM \"my\"\"db\".INFORMATION_SCHEMA.TABLES WHERE table_type = 'BASE TABLE' AND COALESCE(is_iceberg, 'NO') = 'NO' AND table_schema IN (?, ?)"
+          "PUBLIC" "other"]
+         (#'driver.snowflake/change-tokens-sql "my\"db" ["PUBLIC" "other"]))))
+
+(deftest ^:synchronized table-change-tokens-test
+  (mt/test-driver :snowflake
+    (testing "the driver supports change tokens"
+      (is (true? (driver.u/supports? :snowflake :table-change-tokens (mt/db)))))
+    (testing "one query gives an entry for each table, each a token or nil, the same on a second read"
+      (let [tables (t2/select :model/Table :db_id (mt/id) :active true)
+            tokens #(driver/table-change-tokens :snowflake (mt/db) tables)
+            before (tokens)]
+        (is (seq tables))
+        (is (= (set (map :id tables)) (set (keys before))))
+        (is (every? #(or (nil? %) (string? %)) (vals before)))
+        (is (= before (tokens)))))))
