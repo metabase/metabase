@@ -65,17 +65,24 @@
     (let [driver (driver.u/database->driver database)]
       (driver/describe-database driver database))))
 
+(defn- json-field?
+  "Whether `field`, a Field's metadata from the warehouse, is a JSON column whose keys can be unfolded."
+  [field]
+  (isa? (:base-type field) :type/JSON))
+
 (defn include-nested-fields-for-table
-  "Add nested-field-columns for table to set of fields."
+  "Add nested-field-columns for table to set of fields. Only a table with a JSON column among `fields` can have them,
+  so for other tables this does not query the warehouse."
   [fields database table]
   (let [driver (driver.u/database->driver database)]
-    (do-with-effective-table
-     database table
-     (fn [{effective-schema :schema effective-name :name}]
-       (let [effective-table (assoc table :schema effective-schema :name effective-name)]
-         (cond-> fields
-           (driver.u/supports? driver :nested-field-columns database)
-           (set/union (sql-jdbc.sync/describe-nested-field-columns driver database effective-table))))))))
+    (if-not (and (some json-field? fields)
+                 (driver.u/supports? driver :nested-field-columns database))
+      fields
+      (do-with-effective-table
+       database table
+       (fn [{effective-schema :schema effective-name :name}]
+         (let [effective-table (assoc table :schema effective-schema :name effective-name)]
+           (set/union fields (sql-jdbc.sync/describe-nested-field-columns driver database effective-table))))))))
 
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
