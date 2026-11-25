@@ -44,7 +44,7 @@
 
 (deftest ^:parallel arm-limits-test
   (testing "runs of the same density read the same number of rows, about the sample size in all"
-    (is (= [50 50 50 50]
+    (is (= {:limits [50 50 50 50] :clipped 0.0}
            (#'key-blocks/arm-limits (mapv #(run (* 1000.0 %) (* 1000.0 (inc %)) (range (* 1000 %) (+ 50 (* 1000 %))))
                                           (range 4))
                                     50 1.0 200))))
@@ -55,15 +55,17 @@
                                            (run 2000.0 3000.0 (range 2000 2500 10))
                                            (run 3000.0 4000.0 (range 3000 3500 10))]
                                           50 1.0 200)]
-      (is (= [91 91 9 9] limits))))
+      (is (= {:limits [91 91 9 9] :clipped 0.0} limits))))
   (testing "a run that stopped at the end of its part reads at most the rows the part has"
-    (is (= 3 (first (#'key-blocks/arm-limits [(run 0.0 3.0 [0 1 2]) (run 3.0 1000.0 (range 3 53))] 50 1.0 100)))))
-  (testing "the densest runs read at most 4 times the first read, so an uneven key reads less than the sample size"
-    (is (= 200 (first (#'key-blocks/arm-limits (into [(run 0.0 1000.0 (range 0 50))]
-                                                     (map #(run (* 1000.0 %) (* 1000.0 (inc %))
-                                                                (range (* 1000 %) (+ 500 (* 1000 %)) 10))
-                                                          (range 1 10)))
-                                               50 1.0 10000))))))
+    (is (= 3 (first (:limits (#'key-blocks/arm-limits [(run 0.0 3.0 [0 1 2]) (run 3.0 1000.0 (range 3 53))] 50 1.0 100))))))
+  (testing "a run reads at most 4 times the first read, and the rows that the cap cuts are counted"
+    (is (=? {:limits  (fn [limits] (= 200 (first limits)))
+             :clipped #(> % 2000)}
+            (#'key-blocks/arm-limits (into [(run 0.0 1000.0 (range 0 50))]
+                                           (map #(run (* 1000.0 %) (* 1000.0 (inc %))
+                                                      (range (* 1000 %) (+ 500 (* 1000 %)) 10))
+                                                (range 1 10)))
+                                     50 1.0 10000)))))
 
 (deftest ^:parallel run-plan-test
   (testing "the first run starts at the true lowest key, the others at a key of the same type"

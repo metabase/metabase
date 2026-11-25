@@ -1488,11 +1488,13 @@
     (mt/with-test-user :crowberto
       (let [table  (t2/select-one :model/Table :id (mt/id :venues))
             fields (mapv #(t2/select-one :model/Field :id (mt/id :venues %)) [:id :name])
+            params (atom [])
             sample (fn [table opts]
                      (let [sqls    (atom [])
                            execute qp.pipeline/*execute*]
                        (binding [qp.pipeline/*execute* (fn [driver query respond]
                                                          (swap! sqls conj (get-in query [:stages 0 :native]))
+                                                         (swap! params conj (get-in query [:stages 0 :params]))
                                                          (execute driver query respond))]
                          (assoc (driver/table-random-sample :mysql table fields (constantly conj) opts)
                                 :sqls @sqls))))]
@@ -1527,7 +1529,7 @@
           (let [{:keys [sqls]} (sample table {:rows 20 :runs 4 :row-count 100 :seed 1})
                 runs-sql       (last (filter #(str/includes? % "UNION ALL") sqls))
                 spec           (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
-                plan           (jdbc/query spec [(str "EXPLAIN " runs-sql) 1 26 51 100])
+                plan           (jdbc/query spec (into [(str "EXPLAIN " runs-sql)] (last @params)))
                 venue-rows     (filter #(= "venues" (:table %)) plan)]
             (is (not (str/includes? runs-sql "1048575")))
             (is (= 4 (count venue-rows)))
@@ -1609,14 +1611,14 @@
 (deftest table-random-sample-declines-for-a-key-with-clusters-test
   (mt/test-driver :mysql
     (mt/with-test-user :crowberto
-      (testing "a key whose rows are in two small clusters far apart keeps too few rows, so the driver declines"
+      (testing "a key whose rows are nearly all in one cluster would need a run much longer than the others, so it declines"
         (do-with-key-block-table!
          "key_block_clusters" "BIGINT" :type/BigInteger
-         (for [id (concat (range 1 4) (range 999999998 1000000001))] [id "x"])
+         (for [id (concat (range 1 31) [1000000000])] [id "x"])
          (fn [table k kind]
            (is (= {:method :first-rows}
                   (driver/table-random-sample :mysql table [k kind] (constantly conj)
-                                              {:rows 20 :runs 4 :row-count 131 :seed 1})))))))))
+                                              {:rows 20 :runs 10 :row-count 131 :seed 1})))))))))
 
 (deftest table-random-sample-declines-for-a-key-of-several-columns-test
   (mt/test-driver :mysql

@@ -5,14 +5,14 @@
   The key range is cut into equal parts, one run for each part. The first run starts at the lowest key, the runs of the
   middle parts start at a random point of their part, and the last run reads down from the highest key, so the sample
   has the true first and last rows. A run reads `WHERE key >= start ORDER BY key LIMIT n`, which an index on the key
-  reads in order and stops, so all the runs together read about as many rows as the first-rows sample. A run keeps only
-  the rows of its own part, so that runs never overlap.
+  reads in order and stops, so each of the two reads below reads about as many rows as the first-rows sample. A run
+  reads only the rows of its own part, so that runs never overlap.
 
   Gaps in the key make a run in a part with few rows reach far, so its rows would count too much. So the runs are
   read twice. The first read takes only the keys, and gives the density of each run: its rows over the part of the key
   range they cover, measured from the start point as sent. The second read takes the rows, with a limit for each run in
-  proportion to its density, scaled so that all the runs together read about the sample size. Its rows go straight to
-  the reducing function."
+  proportion to its share of the total density, so that all the runs together read about the sample size. Its rows go
+  straight to the reducing function."
   (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.string :as str]
@@ -23,6 +23,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util.performance :refer [mapv some]])
   (:import
    (java.time Instant LocalDate LocalDateTime OffsetDateTime ZoneOffset ZonedDateTime)
@@ -38,10 +39,16 @@
   "How much longer than the first read a run of the second read can be, for the densest runs of an uneven key."
   4)
 
-(def ^:private min-kept
-  "The part of the sample size that the second read must reach; below it, the key is too uneven for key blocks, and
-  the driver declines."
-  0.5)
+(def ^:private max-clipped
+  "The part of the sample size that the cap of [[max-run-length-factor]] may cut from the second read; above it, the
+  key is too uneven for key blocks, and the driver declines."
+  0.2)
+
+(def ^:private min-row-count-factor
+  "How many times the sample size a table must have for key blocks. A run reads only its own part, so on a table not
+  much larger than the sample, the runs cut at the ends of their parts read much less than the sample size, and the
+  first rows read most of the table anyway."
+  3)
 
 (def ^:private key-alias "mb_sample_key")
 (def ^:private run-alias "mb_sample_run")
@@ -119,20 +126,22 @@
         (/ n (max (+ reach step) step))))))
 
 (defn- arm-limits
-  "The limit of each run of the second read, in proportion to its density and scaled so that they add up to about
-  `rows`, each run reading at most [[max-run-length-factor]] times `length`. A run with rows reads at least one, and
-  a run that stopped at the end of its part reads at most the rows that the part has."
+  "The limit of each run of the second read: its share of the total density times `rows`, at most
+  [[max-run-length-factor]] times `length`, at least one for a run with rows, and at most the rows of its part for a
+  run that stopped at the end of its part. Returns the limits and how many rows the length cap cut."
   [runs length step rows]
   (let [densities (mapv #(run-density % length step) runs)
-        densest   (reduce max 0.0 densities)
-        weights   (mapv #(if (zero? densest) 0.0 (/ % densest)) densities)
-        total     (reduce + weights)
-        scale     (if (zero? total) 0.0 (min (* max-run-length-factor length) (/ rows total)))]
-    (mapv (fn [{:keys [keys]} weight]
-            (let [n (count keys)]
-              (cond-> (if (zero? n) 0 (max 1 (Math/round (double (* scale weight)))))
-                (< 0 n length) (min n))))
-          runs weights)))
+        total     (reduce + densities)
+        cap       (* max-run-length-factor length)]
+    (reduce (fn [{:keys [limits clipped]} [{:keys [keys]} density]]
+              (let [n     (count keys)
+                    ideal (if (zero? total) 0.0 (/ (* rows density) total))
+                    limit (cond-> (if (zero? n) 0 (max 1 (min cap (Math/round (double ideal)))))
+                            (< 0 n length) (min n))]
+                {:limits  (conj limits limit)
+                 :clipped (+ clipped (max 0.0 (- ideal cap)))}))
+            {:limits [] :clipped 0.0}
+            (map vector runs densities))))
 
 ;;; --------------------------------------------------- The query ----------------------------------------------------
 
@@ -150,9 +159,10 @@
 
 (defn- runs-sql
   "One statement that reads the runs: an arm of `UNION ALL` for each run with a limit above 0, around the compiled
-  sample query `{:query sql, :params params}`. The last run is read down from `hi`. Each arm tags its rows with its run
-  number. The statement has a limit of its own, so that a session limit such as `sql_select_limit` does not cut it."
-  [driver {sql :query params :params} starts hi limits]
+  sample query `{:query sql, :params params}`. An ascending run reads from its start up to the end of its part; the
+  last run reads down from `hi` to the start of its part, given in `ends`. Each arm tags its rows with its run number.
+  The statement has a limit of its own, so that a session limit such as `sql_select_limit` does not cut it."
+  [driver {sql :query params :params} starts ends hi limits]
   (let [k    (str "b." (sql.u/quote-name driver :field key-alias))
         run  (sql.u/quote-name driver :field run-alias)
         n    (count starts)
@@ -160,11 +170,14 @@
                    :let  [limit (nth limits i)]
                    :when (pos? limit)]
                (let [last? (= i n)]
-                 {:sql   (format "(SELECT %d AS %s, b.* FROM (%s) b WHERE %s %s ? ORDER BY %s %s LIMIT %d)"
-                                 i run sql k (if last? "<=" ">=") k (if last? "DESC" "ASC") limit)
-                  :param (if last? hi (nth starts i))}))]
+                 {:sql    (format "(SELECT %d AS %s, b.* FROM (%s) b WHERE %s %s ? AND %s %s ? ORDER BY %s %s LIMIT %d)"
+                                  i run sql
+                                  k (if last? "<=" ">=")
+                                  k (if last? ">=" "<")
+                                  k (if last? "DESC" "ASC") limit)
+                  :params [(if last? hi (nth starts i)) (nth ends i)]}))]
     {:query  (str (str/join " UNION ALL " (map :sql arms)) " LIMIT " (reduce + limits))
-     :params (into [] (mapcat #(conj (vec params) (:param %))) arms)}))
+     :params (into [] (mapcat #(into (vec params) (:params %))) arms)}))
 
 (defn- native-query
   "The native query `{:query sql, :params params}` on the Database `database-id`, for sync."
@@ -178,12 +191,13 @@
 (defn- collect-rows
   "Run the native query `sql` on the Database `database-id`, and return its rows."
   [database-id sql]
-  (qp/process-query (native-query database-id sql)
-                    (fn [_md]
-                      (fn
-                        ([] (transient []))
-                        ([acc] (persistent! acc))
-                        ([acc row] (conj! acc row))))))
+  (qp.pipeline/do-with-own-canceled-chan
+   #(qp/process-query (native-query database-id sql)
+                      (fn [_md]
+                        (fn
+                          ([] (transient []))
+                          ([acc] (persistent! acc))
+                          ([acc row] (conj! acc row)))))))
 
 (defn- key-range
   "The lowest and highest value of `key-col` of `table`. An index on the key gives them with no scan."
@@ -192,55 +206,45 @@
                   (lib/aggregate (lib/min key-col))
                   (lib/aggregate (lib/max key-col))
                   (assoc :middleware {:format-rows? false :skip-results-metadata? true}))]
-    (first (qp/process-query query (fn [_md]
-                                     (fn
-                                       ([] [])
-                                       ([acc] acc)
-                                       ([acc row] (conj acc row))))))))
-
-(defn- part-filter
-  "A function of a run number and a key number: whether the key is in that run's part."
-  [{:keys [bounds starts]}]
-  (let [last-run (count starts)]
-    (fn [i x]
-      (if (= i last-run)
-        (and (>= x (nth bounds last-run)) (<= x (peek bounds)))
-        (and (>= x (nth bounds i)) (< x (nth bounds (inc i))))))))
+    ;; a query of its own channel, so that it does not close the cancel channel that the runs after it need
+    (first (qp.pipeline/do-with-own-canceled-chan
+            #(qp/process-query query (fn [_md]
+                                       (fn
+                                         ([] [])
+                                         ([acc] acc)
+                                         ([acc row] (conj acc row)))))))))
 
 (defn- read-keys
   "The first read: the keys of the runs of `length` rows of `plan`, as maps of `:start`, `:end`, `:descending?` and
-  `:keys` (the keys of the run's part)."
-  [driver database-id {:keys [keys-compiled bounds params starts hi] :as plan} length]
-  (let [rows     (collect-rows database-id (runs-sql driver keys-compiled params hi
+  `:keys`."
+  [driver database-id {:keys [keys-compiled bounds params ends starts hi]} length]
+  (let [rows     (collect-rows database-id (runs-sql driver keys-compiled params ends hi
                                                      (vec (repeat (inc (count starts)) length))))
         by-run   (group-by first rows)
-        in-part? (part-filter plan)
         last-run (count starts)]
     (mapv (fn [i]
             {:start       (if (= i last-run) (peek bounds) (nth starts i))
              :end         (nth bounds (if (= i last-run) last-run (inc i)))
              :descending? (= i last-run)
-             :keys        (into [] (comp (map #(->number (peek %))) (filter #(in-part? i %))) (get by-run i))})
+             :keys        (mapv #(->number (peek %)) (get by-run i))})
           (range (inc last-run)))))
 
 (defn- stream-rows
-  "The second read: the rows of the runs with `limits`, reduced with `rff` with only the sample columns, and only the
-  rows of each run's part. Returns the result of the reduction and the number of rows."
-  [driver database-id {:keys [compiled params hi] :as plan} limits rff]
-  (let [in-part? (part-filter plan)
-        kept     (volatile! 0)
-        result   (qp/process-query
-                  (native-query database-id (runs-sql driver compiled params hi limits))
+  "The second read: the rows of the runs with `limits`, reduced with `rff` with only the sample columns. Returns the
+  result of the reduction and the number of rows."
+  [driver database-id {:keys [compiled params ends hi]} limits rff]
+  (let [kept   (volatile! 0)
+        result (qp.pipeline/do-with-own-canceled-chan
+                #(qp/process-query
+                  (native-query database-id (runs-sql driver compiled params ends hi limits))
                   (fn [metadata]
-                    (let [rf (rff (update metadata :cols #(subvec (vec %) 1 (dec (count %)))))]
+                    (let [rf (rff (update metadata :cols (fn [cols] (subvec (vec cols) 1 (dec (count cols))))))]
                       (fn
                         ([] (rf))
                         ([acc] (rf acc))
                         ([acc row]
-                         (if (in-part? (first row) (->number (peek row)))
-                           (do (vswap! kept inc)
-                               (rf acc (subvec row 1 (dec (count row)))))
-                           acc))))))]
+                         (vswap! kept inc)
+                         (rf acc (subvec row 1 (dec (count row))))))))))]
     {:result result :kept @kept}))
 
 (defn- key-column
@@ -269,6 +273,9 @@
             params (into [lo] (map #(number-> lo %)) (rest (run-starts bounds (if seed (Random. (long seed)) (Random.)))))]
         {:bounds bounds
          :params params
+         ;; the end of each ascending run's part, and the start of the last part, as keys of the key's type
+         :ends   (conj (mapv #(number-> lo (nth bounds %)) (range 1 (dec (count bounds))))
+                       (number-> lo (nth bounds (- (count bounds) 2))))
          :starts (mapv ->number params)
          :hi     hi
          :step   (if (integral? lo) 1.0 (* 1e-9 (- hi-n lo-n)))}))))
@@ -278,14 +285,16 @@
   which must have an index that reads it in order and no repeated values: about `(:rows opts)` rows in
   `(:runs opts 200)` runs.
 
-  Declines, so that sync reads the first rows, when the table has no row count estimate, when the key is not a number
-  or a date or time, has no range to place the runs in, or is so uneven that the runs would read less than
-  [[min-kept]] of the sample size. `:seed` in `opts` makes the start points repeatable."
+  Declines, so that sync reads the first rows, when the table has no row count estimate or fewer than
+  [[min-row-count-factor]] times the sample size, when the key is not a number or a date or time, has no range to place
+  the runs in, or is so uneven that the cap on the length of a run would cut more than [[max-clipped]] of the sample
+  size. `:seed` in `opts` makes the start points repeatable."
   [driver table fields key-name rff {:keys [rows row-count truncation-size runs seed] :or {runs default-run-count}}]
   (let [database-id (:db_id table)
         mp          (lib-be/application-database-metadata-provider database-id)
         table-md    (lib.metadata/table mp (:id table))
-        key-col     (when row-count (key-column mp (:id table) key-name))
+        key-col     (when (and row-count (>= row-count (* min-row-count-factor rows)))
+                      (key-column mp (:id table) key-name))
         plan        (when key-col
                       (let [[lo hi] (key-range mp table-md key-col)]
                         (run-plan lo hi runs seed)))]
@@ -293,8 +302,8 @@
       {:method :first-rows}
       (let [length (max 1 (long (Math/ceil (/ rows (double runs)))))
             plan   (assoc plan :keys-compiled (qp.compile/compile (base-query mp table-md [key-col] key-col nil)))
-            limits (arm-limits (read-keys driver database-id plan length) length (:step plan) rows)]
-        (if (< (reduce + limits) (* min-kept rows))
+            {:keys [limits clipped]} (arm-limits (read-keys driver database-id plan length) length (:step plan) rows)]
+        (if (or (> clipped (* max-clipped rows)) (zero? (reduce + limits)))
           {:method :first-rows}
           (let [cols                   (mapv #(lib.metadata/field mp (:id %)) fields)
                 plan                   (assoc plan :compiled (qp.compile/compile
