@@ -19,11 +19,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- refusal
-  "An agent error whose `message` the model reads as the tool's output."
-  [message]
-  (ex-info message {:agent-error? true}))
-
 (defn- no-permission-message
   [dashcard-id]
   (str "You do not have permission to run dashcard " dashcard-id "."))
@@ -59,20 +54,22 @@
   (let [dashboard (metabot.db/dashboard dashboard-id)
         dashcard  (when (some-> dashboard mi/can-read?)
                     (metabot.db/dashcard dashboard-id dashcard-id))
-        not-found (refusal (str "Dashcard " dashcard-id " was not found on dashboard " dashboard-id ". Read"
-                                " `metabase://dashboard/" dashboard-id "/items` for the `dashcard_id` of each card"
-                                " on the dashboard."))]
+        not-found (run-query/refusal
+                   (str "Dashcard " dashcard-id " was not found on dashboard " dashboard-id ". Read"
+                        " `metabase://dashboard/" dashboard-id "/items` for the `dashcard_id` of each card"
+                        " on the dashboard."))]
     (when-not dashcard
       (throw not-found))
     (when (or (:action_id dashcard) (nil? (:card_id dashcard)))
-      (throw (refusal (str "Dashcard " dashcard-id " is not a question, so it has no results."))))
+      (throw (run-query/refusal (str "Dashcard " dashcard-id " is not a question, so it has no results."))))
     (let [card (metabot.db/card (:card_id dashcard))]
       (when-not (visible-card? card)
         (throw not-found))
       (when (reads-metabot-sql? card)
-        (throw (refusal (str "Dashcard " dashcard-id " runs SQL that you wrote, and SQL you wrote doesn't run with"
-                             " dashboard filter values. Tell the user you can't read this card's results with the"
-                             " dashboard's filters applied."))))
+        (throw (run-query/refusal
+                (str "Dashcard " dashcard-id " runs SQL that you wrote, and SQL you wrote doesn't run with"
+                     " dashboard filter values. Tell the user you can't read this card's results with the"
+                     " dashboard's filters applied."))))
       {:dashboard dashboard
        :dashcard  dashcard
        :card      card})))
@@ -92,23 +89,33 @@
   [dashboard dashcard values]
   (let [connected (into #{} (map :parameter_id) (:parameter_mappings dashcard))
         id->value (into {} (map (juxt :id :value)) values)
-        shown     (for [{:keys [id name]} (:parameters dashboard)
-                        :when (and (contains? connected id) (contains? id->value id))
+        filters   (filter #(contains? connected (:id %)) (:parameters dashboard))
+        applied   (for [{:keys [id name]} filters
+                        :when (contains? id->value id)
                         :let  [value (get id->value id)]]
                     (str (llm-shape/escape-xml name) " = "
-                         (if (and (some? value) (not (and (sequential? value) (every? nil? value))))
-                           (llm-shape/escape-xml (llm-shape/dashboard-filter-value value))
-                           "(cleared)")))]
+                         (if (llm-shape/dashboard-filter-cleared? value)
+                           "(cleared)"
+                           (llm-shape/escape-xml (llm-shape/dashboard-filter-value value)))))
+        unknown   (for [{:keys [id name]} filters
+                        :when (not (contains? id->value id))]
+                    (llm-shape/escape-xml name))]
     (cond
       (nil? values)
       (str "No dashboard filter values were applied: the values on the user's screen are unknown, so these rows can"
            " differ from the card on screen.")
 
-      (seq shown)
-      (str "This ran the card with the dashboard filter values on the user's screen: " (str/join "; " shown) ".")
+      (empty? filters)
+      "No dashboard filter is connected to this card, so it ran as it shows on the user's screen."
 
       :else
-      "No dashboard filter is connected to this card, so it ran as it shows on the user's screen.")))
+      (str/join " " (remove nil?
+                            [(when (seq applied)
+                               (str "This ran the card with the dashboard filter values on the user's screen: "
+                                    (str/join "; " applied) "."))
+                             (when (seq unknown)
+                               (str "No value was applied for " (str/join ", " unknown) ": its value on the user's"
+                                    " screen is unknown, so these rows can differ from the card on screen."))])))))
 
 (defn- run-dashcard-page!
   "Run `dashcard` for one page of at most `row-limit` rows, refusing it when the runner's own read checks do."
@@ -118,7 +125,7 @@
     (catch clojure.lang.ExceptionInfo e
       ;; The runner's own read checks throw before the QP runs anything
       (if (= 403 (:status-code (ex-data e)))
-        (throw (refusal (no-permission-message dashcard-id)))
+        (throw (run-query/refusal (no-permission-message dashcard-id)))
         (throw e)))))
 
 (defn- run-dashboard-card
@@ -130,9 +137,9 @@
      (let [item         (viewed-dashboard)
            dashboard-id (:id item)]
        (when-not (pos-int? dashboard-id)
-         (throw (refusal (str "The user is not viewing a dashboard, and this tool only runs cards on the dashboard"
-                              " they are viewing. To read a saved question's values, call `run_query` with the"
-                              " question's ID."))))
+         (throw (run-query/refusal
+                 (str "The user is not viewing a dashboard, and this tool only runs cards on the dashboard they are"
+                      " viewing. To read a saved question's values, call `run_query` with the question's ID."))))
        (let [{:keys [dashboard dashcard card]} (runnable-dashcard dashboard-id dashcard_id)
              values                            (filter-values item dashboard)
              page                              (run-dashcard-page! {:dashboard  dashboard

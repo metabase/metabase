@@ -56,7 +56,7 @@
          (quoting/quoted (llm-shape/truncate query-error max-error-chars)))
     "Query failed: unknown error"))
 
-(defn- refusal
+(defn refusal
   "An agent error whose `message` the model reads as the tool's output."
   [message]
   (ex-info message {:agent-error? true}))

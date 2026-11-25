@@ -751,25 +751,26 @@
     (str (truncate (if (string? shown) shown (json/encode shown)) max-dashboard-filter-value-length)
          (when (pos-int? more) (str " (+" more " more)")))))
 
+(defn dashboard-filter-cleared?
+  "Whether the dashboard filter value `value` applies no filter, as the QP reads it.
+  That is nil, or a list of nothing but nils."
+  [value]
+  (or (nil? value) (and (sequential? value) (every? nil? value))))
+
 (defn- dashboard-filter->xml
   "The `<filter>` element for the dashboard filter `parameter`.
-  A filter on the dashboard the user is viewing can carry `:current_value`, the value on the user's screen, where nil
-  is a cleared filter. A filter without the key says nothing about its value on screen."
+  A filter on the dashboard the user is viewing can carry `:current_value`, the value on the user's screen.
+  A filter without that key says nothing about its value on screen."
   [{:keys [id name type] :as parameter}]
-  (let [current? (contains? parameter :current_value)
-        current  (:current_value parameter)
-        ;; As the QP reads a filter value: nil, or a list of nothing but nils, applies no filter
-        current  (when-not (and (sequential? current) (every? nil? current)) current)]
-    (str "<filter id=\"" (escape-xml id)
-         "\" name=\"" (escape-xml (truncate name max-dashboard-filter-name-length))
-         "\" type=\"" (escape-xml (u/qualified-name type)) "\""
-         (cond
-           (and current? (some? current))
-           (str " current_value=\"" (escape-xml (dashboard-filter-value current)) "\"")
-
-           current?
-           " cleared=\"true\"")
-         "/>")))
+  (str "<filter id=\"" (escape-xml id)
+       "\" name=\"" (escape-xml (truncate name max-dashboard-filter-name-length))
+       "\" type=\"" (escape-xml (u/qualified-name type)) "\""
+       (when (contains? parameter :current_value)
+         (let [value (:current_value parameter)]
+           (if (dashboard-filter-cleared? value)
+             " cleared=\"true\""
+             (str " current_value=\"" (escape-xml (dashboard-filter-value value)) "\""))))
+       "/>"))
 
 (defn- dashboard-filters->xml
   "The `<filters>` block for a dashboard's `parameters`, or nil when it has none. Lists at most
