@@ -768,30 +768,30 @@
     (str (truncate (if (string? shown) shown (json/encode shown)) max-dashboard-filter-value-length)
          (when (pos-int? more) (str " (+" more " more)")))))
 
+(defn dashboard-filter-cleared?
+  "Whether the dashboard filter value `value` applies no filter, as the QP reads it: nil, or a list of nothing but nils."
+  [value]
+  (or (nil? value) (and (sequential? value) (every? nil? value))))
+
 (defn dashboard-filter->xml
   "The `<filter>` element for the dashboard filter `parameter`.
   It shows the filter's default and the dashcards it filters (`:connected_dashcards`), when it has them.
-  A filter on the dashboard the user is viewing can also carry `:current_value`, the value on the user's screen, where
-  nil is a cleared filter. A filter without the key says nothing about its value on screen."
+  A filter on the dashboard the user is viewing can also carry `:current_value`, the value on the user's screen.
+  A filter without that key says nothing about its value on screen."
   [{:keys [id name type default connected_dashcards] :as parameter}]
-  (let [current? (contains? parameter :current_value)
-        current  (:current_value parameter)
-        ;; As the QP reads a filter value: nil, or a list of nothing but nils, applies no filter
-        current  (when-not (and (sequential? current) (every? nil? current)) current)]
-    (str "<filter id=\"" (escape-xml id)
-         "\" name=\"" (escape-xml (truncate name max-dashboard-filter-name-length))
-         "\" type=\"" (escape-xml (u/qualified-name type)) "\""
-         (when (some? default)
-           (str " default=\"" (escape-xml (dashboard-filter-value default)) "\""))
-         (cond
-           (and current? (some? current))
-           (str " current_value=\"" (escape-xml (dashboard-filter-value current)) "\"")
-
-           current?
-           " cleared=\"true\"")
-         (when (seq connected_dashcards)
-           (str " connected_dashcards=\"" (str/join ", " connected_dashcards) "\""))
-         "/>")))
+  (str "<filter id=\"" (escape-xml id)
+       "\" name=\"" (escape-xml (truncate name max-dashboard-filter-name-length))
+       "\" type=\"" (escape-xml (u/qualified-name type)) "\""
+       (when (some? default)
+         (str " default=\"" (escape-xml (dashboard-filter-value default)) "\""))
+       (when (contains? parameter :current_value)
+         (let [value (:current_value parameter)]
+           (if (dashboard-filter-cleared? value)
+             " cleared=\"true\""
+             (str " current_value=\"" (escape-xml (dashboard-filter-value value)) "\""))))
+       (when (seq connected_dashcards)
+         (str " connected_dashcards=\"" (str/join ", " connected_dashcards) "\""))
+       "/>"))
 
 (defn- dashboard-filters->xml
   "The `<filters>` block for a dashboard's `parameters`, or nil when it has none.

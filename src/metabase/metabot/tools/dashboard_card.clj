@@ -81,6 +81,7 @@
    can't see, one with no question, and one whose question reads SQL that Metabot saved."
   [dashboard-id dashcard-id]
   (let [dashboard (metabot.db/dashboard dashboard-id)
+        ;; `mi/can-read?` reads the answer hydrated as `:can_read`
         dashcard  (when (some-> dashboard (t2/hydrate :can_read) mi/can-read?)
                     (metabot.db/dashcard dashboard-id dashcard-id))
         visible?  (and dashcard
@@ -111,62 +112,74 @@
   [dashboard dashcard values]
   (let [connected (into #{} (map :parameter_id) (:parameter_mappings dashcard))
         id->value (into {} (map (juxt :id :value)) values)
-        shown     (for [{:keys [id name]} (:parameters dashboard)
-                        :when (and (contains? connected id) (contains? id->value id))
+        filters   (filter #(contains? connected (:id %)) (:parameters dashboard))
+        applied   (for [{:keys [id name]} filters
+                        :when (contains? id->value id)
                         :let  [value (get id->value id)]]
                     (str (llm-shape/escape-xml name) " = "
-                         (if (and (some? value) (not (and (sequential? value) (every? nil? value))))
-                           (llm-shape/escape-xml (llm-shape/dashboard-filter-value value))
-                           "(cleared)")))]
+                         (if (llm-shape/dashboard-filter-cleared? value)
+                           "(cleared)"
+                           (llm-shape/escape-xml (llm-shape/dashboard-filter-value value)))))
+        unknown   (for [{:keys [id name]} filters
+                        :when (not (contains? id->value id))]
+                    (llm-shape/escape-xml name))]
     (cond
       (nil? values)
       (str "No dashboard filter values were applied: the values on the user's screen are unknown, so these rows can"
            " differ from the card on screen.")
 
-      (seq shown)
-      (str "This ran the card with the dashboard filter values on the user's screen: " (str/join "; " shown) ".")
+      (empty? filters)
+      "No dashboard filter is connected to this card, so it ran as it shows on the user's screen."
 
       :else
-      "No dashboard filter is connected to this card, so it ran as it shows on the user's screen.")))
+      (str/join " " (remove nil?
+                            [(when (seq applied)
+                               (str "This ran the card with the dashboard filter values on the user's screen: "
+                                    (str/join "; " applied) "."))
+                             (when (seq unknown)
+                               (str "No value was applied for " (str/join ", " unknown) ": its value on the user's"
+                                    " screen is unknown, so these rows can differ from the card on screen."))])))))
+
+(defn- run-dashcard-page!
+  "Run `runnable`, the `{:dashboard :dashcard :card :parameters}` to run, for one page of at most `row-limit` rows."
+  [runnable dashcard-id row-limit]
+  (try
+    (query-execution/execute-dashcard-page! runnable row-limit :metabot (run-query/run-options))
+    (catch clojure.lang.ExceptionInfo e
+      ;; The runner's own read checks throw before the QP runs anything
+      (if (= 403 (:status-code (ex-data e)))
+        (no-permission! {:dashcard-id dashcard-id})
+        (throw e)))))
 
 (defn- run-dashboard-card
   [{:keys [dashcard_id row_limit]}]
   (run-query/check-rows-may-reach-model!)
-  (let [item                             (or (viewed-dashboard) (no-viewed-dashboard! {}))
-        dashboard-id                     (:id item)
-        _                                (when-not (pos-int? dashboard-id) (no-viewed-dashboard! {}))
-        {:keys [dashboard dashcard card]} (runnable-dashcard dashboard-id dashcard_id)
-        values                           (filter-values item dashboard)
-        page                             (run-query/do-with-run-errors
-                                          #(no-permission! {:dashcard-id dashcard_id})
-                                          (fn []
-                                            (try
-                                              (query-execution/execute-dashcard-page!
-                                               {:dashboard  dashboard
-                                                :dashcard   dashcard
-                                                :card       card
-                                                :parameters values}
-                                               (or row_limit run-query/default-row-limit)
-                                               :metabot
-                                               (run-query/run-options))
-                                              (catch clojure.lang.ExceptionInfo e
-                                                ;; The runner's own read checks throw before the QP runs anything
-                                                (if (= 403 (:status-code (ex-data e)))
-                                                  (no-permission! {:dashcard-id dashcard_id})
-                                                  (throw e))))))
-        card-type                        (name (:type card))
-        {:keys [output returned truncated?]}
-        (run-query/rows-output
-         (format "<query_results dashcard_id=\"%d\" %s_id=\"%d\"" dashcard_id card-type (:id card))
-         page
-         [(filters-note dashboard dashcard values)
-          (format "Link to the %s as `metabase://%s/%d`." card-type card-type (:id card))]
-         false)]
-    {:output            output
-     :structured-output {:dashcard-id dashcard_id
-                         :card-id     (:id card)
-                         :returned    returned
-                         :truncated?  truncated?}}))
+  (let [item (viewed-dashboard)]
+    (when-not (pos-int? (:id item))
+      (no-viewed-dashboard! {}))
+    (let [{:keys [dashboard dashcard card]} (runnable-dashcard (:id item) dashcard_id)
+          values                            (filter-values item dashboard)
+          page                              (run-query/do-with-run-errors
+                                             #(no-permission! {:dashcard-id dashcard_id})
+                                             #(run-dashcard-page! {:dashboard  dashboard
+                                                                   :dashcard   dashcard
+                                                                   :card       card
+                                                                   :parameters values}
+                                                                  dashcard_id
+                                                                  (or row_limit run-query/default-row-limit)))
+          card-type                         (name (:type card))
+          {:keys [output returned truncated?]}
+          (run-query/rows-output
+           (format "<query_results dashcard_id=\"%d\" %s_id=\"%d\"" dashcard_id card-type (:id card))
+           page
+           [(filters-note dashboard dashcard values)
+            (format "Link to the %s as `metabase://%s/%d`." card-type card-type (:id card))]
+           false)]
+      {:output            output
+       :structured-output {:dashcard-id dashcard_id
+                           :card-id     (:id card)
+                           :returned    returned
+                           :truncated?  truncated?}})))
 
 (def ^:private run-dashboard-card-args
   [:map {:closed true}

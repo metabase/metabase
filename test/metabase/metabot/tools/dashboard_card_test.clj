@@ -74,6 +74,11 @@
          (let [{:keys [output]} (run nil)]
            (is (= 100 (count-shown output)))
            (is (str/includes? output "the values on the user's screen are unknown"))))
+       (testing "a connected filter the frontend sent no value for is named as unknown"
+         (let [{:keys [output]} (run [])]
+           (is (= 100 (count-shown output)))
+           (is (str/includes? output "No value was applied for Price: its value on the user's screen is unknown"))
+           (is (not (str/includes? output "No dashboard filter is connected")))))
        (testing "a value for a filter the dashboard doesn't have is dropped rather than failing the run"
          (is (= 22 (count-shown (:output (run [{:id "price", :value [1]} {:id "gone", :value "x"}]))))))))))
 
