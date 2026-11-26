@@ -13,6 +13,7 @@
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.runtime :as tools.runtime]
+   [metabase.metabot.tools.shared :as tools.shared]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -1158,7 +1159,8 @@
                               (when (ait/capture-active?)
                                 (ait/record! {:ai/tool-args arguments}))
                               (try
-                                ((:fn tool) arguments)
+                                (binding [tools.shared/*tool-call-id* tool-call-id]
+                                  ((:fn tool) arguments))
                                 (catch Throwable e
                                   ;; `invoke` does not throw. If something gets past it, pairing the
                                   ;; call with a result still matters more than the diagnosis, so

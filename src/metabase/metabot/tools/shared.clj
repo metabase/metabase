@@ -60,6 +60,12 @@
    agent loop so that tools can adapt their output to the active profile."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *tool-call-id*
+  "The LLM provider's id of the tool call that is running, bound for the length of the call. Each call of a turn runs
+  on its own thread, so agent memory, which the calls share, cannot hold it."
+  nil)
+
 (defn curated-only?
   "Whether the current session's tools may only reach curated content: its Metabot has `use_verified_content` on and
   its profile isn't exempt (see [[curation/curated-only?]]). False outside an agent session, where no Metabot is
@@ -79,6 +85,25 @@
   create came from (e.g. `save_entity` stamps it onto the saved card)."
   []
   (:conversation-id (current-memory)))
+
+(defn current-message-id
+  "The pk of the assistant MetabotMessage that the current turn writes, from agent memory, or nil when the turn has
+  none."
+  []
+  (:message-id (current-memory)))
+
+(defn query-run-link
+  "What a query that the running tool call runs belongs to, as the query's `:info` records it: the conversation, the
+  assistant message of the turn, and the tool call. Nil outside a conversation."
+  []
+  (when-let [conversation-id (current-conversation-id)]
+    (let [message-id   (current-message-id)
+          ;; The id is model output. The column holds 255 characters, as `metabot_tool_call.tool_call_id` does.
+          tool-call-id (some-> *tool-call-id* str not-empty)]
+      (cond-> {:metabot-conversation-id conversation-id}
+        (pos-int? message-id) (assoc :metabot-message-id message-id)
+        tool-call-id          (assoc :metabot-tool-call-id (cond-> tool-call-id
+                                                             (> (count tool-call-id) 255) (subs 0 255)))))))
 
 (defn request-canceled-chan
   "The channel that receives a value when the current turn's request is canceled, or nil when the turn has none."

@@ -549,10 +549,12 @@
   (u/seconds->ms 90))
 
 (defn- run-options
-  "What may stop a query this tool runs: the chat request being canceled, and the time limit."
+  "What may stop a query this tool runs: the chat request being canceled, and the time limit. And what its
+  QueryExecution names as its cause: the conversation, the reply and the tool call."
   []
   {:request-canceled-chan (shared/request-canceled-chan)
-   :timeout-ms            query-timeout-ms})
+   :timeout-ms            query-timeout-ms
+   :info                  (shared/query-run-link)})
 
 (defn- run-page!
   "Run `query` for one page of rows through [[query-execution/execute-page!]].

@@ -33,6 +33,34 @@
       (is (=? {:returned 2 :truncated? true :rows #(= 2 (count %))}
               (query-execution/execute-page! (venues-query 3) 2 :agent))))))
 
+(deftest execute-page-info-option-test
+  (let [info    (atom nil)
+        run!    (fn [options]
+                  (mt/with-dynamic-fn-redefs [qp/process-query (fn [query]
+                                                                 (reset! info (:info query))
+                                                                 {:status :completed, :data {:cols [], :rows []}})]
+                    (mt/with-current-user (mt/user->id :rasta)
+                      (query-execution/execute-page! (venues-query 1) 1 :metabot options)))
+                  @info)
+        link    {:metabot-conversation-id "0d3a6f0e-5f0b-4a53-8f2e-2f3c9b0f6f11"
+                 :metabot-message-id      42
+                 :metabot-tool-call-id    "call-7"}
+        its-own {:executed-by (mt/user->id :rasta), :context :metabot}]
+    (testing "the :info option names what the run belongs to"
+      (is (= (merge link its-own)
+             (select-keys (run! {:info link}) (concat (keys link) (keys its-own))))))
+    (testing "the option sets no other key of :info, and none that this namespace sets"
+      (is (= its-own
+             (select-keys (run! {:info {:card-id 1, :context :question, :executed-by (mt/user->id :crowberto)}})
+                          [:card-id :context :executed-by]))))
+    (testing "a query map cannot name its own link"
+      (mt/with-dynamic-fn-redefs [qp/process-query (fn [query]
+                                                     (reset! info (:info query))
+                                                     {:status :completed, :data {:cols [], :rows []}})]
+        (mt/with-current-user (mt/user->id :rasta)
+          (query-execution/execute-page! (assoc (venues-query 1) :info link) 1 :metabot)))
+      (is (= {} (select-keys @info (keys link)))))))
+
 (deftest execute-page-failure-is-an-agent-error-test
   (mt/with-current-user (mt/user->id :rasta)
     (let [captured (atom nil)]

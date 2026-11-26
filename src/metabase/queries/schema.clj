@@ -335,7 +335,10 @@
    [:embedding_route             {:optional true} [:maybe :string]]
    [:metabase_version            {:optional true} [:maybe :string]]
    [:embedding_client_identifier {:optional true} [:maybe :string]]
-   [:sandbox_details             {:optional true} [:maybe ::query-execution.sandbox-details]]])
+   [:sandbox_details             {:optional true} [:maybe ::query-execution.sandbox-details]]
+   [:metabot_conversation_id     {:optional true} [:maybe :string]]
+   [:metabot_message_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:metabot_tool_call_id        {:optional true} [:maybe :string]]])
 
 (mr/def ::query-execution.create
   "What a caller gives to create a QueryExecution: the columns of an update without the `:id`."

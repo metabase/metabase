@@ -21,6 +21,7 @@
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.run-query :as run-query]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -256,6 +257,31 @@
                                                    {:status :completed, :data {:cols [], :rows []}})]
       (run-tool! {"q1" (venues-by-id)} {:query_id "q1"}))
     (is (=? {:context :metabot, :executed-by (mt/user->id :rasta)} @info))))
+
+(deftest run-query-records-what-it-belongs-to-test
+  (let [info  (atom nil)
+        run!  (fn [memory]
+                (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+                  (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+                    (mt/with-dynamic-fn-redefs [qp/process-query (fn [query]
+                                                                   (reset! info (:info query))
+                                                                   {:status :completed, :data {:cols [], :rows []}})]
+                      (call-tool! (merge {:conversation-id conversation-id, :state {:queries {"q1" (venues-by-id)}}}
+                                         memory)
+                                  {:query_id "q1"})))
+                  [conversation-id (select-keys @info [:metabot-conversation-id
+                                                       :metabot-message-id
+                                                       :metabot-tool-call-id])]))]
+    (testing "the run names its conversation, the reply of the turn and the tool call (BOT-2381)"
+      (let [[conversation-id link] (binding [shared/*tool-call-id* "call-7"]
+                                     (run! {:message-id 42}))]
+        (is (= {:metabot-conversation-id conversation-id
+                :metabot-message-id      42
+                :metabot-tool-call-id    "call-7"}
+               link))))
+    (testing "a turn with no assistant message and a call with no id name the conversation only"
+      (let [[conversation-id link] (run! {})]
+        (is (= {:metabot-conversation-id conversation-id} link))))))
 
 (deftest run-query-runs-stripped-query-from-state-test
   (testing "a query in conversation state without its :lib/* keys runs once the state is read (BOT-2410)"

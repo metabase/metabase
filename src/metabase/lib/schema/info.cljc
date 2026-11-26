@@ -77,6 +77,11 @@
    [:lens-params             {:optional true} [:maybe [:map {:closed true}
                                                        [:join_step {:optional true} [:maybe :int]]]]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]
+   ;; What a query that Metabot ran belongs to: the id of the conversation, the id of the assistant MetabotMessage of
+   ;; the turn, and the LLM provider's id of the tool call, which is model output. Only server code sets them.
+   [:metabot-conversation-id {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:metabot-message-id      {:optional true} [:maybe pos-int?]]
+   [:metabot-tool-call-id    {:optional true} [:maybe :string]]
    [:visualization-settings  {:optional true} [:maybe [:ref ::lib.schema.visualization/visualization-settings]]]
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.

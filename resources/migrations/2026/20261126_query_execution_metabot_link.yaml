@@ -1,0 +1,42 @@
+## Link a query execution to the Metabot reply that caused it: the conversation, the assistant message of the turn, and
+## the tool call that ran the query (BOT-2381).
+
+databaseChangeLog:
+  - changeSet:
+      id: m4b2qe
+      author: lbrdnk
+      comment: Add query_execution.metabot_conversation_id
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: metabot_conversation_id
+                  type: varchar(36)
+                  remarks: The metabot_conversation.id of the Metabot conversation that ran this query. No foreign key, so the row outlives the conversation.
+
+  - changeSet:
+      id: t7c9wn
+      author: lbrdnk
+      comment: Add query_execution.metabot_message_id
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: metabot_message_id
+                  type: int
+                  remarks: The metabot_message.id of the assistant message whose turn ran this query. No foreign key, so the row outlives the message.
+
+  - changeSet:
+      id: p3h6vd
+      author: lbrdnk
+      comment: Add query_execution.metabot_tool_call_id
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: metabot_tool_call_id
+                  type: varchar(255)
+                  remarks: The LLM provider's id of the tool call that ran this query, as metabot_tool_call.tool_call_id holds it
