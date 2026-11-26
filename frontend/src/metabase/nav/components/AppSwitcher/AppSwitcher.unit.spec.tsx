@@ -96,7 +96,7 @@ async function setup({
     }),
   });
 
-  renderWithProviders(
+  const { router } = renderWithProviders(
     <>
       <Route path="/" element={<AppSwitcher />} />
       <Route path="/admin" element={<AppSwitcher />} />
@@ -119,6 +119,8 @@ async function setup({
   );
 
   await openProfileLink();
+
+  return { router };
 }
 
 async function setupHosted(opts = {}) {
@@ -180,7 +182,7 @@ describe("ProfileLink", () => {
 
   describe("current app", () => {
     it("should update it's apps section as you navigate", async () => {
-      await setup({ isAdmin: true });
+      const { router } = await setup({ isAdmin: true });
 
       await assertActiveApp("main");
 
@@ -201,6 +203,8 @@ describe("ProfileLink", () => {
       await assertActiveApp("embedding-hub");
 
       await userEvent.click(await getMainAppMenuItem());
+      // "/" is where the landing-page redirect runs
+      expect(router?.location.pathname).toBe("/");
       await openProfileLink();
       await assertActiveApp("main");
     });
