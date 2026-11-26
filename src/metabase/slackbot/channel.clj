@@ -105,14 +105,14 @@
      :elements [{:type "mrkdwn" :text (str "_" notice "_")}]}))
 
 (defn- end-paragraph
-  "End `text` with a paragraph break, so that text after a tool call shows as a new paragraph.
+  "End `text` with exactly one paragraph break, so that text after a tool call shows as a new paragraph.
 
-  Example: `\"Let me check.\"` becomes `\"Let me check.\\n\\n\"`. Blank text, and text that already ends
-  with a break, stay as they are."
+  Example: `\"Let me check.\"`, `\"Let me check.\\n\"` and `\"Let me check.\\n\\n\"` all become
+  `\"Let me check.\\n\\n\"`. Blank text stays as it is."
   [text]
-  (if (or (str/blank? text) (str/ends-with? text "\n\n"))
+  (if (str/blank? text)
     text
-    (str text "\n\n")))
+    (str (str/trimr text) "\n\n")))
 
 (defn- make-channel-callbacks
   "Create callback functions for channel replies.
