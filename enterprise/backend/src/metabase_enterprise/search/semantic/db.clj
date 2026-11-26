@@ -89,7 +89,7 @@
              ;; which works with all supported appdbs. https://dev.mysql.com/doc/refman/8.4/en/values.html
              ^:allow-subquery
              {:union (map search-doc-select search-results)}]]
-   :select [[[:cast :search_index.model_id (if (= :mysql (mdb/db-type)) :unsigned :int)] :id]
+   :select [[[:cast :search_index.model_id (if (= :mysql (mdb/db-type)) :unsigned :integer)] :id]
             [:search_index.model :model]]
    :from   [:search_index]})
 
