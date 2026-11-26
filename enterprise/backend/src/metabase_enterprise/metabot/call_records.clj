@@ -50,12 +50,12 @@
 (defenterprise record-llm-call-end!
   "Record the end of the MetabotLlmCall with `llm-call-id`."
   :feature :none
-  [llm-call-id {:keys [status error-class error-status retry-delay-ms finish-reason usage-log-id]}]
+  [llm-call-id {:keys [status error-class error-status retry-delay-ms finish-reason usage-log-id finished-at]}]
   (when llm-call-id
     (logging-failure "record the end of an LLM call"
                      (metabot-llm-call/update-metabot-llm-calls!
                       [(cond-> {:id          llm-call-id
-                                :finished_at (t/offset-date-time)
+                                :finished_at (or finished-at (t/offset-date-time))
                                 :status      status}
                          error-class    (assoc :error_class (limited error-class 255))
                          error-status   (assoc :error_status error-status)
@@ -79,8 +79,8 @@
                                   :input        (force input)}])))))
 
 (defenterprise record-tool-call-end!
-  "Record the end of the MetabotToolCall with `tool-call-record-id`. A failed call stores no output, as the tool part
-  in `metabot_message.data` stores none."
+  "Record the end of the MetabotToolCall with `tool-call-record-id`. A call that returned stores its output trimmed as
+  the tool part in `metabot_message.data`, and a failed one the error text of that part."
   :feature :none
   [tool-call-record-id {:keys [status started-at result error-class]}]
   (when tool-call-record-id
@@ -94,7 +94,8 @@
                            started-at     (assoc :started_at started-at)
                            error-class    (assoc :error_class (limited error-class 255))
                            (:class error) (assoc :error_class (name (:class error)))
-                           (= "ok" status) (assoc :output (metabot.persistence/tool-result->storable-output result)))])))))
+                           (= "ok" status) (assoc :output (metabot.persistence/tool-result->storable-output result))
+                           error           (assoc :output {:output (metabot.persistence/tool-result->error-text result)}))])))))
 
 (defenterprise abort-open-calls!
   "Set the MetabotLlmCalls and MetabotToolCalls of the MetabotMessage with `message-id` that have no end to `aborted`,

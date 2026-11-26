@@ -26,7 +26,9 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.o11y :refer [with-span]]))
+   [metabase.util.o11y :refer [with-span]])
+  (:import
+   (java.time OffsetDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -367,17 +369,29 @@
            nil)
          part)))
 
+(defn- observe-provider-end-xf
+  "Transducer that keeps, in the volatile `observed` of one LLM call attempt, when the provider's stream ended, as
+  `:finished-at`. Goes first, so its completion runs before [[core/tool-executor-xf]] waits for the tools of the
+  step: the end of the attempt's record then holds no tool time."
+  [observed]
+  (fn [rf]
+    (fn
+      ([] (rf))
+      ([acc] (vswap! observed assoc :finished-at (OffsetDateTime/now)) (rf acc))
+      ([acc x] (rf acc x)))))
+
 (defn- llm-call-outcome
   "What [[call-records/record-llm-call-end!]] takes for an LLM call attempt that returned, from what it `observed`.
 
   An attempt whose stream held an error ended with `error`, and one whose consumer stopped reading it with `aborted`."
-  [{:keys [usage-log-id finish-reason error consumer-stopped?]}]
+  [{:keys [usage-log-id finish-reason finished-at error consumer-stopped?]}]
   (cond-> {:status        (cond
                             error             "error"
                             consumer-stopped? "aborted"
                             :else             "ok")
            :usage-log-id  usage-log-id
-           :finish-reason finish-reason}
+           :finish-reason finish-reason
+           :finished-at   finished-at}
     error (assoc :error-class  streamed-error-class
                  :error-status (streamed-status error))))
 
@@ -387,7 +401,7 @@
   [^Exception e {:keys [error] :as observed} delay]
   (let [status (:status (ex-data e))]
     ;; An attempt can fail after its usage part, so a failed attempt keeps the row of its tokens.
-    (assoc (select-keys observed [:usage-log-id :finish-reason])
+    (assoc (select-keys observed [:usage-log-id :finish-reason :finished-at])
            :status         "error"
            ;; The structured path throws for an error that the provider streamed; the record names that error.
            :error-class    (if error streamed-error-class (.getSimpleName (class e)))
@@ -403,7 +417,8 @@
 
   Each attempt is recorded as one MetabotLlmCall (see [[call-records]]): its start before the thunk runs, and its end
   when the thunk returns or throws. `call` is that attempt: `:id`, the id of its record or nil, and `:observed`, a
-  volatile that the thunk fills through [[observe-llm-call-xf]] with what the end of the record needs.
+  volatile that the thunk fills through [[observe-llm-call-xf]] and [[observe-provider-end-xf]] with what the end of
+  the record needs.
 
   `retry?` is an optional predicate on the caught exception, ANDed with
   [[retryable-error?]]; returning false surfaces the error without retrying. The
@@ -842,7 +857,8 @@
                                      tool-choice)           (assoc :tool_choice tool-choice)
                                 (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))
                make-source    (fn [call]
-                                (eduction (comp (core/tool-executor-xf (if (= "none" tool-choice) {} tools)
+                                (eduction (comp (observe-provider-end-xf (:observed call))
+                                                (core/tool-executor-xf (if (= "none" tool-choice) {} tools)
                                                                        {:llm-call-id (:id call)
                                                                         :message-id  (:message-id tracking-opts)})
                                                 (core/lite-aisdk-xf)

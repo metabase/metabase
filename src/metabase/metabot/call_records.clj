@@ -32,6 +32,8 @@
   - `:retry-delay-ms`: the wait before the next attempt
   - `:finish-reason`: why the provider stopped
   - `:usage-log-id`: the id of the AiUsageLog that holds the tokens of the call's usage part
+  - `:finished-at`: when the provider's stream ended, before the tools the call made ran to their end. The end is
+    the time of this call when it is absent.
 
   In OSS, this is a no-op."
   metabase-enterprise.metabot.call-records
@@ -54,7 +56,8 @@
   - `:status`: `\"skipped\"` for a call that did not run, `\"error\"` for a call that threw. Absent for a call that
     returned, whose status then comes from `:result`.
   - `:started-at`: when the tool started to run
-  - `:result`: what the tool returned
+  - `:result`: what the tool returned. A failed call stores, as `output`, the error text that the tool part in
+    `metabot_message.data` stores.
   - `:error-class`: the class of a failure that `:result` does not hold
 
   The update has no condition on the row's state, so a call that ends after its turn replaces `aborted`.

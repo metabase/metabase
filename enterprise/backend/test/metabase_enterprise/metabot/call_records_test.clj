@@ -2,6 +2,8 @@
   "The LLM call and tool call records of a turn: one test per way a call ends."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
+   [metabase-enterprise.metabot.call-records]
    [metabase.metabot.call-records :as call-records]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.self :as self]
@@ -179,20 +181,39 @@
                           :fn (fn [_] {:output "No such timezone." :error {:class :recoverable :code :no-timezone}}))]
        (call-llm! #(test-util/mock-llm-response [get-time-call usage-part]) {"get-time" failing} tracking-opts)
        (is (=? [{:status "ok"}] (llm-calls tracking-opts)))
-       (is (=? [{:status "error" :error_class "recoverable" :output nil :started_at some? :finished_at some?}]
-               (tool-calls tracking-opts)))))))
+       (testing "the row keeps the error text that the tool part of the message stores"
+         (is (=? [{:status      "error"
+                   :error_class "recoverable"
+                   :output      {:output "No such timezone."}
+                   :started_at  some?
+                   :finished_at some?}]
+                 (tool-calls tracking-opts))))))))
+
+(deftest llm-call-end-excludes-tool-time-test
+  (testing "an LLM call ends when the provider's stream ends, before the tools it called end"
+    (do-with-turn!
+     (fn [tracking-opts]
+       (let [slow (assoc (get test-util/TOOLS "get-time")
+                         :fn (fn [_] (Thread/sleep 300) {:output "12:00"}))]
+         (call-llm! #(test-util/mock-llm-response [get-time-call usage-part]) {"get-time" slow} tracking-opts)
+         (let [[llm-call]  (llm-calls tracking-opts)
+               [tool-call] (tool-calls tracking-opts)]
+           (is (= "ok" (:status llm-call) (:status tool-call)))
+           (is (t/before? (:finished_at llm-call) (:finished_at tool-call)))))))))
 
 (deftest skipped-tool-test
   (testing "a call that waits for the call before it when the stream errors does not run, and is recorded as skipped"
     (do-with-turn!
      (fn [tracking-opts]
        (let [release (promise)
+             started (promise)
              ran     (atom [])
              tool    (fn [tool-name]
                        (assoc (get test-util/TOOLS "get-time")
                               :tool-name   tool-name
                               :runs-alone? true
                               :fn          (fn [_]
+                                             (deliver started true)
                                              (deref release 5000 nil)
                                              (swap! ran conj tool-name)
                                              "12:00")))
@@ -203,8 +224,14 @@
          (mt/with-log-level [metabase.metabot.self :fatal]
            (call-llm! #(reify clojure.lang.IReduceInit
                          (reduce [_ rf init]
-                           ;; The first call runs until the error is through, so the second starts after it.
-                           (let [result (reduce rf init chunks)]
+                           ;; The first call starts before the error and runs until the error is through, so the
+                           ;; second starts after it.
+                           (let [result (reduce (fn [acc chunk]
+                                                  (when (= :error (:type chunk))
+                                                    (deref started 5000 nil))
+                                                  (rf acc chunk))
+                                                init
+                                                chunks)]
                              (deliver release true)
                              result)))
                       {"first" (tool "first") "second" (tool "second")}
