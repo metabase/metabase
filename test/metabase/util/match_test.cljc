@@ -518,7 +518,11 @@
              (meta (match/replace (with-meta #{1} {:x 1}) 1 2)))))
   (t/testing "elements that are replaced with the same value are merged"
     (t/is (= #{0}
-             (match/replace #{1 2} (n :guard number?) 0)))))
+             (match/replace #{1 2} (n :guard number?) 0))))
+  (t/testing "an untouched form with a set in it comes back identical"
+    (let [form {:a 1, :s #{:x [:y]}}]
+      (t/is (identical? form (match/replace form [:z] nil)))
+      (t/is (identical? form (match/replace form :z nil))))))
 
 (t/deftest ^:parallel match-in-map-keys-test
   (t/testing "match-one looks inside map keys, before the values"
