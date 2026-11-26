@@ -98,8 +98,9 @@
 
   Options: a map of
   `:truncation-size`: [optional] size to truncate text fields if the driver supports expressions.
-  `:table-sample`: [optional] `{:percent p}`, to read the table with the driver's built-in block sample of about `p`
-  percent of it. Only for a driver with its own [[metabase.driver.sql.query-processor/table-sample->honeysql]].
+  `:table-sample`: [optional] a built-in sample of the table, of one kind of `:metabase.lib.schema/stage.table-sample`,
+  such as `{:percent p}`, a block sample of about `p` percent of it. Only for a driver whose
+  [[metabase.driver.sql.query-processor/table-sample->honeysql]] reads that kind.
   `:rff`: [optional] a reducing function function (a function that given initial results metadata returns a reducing
   function) to reduce over the result set in the the query-processor rather than realizing the whole collection"
   ([table  :- :metabase.warehouse-schema.schema/table

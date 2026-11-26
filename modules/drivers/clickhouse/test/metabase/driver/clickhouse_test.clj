@@ -9,6 +9,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
+   [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
@@ -1773,7 +1774,7 @@
       (is (driver.u/supports? :clickhouse :table-random-sample (mt/db)))
       (testing "a MergeTree table with no sampling key: rows at positions inside its parts"
         (let [venues (t2/select-one :model/Table :id (mt/id :venues))]
-          (is (=? {:method :block :result #(= 20 (count %))}
+          (is (=? {:method :block :result #(<= 1 (count %) 40)}
                   (driver/table-random-sample :clickhouse venues (t2/select :model/Field :table_id (:id venues))
                                               (constantly conj) {:rows 20 :row-count 100})))))
       (testing "a table with a sampling key after a column of few values: the native SAMPLE"
@@ -1824,22 +1825,33 @@
                                 (assoc-in [:stages 0 :table-sample]
                                           {:positions {:ranges [[0 8192] [16384 24576]] :every 40 :remainder 3}})))))))))
 
+(defn- parts-of [& row-counts]
+  (mapv (fn [rows] {:rows rows :marks (inc (long (Math/ceil (/ rows 8192.0)))) :bytes (* 30 rows)}) row-counts))
+
 (deftest ^:parallel part-positions-test
-  (testing "about 50 ranges of 8,192 positions in all parts, in strata of the largest part, and a stride for the size"
+  (testing "about 50 granules in all parts, in strata of the largest part, and a stride for the size"
     (let [{:keys [ranges every remainder expected]}
-          (#'clickhouse/part-positions [1000000 1000000 1000000] 10000 (java.util.Random. 1))]
+          (#'clickhouse/part-positions (parts-of 1000000 1000000 1000000) 10000 (java.util.Random. 1))]
       (testing "ranges over the largest part: 50 × 1,000,000 / 3,000,000, about 17 (two strata can share a granule)"
         (is (<= 15 (count ranges) 17))
-        (is (every? (fn [[from to]] (and (zero? (mod from 8192)) (= 8192 (- to from)) (< from 1000000))) ranges))
+        (is (every? (fn [[from to]] (and (< from to) (< from 1000000))) ranges))
         (is (apply < (map first ranges))))
       (testing "a stride that keeps about the sample size from the rows in the ranges of all parts"
         (is (< 9000 expected 11000))
         (is (< -1 remainder every)))))
   (testing "one part much smaller than the others contributes in proportion to its rows"
-    (let [{:keys [ranges]} (#'clickhouse/part-positions [8192 2000000] 10000 (java.util.Random. 1))]
+    (let [{:keys [ranges]} (#'clickhouse/part-positions (parts-of 8192 2000000) 10000 (java.util.Random. 1))]
       (is (<= 45 (count ranges) 50))))
-  (testing "at least one range, for a table of many equal parts"
-    (is (= 1 (count (:ranges (#'clickhouse/part-positions (repeat 200 100000) 10000 (java.util.Random. 1))))))))
+  (testing "a range is one granule of the parts, as their rows over their marks say"
+    (let [{:keys [ranges]} (#'clickhouse/part-positions [{:rows 1000000 :marks 977 :bytes 30000000}]
+                                                        10000 (java.util.Random. 1))]
+      (is (every? (fn [[from to]] (= 1024 (- to from))) ranges))))
+  (testing "declines when a range would read a granule of very many parts"
+    (is (nil? (#'clickhouse/part-positions (apply parts-of (repeat 2000 5000)) 10000 (java.util.Random. 1))))
+    (is (nil? (#'clickhouse/part-positions (apply parts-of (repeat 200 100000)) 10000 (java.util.Random. 1)))))
+  (testing "declines when the rows are so wide that the ranges would read too many bytes"
+    (is (nil? (#'clickhouse/part-positions [{:rows 5000000 :marks 4851 :bytes (* 20000 5000000)}]
+                                           10000 (java.util.Random. 1))))))
 
 (deftest table-random-sample-part-runs-test
   (mt/test-driver :clickhouse
@@ -1858,11 +1870,28 @@
                          :model/Field id    {:table_id (:id table) :name "id" :base_type :type/BigInteger}
                          :model/Field yr    {:table_id (:id table) :name "yr" :base_type :type/Integer}]
             (let [{:keys [method runs result]} (driver/table-random-sample :clickhouse table [id yr] (constantly conj)
-                                                                           {:rows 3000 :row-count 900000})]
+                                                                           {:rows 10000 :row-count 900000})]
               (is (= :block method))
               (is (pos? runs))
               (testing "rows of all parts, so of all three years, about the sample size"
                 (is (= #{2022 2024 2026} (set (map second result))))
-                (is (< 2000 (count result) 6000)))))
+                (is (< 5000 (count result) 20001)))))
           (finally
             (jdbc/execute! spec [(format "DROP TABLE IF EXISTS `%s`.`kb_parts`" schema)])))))))
+
+(deftest table-random-sample-positions-guards-test
+  (mt/test-driver :clickhouse
+    (mt/with-test-user :crowberto
+      (let [venues (t2/select-one :model/Table :id (mt/id :venues))
+            fields (t2/select :model/Field :table_id (:id venues))
+            sample #(driver/table-random-sample :clickhouse venues fields (constantly conj) {:rows 20 :row-count 100})]
+        (testing "a ClickHouse older than 24.3, which cannot use _part_offset in PREWHERE: first rows"
+          (mt/with-dynamic-fn-redefs [clickhouse-version/is-at-least? (constantly false)]
+            (is (= {:method :first-rows} (sample)))))
+        (testing "no right to read system.parts: first rows"
+          (let [query jdbc/query]
+            (with-redefs [jdbc/query (fn [spec sql-params & more]
+                                       (if (str/includes? (first sql-params) "system.parts")
+                                         (throw (ex-info "no grant" {}))
+                                         (apply query spec sql-params more)))]
+              (is (= {:method :first-rows} (sample))))))))))

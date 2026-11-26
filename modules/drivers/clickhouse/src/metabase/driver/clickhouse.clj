@@ -30,7 +30,8 @@
   (:import
    (com.clickhouse.client.api.query QuerySettings)
    (java.sql Connection SQLException Statement PreparedStatement)
-   (java.time LocalDate)))
+   (java.time LocalDate)
+   (java.util Random)))
 
 (set! *warn-on-reflection* true)
 
@@ -1004,9 +1005,10 @@
   "The `PREWHERE` condition of a sample of `positions` on the virtual column `_part_offset`, which ClickHouse uses to
   read only the granules of the ranges in each part. The numbers are integers, written in the SQL."
   [{:keys [ranges every remainder]}]
-  (format "(%s) AND _part_offset %% %d = %d"
-          (str/join " OR " (map (fn [[from to]] (format "(_part_offset >= %d AND _part_offset < %d)" from to)) ranges))
-          every remainder))
+  (str "("
+       (str/join " OR " (map (fn [[from to]] (str "(_part_offset >= " (long from) " AND _part_offset < " (long to) ")"))
+                             ranges))
+       ") AND _part_offset % " (long every) " = " (long remainder)))
 
 ;; `SAMPLE k` reads the rows whose sampling key falls in a fraction `k` of its range. A table can be sampled only when
 ;; it declares a sampling key (`SAMPLE BY`). A sample of positions reads the same ranges of rows of each part with a
@@ -1030,42 +1032,61 @@
   whose values fill a small part of its type's range."
   100)
 
-(def ^:private granule-rows
-  "The rows of a granule with the default `index_granularity`. A range of positions is one granule long and starts at a
-  multiple of it, so that it reads one granule of each part."
-  8192)
-
 (def ^:private target-granules
   "About how many granules a sample of positions reads, over all parts."
   50)
 
+(def ^:private max-positions-read-factor
+  "How many times the sample size a sample of positions may read. A range of positions reads a granule of every part
+  long enough, so a table of very many parts would read much more than [[target-granules]] granules."
+  100)
+
+(def ^:private max-positions-read-bytes
+  "The most uncompressed bytes a sample of positions may read, for tables of very wide rows."
+  (* 500 1024 1024))
+
+(defn- part-granule-rows
+  "About how many rows a granule of `part` holds: its rows over its marks, of which the last one marks the end."
+  [{:keys [rows marks]}]
+  (max 1 (quot rows (max 1 (dec marks)))))
+
 (defn- part-positions
-  "The ranges of a sample of positions of a table whose active parts have `part-rows` rows, for about `rows` rows.
+  "The ranges of a sample of positions of a table whose active `parts` have `:rows`, `:marks` and `:bytes`, for about
+  `rows` rows, or nil when the sample would read more than [[max-positions-read-factor]] times `rows` or more than
+  [[max-positions-read-bytes]].
 
   A range applies to every part, so the ranges are spread over the positions of the largest part, one at a random
   granule of each of equal strata: a part gets ranges in proportion to its rows. There are about [[target-granules]]
-  times the rows of the largest part over all rows of ranges, at least one. The stride keeps about `rows` of the rows
-  in the ranges of all parts. Returns the `:ranges`, `:every` and `:remainder` of the sample, and the `:expected` rows."
-  [part-rows rows ^java.util.Random random]
-  (let [largest (reduce max 0 part-rows)
-        total   (reduce + part-rows)
+  times the rows of the largest part over all rows of ranges, at least one, each one granule long (the largest of the
+  parts' granules) and starting at a multiple of it. The stride keeps about `rows` of the rows in the ranges of all
+  parts. Returns the `:ranges`, `:every` and `:remainder` of the sample, and the `:expected` rows."
+  [parts rows ^Random random]
+  (let [largest (reduce max 0 (map :rows parts))
+        total   (reduce + (map :rows parts))
+        granule (reduce max 1 (map part-granule-rows parts))
         n       (max 1 (Math/round (double (/ (* target-granules largest) total))))
         width   (/ largest (double n))
         ranges  (into []
                       (comp (map (fn [i]
-                                   (let [start (* granule-rows (long (Math/floor (/ (* width (+ i (.nextDouble random)))
-                                                                                    granule-rows))))]
-                                     [start (+ start granule-rows)])))
+                                   (let [start (* granule (long (Math/floor (/ (* width (+ i (.nextDouble random)))
+                                                                               granule))))]
+                                     [start (+ start granule)])))
                             (distinct))
                       (range n))
-        in-runs (reduce + (for [part part-rows
-                                [from to] ranges]
-                            (max 0 (- (min to part) from))))
+        reads   (for [{part-rows :rows :keys [bytes]} parts
+                      [from to] ranges
+                      :let  [n-rows (max 0 (- (min to part-rows) from))]
+                      :when (pos? n-rows)]
+                  {:rows n-rows :bytes (* n-rows (/ bytes (double part-rows)))})
+        in-runs (reduce + (map :rows reads))
         every   (max 1 (long (quot in-runs rows)))]
-    {:ranges    ranges
-     :every     every
-     :remainder (.nextInt random every)
-     :expected  (quot in-runs every)}))
+    (when (and (pos? in-runs)
+               (<= in-runs (* max-positions-read-factor rows))
+               (<= (reduce + (map :bytes reads)) max-positions-read-bytes))
+      {:ranges    ranges
+       :every     every
+       :remainder (.nextInt random every)
+       :expected  (quot in-runs every)})))
 
 (defn- merge-tree-engine?
   "Whether the ClickHouse table engine `engine` stores parts with `_part_offset`: the MergeTree family."
@@ -1097,35 +1118,44 @@
   (boolean (when-let [percent (and (perf/not-empty sampling_key) (table-rows-sample/block-sample-percent opts))]
              (<= (sample-read-rows spec table percent) (* max-sample-read-factor rows)))))
 
-(defn- part-rows
-  "The rows of the active parts of `table`, with the facts `facts`, when it is of the MergeTree family, or nil when
-  they cannot be read, for example with no right to read `system.parts`."
+(def ^:private min-positions-version
+  "The first ClickHouse version that accepts `_part_offset` in `PREWHERE` and prunes granules by it: 24.3."
+  [24 3])
+
+(defn- parts
+  "The `:rows`, `:marks` and `:bytes` (uncompressed) of the active parts of `table`, with the facts `facts`, when it is
+  of the MergeTree family on a ClickHouse version that can read a sample of positions, or nil when they cannot be read,
+  for example with no right to read `system.parts`. Patch parts of lightweight updates are not parts of rows."
   [spec table {:keys [engine]}]
-  (when (merge-tree-engine? engine)
+  (when (and (merge-tree-engine? engine)
+             (let [[major minor] min-positions-version]
+               (clickhouse-version/is-at-least? major minor (driver.u/lib-database (:db_id table)))))
     (try
       (perf/not-empty
-       (perf/mapv (comp long :rows)
-                  (jdbc/query spec ["SELECT rows FROM system.parts WHERE database = ? AND table = ? AND active AND rows > 0"
+       (perf/mapv (fn [{:keys [rows marks bytes]}] {:rows (long rows) :marks (long marks) :bytes (long bytes)})
+                  (jdbc/query spec [(str "SELECT rows, marks, data_uncompressed_bytes AS bytes FROM system.parts"
+                                         " WHERE database = ? AND table = ? AND active AND rows > 0"
+                                         " AND NOT startsWith(name, 'patch-')")
                                     (:schema table) (:name table)])))
       (catch Exception e
         (log/debugf e "Could not read the parts of %s" (:name table))
         nil))))
 
 (defn- positions-sample
-  "The [[driver/table-random-sample]] of `table` at positions inside its parts, which have `part-rows` rows."
-  [table fields rff {:keys [rows row-count] :as opts} part-rows]
-  (let [{:keys [ranges every remainder expected]} (part-positions part-rows rows (java.util.Random.))]
-    {:method   :block
-     :runs     (count ranges)
-     :fraction (/ expected (double row-count))
-     :result   (table-rows-sample/table-rows-sample
-                table fields rff
-                (-> (perf/select-keys opts [:truncation-size])
-                    (assoc :table-sample {:positions {:ranges ranges :every every :remainder remainder}}
-                           :limit        (* 2 rows))))}))
+  "The [[driver/table-random-sample]] of `table` at `positions` inside its parts."
+  [table fields rff {:keys [rows row-count] :as opts} {:keys [ranges every remainder expected]}]
+  {:method   :block
+   :runs     (count ranges)
+   :fraction (/ expected (double row-count))
+   :result   (table-rows-sample/table-rows-sample
+              table fields rff
+              (-> (perf/select-keys opts [:truncation-size])
+                  (assoc :table-sample {:positions {:ranges ranges :every every :remainder remainder}}
+                         :limit        (* 2 rows))))})
 
 ;; The native SAMPLE for a table with a sampling key, when the index analysis says it reads few rows; otherwise rows at
-;; positions inside the parts of a table of the MergeTree family. Other tables keep the first rows.
+;; positions inside the parts of a table of the MergeTree family, when that reads a bounded amount. Other tables keep
+;; the first rows.
 (defmethod driver/table-random-sample :clickhouse
   [_driver table fields rff opts]
   (let [spec  (when (:row-count opts)
@@ -1134,6 +1164,7 @@
     (cond
       (nil? facts)                          {:method :first-rows}
       (cheap-sample? spec table facts opts) (table-rows-sample/block-sample table fields rff opts)
-      :else                                 (if-let [part-rows (part-rows spec table facts)]
-                                              (positions-sample table fields rff opts part-rows)
+      :else                                 (if-let [positions (some-> (parts spec table facts)
+                                                                       (part-positions (:rows opts) (Random.)))]
+                                              (positions-sample table fields rff opts positions)
                                               {:method :first-rows}))))
