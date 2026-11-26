@@ -44,13 +44,10 @@
 
 (doto :model/Sandbox
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   ;;; only admins can work with sandboxes
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
-
-(t2/define-after-select :model/Sandbox
-  [sandbox]
-  (dissoc sandbox :worktree_id))
 
 (t2/deftransforms :model/Sandbox
   {:attribute_remappings sandbox.schema/attribute-remappings-transform})

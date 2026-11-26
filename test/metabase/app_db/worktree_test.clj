@@ -24,15 +24,13 @@
   #{})
 
 (def ^:private referencing-table-allowlist
-  "The models of tables reaching synced content through foreign keys without the hook; scope such a table unless a
+  "The models of tables reaching synced content through foreign keys without `worktree_id` and the hook; scope such a table unless a
   decision keeps it instance-wide."
-  #{;; Metabot prompts stay in the main app; card_id references a main app card.
+  #{;; Metabot tables stay unscoped; its card_id references report_card.
     :model/MetabotPrompt
     ;; Metabot tables stay unscoped; collection_id references collection.
     :model/Metabot
-    ;; Sandboxes stay in the main app, like data permissions; card_id references a main app card.
-    :model/Sandbox
-    ;; Tenants stay in the main app; tenant_collection_id references a main app collection.
+    ;; tenants aren't scoped yet; tenant_collection_id references collection
     :model/Tenant})
 
 (def ^:private scoped-tables
@@ -391,11 +389,7 @@
   "The models of tables with `worktree_id` whose unique keys may leave it out; add one only when a row is unique
   across every worktree."
   #{;; A user has one checkout, whichever worktree it is in.
-    :model/RemoteSyncWorktreeUser
-    ;; They are of the main app, shared across worktrees.
-    :model/MetabotPrompt
-    :model/Sandbox
-    :model/Tenant})
+    :model/RemoteSyncWorktreeUser})
 
 (defn- primary-key
   "The column set of the primary key of `table`."
