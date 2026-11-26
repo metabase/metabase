@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse :as clickhouse]
+   [metabase.driver.clickhouse-introspection :as clickhouse-introspection]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
@@ -970,7 +971,10 @@
                              "toInt64(getSetting('max_execution_time'))")
                         (lib/native-query (mt/metadata-provider))
                         qp/process-query
-                        mt/rows)))))
+                        mt/rows)))
+            (testing "and sync can read the row counts of the tables, with no time limit it cannot set"
+              (is (map? (#'clickhouse-introspection/query-row-count-estimates
+                         :clickhouse (driver.u/ensure-lib-database db) ["default"]))))))
         (finally
           (ctd/exec-statements ["DROP USER IF EXISTS metabase_readonly_user;"
                                 "DROP SETTINGS PROFILE IF EXISTS metabase_readonly_profile;"]

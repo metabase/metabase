@@ -42,7 +42,10 @@ describe("Table editing", () => {
         );
         cy.findByLabelText("Last updated at").should("exist"); // Testing the actual value is done in TableMetadata.unit.spec.tsx
         cy.findByLabelText("View count").should("have.text", viewCount);
-        cy.findByLabelText("Est. row count").should("not.exist");
+        // MySQL gives an estimate from its table statistics, which is approximate
+        cy.findByLabelText("Est. row count")
+          .invoke("text")
+          .should("match", /^[\d,]+$/);
         cy.findByLabelText("Dependencies").should("have.text", "0");
         cy.findByLabelText("Dependents").should("have.text", "0");
 

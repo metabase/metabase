@@ -168,7 +168,8 @@
           :display_name            (or (:display_name table)
                                        (warehouse-schema.humanization/name->human-readable-name (:name table)))
           :name                    (:name table)
-          :is_writable             (:is_writable table)}
+          :is_writable             (:is_writable table)
+          :estimated_row_count     (:estimated_row_count table)}
          (when (:field_order table)
            {:field_order (:field_order table)})
          (when (:data_source table)
@@ -313,6 +314,12 @@
                                    ;; noop
                                    (= (:visibility_type new-table) (:visibility_type old-table)))
                                   (dissoc changes :visibility_type)
+
+                                  ;; keep the stored row count estimate when the driver gives none for this sync, for
+                                  ;; example when it could not read the estimates; a driver clears it with an
+                                  ;; explicit nil
+                                  (not (contains? table-metadata :estimated_row_count))
+                                  (dissoc :estimated_row_count)
 
                                   ;; don't mark computed tables as writable — they are derived
                                   ;; and should never be editable, regardless of what the driver reports
