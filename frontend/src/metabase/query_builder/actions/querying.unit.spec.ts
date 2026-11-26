@@ -4,6 +4,7 @@ import {
   createMockState,
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
+import * as runQuery from "metabase/querying/run-query";
 import { ADD_METABOT_CARD_BASELINE } from "metabase/redux/query-builder";
 import type { MetabotCardBaseline, State } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
@@ -19,11 +20,11 @@ import {
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import { QUERY_COMPLETED } from "../store/actions";
+import { QUERY_COMPLETED, RUN_QUERY } from "../store/actions";
 import { queryBuilderReducer } from "../store/reducer";
 import { getQuestion, toMetabotCardBaseline } from "../store/selectors";
 
-import { queryCompleted } from "./querying";
+import { queryCompleted, runQuestionQuery } from "./querying";
 
 const DATABASE = createSampleDatabase();
 
@@ -124,6 +125,67 @@ describe("queryCompleted", () => {
       { name: "VISIBLE", enabled: true },
       { name: "HIDDEN", enabled: false },
     ]);
+  });
+});
+
+describe("runQuestionQuery", () => {
+  function isRunQueryAction(action: unknown): action is {
+    type: typeof RUN_QUERY;
+    payload: { cancelQueryController: AbortController };
+  } {
+    return (
+      typeof action === "object" &&
+      action !== null &&
+      "type" in action &&
+      action.type === RUN_QUERY
+    );
+  }
+
+  it("aborts the first query when a second run starts", async () => {
+    const runApiSpy = jest
+      .spyOn(runQuery, "runQuestionQuery")
+      .mockReturnValue(new Promise(() => {}));
+
+    const metadata = createMockMetadata({ databases: [DATABASE] });
+    const question = new Question(CARD, metadata);
+    let state = createMockState({
+      qb: createMockQueryBuilderState(),
+    });
+    const dispatch = jest.fn<unknown, [unknown]>((action) => {
+      if (isRunQueryAction(action)) {
+        state = { ...state, qb: { ...state.qb, ...action.payload } };
+      }
+
+      return action;
+    });
+
+    const getRunQueryActions = () =>
+      dispatch.mock.calls
+        .map(([action]) => action)
+        .filter((action) => isRunQueryAction(action));
+
+    await runQuestionQuery({ overrideWithQuestion: question })(
+      dispatch,
+      () => state,
+    );
+
+    let runActions = getRunQueryActions();
+    expect(runActions).toHaveLength(1);
+    const firstController = runActions[0].payload.cancelQueryController;
+    expect(firstController.signal.aborted).toBe(false);
+
+    await runQuestionQuery({
+      overrideWithQuestion: question,
+    })(dispatch, () => state);
+
+    runActions = getRunQueryActions();
+    expect(runActions).toHaveLength(2);
+    const secondController = runActions[1].payload.cancelQueryController;
+    expect(secondController).not.toBe(firstController);
+    expect(firstController.signal.aborted).toBe(true);
+    expect(secondController.signal.aborted).toBe(false);
+
+    expect(runApiSpy).toHaveBeenCalledTimes(2);
   });
 });
 

@@ -162,6 +162,13 @@ export const runQuestionQuery = ({
       );
     }
 
+    // If there is an in-flight query, abort it *silently* and synchronously
+    // replace it with the new request
+    const prevCancel = getState().qb.cancelQueryController;
+    if (prevCancel) {
+      prevCancel.abort();
+    }
+
     const startTime = new Date();
     const cancelQueryController = new AbortController();
 
@@ -172,7 +179,13 @@ export const runQuestionQuery = ({
       isDirty: isQueryDirty,
     })
       .then((queryResults) => dispatch(queryCompleted(question, queryResults)))
-      .catch((error) => dispatch(queryErrored(startTime, error)));
+      .catch((error) => {
+        if (isAbortError(error)) {
+          return;
+        }
+
+        return dispatch(queryErrored(startTime, error));
+      });
 
     dispatch({ type: RUN_QUERY, payload: { cancelQueryController } });
   };
@@ -293,16 +306,14 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
 
 export const queryErrored = createThunkAction(
   QUERY_ERRORED,
-  (startTime, error) => {
-    return async (dispatch) => {
-      if (isAbortError(error)) {
-        return null;
-      } else {
-        dispatch(loadErrorUIControls());
+  (startTime, error) => (dispatch) => {
+    if (isAbortError(error)) {
+      return null;
+    } else {
+      dispatch(loadErrorUIControls());
 
-        return { error: error, duration: Date.now() - startTime };
-      }
-    };
+      return { error: error, duration: Date.now() - startTime };
+    }
   },
 );
 
