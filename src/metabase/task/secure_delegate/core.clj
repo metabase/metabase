@@ -76,15 +76,15 @@
   (classloader/compile-to-temp-dir! "mb-quartz-secure-delegate" ns-sym))
 
 (defn install!
-  "Set Quartz's `driverDelegateClass` to the secure delegate for `db-type`. Must run before the
-  scheduler initializes. Returns the installed class name.
-
-  From a jar (prod, e2e) the class is AOT-compiled and already present. From source (dev, test) it is
-  compiled on demand ([[dev-compile-delegate!]]). If it's missing from a jar, that's an AOT build
-  problem, so we throw rather than compile at runtime."
+  "Set Quartz's `driverDelegateClass` to the secure delegate for `db-type`, and return its class name.
+  Must run before the scheduler initializes.
+  From a jar (prod, e2e) the class is AOT-compiled and already present; from source (dev, test) it is compiled on
+  demand ([[dev-compile-delegate!]]).
+  Throws when the class is missing from a jar, or still cannot be loaded after compiling from source."
   [db-type]
   (let [{:keys [class ns]} (get delegate db-type (:default delegate))]
     (when-not (class-loadable? class)
+      ;; missing from a jar is an AOT build problem, so throw rather than compile at runtime
       (when (config/jar?)
         (throw (ex-info (str "Quartz secure delegate " class " is missing from the jar; it should be "
                              "AOT-compiled at build time. This is a build problem.")

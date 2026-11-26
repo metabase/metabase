@@ -47,7 +47,7 @@
     ;; was never written again.
     (let [compile!  #(classloader/compile-to-temp-dir! "mb-classloader-test" 'metabase.classloader.gen-class-fixture)
           load!     #(Class/forName "metabase.classloader.GenClassFixture" false (classloader/the-classloader))
-          ;; after an earlier run in this JVM, that run's `__init.class` is on the classpath, so `compile` writes nothing
+          ;; after an earlier run in this JVM, its `__init.class` is on the classpath, so `compile` writes nothing
           loaded?   (try (load!) true (catch ClassNotFoundException _ false))
           tmp       (io/file (System/getProperty "java.io.tmpdir"))
           before    (set (.list tmp))
