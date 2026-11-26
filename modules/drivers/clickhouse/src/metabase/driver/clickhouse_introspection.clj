@@ -231,13 +231,16 @@
 
 (defn unfolded-map-value-type
   "The value type of `database-type` if it is a `Map` that JSON unfolding unfolds, or else nil: a map with `String` keys
-  and a value type that can be `NULL`. Each key of such a map is a field of its own."
+  and a value type that can be `NULL`. Each key of such a map is a field of its own. The value type has no
+  `LowCardinality` or `Nullable`, e.g. `String` for `Map(String, LowCardinality(Nullable(String)))`."
   [database-type]
   (when-let [[key-type value-type] (type-arguments "Map" database-type)]
-    (when (and (#{"String" "LowCardinality(String)"} key-type)
-               (not (re-find #"^(?:Array|Map|Tuple|Nested|JSON|Variant|Dynamic|Object|LowCardinality|Nullable|\w*AggregateFunction)\b"
-                             value-type)))
-      value-type)))
+    (let [unwrap     #(or (first (type-arguments %2 %1)) %1)
+          value-type (-> value-type (unwrap "LowCardinality") (unwrap "Nullable"))]
+      (when (and (#{"String" "LowCardinality(String)"} key-type)
+                 (not (re-find #"^(?:Array|Map|Tuple|Nested|JSON|Variant|Dynamic|Object|LowCardinality|Nullable|\w*AggregateFunction)\b"
+                               value-type)))
+        value-type))))
 
 (defn- ^:private is-db-required?
   [field]
