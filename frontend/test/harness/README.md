@@ -79,8 +79,9 @@ reproduce the order.
 
 A failure can also leave React inside a commit. React stays loaded, so every
 later render in the worker would fail with `Should not already be working`. The
-runner detects this after the failed test, skips the rest of the file, and
-starts a new worker for the next file.
+runner checks for this after a failed test or hook, and at the end of each
+file. It then skips the rest of the file, and starts a new worker for the next
+file.
 
 One case is handled: a package that a spec file's `jest.mock` reaches. When a
 package loads while a spec file mocks a module, and the package requires that

@@ -203,6 +203,7 @@ async function runFileInScope(t: TestContext, file: string): Promise<void> {
   try {
     await runFileSuite(t, fileSuite);
   } finally {
+    retireWorkerIfReactIsStuck("The file");
     logFile(path.relative(root, file), startedAt);
     await resetForNextFile();
     recordLateLeaks();
@@ -246,6 +247,9 @@ async function runBeforeAll(hooks: TestFunction[]): Promise<Failure | null> {
     }
   }
   recordPendingErrorOnFile();
+  if (failure) {
+    retireWorkerIfReactIsStuck("A beforeAll hook");
+  }
   return failure;
 }
 
@@ -257,9 +261,22 @@ async function runAfterAll(hooks: TestFunction[]): Promise<void> {
       await runHook(fn);
     } catch (error) {
       recordSuiteError("afterAll", error);
+      retireWorkerIfReactIsStuck("An afterAll hook");
     }
   }
   recordPendingErrorOnFile();
+}
+
+// React stays loaded in the worker, so a later file could not render. The
+// rest of this file is skipped, and a new worker runs the next file.
+function retireWorkerIfReactIsStuck(culprit: string): void {
+  if (isPoisoned() || !isReactStuck()) {
+    return;
+  }
+  poisonWorker();
+  process.stderr.write(
+    `[harness] ${culprit} left React inside a commit. The rest of its file is skipped, and a new worker runs the next file.\n`,
+  );
 }
 
 function runHook(fn: TestFunction): Promise<unknown> {
@@ -410,12 +427,7 @@ async function runTest(test: TestNode, hooks: HookChain): Promise<void> {
     recordPassed(identity);
     return;
   }
-  if (isReactStuck()) {
-    poisonWorker();
-    process.stderr.write(
-      `[harness] "${testScope.name}" left React inside a commit. The rest of its file is skipped, and a new worker runs the next file.\n`,
-    );
-  }
+  retireWorkerIfReactIsStuck(`"${testScope.name}"`);
   recordFailure(testScope.name, failure.error, output, identity);
   throw failure.error;
 }
