@@ -1842,6 +1842,7 @@
   [driver table fields rff opts]
   {:method :unspecified
    :result (table-rows-sample driver table fields rff (perf/select-keys opts [:truncation-size]))})
+
 (mr/def ::table-statistics.options
   "The options of [[table-statistics]], an open map: a driver ignores a key it does not know.
   `:max-cost` is the cost the caller accepts: `:metadata`, catalog reads only, with no read of the table's data, which

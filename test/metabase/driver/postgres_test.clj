@@ -3107,6 +3107,26 @@
                                (with-open [_stmt (sql-jdbc.execute/prepared-statement
                                                   :postgres conn "SELECT 1 -- ?" [1])]))))))))
 
+(defn- analyze!
+  "Run ANALYZE on the table `table-name`, and wait until the statistics views show it: its time, and no changes
+  since. Before Postgres 15 the views get both a moment after the command, and the counts of an earlier INSERT can get
+  there after the ANALYZE, so the ANALYZE is run again when they do."
+  [spec table-name]
+  (let [analyzed? (fn []
+                    (let [{:keys [t m]} (first (jdbc/query spec [(format (str "SELECT pg_stat_get_last_analyze_time('%1$s'::regclass) AS t,"
+                                                                              " pg_stat_get_mod_since_analyze('%1$s'::regclass) AS m")
+                                                                         table-name)]))]
+                      (and (some? t) (zero? (or m 0)))))]
+    (loop [runs 10]
+      (jdbc/execute! spec [(str "ANALYZE " table-name)])
+      (when-not (loop [tries 15]
+                  (or (analyzed?)
+                      (when (pos? tries)
+                        (Thread/sleep 100)
+                        (recur (dec tries)))))
+        (when (pos? runs)
+          (recur (dec runs)))))))
+
 (defn- do-with-stats-table!
   "Create the table `kb_stats` with 1,000 rows: `a` with 10 values and NULL in a tenth of the rows, `b` unique; run
   `analyze?` ANALYZE, and call `f` with its Table and Fields."
@@ -3118,7 +3138,7 @@
       (jdbc/execute! spec [(str "INSERT INTO kb_stats SELECT CASE WHEN g % 10 = 0 THEN NULL ELSE g % 10 END, g,"
                                 " CASE WHEN g % 2 = 0 THEN NULL ELSE json_build_object('g', g) END"
                                 " FROM generate_series(1, 1000) g")])
-      (when analyze? (jdbc/execute! spec ["ANALYZE kb_stats"]))
+      (when analyze? (analyze! spec "kb_stats"))
       (mt/with-temp [:model/Table table {:db_id (mt/id) :name "kb_stats" :schema "public"}
                      :model/Field a     {:table_id (:id table) :name "a" :base_type :type/Integer :database_type "int4"}
                      :model/Field b     {:table_id (:id table) :name "b" :base_type :type/Integer :database_type "int4"}
@@ -3200,19 +3220,19 @@
           (jdbc/execute! spec ["CREATE TABLE kb_part_1 PARTITION OF kb_parted FOR VALUES FROM (0) TO (500)"])
           (jdbc/execute! spec ["CREATE TABLE kb_part_2 PARTITION OF kb_parted FOR VALUES FROM (500) TO (1000)"])
           (jdbc/execute! spec ["INSERT INTO kb_parted SELECT g % 50 + (g % 2) * 500 FROM generate_series(1, 1000) g"])
-          (jdbc/execute! spec ["ANALYZE kb_parted"])
+          (analyze! spec "kb_parted")
           (let [{:keys [fields]} (stats "kb_parted")]
             (is (= 50 (-> fields vals first :fingerprint :global :distinct-count)))))
         (testing "a table with inheritance children: nothing, since its statistics do not cover them"
           (jdbc/execute! spec ["CREATE TABLE kb_parent (k int) WITH (autovacuum_enabled = false)"])
           (jdbc/execute! spec ["CREATE TABLE kb_child () INHERITS (kb_parent)"])
           (jdbc/execute! spec ["INSERT INTO kb_parent SELECT g FROM generate_series(1, 100) g"])
-          (jdbc/execute! spec ["ANALYZE kb_parent"])
+          (analyze! spec "kb_parent")
           (is (= {} (stats "kb_parent"))))
         (testing "a table that changed much since its ANALYZE: nothing"
           (jdbc/execute! spec ["CREATE TABLE kb_stale (k int) WITH (autovacuum_enabled = false)"])
           (jdbc/execute! spec ["INSERT INTO kb_stale SELECT g % 5 FROM generate_series(1, 1000) g"])
-          (jdbc/execute! spec ["ANALYZE kb_stale"])
+          (analyze! spec "kb_stale")
           (jdbc/execute! spec ["INSERT INTO kb_stale SELECT g FROM generate_series(1, 5000) g"])
           ;; the change counters reach the statistics views a moment after the transaction
           (loop [tries 50]
