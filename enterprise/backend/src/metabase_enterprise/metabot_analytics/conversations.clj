@@ -8,6 +8,7 @@
   (:require
    [metabase-enterprise.metabot-analytics.db :as metabot-analytics.db]
    [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
+   [metabase-enterprise.metabot-analytics.timings :as analytics.timings]
    [metabase.api.common :as api]
    [metabase.metabot.persistence :as metabot-persistence]
    [metabase.metabot.tools :as metabot.tools]
@@ -126,7 +127,12 @@
     (let [all-messages (metabot-analytics.db/messages-for-conversation conversation-id)
           token-usage  (metabot-analytics.db/token-usage-for-conversation conversation-id)
           forked-from  (:forked_from_conversation_id conversation)
-          hydrated     (t2/hydrate conversation :user)]
+          hydrated     (t2/hydrate conversation :user)
+          message-ids  (mapv :id all-messages)
+          timings      (analytics.timings/message-timings
+                        all-messages
+                        (metabot-analytics.db/llm-calls-for-messages message-ids)
+                        (metabot-analytics.db/tool-calls-for-messages message-ids))]
       {:conversation_id             (:id conversation)
        :created_at                  (:created_at conversation)
        :title                       (:title conversation)
@@ -150,4 +156,6 @@
        :sanitized_user_agent        (:sanitized_user_agent conversation)
        :forked_from_conversation_id forked-from
        :fork_boundary_message_id    (fork-boundary-external-id all-messages)
-       :feedback                    (fetch-conversation-feedback conversation-id)})))
+       :feedback                    (fetch-conversation-feedback conversation-id)
+       :duration_ms                 (analytics.timings/total-duration-ms timings)
+       :timings                     timings})))

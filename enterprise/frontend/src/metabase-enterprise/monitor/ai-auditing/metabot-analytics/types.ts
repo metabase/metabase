@@ -90,6 +90,37 @@ export type ConversationFeedback = MetabotFeedback & {
   external_id: string | null;
 };
 
+export type LlmCallTiming = {
+  iteration: number | null;
+  attempt: number;
+  provider: string | null;
+  model: string | null;
+  status: "running" | "ok" | "error" | "aborted";
+  started_at: string;
+  duration_ms: number | null;
+  error_class: string | null;
+  retry_delay_ms: number | null;
+};
+
+export type ToolCallTiming = {
+  call_id: string;
+  tool_name: string;
+  status: "running" | "ok" | "error" | "skipped" | "aborted";
+  created_at: string;
+  wait_ms: number | null;
+  duration_ms: number | null;
+  error_class: string | null;
+};
+
+export type MessageTiming = {
+  message_id: string;
+  started_at: string;
+  finished_at: string | null;
+  duration_ms: number | null;
+  llm_calls: LlmCallTiming[];
+  tool_calls: ToolCallTiming[];
+};
+
 export type ConversationDetail = {
   conversation_id: string;
   created_at: string;
@@ -113,6 +144,8 @@ export type ConversationDetail = {
   forked_from_conversation_id: string | null;
   fork_boundary_message_id: string | null;
   feedback: ConversationFeedback[];
+  duration_ms: number | null;
+  timings: MessageTiming[];
 };
 
 export const DATA_COMPLEXITY_CATALOG_IDS = [

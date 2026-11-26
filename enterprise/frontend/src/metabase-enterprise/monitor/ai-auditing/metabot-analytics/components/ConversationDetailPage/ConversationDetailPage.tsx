@@ -49,6 +49,7 @@ import {
 import * as Urls from "metabase/urls";
 import { question as ML_getUrl } from "metabase/urls/questions";
 import { formatNumber } from "metabase/utils/formatting";
+import { formatDurationLong } from "metabase/utils/formatting/duration";
 import { checkNotNull } from "metabase/utils/types";
 import { getUserName } from "metabase/utils/user";
 import { useGetMetabotAnalyticsConversationQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
@@ -62,6 +63,7 @@ import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
 import { ConversationHeader } from "./ConversationHeader";
 import { ForkBoundary } from "./ForkBoundary";
+import { MessageTimingSummary } from "./MessageTimingSummary";
 import { ToolCallDetailsSidebar } from "./ToolCallDetailsSidebar";
 
 const SLACK_PROFILE_IDS = ["slackbot", "slack"];
@@ -121,6 +123,19 @@ export function ConversationDetailPage() {
   const { messages, getExtraActions } =
     useBranchableMessages(conversationMessages);
 
+  const timings = conversation?.timings;
+  const timingByMessageId = useMemo(
+    () => new Map(timings?.map((timing) => [timing.message_id, timing])),
+    [timings],
+  );
+  const selectedToolCallTiming = useMemo(
+    () =>
+      timings
+        ?.flatMap((timing) => timing.tool_calls)
+        .find((toolCall) => toolCall.call_id === selectedToolCall?.id),
+    [timings, selectedToolCall],
+  );
+
   if (isLoading || error) {
     return (
       <MonitorMain>
@@ -137,6 +152,7 @@ export function ConversationDetailPage() {
     uncached_tokens,
     cache_read_tokens,
     message_count,
+    duration_ms,
     search_count,
     query_count,
     queries,
@@ -185,6 +201,13 @@ export function ConversationDetailPage() {
                 tooltip={t`Cached input tokens. Not part of Tokens.`}
                 value={formatNumber(cache_read_tokens)}
               />
+              {duration_ms != null && (
+                <StatCard
+                  label={t`Time worked`}
+                  tooltip={t`Time the server worked on the replies of this conversation.`}
+                  value={formatDurationLong(duration_ms)}
+                />
+              )}
             </SimpleGrid>
 
             {feedback.length > 0 && (
@@ -222,11 +245,17 @@ export function ConversationDetailPage() {
                   readonly
                   conversationId={convoId}
                   onToolCallSelect={handleToolCallSelect}
-                  renderAfterMessage={(message) =>
-                    message === forkBoundaryMessage ? (
-                      <ForkBoundary href={forkBoundaryHref} />
-                    ) : null
-                  }
+                  renderAfterMessage={(message) => {
+                    const timing = timingByMessageId.get(message.id);
+                    return (
+                      <>
+                        {timing && <MessageTimingSummary timing={timing} />}
+                        {message === forkBoundaryMessage && (
+                          <ForkBoundary href={forkBoundaryHref} />
+                        )}
+                      </>
+                    );
+                  }}
                 />
               </Card>
             </Stack>
@@ -251,6 +280,7 @@ export function ConversationDetailPage() {
         <Sidebar containerWidth={containerWidth}>
           <ToolCallDetailsSidebar
             message={selectedToolCall}
+            timing={selectedToolCallTiming}
             onClose={handleSidebarClose}
           />
         </Sidebar>
