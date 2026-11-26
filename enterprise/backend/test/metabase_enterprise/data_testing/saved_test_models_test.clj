@@ -23,6 +23,7 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
+   [metabase.transforms.models.transform :as transforms.models.transform]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -175,6 +176,30 @@
                (is (true? (can-update? :crowberto saved-test {:name "Renamed"}))))
              (testing "the subject is not synced, so an admin may create another test of it"
                (is (true? (can-create?)))))))))))
+
+(deftest transform-tests-follow-the-read-only-rule-on-their-own-test
+  ;; On a read-only instance nobody may write a transform, which alone makes its tests read-only. With the transform
+  ;; made writable, what remains is the rule of the tests themselves.
+  (mt/with-premium-features #{:transforms-basic :transforms-testing}
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (mt/with-temp [:model/Transform     {transform-id :id} {}
+                     :model/TransformTest {test-id :id}      {:transform_id transform-id :name "A test"}]
+        (remote-sync.tu/with-remote-sync ["file:///nonexistent/saved-test-models-test" :read-only]
+          (let [saved-test (t2/select-one :model/TransformTest :id test-id)]
+            (testing "premise: the transform is not writable, and no change to its test is allowed"
+              (is (false? (hydrated? :crowberto :model/Transform transform-id :can_write mi/can-write?)))
+              (is (false? (can-update? :crowberto saved-test {}))))
+            (with-redefs [transforms.models.transform/permission-preds
+                          (assoc @#'transforms.models.transform/permission-preds :can_write (constantly true))]
+              (testing "premise: the transform is now writable"
+                (is (true? (hydrated? :crowberto :model/Transform transform-id :can_write mi/can-write?))))
+              (testing "its test is still not writable"
+                (is (false? (hydrated? :crowberto :model/TransformTest test-id :can_write mi/can-write?))))
+              (testing "a change to a column that remote sync exports is refused"
+                (is (false? (can-update? :crowberto saved-test {:name "Renamed"}))))
+              (testing "a change that changes no such column is allowed"
+                (is (true? (can-update? :crowberto saved-test {:name (:name saved-test)})))
+                (is (true? (can-update? :crowberto saved-test {})))))))))))
 
 (deftest a-test-is-writable-on-a-read-write-instance-test
   (do-with-each-test-type!
