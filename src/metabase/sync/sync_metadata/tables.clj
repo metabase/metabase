@@ -168,7 +168,8 @@
           :display_name            (or (:display_name table)
                                        (warehouse-schema.humanization/name->human-readable-name (:name table)))
           :name                    (:name table)
-          :is_writable             (:is_writable table)}
+          :is_writable             (:is_writable table)
+          :estimated_row_count     (:estimated_row_count table)}
          (when (:field_order table)
            {:field_order (:field_order table)})
          (when (:data_source table)
