@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.models.action-test :as data-testing.models.action-test]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
@@ -91,7 +92,7 @@
    body :- ::update-request]
   (let [action-test (api/read-check :model/ActionTest id)]
     (api/update-check action-test body)
-    (refusing #(data-testing.models.action-test/check-edit (merge action-test body) (vec (keys body))))
+    (refusing #(data-testing.models/check-edit :model/ActionTest (merge action-test body) (vec (keys body))))
     (when (seq body)
       (data-testing.models.action-test/update-action-tests! [(assoc body :id id)])))
   (data-testing.db/action-test id))

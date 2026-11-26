@@ -48,12 +48,10 @@
    :inputs       (data-testing.util/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.util/json-column ::data-testing.schema/expectations)})
 
-(methodical/defmethod t2/batched-hydrate [:model/ActionTest :last_run]
-  "Add the newest run, or nil, to each action test."
-  [_model _k action-tests]
-  (data-testing.models/with-last-runs :action action-tests))
-
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
+
+;; Who may save and who may run an action test is not what the shared saved-test methods say, so `:can_write`,
+;; `:can_query`, `mi/can-create?` and `mi/can-update?` are defined here.
 
 (defn- action-allows?
   "Whether `action-check` holds for the Action `action-id`, hydrated with `k`, `query-check` holds for the action, and
@@ -98,12 +96,6 @@
   (action-allows? mi/can-read? :can_read (:action_id action-test)
                   #(can-run-query-with-values? % (:parameters action-test))))
 
-(methodical/defmethod t2/batched-hydrate [:model/ActionTest :can_read]
-  "Add whether the current user can read the action of each action test, loading the actions at once."
-  [_model k action-tests]
-  (data-testing.models/with-readable-subjects k action-tests :action_id
-    (data-testing.db/actions-by-ids (into [] (comp (keep :action_id) (distinct)) action-tests))))
-
 (methodical/defmethod t2/batched-hydrate [:model/ActionTest :can_write]
   "Add whether the current user may edit each action test, checking each action once."
   [_model k action-tests]
@@ -136,14 +128,6 @@
   [action-id  :- ::lib.schema.id/action
    definition :- ::data-testing.runner/definition]
   (data-testing.runner/validate-test :action (api/check-404 (data-testing.db/action action-id)) definition))
-
-(mu/defn check-edit :- :nil
-  "Throws the typed refusal of an edit that sets the keys `edited-keys` of an action test and leaves it as `edited`.
-  An edit that sets the action or what a run reads is refused as a new test like `edited` would be."
-  [edited      :- [:map [:action_id ::lib.schema.id/action]]
-   edited-keys :- [:sequential :keyword]]
-  (when (data-testing.models/validates-edit? :action_id edited-keys)
-    (validate-test (:action_id edited) (data-testing.runner/test-definition edited))))
 
 (defmethod data-testing.test-type/spec :action [_test-type]
   {:model      :model/ActionTest
@@ -188,16 +172,15 @@
   [id _user-id snapshot]
   (update-action-tests! [(assoc snapshot :id id)] {:writer :revert}))
 
-(defn- check-revert
-  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
-  [id _user-id snapshot]
-  (data-testing.models/check-revert-available)
-  (data-testing.errors/refusing
-   "action-test"
-   #(check-edit snapshot (data-testing.models/reverted-keys (data-testing.db/action-test id) snapshot)))
-  snapshot)
-
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod data-testing.models/saved-test-spec :model/ActionTest [_model]
+  {:test-type     :action
+   :subject-key   :action_id
+   :subject       data-testing.db/action
+   :subjects      data-testing.db/actions-by-ids
+   :database-id   :database_id
+   :validate-test validate-test})
 
 (defmethod app-db-copy/spec :model/ActionTest [_model]
   {:skip? false})
@@ -223,7 +206,7 @@
    :skip          [:creator_id :entity_id]
    :schema        ::data-testing.schema/action-test.revision
    :authorize     :snapshot
-   :before-revert check-revert
+   :before-revert #(data-testing.models/check-revert :model/ActionTest %1 %2 %3)
    :revert!       revert-action-test!})
 
 (defmethod audit/spec :model/ActionTest [_model]

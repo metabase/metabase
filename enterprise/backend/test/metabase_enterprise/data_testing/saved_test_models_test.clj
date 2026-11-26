@@ -24,6 +24,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.transforms.models.transform :as transforms.models.transform]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -88,6 +89,20 @@
   (doseq [{:keys [model test-type]} test-types]
     (testing model
       (is (= model (:model (data-testing.test-type/spec test-type)))))))
+
+(deftest every-saved-test-spec-matches-its-schema-test
+  (doseq [{:keys [model test-type subject-key]} test-types]
+    (testing model
+      (let [spec (data-testing.models/saved-test-spec model)]
+        (is (nil? (mr/explain ::data-testing.models/saved-test-spec spec)))
+        (is (= {:test-type test-type :subject-key subject-key}
+               (select-keys spec [:test-type :subject-key]))))))
+  (testing "only transform tests have the remote-sync guard"
+    (is (= [:model/TransformTest]
+           (filter (comp :remote-sync-guard? data-testing.models/saved-test-spec) (map :model test-types)))))
+  (testing "control: the schema refuses a spec with a key it does not name"
+    (is (some? (mr/explain ::data-testing.models/saved-test-spec
+                           (assoc (data-testing.models/saved-test-spec :model/CardTest) :can-save? any?))))))
 
 (deftest a-test-is-read-and-written-through-its-subject-test
   (do-with-each-test-type!
