@@ -46,6 +46,34 @@
       (is (= (query-count #(into [] (serialization/export :model/Table (take 1 tables))))
              (query-count #(into [] (serialization/export :model/Table tables))))))))
 
+(deftest table-definitions-transform-test
+  (testing "Table definitions export their Fields and definition Table as paths, and import them back, with as many
+           queries for many Tables as for one"
+    (let [{export-fn :export import-fn :import} (get-in (serialization/spec :model/Table)
+                                                        [:transform :eav_definition])
+          id-order                {:order-by [[:id :asc]]}
+          definitions             (for [table-id (t2/select-pks-vec :model/Table :db_id (mt/id) id-order)
+                                        :let     [[entity-key-id property-value-id]
+                                                  (t2/select-pks-vec :model/Field :table_id table-id id-order)]]
+                                    {:entity_key       entity-key-id
+                                     :property_value   property-value-id
+                                     :property_name    nil
+                                     :definition_table table-id})
+          export-definitions      #(export-fn serialization/app-db-store nil (vec %) {})
+          import-definitions      #(import-fn serialization/app-db-store nil (vec %) {})
+          exported                (export-definitions definitions)
+          {:keys [entity_key definition_table]} (first definitions)
+          db-name                 (t2/select-one-fn :name :model/Database :id (mt/id))
+          table-ref               ((juxt (constantly db-name) :schema :name)
+                                   (t2/select-one :model/Table :id definition_table))]
+      (is (= [(conj table-ref (t2/select-one-fn :name :model/Field :id entity_key)) table-ref]
+             ((juxt :entity_key :definition_table) (first exported))))
+      (is (nil? (:property_name (first exported))))
+      (is (= (vec definitions) (import-definitions exported)))
+      (is (= [nil] (export-definitions [nil]) (import-definitions [nil])))
+      (is (= (query-count #(export-definitions (take 1 definitions))) (query-count #(export-definitions definitions))))
+      (is (= (query-count #(import-definitions (take 1 exported))) (query-count #(import-definitions exported)))))))
+
 (deftest legacy-field-dimensions-load-test
   (testing "older exports nest a Field's Dimension under it, which loads as the Field's Dimension"
     (mt/with-model-cleanup [:model/Dimension]

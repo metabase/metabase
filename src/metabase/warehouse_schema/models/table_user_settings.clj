@@ -406,20 +406,29 @@
    :copy                [:display_name :description :entity_type :visibility_type :field_order :caveats
                          :points_of_interest :show_in_getting_started :data_authority :data_source :data_layer
                          :owner_email :is_published :description_set :visibility_type_set :data_layer_set
-                         :data_source_set]
-   :skip                [:caveats_set :points_of_interest_set
-                         ;; structural metadata
-                         :table_role :grain :grain_description :period_granularity :mutability :load_strategy
-                         :scd_type :history_definition :eav_definition :history_definition_set
-                         :eav_definition_set :period_granularity_set :table_role_set :grain_set
-                         :grain_description_set :mutability_set :load_strategy_set :scd_type_set]
-   :defaults            {:description_set     false
-                         :visibility_type_set false
-                         :data_layer_set      false
-                         :data_source_set     false}
-   :transform           {:collection_id (serialization/fk-transform :model/Collection)
-                         :owner_user_id serialization/user-transform
-                         :table_id      serialization/table-transform}
+                         :data_source_set :table_role :grain :grain_description :period_granularity :mutability
+                         :load_strategy :scd_type :history_definition_set :eav_definition_set
+                         :period_granularity_set :table_role_set :grain_set :grain_description_set :mutability_set
+                         :load_strategy_set :scd_type_set]
+   :skip                [:caveats_set :points_of_interest_set]
+   :defaults            {:description_set        false
+                         :visibility_type_set    false
+                         :data_layer_set         false
+                         :data_source_set        false
+                         :history_definition_set false
+                         :eav_definition_set     false
+                         :period_granularity_set false
+                         :table_role_set         false
+                         :grain_set              false
+                         :grain_description_set  false
+                         :mutability_set         false
+                         :load_strategy_set      false
+                         :scd_type_set           false}
+   :transform           {:collection_id      (serialization/fk-transform :model/Collection)
+                         :owner_user_id      serialization/user-transform
+                         :table_id           serialization/table-transform
+                         :history_definition warehouse-schema.serialization/definition-transform
+                         :eav_definition     warehouse-schema.serialization/definition-transform}
    :storage-paths       warehouse-schema.serialization/table-user-settings-storage-paths
    :import-dependencies warehouse-schema.serialization/table-user-settings-import-dependencies
    :insert!             create-table-user-settings!

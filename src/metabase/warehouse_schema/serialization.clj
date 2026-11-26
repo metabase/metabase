@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.serialization
-  "The SerDes of Fields, their Dimensions, FieldValues and user settings, and the user settings of Tables."
+  "The SerDes of Fields, their Dimensions, FieldValues and user settings, the user settings of Tables, and the
+  definitions of Tables."
   (:require
    [clojure.string :as str]
    [metabase.serialization.core :as serialization]))
@@ -41,6 +42,27 @@
 (def dimension-field-id-transform
   "The transform of the `field_id` of Dimensions."
   (assoc serialization/field-transform :import import-dimension-field-ids))
+
+(def ^:private definition-key-models
+  "The model of the row that each key of a `history_definition` or `eav_definition` holds, when it is not a Field."
+  {:definition_table :model/Table})
+
+(defn- walk-definition
+  "`definition` with each Field and `definition_table` id or reference replaced by what `visit` returns for it, a walk
+  of [[serialization/export-in-bulk]] and [[serialization/import-in-bulk]]."
+  [visit definition]
+  (some->> definition
+           (into {} (map (fn [[k v]]
+                           [k (serialization/visit-some (definition-key-models k :model/Field) v visit)])))))
+
+(def definition-transform
+  "The transform of the `history_definition` and `eav_definition` of Tables and their user settings: each Field id as
+  a `[db-name schema table-name & field-names]` reference and the `definition_table` as `[db-name schema
+  table-name]`."
+  {:export (fn [store _ definitions _]
+             (serialization/export-in-bulk store definitions walk-definition))
+   :import (fn [store _ definitions opts]
+             (serialization/import-in-bulk store definitions opts walk-definition))})
 
 (defn dimension-storage-paths
   "The storage path of each of the Dimension `entities`, the one of its Field with a `___dimension` suffix."

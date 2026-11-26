@@ -373,13 +373,13 @@
    :copy          [:semantic_type :description :display_name :visibility_type
                    :has_field_values :effective_type :coercion_strategy :caveats
                    :points_of_interest :json_unfolding :settings :data_sensitivity :custom_position
-                   :description_set :semantic_type_set :fk_target_field_id_set]
-   :skip          [:nfc_path
-                   ;; structural metadata
-                   :is_grain :attribute_scd_type :facets :attribute_scd_type_set]
+                   :description_set :semantic_type_set :fk_target_field_id_set :is_grain :attribute_scd_type
+                   :facets :attribute_scd_type_set]
+   :skip          [:nfc_path]
    :defaults      {:description_set        false
                    :semantic_type_set      false
-                   :fk_target_field_id_set false}
+                   :fk_target_field_id_set false
+                   :attribute_scd_type_set false}
    :transform     {:fk_target_field_id serialization/field-transform
                    :field_id           serialization/field-transform}
    :storage-paths warehouse-schema.serialization/field-user-settings-storage-paths

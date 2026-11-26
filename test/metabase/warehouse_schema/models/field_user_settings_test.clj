@@ -99,13 +99,14 @@
     (sync.updates/update-field-unless-user-set! field-id synced-structural-metadata)
     (is (=? synced-structural-metadata (field-row field-id)))))
 
-(deftest serdes-update-keeps-structural-metadata-test
-  (testing "a SerDes update sets every column its spec copies and none it skips, so the structural metadata stays"
+(deftest serdes-update-sets-structural-metadata-test
+  (testing "a SerDes update sets the structural metadata its spec copies, and the Field gets it"
     (mt/with-temp [:model/Field {field-id :id} {}]
-      (field-user-settings/upsert-field-user-settings! (field-row field-id) structural-metadata)
+      (field-user-settings/upsert-field-user-settings! (field-row field-id) {:description "d"})
       (let [{:keys [copy defaults update!]} (serialization/spec :model/FieldUserSettings)
             settings-id                     (t2/select-one-pk :model/FieldUserSettings :field_id field-id)]
-        (update! [(merge (zipmap copy (repeat nil)) defaults {:id settings-id :description "d"})])
-        (is (=? (assoc structural-metadata :description "d")
+        (update! [(merge (zipmap copy (repeat nil)) defaults structural-metadata structural-metadata-flags
+                         {:id settings-id})])
+        (is (=? (merge structural-metadata structural-metadata-flags)
                 (t2/select-one :model/FieldUserSettings :id settings-id)))
         (is (=? structural-metadata (field-row field-id)))))))

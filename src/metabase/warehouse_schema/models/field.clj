@@ -807,11 +807,9 @@
                    :database_is_pk :database_partitioned :database_position :database_required :database_type
                    :description :display_name :effective_type :has_field_values
                    :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type
-                   :settings :visibility_type]
+                   :settings :visibility_type :is_grain :attribute_scd_type :facets]
    :skip          [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
-                   :is_defective_duplicate :unique_field_helper
-                   ;; structural metadata
-                   :is_grain :attribute_scd_type :facets]
+                   :is_defective_duplicate :unique_field_helper]
    :children      {:dimensions :model/Dimension}
    :transform     {:table_id           serialization/table-transform
                    :fk_target_field_id serialization/field-transform
