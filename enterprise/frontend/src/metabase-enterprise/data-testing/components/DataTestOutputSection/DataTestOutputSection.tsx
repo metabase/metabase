@@ -6,16 +6,18 @@ import { DataTestDataCard } from "../DataTestDataCard";
 import { DataTestSection } from "../DataTestSection";
 
 type DataTestOutputSectionProps = {
+  label?: string;
   description: string;
   expectations: DataTestExpectation[];
 };
 
 export function DataTestOutputSection({
+  label = t`Output`,
   description,
   expectations,
 }: DataTestOutputSectionProps) {
   return (
-    <DataTestSection label={t`Output`} description={description}>
+    <DataTestSection label={label} description={description}>
       {expectations.map((expectation) => (
         <DataTestDataCard
           key={expectation.name}

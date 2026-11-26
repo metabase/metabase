@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 
 import { ActionsSectionLayout } from "metabase/data-studio/app/pages/ActionsSectionLayout";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_DATA_TESTING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Route } from "metabase/router";
 
 /**
@@ -70,6 +70,7 @@ export function getDataStudioActionRoutes(IsAdmin: ComponentType) {
         </Route>
       )}
       <Route path=":actionId/settings" lazy={actionSettingsPage} />
+      {PLUGIN_DATA_TESTING.getActionTestRoutes()}
     </Route>
   );
 }
