@@ -1,18 +1,22 @@
 (ns metabase-enterprise.data-testing.saved-test-models-test
-  "What the four saved-test models share and where they differ: reading and writing a test through its subject, the
-  remote-sync rule only transform tests follow, which revisions a user may read, a test's newest run, the topics of
-  their lifecycle events, and the run cleanup of their delete."
+  "What the four saved-test models share and where they differ: reading and writing a test through its subject, who
+  may create, change and run a transform test and an action test, the remote-sync rule only transform tests follow,
+  which revisions a user may read, a test's newest run, the statements their hydrations run, the topics of their
+  lifecycle events, and the run cleanup of their delete."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.models.action-test]
    [metabase-enterprise.data-testing.models.card-test]
    [metabase-enterprise.data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.models.segment-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
+   [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.test-util :as perms.tu]
@@ -24,11 +28,12 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private test-types
-  "Each saved-test model, with its test type and the column that holds its subject's id."
-  [{:model :model/TransformTest :test-type :transform :subject-key :transform_id}
-   {:model :model/CardTest      :test-type :card      :subject-key :card_id}
-   {:model :model/SegmentTest   :test-type :segment   :subject-key :segment_id}
-   {:model :model/ActionTest    :test-type :action    :subject-key :action_id}])
+  "Each saved-test model, with its test type, the column that holds its subject's id, and the function that loads
+  subjects by their ids."
+  [{:model :model/TransformTest :test-type :transform :subject-key :transform_id :subjects data-testing.db/transforms}
+   {:model :model/CardTest      :test-type :card      :subject-key :card_id      :subjects data-testing.db/cards-by-ids}
+   {:model :model/SegmentTest   :test-type :segment   :subject-key :segment_id   :subjects data-testing.db/segments-by-ids}
+   {:model :model/ActionTest    :test-type :action    :subject-key :action_id    :subjects data-testing.db/actions-by-ids}])
 
 (defn- do-with-subject!
   "Call `f` with the id of a new subject of `test-type` that an admin may read and write."
@@ -40,6 +45,15 @@
     :action    (mt/with-actions [_ {:type :model :dataset_query (data-testing.test-util/table-query :categories)}
                                  {:keys [action-id]} {}]
                  (f action-id))))
+
+(defn- do-with-subjects!
+  "Call `f` with the ids of `n` new subjects of `test-type`."
+  ([test-type n f]
+   (do-with-subjects! test-type n [] f))
+  ([test-type n subject-ids f]
+   (if (zero? n)
+     (f subject-ids)
+     (do-with-subject! test-type #(do-with-subjects! test-type (dec n) (conj subject-ids %) f)))))
 
 (defn- do-with-each-test-type!
   "Call `f` with each of [[test-types]] and the id of a saved test of a new subject, in a `testing` naming the model.
@@ -142,17 +156,25 @@
   (do-with-each-test-type!
    (fn [{:keys [model test-type test-id]}]
      (remote-sync.tu/with-remote-sync ["file:///nonexistent/saved-test-models-test" :read-only]
-       (let [saved-test (t2/select-one model :id test-id)]
+       (let [saved-test  (t2/select-one model :id test-id)
+             can-create? #(mt/with-test-user :crowberto
+                            (boolean (mi/can-create? model (dissoc saved-test :id))))]
          (if (= :transform test-type)
            (testing "the transform itself may not be written, so an admin may neither write nor change its test"
              (is (false? (hydrated? :crowberto model test-id :can_write mi/can-write?)))
              (is (false? (can-update? :crowberto saved-test {:name "Renamed"})))
-             (is (false? (can-update? :crowberto saved-test {:name (:name saved-test)}))))
+             (is (false? (can-update? :crowberto saved-test {:name (:name saved-test)})))
+             (testing "nor apply a change that names no column"
+               (is (false? (can-update? :crowberto saved-test {}))))
+             (testing "nor create another test of it"
+               (is (false? (can-create?)))))
            (do
              (testing "the subject is not synced, so an admin may write the test"
                (is (true? (hydrated? :crowberto model test-id :can_write mi/can-write?))))
              (testing "the subject is not synced, so an admin may rename the test"
-               (is (true? (can-update? :crowberto saved-test {:name "Renamed"})))))))))))
+               (is (true? (can-update? :crowberto saved-test {:name "Renamed"}))))
+             (testing "the subject is not synced, so an admin may create another test of it"
+               (is (true? (can-create?)))))))))))
 
 (deftest a-test-is-writable-on-a-read-write-instance-test
   (do-with-each-test-type!
@@ -225,3 +247,125 @@
                (finally
                  (t2/delete! :model/DataTestRun :id run-id)
                  (t2/delete! model :id test-id))))))))))
+
+(deftest a-batch-keeps-its-order-and-its-gaps-test
+  (do-with-each-test-type!
+   (fn [{:keys [model subject-key test-id]}]
+     (let [saved-test (t2/select-one model :id test-id)
+           orphan     (t2/instance model {:id Integer/MAX_VALUE subject-key Integer/MAX_VALUE})
+           answers    (fn [k check]
+                        (mt/with-test-user :crowberto
+                          (mapv #(some-> % check boolean) (t2/hydrate [saved-test nil orphan] k))))]
+       (testing "an admin's answer for a test, for no test, and for a test whose subject no longer exists"
+         (is (= [true nil false] (answers :can_read mi/can-read?)))
+         (is (= [true nil false] (answers :can_write mi/can-write?)))
+         (is (= [true nil false] (answers :can_query mi/can-query?))))))))
+
+(deftest hydration-statements-do-not-grow-with-tests-test
+  (mt/with-premium-features #{:transforms-basic :transforms-testing}
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (doseq [{:keys [model test-type subject-key subjects]} test-types]
+        (testing model
+          (do-with-subjects!
+           test-type 6
+           (fn [subject-ids]
+             (let [tests      (mapv #(t2/instance model {:id %1 subject-key %2}) (range 1 7) subject-ids)
+                   statements (fn [thunk]
+                                (t2/with-call-count [call-count]
+                                  (thunk)
+                                  (call-count)))
+                   hydration  (fn [k n]
+                                (statements #(doall (t2/hydrate (vec (take n tests)) k))))
+                   own        (fn [k n]
+                                (statements #(doall (t2/hydrate (subjects (vec (take n subject-ids))) k))))
+                   beyond-own (fn [k n]
+                                (- (hydration k n) (own k n)))]
+               (doseq [user [:crowberto :rasta]]
+                 (testing user
+                   (mt/with-test-user user
+                     (testing "the newest runs of the tests are read at once"
+                       (hydration :last_run 1)
+                       (is (= (hydration :last_run 2) (hydration :last_run 6))))
+                     (testing "the statements of `:can_read`, beyond loading the subjects and their own checks"
+                       (beyond-own :can_read 1)
+                       (is (= (beyond-own :can_read 2) (beyond-own :can_read 6)))))))))))))))
+
+(defn- other-inputs
+  "Inputs that differ from those of a test made with no inputs."
+  []
+  (lib/normalize ::data-testing.schema/inputs
+                 [{:table {:schema "PUBLIC" :name "PEOPLE"} :format "sql" :sql "SELECT 1 AS ID"}]))
+
+(defn- answers-for
+  "What the current user may do with `saved-test` of `model`, a test of the subject that `subject-key` names: read
+  it, write it, create another test of its subject, rename it, change its inputs, and run it."
+  [model subject-key saved-test]
+  (let [writable (t2/hydrate saved-test :can_write)]
+    {:read          (boolean (mi/can-read? (t2/hydrate saved-test :can_read)))
+     :write         (boolean (mi/can-write? writable))
+     :create        (boolean (mi/can-create? model (select-keys saved-test [subject-key])))
+     :update-name   (boolean (mi/can-update? writable {:name "renamed"}))
+     :update-inputs (boolean (mi/can-update? writable {:inputs (other-inputs)}))
+     :run           (boolean (mi/can-query? (t2/hydrate saved-test :can_query)))}))
+
+(defn- only
+  "The answers of [[answers-for]] with those under `ks` true and the others false."
+  [& ks]
+  (merge (zipmap [:read :write :create :update-name :update-inputs :run] (repeat false))
+         (zipmap ks (repeat true))))
+
+(deftest transform-test-create-update-and-run-matrix-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (mt/with-temp [:model/Transform     {transform-id :id} (data-testing.test-util/id-transform :people)
+                   :model/TransformTest transform-test     {:transform_id transform-id :inputs [] :expectations []}]
+      (let [answers (fn [user transforms create-queries]
+                      (mt/with-db-perms-for-group! (perms/all-users-group) (mt/id) {:perms/transforms     transforms
+                                                                                    :perms/create-queries create-queries}
+                        (mt/with-current-user (mt/user->id user)
+                          (answers-for :model/TransformTest :transform_id transform-test))))]
+        (testing "superuser: everything"
+          (is (= (only :read :write :create :update-name :update-inputs :run)
+                 (answers :crowberto :no :no))))
+        (testing "a user who is no data analyst reads no transform: nothing"
+          (is (= (only) (answers :rasta :no :query-builder-and-native))))
+        (mt/with-data-analyst-role! (mt/user->id :lucky)
+          (testing "a data analyst with native queries and no transforms permission: read, create and run"
+            (is (= (only :read :create :run) (answers :lucky :no :query-builder-and-native))))
+          (testing "a data analyst with neither: read and run"
+            (is (= (only :read :run) (answers :lucky :no :query-builder))))
+          (testing "a data analyst with both: everything"
+            (is (= (only :read :write :create :update-name :update-inputs :run)
+                   (answers :lucky :yes :query-builder-and-native)))))))))
+
+(deftest action-test-create-update-and-run-matrix-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (perms.tu/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/Collection {coll-id :id} {}]
+          (mt/with-actions [_                   {:type          :model
+                                                 :dataset_query (data-testing.test-util/table-query :categories)
+                                                 :collection_id coll-id}
+                            {:keys [action-id]} {}]
+            (mt/with-temp [:model/ActionTest action-test {:action_id    action-id
+                                                          :parameters   {"id" 1 "name" "Wood"}
+                                                          :inputs       []
+                                                          :expectations []}]
+              (let [answers (fn [user collection? create-queries]
+                              (mt/with-db-perms-for-group! (perms/all-users-group) (mt/id) {:perms/view-data      :unrestricted
+                                                                                            :perms/create-queries create-queries}
+                                (when collection?
+                                  (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id))
+                                (try
+                                  (mt/with-current-user (mt/user->id user)
+                                    (answers-for :model/ActionTest :action_id action-test))
+                                  (finally
+                                    (perms/revoke-collection-permissions! (perms/all-users-group) coll-id)))))]
+                (testing "superuser: everything"
+                  (is (= (only :read :write :create :update-name :update-inputs :run)
+                         (answers :crowberto false :no))))
+                (testing "a user who reads the action and has native queries: read and run, since only a superuser edits an action"
+                  (is (= (only :read :run) (answers :rasta true :query-builder-and-native))))
+                (testing "a user who reads the action, without native queries: read"
+                  (is (= (only :read) (answers :rasta true :query-builder))))
+                (testing "native queries without access to the action: nothing"
+                  (is (= (only) (answers :rasta false :query-builder-and-native))))))))))))
