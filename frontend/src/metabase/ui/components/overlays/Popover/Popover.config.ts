@@ -1,4 +1,8 @@
-import { Popover, type PopoverProps } from "@mantine/core";
+import {
+  type MantineThemeComponent,
+  Popover,
+  type PopoverProps,
+} from "@mantine/core";
 
 import PopoverStyles from "./Popover.module.css";
 
@@ -13,7 +17,7 @@ export const DEFAULT_POPOVER_MIDDLEWARES = {
   },
 } as const satisfies PopoverProps["middlewares"];
 
-export const popoverOverrides = {
+export const popoverOverrides: Record<"Popover", MantineThemeComponent> = {
   Popover: Popover.extend({
     defaultProps: {
       radius: "md",

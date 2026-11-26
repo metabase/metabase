@@ -40,7 +40,7 @@ const sampleArgs = {
 
 const argTypes = {
   variant: {
-    options: ["default", "unstyled"],
+    options: ["default", "unstyled", "read-only"],
     control: { type: "inline-radio" },
   },
   size: {
@@ -125,6 +125,25 @@ const STATES: {
     id: "read-only",
     label: "Read only",
     props: { readOnly: true },
+  },
+  {
+    id: "read-only-variant",
+    label: 'variant="read-only"',
+    // a read-only field always shows a value, so it ignores the `filled` toggle
+    props: {
+      readOnly: true,
+      variant: "read-only",
+      defaultValue: sampleArgs.value,
+    },
+  },
+  {
+    id: "read-only-variant-focus",
+    label: 'variant="read-only" (focused)',
+    props: {
+      readOnly: true,
+      variant: "read-only",
+      defaultValue: sampleArgs.value,
+    },
   },
 ];
 
@@ -334,6 +353,7 @@ export const Overview = {
       focusWithin: [
         'input[data-state-row="focus"]',
         'input[data-state-row="error-focus"]',
+        'input[data-state-row="read-only-variant-focus"]',
       ],
     },
     controls: { include: ["filled", "theme"] },
@@ -430,6 +450,17 @@ export const ReadOnlyMd = {
     description: sampleArgs.description,
     placeholder: sampleArgs.placeholder,
     readOnly: true,
+  },
+};
+
+export const ReadOnlyVariantMd = {
+  name: "Read-only variant, md",
+  args: {
+    defaultValue: sampleArgs.value,
+    label: sampleArgs.label,
+    description: sampleArgs.description,
+    readOnly: true,
+    variant: "read-only",
   },
 };
 
