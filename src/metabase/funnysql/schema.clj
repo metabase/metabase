@@ -227,12 +227,8 @@
   (call-schema [:= :composite] [:+ expr]))
 
 (mr/def ::call.current-timestamp
-  "`[:current-timestamp]`, the SQL `current_timestamp`."
+  "`[:current-timestamp]`, the current moment at the app DB's best precision: `now()`, or `now(6)` on MySQL."
   (call-schema [:= :current-timestamp]))
-
-(mr/def ::call.current-datetime
-  "`[:current-datetime]`, the current moment at the app DB's best precision: `now()`, or `now(6)` on MySQL."
-  (call-schema [:= :current-datetime]))
 
 (mr/def ::call.date-add
   "`[:date-add x amount unit]`, `x` plus `amount` `unit`s."
@@ -415,7 +411,6 @@
     :cast                    ::call.cast
     :composite               ::call.composite
     :current-timestamp       ::call.current-timestamp
-    :current-datetime        ::call.current-datetime
     :date-add                ::call.date-add
     :exists                  ::call.exists
     :not-exists              ::call.not-exists

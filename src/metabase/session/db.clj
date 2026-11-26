@@ -156,7 +156,7 @@
   idle longer than `idle-timeout-seconds` when it is given, and return the number deleted."
   [max-age-minutes      :- ms/PositiveInt
    idle-timeout-seconds :- [:maybe ms/PositiveInt]]
-  (let [now            [:current-datetime]
+  (let [now            [:current-timestamp]
         oldest-allowed [:date-add now (- max-age-minutes) :minute]
         timeout-oldest (when idle-timeout-seconds
                          [:date-add now (- idle-timeout-seconds) :second])

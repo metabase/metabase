@@ -23,6 +23,12 @@
            (funnysql/format {:select [:*] :from [:t]
                              :where  [:like [:lower :name] (funnysql.util/like-substring "A%b_C")]}
                             :postgres))))
+  (testing "on MySQL the ESCAPE character compiles to a plain `'!'` rather than a `_utf8mb4 X'21'` hex literal, whose
+            utf8mb4 default collation makes MySQL app DBs on another collation fail with `Illegal mix of collations`"
+    (is (= ["SELECT * FROM `t` WHERE lower(`name`) LIKE ? ESCAPE '!'" "%a!%b%"]
+           (funnysql/format {:select [:*] :from [:t]
+                             :where  [:like [:lower :name] (funnysql.util/like-substring "a%b")]}
+                            :mysql))))
   (testing "like-prefix"
     (is (= ["SELECT * FROM \"t\" WHERE lower(\"name\") LIKE ? ESCAPE '!'" "a!%b%"]
            (funnysql/format {:select [:*] :from [:t]

@@ -201,7 +201,7 @@
   []
   (case (mdb/db-type)
     :postgres :%statement_timestamp
-    [:current-datetime]))
+    [:current-timestamp]))
 
 (defn- duration-clause
   "A HoneySQL form for the whole milliseconds, never negative, from the stored `started_at` of a TaskHistory row to the

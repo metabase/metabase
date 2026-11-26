@@ -32,7 +32,7 @@
 (mu/defn expires-at-clause
   "A HoneySQL form for the database's now plus `seconds`, the expiry the before-insert hook gives a new SsoRelayState."
   [seconds :- ms/PositiveInt]
-  [:date-add [:current-datetime] seconds :second])
+  [:date-add [:current-timestamp] seconds :second])
 
 (mu/defn insert-relay-state!
   "Insert the SsoRelayState `row`, returning the number inserted."
@@ -52,7 +52,7 @@
   [hashed-key :- :string]
   (when-not (string? hashed-key)
     (throw (ex-info "hashed-key must be a string" {:hashed-key hashed-key})))
-  (t2/select-one :model/SsoRelayState :id hashed-key :expires_at [:> [:current-datetime]]))
+  (t2/select-one :model/SsoRelayState :id hashed-key :expires_at [:> [:current-timestamp]]))
 
 (mu/defn delete-relay-state!
   "Delete the SsoRelayState with `hashed-key`, returning the number deleted."

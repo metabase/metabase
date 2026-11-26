@@ -38,7 +38,7 @@
   []
   (let [ts (-> (t2/query-one
                 {:select [[(let [db-type          (mdb/db-type)
-                                 now-form         [:current-datetime]
+                                 now-form         [:current-timestamp]
                                  target-cast-type (case db-type
                                                     (:h2 :postgres) :text
                                                     :mysql          :char)]

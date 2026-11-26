@@ -49,10 +49,10 @@
         (sm.db/sessions liveness-params filters :created_at :desc nil nil nil)))
 
 (defn- ago [amount unit]
-  [:date-add [:current-datetime] (- amount) unit])
+  [:date-add [:current-timestamp] (- amount) unit])
 
 (defn- from-now [amount unit]
-  [:date-add [:current-datetime] amount unit])
+  [:date-add [:current-timestamp] amount unit])
 
 (deftest live-session-conditions-max-age-test
   (testing "a session past `max-session-age` is neither listed nor counted"

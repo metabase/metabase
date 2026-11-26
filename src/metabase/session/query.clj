@@ -64,7 +64,7 @@
   same reason as [[live-session-conditions]]."
   [{:keys [max-age-minutes enable-tenants? session-timeout-seconds]}
    :- ::session.schema/liveness-params]
-  (let [now [:current-datetime]]
+  (let [now [:current-timestamp]]
     (cond-> {;; a recorded ending is final, whatever the predicates below would say now
              :not-ended     [:= :session.ended_at nil]
              ;; deactivating a user does not delete their session rows, but those rows are dead

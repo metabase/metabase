@@ -25,10 +25,10 @@
                               (f))))
 
 (defn- ago [amount unit]
-  [:date-add [:current-datetime] (- amount) unit])
+  [:date-add [:current-timestamp] (- amount) unit])
 
 (defn- from-now [amount unit]
-  [:date-add [:current-datetime] amount unit])
+  [:date-add [:current-timestamp] amount unit])
 
 (defn- insert-session!
   "Insert a `core_session` row directly, bypassing the model hooks so timestamps can be arbitrary (including DB-side)

@@ -949,7 +949,7 @@
 (mu/defn app-db-now
   "The current time according to the application database."
   []
-  (:now (t2/query-one {:select [[[:current-datetime] :now]]})))
+  (:now (t2/query-one {:select [[[:current-timestamp] :now]]})))
 
 ;;; ----------------------------------------------- Other models -----------------------------------------------
 

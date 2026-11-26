@@ -735,24 +735,18 @@
   (list! args context))
 
 (mu/defn- call-current-timestamp! :- :nil
-  "Compile `current_timestamp`."
-  [_form   :- ::funnysql.schema/call.current-timestamp
-   context :- ::funnysql.schema/context]
-  (append-sql! context "current_timestamp"))
-
-(mu/defn- call-current-datetime! :- :nil
   "Compile the current moment at the app DB's best precision, `now()`, or `now(6)` on MySQL where `now()` has whole
   seconds."
-  [_form   :- ::funnysql.schema/call.current-datetime
+  [_form   :- ::funnysql.schema/call.current-timestamp
    context :- ::funnysql.schema/context]
   (append-sql! context (if (= (engine context) :mysql) "now(6)" "now()")))
 
 (mu/defn- call-date-add! :- :nil
   "Compile `x` plus `amount` `unit`s: a timestamp plus an interval on Postgres, `date_add` on MySQL and `dateadd` on H2,
-  casting `x` to a timestamp unless it is `[:current-datetime]`."
+  casting `x` to a timestamp unless it is `[:current-timestamp]`."
   [[_ x amount unit] :- ::funnysql.schema/call.date-add
    context           :- ::funnysql.schema/context]
-  (let [now? (call-of-type? x :current-datetime)]
+  (let [now? (call-of-type? x :current-timestamp)]
     (case (engine context)
       :postgres
       (let [[amount unit] (if (= unit :quarter) [(* 3 amount) :month] [amount unit])]
@@ -985,7 +979,6 @@
     :cast              (call-cast! form context)
     :composite         (call-composite! form context)
     :current-timestamp (call-current-timestamp! form context)
-    :current-datetime  (call-current-datetime! form context)
     :date-add          (call-date-add! form context)
     :exists            (call-exists! form context)
     :not-exists        (call-not-exists! form context)

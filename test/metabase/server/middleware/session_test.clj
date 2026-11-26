@@ -92,7 +92,7 @@
 (deftest session-expires-at-test
   (init-status/set-complete!)
   (testing "`expires_at` is enforced server-side, even for a session well within `max-session-age`"
-    (let [now [:current-datetime]]
+    (let [now [:current-timestamp]]
       (doseq [[expires-at expected msg]
               [[nil                                                    false "session with no expires_at"]
                [[:date-add now 60 :second] false "session that expires in 60 seconds"]

@@ -684,7 +684,7 @@
   "The application DB's own current timestamp, as a string, for app DB type `db-type`."
   ^String [db-type :- [:enum :h2 :mysql :postgres]]
   ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
-  (let [cast-form [:cast [:current-datetime] (if (= db-type :mysql) :char :text)]]
+  (let [cast-form [:cast [:current-timestamp] (if (= db-type :mysql) :char :text)]]
     (:timestamp (t2/query-one {:select [[cast-form :timestamp]]}))))
 
 (def ^:private unmigrated-settings-where
