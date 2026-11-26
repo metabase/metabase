@@ -193,7 +193,9 @@
               :export-format              :api
               :save-last-used-parameters? false
               :constraints                (row-constraints (inc row-limit))
-              :middleware                 {:js-int-to-string? true}
+              ;; A capped run's fingerprints would replace the ones a full run stored on the card
+              :middleware                 {:js-int-to-string?                 true
+                                           :skip-result-metadata-persistence? true}
               ;; Runs with the card runner's default QP, even for a pivot card, whose runner would swap the row limit
               ;; for the pivot cap.
               ;; The card's `:info` stays on the query, so the QP checks the run as a run of the card.

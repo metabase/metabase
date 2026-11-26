@@ -221,6 +221,20 @@
                                 :model    "card"
                                 :model_id card-id)))))))))
 
+(deftest leaves-card-metadata-alone-test
+  (testing "Metabot's capped run doesn't store its fingerprints as the card's result metadata"
+    (mt/with-temp [:model/Card          {card-id :id}      {:dataset_query
+                                                            (let [mp (mt/metadata-provider)]
+                                                              (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                  (lib/with-fields
+                                                                    [(lib.metadata/field mp (mt/id :venues :price))])))}
+                   :model/Dashboard     {dashboard-id :id} {}
+                   :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+      (let [stored (t2/select-one-fn :result_metadata :model/Card :id card-id)]
+        (is (=? {:structured-output {:returned 1, :truncated? true}}
+                (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id, :row_limit 1})))
+        (is (= stored (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))
+
 (deftest refusals-test
   (do-with-venues-dashboard
    (fn [{:keys [dashboard-id dashcard-id text-dashcard-id]}]
