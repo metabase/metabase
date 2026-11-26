@@ -917,3 +917,36 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+(deftest ^:parallel change-token-test
+  (testing "a Delta table's token is its last modified time, files and size"
+    (is (= "2026-01-01T00:00:00Z:3:4096"
+           (#'databricks/change-token {:lastmodified "2026-01-01T00:00:00Z" :numfiles 3 :sizeinbytes 4096}))))
+  (testing "no token without a last modified time"
+    (is (nil? (#'databricks/change-token {:lastmodified nil})))))
+
+(deftest ^:parallel table-catalog+schema-test
+  (is (= ["main" "sales"] (#'databricks/table-catalog+schema {:catalog "main"} {:schema "sales"})))
+  (is (= ["other" "sales"] (#'databricks/table-catalog+schema {:catalog "main" :multi-level-schema true}
+                                                              {:schema "other.sales"}))))
+
+(deftest ^:parallel delta-tables-sql-test
+  (is (= [(str "SELECT table_catalog, table_schema, table_name FROM system.information_schema.tables"
+               " WHERE (table_type IN (?, ?)) AND (data_source_format = ?) AND (table_catalog IN (?))"
+               " AND (table_schema IN (?, ?))")
+          "MANAGED" "EXTERNAL" "DELTA" "main" "a" "b"]
+         (#'databricks/delta-tables-sql [["main" "a"] ["main" "b"]]))))
+
+(deftest ^:synchronized table-change-tokens-test
+  (mt/test-driver :databricks
+    (testing "the driver supports change tokens"
+      (is (true? (driver/database-supports? :databricks :table-change-tokens (mt/db)))))
+    (testing "there is an entry for each table, each a token or nil, the same on a second read"
+      (let [tables (t2/select :model/Table :db_id (mt/id) :active true)
+            tokens #(driver/table-change-tokens :databricks (lib.metadata/database (mt/metadata-provider)) tables)
+            before (tokens)]
+        (is (seq tables))
+        (is (= (set (map :id tables)) (set (keys before))))
+        (is (every? #(or (nil? %) (string? %)) (vals before)))
+        (is (some string? (vals before)))
+        (is (= before (tokens)))))))
