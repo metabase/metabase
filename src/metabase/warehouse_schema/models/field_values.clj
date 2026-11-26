@@ -580,6 +580,22 @@
     (save-field-values-changes! [change])
     (:result change)))
 
+(defn scan-time
+  "The time to record for a scan that starts now, for [[record-scans!]]: the time of the application database, whose
+  clock also stamps `last_used_at`."
+  []
+  (warehouse-schema.db/app-db-now))
+
+(mu/defn record-scans! :- :nil
+  "Record that a scan that started at `scanned-at`, from [[scan-time]], read the values of the Fields with `field-ids`
+  from the warehouse, on their full FieldValues. The time is the start of the scan, not its end, so a use of a list
+  while the scan runs is after the scan. It does not change their values, so it publishes no update event."
+  [field-ids  :- [:sequential ::lib.schema.id/field]
+   scanned-at :- ms/TemporalInstant]
+  (when (seq field-ids)
+    (warehouse-schema.db/stamp-full-field-values-scanned! field-ids scanned-at))
+  nil)
+
 (defn create-or-update-full-field-values!
   "Create or update the full FieldValues object for `field`. If the FieldValues object already
   exists, then update values for it; otherwise create a new FieldValues object with the newly
@@ -596,7 +612,11 @@
       ;; values we already have. Leave whatever is cached in place instead.
       (if-let [{rows :values} (database-routing/with-anonymous-router-access (distinct-values field))]
         ;; rows are 1-tuples — unwrap for storage.
-        (persist-field-values! field existing-fv (seq (map first rows)))
+        (u/prog1 (persist-field-values! field existing-fv (seq (map first rows)))
+          ;; Record the read as a scan, so a scan that reads only the lists used since their last scan does not read
+          ;; this one again. The time is after the save, which can stamp the use that asked for this read.
+          (when-not (= ::fv-deleted <>)
+            (record-scans! [(u/the-id field)] (scan-time))))
         ::fv-fetch-failed))
     (do
       (delete-field-values! (ids-of-fields [(u/the-id field)]))
@@ -761,22 +781,6 @@
           existing)))))
 
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
-
-(defn scan-time
-  "The time to record for a scan that starts now, for [[record-scans!]]: the time of the application database, whose
-  clock also stamps `last_used_at`."
-  []
-  (warehouse-schema.db/app-db-now))
-
-(mu/defn record-scans! :- :nil
-  "Record that a scan that started at `scanned-at`, from [[scan-time]], read the values of the Fields with `field-ids`
-  from the warehouse, on their full FieldValues. The time is the start of the scan, not its end, so a use of a list
-  while the scan runs is after the scan. It does not change their values, so it publishes no update event."
-  [field-ids  :- [:sequential ::lib.schema.id/field]
-   scanned-at :- ms/TemporalInstant]
-  (when (seq field-ids)
-    (warehouse-schema.db/stamp-full-field-values-scanned! field-ids scanned-at))
-  nil)
 
 (mu/defn delete-field-values! :- :nil
   "Delete the FieldValues with `ids` in one transaction, publishing their delete event."

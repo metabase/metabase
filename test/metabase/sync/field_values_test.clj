@@ -850,3 +850,17 @@
       (testing "the setting adds one statement to the scan of a group of Tables: the read of the latest uses"
         (is (= (mapv inc (analyze.tu/statement-counts-by-tables list-or-plain-field (prepare! false) scan!))
                (analyze.tu/statement-counts-by-tables list-or-plain-field (prepare! true) scan!)))))))
+
+(deftest ^:synchronized list-read-on-use-records-its-scan-test
+  (testing "a list that a use reads from the warehouse records that read, so the next used-lists scan does not read it again"
+    (mt/dataset test-data
+      (let [field-id (mt/id :venues :price)
+            fv       #(t2/select-one :model/FieldValues :field_id field-id :type :full)]
+        (t2/delete! :model/FieldValues :field_id field-id)
+        (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id))
+        (is (some? (:last_scanned_at (fv))))
+        (is (not (t/after? (:last_used_at (fv)) (:last_scanned_at (fv)))))
+        (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:scan-only-used-field-values true}}
+          (t2/update! (t2/table-name :model/FieldValues) {:id (:id (fv))} {:values "[\"XX\"]"})
+          (sync.field-values/update-field-values! (mt/id))
+          (is (= ["XX"] (:values (fv)))))))))
