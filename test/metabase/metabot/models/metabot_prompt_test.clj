@@ -19,14 +19,18 @@
           (testing "update of the Card recomputes the model"
             (metabot-prompt/update-metabot-prompts! [{:id id :card_id model-id}])
             (is (= :model (t2/select-one-fn :model :model/MetabotPrompt :id id))))
-          (testing "update of the model alone is a 400"
+          (testing "a model in an update is ignored"
+            (metabot-prompt/update-metabot-prompts! [{:id id :model :metric :prompt "How many now?"}])
+            (is (=? {:model :model :prompt "How many now?"}
+                    (t2/select-one :model/MetabotPrompt :id id))))
+          (testing "a direct write of the model alone is a 400"
             (is (=? {:status-code 400}
-                    (try (metabot-prompt/update-metabot-prompts! [{:id id :model :metric}])
+                    (try (t2/update! :model/MetabotPrompt :id id {:model :metric})
                          (catch clojure.lang.ExceptionInfo e (ex-data e)))))
             (is (= :model (t2/select-one-fn :model :model/MetabotPrompt :id id)))))))))
 
 (deftest update-repeating-card-after-type-change-test
-  (testing "an update that repeats the Card, as a SerDes import does, succeeds after the Card changed type"
+  (testing "an update that repeats the Card succeeds after the Card changed type"
     (mt/with-temp [:model/Card    {card-id :id}    {:type :model}
                    :model/Metabot {metabot-id :id} {:name "Test Metabot"}]
       (mt/with-model-cleanup [:model/MetabotPrompt]
@@ -49,6 +53,16 @@
                                                    {:id id :card_id metric-id}])
           (is (=? {:card_id metric-id :model :metric}
                   (t2/select-one :model/MetabotPrompt :id id))))))))
+
+(deftest listing-reads-the-current-card-type-test
+  (testing "the listing gives a prompt the current type of its Card, not the stored model"
+    (mt/with-temp [:model/Card    {card-id :id}    {:type :metric}
+                   :model/Metabot {metabot-id :id} {:name "Test Metabot"}]
+      (mt/with-model-cleanup [:model/MetabotPrompt]
+        (metabot-prompt/create-metabot-prompts! [{:metabot_id metabot-id :card_id card-id :prompt "How many?"}])
+        (t2/update! :model/Card :id card-id {:type :model})
+        (is (=? [{:model_id card-id :model :model}]
+                (metabot.db/prompts metabot-id nil nil false nil nil)))))))
 
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
   (mt/with-temp [:model/Card    {card-id :id}    {:type :metric}

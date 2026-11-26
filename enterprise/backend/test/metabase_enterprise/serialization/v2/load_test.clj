@@ -3163,6 +3163,46 @@
             (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
             (is (= 1 (t2/count :model/Metabot :entity_id @metabot-eid)))))))))
 
+(deftest metabot-prompt-reimport-with-another-model-test
+  (testing "reimporting a prompt whose exported model differs from the one the import derived keeps the derived one"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db      (ts/create! :model/Database :name "my-db")
+                table   (ts/create! :model/Table :name "orders" :db_id (:id db))
+                _       (ts/create! :model/Field :name "id" :table_id (:id table))
+                user    (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+                card    (ts/create! :model/Card
+                                    :collection_id nil
+                                    :creator_id    (:id user)
+                                    :name          "Orders Metric"
+                                    :type          :metric
+                                    :dataset_query (mbql5-query (:id db) (:id table))
+                                    :display       :scalar)
+                metabot (ts/create! :model/Metabot :name "Test Bot" :use_verified_content false)]
+            (ts/create! :model/MetabotPrompt
+                        :metabot_id (:id metabot)
+                        :card_id    (:id card)
+                        :model      :metric
+                        :prompt     "How many orders?")
+            ;; An export whose prompt model no longer matches its Card, as a stale prompt on the source gives. Prompts
+            ;; export nested under their Metabot.
+            (reset! serialized (mapv (fn [entity]
+                                       (cond-> entity
+                                         (= "Metabot" (-> entity :serdes/meta last :model))
+                                         (update :prompts (partial mapv #(assoc % :model "model")))))
+                                     (serdes.extract/extract {:include-h2? true :include-metabot true})))
+            (is (=? [{:prompts [{:model "model"}]}]
+                    (filter #(= "Test Bot" (:name %)) @serialized)))))
+        (ts/with-db dest-db
+          (ts/create! :model/User :first_name "Tom" :last_name "Scholz" :email "tom@bost.on")
+          (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
+          (is (= :metric (t2/select-one-fn :model :model/MetabotPrompt :prompt "How many orders?")))
+          (testing "loading again succeeds"
+            (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
+            (is (=? [{:model :metric}]
+                    (t2/select :model/MetabotPrompt :prompt "How many orders?")))))))))
+
 (deftest channel-minimal-required-properties-test
   (testing "Channel deserialized with only: name, type, details"
     (let [serialized (atom nil)]
