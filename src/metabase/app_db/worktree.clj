@@ -2,6 +2,7 @@
   "The remote sync worktree a thread works in, whose id the app DB rows it inserts through a model carry in
   `worktree_id`."
   (:require
+   [metabase.app-db.connection :as mdb.connection]
    [metabase.config.core :as config]
    [metabase.funnysql.core :as funnysql]
    [metabase.funnysql.schema :as funnysql.schema]
@@ -89,6 +90,6 @@
   production still goes through the sandbox with no options so every query keeps to its restrictions."
   [query :- ::funnysql.schema/query]
   (case (if @worktree-tables (:type *scope*) :all)
-    :all      (if config/is-prod? query (funnysql/sandbox-query query {}))
-    :main     (funnysql/sandbox-query query (main-options))
-    :worktree (funnysql/sandbox-query query (worktree-options (:worktree-id *scope*)))))
+    :all      (if config/is-prod? query (funnysql/sandbox-query (mdb.connection/db-type) query {}))
+    :main     (funnysql/sandbox-query (mdb.connection/db-type) query (main-options))
+    :worktree (funnysql/sandbox-query (mdb.connection/db-type) query (worktree-options (:worktree-id *scope*)))))

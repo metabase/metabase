@@ -57,12 +57,13 @@ their tables plus `worktree_id`.
 
 ## Models and upserts
 
-A model of a table with `worktree_id` derives `:hook/worktree-id` (`metabase.models.interface`): an insert sets
-`worktree_id` (callers never pass it), an update that changes it throws, and rows read through the model leave it out,
-so no model or API schema lists it. A table with `worktree_id` and no model gets one in `<module>/models/<table>.clj`.
+A model of a table with `worktree_id` derives `:hook/worktree-id` (`metabase.models.interface`), which marks the table
+for the sandbox and leaves `worktree_id` out of the rows read through the model, so no model or API schema lists it.
+The sandbox writes `worktree_id` into every inserted row (callers never pass it) and throws when a write sets another
+value. A table with `worktree_id` and no model gets one in `<module>/models/<table>.clj`.
 
-A raw upsert runs no hook: it lists `worktree_id` among its key columns (`ON CONFLICT` names the whole unique key) and
-sets it in the row.
+A raw upsert lists `worktree_id` among its key columns, since `ON CONFLICT` names the whole unique key; the sandbox
+writes its value.
 
 ## Scope and sandbox
 

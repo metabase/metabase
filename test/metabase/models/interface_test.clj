@@ -398,7 +398,7 @@
                        (hydrate (cards 5)))))))))
 
 (def ^:private test-worktree-branch
-  "The branch of the worktree the worktree hook tests create."
+  "The branch of the worktree the worktree insert and update tests create."
   "interface-test-worktree")
 
 (defn- stored-worktree-id
@@ -422,7 +422,7 @@
   (mdb/with-worktree-scope scope
     (:id (first (timeline/create-timelines! [{:name timeline-name :creator_id (mt/user->id :rasta)}])))))
 
-(deftest worktree-hook-sets-worktree-id-from-scope-test
+(deftest insert-sets-worktree-id-from-scope-test
   (do-with-test-worktree!
    (fn [worktree-id]
      (doseq [[scope expected] [[{:type :main} mdb/default-worktree-id]
@@ -436,17 +436,14 @@
                (mdb/with-worktree-scope {:type :all}
                  (t2/delete! :timeline :id timeline-id))))))))))
 
-(deftest worktree-hook-refuses-worktree-id-change-test
+(deftest update-refuses-worktree-id-change-test
   (do-with-test-worktree!
    (fn [worktree-id]
      (let [timeline-id (create-timeline! {:type :main} "Worktree hook update timeline")]
        (try
-         (testing "update changing worktree_id throws a 400"
-           (is (= 400 (:status-code (try
-                                      (t2/update! :model/Timeline :id timeline-id {:worktree_id worktree-id})
-                                      nil
-                                      (catch clojure.lang.ExceptionInfo e
-                                        (ex-data e)))))))
+         (testing "update changing worktree_id throws"
+           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"sandbox column :worktree_id"
+                                 (t2/update! :model/Timeline :id timeline-id {:worktree_id worktree-id}))))
          (testing "stored worktree_id is unchanged"
            (is (= mdb/default-worktree-id (stored-worktree-id timeline-id))))
          (finally

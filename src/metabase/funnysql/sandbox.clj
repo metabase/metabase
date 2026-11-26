@@ -66,9 +66,12 @@
   (or alias (keyword (identifier-name table))))
 
 (defn- in-filter
-  "The condition that the column of the row filter `f`, of the relation named `relation`, holds its value."
-  [{:keys [column value]} relation]
-  [:= (u/qualified-key relation column) value])
+  "The condition that the column of the row filter `f`, of the relation named `relation`, holds its value, read through
+  `+ 0` in a statement that locks the rows it reads on MySQL, so that it locks only the rows its own index selects, not
+  every row the filter keeps."
+  [ctx {:keys [column value]} relation]
+  (let [column (u/qualified-key relation column)]
+    [:= (if (and (= :mysql (:engine ctx)) (:locking? ctx)) [:+ column [:inline 0]] column) value]))
 
 (declare query-map expr)
 
@@ -126,7 +129,7 @@
   (let [[source alias] (item-parts item)]
     (when (keyword? source)
       (when-let [f (row-filter ctx (or (substitute ctx source) source))]
-        (in-filter f (relation-name source alias))))))
+        (in-filter ctx f (relation-name source alias))))))
 
 (defn- target-condition
   "The condition that a row of the write target `item`, which no substitution applies to, passes the row filter of
@@ -134,7 +137,7 @@
   [ctx item]
   (let [[table alias] (item-parts item)]
     (check-table table)
-    (some-> (row-filter ctx table) (in-filter (relation-name table alias)))))
+    (some-> (row-filter ctx table) (as-> f (in-filter ctx f (relation-name table alias))))))
 
 (defn- clause-from
   "The `:from` clause `from` with every item read through [[read-item]]."
@@ -277,13 +280,13 @@
 
 (defn- guard-assignments
   "The upsert `assignments` of the target named `relation`, each keeping the stored value of a row the filter `f`
-  leaves out, so that a conflict with such a row leaves it as it is."
-  [f relation assignments]
+  leaves out, so that a conflict with such a row leaves it as it is, in the sandbox context `ctx`."
+  [ctx f relation assignments]
   (check-assignments f assignments)
   (reduce-kv (fn [acc k v]
                (when-not (simple-keyword? k)
                  (throw (ex-info (format "sandbox-query doesn't support the upsert column %s" (pr-str k)) {:column k})))
-               (assoc acc k [:case (in-filter f relation) v :else (u/qualified-key relation k)]))
+               (assoc acc k [:case (in-filter ctx f relation) v :else (u/qualified-key relation k)]))
              assignments
              assignments))
 
@@ -379,7 +382,7 @@
   (let [[table columns-path subquery] (insert-parts q)
         _                             (check-table table)
         f                             (row-filter ctx table)
-        guard                         #(guard-assignments f (relation-name table nil) %)]
+        guard                         #(guard-assignments ctx f (relation-name table nil) %)]
     (cond
       (nil? f)
       q
@@ -431,10 +434,17 @@
                :values  rows
                :key     (cond-> ks (not-any? #(filter-column? f %) ks) (conj (:column f))))))))
 
+(defn- locking?
+  "Whether the query map `q` locks the rows it reads: a write, or a SELECT ... FOR UPDATE or FOR SHARE."
+  [q]
+  (boolean (some #(contains? q %) [:insert-into :update :delete-from :merge-into :for])))
+
 (defn- query-map
-  "The query or clause map `q` with every clause, and its insert, update, delete or merge target, sandboxed by `ctx`."
+  "The query or clause map `q` with every clause, and its insert, update, delete or merge target, sandboxed by `ctx`,
+  whose queries a locking `q` marks as locking."
   [ctx q]
-  (let [q (add-read-conditions ctx (reduce-kv (fn [q k v] (assoc q k (clause ctx k v))) q q))]
+  (let [ctx (cond-> ctx (locking? q) (assoc :locking? true))
+        q   (add-read-conditions ctx (reduce-kv (fn [q k v] (assoc q k (clause ctx k v))) q q))]
     (cond
       (:insert-into q) (query-insert ctx q)
       (:update q)      (query-target ctx q :update)
@@ -443,17 +453,17 @@
       :else            q)))
 
 (defn- context
-  "The sandbox context of the options `opts`, keyed by lower-cased table names."
-  [{:keys [table-substitutions row-filters]}]
-  {:table-substitutions (update-keys (or table-substitutions {}) identifier-key)
+  "The sandbox context of the options `opts` for the app DB `engine`, keyed by lower-cased table names."
+  [engine {:keys [table-substitutions row-filters]}]
+  {:engine              engine
+   :table-substitutions (update-keys (or table-substitutions {}) identifier-key)
    :row-filters         (update-keys (or row-filters {}) identifier-key)})
 
 (mu/defn sandbox-query :- ::funnysql.schema/query
   "`query` reading each table of `:table-substitutions` in place of its key, under the name the rest of the query uses,
   and reading, updating, deleting and inserting only the rows of each table of `:row-filters` whose column holds its
-  value, throwing for a query it cannot rewrite that way."
-  [query :- ::funnysql.schema/query
-   opts  :- ::funnysql.schema/sandbox.options]
-  (if (and (empty? (:table-substitutions opts)) (empty? (:row-filters opts)))
-    query
-    (query-map (context opts) query)))
+  value on the app DB `engine`, throwing for a query it cannot rewrite that way, even with no options."
+  [engine :- ::funnysql.schema/engine
+   query  :- ::funnysql.schema/query
+   opts   :- ::funnysql.schema/sandbox.options]
+  (query-map (context engine opts) query))
