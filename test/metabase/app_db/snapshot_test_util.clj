@@ -311,9 +311,16 @@
   (or @changeset-index-cache
       (reset! changeset-index-cache (zipmap (map first (changesets conn)) (range)))))
 
+(defn checkpoint-versions
+  "Available checkpoints for this dialect, newest first."
+  [dialect]
+  (if (= :mysql dialect)
+    [snapshot-version "v64" "v56"]
+    [snapshot-version]))
+
 (defn version-for-start
   "The newest available snapshot strictly before `start-id`, or nil to replay from scratch.
-  MySQL also has a v56 checkpoint for tests of migrations older than v65. Encrypted fixtures replay from scratch."
+  MySQL also has checkpoints for tests of migrations older than v65. Encrypted fixtures replay from scratch."
   [^java.sql.Connection conn db-type start-id]
   (when (matches-environment?)
     (let [dialect (flavor conn db-type)
@@ -323,4 +330,4 @@
                 (when-let [boundary (idx (through-changeset-id version))]
                   (when (and (< boundary start) (snapshot-resource version dialect))
                     version)))
-              (cond-> [snapshot-version] (= :mysql dialect) (conj "v56")))))))
+              (checkpoint-versions dialect))))))

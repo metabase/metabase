@@ -2,8 +2,8 @@
   "Writes the checked-in snapshots that [[metabase.app-db.snapshot-test-util/load-snapshot!]] reads.
 
   To regenerate, start a REPL with the `:dev` and `:test` aliases and Docker running, and call [[generate!]] once for
-  each of [[metabase.app-db.snapshot-test-util/flavors]]. For the earlier MySQL migration-test checkpoint, call
-  `(generate! :mysql \"v56\")`.
+  each of [[metabase.app-db.snapshot-test-util/flavors]]. For the earlier MySQL migration-test checkpoints, call
+  `(generate! :mysql \"v56\")` or `(generate! :mysql \"v64\")`.
   Regenerate after editing a changeset or custom migration the snapshot already records, after changing the dumpers,
   or when moving the boundary.
   A changeset that lands before the boundary after the snapshot was cut needs no regeneration: it runs after the

@@ -131,7 +131,7 @@
     (if-not (regeneration-test-enabled?)
       (log/warn "MB_APP_DB_SNAPSHOT_REGENERATION_TEST is not set; skipping app DB snapshot regeneration check")
       (doseq [flavor (sort snapshot/flavors)
-              version (cond-> [snapshot/snapshot-version] (= flavor :mysql) (conj "v56"))]
+              version (snapshot/checkpoint-versions flavor)]
         (testing (str (name flavor) " " version)
           (let [checked-in (io/resource (snapshot/resource-path version flavor "sql"))]
             (is (some? checked-in)
