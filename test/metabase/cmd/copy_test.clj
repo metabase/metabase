@@ -121,11 +121,11 @@
         (jdbc/execute! {:datasource source}
                        (sql/format {:insert-into (t2/table-name :model/MetabotLlmCall)
                                     :columns     [:attempt :started_at :status :usage_log_id]
-                                    :values      [[1 [:now] "success" 999]]}
+                                    :values      [[1 [:now] "ok" 999]]}
                                    {:quoted false}))
         (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY TRUE"])
         (copy/copy! :h2 source :h2 target)
-        (is (= [{:attempt 1, :status "success", :usage_log_id nil}]
+        (is (= [{:attempt 1, :status "ok", :usage_log_id nil}]
                (jdbc/query {:datasource target} (sql/format {:select [:attempt :status :usage_log_id]
                                                              :from   [(t2/table-name :model/MetabotLlmCall)]}
                                                             {:quoted false}))))
