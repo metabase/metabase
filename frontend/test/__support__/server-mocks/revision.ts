@@ -11,7 +11,11 @@ export function setupEntityRevisionsEndpoint(
   id: number | string,
   revisions: Revision[],
 ) {
-  fetchMock.get(`path:/api/revision?entity=${entity}&id=${id}`, revisions);
+  // `path:` ignores the query string, so the entity and id are matched as query
+  // parameters. A request for another entity or id stays unmatched.
+  fetchMock.get("path:/api/revision", revisions, {
+    query: { entity, id: String(id) },
+  });
 }
 
 export function setupRevertRevisionEndpoint(revision: Revision) {
