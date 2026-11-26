@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { getIcon, screen, waitFor } from "__support__/ui";
+import { act, getIcon, screen, waitFor } from "__support__/ui";
 import {
   createMockCollection,
   createMockTokenFeatures,
@@ -161,23 +161,39 @@ describe("CollectionMenu", () => {
         collection: createMockCollection({ can_write: true }),
         isAdmin: true,
         numberOfStaleItems: 10,
+        seenBadges: ["clean-stale-items"],
       });
 
+      await screen.findByText("Recommended");
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls(
+            "path:/api/user-key-value/namespace/indicator-menu/key/collection-menu",
+            { method: "GET" },
+          ),
+        ).toHaveLength(1);
+        expect(
+          fetchMock.callHistory.calls(
+            "path:/api/user-key-value/namespace/user_acknowledgement/key/clean-stale-items",
+            { method: "GET" },
+          ),
+        ).toHaveLength(1);
+      });
+      await act(async () => {
+        await fetchMock.callHistory.flush(true);
+      });
       await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
+        await screen.findByRole("menuitem", { name: /Clear out unused items/ }),
+      ).toHaveTextContent("Recommended");
+      expect(
         fetchMock.callHistory.calls(
-          "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
+          "http://localhost/api/user-key-value/namespace/indicator-menu/key/collection-menu",
           { method: "PUT" },
         ),
       ).toHaveLength(0);
-
-      await waitFor(() =>
-        expect(
-          screen.getByRole("menuitem", { name: /Clear out unused items/ }),
-        ).toHaveTextContent("Recommended"),
-      );
     });
 
     it("should recommend cleaning collections to non-admins with write access", async () => {
