@@ -18,6 +18,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
+  PRODUCTS_ID,
   createOrdersCreatedAtDatasetColumn,
   createOrdersDiscountDatasetColumn,
   createOrdersIdDatasetColumn,
@@ -298,6 +299,32 @@ describe("SummarizeSidebar", () => {
     expect(
       within(getUnpinnedColumnList()).getAllByText("Created At"),
     ).toHaveLength(2);
+  });
+
+  it("should not show the binning in the name of a pinned binned breakout (metabase#57697)", async () => {
+    await setup({
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+            breakouts: [
+              { type: "column", name: "CATEGORY" },
+              {
+                type: "column",
+                name: "PRICE",
+                binning: { strategy: "default" },
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    const pinnedColumnList = getPinnedColumnList();
+    expect(screen.queryByText("Price: Auto binned")).not.toBeInTheDocument();
+    expect(within(pinnedColumnList).getByText("Category")).toBeInTheDocument();
+    expect(within(pinnedColumnList).getByText("Price")).toBeInTheDocument();
   });
 
   it("should show multiple breakouts of the same column", async () => {

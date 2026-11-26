@@ -14,6 +14,16 @@ summary: Changes to the Metabase driver interface, listed by release.
   for a table whose token is not known, and sync reads it as before. Sync still reads each table at least once in the
   period of the `change-token-full-pass-days` setting (7 days by default, settable for each database).
 
+- `metabase.driver.sql-jdbc.sync/sample-json-row-honeysql` `[driver table-identifier json-field-identifiers
+  pk-identifiers]` -- new multimethod that returns the query sync uses to sample rows of JSON columns, to find their
+  nested field columns. Each JSON value must come back as JSON text. Override it if the driver reads JSON values as
+  something other than text, or if the default query (a join on the first and last PKs) is slow for the database.
+
+- New driver feature `:stage-ctes/nest-single-row-aggregation`. Drivers that use `:stage-ctes` can opt in to put an
+  aggregation with no breakouts over a previous stage in its own stage CTE. This is for databases like Postgres that
+  do not use an index for `MIN`/`MAX` when the aggregation is in a `SELECT` that has a `WITH` clause. The default is
+  `false`.
+
 - While a data test pins the clock (`metabase.query-processor.timezone/with-pinned-now`),
   `metabase.driver.sql.query-processor/current-datetime-honeysql-form` dispatches to one method for every driver. It
   calls the driver's own method to learn the type of its current-time form, and returns a literal of the pinned moment
@@ -115,9 +125,9 @@ summary: Changes to the Metabase driver interface, listed by release.
     (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) ["someClassNameProperty"]))
   ```
 
-- New driver features `:stage-ctes` and `:stage-ctes/nested`. These let drivers opt in to compiling multi-stage queries
-  with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria in the
-  comment for these features in `metabase.driver/features`.
+- New driver feature `:stage-ctes`. It lets drivers opt in to compiling multi-stage queries with CTEs instead of nested
+  subselects. Drivers should only do this if they satisfy all of the criteria in the comment for this feature in
+  `metabase.driver/features`.
 
 - `driver/native-query-table-refs` has been removed. Nothing calls it anymore, so drivers that implement it should
   delete their `defmethod`, which no longer compiles.
