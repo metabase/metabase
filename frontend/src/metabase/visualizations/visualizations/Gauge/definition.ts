@@ -9,11 +9,10 @@ import {
   columnSettings,
   getDefaultSize,
   getMinSize,
-  segmentIsValid,
 } from "metabase/viz-core";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
-import { isGaugeSegmentsArray } from "./types";
+import { getValidGaugeSegments } from "./types";
 
 export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Gauge`,
@@ -50,9 +49,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       // currently not exposed in settings, just computed from gauge.segments
       getDefault(_series, vizSettings) {
         const gaugeSegments = vizSettings["gauge.segments"];
-        const segments = isGaugeSegmentsArray(gaugeSegments)
-          ? gaugeSegments.filter((segment) => segmentIsValid(segment))
-          : [];
+        const segments = getValidGaugeSegments(gaugeSegments);
         const values = [
           ...segments.map((segment) => segment.max),
           ...segments.map((segment) => segment.min),
