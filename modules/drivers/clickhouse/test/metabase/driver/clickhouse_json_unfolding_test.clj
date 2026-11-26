@@ -194,3 +194,22 @@
                                              [:type/Text    "{\"a\": \"x\"}"                "x"]]]
             (testing (str base-type " " json)
               (is (= expected (value base-type json))))))))))
+
+(deftest ^:synchronized json-unfolding-of-field-synced-before-json-support-test
+  (testing "a JSON column synced before JSON support keeps its paths on every later sync"
+    (mt/test-driver :clickhouse
+      (do-with-json-table!
+       (fn [table]
+         (let [nfc-paths #(t2/select-fn-set :nfc_path :model/Field
+                                            :table_id (:id table) :active true :nfc_path [:not= nil])
+               paths     (nfc-paths)]
+           (is (= 6 (count paths)))
+           ;; the field as a sync before JSON support made it
+           (t2/delete! :model/Field :table_id (:id table) :nfc_path [:not= nil])
+           (t2/update! :model/Field {:table_id (:id table) :name "payload"}
+                       {:base_type :type/* :effective_type :type/* :json_unfolding false :visibility_type :normal})
+           (dotimes [_ 2]
+             (sync/sync-database! (:id (mt/db)))
+             (is (=? {:base_type :type/JSON :json_unfolding true :visibility_type :details-only}
+                     (t2/select-one :model/Field :table_id (:id table) :name "payload")))
+             (is (= paths (nfc-paths))))))))))
