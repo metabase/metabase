@@ -24,6 +24,11 @@ summary: Changes to the Metabase driver interface, listed by release.
   `metabase.driver/table-random-sample`. A driver with its own `apply-top-level-clause` for `:source-table` must call
   the new method itself. The Postgres and SQL Server drivers use it.
 
+- A query stage's `:table-sample` can also be `{:positions {:ranges [[from to] ...] :every n :remainder r}}`: the
+  rows at the same ranges of positions inside each storage part of the table, every `n`th of them. The schema takes
+  exactly one kind of sample. `table-sample->honeysql` gets it too, and must throw for a kind the driver does not
+  support. The ClickHouse driver compiles it to a `PREWHERE` on `_part_offset`.
+
 - `metabase.driver.sql-jdbc.sync/sample-json-row-honeysql` `[driver table-identifier json-field-identifiers
   pk-identifiers]` -- new multimethod that returns the query sync uses to sample rows of JSON columns, to find their
   nested field columns. Each JSON value must come back as JSON text. Override it if the driver reads JSON values as
