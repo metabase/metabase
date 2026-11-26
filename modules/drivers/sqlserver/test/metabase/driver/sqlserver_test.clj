@@ -2055,3 +2055,32 @@
            (is (nil? (get-in answer [:fields (:id a)])))
            (testing "SQL Server counts the changes for each statistic, so the key's statistic is still fresh"
              (is (= 1000 (get-in answer [:fields (:id id) :fingerprint :global :distinct-count]))))))))))
+
+(deftest table-statistics-of-index-keys-test
+  (mt/test-driver :sqlserver
+    (let [database (lib.metadata/database (mt/metadata-provider))
+          spec     (sql-jdbc.conn/db->pooled-connection-spec database)]
+      (jdbc/execute! spec ["DROP TABLE IF EXISTS dbo.kb_keys"])
+      (jdbc/execute! spec [(str "CREATE TABLE dbo.kb_keys (id INT NOT NULL, tenant INT NOT NULL, email VARCHAR(20) NULL,"
+                                " CONSTRAINT kb_keys_pk PRIMARY KEY CLUSTERED (tenant, id))")])
+      (try
+        (jdbc/execute! spec [(str "INSERT INTO dbo.kb_keys SELECT n, n % 4, CASE WHEN n % 4 = 0 THEN NULL"
+                                  " ELSE CONCAT('e', n) END"
+                                  " FROM (SELECT TOP 1000 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS n"
+                                  "       FROM sys.all_objects a CROSS JOIN sys.all_objects b) x")])
+        (jdbc/execute! spec ["CREATE UNIQUE INDEX kb_keys_email ON dbo.kb_keys (email) WHERE email IS NOT NULL"])
+        (jdbc/execute! spec ["UPDATE STATISTICS dbo.kb_keys WITH FULLSCAN"])
+        (mt/with-temp [:model/Table table  {:db_id (mt/id) :name "kb_keys" :schema "dbo"}
+                       :model/Field id     {:table_id (:id table) :name "id" :base_type :type/Integer}
+                       :model/Field tenant {:table_id (:id table) :name "tenant" :base_type :type/Integer}
+                       :model/Field email  {:table_id (:id table) :name "email" :base_type :type/Text}]
+          (let [answer (driver/table-statistics :sqlserver database table [id tenant email] {:max-cost :metadata})]
+            (testing "a clustered key's statistic is of its first key column, not of the first column of the table"
+              (is (= 4 (get-in answer [:fields (:id tenant) :fingerprint :global :distinct-count])))
+              (is (nil? (get-in answer [:fields (:id id)]))))
+            (testing "a filtered statistic, which covers only some rows, is not used"
+              (is (nil? (get-in answer [:fields (:id email)]))))
+            (testing "the row count of the table, from its partitions"
+              (is (= 1000 (get-in answer [:row-count :value]))))))
+        (finally
+          (jdbc/execute! spec ["DROP TABLE IF EXISTS dbo.kb_keys"]))))))

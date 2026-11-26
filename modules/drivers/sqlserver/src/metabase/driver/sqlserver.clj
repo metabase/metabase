@@ -1078,8 +1078,12 @@
               [(str "SELECT c.name AS column_name, sp.rows, sp.rows_sampled, sp.modification_counter,"
                     " x.distinct_count, x.null_rows"
                     " FROM sys.stats s"
+                    ;; the first key column of an index: for a clustered index, `stats_column_id` follows the order
+                    ;; of the table's columns, not of the key
+                    " LEFT JOIN sys.index_columns ic ON ic.object_id = s.object_id AND ic.index_id = s.stats_id"
+                    " AND ic.key_ordinal = 1"
                     " JOIN sys.stats_columns sc ON sc.object_id = s.object_id AND sc.stats_id = s.stats_id"
-                    " AND sc.stats_column_id = 1"
+                    " AND ((ic.column_id IS NULL AND sc.stats_column_id = 1) OR sc.column_id = ic.column_id)"
                     " JOIN sys.columns c ON c.object_id = sc.object_id AND c.column_id = sc.column_id"
                     " CROSS APPLY sys.dm_db_stats_properties(s.object_id, s.stats_id) sp"
                     " CROSS APPLY (SELECT SUM(CASE WHEN h.range_high_key IS NULL THEN 0"
@@ -1087,9 +1091,22 @@
                     "                     SUM(CASE WHEN h.range_high_key IS NULL THEN h.equal_rows ELSE 0 END)"
                     "                     AS null_rows"
                     "              FROM sys.dm_db_stats_histogram(s.object_id, s.stats_id) h) x"
-                    " WHERE s.object_id = OBJECT_ID(QUOTENAME(?) + '.' + QUOTENAME(?))")
+                    ;; a filtered statistic covers only some of the rows
+                    " WHERE s.object_id = OBJECT_ID(QUOTENAME(?) + '.' + QUOTENAME(?)) AND s.has_filter = 0")
                (:schema table) (:name table)]
               {:timeout table-statistics-timeout-seconds}))
+
+(defn- table-row-count
+  "The rows of `table`, from its heap or clustered index partitions in `sys.partitions`."
+  [database table]
+  (some-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                      [(str "SELECT SUM(p.rows) AS row_count FROM sys.partitions p"
+                            " WHERE p.object_id = OBJECT_ID(QUOTENAME(?) + '.' + QUOTENAME(?)) AND p.index_id IN (0, 1)")
+                       (:schema table) (:name table)]
+                      {:timeout table-statistics-timeout-seconds})
+          first
+          :row_count
+          long))
 
 (defn- fresh-statistic?
   "Whether a statistic has rows and at most [[max-statistics-modified-fraction]] of them changed since it was updated."
@@ -1117,7 +1134,7 @@
 (defmethod driver/table-statistics :sqlserver
   [_driver database table fields {:keys [want]}]
   (let [want?     #(or (empty? want) (contains? want %))
-        rows      (when (or (want? :fingerprint) (want? :row-count))
+        rows      (when (want? :fingerprint)
                     (filterv fresh-statistic? (statistics-rows database table)))
         origin    {:source :catalog :kind :estimate}
         by-name   (update-vals (group-by :column_name rows) #(apply max-key (fn [r] (or (:rows_sampled r) 0)) %))
@@ -1129,7 +1146,7 @@
                                       (when (seq (:global fingerprint))
                                         [id {:fingerprint fingerprint :origin origin}])))))
                           fields))
-        row-count (some->> (seq rows) (map :rows) (reduce max 0) long)]
+        row-count (when (want? :row-count) (table-row-count database table))]
     (cond-> {}
       (and row-count (want? :row-count)) (assoc :row-count {:value row-count :origin origin})
       (seq by-field)                     (assoc :fields by-field))))
