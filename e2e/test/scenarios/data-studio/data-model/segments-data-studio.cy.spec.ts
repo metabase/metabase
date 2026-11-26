@@ -88,6 +88,26 @@ describe(
         .findByText(/Product → Category is Gadget/i)
         .should("be.visible");
 
+      cy.log("store a description change and a filter change separately");
+      cy.url().then((url) => {
+        const segmentId = Number(url.split("/").pop());
+        cy.request("PUT", `/api/segment/${segmentId}`, {
+          description: "Updated description",
+          revision_message: "Updated from Data Studio",
+        });
+        cy.request("PUT", `/api/segment/${segmentId}`, {
+          revision_message: "Updated from Data Studio",
+          definition: {
+            type: "query",
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": ORDERS_ID,
+              filter: [">", ["field", ORDERS.TOTAL, null], 100],
+            },
+          },
+        });
+      });
+
       cy.log("the revision history shows the stored revisions");
       SegmentEditor.getRevisionHistoryTab().click();
       SegmentRevisionHistory.get().within(() => {
@@ -97,9 +117,19 @@ describe(
         cy.findByText(/renamed the segment/i)
           .scrollIntoView()
           .should("be.visible");
-        // The revision pill names the column without the join prefix that
-        // the editor shows ("Product → Category is Gadget").
+        cy.findByText(/updated the description/i)
+          .scrollIntoView()
+          .should("be.visible");
+        cy.findByText(/changed the filter definition/i)
+          .scrollIntoView()
+          .should("be.visible");
+        // The pills of the creation and the filter change, built from the
+        // definitions the backend stored. They name the column without the
+        // join prefix that the editor shows ("Product → Category is Gadget").
         cy.findByText("Category is Gadget")
+          .scrollIntoView()
+          .should("be.visible");
+        cy.findByText("Total is greater than 100")
           .scrollIntoView()
           .should("be.visible");
       });
@@ -120,7 +150,7 @@ describe(
         .should("be.visible");
       SegmentList.get()
         .findByTestId("list-item-description")
-        .should("contain", "Category is Gadget");
+        .should("contain", "Filtered by Total is greater than 100");
 
       cy.log("remove the segment");
       SegmentList.getSegment("Gadget Orders Updated").click();
@@ -190,7 +220,9 @@ describe(
         new RegExp(`/data-studio/library/tables/${ORDERS_ID}/segments/\\d+$`),
       );
 
-      cy.log("the stored segment is in its published table's collection");
+      cy.log(
+        "after a reload the segment keeps its name and filter, and the breadcrumb shows the table's collection",
+      );
       cy.reload();
       SegmentEditor.get()
         .findByDisplayValue("Premium Orders")
