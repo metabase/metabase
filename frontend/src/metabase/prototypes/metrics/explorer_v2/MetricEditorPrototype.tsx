@@ -1,5 +1,12 @@
 /* eslint-disable boundaries/element-types -- throwaway prototype: embeds the real Metric Explorer's parts. */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import cx from "classnames";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { useListMeasuresQuery } from "metabase/api";
 import { PillTabNavigation } from "metabase/common/components/PillTabNavigation";
@@ -10,8 +17,6 @@ import {
   PaneHeaderInput,
   PanelHeaderTitle,
 } from "metabase/common/data-studio/components/PaneHeader";
-import { BreakoutLegend } from "metabase/metrics-viewer/components/BreakoutLegend/BreakoutLegend";
-import { DimensionPickerSidebar } from "metabase/metrics-viewer/components/DimensionPickerSidebar";
 import {
   MetricsViewerEmptyState,
   MetricsViewerNoDimensionBreakoutEmptyState,
@@ -50,8 +55,10 @@ import type { Card as CardType, MathOperator } from "metabase-types/api";
 import { MetricTabContent, isRealTab } from "../MetricTabContent";
 
 import { DefinitionEditor, type PillActions } from "./DefinitionEditor";
+import { DimensionsPanel } from "./DimensionsPanel";
 import { DimensionsTab } from "./DimensionsTab";
 import { EXAMPLE_PARAM_PREFIX, ExamplesBar } from "./ExamplesBar";
+import S from "./Explorer.module.css";
 import { MetricsList, useMetrics } from "./MetricExplorerPrototype";
 import { MissingMeasures } from "./MissingMeasures";
 import type { BarItem } from "./TokenBar";
@@ -69,7 +76,6 @@ import {
   flattenDraft,
   metricDimensions,
   pillOf,
-  pillsOf,
   tableDimensions,
   tablesOf,
 } from "./dimensions";
@@ -92,6 +98,13 @@ import {
   isComplete,
   newKey,
 } from "./formula";
+import {
+  EMPTY_PANEL,
+  type PanelMapping,
+  type PanelModel,
+  panelModel,
+  scriptedMapping,
+} from "./panelModel";
 
 const TABS = ["About", "Overview", "Definition", "Dimensions", "Dependencies"];
 const NEW_TABS = ["Definition", "Dimensions"];
@@ -116,6 +129,7 @@ const EMPTY_DRAFT: MetricDraft = {
   formula: [],
   where: [],
   mapping: EMPTY_MAPPING,
+  panel: EMPTY_PANEL,
 };
 
 const COMPOSITES = EXAMPLES.filter(({ id }) => COMPOSITE_IDS.includes(id));
@@ -258,16 +272,17 @@ function initialDraftFor(
     formula: [{ key: newKey(), kind: "term", measureId: id, filters: [] }],
     where: [],
     mapping: EMPTY_MAPPING,
+    panel: EMPTY_PANEL,
   };
 }
 
 /** Comparable form of a draft, without the tokens' keys. */
-const signature = ({ name, formula, where, mapping }: MetricDraft) =>
+const signature = ({ name, formula, where, panel }: MetricDraft) =>
   JSON.stringify({
     name,
     formula: formula.map(({ key: _, ...token }) => token),
     where: where.map(({ filter }) => filter),
-    mapping,
+    panel,
   });
 
 /**
@@ -429,9 +444,26 @@ function MetricEditorPage({
   // Remounts the name field and the bar on Cancel, so they show `base` again.
   const [revision, setRevision] = useState(0);
   const [tab, setTab] = useState("Definition");
+  // Up here, not in the Explorer below: the Dimensions tab reads the same
+  // loaded measures the chart does.
+  const viewerState = useViewerState();
+
+  // The metric's real dimensions, and with them what the scripted filter bar
+  // may filter by.
+  const model = panelModel(draft, {
+    name: nameOf,
+    inner: resolver.inner,
+    definition: (id) =>
+      viewerState.definitions[toSourceId(id)]?.definition ?? null,
+  });
+  const scripted = {
+    ...draft,
+    mapping: scriptedMapping(model, draft, resolver),
+  };
+  const setPanel = (panel: PanelMapping) => setDraft((d) => ({ ...d, panel }));
 
   const isDirty = isNew || signature(draft) !== signature(base);
-  const filterProblem = findFilterProblem(draft, resolver);
+  const filterProblem = findFilterProblem(scripted, resolver);
   const problem =
     draft.name.trim() === ""
       ? "Give the metric a name"
@@ -515,10 +547,9 @@ function MetricEditorPage({
       />
       {tab === "Dimensions" ? (
         <DimensionsTab
-          pills={pillsOf(draft, resolver)}
-          dimensions={metricDimensions(draft, resolver)}
-          mapping={draft.mapping}
-          onChange={(mapping) => setDraft((d) => ({ ...d, mapping }))}
+          model={model}
+          mapping={draft.panel}
+          onChange={setPanel}
         />
       ) : (
         isRealTab(tab) &&
@@ -533,7 +564,11 @@ function MetricEditorPage({
       >
         <EmbeddedExplorer
           key={revision}
+          viewerState={viewerState}
           draft={draft}
+          scripted={scripted}
+          model={model}
+          onPanelChange={setPanel}
           items={items}
           nameOf={nameOf}
           resolver={resolver}
@@ -619,7 +654,11 @@ function toFormulaEntities(
  * Filter button. Everything under the bar is the Explorer's own.
  */
 function EmbeddedExplorer({
+  viewerState,
   draft,
+  scripted,
+  model,
+  onPanelChange,
   items,
   nameOf,
   resolver,
@@ -630,7 +669,12 @@ function EmbeddedExplorer({
   onChange,
 }: {
   pillActions: PillActions;
+  viewerState: ReturnType<typeof useViewerState>;
   draft: MetricDraft;
+  /** The draft as the scripted filter bar sees its dimensions. */
+  scripted: MetricDraft;
+  model: PanelModel;
+  onPanelChange: (panel: PanelMapping) => void;
   items: BarItem[];
   nameOf: (id: string) => string;
   resolver: Resolver;
@@ -639,7 +683,6 @@ function EmbeddedExplorer({
   filterProblem: FormulaProblem | null;
   onChange: (draft: MetricDraft) => void;
 }) {
-  const viewerState = useViewerState();
   const {
     initialLoadComplete,
     definitions,
@@ -650,7 +693,7 @@ function EmbeddedExplorer({
 
   // Math over measures only: metrics that are math themselves are replaced
   // by their parts, and each measure carries every filter that applies to it.
-  const flat = flattenDraft(draft, resolver);
+  const flat = flattenDraft(scripted, resolver);
   const sourceIds = [
     ...new Set(
       flat.flatMap((token) => (token.kind === "term" ? [token.measureId] : [])),
@@ -669,7 +712,7 @@ function EmbeddedExplorer({
   );
   const isLoaded = loadedCount === sourceIds.length;
 
-  const dimensions = metricDimensions(draft, resolver);
+  const dimensions = metricDimensions(scripted, resolver);
   const namePills = ({ unshared }: MetricDimensions) =>
     unshared.map(({ dimension, pills }) => ({ label: dimension.label, pills }));
   const whereFilters = (query: string, exclude: string[]) =>
@@ -771,24 +814,33 @@ function EmbeddedExplorer({
             />
           }
         </Box>
-        <ExplorerBody />
+        <ExplorerBody
+          panel={
+            model.pills.length > 0 && (
+              <DimensionsPanel
+                model={model}
+                mapping={draft.panel}
+                onChange={onPanelChange}
+              />
+            )
+          }
+        />
       </Stack>
     </MetricsViewerProvider>
   );
 }
 
-/** MetricsViewerPage's body without its search panel. */
-function ExplorerBody() {
-  const { definitions, activeDimensionBreakout, isSidebarOpen } =
-    useMetricsViewerContext();
+/**
+ * MetricsViewerPage's body without its search panel, and with the metric's
+ * dimensions where the Explorer has its legend and breakout sidebar.
+ */
+function ExplorerBody({ panel }: { panel: ReactNode }) {
+  const { definitions, activeDimensionBreakout } = useMetricsViewerContext();
 
   const hasDefinitions = Object.keys(definitions).length > 0;
   const hasLoadedDefinitions = Object.values(definitions).some(
     (entry) => entry.definition != null,
   );
-  const showDimensionPickerSidebar = isSidebarOpen && activeDimensionBreakout;
-  const showBreakoutLegend =
-    !showDimensionPickerSidebar && activeDimensionBreakout?.type !== "scalar";
 
   return (
     <Flex flex="1 1 auto" mih={0} pt="md">
@@ -798,7 +850,7 @@ function ExplorerBody() {
         pb="xl"
         flex={1}
         miw={0}
-        className={PageS.content}
+        className={cx(PageS.content, S.preview)}
       >
         {!hasDefinitions ? (
           <MetricsViewerEmptyState />
@@ -808,12 +860,7 @@ function ExplorerBody() {
           <MetricsViewerNoDimensionBreakoutEmptyState />
         ) : null}
       </Flex>
-      {showBreakoutLegend && <BreakoutLegend />}
-      {showDimensionPickerSidebar && (
-        <DimensionPickerSidebar
-          activeDimensionBreakout={activeDimensionBreakout}
-        />
-      )}
+      {panel}
     </Flex>
   );
 }

@@ -22,6 +22,7 @@ import {
   type Op,
   newKey,
 } from "./formula";
+import { EMPTY_PANEL } from "./panelModel";
 
 export { MEASURE_TABLES };
 
@@ -519,6 +520,13 @@ export const EXAMPLES: MetricExample[] = [
     formula: ["Payments", "÷", "New accounts"],
     where: ["Plan = Business"],
   },
+  {
+    id: "revenue-per-new-account",
+    name: "Revenue per new account",
+    hint: "Two unrelated tables, Orders and Accounts: only time matches.",
+    formula: ["Revenue", "÷", "New accounts"],
+    where: [],
+  },
 ];
 
 /** The examples offered as pills: metrics that are math over measures. */
@@ -578,5 +586,6 @@ export function exampleDraft(
     formula,
     where: example.where.map((filter) => ({ key: newKey(), filter })),
     mapping: EMPTY_MAPPING,
+    panel: EMPTY_PANEL,
   };
 }

@@ -8,67 +8,43 @@ import {
   Card,
   Group,
   Icon,
+  Loader,
   Stack,
   Text,
   Tooltip,
 } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
-import type { Kind } from "./catalog";
 import {
-  type Dimension,
-  type DimensionMapping,
-  type MetricDimensions,
-  type Pill,
-  type Tier,
+  type MetricDimension,
+  type Origin,
+  type PanelMapping,
+  type PanelModel,
   mapDimension,
-  pillDimensionFor,
-  unmapDimension,
-} from "./dimensions";
+  removeDimension,
+} from "./panelModel";
 
-const KIND_ICONS: Record<Kind, IconName> = {
-  string: "string",
-  number: "int",
-  boolean: "io",
-  date: "calendar",
-};
-
-const TIER_LABELS: Record<Tier, string> = {
+const ORIGIN_LABELS: Record<Origin, string> = {
+  time: "Each measure’s date",
   field: "Same field",
   name: "Same name and type",
   semantic: "Mapped by you",
+  custom: "Made by you",
 };
 
-/** Where the pill reads the dimension from: "Orders · Product → Category". */
-function columnText(pill: Pill, dimension: Dimension) {
-  const own = pillDimensionFor(pill, dimension);
-  if (!own) {
-    return null;
-  }
-  const [column] = own.columns;
-  if (own.columns.length > 1 || !column) {
-    return own.label;
-  }
-  const name = column.via ? `${column.via} → ${column.column}` : column.column;
-  return `${column.table} · ${name}`;
-}
-
 /**
- * Prototype: the dimensions of a metric that is math over pills. A dimension
- * needs a column in every pill; the editor maps the obvious ones and suggests
- * the rest. What only some pills have still filters those pills.
+ * Prototype: every dimension of the metric with the field each measure reads
+ * for it, side by side. The panel next to the chart edits the same thing.
  */
 export function DimensionsTab({
-  pills,
-  dimensions,
+  model,
   mapping,
   onChange,
 }: {
-  pills: Pill[];
-  dimensions: MetricDimensions;
-  mapping: DimensionMapping;
-  onChange: (mapping: DimensionMapping) => void;
+  model: PanelModel;
+  mapping: PanelMapping;
+  onChange: (mapping: PanelMapping) => void;
 }) {
+  const { pills, mapped, suggested, removed, incomplete } = model;
   if (pills.length === 0) {
     return (
       <Text p="xl" c="text-secondary">
@@ -76,22 +52,39 @@ export function DimensionsTab({
       </Text>
     );
   }
+  if (model.isLoading) {
+    return (
+      <Group p="xl" justify="center">
+        <Loader />
+      </Group>
+    );
+  }
   const isMath = pills.length > 1;
-  const { mapped, suggested, unshared } = dimensions;
   const columns = `minmax(12rem, 1.2fr) repeat(${pills.length}, minmax(11rem, 1fr)) minmax(14rem, auto)`;
+  // Fields no dimension reads, listed or not: only one measure has them.
+  const listed = [...mapped, ...suggested, ...removed, ...incomplete];
+  const unusedCount = pills.reduce(
+    (count, pill) =>
+      count +
+      pill.dimensions.filter(
+        (field) =>
+          !listed.some((dimension) => dimension.picks[pill.id] === field),
+      ).length,
+    0,
+  );
 
-  const row = (dimension: Dimension, action: ReactNode) => (
+  const row = (dimension: MetricDimension, action: ReactNode) => (
     <Row key={dimension.id} columns={columns}>
       <Cell>
-        <Icon name={KIND_ICONS[dimension.kind]} c="text-secondary" />
+        <Icon name={dimension.icon} c="text-secondary" />
         <Text fw={700} truncate>
-          {dimension.label}
+          {dimension.name}
         </Text>
       </Cell>
       {pills.map((pill) => (
         <Cell key={pill.id}>
           <Text c="text-secondary" truncate>
-            {columnText(pill, dimension) ?? "—"}
+            {dimension.picks[pill.id]?.name ?? "—"}
           </Text>
         </Cell>
       ))}
@@ -99,12 +92,21 @@ export function DimensionsTab({
     </Row>
   );
 
+  const addBack = (dimension: MetricDimension, label: string) => (
+    <Button
+      size="compact-sm"
+      onClick={() => onChange(mapDimension(mapping, dimension))}
+    >
+      {label}
+    </Button>
+  );
+
   return (
     <Card withBorder shadow="none" p="lg">
       <Stack gap="lg">
         <Text c="text-secondary" maw="44rem">
           {isMath
-            ? "A dimension is something the whole metric can be filtered and broken out by, so it needs a column in every measure. The same column, or one with the same name, is mapped already."
+            ? "A dimension is something the whole metric can be filtered and broken out by, so it needs a field in every measure. Change which field a measure reads in the panel next to the chart."
             : "What this metric can be filtered and broken out by."}
         </Text>
         <Box>
@@ -131,16 +133,16 @@ export function DimensionsTab({
                 <>
                   {isMath && (
                     <Badge variant="light" flex="none">
-                      {TIER_LABELS[dimension.tier]}
+                      {ORIGIN_LABELS[dimension.origin]}
                     </Badge>
                   )}
                   <Tooltip label="Remove from this metric">
                     <ActionIcon
                       variant="subtle"
                       c="text-secondary"
-                      aria-label={`Remove ${dimension.label}`}
+                      aria-label={`Remove ${dimension.name}`}
                       onClick={() =>
-                        onChange(unmapDimension(mapping, dimension))
+                        onChange(removeDimension(mapping, dimension))
                       }
                     >
                       <Icon name="close" />
@@ -151,7 +153,7 @@ export function DimensionsTab({
             )}
             {mapped.length === 0 && (
               <Text px="md" py="sm" c="text-secondary">
-                Nothing yet: the measures have no column in common.
+                Nothing yet: the measures have no field in common.
               </Text>
             )}
           </Section>
@@ -163,35 +165,41 @@ export function DimensionsTab({
                   dimension,
                   <>
                     <Text fz="sm" c="text-secondary">
-                      {dimension.tier === "semantic"
-                        ? "Different columns, same kind"
-                        : "Removed"}
+                      Different columns, same kind
                     </Text>
-                    <Button
-                      size="compact-sm"
-                      onClick={() => onChange(mapDimension(mapping, dimension))}
-                    >
-                      {dimension.tier === "semantic" ? "Map" : "Add back"}
-                    </Button>
+                    {addBack(dimension, "Map")}
                   </>,
                 ),
               )}
             </Section>
           )}
 
-          {unshared.length > 0 && (
-            <Section title="Only on some measures" count={unshared.length}>
-              {unshared.map(({ dimension, pills: owners }) =>
+          {incomplete.length > 0 && (
+            <Section title="Incomplete" count={incomplete.length}>
+              {incomplete.map((dimension) =>
                 row(
                   dimension,
                   <Text fz="sm" c="text-secondary">
-                    Filter {owners.join(" or ")} in the definition
+                    {`No field in ${dimension.missing.join(" or ")}`}
                   </Text>,
                 ),
               )}
             </Section>
           )}
+
+          {removed.length > 0 && (
+            <Section title="Removed" count={removed.length}>
+              {removed.map((dimension) =>
+                row(dimension, addBack(dimension, "Add back")),
+              )}
+            </Section>
+          )}
         </Box>
+        {isMath && unusedCount > 0 && (
+          <Text c="text-secondary">
+            {`${unusedCount} more fields are in none of the metric’s dimensions. They can still filter the measure they are on; “See all” in the panel lists them.`}
+          </Text>
+        )}
       </Stack>
     </Card>
   );

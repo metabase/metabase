@@ -551,3 +551,11 @@
   background: var(--mb-color-background_surface-secondary);
   color: var(--mb-color-core-filter-strong);
 }
+
+/* The chart under the definition. Its dimension is picked in the panel next
+   to it, so the Explorer's button for that only names the dimension here. */
+.preview button[aria-label="Change column"] {
+  background: transparent;
+  cursor: default;
+  pointer-events: none;
+}

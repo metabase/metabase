@@ -2,6 +2,7 @@ import { FILTERS, MEASURES, getMeasure } from "../data";
 
 import { type BarItem, matchesItem } from "./TokenBar";
 import type { DimensionMapping } from "./dimensions";
+import type { PanelMapping } from "./panelModel";
 
 export type Op = "+" | "−" | "×" | "÷";
 
@@ -18,6 +19,8 @@ export type MetricDraft = {
   where: WhereToken[];
   /** The author's changes to which dimensions the metric has. */
   mapping: DimensionMapping;
+  /** The author's changes to the metric's real dimensions, from the panel. */
+  panel: PanelMapping;
 };
 
 export const OP_ITEMS: { op: Op; label: string; keys: string }[] = [

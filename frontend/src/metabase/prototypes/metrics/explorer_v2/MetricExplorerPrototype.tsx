@@ -40,6 +40,7 @@ import { MetricChart } from "./MetricChart";
 import { EMPTY_MAPPING } from "./dimensions";
 import { EXAMPLES, exampleDraft } from "./examples";
 import { type MetricDraft, evaluate, findProblem, isComplete } from "./formula";
+import { EMPTY_PANEL } from "./panelModel";
 
 /** The editor's examples, on the mock measures (same names, slugged ids). */
 const EXAMPLE_FORMULAS = EXAMPLES.map(
@@ -92,7 +93,13 @@ export function MetricExplorerPrototype() {
   const initialDraft: MetricDraft =
     modal?.mode === "edit"
       ? EXAMPLE_FORMULAS[Math.max(editingIndex, 0) % EXAMPLE_FORMULAS.length]()
-      : { name: "", formula: [], where: [], mapping: EMPTY_MAPPING };
+      : {
+          name: "",
+          formula: [],
+          where: [],
+          mapping: EMPTY_MAPPING,
+          panel: EMPTY_PANEL,
+        };
 
   return (
     <Stack gap="sm">
