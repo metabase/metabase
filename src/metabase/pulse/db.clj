@@ -11,7 +11,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -19,30 +18,29 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id [:auto/param card-id]))
+  (t2/select-one :model/Card :id card-id))
 
 (mu/defn cards
   "The Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (if (seq card-ids)
-    (t2/select :model/Card :id [:in card-ids])
-    []))
+  (app-db/select-batched #(t2/select :model/Card :id [:in %]) card-ids))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
 
-(mu/defn card-query
-  "The query of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
+(mu/defn card-queries
+  "The queries of the Cards with `card-ids`, by Card id."
+  [card-ids :- [:set ::lib.schema.id/card]]
   ;; Written out by hand rather than using `metabase.queries.core/card-query-info`: `queries` already uses
   ;; `pulse`, so requiring it back would add a module cycle for one query. Keep in sync with
   ;; `metabase.queries.card-schema/schema-upgrade-triggers`.
-  (t2/select-one-fn :dataset_query
-                    [:model/Card :id :dataset_query :card_schema :type :entity_id
-                     :result_metadata :dimensions :dimension_mappings]
-                    :id [:auto/param card-id]))
+  (app-db/select-batched-map #(t2/select-pk->fn :dataset_query
+                                                [:model/Card :id :dataset_query :card_schema :type :entity_id
+                                                 :result_metadata :dimensions :dimension_mappings]
+                                                :id [:in %])
+                             card-ids))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil. `dashboard-id` may be nil (e.g. a legacy Pulse with no Dashboard), in
@@ -63,28 +61,29 @@
 (mu/defn dashboards-by-id
   "The `:id`, `:name` and `:collection_id` of the Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
-  (t2/select [:model/Dashboard :id :name :collection_id] :id [:in dashboard-ids]))
+  (app-db/select-batched #(t2/select [:model/Dashboard :id :name :collection_id] :id [:in %]) dashboard-ids))
 
 (mu/defn subscriptions-for-dashboards
   "The `:dashboard-id`, `:pulse-id`, `:name` and `:collection-id` of each Pulse (subscription) attached to one of the
   Dashboards with `dashboard-ids`, with the `:card-id` of each of its PulseCards, nil for a Pulse that has none."
   [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
-  (app-db/query {:select-distinct [[:p.dashboard_id :dashboard-id] [:p.id :pulse-id] [:p.name :name]
-                                   [:p.collection_id :collection-id] [:pc.card_id :card-id]]
-                 :from            [[:pulse :p]]
-                 :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
-                 :where           [:in :p.dashboard_id dashboard-ids]}))
+  (app-db/select-batched #(app-db/query {:select-distinct [[:p.dashboard_id :dashboard-id] [:p.id :pulse-id] [:p.name :name]
+                                                           [:p.collection_id :collection-id] [:pc.card_id :card-id]]
+                                         :from            [[(t2/table-name :model/Pulse) :p]]
+                                         :left-join       [[(t2/table-name :model/PulseCard) :pc] [:= :p.id :pc.pulse_id]]
+                                         :where           [:in :p.dashboard_id %]})
+                         dashboard-ids))
 
 (mu/defn dashcards-with-cards-for-dashboards
   "The `:id`, `:dashboard_id` and `:card_id` of the DashboardCards showing a Card on the Dashboards with
   `dashboard-ids`, in id order."
   [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
-  (app-db/query {:select   [:dc.id :dc.dashboard_id :dc.card_id]
-                 :from     [[:report_dashboardcard :dc]]
-                 :where    [:and
-                            [:in :dc.dashboard_id dashboard-ids]
-                            [:not= :dc.card_id nil]]
-                 :order-by [[:dc.id :asc]]}))
+  (vec (sort-by :id (app-db/select-batched #(app-db/query {:select [:dc.id :dc.dashboard_id :dc.card_id]
+                                                           :from   [[(t2/table-name :model/DashboardCard) :dc]]
+                                                           :where  [:and
+                                                                    [:in :dc.dashboard_id %]
+                                                                    [:not= :dc.card_id nil]]})
+                                           dashboard-ids))))
 
 (mu/defn channel
   "The Channel with `channel-id`, or nil."
@@ -104,7 +103,7 @@
 (mu/defn user-emails-by-id
   "A map of User id to email for the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :email :model/User, :id [:in user-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn :email :model/User, :id [:in %]) user-ids))
 
 (mu/defn pulse
   "The Pulse with `pulse-id`, or nil."
@@ -114,14 +113,12 @@
 (mu/defn pulses-by-ids
   "A map from id to the Pulse for each of `pulse-ids` that exists, archived or not."
   [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
-  (if (seq pulse-ids)
-    (t2/select-pk->fn identity :model/Pulse :id [:in pulse-ids])
-    {}))
+  (app-db/select-batched-map #(t2/select-pk->fn identity :model/Pulse :id [:in %]) pulse-ids))
 
 (mu/defn pulses-for-dashboards
   "The Pulses (subscriptions) of the Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
-  (t2/select :model/Pulse :dashboard_id [:in dashboard-ids]))
+  (app-db/select-batched #(t2/select :model/Pulse :dashboard_id [:in %]) dashboard-ids))
 
 (mu/defn pulse-id
   "The id of the Pulse with `pulse-id` if it exists, or nil."
@@ -131,7 +128,7 @@
 (mu/defn pulse-id-of-channel
   "The id of the Pulse of the PulseChannel with `pulse-channel-id`, or nil."
   [pulse-channel-id :- ms/PositiveInt]
-  (t2/select-one-fn :pulse_id :model/PulseChannel :id [:auto/param pulse-channel-id]))
+  (t2/select-one-fn :pulse_id :model/PulseChannel :id pulse-channel-id))
 
 (mu/defn unarchived-pulse
   "The unarchived Pulse with `pulse-id`, or nil."
@@ -155,7 +152,7 @@
    user-id   :- [:maybe ::lib.schema.id/user]]
   (t2/select :model/Pulse
              (merge {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
-                     :from            [[:pulse :p]]
+                     :from            [[(t2/table-name :model/Pulse) :p]]
                      :where           [:and
                                        [:not= :p.alert_condition nil]
                                        [:= :p.archived archived?]
@@ -165,8 +162,8 @@
                                           [:= :pcr.user_id user-id]])]
                      :order-by        [[:lower-name :asc]]}
                     (when user-id
-                      {:left-join [[:pulse_channel :pchan] [:= :p.id :pchan.pulse_id]
-                                   [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]}))))
+                      {:left-join [[(t2/table-name :model/PulseChannel) :pchan] [:= :p.id :pchan.pulse_id]
+                                   [(t2/table-name :model/PulseChannelRecipient) :pcr] [:= :pchan.id :pcr.pulse_channel_id]]}))))
 
 (mu/defn pulses
   "The dashboard-subscription Pulses (unarchived unless `archived?`), optionally narrowed to `dashboard-id` and/or
@@ -176,12 +173,12 @@
    user-id      :- [:maybe ::lib.schema.id/user]]
   (t2/select :model/Pulse
              {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
-              :from            [[:pulse :p]]
-              :left-join       (concat
-                                [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
+              :from            [[(t2/table-name :model/Pulse) :p]]
+              :left-join       (into
+                                [[(t2/table-name :model/Dashboard) :d] [:= :p.dashboard_id :d.id]]
                                 (when user-id
-                                  [[:pulse_channel :pchan]         [:= :p.id :pchan.pulse_id]
-                                   [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
+                                  [[(t2/table-name :model/PulseChannel) :pchan]         [:= :p.id :pchan.pulse_id]
+                                   [(t2/table-name :model/PulseChannelRecipient) :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
               :where           [:and
                                 [:= :p.alert_condition nil]
                                 [:= :p.archived archived?]
@@ -206,10 +203,10 @@
    archived? :- :boolean]
   (t2/select :model/Pulse
              {:select [:p.*]
-              :from   [[:pulse :p]]
-              :join   [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
-                       [:pulse_channel :pchan] [:= :pchan.pulse_id :p.id]
-                       [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]
+              :from   [[(t2/table-name :model/Pulse) :p]]
+              :join   [[(t2/table-name :model/PulseCard) :pc] [:= :p.id :pc.pulse_id]
+                       [(t2/table-name :model/PulseChannel) :pchan] [:= :pchan.pulse_id :p.id]
+                       [(t2/table-name :model/PulseChannelRecipient) :pcr] [:= :pchan.id :pcr.pulse_channel_id]]
               :where  [:and
                        [:not= :p.alert_condition nil]
                        [:= :pc.card_id card-id]
@@ -220,14 +217,15 @@
   "The alert-type Pulses (unarchived unless `archived?`) on any of the Cards with `card-ids`."
   [card-ids  :- [:sequential ::lib.schema.id/card]
    archived? :- :boolean]
-  (t2/select :model/Pulse
-             {:select [:p.*]
-              :from   [[:pulse :p]]
-              :join   [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
-              :where  [:and
-                       [:not= :p.alert_condition nil]
-                       [:in :pc.card_id card-ids]
-                       [:= :p.archived archived?]]}))
+  (app-db/select-batched #(t2/select :model/Pulse
+                                     {:select [:p.*]
+                                      :from   [[(t2/table-name :model/Pulse) :p]]
+                                      :join   [[(t2/table-name :model/PulseCard) :pc] [:= :p.id :pc.pulse_id]]
+                                      :where  [:and
+                                               [:not= :p.alert_condition nil]
+                                               [:in :pc.card_id %]
+                                               [:= :p.archived archived?]]})
+                         card-ids))
 
 (mu/defn legacy-pulse-count
   "The number of unarchived Pulses that are neither dashboard subscriptions nor alerts."
@@ -250,8 +248,8 @@
   the Dashboard is in."
   [dashboard-id :- ::lib.schema.id/dashboard]
   ^:allow-subquery {:select [:d.collection_id]
-                    :from   [[:report_dashboard :d]]
-                    :where  [:= :d.id [:auto/param dashboard-id]]})
+                    :from   [[(t2/table-name :model/Dashboard) :d]]
+                    :where  [:= :d.id dashboard-id]})
 
 (mu/defn update-pulse!
   "Apply `changes` to the Pulse with `pulse-id`."
@@ -266,53 +264,59 @@
 
 (mu/defn update-pulses-for-dashboards!
   "Apply the changes of each Dashboard in `changes-by-dashboard`, a map of Dashboard id to changes with the same keys,
-  to the Pulses of that Dashboard in one statement, leaving `updated_at` untouched."
+  to the Pulses of that Dashboard in one statement per partition of Dashboards, leaving `updated_at` untouched."
   [changes-by-dashboard :- [:map-of {:min 1} ::lib.schema.id/dashboard (mut/dissoc ::pulse.schema/pulse.update :id)]]
-  (let [columns (vec (distinct (mapcat keys (vals changes-by-dashboard))))
-        value-of (fn [column]
+  (let [columns  (vec (distinct (mapcat keys (vals changes-by-dashboard))))
+        value-of (fn [changes-of-chunk column]
                    (into [:case]
                          (concat (mapcat (fn [[dashboard-id changes]]
                                            [[:= :dashboard_id dashboard-id] (get changes column)])
-                                         changes-by-dashboard)
+                                         changes-of-chunk)
                                  [:else column])))]
-    (t2/update! :model/Pulse
-                :dashboard_id [:in (vec (keys changes-by-dashboard))]
-                (-> (into {} (map (juxt identity value-of)) columns)
-                    (assoc :updated_at :updated_at)))))
+    (app-db/sum-batched app-db/update-partition-size (fn [dashboard-ids]
+                                                       (let [changes-of-chunk (select-keys changes-by-dashboard dashboard-ids)]
+                                                         (t2/update! :model/Pulse
+                                                                     :dashboard_id [:in (vec dashboard-ids)]
+                                                                     (-> (into {} (map (juxt identity #(value-of changes-of-chunk %))) columns)
+                                                                         (assoc :updated_at :updated_at))))) (keys changes-by-dashboard))))
 
 (mu/defn pulse-cards-for-pulses
   "The non-archived Cards of the Pulses with `pulse-ids` together with their PulseCard options, in position order."
   [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
-  (t2/select
-   :model/Card
-   {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls :pc.format_rows :pc.pivot_results
-                :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings] [:p.id :pulse_id]] ;; :dc.parameter_mappings - how do you select this?
-    :from      [[:pulse :p]]
-    :join      [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
-                [:report_card :c] [:= :c.id :pc.card_id]]
-    :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
-    :where     [:and
-                [:in :p.id pulse-ids]
-                [:= :c.archived false]]
-    :order-by [[:pc.position :asc]]}))
+  (app-db/select-batched
+   #(t2/select
+     :model/Card
+     {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls :pc.format_rows :pc.pivot_results
+                  :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings] [:p.id :pulse_id]] ;; :dc.parameter_mappings - how do you select this?
+      :from      [[(t2/table-name :model/Pulse) :p]]
+      :join      [[(t2/table-name :model/PulseCard) :pc] [:= :p.id :pc.pulse_id]
+                  [(t2/table-name :model/Card) :c] [:= :c.id :pc.card_id]]
+      :left-join [[(t2/table-name :model/DashboardCard) :dc] [:= :pc.dashboard_card_id :dc.id]]
+      :where     [:and
+                  [:in :p.id %]
+                  [:= :c.archived false]]
+      :order-by [[:pc.position :asc]]})
+   pulse-ids))
 
 (mu/defn pulse-card-refs-for-pulses
   "The Pulse id, the Card id (as `:id`), export options, and DashboardCard id of the PulseCards of the Pulses with
   `pulse-ids`, in position order."
   [pulse-ids :- [:sequential {:min 1} ::lib.schema.id/pulse]]
-  (t2/select [:model/PulseCard :pulse_id [:card_id :id] :include_csv :include_xls :dashboard_card_id]
-             :pulse_id [:in pulse-ids]
-             {:order-by [[:position :asc]]}))
+  (app-db/select-batched #(t2/select [:model/PulseCard :pulse_id [:card_id :id] :include_csv :include_xls :dashboard_card_id]
+                                     :pulse_id [:in %]
+                                     {:order-by [[:position :asc]]})
+                         pulse-ids))
 
 (mu/defn max-pulse-card-positions
   "A map of Pulse id to the largest position of its PulseCards, for the Pulses among `pulse-ids` that have any."
   [pulse-ids :- [:sequential {:min 1} ::lib.schema.id/pulse]]
   (into {}
         (map (juxt :pulse_id :max))
-        (app-db/query {:select   [:pulse_id [:%max.position :max]]
-                       :from     [:pulse_card]
-                       :where    [:in :pulse_id pulse-ids]
-                       :group-by [:pulse_id]})))
+        (app-db/select-batched #(app-db/query {:select   [:pulse_id [:%max.position :max]]
+                                               :from     [(t2/table-name :model/PulseCard)]
+                                               :where    [:in :pulse_id %]
+                                               :group-by [:pulse_id]})
+                               pulse-ids)))
 
 (mu/defn next-pulse-card-position-clause
   "The HoneySQL expression for the position after the last PulseCard of the Pulse with `pulse-id`, 0 for the first,
@@ -323,8 +327,8 @@
    [:coalesce
     ^:allow-subquery {:select [:last.position]
                       :from   [[^:allow-subquery {:select [[[:max :pc.position] :position]]
-                                                  :from   [[:pulse_card :pc]]
-                                                  :where  [:= :pc.pulse_id [:auto/param pulse-id]]}
+                                                  :from   [[(t2/table-name :model/PulseCard) :pc]]
+                                                  :where  [:= :pc.pulse_id pulse-id]}
                                 :last]]}
     [:inline -1]]
    [:inline 1]])
@@ -338,23 +342,24 @@
 (mu/defn pulse-cards-for-dashcards
   "The PulseCards of the DashboardCards with `dashcard-ids`."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/select :model/PulseCard :dashboard_card_id [:in dashcard-ids]))
+  (app-db/select-batched #(t2/select :model/PulseCard :dashboard_card_id [:in %]) dashcard-ids))
 
 (mu/defn pulse-card-ids-for-dashcards :- [:sequential ms/PositiveInt]
   "The ids of the PulseCards of the DashboardCards with `dashcard-ids`."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (vec (t2/select-pks-vec :model/PulseCard :dashboard_card_id [:in dashcard-ids])))
+  (app-db/select-batched #(t2/select-pks-vec :model/PulseCard :dashboard_card_id [:in %]) dashcard-ids))
 
 (mu/defn pulse-card-ids-for-pulses :- [:sequential ms/PositiveInt]
   "The ids of the PulseCards of the Pulses with `pulse-ids`."
   [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
-  (vec (t2/select-pks-vec :model/PulseCard :pulse_id [:in pulse-ids])))
+  (app-db/select-batched #(t2/select-pks-vec :model/PulseCard :pulse_id [:in %]) pulse-ids))
 
 (mu/defn delete-pulse-cards!
   "Delete the PulseCards with `ids`, returning the number deleted."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (change-log/log-rows! :model/PulseCard :delete :id [:in ids])
-  (t2/delete! :model/PulseCard :id [:in ids]))
+  (app-db/sum-batched app-db/delete-partition-size (fn [chunk]
+                                                     (change-log/log-rows! :model/PulseCard :delete :id [:in (vec chunk)])
+                                                     (t2/delete! :model/PulseCard :id [:in (vec chunk)])) ids))
 
 (mu/defn pulse-channels-for-pulse
   "The PulseChannels of the Pulse with `pulse-id`."
@@ -364,11 +369,13 @@
 (mu/defn pulse-channels-for-pulses
   "The PulseChannels of the Pulses with `pulse-ids`."
   [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
-  (t2/select :model/PulseChannel :pulse_id [:in pulse-ids]))
+  (app-db/select-batched #(t2/select :model/PulseChannel :pulse_id [:in %]) pulse-ids))
 
 (mu/defn email-pulse-channel
   "The email PulseChannel of the Pulse with `pulse-id`, or nil."
   [pulse-id :- ::lib.schema.id/pulse]
+  (when-not (pos-int? pulse-id)
+    (throw (ex-info "pulse-id must be a positive integer" {:pulse-id pulse-id})))
   (t2/select-one :model/PulseChannel :pulse_id pulse-id :channel_type "email"))
 
 (mu/defn email-pulse-channel-id
@@ -379,12 +386,12 @@
 (mu/defn pulse-ids-with-channels
   "The set of ids among `pulse-ids` of the Pulses that still have a PulseChannel."
   [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
-  (t2/select-fn-set :pulse_id :model/PulseChannel :pulse_id [:in pulse-ids]))
+  (app-db/select-batched-set #(t2/select-fn-set :pulse_id :model/PulseChannel :pulse_id [:in %]) pulse-ids))
 
 (mu/defn pulse-channel-details-by-ids
   "A map of PulseChannel id to its `:details`, for the PulseChannels with `channel-ids`."
   [channel-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select-pk->fn :details :model/PulseChannel :id [:in channel-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn :details :model/PulseChannel :id [:in %]) channel-ids))
 
 (mu/defn pulse-channels-without-recipients
   "The id, details, Channel, and type of the PulseChannels of the Pulse with `pulse-id` that have no recipients."
@@ -394,23 +401,23 @@
                       [:= :pulse_id pulse-id]
                       [:not [:exists ^:allow-subquery
                              {:select [1]
-                              :from   [:pulse_channel_recipient]
-                              :where  [:= :pulse_channel_recipient.pulse_channel_id
-                                       :pulse_channel.id]}]]]}))
+                              :from   [(t2/table-name :model/PulseChannelRecipient)]
+                              :where  [:= (u/qualified-key (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id)
+                                       (u/qualified-key (t2/table-name :model/PulseChannel) :id)]}]]]}))
 
 (mu/defn enabled-pulse-channel-ids
   "The ids among `channel-ids` of enabled PulseChannels, or nil."
   [channel-ids :- [:set ms/PositiveInt]]
-  (t2/select-pks-set :model/PulseChannel :id [:in channel-ids] :enabled true))
+  (app-db/select-batched-set #(t2/select-pks-set :model/PulseChannel :id [:in %] :enabled true) channel-ids))
 
 (mu/defn active-dashboard-subscription-channels
   "The enabled PulseChannels of dashboard subscriptions whose Dashboard is not archived."
   []
   (t2/select :model/PulseChannel
              {:select    [:pc.*]
-              :from      [[:pulse_channel :pc]]
-              :left-join [[:pulse :p] [:= :pc.pulse_id :p.id]
-                          [:report_dashboard :d] [:= :p.dashboard_id :d.id]]
+              :from      [[(t2/table-name :model/PulseChannel) :pc]]
+              :left-join [[(t2/table-name :model/Pulse) :p] [:= :pc.pulse_id :p.id]
+                          [(t2/table-name :model/Dashboard) :d] [:= :p.dashboard_id :d.id]]
               :where     [:and
                           [:= :pc.enabled true]
                           ;; only do this for dashboard subscriptions, alert has been
@@ -428,43 +435,46 @@
   "Apply `changes` to the PulseChannels with `channel-ids`."
   [channel-ids :- [:sequential {:min 1} ms/PositiveInt]
    changes     :- (mut/dissoc ::pulse.schema/pulse-channel.update :id)]
-  (change-log/log-rows! :model/PulseChannel :update :id [:in channel-ids])
-  (t2/update! :model/PulseChannel :id [:in channel-ids] changes))
+  (app-db/sum-batched app-db/update-partition-size (fn [chunk]
+                                                     (change-log/log-rows! :model/PulseChannel :update :id [:in (vec chunk)])
+                                                     (t2/update! :model/PulseChannel :id [:in (vec chunk)] changes)) channel-ids))
 
 (mu/defn set-pulse-channels-enabled!
   "Set the enabled flag of the PulseChannels of the Pulses with `pulse-ids` that have the other one."
   [pulse-ids :- [:sequential ::lib.schema.id/pulse]
    enabled?  :- :boolean]
-  (change-log/log-rows! :model/PulseChannel :update :pulse_id [:in pulse-ids] :enabled (not enabled?))
-  (t2/update! :model/PulseChannel :pulse_id [:in pulse-ids] :enabled (not enabled?) {:enabled enabled?}))
+  (app-db/sum-batched app-db/update-partition-size (fn [chunk]
+                                                     (change-log/log-rows! :model/PulseChannel :update :pulse_id [:in (vec chunk)] :enabled (not enabled?))
+                                                     (t2/update! :model/PulseChannel :pulse_id [:in (vec chunk)] :enabled (not enabled?) {:enabled enabled?})) pulse-ids))
 
 (mu/defn pulse-channel
   "The PulseChannel with `channel-id`, or nil."
   [channel-id :- ms/PositiveInt]
-  (t2/select-one :model/PulseChannel :id [:auto/param channel-id]))
+  (t2/select-one :model/PulseChannel :id channel-id))
 
 (mu/defn pulse-channels-with-ids
   "The PulseChannels with `channel-ids`."
   [channel-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/PulseChannel :id [:in channel-ids]))
+  (app-db/select-batched #(t2/select :model/PulseChannel :id [:in %]) channel-ids))
 
 (mu/defn delete-pulse-channels!
   "Delete the PulseChannels with `channel-ids` and, with them, their PulseChannelRecipients."
   [channel-ids :- [:sequential ms/PositiveInt]]
-  (change-log/log-rows! :model/PulseChannelRecipient :delete :pulse_channel_id [:in channel-ids])
-  (change-log/log-rows! :model/PulseChannel :delete :id [:in channel-ids])
-  (t2/delete! :model/PulseChannel :id [:in channel-ids]))
+  (app-db/sum-batched app-db/delete-partition-size (fn [chunk]
+                                                     (change-log/log-rows! :model/PulseChannelRecipient :delete :pulse_channel_id [:in (vec chunk)])
+                                                     (change-log/log-rows! :model/PulseChannel :delete :id [:in (vec chunk)])
+                                                     (t2/delete! :model/PulseChannel :id [:in (vec chunk)])) channel-ids))
 
 (mu/defn active-recipients-for-channels
   "The id, email, name, and PulseChannel id of the active User recipients of the PulseChannels with `channel-ids`, in
   User id order."
   [channel-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/User :id :email :first_name :last_name :pcr.pulse_channel_id]
-             {:left-join [[:pulse_channel_recipient :pcr] [:= :core_user.id :pcr.user_id]]
-              :where     [:and
-                          [:in :pcr.pulse_channel_id channel-ids]
-                          [:= :core_user.is_active true]]
-              :order-by [[:core_user.id :asc]]}))
+  (vec (sort-by :id (app-db/select-batched #(t2/select [:model/User :id :email :first_name :last_name :pcr.pulse_channel_id]
+                                                       {:left-join [[(t2/table-name :model/PulseChannelRecipient) :pcr] [:= (u/qualified-key (t2/table-name :model/User) :id) :pcr.user_id]]
+                                                        :where     [:and
+                                                                    [:in :pcr.pulse_channel_id %]
+                                                                    [:= (u/qualified-key (t2/table-name :model/User) :is_active) true]]})
+                                           channel-ids))))
 
 (mu/defn pulse-channel-recipient-id
   "The id of the PulseChannelRecipient of the User with `user-id` on the PulseChannel with `channel-id`, or nil."
@@ -475,26 +485,27 @@
 (mu/defn pulse-channel-recipients-for-channels
   "The PulseChannelRecipients of the PulseChannels with `channel-ids`."
   [channel-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select :model/PulseChannelRecipient :pulse_channel_id [:in channel-ids]))
+  (app-db/select-batched #(t2/select :model/PulseChannelRecipient :pulse_channel_id [:in %]) channel-ids))
 
 (mu/defn pulse-channel-recipients-for-users
   "The PulseChannelRecipients of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select :model/PulseChannelRecipient :user_id [:in user-ids]))
+  (app-db/select-batched #(t2/select :model/PulseChannelRecipient :user_id [:in %]) user-ids))
 
 (mu/defn pulse-channel-recipients-by-ids
   "The PulseChannelRecipients with `recipient-ids`."
   [recipient-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/PulseChannelRecipient :id [:in recipient-ids]))
+  (app-db/select-batched #(t2/select :model/PulseChannelRecipient :id [:in %]) recipient-ids))
 
 (mu/defn pulse-channel-recipient-counts
   "A map of PulseChannel id to its number of PulseChannelRecipients, for the PulseChannels with `channel-ids`."
   [channel-ids :- [:sequential ms/PositiveInt]]
   (into {}
         (map (juxt :pulse_channel_id :count))
-        (t2/select [:model/PulseChannelRecipient :pulse_channel_id [:%count.* :count]]
-                   :pulse_channel_id [:in channel-ids]
-                   {:group-by [:pulse_channel_id]})))
+        (app-db/select-batched #(t2/select [:model/PulseChannelRecipient :pulse_channel_id [:%count.* :count]]
+                                           :pulse_channel_id [:in %]
+                                           {:group-by [:pulse_channel_id]})
+                               channel-ids)))
 
 (mu/defn insert-pulse-channel-recipients!
   "Insert the PulseChannelRecipient `rows`, returning the inserted instances."
@@ -505,61 +516,44 @@
 (mu/defn delete-pulse-channel-recipients!
   "Delete the PulseChannelRecipients with `recipient-ids`."
   [recipient-ids :- [:sequential ms/PositiveInt]]
-  (change-log/log-rows! :model/PulseChannelRecipient :delete :id [:in recipient-ids])
-  (t2/delete! :model/PulseChannelRecipient :id [:in recipient-ids]))
+  (app-db/sum-batched app-db/delete-partition-size (fn [chunk]
+                                                     (change-log/log-rows! :model/PulseChannelRecipient :delete :id [:in (vec chunk)])
+                                                     (t2/delete! :model/PulseChannelRecipient :id [:in (vec chunk)])) recipient-ids))
 
 (mu/defn delete-pulse-channel-recipients-raw!
   "Delete the PulseChannelRecipients with `recipient-ids`, without running model hooks."
   [recipient-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (t2/with-transaction [_conn]
-    (change-log/log-rows! :model/PulseChannelRecipient :delete :id [:in recipient-ids])
-    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
-    (t2/delete! (t2/table-name :model/PulseChannelRecipient) :id [:in recipient-ids])))
+    (app-db/sum-batched app-db/delete-partition-size (fn [chunk]
+                                                       (change-log/log-rows! :model/PulseChannelRecipient :delete :id [:in (vec chunk)])
+                                                       #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
+                                                       (t2/delete! (t2/table-name :model/PulseChannelRecipient) :id [:in (vec chunk)])) recipient-ids)))
 
 (mu/defn user-tenant-ids
   "A map of User ID to `:tenant_id` for `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn :tenant_id :model/User :id [:in %]) user-ids))
 
-(defn user-name-and-email
-  "The first name, last name, and email of the User with `user-id`, or nil."
-  [user-id]
-  (t2/select-one [:model/User :first_name :last_name :email] :id [:auto/param user-id]))
-
-(defn users-names-and-emails
-  "The first names, last names, and emails of the Users with `user-ids`."
-  [user-ids]
-  (t2/select [:model/User :first_name :last_name :email] :id [:in user-ids]))
-
-(defn pulse-channel-kinds-for-pulse
-  "The id, channel type, and details of the PulseChannels of the Pulse with `pulse-id`."
-  [pulse-id]
-  (t2/select [:model/PulseChannel :id :channel_type :details] :pulse_id [:= pulse-id]))
+(mu/defn users-names-and-emails-by-id
+  "The first name, last name, and email of the Users with `user-ids`, by User id."
+  [user-ids :- [:sequential ::lib.schema.id/user]]
+  (app-db/select-batched-map #(t2/select-pk->fn (fn [user] (dissoc user :id)) [:model/User :id :first_name :last_name :email] :id [:in %])
+                             user-ids))
 
 (defn pulses-with-ids
   "The Pulses whose ids are in `pulse-ids`, archived or not."
   [pulse-ids]
-  (t2/select :model/Pulse :id [:in pulse-ids]))
-
-(defn enabled-pulse-channels
-  "The id, channel type, details, and channel id of the enabled PulseChannels of the Pulse with `pulse-id`."
-  [pulse-id]
-  (t2/select [:model/PulseChannel :id :channel_type :details :channel_id] :pulse_id [:= pulse-id] :enabled true))
-
-(defn pulse-channel-recipient-rows
-  "The `:user_id` rows of the PulseChannelRecipients of the PulseChannel with `channel-id`."
-  [channel-id]
-  (t2/select [:model/PulseChannelRecipient :user_id] :pulse_channel_id channel-id))
+  (app-db/select-batched #(t2/select :model/Pulse :id [:in %]) pulse-ids))
 
 (defn dashboard-parameters
   "The id and parameters of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id]
-  (t2/select-one [:model/Dashboard :id :parameters] :id [:auto/param dashboard-id]))
+  (t2/select-one [:model/Dashboard :id :parameters] :id dashboard-id))
 
 (defn dashboard-name-description-creator
   "The name, description, and creator id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id]
-  (t2/select-one [:model/Dashboard :name :description :creator_id] :id [:auto/param dashboard-id]))
+  (t2/select-one [:model/Dashboard :name :description :creator_id] :id dashboard-id))
 
 (defn unarchived-pulses-for-dashboard
   "The unarchived Pulses of the Dashboard with `dashboard-id`, in id order."
@@ -578,9 +572,9 @@
                        :p.entity_id
                        :p.collection_position
                        :p.collection_id
-                       [(h2x/literal "pulse") :model]]
-     :from            [[:pulse :p]]
-     :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
+                       [[:literal "pulse"] :model]]
+     :from            [[(t2/table-name :model/Pulse) :p]]
+     :left-join       [[(t2/table-name :model/PulseCard) :pc] [:= :p.id :pc.pulse_id]]
      :where           [:and
                        [:= :p.collection_id      (:id collection)]
                        [:= :p.archived           (boolean archived?)]
@@ -591,7 +585,20 @@
 (mu/defn pulse-channel-ids-for-channels
   "The IDs of the PulseChannels of the Channels with `channel-ids`."
   [channel-ids :- [:sequential ms/PositiveInt]]
-  (vec (t2/select-pks-vec :model/PulseChannel :channel_id [:in channel-ids])))
+  (app-db/select-batched #(t2/select-pks-vec :model/PulseChannel :channel_id [:in %]) channel-ids))
+
+(mu/defn positioned-pulses-in-collections :- [:sequential [:map {:closed true}
+                                                           [:id                  ms/PositiveInt]
+                                                           [:collection_id       [:maybe ms/PositiveInt]]
+                                                           [:collection_position ms/PositiveInt]]]
+  "The `:id`, `:collection_id` and `:collection_position` of the Pulses that have a position in the Collections with
+  `collection-ids`, nil for the root."
+  [collection-ids :- [:sequential [:maybe ::lib.schema.id/collection]]]
+  (let [select-positioned #(t2/select [:model/Pulse :id :collection_id :collection_position]
+                                      {:where [:and [:not= :collection_position nil] (collection/collection-ids-clause %)]})]
+    (if (seq collection-ids)
+      (app-db/select-batched select-positioned collection-ids)
+      (select-positioned []))))
 
 (mu/defn shift-pulse-positions! :- :int
   "Add or subtract one from the `collection_position` of the Pulses in the Collection with `collection-id` whose position is

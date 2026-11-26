@@ -48,6 +48,7 @@
    [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -84,6 +85,18 @@
       (into #{} (take limit (sort-by :name db-metadata)))
       db-metadata)))
 
+(mu/defn- sync-and-update-limited! :- ms/IntGreaterThanOrEqualToZero
+  "Sync the Field instances of a Table and update their metadata from `db-metadata`, already limited by
+  [[limit-fields-to-sync]], returning the number of Fields synced."
+  [database    :- i/DatabaseInstance
+   table       :- i/TableInstance
+   db-metadata :- [:set i/TableMetadataField]]
+  (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
+     ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
+     ;; Re-fetch our metadata because there might be some things that have changed after calling
+     ;; `sync-instances`
+     (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table))))
+
 (mu/defn- sync-and-update! :- ms/IntGreaterThanOrEqualToZero
   "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
   properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced. Only the first
@@ -92,12 +105,7 @@
   [database    :- i/DatabaseInstance
    table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
-  (let [db-metadata (limit-fields-to-sync table db-metadata)]
-    (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
-       ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
-       ;; Re-fetch our metadata because there might be some things that have changed after calling
-       ;; `sync-instances`
-       (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table)))))
+  (sync-and-update-limited! database table (limit-fields-to-sync table db-metadata)))
 
 (defn- select-best-matching-name
   "Returns a key function for use with [[sort-by]] that ranks items based on how closely their `:schema` and `:name` match the given target values.
@@ -107,6 +115,123 @@
     [(not= (:schema item) target-schema)
      (not= (:name item) target-name)]))
 
+(def ^:private chunk-max-tables
+  "The most Tables whose Fields [[sync-fields!]] syncs together."
+  200)
+
+(def ^:private chunk-max-columns
+  "The most warehouse columns of the Tables [[sync-fields!]] syncs together, a wider Table being synced on its own."
+  5000)
+
+(defn- chunk-key-fn
+  "A key function for `partition-by` over the column groups of the Tables of a sync, one per Table, that changes once
+  the next group would put more than [[chunk-max-tables]] Tables or [[chunk-max-columns]] columns in the chunk."
+  []
+  (let [state (volatile! {:chunk 0 :tables 0 :columns 0})]
+    (fn [table-metadata]
+      (let [{:keys [chunk tables columns]} @state
+            n                              (count table-metadata)]
+        (:chunk (vreset! state (if (and (pos? tables)
+                                        (or (>= tables chunk-max-tables)
+                                            (> (+ columns n) chunk-max-columns)))
+                                 {:chunk (inc chunk) :tables 1 :columns n}
+                                 {:chunk chunk :tables (inc tables) :columns (+ columns n)})))))))
+
+(defn- log-table-failure
+  "Log the exception `e` that failed the sync of the Fields of `table`, rethrowing it when the warehouse is unreachable,
+  which fails every Table and so aborts the step."
+  [table e]
+  (when (sync-util/transient-exception? e)
+    (throw e))
+  ;; a missing grant or FDW user mapping is for the customer to fix, not a Metabase bug
+  (if (sync-util/customer-environment-exception? e)
+    (log/warnf "Error syncing Fields for %s: %s" (sync-util/name-for-logging table) (ex-message e))
+    (log/errorf e "Error syncing Fields for %s: %s" (sync-util/name-for-logging table) (ex-message e))))
+
+(defn- table-resolver
+  "A function of the name and schema of a column group of `chunk` to the synced Table of `database` it belongs to, the
+  candidate Tables of the whole chunk read together and hidden Tables matched too, so that a hidden Table's
+  columns are never given to a visible Table whose name differs only in case."
+  [database chunk]
+  (let [lower-names (into [] (comp (map (comp t2.util/lower-case-en :table-name first)) (distinct)) chunk)
+        candidates  (group-by (juxt :lower_name :lower_schema)
+                              (sync.db/active-tables-by-lower-names (:id database) lower-names))]
+    (fn [table-name table-schema]
+      (let [best (->> (get candidates [(t2.util/lower-case-en table-name) (some-> table-schema t2.util/lower-case-en)])
+                      (sort-by (select-best-matching-name table-schema table-name))
+                      first)]
+        (when (and best (nil? (:visibility_type best)))
+          (dissoc best :lower_name :lower_schema))))))
+
+(defn- table-entry
+  "The `table` of the column group `table-metadata` with its `:db-metadata`, including nested field columns and limited
+  by [[limit-fields-to-sync]], or nil when reading them from the warehouse fails, which is logged."
+  [database remap-table table table-metadata]
+  (try
+    ;; TODO: decouple nested field columns sync from field sync. This will allow
+    ;; describe-fields to be used for field sync for databases with nested field columns
+    ;; Also this should be a driver method, not a sql-jdbc.sync method
+    {:table       table
+     :db-metadata (limit-fields-to-sync table (fetch-metadata/include-nested-fields-for-table (set table-metadata)
+                                                                                              database
+                                                                                              table
+                                                                                              remap-table))}
+    (catch Exception e
+      (log-table-failure table e)
+      nil)))
+
+(defn- sync-tables-one-at-a-time!
+  "Sync the Fields of each of the Table `entries` on its own, logging the failure of one and going on with the others,
+  and return the number of Fields synced."
+  [database entries]
+  (sync-util/sum-for [{:keys [table db-metadata]} entries]
+    (try
+      (sync-and-update-limited! database table db-metadata)
+      (catch Exception e
+        (log-table-failure table e)
+        0))))
+
+(defn- sync-tables-together!
+  "Sync the Fields of all the Table `entries`, none with nested Fields, reading our metadata of all of them together,
+  again after any Field was created, reactivated or retired, and writing their changes together, and return the number
+  of Fields synced."
+  [database entries]
+  (let [table-ids         (mapv (comp u/the-id :table) entries)
+        add-our-metadata  (fn []
+                            (let [table-id->our-metadata (fields.our-metadata/our-metadata-by-table-id table-ids)]
+                              (mapv #(assoc % :our-metadata (table-id->our-metadata (u/the-id (:table %)))) entries)))
+        entries           (add-our-metadata)
+        synced            (sync-instances/sync-instances-of-tables! entries)]
+    (+ synced
+       (sync-metadata/update-metadata-of-tables! database (if (pos? synced) (add-our-metadata) entries)))))
+
+(defn- sync-chunk!
+  "Sync the Fields of the Tables of `chunk`, the column groups of up to [[chunk-max-tables]] Tables of `database`,
+  locating each Table in the warehouse with the [[fetch-metadata/table-remapper]] `remap-table`, reading the Tables
+  together and syncing Tables with nested Fields (all of them when `nested?`) one at a time and the others together,
+  or one at a time when that fails."
+  [database remap-table nested? chunk]
+  (let [resolve-table (table-resolver database chunk)
+        entries       (into []
+                            (keep (fn [table-metadata]
+                                    (let [{:keys [table-name table-schema]} (first table-metadata)]
+                                      (when-let [table (resolve-table table-name table-schema)]
+                                        (table-entry database remap-table table table-metadata)))))
+                            chunk)
+        {nested true flat false} (group-by #(boolean (or nested? (some :nested-fields (:db-metadata %)))) entries)]
+    {:total-fields   (transduce (map count) + 0 chunk)
+     :updated-fields (+ (sync-tables-one-at-a-time! database nested)
+                        (if (empty? flat)
+                          0
+                          (try
+                            (sync-tables-together! database flat)
+                            (catch Exception e
+                              (when (sync-util/transient-exception? e)
+                                (throw e))
+                              (log/warnf "Error syncing the Fields of %d Tables together, syncing them one at a time: %s"
+                                         (count flat) (ex-message e))
+                              (sync-tables-one-at-a-time! database flat)))))}))
+
 (mu/defn sync-fields! :- [:or
                           [:map
                            [:updated-fields ms/IntGreaterThanOrEqualToZero]
@@ -115,55 +240,22 @@
   "Sync the Fields in the Metabase application database for all the Tables in a `database`.
 
   `fields-metadata` is a *reducible* of per-column metadata, ordered so a table's columns are contiguous. It is passed
-  straight to `sync!` (never `(into [] ...)`-ed): `sync!`'s `partition-by` buffers only one table's columns at a time,
-  so memory stays bounded by the widest single table rather than the whole schema. A schema with a huge or churning
-  set of tables (e.g. BigQuery with thousands of ephemeral tables) would otherwise materialize every column at once
-  and OOM."
+  straight to `sync!` (never `(into [] ...)`-ed): `sync!` buffers only one chunk of Tables at a time (see
+  [[chunk-key-fn]]), so memory stays bounded by the chunk rather than the whole schema. A schema with a huge or
+  churning set of tables (e.g. BigQuery with thousands of ephemeral tables) would otherwise materialize every column at
+  once and OOM. The Tables of a chunk are read and written together (see [[sync-chunk!]]), while the failure of one is
+  still logged on its own and leaves the others synced."
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
-    (let [driver          (driver.u/database->driver database)
-          schemas?        (driver.u/supports? driver :schemas database)
-          sync-table-id?  (set (sync.db/sync-table-ids (:id database)))]
+    (let [driver      (driver.u/database->driver database)
+          schemas?    (driver.u/supports? driver :schemas database)
+          nested?     (driver.u/supports? driver :nested-fields database)
+          remap-table (fetch-metadata/table-remapper database)]
       (letfn [(sync! [fields-metadata]
                 (transduce (comp
                             (partition-by (juxt :table-name :table-schema))
-                            (map (fn [table-metadata]
-                                   (let [{:keys [table-name table-schema]} (first table-metadata)
-                                         ;; match over hidden Tables too, so a hidden Table's columns are never
-                                         ;; given to a visible Table whose name differs only in case
-                                         table   (let [best (->> (sync.db/active-tables-by-lower-name-and-schema
-                                                                  (:id database)
-                                                                  (t2.util/lower-case-en table-name)
-                                                                  (some-> table-schema t2.util/lower-case-en))
-                                                                 (sort-by (select-best-matching-name table-schema table-name))
-                                                                 first)]
-                                                   (when (sync-table-id? (:id best))
-                                                     best))
-                                         updated (if table
-                                                   (try
-                                                     ;; TODO: decouple nested field columns sync from field sync. This will allow
-                                                     ;; describe-fields to be used for field sync for databases with nested field columns
-                                                     ;; Also this should be a driver method, not a sql-jdbc.sync method
-                                                     (let [all-metadata (fetch-metadata/include-nested-fields-for-table
-                                                                         (set table-metadata)
-                                                                         database
-                                                                         table)]
-                                                       (sync-and-update! database table all-metadata))
-                                                     (catch Exception e
-                                                       ;; an unreachable warehouse fails every table: abort the step
-                                                       (when (sync-util/transient-exception? e)
-                                                         (throw e))
-                                                       ;; a missing grant or FDW user mapping is for the customer to
-                                                       ;; fix, not a Metabase bug
-                                                       (if (sync-util/customer-environment-exception? e)
-                                                         (log/warnf "Error syncing Fields for %s: %s"
-                                                                    (sync-util/name-for-logging table) (ex-message e))
-                                                         (log/errorf e "Error syncing Fields for %s: %s"
-                                                                     (sync-util/name-for-logging table) (ex-message e)))
-                                                       0))
-                                                   0)]
-                                     {:total-fields   (count table-metadata)
-                                      :updated-fields updated}))))
+                            (partition-by (chunk-key-fn))
+                            (map (partial sync-chunk! database remap-table nested?)))
                            (partial merge-with +)
                            {:total-fields   0
                             :updated-fields 0}
@@ -181,17 +273,23 @@
           (sync! (fetch-metadata/fields-metadata database)))))))
 
 (mu/defn sync-fields-for-table!
-  "Sync the Fields in the Metabase application database for a specific `table`."
+  "Sync the Fields of `table` into the application database, reading them from the warehouse location that
+  `remap-table` gives, by default the [[fetch-metadata/table-remapper]] of `database`."
   ([table :- i/TableInstance]
    (sync-fields-for-table! (driver.u/lib-database (:db_id table)) table))
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
+   (sync-fields-for-table! database table (fetch-metadata/table-remapper database)))
+
+  ([database    :- i/DatabaseInstance
+    table       :- i/TableInstance
+    remap-table :- ifn?]
    (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
-     (let [db-metadata (fetch-metadata/table-fields-metadata database table)
+     (let [db-metadata (fetch-metadata/table-fields-metadata database table remap-table)
            ;; TODO: decouple nested field columns sync from field sync. This will allow
            ;; describe-fields to be used for field sync for databases with nested field columns
            ;; Also this should be a driver method, not a sql-jdbc.sync method
-           db-metadata (fetch-metadata/include-nested-fields-for-table db-metadata database table)]
+           db-metadata (fetch-metadata/include-nested-fields-for-table db-metadata database table remap-table)]
        {:total-fields   (count db-metadata)
         :updated-fields (sync-and-update! database table db-metadata)}))))

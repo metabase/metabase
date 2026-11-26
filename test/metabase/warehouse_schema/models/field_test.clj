@@ -2,6 +2,8 @@
   "Tests for specific behavior related to the Field model."
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
@@ -29,7 +31,7 @@
                                                         :fallback-type nil}]]
     (testing (format "Field with unknown %s in DB should fall back to %s" column fallback-type)
       (mt/with-temp [:model/Field field]
-        (t2/query-one {:update :metabase_field
+        (t2/query-one {:update (t2/table-name :model/Field)
                        :set    {column (u/qualified-name unknown-type)}
                        :where  [:= :id (u/the-id field)]})
         (is (= fallback-type
@@ -306,7 +308,7 @@
                                                                             :effective_type :type/Text
                                                                             :database_type "TEXT" :position 0 :database_position 0})))))
             counted (fn [ids]
-                      (t2/update! :metabase_field :id [:in (vec (take-nth 2 ids))] {:effective_type "type/Integer"})
+                      (t2/update! (t2/table-name :model/Field) :id [:in (vec (take-nth 2 ids))] {:effective_type "type/Integer"})
                       (events.tu/statement-count! #(field/update-fields! (for [id ids] {:id id :description "x"}))))
             six     (fields 6)]
         (counted (fields 1))
@@ -317,7 +319,7 @@
 (deftest data-sensitivity-transform-round-trip-test
   (testing "data_sensitivity is stored as the enum string and read back as a keyword"
     (mt/with-temp [:model/Field {field-id :id} {:data_sensitivity :PII}]
-      (is (= "PII" (t2/select-one-fn :data_sensitivity :metabase_field :id field-id)))
+      (is (= "PII" (t2/select-one-fn :data_sensitivity (t2/table-name :model/Field) :id field-id)))
       (is (= :PII (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))))
   (testing "a field with no label reads nil and has no user-settings row"
     (mt/with-temp [:model/Field {field-id :id}]
@@ -476,3 +478,40 @@
       (is (=? [{:description "Other Writer" :display_name "User Name"}]
               (t2/select :model/FieldUserSettings :field_id field-id)))
       (is (= "User Name" (t2/select-one-fn :display_name :model/Field :id field-id))))))
+
+(defn- per-field-can-write?
+  "The answer the per-field `:can_write` check of the advanced permissions gave: the Table of `field` loaded alone and
+  its metadata permission asked."
+  [field]
+  (let [table (t2/select-one :model/Table :id (:table_id field))]
+    (boolean (and (contains? (collection/remote-sync-writable-table-ids [table]) (:id table))
+                  (data-perms/user-has-permission-for-tables? (data-perms/user-info api/*current-user-id*)
+                                                              :perms/manage-table-metadata :yes
+                                                              {(:table_id field) (:db_id table)})))))
+
+(deftest can-write-statements-do-not-grow-with-fields-test
+  (mt/when-ee-evailable
+   (mt/with-temp [:model/Database {db-id :id} {}
+                  :model/Table {managed :id} {:db_id db-id}
+                  :model/Table {other :id} {:db_id db-id}
+                  :model/PermissionsGroup pg {}]
+     (let [field-ids (vec (for [i (range 6)]
+                            (t2/insert-returning-pk! :model/Field {:table_id  (if (even? i) managed other)
+                                                                   :name      (str "field_" i)
+                                                                   :base_type :type/Integer
+                                                                   :database_type "INTEGER"})))]
+       (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
+       (data-perms/set-database-permission! pg db-id :perms/manage-table-metadata :no)
+       (data-perms/set-table-permission! pg managed :perms/manage-table-metadata :yes)
+       (mt/with-premium-features #{:advanced-permissions}
+         (mt/with-test-user :rasta
+           (let [fields  (mapv #(t2/select-one :model/Field :id %) field-ids)
+                 hydrate (fn [n]
+                           (t2/with-call-count [call-count]
+                             (let [hydrated (doall (t2/hydrate (vec (take n fields)) :can_write))]
+                               {:statements (call-count)
+                                :values     (mapv :can_write hydrated)})))]
+             (hydrate 1)
+             (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))
+             (is (= [true false true false true false] (:values (hydrate 6))))
+             (is (= (mapv per-field-can-write? fields) (:values (hydrate 6)))))))))))

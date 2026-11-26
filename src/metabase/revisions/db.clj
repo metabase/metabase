@@ -2,6 +2,7 @@
   "Application database queries for the revisions module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.revisions.schema :as revisions.schema]
    [metabase.revisions.sql :as revisions.sql]
@@ -21,9 +22,7 @@
   "The `model` rows with `ids`. See [[entity]] for why `model` is generic."
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
-  (if (seq ids)
-    (t2/select model :id [:in ids])
-    []))
+  (mdb/select-batched #(t2/select model :id [:in %]) ids))
 
 (mu/defn parameter-card-ids
   "The Card ids of the ParameterCards of the `parameterized-object-type` with `parameterized-object-id`."
@@ -50,7 +49,7 @@
 (mu/defn card-queries
   "A map of Card id to query for the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :dataset_query :model/Card :id [:in %]) card-ids))
 
 (mu/defn revision
   "The Revision with `revision-id` of the `model-name` row with `model-id`, or nil."
@@ -62,23 +61,17 @@
 (mu/defn cards-by-ids
   "The Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (if (seq card-ids)
-    (t2/select :model/Card :id [:in card-ids])
-    []))
+  (mdb/select-batched #(t2/select :model/Card :id [:in %]) card-ids))
 
 (mu/defn collections-by-ids
   "The Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (if (seq collection-ids)
-    (t2/select :model/Collection :id [:in collection-ids])
-    []))
+  (mdb/select-batched #(t2/select :model/Collection :id [:in %]) collection-ids))
 
 (mu/defn dashboards-by-ids
   "The Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (if (seq dashboard-ids)
-    (t2/select :model/Dashboard :id [:in dashboard-ids])
-    []))
+  (mdb/select-batched #(t2/select :model/Dashboard :id [:in %]) dashboard-ids))
 
 (def ^:private Entity
   "A revisioned row, as its `[model-name model-id]`."
@@ -97,7 +90,7 @@
   [alias]
   (let [column #(keyword (str (name alias) "." (name %)))]
     [:exists ^:allow-subquery {:select [1]
-                               :from   [[:revision :newer]]
+                               :from   [[(t2/table-name :model/Revision) :newer]]
                                :where  [:and
                                         [:= :newer.model (column :model)]
                                         [:= :newer.model_id (column :model_id)]
@@ -107,38 +100,38 @@
   "Clear `most_recent` on the Revisions of `entities` that a newer Revision of the same row supersedes, returning the
   number updated."
   [entities :- [:sequential Entity]]
-  (t2/update! :model/Revision
-              :id [:in ^:allow-subquery
-                   {:select [:superseded.id]
-                    :from   [[^:allow-subquery {:select [:r.id]
-                                                :from   [[:revision :r]]
-                                                :where  [:and
-                                                         [:= :r.most_recent true]
-                                                         (entities-clause :r entities)
-                                                         (newer-revision-exists :r)]}
-                              :superseded]]}]
-              {:most_recent false}))
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/Revision
+                                                          :id [:in ^:allow-subquery
+                                                               {:select [:superseded.id]
+                                                                :from   [[^:allow-subquery {:select [:r.id]
+                                                                                            :from   [[(t2/table-name :model/Revision) :r]]
+                                                                                            :where  [:and
+                                                                                                     [:= :r.most_recent true]
+                                                                                                     (entities-clause :r %)
+                                                                                                     (newer-revision-exists :r)]}
+                                                                          :superseded]]}]
+                                                          {:most_recent false}) entities))
 
 (mu/defn delete-revisions-beyond!
   "Delete the Revisions of `entities` that `kept` newer Revisions of the same row follow, returning the number
   deleted."
   [entities :- [:sequential Entity]
    kept     :- ms/PositiveInt]
-  (t2/delete! :model/Revision
-              :id [:in ^:allow-subquery
-                   {:select [:old.id]
-                    :from   [[^:allow-subquery {:select [:r.id]
-                                                :from   [[:revision :r]]
-                                                :where  [:and
-                                                         (entities-clause :r entities)
-                                                         [:<= kept ^:allow-subquery
-                                                          {:select [:%count.*]
-                                                           :from   [[:revision :newer]]
-                                                           :where  [:and
-                                                                    [:= :newer.model :r.model]
-                                                                    [:= :newer.model_id :r.model_id]
-                                                                    [:> :newer.id :r.id]]}]]}
-                              :old]]}]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/Revision
+                                                          :id [:in ^:allow-subquery
+                                                               {:select [:old.id]
+                                                                :from   [[^:allow-subquery {:select [:r.id]
+                                                                                            :from   [[(t2/table-name :model/Revision) :r]]
+                                                                                            :where  [:and
+                                                                                                     (entities-clause :r %)
+                                                                                                     [:<= kept ^:allow-subquery
+                                                                                                      {:select [:%count.*]
+                                                                                                       :from   [[(t2/table-name :model/Revision) :newer]]
+                                                                                                       :where  [:and
+                                                                                                                [:= :newer.model :r.model]
+                                                                                                                [:= :newer.model_id :r.model_id]
+                                                                                                                [:> :newer.id :r.id]]}]]}
+                                                                          :old]]}]) entities))
 
 (mu/defn revisions
   "The Revisions of the `model-name` row with `model-id`, newest first."
@@ -179,35 +172,37 @@
   `ids`."
   [db-model :- :string
    ids      :- [:set ms/PositiveInt]]
-  (t2/reducible-query
-   {:select    [:r.model_id :u.id :u.email :u.first_name :u.last_name :r.timestamp]
-    :from      [[:revision :r]]
-    :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-    :where     [:and
-                [:= :r.model db-model]
-                [:in :r.model_id ids]
-                (revisions.sql/newest-revision-clause :r db-model :r.model_id)]}))
+  (mdb/select-batched-reducible #(t2/reducible-query
+                                  {:select    [:r.model_id :u.id :u.email :u.first_name :u.last_name :r.timestamp]
+                                   :from      [[(t2/table-name :model/Revision) :r]]
+                                   :left-join [[(t2/table-name :model/User) :u] [:= :u.id :r.user_id]]
+                                   :where     [:and
+                                               [:= :r.model db-model]
+                                               [:in :r.model_id %]
+                                               (revisions.sql/newest-revision-clause :r db-model :r.model_id)]}) ids))
 
 (mu/defn latest-changes
   "The editing User, model, model id, and timestamp of the most recent Revisions of the Cards with `card-ids`
   and/or the Dashboards with `dashboard-ids`."
   [card-ids      :- [:maybe [:sequential ::lib.schema.id/card]]
    dashboard-ids :- [:maybe [:sequential ::lib.schema.id/dashboard]]]
-  (t2/query {:select    [:u.id :u.email :u.first_name :u.last_name
-                         :r.model :r.model_id :r.timestamp]
-             :from      [[:revision :r]]
-             :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-             :where     (into [:or]
-                              (keep (fn [[model-name ids]]
-                                      (when (seq ids)
-                                        [:and
-                                         [:= :r.model model-name]
-                                         [:in :r.model_id ids]
-                                         (revisions.sql/newest-revision-clause :r model-name :r.model_id)])))
-                              [["Card" card-ids] ["Dashboard" dashboard-ids]])}))
+  (mdb/select-batched (fn [model+ids]
+                        (t2/query {:select    [:u.id :u.email :u.first_name :u.last_name
+                                               :r.model :r.model_id :r.timestamp]
+                                   :from      [[(t2/table-name :model/Revision) :r]]
+                                   :left-join [[(t2/table-name :model/User) :u] [:= :u.id :r.user_id]]
+                                   :where     (into [:or]
+                                                    (map (fn [[model-name pairs]]
+                                                           [:and
+                                                            [:= :r.model model-name]
+                                                            [:in :r.model_id (mapv second pairs)]
+                                                            (revisions.sql/newest-revision-clause :r model-name :r.model_id)]))
+                                                    (group-by first model+ids))}))
+                      (concat (map vector (repeat "Card") card-ids)
+                              (map vector (repeat "Dashboard") dashboard-ids))))
 
 (mu/defn delete-revisions-for-entities!
   "Delete the Revisions of the rows of the model named `model-name` with `model-ids`, returning the number deleted."
   [model-name :- :string
    model-ids  :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Revision :model model-name :model_id [:in model-ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/Revision :model model-name :model_id [:in %]) model-ids))

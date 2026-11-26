@@ -7,7 +7,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.warehouses.models.database :as database]
@@ -18,7 +17,7 @@
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
 (defn- max-id []
-  (or (:id (t2/query-one {:select [[:%max.id :id]] :from [:audit_log]})) 0))
+  (or (:id (t2/query-one {:select [[:%max.id :id]] :from [(t2/table-name :model/AuditLog)]})) 0))
 
 (defn- rows-since [before]
   (mapv #(select-keys % [:topic :model :model_id :user_id :details])
@@ -264,10 +263,8 @@
           (is (seq (t2/select-one-fn :result_metadata :model/Card :id question-id))))))))
 
 (defn- user-request-call-count!
-  "The number of app DB queries that `(mt/user-http-request user-and-args...)` runs, its session write included."
+  "The number of app DB queries that `(mt/user-http-request user-and-args...)` runs."
   [& user-and-args]
-  ;; Each session writes `last_active_at` at most once a minute, so clear the throttle to count that write every time.
-  (session/clear-session-activity-cache!)
   (t2/with-call-count [call-count]
     (apply mt/user-http-request user-and-args)
     (call-count)))

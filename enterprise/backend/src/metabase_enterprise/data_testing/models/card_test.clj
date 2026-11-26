@@ -48,44 +48,47 @@
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
-(defn- card-allows?
-  "Whether `card-check` holds for the Card `card-id`, hydrated with `k`, and the current user may run the card's query
-  and write the native SQL of a test against the Database of that query."
-  [card-check k card-id]
-  (let [card (data-testing.db/card card-id)]
-    (data-testing.models/query-subject-allows? card-check k card (:dataset_query card))))
-
-(mu/defn- can-save-test? :- :boolean
-  "Whether the current user may save or delete a test of the Card `card-id`: they may edit the card and run its query,
-  and write the native SQL of a test against the Database of its query."
-  [card-id :- ::lib.schema.id/card]
-  (card-allows? mi/can-write? :can_write card-id))
-
-(mu/defn can-run? :- :boolean
-  "Whether the current user may run the saved `card-test`: they may read its card and run the card's query, and write
-  the native SQL of a test against the Database of the card's query."
-  [card-test :- ::data-testing.schema/card-test]
-  ;; Input SQL can read any table of the Database, and the guards do not check it, so reading the card is not enough.
-  (card-allows? mi/can-read? :can_read (:card_id card-test)))
-
 (methodical/defmethod t2/batched-hydrate [:model/CardTest :can_read]
   "Add whether the current user can read the card of each card test, loading the cards at once."
   [_model k card-tests]
   (data-testing.models/with-readable-subjects k card-tests :card_id
     (data-testing.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) card-tests))))
 
-(methodical/defmethod t2/simple-hydrate [:model/CardTest :can_write]
-  [_model k instance]
-  (assoc instance k (boolean (can-save-test? (:card_id instance)))))
+(defn- card-database-id
+  "The id of the Database of the query of `card`."
+  [card]
+  (data-testing.models/query-database-id (:dataset_query card)))
+
+(methodical/defmethod t2/batched-hydrate [:model/CardTest :can_write]
+  "Add whether the current user may edit each card test: they may edit its card, loading the cards at once."
+  [_model k card-tests]
+  (vec (data-testing.models/assoc-subject-answers
+        card-tests k
+        {:subject-key   :card_id
+         :subjects      (data-testing.db/cards-by-ids
+                         (into [] (comp (remove nil?) (keep :card_id) (distinct)) card-tests))
+         :subject-k     :can_write
+         :subject-check mi/can-write?})))
+
+(methodical/defmethod t2/batched-hydrate [:model/CardTest :can_query]
+  "Add whether the current user may run each card test: they read it and may run its card, as its `:can_query`
+  says, loading the cards at once."
+  [_model k card-tests]
+  (vec (data-testing.models/assoc-can-query
+        card-tests k :card_id
+        (data-testing.db/cards-by-ids (into [] (comp (remove nil?) (keep :card_id) (distinct)) card-tests)))))
 
 (defmethod mi/can-create? :model/CardTest
   [_model instance]
-  (can-save-test? (:card_id instance)))
+  (data-testing.models/can-create-test? (some-> (:card_id instance) data-testing.db/card) card-database-id))
 
 (defmethod mi/can-update? :model/CardTest
   [instance changes]
-  (and (mi/can-write? instance)
-       (can-save-test? (:card_id changes (:card_id instance)))))
+  (data-testing.models/can-update-test? instance changes
+                                        {:subject-key  :card_id
+                                         :load-subject data-testing.db/card
+                                         :db-id        card-database-id
+                                         :writable?    (mi/can-write? instance)}))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
@@ -121,8 +124,7 @@
    :run-topics {:start   :event/card-test-run-start
                 :timeout :event/card-test-run-timeout}
    ;; A suite records a typed refusal of the subject as the member's refusal.
-   :subject    #(testable-card (:card_id %))
-   :can-run?   can-run?})
+   :subject    #(testable-card (:card_id %))})
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 

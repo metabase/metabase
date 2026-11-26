@@ -2,6 +2,7 @@
   "Application database queries for the native query snippets module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -10,7 +11,6 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -40,41 +40,45 @@
 (mu/defn unarchived-snippets-in-collections
   "The unarchived NativeQuerySnippets in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/NativeQuerySnippet :collection_id [:in collection-ids] :archived false))
+  (mdb/select-batched #(t2/select :model/NativeQuerySnippet :collection_id [:in %] :archived false) collection-ids))
 
 (mu/defn restorable-snippets-in-collections
   "The NativeQuerySnippets in the Collections with `collection-ids` that were archived along with them."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/NativeQuerySnippet :collection_id [:in collection-ids] :archived true :archived_directly false))
+  (mdb/select-batched #(t2/select :model/NativeQuerySnippet :collection_id [:in %] :archived true :archived_directly false)
+                      collection-ids))
 
 (mu/defn snippets-in-collections
   "The NativeQuerySnippets in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/NativeQuerySnippet :collection_id [:in collection-ids]))
+  (mdb/select-batched #(t2/select :model/NativeQuerySnippet :collection_id [:in %]) collection-ids))
 
 (mu/defn delete-snippets-in-collections!
   "Delete the NativeQuerySnippets in the Collections with `collection-ids`, returning the number deleted."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/delete! :model/NativeQuerySnippet :collection_id [:in collection-ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/NativeQuerySnippet :collection_id [:in %]) collection-ids))
 
 (mu/defn snippet-ids-by-names :- [:map-of :string pos-int?]
   "The ids of the NativeQuerySnippets named one of `snippet-names`, by name."
   [snippet-names :- [:sequential :string]]
   (into {}
         (map (juxt :name :id))
-        (t2/select [:model/NativeQuerySnippet :id :name] :name [:in snippet-names])))
+        (mdb/select-batched #(t2/select [:model/NativeQuerySnippet :id :name] :name [:in %]) snippet-names)))
 
 (mu/defn snippet-names-and-entity-ids
   "The name and entity id of the NativeQuerySnippets whose name starts with one of `snippet-names`."
   [snippet-names :- [:sequential :string]]
-  (t2/select [:model/NativeQuerySnippet :name :entity_id]
-             {:where (into [:or] (map (fn [n] [:like :name [:auto/param (str n "%")]])) snippet-names)}))
+  (into []
+        (distinct)
+        (mdb/select-batched #(t2/select [:model/NativeQuerySnippet :name :entity_id]
+                                        {:where (into [:or] (map (fn [n] [:like :name (str n "%")])) %)})
+                            snippet-names)))
 
 (mu/defn synced-snippet-items :- [:sequential ::native-query-snippets.schema/native-query-snippet]
   "The NativeQuerySnippets with `ids`, with their Collection and its ancestors, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection :snippets)]
-    (-> (t2/select [:model/NativeQuerySnippet :id :name :collection_id] :id [:in ids])
+    (-> (mdb/select-batched #(t2/select [:model/NativeQuerySnippet :id :name :collection_id] :id [:in %]) ids)
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
 
@@ -88,8 +92,8 @@
                 (not (perms/user-has-highest-permission-anywhere? (perms/user-info user-id) :perms/create-queries)))
     (let [location (collections.listing/collection-location :collection :snippets)]
       {:select    [[:snippet.id :entity_id] [:snippet.name :name] [location :location]]
-       :from      [[:native_query_snippet :snippet]]
-       :left-join [:collection [:= :snippet.collection_id :collection.id]]
+       :from      [[(t2/table-name :model/NativeQuerySnippet) :snippet]]
+       :left-join [[(t2/table-name :model/Collection) :collection] [:= :snippet.collection_id :collection.id]]
        :where     (into [:and]
                         (remove nil?)
                         [(collections.listing/visible-in-collections-clause :snippet opts include-archived :snippets)
@@ -102,8 +106,8 @@
   collections are an EE feature."
   metabase-enterprise.snippet-collections.api.native-query-snippet
   [_collection {:keys [archived?]}]
-  {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
-   :from   [[:native_query_snippet :nqs]]
+  {:select [:id :name :entity_id [[:literal "snippet"] :model]]
+   :from   [[(t2/table-name :model/NativeQuerySnippet) :nqs]]
    :where  [:= :archived (boolean archived?)]})
 
 (mu/defn collection-snippet-items :- [:maybe :map]

@@ -152,8 +152,34 @@
                                    :message "The server had an error while processing your request. Sorry about that!"}}}]]
       (is (=? [{:type :start}
                {:type      :error
-                :errorText "The server had an error while processing your request. Sorry about that!"}]
+                :errorText "The server had an error while processing your request. Sorry about that!"
+                :error     {:code    "server_error"
+                            :message "The server had an error while processing your request. Sorry about that!"}}]
               (into [] (openai/openai->aisdk-chunks-xf) raw))))))
+
+(deftest ^:parallel openai-error-event-keeps-error-object-test
+  (testing "a top-level error event keeps its code in the :error object, beside the text"
+    (is (= [{:type      :error
+             :errorText "Rate limit reached."
+             :error     {:code "rate_limit_exceeded" :message "Rate limit reached." :param nil}}]
+           (into [] (openai/openai->aisdk-chunks-xf)
+                 [{:type "error" :code "rate_limit_exceeded" :message "Rate limit reached." :param nil
+                   :sequence_number 3}]))))
+  (testing "a nested error object with no message takes the event's own message"
+    (is (=? [{:type      :error
+              :errorText "Rate limit reached."
+              :error     {:code "rate_limit_exceeded" :message "Rate limit reached."}}]
+            (into [] (openai/openai->aisdk-chunks-xf)
+                  [{:type "error" :message "Rate limit reached." :error {:code "rate_limit_exceeded"}}]))))
+  (testing "an integer code with no message is the text as a string, and stays an integer in the :error object"
+    (is (= [{:type :error :errorText "429" :error {:code 429 :message "429"}}]
+           (into [] (openai/openai->aisdk-chunks-xf) [{:type "error" :code 429}]))))
+  (testing "a string error is the text when the event has no message"
+    (is (= [{:type :error :errorText "Upstream timeout" :error {:message "Upstream timeout"}}]
+           (into [] (openai/openai->aisdk-chunks-xf) [{:type "error" :error "Upstream timeout"}])))
+    (is (= [{:type :error :errorText "Upstream timed out." :error {:message "Upstream timed out."}}]
+           (into [] (openai/openai->aisdk-chunks-xf)
+                 [{:type "error" :error "Upstream timeout" :message "Upstream timed out."}])))))
 
 (deftest ^:parallel openai-response-failed-without-message-test
   (testing "response.failed with no message falls back to the error code, then a generic message"
@@ -161,7 +187,10 @@
                      {:type "response.failed"  :response {:id "resp_1" :error {:code "server_error"}}}]
           bare      [{:type "response.created" :response {:id "resp_1"}}
                      {:type "response.failed"  :response {:id "resp_1"}}]]
-      (is (=? [{:type :start} {:type :error :errorText "server_error"}]
+      (is (=? [{:type :start} {:type      :error
+                               :errorText "server_error"
+                               ;; the error object gets the text as its message
+                               :error     {:code "server_error" :message "server_error"}}]
               (into [] (openai/openai->aisdk-chunks-xf) code-only)))
       (is (=? [{:type :start} {:type :error :errorText "The model provider failed to complete the response"}]
               (into [] (openai/openai->aisdk-chunks-xf) bare))))))
@@ -325,12 +354,25 @@
               {:type :text :text "It's 2 PM."}])))))
 
 (deftest ^:parallel parts->openai-input-error-result-test
-  (testing "tool error is formatted in output"
-    (is (=? [{:type   "function_call_output"
-              :call_id "call-1"
-              :output  #"Error:.*failed"}]
-            (openai/parts->openai-input
-             [{:type :tool-output :id "call-1" :error {:message "Tool failed"}}])))))
+  (testing "a failed call sends its text, which is the :output of its result"
+    (is (= [{:type    "function_call_output"
+             :call_id "call-1"
+             :output  "Table 7 was not found."}]
+           (openai/parts->openai-input
+            [{:type   :tool-output :id "call-1"
+              :result {:output "Table 7 was not found." :error {:class :recoverable :code :x}}}]))))
+  (testing "a failed call without :output sends the fallback text"
+    (is (= [{:type    "function_call_output"
+             :call_id "call-1"
+             :output  "Tool execution failed"}]
+           (openai/parts->openai-input
+            [{:type :tool-output :id "call-1" :result {:error {:class :recoverable :code :x}}}])))))
+
+(deftest ^:parallel parts->openai-input-tool-result-without-output-test
+  (testing "a result without :output sends empty text and none of its other keys"
+    (is (= [{:type "function_call_output" :call_id "call-1" :output ""}]
+           (openai/parts->openai-input
+            [{:type :tool-output :id "call-1" :result {:rows [1 2]}}])))))
 
 (deftest ^:parallel openai-reasoning-summary-part-separator-test
   (testing "a 2nd+ summary part opens a new paragraph within the same reasoning item"

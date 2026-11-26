@@ -27,7 +27,6 @@
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -106,7 +105,7 @@
 
 (defmethod mi/non-internal-filter-clause :model/Database
   [_model alias]
-  (let [maybe-alias #(h2x/identifier :field alias %)]
+  (let [maybe-alias #(u/qualified-key alias %)]
     [:not [:or (maybe-alias :is_sample) (maybe-alias :is_audit)]]))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
@@ -382,22 +381,19 @@
   [database-id]
   (and (not (premium-features/enable-audit-app?)) (= database-id audit/audit-db-id)))
 
-(def ^{:arglists '([db-id])
-       :private  true} db-id->router-db-id
-  (mdb/memoize-for-application-db
-   (fn [db-id]
-     (warehouses.db/router-database-id db-id))))
+(defn- router-database-ids
+  "`{database-id router-id}` of the destinations among `databases`, read from the rows when they all have the column."
+  [databases]
+  (if (every? #(contains? % :router_database_id) databases)
+    (into {}
+          (keep (fn [{:keys [id router_database_id]}] (when router_database_id [id router_database_id])))
+          databases)
+    (warehouses.db/router-database-ids (into [] (comp (map :id) (distinct)) databases))))
 
 (defn- check-permission-keys
   "Throws unless `database` has the `:id` its permission hydrations read."
   [database]
   (api/check-500 (some? (:id database)) "No :id is set for a Database."))
-
-(defn- permission-database-id
-  "The id of the Database whose permissions answer for the Database with `database-id`: its router's for a
-  destination Database, and its own otherwise."
-  [database-id]
-  (or (db-id->router-db-id database-id) database-id))
 
 (defn- queryable-database-ids
   "The ids among `database-ids` of the Databases the current user can query: those with query builder access on some
@@ -429,17 +425,19 @@
   "Sets the flag `k` on each of `databases`: whether its permission Database, never the audit Database while the audit
   app is off, is among the ids `allowed-ids`, a function of the candidate ids, returns."
   [k databases allowed-ids]
-  (let [rows       (into [] (remove nil?) databases)
-        _          (run! check-permission-keys rows)
-        candidates (into #{}
-                         (comp (map :id) (remove should-read-audit-db?) (map permission-database-id)
-                               (remove should-read-audit-db?))
-                         rows)
-        allowed    (if (seq candidates) (allowed-ids candidates) #{})]
+  (let [rows          (into [] (remove nil?) databases)
+        _             (run! check-permission-keys rows)
+        routers       (when (seq rows) (router-database-ids rows))
+        permission-id (fn [database-id] (get routers database-id database-id))
+        candidates    (into #{}
+                            (comp (map :id) (remove should-read-audit-db?) (map permission-id)
+                                  (remove should-read-audit-db?))
+                            rows)
+        allowed       (if (seq candidates) (allowed-ids candidates) #{})]
     (for [database databases]
       (when database
         (let [answer (boolean (and (not (should-read-audit-db? (:id database)))
-                                   (contains? allowed (permission-database-id (:id database)))))]
+                                   (contains? allowed (permission-id (:id database)))))]
           (if (= k :can_read)
             (vary-meta database assoc k answer)
             (assoc database k answer)))))))
@@ -486,7 +484,7 @@
                    (check-permission-keys database)
                    (api/check-500 (contains? database :is_attached_dwh) "No :is_attached_dwh is set for a Database."))
         ids      (into [] (comp (map :id) (distinct)) rows)
-        writable (writable-database-ids ids (warehouses.db/router-database-ids ids))]
+        writable (writable-database-ids ids (if (seq rows) (router-database-ids rows) {}))]
     (for [database databases]
       (when database
         (assoc database k (database-writable? writable database))))))
@@ -541,6 +539,18 @@
   [_model k databases]
   (hydrate-router-user-attribute k databases))
 
+(defenterprise hydrate-router-anonymous-access-granted
+  "OSS implementation. Hydrates the router's anonymous-access grant on the databases."
+  metabase-enterprise.database-routing.models
+  [_k databases]
+  (for [database databases]
+    (assoc database :router_anonymous_access_granted nil)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :router_anonymous_access_granted]
+  "Batch hydrate the router's anonymous-access grant for the given `Database`."
+  [_model k databases]
+  (hydrate-router-anonymous-access-granted k databases))
+
 (defn sensitive-fields-for-db
   "Gets all sensitive fields that should be redacted in API responses for a given database. Delegates to
   driver.u/sensitive-fields using the given database's driver (if valid), so refer to that for full details. If a valid
@@ -555,12 +565,42 @@
         driver.u/default-sensitive-fields))
     driver.u/default-sensitive-fields))
 
+(defn- json-access
+  "What the JSON encoding of each of `databases` reads about the current user, answered once for all of them: whether
+  they can change it, and a delay of the setting visibilities they read."
+  [databases]
+  (let [rows         (into [] (remove nil?) databases)
+        ids          (into [] (comp (map u/the-id) (distinct)) rows)
+        writable     (if (seq rows) (writable-database-ids ids (router-database-ids rows)) #{})
+        visibilities (delay (setting/current-user-readable-visibilities))]
+    (for [database databases]
+      (when database
+        {:writable?    (database-writable? writable database)
+         :visibilities visibilities}))))
+
+(defn add-json-access
+  "Stores on each of `databases`, in its metadata, what its JSON encoding reads about the current user, answered once
+  for all of them."
+  [databases]
+  (map (fn [database access]
+         (cond-> database
+           database (vary-meta assoc ::json-access access)))
+       databases
+       (json-access databases)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :json_access]
+  "Stores on each of `databases`, in its metadata, what its JSON encoding reads about the current user, as
+  [[add-json-access]] does."
+  [_model _k databases]
+  (add-json-access databases))
+
 (methodical/defmethod mi/to-json :model/Database
   "When encoding a Database as JSON remove the `details`, `write_data_details`, `admin_details`, and
   `initial_sync_error` for any User without write perms for the DB. Users with write perms can see the details but remove anything resembling a
   password. No one gets to see this in an API response!
 
-  Also remove settings that the User doesn't have read perms for."
+  Also remove settings that the User doesn't have read perms for. Reads what [[add-json-access]] or the `:json_access`
+  hydration stored on `db`, and otherwise answers for `db` alone."
   [db json-generator]
   (letfn [(redact-sensitive-fields [details]
             (reduce
@@ -568,8 +608,8 @@
              details
              (sensitive-fields-for-db db)))]
     (next-method
-     (let [db-id (u/the-id db)
-           db    (if (not (database-writable? (writable-database-ids [db-id] {db-id (db-id->router-db-id db-id)}) db))
+     (let [{:keys [writable? visibilities]} (or (::json-access (meta db)) (first (json-access [db])))
+           db    (if (not writable?)
                    (do (log/debug "Fully redacting database details during json encoding.")
                        (dissoc db :details :write_data_details :admin_details :initial_sync_error))
                    (do (log/debug "Redacting sensitive fields within database details during json encoding.")
@@ -585,8 +625,7 @@
                      (m/filter-keys
                       (fn [setting-name]
                         (try
-                          (setting/can-read-setting? setting-name
-                                                     (setting/current-user-readable-visibilities))
+                          (setting/can-read-setting? setting-name @visibilities)
                           (catch Throwable e
                             ;; there is an known issue with exception is ignored when render API response (#32822)
                             ;; If you see this error, you probably need to define a setting for `setting-name`.
@@ -603,13 +642,6 @@
                      (when (not= <> settings)
                        (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
      json-generator)))
-
-(def ^{:arglists '([table-id])} table-id->database-id
-  "Retrieve the `Database` ID for the given table-id."
-  (mdb/memoize-for-application-db
-   (fn [table-id]
-     {:pre [(integer? table-id)]}
-     (warehouses.db/table-database-id table-id))))
 
 ;;; ------------------------------------------------- Health checks --------------------------------------------------
 
@@ -845,9 +877,9 @@
                                   :object          object})))
 
 (defn- databases-by-ids
-  "The Databases with `ids` by id, read in batches of [[mdb/delete-partition-size]] ids."
+  "The Databases with `ids` by id."
   [ids]
-  (into {} (map #(warehouses.db/databases-by-ids (vec %))) (partition-all mdb/delete-partition-size ids)))
+  (warehouses.db/databases-by-ids (vec ids)))
 
 (defn- stored-databases
   "The stored Databases that `updates` change, by id: those of `held`, the Databases the caller read, and the others
@@ -978,11 +1010,25 @@
     (catch Throwable e
       (log/errorf "Error sending database deletion notification: %s" (ex-message e)))))
 
+(mu/defn call-locking-databases
+  "Call `thunk` in a transaction that first locks the Database rows with the ids `(database-ids)` returns, as their
+  delete does, so that a write over the rows of many of their Tables never waits for that delete while holding some of
+  them; within a transaction the caller opened, whose locks are its own business, call it as it is."
+  [database-ids :- ifn?
+   thunk        :- ifn?]
+  (if (mdb/in-transaction?)
+    (thunk)
+    (t2/with-transaction [_conn]
+      (when-let [ids (seq (database-ids))]
+        (warehouses.db/lock-databases! (vec ids)))
+      (thunk))))
+
 (defn- delete-database-content-and-publish!
-  "Delete the Secrets of the Database rows `databases` and what else belongs to them, with their sync triggers
+  "Lock the Database rows `databases`, then delete their Secrets and what else belongs to them, with their sync triggers
   unscheduled once the followers that may refuse the delete have accepted it, then publish their delete event and tell
   their drivers."
   [databases]
+  (warehouses.db/lock-databases! (mapv :id databases))
   (delete-followers! refusing-follower-models databases)
   (run! unschedule-tasks! databases)
   (models.secret/delete-secrets-for-databases! databases)

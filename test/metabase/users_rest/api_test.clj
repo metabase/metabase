@@ -660,7 +660,8 @@
                     :permissions))]
         (testing "user with collection permission on published table should still have can_create_queries false"
           (mt/with-temp [:model/Collection {collection-id :id} {}
-                         :model/Table      _table              {:db_id         (mt/id)
+                         :model/Table      {table-id :id}      {:db_id (mt/id)}
+                         :model/TableUserSettings _            {:table_id      table-id
                                                                 :is_published  true
                                                                 :collection_id collection-id}]
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)
@@ -2077,7 +2078,7 @@
 (deftest deactivate-missing-user-fails
   (testing "DELETE /api/user/:id"
     (let [max-id (:max_id (t2/query-one {:select [[:%max.id :max_id]]
-                                         :from :core_user}))]
+                                         :from (t2/table-name :model/User)}))]
       (is (= "Not found." (mt/user-http-request :crowberto :delete 404 (format "user/%d" (* 2 max-id))))))))
 
 (deftest deactivate-deactivated-user-again-succeeds

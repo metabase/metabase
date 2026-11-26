@@ -12,10 +12,12 @@
   [user-id   :- ::lib.schema.id/user
    namespace :- :string
    k         :- :string]
+  (when-not (and (string? namespace) (string? k))
+    (throw (ex-info "namespace and key must be strings" {:namespace namespace, :key k})))
   (t2/select-one :model/UserKeyValue
                  :user_id   (long user-id)
-                 :namespace [:auto/param namespace]
-                 :key       [:auto/param k]))
+                 :namespace namespace
+                 :key       k))
 
 (mu/defn update-user-key-value!
   "Set the value and expiry of the UserKeyValue of the User with `user-id` for `k` in `namespace`, returning the
@@ -25,10 +27,12 @@
    k          :- :string
    value      :- :string
    expires-at :- [:maybe ms/TemporalInstant]]
+  (when-not (and (string? namespace) (string? k))
+    (throw (ex-info "namespace and key must be strings" {:namespace namespace, :key k})))
   (t2/update! :model/UserKeyValue
               :user_id   (long user-id)
-              :namespace [:auto/param namespace]
-              :key       [:auto/param k]
+              :namespace namespace
+              :key       k
               {:value value, :expires_at expires-at}))
 
 (mu/defn insert-user-key-value!
@@ -38,6 +42,8 @@
    k          :- :string
    value      :- :string
    expires-at :- [:maybe ms/TemporalInstant]]
+  (when-not (and (string? namespace) (string? k))
+    (throw (ex-info "namespace and key must be strings" {:namespace namespace, :key k})))
   (t2/insert! :model/UserKeyValue {:user_id    user-id
                                    :namespace  namespace
                                    :key        k
@@ -49,21 +55,25 @@
   [user-id   :- ::lib.schema.id/user
    namespace :- :string
    k         :- :string]
+  (when-not (and (string? namespace) (string? k))
+    (throw (ex-info "namespace and key must be strings" {:namespace namespace, :key k})))
   (t2/delete! :model/UserKeyValue
-              :namespace [:auto/param namespace]
+              :namespace namespace
               :user_id   (long user-id)
-              :key       [:auto/param k]))
+              :key       k))
 
 (mu/defn unexpired-user-key-value
   "The unexpired UserKeyValue of the User with `user-id` for `k` in `namespace`, or nil."
   [user-id   :- ::lib.schema.id/user
    namespace :- :string
    k         :- :string]
+  (when-not (and (string? namespace) (string? k))
+    (throw (ex-info "namespace and key must be strings" {:namespace namespace, :key k})))
   (t2/select-one :model/UserKeyValue
                  {:where [:and
                           [:= :user_id (long user-id)]
-                          [:= :namespace [:auto/param namespace]]
-                          [:= :key [:auto/param k]]
+                          [:= :namespace namespace]
+                          [:= :key k]
                           [:or
                            [:>= :expires_at :%now]
                            [:= :expires_at nil]]]}))
@@ -72,10 +82,12 @@
   "The unexpired UserKeyValues of the User with `user-id` in `namespace`."
   [user-id   :- ::lib.schema.id/user
    namespace :- :string]
+  (when-not (string? namespace)
+    (throw (ex-info "namespace and key must be strings" {:namespace namespace})))
   (t2/select :model/UserKeyValue
              {:where [:and
                       [:= :user_id (long user-id)]
-                      [:= :namespace [:auto/param namespace]]
+                      [:= :namespace namespace]
                       [:or
                        [:>= :expires_at :%now]
                        [:= :expires_at nil]]]}))

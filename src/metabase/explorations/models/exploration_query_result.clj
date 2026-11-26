@@ -12,6 +12,7 @@
    [metabase.queries.models.stored-result-use :as stored-result-use]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -73,14 +74,18 @@
   exists and its stored_result_id is set + the snapshot bytes deserialise. Order is
   preserved from `eq-ids` — that ordering drives the composite snapshot row order."
   [eq-ids]
-  (mapv
-   (fn [eq-id]
-     (let [eq        (api/check-404 (t2/hydrate (explorations.db/query eq-id) :segment_name))
-           eqr       (api/check-404 (explorations.db/query-result eq-id))
-           sr        (api/check-404 (explorations.db/stored-result (:stored_result_id eqr)))
-           qp-result (api/check-404 (deserialize-stored-result (:result_data sr)))]
-       {:eq eq :eqr eqr :sr sr :qp-result qp-result}))
-   eq-ids))
+  (let [eq-ids  (vec eq-ids)
+        id->eq  (u/index-by :id (t2/hydrate (vals (explorations.db/queries-by-id eq-ids)) :segment_name))
+        id->eqr (explorations.db/query-results-by-query-id eq-ids)
+        id->sr  (explorations.db/stored-results-by-id (into [] (keep :stored_result_id) (vals id->eqr)))]
+    (mapv
+     (fn [eq-id]
+       (let [eq        (api/check-404 (id->eq eq-id))
+             eqr       (api/check-404 (id->eqr eq-id))
+             sr        (api/check-404 (id->sr (:stored_result_id eqr)))
+             qp-result (api/check-404 (deserialize-stored-result (:result_data sr)))]
+         {:eq eq :eqr eqr :sr sr :qp-result qp-result}))
+     eq-ids)))
 
 (defn- composite-data-access-token
   "The lens stamp for a composite snapshot built from `eq-results`.
@@ -159,10 +164,11 @@
         composite-qp  (composite/combine eq-results (or visualization-settings {}))
         dataset-query (:dataset_query first-eq)
         creator-id    (:id creator)]
-    (doseq [dq (distinct (map (fn [{:keys [eq sr]}]
-                                (or (:dataset_query eq) (:dataset_query sr)))
-                              eq-results))]
-      (query-perms/check-run-permissions-for-query dq))
+    (query-perms/check-run-permissions-for-queries (into []
+                                                         (comp (map (fn [{:keys [eq sr]}]
+                                                                      (or (:dataset_query eq) (:dataset_query sr))))
+                                                               (distinct))
+                                                         eq-results))
     ;; Single-query embeds reuse the source snapshot as-is — `composite/combine` returned it
     ;; unchanged, so copying its bytes into a fresh stored_result would just duplicate them.
     ;; Only a genuine multi-snapshot combine produces new cols/rows that need their own row.

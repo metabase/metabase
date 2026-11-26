@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
    [metabase-enterprise.metabot.schema :as metabot-ee.schema]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.usage-controls :as usage-controls]
    [metabase.util.malli :as mu]
@@ -32,23 +33,23 @@
                         :where  [:= :user_id user-id]}]
                       (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
-(mu/defn permission :- [:maybe ::metabot-ee.schema/metabot-permissions]
-  "The MetabotPermissions row of `perm-type` of the group with `group-id`, or nil."
-  [group-id  :- ms/PositiveInt
-   perm-type :- :keyword]
-  (t2/select-one :model/MetabotPermissions :group_id group-id :perm_type perm-type))
+(mu/defn permissions-of-groups :- [:sequential ::metabot-ee.schema/metabot-permissions]
+  "The MetabotPermissions rows of the groups with `group-ids`."
+  [group-ids :- [:sequential ms/PositiveInt]]
+  (mdb/select-batched #(t2/select :model/MetabotPermissions :group_id [:in %]) group-ids))
 
-(mu/defn update-permission-value!
-  "Set the value of the MetabotPermissions row of `perm-type` for the group with `group-id`."
-  [group-id   :- ms/PositiveInt
-   perm-type  :- ::metabot-ee.schema/metabot-permissions.perm-type
-   perm-value :- ::metabot-ee.schema/metabot-permissions.perm-value]
-  (t2/update! :model/MetabotPermissions {:group_id group-id :perm_type perm-type} {:perm_value perm-value}))
+(mu/defn update-permission-values!
+  "Apply `updates`, each the `:id` of a MetabotPermissions row and its new `:perm_value`, one statement per value and
+  partition of rows."
+  [updates :- [:sequential [:map {:closed true}
+                            [:id ms/PositiveInt]
+                            [:perm_value ::metabot-ee.schema/metabot-permissions.perm-value]]]]
+  (mdb/update-grouped! :model/MetabotPermissions updates))
 
-(mu/defn insert-permission!
-  "Insert the MetabotPermissions `row`."
-  [row :- ::metabot-ee.schema/metabot-permissions.update]
-  (t2/insert! :model/MetabotPermissions row))
+(mu/defn insert-permissions!
+  "Insert the MetabotPermissions `rows`."
+  [rows :- [:sequential ::metabot-ee.schema/metabot-permissions.update]]
+  (t2/insert! :model/MetabotPermissions rows))
 
 (mu/defn delete-hidden-group-permissions!
   "Delete the MetabotPermissions rows of the groups the mode selected by `advanced?` hides."
@@ -74,8 +75,8 @@
                                [:= [[:count :*]] [[:count :gl.max_usage]]]
                                [[:max :gl.max_usage]]]
                               :max_usage]]
-                 :from      [[:permissions_group_membership :pgm]]
-                 :left-join [[:metabot_group_limit :gl] [:= :pgm.group_id :gl.group_id]]
+                 :from      [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                 :left-join [[(t2/table-name :model/MetabotGroupLimit) :gl] [:= :pgm.group_id :gl.group_id]]
                  :where     [:= :pgm.user_id user-id]}))
 
 (mu/defn insert-group-limit!
@@ -134,12 +135,15 @@
    (when tenant-id [:= :tenant_id tenant-id])])
 
 (mu/defn usage-token-sum
-  "The `:sum` row of tokens logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`."
+  "The `:sum` row of tokens logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`.
+  Tokens read from the provider prompt cache do not count, and tokens written to it do."
   [period-start :- ms/TemporalInstant
    user-id      :- [:maybe ::lib.schema.id/user]
    tenant-id    :- [:maybe ms/PositiveInt]]
-  (t2/query-one {:select [[[:sum :total_tokens] :sum]]
-                 :from   [:ai_usage_log]
+  ;; An agent loop reads the same conversation prefix from the cache on every call, so counting cache reads would
+  ;; make the sum grow with the number of calls rather than with the work done.
+  (t2/query-one {:select [[[:sum [:- :total_tokens [:coalesce :cache_read_tokens 0]]] :sum]]
+                 :from   [(t2/table-name :model/AiUsageLog)]
                  :where  (usage-window-expr period-start user-id tenant-id)}))
 
 (mu/defn usage-message-count
@@ -155,7 +159,7 @@
    user-id      :- [:maybe ::lib.schema.id/user]
    tenant-id    :- [:maybe ms/PositiveInt]]
   (t2/query-one {:select [[[:count [:distinct :request_id]] :cnt]]
-                 :from   [:ai_usage_log]
+                 :from   [(t2/table-name :model/AiUsageLog)]
                  :where  (cond-> (usage-window-expr period-start user-id tenant-id)
                            (seq sources) (conj [:in :source sources])
                            request-id    (conj [:not= :request_id request-id]))}))

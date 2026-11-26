@@ -29,7 +29,7 @@
   ^:allow-subquery
   {:select    [[:dest.id :id] [(mapping-type-name->code mapping-type) :mapping_type]]
    :from      [[(t2/table-name :model/Field) :source]]
-   :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
+   :left-join [[(t2/table-name :model/Table) :table] [:= :source.table_id :table.id]
                [(t2/table-name :model/Field) :dest] [:= :dest.table_id :table.id]]
    :where     [:and
                [:= :source.id field-id]
@@ -50,7 +50,7 @@
                                       ^:allow-subquery
                                       {:select [[:dimension.human_readable_field_id :id]
                                                 [(mapping-type-name->code "fk->field") :mapping_type]]
-                                       :from   [[:dimension :dimension]]
+                                       :from   [[(t2/table-name :model/Dimension) :dimension]]
                                        :where  [:and
                                                 [:= :dimension.field_id field-id]
                                                 [:not= :dimension.human_readable_field_id nil]]
@@ -81,12 +81,17 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]))
+  (mdb/select-batched #(t2/select :model/Field :id [:in %]) field-ids))
+
+(mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
+  "The Database id of each of the Tables with `table-ids`, by Table id."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (mdb/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in %]) table-ids))
 
 (mu/defn fields-fk-info
   "The id, FK target, and semantic type of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-ids]))
+  (mdb/select-batched #(t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in %]) field-ids))
 
 (mu/defn field-fk-target-field-id
   "The FK target Field id of the Field with `field-id`, or nil."
@@ -129,20 +134,33 @@
    hash-key :- :string]
   (t2/select-one :model/FieldValues :field_id field-id, :type :advanced, :hash_key hash-key))
 
+(mu/defn advanced-field-values-of-fields
+  "The advanced FieldValues of the Fields with `field-ids` whose hash key is one of `hash-keys`, by descending id."
+  [field-ids :- [:sequential ::lib.schema.id/field]
+   hash-keys :- [:sequential :string]]
+  (->> (mdb/select-batched (fn [field-ids]
+                             (mdb/select-batched #(t2/select :model/FieldValues :field_id [:in field-ids], :type :advanced, :hash_key [:in %]
+                                                             {:order-by [[:id :desc]]})
+                                                 hash-keys))
+                           field-ids)
+       (sort-by :id #(compare %2 %1))
+       vec))
+
 (mu/defn active-name-fields-for-tables
   "The `columns` of the active `:type/Name` Fields of the Tables with `table-ids`."
   [columns   :- [:sequential :keyword]
    table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select (into [:model/Field] columns)
-             :table_id      [:in table-ids]
-             :semantic_type (mdb/isa :type/Name)
-             :active        true))
+  (mdb/select-batched #(t2/select (into [:model/Field] columns)
+                                  :table_id      [:in %]
+                                  :semantic_type (mdb/isa :type/Name)
+                                  :active        true)
+                      table-ids))
 
 (mu/defn fields-with-columns
   "The `columns` of the Fields with `field-ids`."
   [columns   :- [:sequential :keyword]
    field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select (into [:model/Field] columns) :id [:in field-ids]))
+  (mdb/select-batched #(t2/select (into [:model/Field] columns) :id [:in %]) field-ids))
 
 (mu/defn fk-relationships-for-database
   "Rows describing FK -> PK Field relationships (`:f1`/`:t1` FK Field/Table ids, `:f2`/`:t2` PK Field/Table ids)
@@ -153,9 +171,9 @@
                           [:pk-field.id :f2]
                           [:pk-field.table_id :t2]]
               :from      [[(t2/table-name :model/Field) :fk-field]]
-              :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
-                                                          :fk-table.active]
-                          [:metabase_database :database] [:= :fk-table.db_id :database.id]
+              :left-join [[(t2/table-name :model/Table) :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
+                                                                       :fk-table.active]
+                          [(t2/table-name :model/Database) :database] [:= :fk-table.db_id :database.id]
                           [(t2/table-name :model/Field) :pk-field] [:and [:= :fk-field.fk_target_field_id :pk-field.id]
                                                                     :pk-field.active]]
               :where     [:and

@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
@@ -19,12 +20,12 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (mdb/select-batched #(t2/select :model/Table :id [:in %]) table-ids))
 
 (mu/defn table-database-ids
   "The set of Database IDs of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in table-ids]))
+  (mdb/select-batched-set #(t2/select-fn-set :db_id [:model/Table :db_id] :id [:in %]) table-ids))
 
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
@@ -34,12 +35,12 @@
 (mu/defn database-engine
   "The engine of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :engine :model/Database :id [:auto/param database-id]))
+  (t2/select-one-fn :engine :model/Database :id database-id))
 
 (mu/defn python-library
   "The PythonLibrary with `library-id`, or nil."
   [library-id :- ms/PositiveInt]
-  (t2/select-one :model/PythonLibrary :id [:auto/param library-id]))
+  (t2/select-one :model/PythonLibrary :id library-id))
 
 (mu/defn python-library-by-path
   "The PythonLibrary at `path`, or nil."
@@ -65,4 +66,4 @@
 (mu/defn synced-python-library-items :- [:sequential ::transforms-python.schema/python-library]
   "The PythonLibraries with `ids`, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
-  (t2/select [:model/PythonLibrary :id :path] :id [:in ids]))
+  (mdb/select-batched #(t2/select [:model/PythonLibrary :id :path] :id [:in %]) ids))

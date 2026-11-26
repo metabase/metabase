@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.explorations.api]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.derived-perms :as derived-perms]
@@ -26,6 +27,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.users.models.user :as user]
+   [metabase.util :as u]
    [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
@@ -83,12 +85,12 @@
                                             :database_id sample-db-id))]
     (if (seq metric-ids)
       (try
-        (t2/query {:update :report_card
+        (t2/query {:update (t2/table-name :model/Card)
                    :set    {:archived true}
                    :where  [:in :id metric-ids]})
         (thunk)
         (finally
-          (t2/query {:update :report_card
+          (t2/query {:update (t2/table-name :model/Card)
                      :set    {:archived false}
                      :where  [:in :id metric-ids]})))
       (thunk))))
@@ -221,6 +223,38 @@
             ;; (every metric dimension appears in a group) no longer holds.
             (doseq [g groups]
               (is (every? #(contains? metric-dim-ids (:id %)) (:dimensions g))))))))))
+
+(deftest dimensions-first-read-statement-count-test
+  (testing "GET /api/exploration/dimensions heals metrics without dimensions with no more statements per metric than writing their dimensions, which differ from one metric to the next, takes"
+    (with-sample-metrics-archived
+      (mt/with-model-cleanup [:model/Card]
+        (let [query   (dissoc (let [mp (mt/metadata-provider)]
+                                (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                    (lib/aggregate (lib/count))))
+                              :lib/metadata)
+              create! (fn [n]
+                        (vec (for [i (range n)]
+                               (:id (mt/user-http-request :crowberto :post 200 "card"
+                                                          {:name                   (str "Heal metric " n "-" i)
+                                                           :type                   "metric"
+                                                           :display                "scalar"
+                                                           :visualization_settings {}
+                                                           :dataset_query          query})))))
+              clear!  (fn [ids] (t2/update! :model/Card :id [:in ids] {:dimensions nil :dimension_mappings nil}))
+              extra   (fn [user n]
+                        (let [ids     (create! n)
+                              healing (events.tu/real-statement-count!
+                                       #(mt/user-http-request user :get 200 "exploration/dimensions"))
+                              stored  (t2/select :model/Card :id [:in ids])
+                              _       (clear! ids)
+                              writing (events.tu/real-statement-count!
+                                       #(queries.card/update-cards! (mapv (fn [row] (select-keys row [:id :dimensions :dimension_mappings])) stored)))]
+                          [healing writing]))]
+          (doseq [user [:crowberto :rasta]]
+            (extra user 2)
+            (let [[small-heal small-write] (extra user 4)
+                  [large-heal large-write] (extra user 12)]
+              (is (<= (- large-heal small-heal) (- large-write small-write)) (str user)))))))))
 
 (deftest dimensions-search-by-name-test
   (testing "GET /api/exploration/dimensions filters case-insensitively by metric name"
@@ -973,7 +1007,8 @@
     (testing "an exploration holds several threads once \"Explore further\" is used, each with its own Restart"
       (mt/with-model-cleanup [:model/User]
         (let [[u] (user/create-users! [{:email "rs-multi@example.com"}])
-              created  (mt/user-http-request u :post 200 "exploration" {:name "multi"})
+              created  (mt/with-dynamic-fn-redefs [explorations.queues/start-thread! (fn [_thread-id])]
+                         (mt/user-http-request u :post 200 "exploration" {:name "multi"}))
               expl-id  (:id created)
               root-tid (-> created :threads first :id)
               ;; A later thread, as "Explore further" creates: higher position, so it's the one the
@@ -1221,9 +1256,9 @@
         dataset-query (t2/select-one-fn :dataset_query :model/Card :id card-id)
         creator-id    (t2/select-one-fn :creator_id :model/Exploration
                                         {:select [:e.creator_id]
-                                         :from   [[:exploration :e]]
-                                         :join   [[:exploration_thread :t] [:= :t.exploration_id :e.id]
-                                                  [:exploration_query :q]  [:= :q.exploration_thread_id :t.id]]
+                                         :from   [[(t2/table-name :model/Exploration) :e]]
+                                         :join   [[(t2/table-name :model/ExplorationThread) :t] [:= :t.exploration_id :e.id]
+                                                  [(t2/table-name :model/ExplorationQuery) :q]  [:= :q.exploration_thread_id :t.id]]
                                          :where  [:= :q.id query-id]})
         sr-id         (first (t2/insert-returning-pks!
                               :model/StoredResult
@@ -1827,7 +1862,7 @@
             (store-fake-result! qid qp-out)
             (mark-done! qid)
             (let [doc (t2/select-one :model/Document :id doc-id)]
-              (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
+              (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-queries (fn [_] nil)
                                           queries.card/create-cards!                        (fn [& _] (throw (ex-info "boom" {})))]
                 (is (thrown? Throwable
                              (eqr/create-ephemeral-card-for-exploration-queries!
@@ -1865,7 +1900,7 @@
             (let [src-sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                               :exploration_query_id qid)
                   doc       (t2/select-one :model/Document :id doc-id)
-                  result    (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+                  result    (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-queries (fn [_] nil)]
                               (eqr/create-ephemeral-card-for-exploration-queries!
                                [qid] doc-id (:collection_id doc) u
                                {:display "bar" :visualization-settings {}}))
@@ -2781,11 +2816,11 @@
                                            {:page_id         (:page-id src)
                                             :explore_filters [new-f]})
               new-block (->> (t2/select :model/ExplorationBlock
-                                        {:join  [[:exploration_thread :t]
-                                                 [:= :t.id :exploration_block.exploration_thread_id]]
+                                        {:join  [[(t2/table-name :model/ExplorationThread) :t]
+                                                 [:= :t.id (u/qualified-key (t2/table-name :model/ExplorationBlock) :exploration_thread_id)]]
                                          :where [:and
                                                  [:= :t.exploration_id (:exploration-id src)]
-                                                 [:not= :exploration_block.exploration_thread_id (:thread-id src)]]})
+                                                 [:not= (u/qualified-key (t2/table-name :model/ExplorationBlock) :exploration_thread_id) (:thread-id src)]]})
                              first)
               filters (:explore_filters (first (:metrics new-block)))]
           (is (= [(assoc prior :field_ref [:field (mt/id :venues :name) nil])
@@ -3074,7 +3109,7 @@
   create hold no data perms, and `create-cards!` runs the same check — the existing single-query
   test stubs it for the same reason. Tests that are *about* the permission check don't use this."
   [& args]
-  (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+  (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-queries (fn [_] nil)]
     (apply eqr/create-ephemeral-card-for-exploration-queries! args)))
 
 (deftest composite-snapshot-carries-a-data-access-token-test
@@ -3174,8 +3209,8 @@
             ;; "checked them all" are distinguishable.
             (t2/update! :model/ExplorationQuery :id (second query-ids) {:dataset_query other-q})
             (let [checked (atom [])]
-              (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query
-                                          (fn [q] (swap! checked conj q) nil)]
+              (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-queries
+                                          (fn [qs] (swap! checked into qs) nil)]
                 (eqr/create-ephemeral-card-for-exploration-queries!
                  query-ids document-id (:collection_id doc) u
                  {:display "bar" :visualization-settings {}}))

@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.permissions.core :as perms]
@@ -48,7 +49,7 @@
   (testing "timelines with icon=balloons should use the default icon instead when selected"
     (mt/with-temp [:model/Timeline a {}
                    :model/Timeline b {:icon "cake"}]
-      (t2/query-one {:update :timeline :set {:icon "balloons"} :where [:= :id (u/the-id a)]})
+      (t2/query-one {:update (t2/table-name :model/Timeline) :set {:icon "balloons"} :where [:= :id (u/the-id a)]})
       (is (= timeline-event/default-icon
              (t2/select-one-fn :icon :model/Timeline :id (u/the-id a))))
       (is (= "cake"
@@ -251,3 +252,10 @@
                             #(timeline/update-timelines! (mapv (fn [id] {:id id :archived false}) ids) nil))))]
           (restore! 2)
           (is (= (restore! 2) (restore! 6))))))))
+
+(deftest can-update-each-moves-test
+  (testing "mi/can-update-each? of Timelines answers a move as mi/can-update? does row by row in a fixed number of statements"
+    (mt/with-model-cleanup [:model/Timeline]
+      (collections.tu/check-bulk-can-update-collection-move!
+       :model/Timeline
+       #(t2/insert-returning-pk! :model/Timeline (merge (mt/with-temp-defaults :model/Timeline) {:collection_id %}))))))

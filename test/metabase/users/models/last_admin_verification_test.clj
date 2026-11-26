@@ -1,7 +1,6 @@
 (ns metabase.users.models.last-admin-verification-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.app-db.query :as app-db.query]
    [metabase.config.core :as config]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.session.models.session :as session]
@@ -139,7 +138,7 @@
     (mt/with-model-cleanup [:model/User]
       (let [batch-reads (atom 0)
             read-users  (mt/original-fn #'users.db/users-with-all-columns)]
-        (with-redefs [app-db.query/update-partition-size 1]
+        (mt/with-partition-size 1
           (mt/with-dynamic-fn-redefs [users.db/users-with-all-columns (fn [user-ids]
                                                                         (swap! batch-reads inc)
                                                                         (read-users user-ids))]

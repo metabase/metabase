@@ -43,11 +43,11 @@
   entities get other local ids."
   [start]
   (doseq [[i {table :table_name column :column_name}]
-          (map-indexed vector (t2/query ["SELECT table_name, column_name FROM information_schema.columns
-                                          WHERE is_identity = 'YES' AND table_schema = 'PUBLIC'
-                                          ORDER BY table_name, column_name"]))
-          :let [max-query  (format "SELECT MAX(\"%s\") AS \"max\" FROM \"%s\"" column table)
-                seeded-max (:max (first (t2/query [max-query])))]]
+          (map-indexed vector (t2/query {:select   [:table_name :column_name]
+                                         :from     [:information_schema.columns]
+                                         :where    [:and [:= :is_identity "YES"] [:= :table_schema "PUBLIC"]]
+                                         :order-by [:table_name :column_name]}))
+          :let [seeded-max (:max (t2/query-one {:select [[[:max (keyword column)] :max]] :from [(keyword table)]}))]]
     (t2/query [(format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" RESTART WITH %d"
                        table column (+ (or seeded-max 0) start (* 37 i)))])))
 

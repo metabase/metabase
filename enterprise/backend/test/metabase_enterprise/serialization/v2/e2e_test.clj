@@ -1310,6 +1310,24 @@
           (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
           (is (t2/exists? :model/Card :name "Preview Card")))))))
 
+(deftest table-transform-id-yaml-round-trip-test
+  (testing "Tables export without transform_id, and older exports that still carry it load"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db (ts/create! :model/Database :name "my-db" :engine :h2)]
+            (ts/create! :model/Table :name "customers" :schema "PUBLIC" :db_id (:id db))
+            (storage/store! (into [] (extract/extract {:include-h2? true :no-settings true}))
+                            (storage.files/file-writer dump-dir))))
+        (let [^File file (m/find-first #(str/ends-with? (.getName ^File %) "customers.yaml") (file-seq (io/file dump-dir)))
+              exported   (yaml/from-file file)]
+          (is (=? {:name "customers"} exported))
+          (is (not (contains? exported :transform_id)))
+          (dump/spit-yaml! file (assoc exported :transform_id "TransformEntityId0001")))
+        (ts/with-db dest-db
+          (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+          (is (t2/exists? :model/Table :name "customers")))))))
+
 (defn- create-native-transform!
   "Create, in the current app DB, a Transform named `transform-name` in the collection `collection-id`, by the User
   `creator`, that selects `1 AS ID` from Database `db` into the table `PUBLIC`.`target-name`."
@@ -1397,9 +1415,9 @@
         (ts/with-db dest-db
           (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
           (is (= #{"Library" "Data" "Metrics"}
-                 (t2/select-fn-set :name :collection :entity_id [:in ["librarylibrarylibrary"
-                                                                      "librarylibrarydatadat"
-                                                                      "librarylibrarymetrics"]]))))))))
+                 (t2/select-fn-set :name (t2/table-name :model/Collection) :entity_id [:in ["librarylibrarylibrary"
+                                                                                            "librarylibrarydatadat"
+                                                                                            "librarylibrarymetrics"]]))))))))
 
 (deftest translated-library-collection-name-import-test
   (testing "Library collection exported with its translated name loads with its stored name"
@@ -1414,7 +1432,7 @@
         (ts/with-db dest-db
           (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
           (is (= "Library"
-                 (t2/select-one-fn :name :collection :entity_id "librarylibrarylibrary"))))))))
+                 (t2/select-one-fn :name (t2/table-name :model/Collection) :entity_id "librarylibrarylibrary"))))))))
 
 (deftest transform-test-expectations-round-trip-test
   (testing "A transform test's expectations come back from an import as validated records, payload intact"
@@ -1809,11 +1827,11 @@
           (load!))))
     {:revisions     (frequencies (map (juxt :model :is_creation :user_id)
                                       (t2/query {:select [:model :is_creation :user_id]
-                                                 :from   [:revision]
+                                                 :from   [(t2/table-name :model/Revision)]
                                                  :where  [:in :model ["Card" "Dashboard"]]})))
      :audit         (frequencies (map (juxt :topic :user_id)
                                       (t2/query {:select [:topic :user_id]
-                                                 :from   [:audit_log]
+                                                 :from   [(t2/table-name :model/AuditLog)]
                                                  :where  [:in :model ["Card" "Dashboard"]]})))
      :persisted     (set (t2/select-fn-vec :card_id :model/PersistedInfo))
      :syncs         @syncs}))
@@ -2006,7 +2024,8 @@
                                    :creator_id   (:id creator)
                                    :name         "Elsewhere is tested"
                                    :expectations segment-test-expectations)
-              _        (t2/update! :model/Table :id (:table_id segment) {:is_published true :collection_id (:id library)})
+              _        (ts/create! :model/TableUserSettings
+                                   :table_id (:table_id segment) :is_published true :collection_id (:id library))
               exported (fn [opts model k]
                          (into #{}
                                (comp (filter #(= model (-> % :serdes/meta last :model)))

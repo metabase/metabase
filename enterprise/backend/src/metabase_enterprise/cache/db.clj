@@ -2,6 +2,7 @@
   "Application database queries for the cache module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -26,7 +27,7 @@
                                      [4 "root"      0]]
                  :when              model-id]
              ^:allow-subquery
-             {:from   [:cache_config]
+             {:from   [(t2/table-name :model/CacheConfig)]
               :select [:id
                        [[:inline i] :ordering]]
               :where  [:and
@@ -41,12 +42,12 @@
 (mu/defn cards-by-id
   "A map of ID to Card for `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Card :id [:in %]) card-ids))
 
 (mu/defn router-database-ids
   "The subset of `database-ids` that are database routers."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-fn-set :database_id :model/DatabaseRouter :database_id [:in database-ids]))
+  (mdb/select-batched-set #(t2/select-fn-set :database_id :model/DatabaseRouter :database_id [:in %]) database-ids))
 
 (mu/defn duration-cache-configs
   "The duration CacheConfigs that refresh automatically."
@@ -59,42 +60,47 @@
   [scopes         :- [:sequential DurationScope]
    started-after  :- ms/TemporalInstant
    parameterized? :- :boolean]
-  (t2/select
-   :model/Query
-   {:select [:u.query :u.cache-hash :u.card-id :u.dashboard-id :u.count]
-    :from   [[^:allow-subquery
-              {:union (for [{:keys [model model-id rerun-cutoff]} scopes]
-                        ^:allow-subquery
-                        {:nest
-                         ^:allow-subquery
-                         {:select   [[:q.query :query]
-                                     [:qc.query_hash :cache-hash]
-                                     [:qe.card_id :card-id]
-                                     [:qe.dashboard_id :dashboard-id]
-                                     [[:count :q.query_hash] :count]]
-                          :from     [[(t2/table-name :model/Query) :q]]
-                          :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]
-                                     [(t2/table-name :model/QueryCache) :qc] [:= :qc.query_hash :qe.cache_hash]]
-                          :where    [:and
-                                     (case model
-                                       "question"  [:= :qe.card_id model-id]
-                                       "dashboard" [:= :qe.dashboard_id model-id])
-                                     [:<= :qc.updated_at rerun-cutoff]
-                                     [:>= :qe.started_at started-after]
-                                     [:= :qe.error nil]
-                                     [:= :qe.is_sandboxed false]
-                                     (if parameterized?
-                                       [:and
-                                        [:= :qe.parameterized true]
-                                        ;; Only rerun a parameterized query if it's had a cache hit within
-                                        ;; the last caching window
-                                        [:= :qe.cache_hit true]
-                                        ;; Don't factor the last cache refresh into whether we should rerun
-                                        ;; a parameterized query
-                                        [:not= :qe.context "cache-refresh"]]
-                                       [:= :qe.parameterized false])]
-                          :group-by [:q.query_hash :q.query :qc.query_hash :qe.card_id :qe.dashboard_id]}})}
-              :u]]}))
+  (into []
+        (distinct)
+        (mdb/select-batched
+         (fn [scopes]
+           (t2/select
+            :model/Query
+            {:select [:u.query :u.cache-hash :u.card-id :u.dashboard-id :u.count]
+             :from   [[^:allow-subquery
+                       {:union (for [{:keys [model model-id rerun-cutoff]} scopes]
+                                 ^:allow-subquery
+                                 {:nest
+                                  ^:allow-subquery
+                                  {:select   [[:q.query :query]
+                                              [:qc.query_hash :cache-hash]
+                                              [:qe.card_id :card-id]
+                                              [:qe.dashboard_id :dashboard-id]
+                                              [[:count :q.query_hash] :count]]
+                                   :from     [[(t2/table-name :model/Query) :q]]
+                                   :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]
+                                              [(t2/table-name :model/QueryCache) :qc] [:= :qc.query_hash :qe.cache_hash]]
+                                   :where    [:and
+                                              (case model
+                                                "question"  [:= :qe.card_id model-id]
+                                                "dashboard" [:= :qe.dashboard_id model-id])
+                                              [:<= :qc.updated_at rerun-cutoff]
+                                              [:>= :qe.started_at started-after]
+                                              [:= :qe.error nil]
+                                              [:= :qe.is_sandboxed false]
+                                              (if parameterized?
+                                                [:and
+                                                 [:= :qe.parameterized true]
+                                                 ;; Only rerun a parameterized query if it's had a cache hit within
+                                                 ;; the last caching window
+                                                 [:= :qe.cache_hit true]
+                                                 ;; Don't factor the last cache refresh into whether we should rerun
+                                                 ;; a parameterized query
+                                                 [:not= :qe.context "cache-refresh"]]
+                                                [:= :qe.parameterized false])]
+                                   :group-by [:q.query_hash :q.query :qc.query_hash :qe.card_id :qe.dashboard_id]}})}
+                       :u]]}))
+         scopes)))
 
 (mu/defn scheduled-base-query-to-rerun
   "The unparameterized query definition of the Card with `card-id` executed most recently after `started-after`, or

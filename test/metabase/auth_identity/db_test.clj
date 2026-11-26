@@ -19,7 +19,7 @@
                              "auth-identity-exists?"  auth-identity.db/auth-identity-exists?
                              "auth-identity-ids"      auth-identity.db/auth-identity-ids}]
           (testing fn-name
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Marked a whole operator form"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"provider must be a string"
                                   (f user-id [:like "%"])))))
         (is (t2/exists? :model/AuthIdentity :user_id user-id :provider "google"))))))
 
@@ -45,3 +45,23 @@
       (is (= [ai-id] (auth-identity.db/auth-identity-ids user-id "google"))))
     (testing "an id-only lookup still finds the user"
       (is (true? (auth-identity.db/user-active? user-id))))))
+
+(deftest user-ids-with-used-password-partitions-test
+  (mt/with-temp [:model/User         {user-a :id} {}
+                 :model/User         {user-b :id} {}
+                 :model/User         {user-c :id} {}
+                 :model/AuthIdentity _            {:user_id      user-a
+                                                   :provider     "password"
+                                                   :credentials  {:password_hash "hash" :password_salt "salt"}
+                                                   :last_used_at :%now}
+                 :model/AuthIdentity _            {:user_id      user-c
+                                                   :provider     "password"
+                                                   :credentials  {:password_hash "hash" :password_salt "salt"}
+                                                   :last_used_at :%now}]
+    (let [user-ids #{user-a user-b user-c (mt/user->id :rasta) (mt/user->id :lucky)}
+          single   (auth-identity.db/user-ids-with-used-password user-ids)]
+      (is (contains? single user-a))
+      (is (contains? single user-c))
+      (is (not (contains? single user-b)))
+      (is (= single (mt/with-partition-size 2
+                      (auth-identity.db/user-ids-with-used-password user-ids)))))))

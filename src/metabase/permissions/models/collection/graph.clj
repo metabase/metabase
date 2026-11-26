@@ -144,34 +144,10 @@
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
-(mu/defn- update-collection-permissions!
-  "Update the permissions for group ID with `group-id` on collection with ID
-  `collection-id` in the optional `collection-namespace` to `new-collection-perms`."
-  [collection-namespace :- [:maybe ms/KeywordOrString]
-   group-id :- ms/PositiveInt
-   collection-id :- [:or [:= :root] ms/PositiveInt]
-   new-collection-perms :- CollectionPermissions]
-  (let [collection-id (if (= collection-id :root)
-                        (assoc collection.root/root-collection :namespace collection-namespace)
-                        collection-id)]
-    ;; remove whatever entry is already there (if any) and add a new entry if applicable
-    (perms/revoke-collection-permissions! group-id collection-id)
-    (case new-collection-perms
-      :write (perms/grant-collection-readwrite-permissions! group-id collection-id)
-      :read (perms/grant-collection-read-permissions! group-id collection-id)
-      :none nil)))
-
-(mu/defn- update-group-permissions!
-  [collection-namespace :- [:maybe ms/KeywordOrString]
-   group-id :- ms/PositiveInt
-   new-group-perms :- GroupPermissionsGraph]
-  (doseq [[collection-id new-perms] new-group-perms]
-    (update-collection-permissions! collection-namespace group-id collection-id new-perms)))
-
 (defenterprise update-audit-collection-permissions!
-  "OSS implementation of `audit-db/update-audit-collection-permissions!`, which is an enterprise feature, so does nothing in the OSS
-  version. Returns the changes map unchanged."
-  metabase-enterprise.audit-app.permissions [_ changes] changes)
+  "OSS version of the enterprise `update-audit-collection-permissions!`, returning `changes`, a map of group id to its
+  Collection changes, unchanged."
+  metabase-enterprise.audit-app.permissions [changes] changes)
 
 (defn create-perms-revision!
   "Increments the current revision number and writes it to the database. This lets us track the permissions graph
@@ -290,9 +266,16 @@
      (when-not force? (perms.u/check-revision-numbers old-graph filtered-new-graph))
      (when (seq changes)
        (let [revision-id (t2/with-transaction [_conn]
-                           (doseq [[group-id changes] changes]
-                             (let [changes (update-audit-collection-permissions! group-id changes)]
-                               (update-group-permissions! collection-namespace group-id changes)))
+                           (perms/update-collection-accesses!
+                            (into []
+                                  (mapcat (fn [[group-id changes]]
+                                            (for [[collection-id access] changes]
+                                              [group-id
+                                               (if (= collection-id :root)
+                                                 (assoc collection.root/root-collection :namespace collection-namespace)
+                                                 collection-id)
+                                               access])))
+                                  (update-audit-collection-permissions! changes)))
                            (:id (create-perms-revision! (:revision old-graph))))]
          ;; The graph is updated infrequently, but `diff-old` and `old-graph` can get huge on larger instances.
          (perms.u/log-permissions-changes diff-old changes)

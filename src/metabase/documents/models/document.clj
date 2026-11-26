@@ -1,5 +1,6 @@
 (ns metabase.documents.models.document
   (:require
+   [clojure.set :as set]
    [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
@@ -94,12 +95,12 @@
                  `documents` can't call the consumer directly — the module graph runs one way
                  (`explorations -> documents`) — so the consumer registers a callback here."}
   doc-content-visibility-fn
-  (atom (fn [_doc] true)))
+  (atom (fn [_documents] (fn [_document] true))))
 
 (defn register-doc-content-visibility-fn!
-  "Install the content-visibility gate (see [[doc-content-visibility-fn]]). Called once at the
-  consuming module's init. `f` takes a document and returns whether the current user may see its
-  rendered content."
+  "Install `f`, the content-visibility gate (see [[doc-content-visibility-fn]]), at the consuming module's init: it
+  takes the documents a caller is about to ask about and returns a predicate of whether the current user may see the
+  rendered content of one of them, reading for all of them together."
   [f]
   (reset! doc-content-visibility-fn f))
 
@@ -131,10 +132,10 @@
   `(binding [*content-gate-cache* (or *content-gate-cache* (atom {}))]
      ~@body))
 
-(defn content-visible?
-  "Run the registered content-visibility gate for `document`, guarding against re-entry and reusing
+(defn- content-visible-by?
+  "Run `visible?`, the registered content-visibility predicate, for `document`, guarding against re-entry and reusing
   a verdict already reached under [[with-content-gate-cache]]."
-  [document]
+  [visible? document]
   (let [id      (:id document)
         ;; Keyed by viewer as well as document: a verdict is only ever valid for the user it was
         ;; computed for, so a cache that outlives or crosses a user binding misses rather than
@@ -144,7 +145,7 @@
                   (if (contains? *content-gate-pending* id)
                     false
                     (binding [*content-gate-pending* (cond-> *content-gate-pending* id (conj id))]
-                      (boolean (@doc-content-visibility-fn document)))))]
+                      (boolean (visible? document)))))]
     (if (and id *content-gate-cache*)
       (if-some [cached (get @*content-gate-cache* k)]
         cached
@@ -156,15 +157,29 @@
 ;; can-read?/can-write? compose the collection-permission policy with the content-visibility gate:
 ;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
 ;; narrower than collection access.
+(defn- content-visible-fn
+  "A predicate of whether a Document of `documents` passes the registered content-visibility gate, which reads the
+  Exploration ids of those lacking one together."
+  [documents]
+  (let [ids                (into [] (comp (remove #(contains? % :exploration_id)) (keep :id)) documents)
+        id->exploration-id (documents.db/exploration-ids-by-document-id ids)
+        assoc-exploration   (fn [document]
+                              (cond-> document
+                                (contains? id->exploration-id (:id document))
+                                (assoc :exploration_id (get id->exploration-id (:id document)))))
+        visible?           (@doc-content-visibility-fn (mapv assoc-exploration documents))]
+    (fn [document]
+      (content-visible-by? visible? (assoc-exploration document)))))
+
 (methodical/defmethod t2/batched-hydrate [:model/Document :can_read]
   "Whether the current user reads each of `documents`, as the content of its Collection."
   [_model _k documents]
-  (collection/hydrate-content-can-read :model/Document documents {:audit-rules? false, :visible? content-visible?}))
+  (collection/hydrate-content-can-read :model/Document documents {:audit-rules? false, :visible? (content-visible-fn documents)}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :can_write]
   "Whether the current user writes each of `documents`, as the content of its Collection."
   [_model _k documents]
-  (collection/hydrate-content-can-write :model/Document documents {:audit-rules? false, :visible? content-visible?}))
+  (collection/hydrate-content-can-write :model/Document documents {:audit-rules? false, :visible? (content-visible-fn documents)}))
 
 (defn- collection-writable?
   "Whether the current user writes the Collection with `collection-id`, or the root Collection for nil."
@@ -176,16 +191,11 @@
   (collection-writable? collection-id))
 
 (defn- following-cards
-  "The Cards of the Document with `document-id` that archiving it, when `archive?`, or restoring it takes along."
-  [document-id archive?]
+  "The Cards of the Documents with `document-ids` that archiving them, when `archive?`, or restoring them takes along."
+  [document-ids archive?]
   (if archive?
-    (documents.db/cards-archived-with-document document-id)
-    (documents.db/cards-restored-with-document document-id)))
-
-(defn- archive-followers-updatable?
-  "Whether the current user may apply `changes` to the Cards of `document` that archiving or restoring it takes along."
-  [document changes]
-  (mi/archive-followers-updatable? document changes :model/Card (partial following-cards (:id document))))
+    (documents.db/cards-archived-with-documents document-ids)
+    (documents.db/cards-restored-with-documents document-ids)))
 
 (defn- summary-owner-writable
   "A function from one of `documents` to whether the current user writes the Exploration whose Summary it is, or nil
@@ -201,28 +211,33 @@
       (when-let [exploration-id (:exploration_id document)]
         (contains? writable exploration-id)))))
 
-(defn- can-update-with?
-  "Whether the current user may apply `changes` to `document`, where `summary-owner-writable` answers an archive or
-  restore of a Summary, whose content its Exploration's data decides, at its Exploration."
+(defn- writable-for?
+  "Whether the current user writes `document` as far as `changes` need, where `summary-owner-writable` answers an
+  archive or restore of a Summary, whose content its Exploration's data decides, at its Exploration."
   [document changes summary-owner-writable]
-  (boolean
-   (and (let [owner-writable (when (mi/changes-only-archived? document changes) (summary-owner-writable document))]
-          (if (some? owner-writable)
-            owner-writable
-            (mi/can-write? document)))
-        (archive-followers-updatable? document changes)
-        (collection/can-move? document changes)
-        (or (not-any? #(contains? changes %) [:public_uuid :made_public_by_id])
-            (mi/superuser?)))))
+  (let [owner-writable (when (mi/changes-only-archived? document changes) (summary-owner-writable document))]
+    (if (some? owner-writable)
+      owner-writable
+      (mi/can-write? document))))
+
+(defn- can-share?
+  "Whether the current user may do what `changes` do to the public link of a Document."
+  [changes]
+  (or (not-any? #(contains? changes %) [:public_uuid :made_public_by_id])
+      (mi/superuser?)))
 
 (defmethod mi/can-update? :model/Document
   [document changes]
-  (can-update-with? document changes (summary-owner-writable [document] changes)))
+  (mi/can-update-all? :model/Document [document] changes))
 
 (defmethod mi/can-update-all? :model/Document
   [_model documents changes]
   (let [owner-writable (summary-owner-writable documents changes)]
-    (every? #(can-update-with? % changes owner-writable) documents)))
+    (boolean
+     (and (every? #(writable-for? % changes owner-writable) documents)
+          (mi/archive-followers-updatable? documents changes :model/Card following-cards)
+          (collection/can-move-all-or-404? documents changes)
+          (can-share? changes)))))
 
 (defn- check-new-card
   "The checks a new Card of a Document goes through, those `POST /api/card` runs before saving: create access to the
@@ -230,7 +245,7 @@
   permission on the fields the parameter targets name."
   [{query :dataset_query :as card}]
   (api/create-check :model/Card card)
-  (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
+  (query-perms/check-run-permissions-for-queries [(dissoc query :query-permissions/perms)])
   (card/check-parameter-source-card-permissions (:parameters card))
   (query-perms/check-parameter-field-permissions
    (into []
@@ -253,8 +268,10 @@
     (let [sources (queries.card/readable-cards-by-id (into #{} (keep :source-card-id) entries))]
       (and sources
            (queries.card/can-create-all? (mapv (fn [{:keys [data source-card-id]}] [data (get sources source-card-id)]) entries))
-           (do (run! #(query-perms/check-run-permissions-for-query (dissoc % :query-permissions/perms))
-                     (into #{} (keep (comp :dataset_query :data)) entries))
+           (do (query-perms/check-run-permissions-for-queries
+                (into []
+                      (comp (keep (comp :dataset_query :data)) (distinct) (map #(dissoc % :query-permissions/perms)))
+                      entries))
                true)
            (card/parameter-source-cards-readable? (into [] (mapcat (comp :parameters :data)) entries))
            (do (query-perms/check-parameter-field-permissions
@@ -524,15 +541,13 @@
   [card creator]
   (queries.card/new-card-row (assoc card :type :question :dashboard_id nil) (:id creator)))
 
-(defn clone-card!
-  "Saves a copy of an existing card the user can already read, e.g. when embedding it into a document.
-
-  Checks nothing about the user: the caller has run [[check-clone-cards]], which checks create access to the target
-  collection but, unlike the checks of new cards, not the authoring checks (run permission on the query, parameter
-  source-card and parameter field permissions), since the query and parameters come from an existing card the caller
-  passed a read check on rather than from the request (UXW-5037)."
-  [source-card creator]
-  (first (create-card-rows! [(new-document-card-row source-card creator)])))
+(defn clone-cards!
+  "Saves a copy of each of `source-cards`, existing cards the user can already read, e.g. when copying a document, in
+  one call, and returns the new cards in order, checking nothing about the user, which [[check-clone-cards]] has done
+  without the authoring checks of new cards, since the query and parameters come from cards the caller passed a read
+  check on (UXW-5037)."
+  [source-cards creator]
+  (create-card-rows! (mapv #(new-document-card-row % creator) source-cards)))
 
 (mu/defn update-cards-in-ast :- [:map [:document :any]
                                  [:content_type :string]]
@@ -705,6 +720,21 @@
           (card/carry-pairings-for-document! document-id pairings))))
     (hydrate-document document-id)))
 
+(defmethod public-sharing/shown-card-ids :model/Document
+  [_model document-ids]
+  ;; An anonymous user who can open a document runs the query of each question that the document's content embeds
+  ;; inline and that belongs to the document. A document has no filters of its own, so it implements nothing else.
+  (let [owned-card-ids (->> (documents.db/card-ids-owned-by-documents document-ids)
+                            (reduce (fn [acc {:keys [id document_id]}]
+                                      (update acc document_id (fnil conj #{}) id))
+                                    {}))]
+    (->> (documents.db/contents-for-documents document-ids)
+         ;; `prose-mirror/card-ids` throws on any other content type, so a new one cannot go unread here
+         (map (fn [{document-id :id, :as document}]
+                [document-id (set/intersection (set (prose-mirror/card-ids document))
+                                               (get owned-card-ids document-id #{}))]))
+         (into {}))))
+
 (mu/defn increment-view-counts! :- :int
   "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Documents with `ids`, in one
   plain statement that publishes no event for a usage stat no rule reads, and return the number updated."
@@ -727,6 +757,14 @@
 (defmethod collection/shift-positions-in-collection! :model/Document
   [_model collection-id positions direction]
   (documents.db/shift-document-positions! collection-id positions direction))
+
+(defmethod collection/positioned-rows-in-collections :model/Document
+  [_model collection-ids]
+  (documents.db/positioned-documents-in-collections (vec collection-ids)))
+
+(defmethod collection/update-positions! :model/Document
+  [_model id->position]
+  (update-documents! (mapv (fn [[id position]] {:id id :collection_position position}) id->position)))
 
 (mu/defn revert-document! :- :int
   "Write the revision `snapshot` to the Document with `id` in one statement without the cascades of an update."

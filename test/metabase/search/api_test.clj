@@ -1352,6 +1352,50 @@
               (testing "datasets in shared-tenant-collection namespace are returned"
                 (is (=? {:name model-name} results))))))))))
 
+;; OSS builds ignore premium features, so search keeps the audit app's analytics content hidden there.
+(mt/when-ee-evailable
+ (deftest analytics-collection-card-search-test
+   (mt/with-temp [:model/Collection {id :id} {:name "Analytics Tree", :namespace "analytics"}]
+     (mt/with-model-cleanup [:model/Card]
+       (card/create-cards! (for [card-type [:question :model :metric]]
+                             {:creator_id             (mt/user->id :rasta)
+                              :database_id            (mt/id)
+                              :display                :table
+                              :visualization_settings {}
+                              :dataset_query          (lib/native-query (mt/metadata-provider) "SELECT 1")
+                              :name                   "Abandoned alerts"
+                              :type                   card-type
+                              :collection_id          id}))
+       (let [found       (fn [& params]
+                           (into #{}
+                                 (map (juxt :model :name))
+                                 (apply search-request-data :crowberto :q "Abandoned alerts" params)))
+             all-cards   #{["card"    "Abandoned alerts"]
+                           ["dataset" "Abandoned alerts"]
+                           ["metric"  "Abandoned alerts"]}
+             model-count (fn [context]
+                           (:total (make-search-request :crowberto [:q       "Abandoned alerts"
+                                                                    :models  "dataset"
+                                                                    :limit   0
+                                                                    :context context])))]
+         (mt/with-premium-features #{:audit-app}
+           (testing "Broad search returns questions, models and metrics in the analytics namespace (#79819)"
+             (doseq [context ["command-palette" "search-app" "search-bar"]]
+               (testing context
+                 (is (= all-cards (found :context context))))))
+           (testing "Pickers, other contexts and requests without one leave them out"
+             (doseq [context ["data-picker" "entity-picker" "embedding-setup" "model-migration"]]
+               (testing context
+                 (is (= #{} (found :context context)))))
+             (is (= #{} (found))))
+           (testing "Counts leave them out too, as the embedding setup's model count relies on them"
+             (is (= {:command-palette 1, :embedding-setup 0}
+                    {:command-palette (model-count "command-palette")
+                     :embedding-setup (model-count "embedding-setup")}))))
+         (mt/with-premium-features #{}
+           (testing "Without the audit app, broad search leaves them out as well"
+             (is (= #{} (found :context "command-palette"))))))))))
+
 (deftest no-dashboard-subscription-pulses-test
   (testing "Pulses used for Dashboard subscriptions should not be returned by search results (#14190)"
     (letfn [(search-for-pulses [{pulse-id :id}]
@@ -2613,22 +2657,31 @@
           [{other-card :id}]      (card/create-cards! [(assoc card-row :collection_id nil :name "No Collection Card")])]
       (testing "Filter by parent collection returns parent and all descendants"
         (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
-          (is (= #{parent-card parent-dash child-card grandchild-card parent-coll child-coll grandchild-coll}
-                 (set (map :id (:data results)))))))
+          (is (= #{["card" child-card]
+                   ["card" grandchild-card]
+                   ["card" parent-card]
+                   ["collection" child-coll]
+                   ["collection" grandchild-coll]
+                   ["collection" parent-coll]
+                   ["dashboard" parent-dash]}
+                 (set (map (juxt :model :id) (:data results)))))))
       (testing "Filter by child collection returns child and descendants only"
         (let [results (mt/user-http-request :crowberto :get 200 "search" :collection child-coll)]
-          (is (= #{child-card grandchild-card child-coll grandchild-coll}
-                 (set (map :id (:data results)))))))
+          (is (= #{["card" child-card]
+                   ["card" grandchild-card]
+                   ["collection" child-coll]
+                   ["collection" grandchild-coll]}
+                 (set (map (juxt :model :id) (:data results)))))))
       (testing "Filter by leaf collection returns only that collection's items"
         (let [results (mt/user-http-request :crowberto :get 200 "search" :collection grandchild-coll)]
-          (is (= #{grandchild-card grandchild-coll}
-                 (set (map :id (:data results)))))))
+          (is (= #{["card" grandchild-card] ["collection" grandchild-coll]}
+                 (set (map (juxt :model :id) (:data results)))))))
       (testing "Filter by non-existent collection returns no results"
         (let [results (mt/user-http-request :crowberto :get 200 "search" :collection 99999)]
           (is (empty? (:data results)))))
       (testing "Items with no collection are not included when filtering by collection"
         (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)]
-          (is (not (some #{other-card} (map :id (:data results))))))))))
+          (is (not-any? #{["card" other-card]} (map (juxt :model :id) (:data results)))))))))
 
 (deftest collection-filter-with-search-string-test
   (mt/with-temp [:model/Collection {coll-1 :id} {:name "Collection 1"} :model/Collection _ {:name "Collection 2"}]
@@ -2662,12 +2715,14 @@
                                                       :visualization_settings {}
                                                       :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
                                                       :collection_id parent-coll :name "OSS Test Card"}])]
-            (mt/with-temp [:model/Table {table-id :id} {:name "OSS Published Table" :is_published true :collection_id parent-coll}]
+            (mt/with-temp [:model/Table {table-id :id} {:name "OSS Published Table"}
+                           :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id parent-coll}]
               (testing "Collection-filtered search should NOT include published tables in OSS"
-                (let [result-ids (into #{} (map :id) (:data (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)))]
-                  (is (contains? result-ids card-id)
+                (let [results (mt/user-http-request :crowberto :get 200 "search" :collection parent-coll)
+                      found   (set (map (juxt :model :id) (:data results)))]
+                  (is (contains? found ["card" card-id])
                       "Card in collection should be included")
-                  (is (not (contains? result-ids table-id))
+                  (is (not (contains? found ["table" table-id]))
                       "Published table should NOT be included in collection search in OSS"))))))))))
 
 (deftest collection-filter-respects-permissions-test
@@ -2683,8 +2738,9 @@
                                                     :collection_id coll-id :name "scoped one"}])]
           (is (empty? (:data (mt/user-http-request :rasta :get 200 "search" :collection coll-id))))
           (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
-          (is (= #{card-id coll-id}
-                 (set (map :id (:data (mt/user-http-request :rasta :get 200 "search" :collection coll-id)))))))))))
+          (is (= #{["card" card-id] ["collection" coll-id]}
+                 (set (map (juxt :model :id)
+                           (:data (mt/user-http-request :rasta :get 200 "search" :collection coll-id)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Measure Search Tests (Phase 4)                                         |
@@ -2792,7 +2848,8 @@
   (search.tu/with-temp-index-table-if-supported
     (testing "the internal is_published permission signal never carries a value in search API responses"
       (let [table-name (mt/random-name)]
-        (mt/with-temp [:model/Table _ {:name table-name :is_published true}]
+        (mt/with-temp [:model/Table {table-id :id} {:name table-name}
+                       :model/TableUserSettings _ {:table_id table-id :is_published true}]
           (testing "in-place engine"
             (let [rows (:data (mt/user-http-request :crowberto :get 200 "search"
                                                     :q table-name :models "table" :search_engine "in-place"))]

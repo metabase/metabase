@@ -24,6 +24,7 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.documents.models.document :as document]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -526,9 +527,9 @@
   (is (true? (dependencies.db/app-db-reachable?)))
   (testing "inside a transaction a failed statement aborted, the app DB still answers"
     (t2/with-transaction [^java.sql.Connection conn]
-      (is (thrown? Exception (t2/query conn ["SELECT * FROM no_such_table"])))
+      (is (thrown? Exception (t2/query conn {:select [:*] :from [:no_such_table]})))
       (when (= :postgres (mdb/db-type))
-        (is (thrown? Exception (t2/query conn ["SELECT 1"])) "test setup: the transaction is aborted"))
+        (is (thrown? Exception (t2/query conn {:select [[[:inline 1] :one]]})) "test setup: the transaction is aborted"))
       (is (true? (dependencies.db/app-db-reachable?)))
       (.rollback conn))))
 
@@ -1419,3 +1420,29 @@
                             #(card/update-cards! [{:id card-id :collection_id collection-id}])))))
                (testing "deleting a card"
                  (is (= [] (deps.test/data-app-bundle-reads #(card/delete-cards! [card-id])))))))))))))
+
+(deftest ^:synchronized update-entity-batch-statement-count-test
+  (testing "computing the dependencies of 10 pending cards runs as many statements as computing those of 40"
+    (backfill-all-existing-entities!)
+    (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "100")]
+      (mt/with-premium-features #{:dependencies}
+        (let [mp    (mt/metadata-provider)
+              query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              run!  (fn [n]
+                      (backfill-all-existing-entities!)
+                      (let [ids (t2/insert-returning-pks!
+                                 :model/Card
+                                 (for [_ (range n)]
+                                   (merge (mt/with-temp-defaults :model/Card) {:dataset_query query})))]
+                        (try
+                          {:count (events.tu/real-statement-count! #(#'task.dependency/update-entity-batch! :card 100))
+                           :edges (t2/count :model/Dependency :from_entity_type "card" :from_entity_id [:in ids]
+                                            :to_entity_type "table" :to_entity_id (mt/id :orders))}
+                          (finally
+                            (t2/delete! :model/Dependency :from_entity_type "card" :from_entity_id [:in ids])
+                            (t2/delete! :model/Card :id [:in ids])))))]
+          (run! 2)
+          (let [small (run! 10)
+                large (run! 40)]
+            (is (= (:count small) (:count large)))
+            (is (= [10 40] [(:edges small) (:edges large)]))))))))

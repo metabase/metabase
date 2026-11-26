@@ -2,6 +2,7 @@
   "Application database queries for the indexes module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -37,19 +38,21 @@
   "The id, status and error message of each of the TableIndexes of the Transforms with `transform-ids` that are not
   pending deletion."
   [transform-ids :- [:sequential {:min 1} ::lib.schema.id/transform]]
-  (t2/select [:model/TableIndex :id :status :error_message]
-             :transform_id [:in [:auto/param transform-ids]]
-             :status [:not= :delete-pending]))
+  (app-db/select-batched #(t2/select [:model/TableIndex :id :status :error_message]
+                                     :transform_id [:in %]
+                                     :status [:not= :delete-pending])
+                         transform-ids))
 
 (mu/defn running-table-indexes
   "The running TableIndexes among `ids` of the Transform with `transform-id`, in id order."
   [transform-id :- ::lib.schema.id/transform
    ids          :- [:sequential ms/PositiveInt]]
-  (t2/select :model/TableIndex
-             :transform_id transform-id
-             :id [:in ids]
-             :status :running
-             {:order-by [[:id :asc]]}))
+  (vec (sort-by :id (app-db/select-batched #(t2/select :model/TableIndex
+                                                       :transform_id transform-id
+                                                       :id [:in %]
+                                                       :status :running
+                                                       {:order-by [[:id :asc]]})
+                                           ids))))
 
 (mu/defn delete-pending-table-indexes
   "The TableIndexes of the Transform with `transform-id` that are pending deletion, in id order."
@@ -80,13 +83,14 @@
 (mu/defn table-index-statuses
   "The id, status and error message of each of the TableIndexes with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/TableIndex :id :status :error_message] :id [:in [:auto/param ids]]))
+  (app-db/select-batched #(t2/select [:model/TableIndex :id :status :error_message] :id [:in %]) ids))
 
 (defn- update-by-changes!
-  "Apply `changes` to the TableIndexes of `rows` with one plain update through the model, `where` narrowing it."
+  "Apply `changes` to the TableIndexes of `rows` with one plain update through the model per partition, `where`
+  narrowing it."
   [rows changes where]
   (when (seq rows)
-    (t2/update! :model/TableIndex (into {:id [:in (mapv :id rows)]} where) changes)))
+    (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/TableIndex (into {:id [:in (mapv :id %)]} where) changes) rows)))
 
 (mu/defn mark-table-indexes-running!
   "Apply `changes` to the TableIndexes of `rows`, as stored, whose status is in `from-statuses`."

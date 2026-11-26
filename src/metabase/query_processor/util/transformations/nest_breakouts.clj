@@ -197,6 +197,24 @@
                 (stage-has-breakout? stage))
        (nest-breakouts-in-stage query path stage)))))
 
+(mu/defn nest-single-row-aggregation :- ::lib.schema/query
+  "When the last stage of a multi-stage `query` aggregates without breakouts, add a stage after it that selects its
+  columns. Drivers that compile stages to CTEs then put the aggregation in its own CTE.
+
+  Postgres skips its MIN/MAX index optimization for an aggregate in a query level that has a `WITH` list, even when
+  the CTEs are inlined. The aggregation returns one row, so no `ORDER BY` or `LIMIT` has to move to the new stage."
+  {:added "0.65.0"}
+  [query :- ::lib.schema/query]
+  (let [path       [:stages (dec (count (:stages query)))]
+        last-stage (get-in query path)]
+    (if (and (> (count (:stages query)) 1)
+             (seq (:aggregation last-stage))
+             (not (stage-has-breakout? last-stage)))
+      (let [cols (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)]
+        (update query :stages conj {:lib/type :mbql.stage/mbql
+                                    :fields   (mapv (comp lib/ref lib/update-keys-for-col-from-previous-stage) cols)}))
+      query)))
+
 (def ^:private remap-keep-opts
   "Add-remap option keys that must be preserved on breakout refs so the pivot compiler can still detect
   remap pairs after nesting rewrites the refs."

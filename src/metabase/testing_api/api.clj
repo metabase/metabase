@@ -22,9 +22,11 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.mcp.usage :as mcp.usage]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.models.ai-usage-log :as ai-usage-log]
    [metabase.metabot.models.metabot-conversation :as metabot-conversation]
    [metabase.metabot.models.metabot-message :as metabot-message]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.permissions.models.permissions-group :as permissions-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -39,12 +41,14 @@
    [metabase.transforms.models.transform :as transform]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.users.models.user :as user]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
@@ -132,8 +136,9 @@
     ;; queried successfully until it is recompiled. Our workaround is to recompile ALL views immediately after we
     ;; restore the app DB from a snapshot. Bug report is here: https://github.com/h2database/h2database/issues/3942
     (doseq [table-name
-            (->> (jdbc/query {:connection conn} ["SELECT table_name FROM information_schema.views WHERE table_schema=?" "PUBLIC"])
-                 (map :table_name))]
+            (map :table_name (t2/query conn {:select [:table_name]
+                                             :from   [:information_schema.views]
+                                             :where  [:= :table_schema "PUBLIC"]}))]
       ;; parameterization doesn't work with view names. If someone maliciously named a table, this is bad. On the
       ;; other hand, this is not running in prod and you already had to have enough access to maliciously name the
       ;; table, so this is probably safe enough.
@@ -615,6 +620,40 @@
                                                                    [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
                                                                    [:second_tenant_id {:optional true} [:maybe ms/PositiveInt]]]]
   (seed-usage-auditing-data! user_id second_user_id tenant_id second_tenant_id))
+
+(mr/def ::retriever-arguments
+  "The arguments of a retrieval tool, passed through as they arrived: the selected tool's own schema validates them."
+  [:map {:closed false, :description "retrieval tool arguments"}])
+
+(api.macros/defendpoint :post "/metabot/retrieve" :- [:map {:closed true} [:output :string]]
+  "Run one of Metabot's read-only retrieval tools with fixed arguments and no model, for search evals.
+  Admins only, because the testing routes are not behind the authentication middleware.
+  Answers 400 when the tool rejects the arguments, and 502 when the call or any of its queries fails.
+  That way a caller can tell a failed or partial search from one that found nothing.
+  The 502 for a partial search still carries the other queries' `output`, for debugging."
+  [_route-params
+   _query-params
+   {:keys [retriever arguments]} :- [:map {:closed true}
+                                     [:retriever (into [:enum] metabot.tools/retriever-names)]
+                                     [:arguments ::retriever-arguments]]]
+  (api/check-superuser)
+  (let [{:keys [output error failed-queries]} (metabot.tools/run-retriever retriever arguments
+                                                                           (metabot.config/resolve-metabot nil))]
+    (cond
+      error
+      (throw (ex-info output {:status-code   (if (metabot.tools/retriever-caller-error? error) 400 502)
+                              :error-code    (u/qualified-name (:code error))
+                              :error-class   (:class error)
+                              :response/keys #{:error-class}}))
+
+      failed-queries
+      (throw (ex-info "The search failed for some of its queries."
+                      {:status-code    502
+                       :error-code     "search-incomplete"
+                       :failed-queries failed-queries
+                       :output         output
+                       :response/keys  #{:failed-queries :output}})))
+    {:output output}))
 
 (api.macros/defendpoint :post "/mcp/seed-tool-call"
   :- [:map

@@ -8,15 +8,19 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.database-routing.core :as database-routing]
+   [metabase.documents.schema :as documents.schema]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.public-sharing.core :as public-sharing]
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secret]
@@ -27,7 +31,6 @@
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -84,12 +87,13 @@
           schemas-by-db (reduce
                          (fn [m {:keys [db_id schema]}]
                            (update m db_id (fnil conj []) schema))
-                         {} rows)]
+                         {} rows)
+          readable-ones (schema.table/readable-schemas (map (juxt :db_id :schema) rows))]
       (for [db dbs]
         (let [db-id       (:id db)
               raw-schemas (get schemas-by-db db-id [])
               readable    (->> raw-schemas
-                               (filter (partial schema.table/can-read-schema? db-id))
+                               (filter #(contains? readable-ones [db-id %]))
                                (map #(if (nil? %) "" %))
                                distinct
                                sort
@@ -193,14 +197,15 @@
                                                 include-analytics? include-stubs?)]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
       include-tables?              (add-tables :can-query? can-query?)
-      include-schemas?             add-schemas
       can-query?                   (#(filter mi/can-query? (t2/hydrate % :can_query)))
       true                         add-can-upload-to-dbs
-      true                         (t2/hydrate :router_user_attribute)
+      true                         (t2/hydrate :router_user_attribute :router_anonymous_access_granted)
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) (t2/hydrate % :can_write)))
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
-      include-only-uploadable?     (#(filter uploadable-db? %)))))
+      include-only-uploadable?     (#(filter uploadable-db? %))
+      include-schemas?             add-schemas
+      true                         database/add-json-access)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -325,7 +330,7 @@
   "Get a single Database with `id`."
   [db {:keys [include include-editable-data-model?]}]
   (cond-> db
-    true                         (t2/hydrate :router_user_attribute)
+    true                         (t2/hydrate :router_user_attribute :router_anonymous_access_granted)
     true                         add-expanded-schedules
     true                         (get-database-hydrate-include include)
     true                         add-can-upload
@@ -387,6 +392,60 @@
   (api/check-superuser)
   (check-database-exists id)
   (first (warehouses-rest.db/database-usage-counts id)))
+
+(def ^:private max-anonymously-reachable
+  "How many rows `GET /api/database/:id/anonymous-reach` returns."
+  100)
+
+(mr/def ::anonymously-reachable-entity
+  [:map {:closed true}
+   [:id
+    {:description "Id of the published card (question, model or metric), dashboard or document."}
+    [:or ::lib.schema.id/card ::lib.schema.id/dashboard ::documents.schema/document.id]]
+   [:model
+    {:description "What kind of thing it is, in the same vocabulary search and collection items use."}
+    [:enum "card" "dataset" "metric" "dashboard" "document"]]
+   [:name
+    {:description "Its name, as an admin would recognise it."}
+    :string]
+   [:surfaces
+    {:description (str "The anonymous surfaces through which it reaches this database: a public link, a published"
+                       " guest embed, or both.")}
+    [:sequential {:min 1} [:enum "guest-embed" "public-link"]]]
+   [:reaches_indirectly
+    {:description (str "True where the connection to this database is not self-evident: nothing this entity shows"
+                       " is saved against the database, and it reaches it by running a question's query to fill a"
+                       " filter's value list.")}
+    :boolean]])
+
+(mr/def ::anonymous-reach
+  [:map {:closed true}
+   [:total
+    {:description "How many anonymously reachable entities reach this database."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:data
+    {:description (str "The first " max-anonymously-reachable " of those entities by name. `total` says how many there"
+                       " are in all.")}
+    [:sequential ::anonymously-reachable-entity]]])
+
+(defn- present-anonymously-reachable-entity
+  "One row of the anonymous-reach response."
+  [{:keys [id model surfaces indirect?], entity-name :name}]
+  {:id                 id
+   :model              model
+   :name               entity-name
+   :surfaces           (vec (sort (map u/qualified-name surfaces)))
+   :reaches_indirectly indirect?})
+
+(api.macros/defendpoint :get "/:id/anonymous-reach" :- ::anonymous-reach
+  "The public links and published guest embeds through which anonymous traffic can get data from this database."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ::lib.schema.id/database]]]
+  (api/check-superuser)
+  (check-database-exists id)
+  (let [reachable (public-sharing/anonymously-reachable-entities id)]
+    {:total (count reachable)
+     :data  (mapv present-anonymously-reachable-entity (take max-anonymously-reachable reachable))}))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
@@ -500,7 +559,7 @@
                            (str " " semantic_type)))]))))
 
 (defn- autocomplete-suggestions
-  "`like-pattern` is a `LIKE` right-hand side (see [[h2x/like-substring]] and [[h2x/like-prefix]]) matched against
+  "`like-pattern` is a `LIKE` right-hand side (see [[funnysql.util/like-substring]] and [[funnysql.util/like-prefix]]) matched against
   lowercased table and field names."
   [db-id like-pattern]
   (let [limit  50
@@ -542,8 +601,8 @@
      :headers {"Cache-Control" "public, max-age=60"
                "Vary"          "Cookie"}
      :body    (cond
-                substring (autocomplete-suggestions id (h2x/like-substring substring))
-                prefix    (autocomplete-suggestions id (h2x/like-prefix prefix)))}
+                substring (autocomplete-suggestions id (funnysql.util/like-substring substring))
+                prefix    (autocomplete-suggestions id (funnysql.util/like-prefix prefix)))}
     (catch Throwable e
       (log/warnf "Error with autocomplete: %s" (ex-message e)))))
 

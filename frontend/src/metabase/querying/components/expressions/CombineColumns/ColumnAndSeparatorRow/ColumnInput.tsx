@@ -1,13 +1,11 @@
-import classNames from "classnames";
 import type { FocusEvent, KeyboardEvent, MouseEvent } from "react";
 import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { SelectButton } from "metabase/common/components/SelectButton";
 import { QueryColumnPicker } from "metabase/querying/common/components/QueryColumnPicker";
-import { Button, FocusTrap, Icon, Input, Popover } from "metabase/ui";
+import { FocusTrap, Input, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
-
-import styles from "./ColumnInput.module.css";
 
 type ColumnInputProps = {
   query: Lib.Query;
@@ -92,7 +90,8 @@ export function ColumnInput({
     <Input.Wrapper
       label={label}
       styles={{
-        root: { width: "100%" },
+        // let long column names end with "…" instead of widening the row
+        root: { width: "100%", minWidth: 0 },
       }}
     >
       <Popover
@@ -106,21 +105,15 @@ export function ColumnInput({
         withinPortal={!open} // FIXME: portal situation not good
       >
         <Popover.Target>
-          <Button
+          <SelectButton
             data-testid="column-input"
-            size="lg"
             ref={button}
+            hasValue={value !== null}
             onMouseDownCapture={handleButtonClick}
             onKeyDown={handleKeyDown}
-            fullWidth
-            classNames={{
-              root: classNames(styles.root, { [styles.open]: open }),
-              inner: styles.button,
-            }}
-            rightSection={<Icon name="chevrondown" style={{ height: 14 }} />}
           >
             {text}
-          </Button>
+          </SelectButton>
         </Popover.Target>
         <Popover.Dropdown>{dropdown}</Popover.Dropdown>
       </Popover>

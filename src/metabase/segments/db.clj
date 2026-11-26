@@ -2,6 +2,7 @@
   "Application database queries for the segments module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -42,7 +43,7 @@
 (mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
   "The Database id of each of the Tables with `table-ids`, by Table id."
   [table-ids :- [:sequential {:min 1} ::lib.schema.id/table]]
-  (into {} (t2/select-fn->fn :id :db_id [:model/Table :id :db_id] :id [:in table-ids])))
+  (mdb/select-batched-map #(t2/select-fn->fn :id :db_id [:model/Table :id :db_id] :id [:in %]) table-ids))
 
 (mu/defn table-perms-columns
   "The Database id, schema, and id of the Table with `table-id`, or nil."
@@ -53,20 +54,20 @@
   "The Segments with `ids`, with their Table and its Collection and ancestors, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection)]
-    (-> (t2/select [:model/Segment :id :name :table_id] :id [:in ids])
+    (-> (mdb/select-batched #(t2/select [:model/Segment :id :name :table_id] :id [:in %]) ids)
         (t2/hydrate [:table [:collection :effective_ancestors]])
-        (->> (mapv (fn [row] (update row :table #(some-> % (collection.root/hydrate-root-collection root)))))))))
+        (->> (mapv (fn [row] (update row :table #(some-> % (update :collection (fn [collection] (or collection root)))))))))))
 
 (mu/defn dependency-segment-items :- :map
   "The query of the Segments the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those of the
   tables the user queries, located by their table."
   [{:keys [include-archived] :as opts} :- :metabase.dependencies.items/items-opts]
   {:select    [[:segment.id :entity_id] [:segment.name :name] [:table.display_name :location]]
-   :from      [:segment]
-   :left-join [[:metabase_table :table] [:= :segment.table_id :table.id]]
+   :from      [[(t2/table-name :model/Segment) :segment]]
+   :left-join [[(t2/table-name :model/Table) :table] [:= :segment.table_id :table.id]]
    :where     (into [:and]
                     (remove nil?)
-                    [[:in :segment.table_id ^:allow-subquery {:select [:metabase_table.id]
-                                                              :from   [:metabase_table]
-                                                              :where  (collections.listing/visible-tables-clause :metabase_table.id opts)}]
+                    [[:in :segment.table_id ^:allow-subquery {:select [(u/qualified-key (t2/table-name :model/Table) :id)]
+                                                              :from   [(t2/table-name :model/Table)]
+                                                              :where  (collections.listing/visible-tables-clause (u/qualified-key (t2/table-name :model/Table) :id) opts)}]
                      (collections.listing/archived-clause :segment include-archived)])})

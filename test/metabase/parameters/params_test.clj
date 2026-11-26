@@ -314,3 +314,40 @@
         (let [errors (:errors (try (thunk) (catch clojure.lang.ExceptionInfo e (ex-data e))))]
           (is (some? errors))
           (is (not-any? #(and (map? %) (contains? % :schema)) (tree-seq coll? seq errors))))))))
+
+(deftest dashboard-param-fields-statements-do-not-grow-with-dashboards-test
+  (let [mp         (mt/metadata-provider)
+        parameters [{:id "p1" :type :number/= :name "P1" :slug "p1"}]
+        mappings   (fn [card-id field-name]
+                     [{:card_id      card-id
+                       :parameter_id "p1"
+                       :target       [:dimension [:field (mt/id :venues field-name) nil]]}])]
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                   :model/Dashboard {d1 :id} {:parameters parameters}
+                   :model/Dashboard {d2 :id} {:parameters parameters}
+                   :model/Dashboard {d3 :id} {:parameters parameters}
+                   :model/Dashboard {d4 :id} {:parameters parameters}
+                   :model/Dashboard {d5 :id} {:parameters parameters}
+                   :model/Dashboard {d6 :id} {:parameters parameters}
+                   :model/DashboardCard _ {:dashboard_id d1 :card_id card-id :parameter_mappings (mappings card-id :id)}
+                   :model/DashboardCard _ {:dashboard_id d2 :card_id card-id :parameter_mappings (mappings card-id :price)}
+                   :model/DashboardCard _ {:dashboard_id d3 :card_id card-id :parameter_mappings (mappings card-id :id)}
+                   :model/DashboardCard _ {:dashboard_id d4 :card_id card-id :parameter_mappings (mappings card-id :price)}
+                   :model/DashboardCard _ {:dashboard_id d5 :card_id card-id :parameter_mappings (mappings card-id :id)}
+                   :model/DashboardCard _ {:dashboard_id d6 :card_id card-id :parameter_mappings (mappings card-id :price)}]
+      (let [dashboards (mapv #(t2/select-one :model/Dashboard :id %) [d1 d2 d3 d4 d5 d6])
+            hydrate    (fn [n]
+                         (lib-be/with-metadata-provider-cache
+                           (t2/with-call-count [call-count]
+                             (let [hydrated (doall (t2/hydrate (vec (take n dashboards)) :param_fields))]
+                               {:statements (call-count)
+                                :values     (mapv :param_fields hydrated)}))))]
+        (hydrate 1)
+        (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))
+        (is (= (map #(vector (mt/id :venues %)) [:id :price :id :price :id :price])
+               (map #(map :id (get % "p1")) (:values (hydrate 6)))))
+        (testing "each dashboard gets the Fields it got alone"
+          (is (= (mapv #(#'params/param-field-ids->fields
+                         (#'params/dashcards->param-id->field-ids (:dashcards (t2/hydrate % [:dashcards :card :series]))))
+                       dashboards)
+                 (:values (hydrate 6)))))))))

@@ -476,7 +476,9 @@
    through another saved question.
    Holds a nil for each question that no longer exists."
   [query]
-  (map metabot.db/card (:card (lib/all-referenced-entity-ids-recursive query))))
+  (let [ids  (vec (:card (lib/all-referenced-entity-ids-recursive query)))
+        by-id (u/index-by :id (metabot.db/cards-with-ids ids))]
+    (map by-id ids)))
 
 (defn- metabot-sql-card?
   "Whether `card` is a SQL question that Metabot saved and nobody has edited since.
@@ -544,7 +546,7 @@
 (def ^:private query-timeout-ms
   "How long one query may run."
   ;; A query Metabot wrote can be far slower than expected, and nothing else ends it before the database query timeout.
-  (u/minutes->ms 3))
+  (u/seconds->ms 90))
 
 (defn- run-options
   "What may stop a query this tool runs: the chat request being canceled, and the time limit."

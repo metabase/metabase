@@ -89,9 +89,10 @@
   {:metrics    transform-metrics
    :dimensions transform-dimensions})
 
-(methodical/defmethod t2/simple-hydrate [:model/ExplorationBlock :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k (boolean (some-> (explorations.db/thread-exploration-id-row (:exploration_thread_id instance)) (t2/hydrate :can_read) mi/can-read?))))
+(methodical/defmethod t2/batched-hydrate [:model/ExplorationBlock :can_read]
+  "Add whether the current user can read each ExplorationBlock, which is whether they can read its parent."
+  [_model k instances]
+  (exploration/hydrate-can-read-from-parents k instances :exploration_thread_id :model/ExplorationThread))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationBlock :can_write]
   "Add whether the current user can write each ExplorationBlock, which is whether they can write its parent."

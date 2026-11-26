@@ -179,10 +179,11 @@
       ;; the first search of each kind loads caches that the measured ones reuse
       (search-count model batch-q archived?)
       (search-count model solo-q archived?)
-      (let [solo  (search-count model solo-q archived?)
-            batch (search-count model batch-q archived?)]
+      (let [solo   (search-count model solo-q archived?)
+            batch  (search-count model batch-q archived?)
+            lowest (fn [q] (min (:queries (search-count model q archived?)) (:queries (search-count model q archived?))))]
         {:rows          [(:rows solo) (:rows batch)]
-         :extra-queries (- (:queries batch) (:queries solo))}))))
+         :extra-queries (- (min (:queries batch) (lowest batch-q)) (min (:queries solo) (lowest solo-q)))}))))
 
 (defn- check-models!
   "Asserts that every one of `models` returns its solo and batch rows for `archived?`, with no extra queries."

@@ -76,7 +76,7 @@
                                          ["saml-name-id-format" nil {:saml_name_id_format [:upper "abc"]}]
                                          ["expires-at" [:now] {}]]]
           (testing label
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Marked a whole operator form"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SAML values must be strings|expires_at must be a temporal value"
                                   (session.db/insert-session! (merge {:id          (session/generate-session-id)
                                                                       :user_id     user-id
                                                                       :session_key (session/generate-session-key)
@@ -107,3 +107,14 @@
                  :saml_name_id        "alice@example.com"
                  :saml_name_id_format nil}
                 row))))))
+
+(deftest end-sessions-partitions-test
+  (mt/with-temp [:model/User {user-a :id} {}
+                 :model/User {user-b :id} {}
+                 :model/User {user-c :id} {}]
+    (let [ids (vec (for [user-id [user-a user-b user-c user-a user-b]] (first (insert-session! user-id))))]
+      (mt/with-partition-size 2
+        (testing "every live session of the users is ended, whatever the number of statements"
+          (is (= 4 (session.db/end-sessions-for-users! [user-a user-b] "admin" nil)))
+          (is (= 1 (session.db/end-sessions! ids "admin" nil)))
+          (is (every? #(nil? (:key_hashed %)) (t2/select :model/Session :id [:in ids]))))))))

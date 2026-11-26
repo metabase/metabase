@@ -2,6 +2,7 @@
   "Application database queries for the SSO module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -22,11 +23,12 @@
   [user-id            :- ::lib.schema.id/user
    group-ids          :- [:set ms/PositiveInt]
    excluded-group-ids :- [:set ms/PositiveInt]]
-  (t2/select-fn-set :group_id :model/PermissionsGroupMembership
-                    {:where [:and
-                             [:= :user_id user-id]
-                             [:in :group_id group-ids]
-                             [:not-in :group_id excluded-group-ids]]}))
+  (mdb/select-batched-set #(t2/select-fn-set :group_id :model/PermissionsGroupMembership
+                                             {:where [:and
+                                                      [:= :user_id user-id]
+                                                      [:in :group_id %]
+                                                      [:not-in :group_id excluded-group-ids]]})
+                          group-ids))
 
 (mu/defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity for `provider`."
@@ -46,16 +48,16 @@
   "The user's Slack identity with `:provider_id` and `:metadata` selected, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/AuthIdentity :provider_id :metadata]
-                 :user_id [:auto/param (long user-id)] :provider "slack-connect"))
+                 :user_id (long user-id) :provider "slack-connect"))
 
 (mu/defn auth-identity-ids :- [:sequential ms/PositiveInt]
   "The ids of every AuthIdentity of the User with `user-id` at `provider`."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (vec (t2/select-pks-vec :model/AuthIdentity :user_id user-id :provider [:auto/param provider])))
+  (vec (t2/select-pks-vec :model/AuthIdentity :user_id user-id :provider provider)))
 
 (mu/defn auth-identity-id
   "The id of the AuthIdentity of the User with `user-id` at `provider`, or nil."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider [:auto/param provider]))
+  (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider provider))

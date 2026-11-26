@@ -107,6 +107,33 @@
       (testing "an empty seq does not throw"
         (is (nil? (data-permissions/assert-no-destination-db-permissions! [])))))))
 
+(deftest destination-check-follows-database-created-after-earlier-check-test
+  (testing "a Database id checked before it exists is refused once a destination Database takes it"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}     {}
+                   :model/Database         {router-db-id :id} {}]
+      (let [db-id (+ 1000000 (t2/select-one-fn :max-id [:model/Database [:%max.id :max-id]]))
+            row   {:db_id db-id :group_id group-id :perm_type :perms/view-data :perm_value :unrestricted}]
+        (is (nil? (data-permissions/assert-no-destination-db-permissions! [row])))
+        (mt/with-temp [:model/Database _ {:id db-id :router_database_id router-db-id}]
+          (is (thrown-with-msg? ExceptionInfo #"destination database"
+                                (data-permissions/assert-no-destination-db-permissions! [row]))))))))
+
+(deftest create-data-permissions-statement-count-test
+  (testing "rows on fresh Databases are checked for routing destinations in as many statements for 2 Databases as for 6"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+      (mt/with-model-cleanup [:model/Database :model/DataPermissions]
+        (let [counted (fn [n]
+                        (let [db-ids (vec (t2/insert-returning-pks! :model/Database
+                                                                    (repeatedly n #(mt/with-temp-defaults :model/Database))))]
+                          (t2/delete! :model/DataPermissions :group_id group-id)
+                          (t2/with-call-count [call-count]
+                            (data-permissions/create-data-permissions!
+                             (for [db-id db-ids]
+                               {:db_id db-id :group_id group-id :perm_type :perms/view-data :perm_value :unrestricted}))
+                            (call-count))))]
+          (counted 1)
+          (is (= (counted 2) (counted 6))))))))
+
 (deftest admin-permission-graph-excludes-destination-dbs-test
   (testing "the admin permission graph covers routers but not their destinations"
     (mt/with-temp [:model/Database {router-db-id :id}      {}
@@ -1330,21 +1357,21 @@
 
 (deftest blocked-tables-downgrade-to-blocked-dbs
   (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
-    (let [user-id  (t2/insert-returning-pk! :core_user {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
-          db-id    (t2/insert-returning-pk! :metabase_database {:name       "DB"
-                                                                :engine     "h2"
-                                                                :created_at :%now
-                                                                :updated_at :%now
-                                                                :details    "{}"})
-          table-id (t2/insert-returning-pk! :metabase_table {:name       "orders"
-                                                             :active     true
-                                                             :db_id      db-id
-                                                             :created_at #t "2020"
-                                                             :updated_at #t "2020"})
+    (let [user-id  (t2/insert-returning-pk! (t2/table-name :model/User) {:first_name  "Howard"
+                                                                         :last_name   "Hughes"
+                                                                         :email       "howard@aircraft.com"
+                                                                         :password    "superstrong"
+                                                                         :date_joined :%now})
+          db-id    (t2/insert-returning-pk! (t2/table-name :model/Database) {:name       "DB"
+                                                                             :engine     "h2"
+                                                                             :created_at :%now
+                                                                             :updated_at :%now
+                                                                             :details    "{}"})
+          table-id (t2/insert-returning-pk! (t2/table-name :model/Table) {:name       "orders"
+                                                                          :active     true
+                                                                          :db_id      db-id
+                                                                          :created_at #t "2020"
+                                                                          :updated_at #t "2020"})
           group-id (t2/insert-returning-pk! (t2/table-name :model/PermissionsGroup) {:name "Test Group"})]
       (t2/insert! (t2/table-name :model/PermissionsGroupMembership) {:user_id user-id :group_id group-id})
       (migrate!)
@@ -1357,28 +1384,28 @@
 
 (deftest dbs-with-a-single-blocked-table-downgrade-to-blocked-dbs
   (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
-    (let [user-id      (t2/insert-returning-pk! :core_user {:first_name  "Howard"
-                                                            :last_name   "Hughes"
-                                                            :email       "howard@aircraft.com"
-                                                            :password    "superstrong"
-                                                            :date_joined :%now})
-          db-id        (t2/insert-returning-pk! :metabase_database {:name       "DB"
-                                                                    :engine     "h2"
-                                                                    :created_at :%now
-                                                                    :updated_at :%now
-                                                                    :details    "{}"})
-          table-id     (t2/insert-returning-pk! :metabase_table {:name       "orders"
-                                                                 :active     true
-                                                                 :db_id      db-id
-                                                                 :schema     "test-schema"
-                                                                 :created_at #t "2020"
-                                                                 :updated_at #t "2020"})
-          _other-table (t2/insert-returning-pk! :metabase_table {:name       "other"
-                                                                 :active     true
-                                                                 :db_id      db-id
-                                                                 :schema     "test-schema"
-                                                                 :created_at #t "2020"
-                                                                 :updated_at #t "2020"})
+    (let [user-id      (t2/insert-returning-pk! (t2/table-name :model/User) {:first_name  "Howard"
+                                                                             :last_name   "Hughes"
+                                                                             :email       "howard@aircraft.com"
+                                                                             :password    "superstrong"
+                                                                             :date_joined :%now})
+          db-id        (t2/insert-returning-pk! (t2/table-name :model/Database) {:name       "DB"
+                                                                                 :engine     "h2"
+                                                                                 :created_at :%now
+                                                                                 :updated_at :%now
+                                                                                 :details    "{}"})
+          table-id     (t2/insert-returning-pk! (t2/table-name :model/Table) {:name       "orders"
+                                                                              :active     true
+                                                                              :db_id      db-id
+                                                                              :schema     "test-schema"
+                                                                              :created_at #t "2020"
+                                                                              :updated_at #t "2020"})
+          _other-table (t2/insert-returning-pk! (t2/table-name :model/Table) {:name       "other"
+                                                                              :active     true
+                                                                              :db_id      db-id
+                                                                              :schema     "test-schema"
+                                                                              :created_at #t "2020"
+                                                                              :updated_at #t "2020"})
           group-id     (t2/insert-returning-pk! (t2/table-name :model/PermissionsGroup) {:name "Test Group"})]
       (t2/insert! (t2/table-name :model/PermissionsGroupMembership) {:user_id user-id :group_id group-id})
       (migrate!)

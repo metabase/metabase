@@ -6,12 +6,12 @@
    [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -30,7 +30,7 @@
       "active"      [:= :is_active true]
       [:= :is_active true])))
 
-(defn- wildcard-query [query] (h2x/like-substring query))
+(defn- wildcard-query [query] (funnysql.util/like-substring query))
 
 (defn- query-clause
   "Honeysql clause to shove into user query if there's a query"
@@ -45,20 +45,20 @@
   manage-table-metadata."
   []
   [:exists ^:allow-subquery {:select [1]
-                             :from   [[:permissions_group_membership :pgm]]
-                             :join   [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+                             :from   [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                             :join   [[(t2/table-name :model/DataPermissions) :p] [:= :p.group_id :pgm.group_id]]
                              :where  [:and
-                                      [:= :pgm.user_id :core_user.id]
+                                      [:= :pgm.user_id (u/qualified-key (t2/table-name :model/User) :id)]
                                       [:= :p.perm_type "perms/manage-table-metadata"]
                                       [:= :p.perm_value "yes"]]}])
 
 (defn- data-studio-access-clauses
   "The disjuncts, any one of which grants a user access to Data Studio."
   []
-  (cond-> [:core_user.is_superuser
+  (cond-> [(u/qualified-key (t2/table-name :model/User) :is_superuser)
            (table-metadata-perms-exist-clause)]
     ;; Data Studio entry pauses on downgrade, so membership only counts while the feature is available
-    (premium-features/enable-advanced-permissions?) (conj :core_user.is_data_analyst)))
+    (premium-features/enable-advanced-permissions?) (conj (u/qualified-key (t2/table-name :model/User) :is_data_analyst))))
 
 (defn- tenant-clause
   "Honeysql clause restricting `:tenant_id`: `tenant-filter` is a tenant id to restrict to, `:all` for no
@@ -84,25 +84,25 @@
            limit offset]
     :as   options} :- ::users.schema/user-filters]
   (cond-> {}
-    true                                    (sql.helpers/where [:= :core_user.type "personal"])
+    true                                    (sql.helpers/where [:= (u/qualified-key (t2/table-name :model/User) :type) "personal"])
     true                                    (sql.helpers/where (status-clause status include-deactivated))
     ;; don't send the internal user
-    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
+    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= (u/qualified-key (t2/table-name :model/User) :id) api/*current-user-id*])
     (contains? options :tenant-filter)      (sql.helpers/where (tenant-clause (:tenant-filter options)))
     (some? query)                           (sql.helpers/where (query-clause query))
     (some? is-data-analyst?)                (sql.helpers/where (if is-data-analyst?
-                                                                 :core_user.is_data_analyst
-                                                                 [:not :core_user.is_data_analyst]))
+                                                                 (u/qualified-key (t2/table-name :model/User) :is_data_analyst)
+                                                                 [:not (u/qualified-key (t2/table-name :model/User) :is_data_analyst)]))
     (some? can-access-data-studio?)         (sql.helpers/where (let [clauses (data-studio-access-clauses)]
                                                                  (if can-access-data-studio?
                                                                    (into [:or] clauses)
                                                                    (into [:and] (map #(vector :not %)) clauses))))
     (some? group-ids)                       (sql.helpers/right-join
-                                             :permissions_group_membership
-                                             [:= :core_user.id :permissions_group_membership.user_id])
+                                             [(t2/table-name :model/PermissionsGroupMembership) :gm]
+                                             [:= (u/qualified-key (t2/table-name :model/User) :id) :gm.user_id])
     (some? group-ids)                       (sql.helpers/where
-                                             [:in :permissions_group_membership.group_id group-ids])
-    (seq user-ids)                          (sql.helpers/where [:in :core_user.id user-ids])
+                                             [:in :gm.group_id group-ids])
+    (seq user-ids)                          (sql.helpers/where [:in (u/qualified-key (t2/table-name :model/User) :id) user-ids])
     (some? sort)                            (add-sort sort)
     (some? limit)                           (sql.helpers/limit limit)
     (some? offset)                          (sql.helpers/offset offset)))
@@ -116,7 +116,7 @@
   "Store `settings-json` as the user-local settings of the User with `user-id`, returning the number updated."
   [user-id       :- ::lib.schema.id/user
    settings-json :- :string]
-  (t2/update! :model/User :id [:auto/param user-id] {:settings settings-json}))
+  (t2/update! :model/User :id user-id {:settings settings-json}))
 
 (mu/defn user-settings
   "The `:settings` of the User with `user-id`, or nil."
@@ -146,12 +146,14 @@
   "The user id, group id (as `:id`), and group manager flag of the PermissionsGroupMemberships of the Users with
   `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select [:model/PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager] :user_id [:in user-ids]))
+  (app-db/select-batched #(t2/select [:model/PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
+                                     :user_id [:in %])
+                         user-ids))
 
 (mu/defn user-group-ids-for-users
   "The user id and group id of the PermissionsGroupMemberships of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select [:model/PermissionsGroupMembership :user_id :group_id] :user_id [:in user-ids]))
+  (app-db/select-batched #(t2/select [:model/PermissionsGroupMembership :user_id :group_id] :user_id [:in %]) user-ids))
 
 (mu/defn user-count
   "The number of Users."
@@ -166,13 +168,13 @@
 (mu/defn tenant-collection-ids
   "A map of Tenant id to tenant Collection id for the Tenants with `tenant-ids`."
   [tenant-ids :- [:set ms/PositiveInt]]
-  (t2/select-pk->fn :tenant_collection_id :model/Tenant :id [:in tenant-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn :tenant_collection_id :model/Tenant :id [:in %]) tenant-ids))
 
 (mu/defn users-with-all-columns :- [:sequential :map]
-  "The Users with `user-ids`, at most one partition of them, with every column of `:core_user` that an event may carry."
+  "The Users with `user-ids`, with every column of `:core_user` that an event may carry."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (mapv #(dissoc % :password :password_salt :reset_token :reset_triggered :settings)
-        (t2/select [:model/User :*] :id [:in [:auto/param (vec user-ids)]])))
+        (app-db/select-batched #(t2/select [:model/User :*] :id [:in %]) user-ids)))
 
 (mu/defn users-by-ids :- [:map-of ::lib.schema.id/user :map]
   "A map from id to the User, as [[users-with-all-columns]] reads it, for each of the Users with `user-ids`."
@@ -204,21 +206,22 @@
   [user-ids  :- [:sequential ::lib.schema.id/user]
    user-type :- :keyword]
   (if (seq user-ids)
-    (vec (t2/select-pks-vec :model/User :id [:in user-ids] :type [:auto/param user-type]))
+    (app-db/select-batched #(t2/select-pks-vec :model/User :id [:in %] :type user-type) user-ids)
     []))
 
 (mu/defn deactivated-with-tenant-user-ids
   "The ids of the inactive Users of the Tenants with `tenant-ids` that were deactivated with them."
   [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (vec (t2/select-pks-vec :model/User
-                          :is_active false
-                          :tenant_id [:in [:auto/param (vec tenant-ids)]]
-                          :deactivated_with_tenant true)))
+  (app-db/select-batched #(t2/select-pks-vec :model/User
+                                             :is_active false
+                                             :tenant_id [:in %]
+                                             :deactivated_with_tenant true)
+                         tenant-ids))
 
 (mu/defn active-user-ids-of-tenant
   "The ids of the active Users of the Tenants with `tenant-ids`."
   [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (vec (t2/select-pks-vec :model/User :is_active true :tenant_id [:in [:auto/param (vec tenant-ids)]])))
+  (app-db/select-batched #(t2/select-pks-vec :model/User :is_active true :tenant_id [:in %]) tenant-ids))
 
 (mu/defn active-tenant-user-ids
   "The ids of the active Users of every Tenant."
@@ -230,14 +233,14 @@
   with `user-id`."
   [user-id            :- ::lib.schema.id/user
    all-users-group-id :- ms/PositiveInt]
-  (t2/query {:select-distinct [:permissions_group_membership.user_id]
-             :from [:permissions_group_membership]
-             :where [:in :permissions_group_membership.group_id
+  (t2/query {:select-distinct [(u/qualified-key (t2/table-name :model/PermissionsGroupMembership) :user_id)]
+             :from [(t2/table-name :model/PermissionsGroupMembership)]
+             :where [:in (u/qualified-key (t2/table-name :model/PermissionsGroupMembership) :group_id)
                      ^:allow-subquery
-                     {:select-distinct [:permissions_group_membership.group_id]
-                      :from  [:permissions_group_membership]
-                      :where [:and [:= :permissions_group_membership.user_id user-id]
-                              [:not= :permissions_group_membership.group_id all-users-group-id]]}]}))
+                     {:select-distinct [(u/qualified-key (t2/table-name :model/PermissionsGroupMembership) :group_id)]
+                      :from  [(t2/table-name :model/PermissionsGroupMembership)]
+                      :where [:and [:= (u/qualified-key (t2/table-name :model/PermissionsGroupMembership) :user_id) user-id]
+                              [:not= (u/qualified-key (t2/table-name :model/PermissionsGroupMembership) :group_id) all-users-group-id]]}]}))
 
 (mu/defn delete-user-parameter-values!
   "Delete the UserParameterValues identified by the `:user_id`, `:dashboard_id`, and `:parameter_id` of `parameters`."
@@ -245,12 +248,13 @@
                                [:user_id      ::lib.schema.id/user]
                                [:dashboard_id ::lib.schema.id/dashboard]
                                [:parameter_id :string]]]]
-  (t2/delete! :model/UserParameterValue
-              {:where (into [:or] (for [p parameters]
-                                    [:and
-                                     [:= :user_id (:user_id p)]
-                                     [:= :dashboard_id (:dashboard_id p)]
-                                     [:= :parameter_id (:parameter_id p)]]))}))
+  (app-db/sum-batched app-db/delete-partition-size (fn [batch]
+                                                     (t2/delete! :model/UserParameterValue
+                                                                 {:where (into [:or] (for [p batch]
+                                                                                       [:and
+                                                                                        [:= :user_id (:user_id p)]
+                                                                                        [:= :dashboard_id (:dashboard_id p)]
+                                                                                        [:= :parameter_id (:parameter_id p)]]))})) parameters))
 
 (mu/defn insert-user-parameter-values!
   "Insert the UserParameterValue `rows`."
@@ -262,7 +266,7 @@
   "The UserParameterValues of the User with `user-id` for the Dashboards with `dashboard-ids`."
   [user-id       :- ::lib.schema.id/user
    dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select :model/UserParameterValue :dashboard_id [:in dashboard-ids] :user_id user-id))
+  (app-db/select-batched #(t2/select :model/UserParameterValue :dashboard_id [:in %] :user_id user-id) dashboard-ids))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."

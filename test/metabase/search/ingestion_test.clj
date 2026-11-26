@@ -160,7 +160,7 @@
             :type :metric
             :dataset_query (metric-query b-id)}]
           ;; close the cycle A -> B -> A with a raw update, which the Card hooks would refuse
-          (t2/update! :report_card :id a-id {:dataset_query (t2/select-one-fn :dataset_query :report_card :id c-id)})
+          (t2/update! (t2/table-name :model/Card) :id a-id {:dataset_query (t2/select-one-fn :dataset_query (t2/table-name :model/Card) :id c-id)})
           (let [result (#'search.ingestion/execute-all-function-attrs
                         (search.spec/search-model-spec "card")
                         {:dataset_query (json/encode (metric-query a-id))
@@ -507,3 +507,61 @@
              (queued-updates!
               (fn [_test-queue]
                 (search.ingestion/ingest-maybe-async! [update] false))))))))
+
+(defn- dashboard-documents
+  "The search documents of the Dashboards with `dashboard-ids`."
+  [dashboard-ids]
+  (into [] (#'search.ingestion/query->documents
+            (#'search.ingestion/spec-index-reducible "dashboard" [:in :this.id dashboard-ids]))))
+
+(defn- nested-dashboard-documents-call-count!
+  "The number of statements building the search documents of `n` Dashboards issues, each in a fresh Collection under a
+  fresh root Collection of its own."
+  [n]
+  (mt/with-model-cleanup [:model/Dashboard :model/Collection]
+    (let [dashboard-ids (vec (for [i (range n)]
+                               (let [root-id  (t2/insert-returning-pk! :model/Collection {:name     (str "Root " i)
+                                                                                          :location "/"})
+                                     child-id (t2/insert-returning-pk! :model/Collection {:name     (str "Child " i)
+                                                                                          :location (format "/%d/" root-id)})]
+                                 (t2/insert-returning-pk! :model/Dashboard {:name          (str "Dashboard " i)
+                                                                            :collection_id child-id
+                                                                            :creator_id    (mt/user->id :rasta)
+                                                                            :parameters    []}))))]
+      (t2/with-call-count [call-count]
+        (is (= n (count (dashboard-documents dashboard-ids))))
+        (call-count)))))
+
+(deftest root-collection-type-call-count-test
+  (testing "building the documents of more Dashboards nested under fresh root Collections issues no more statements"
+    (nested-dashboard-documents-call-count! 1)
+    (is (= (nested-dashboard-documents-call-count! 2)
+           (nested-dashboard-documents-call-count! 6)))))
+
+(deftest root-collection-type-follows-root-type-change-test
+  (testing "a nested Dashboard's document reads the current type of its root Collection"
+    (mt/with-temp [:model/Collection {root-id :id}      {:name "Root" :location "/"}
+                   :model/Collection {child-id :id}     {:name "Child" :location (format "/%d/" root-id)}
+                   :model/Dashboard  {dashboard-id :id} {:collection_id child-id}]
+      (is (nil? (:root_collection_type (first (dashboard-documents [dashboard-id])))))
+      (t2/update! :model/Collection :id root-id {:type "instance-analytics"})
+      (is (= "instance-analytics" (:root_collection_type (first (dashboard-documents [dashboard-id]))))))))
+
+(deftest execute-batch-function-attrs-test
+  (testing "a batch function attribute is called once per model with its records, in order"
+    (let [calls   (atom [])
+          spec-fn (fn [model]
+                    {:attrs {:size {:batch-fn (fn [records]
+                                                (swap! calls conj [model (mapv :id records)])
+                                                (mapv #(* 10 (:id %)) records))}}})]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
+        (is (= [{:size 10} {:size 20} {:size 30}]
+               (#'search.ingestion/execute-batch-function-attrs [{:model "a" :id 1}
+                                                                 {:model "b" :id 2}
+                                                                 {:model "a" :id 3}])))
+        (is (= #{["a" [1 3]] ["b" [2]]} (set @calls))))))
+  (testing "a throwing batch function attribute leaves its column nil"
+    (mt/with-dynamic-fn-redefs [search.spec/search-model-spec
+                                (constantly {:attrs {:size {:batch-fn (fn [_] (throw (ex-info "boom" {})))}}})]
+      (is (= [{:size nil} {:size nil}]
+             (#'search.ingestion/execute-batch-function-attrs [{:model "a" :id 1} {:model "a" :id 2}]))))))

@@ -7,7 +7,6 @@
    [java-time.api :as t]
    [metabase.actions.models :as action]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.query :as app-db.query]
    [metabase.collections.models.collection :as collection]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.events.core :as events]
@@ -255,7 +254,7 @@
                                       :model "dashboard" :model_id (str dash-id))]
           (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:width "full"})
           (is (= {:last_editor_id   (mt/user->id :crowberto)
-                  :model_updated_at (t/instant (t2/select-one-fn :updated_at :report_dashboard :id dash-id))}
+                  :model_updated_at (t/instant (t2/select-one-fn :updated_at (t2/table-name :model/Dashboard) :id dash-id))}
                  (update (indexed) :model_updated_at t/instant))))))))
 
 (deftest update-of-unread-joined-column-enqueues-only-readers-test
@@ -517,7 +516,7 @@
               ;; A raw update, standing in for a concurrent move that lands between the scan and the delete.
               (mt/with-dynamic-fn-redefs [search/add-cascading-documents
                                           (fn [cascading instances]
-                                            (t2/query {:update :report_card
+                                            (t2/query {:update (t2/table-name :model/Card)
                                                        :set    {:database_id other-id}
                                                        :where  [:= :id card-id]})
                                             (add-cascading-documents cascading instances))]
@@ -590,7 +589,7 @@
           (is (str/includes? (indexed) "From Model"))
           ;; Raw query, not t2/update!: a database-level SET NULL fires no toucan hook, so this has to leave the
           ;; action outside the captured selector without any re-indexing of its own.
-          (t2/query {:update :action, :set {:model_id to-card}, :where [:= :id action-id]})
+          (t2/query {:update (t2/table-name :model/Action), :set {:model_id to-card}, :where [:= :id action-id]})
           (search/reconcile-cascading-documents! cascading)
           (testing "the document survived the reconcile"
             (is (= 1 (indexed-count "action" action-id))))
@@ -656,7 +655,7 @@
                                                                         (assoc action-row :name "Deleted Action", :model_id card-id)])
               cascading                        (cascading-documents-of card-id)]
           ;; A raw delete, so the action's document is left for the reconcile to purge.
-          (t2/query {:delete-from :action, :where [:= :id gone-id]})
+          (t2/query {:delete-from (t2/table-name :model/Action), :where [:= :id gone-id]})
           (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages]
                                                                          (throw (ex-info "reindex failed" {})))]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reindex failed"
@@ -673,7 +672,7 @@
         (let [unchecked-id     Long/MAX_VALUE
               existing-doc-ids (mt/original-fn #'search.ingestion/existing-doc-ids)]
           ;; A raw delete, so the action's document is left for the reconcile to purge.
-          (t2/query {:delete-from :action, :where [:= :id gone-id]})
+          (t2/query {:delete-from (t2/table-name :model/Action), :where [:= :id gone-id]})
           (mt/with-dynamic-fn-redefs [search.ingestion/existing-doc-ids (fn [search-model ids]
                                                                           (if (some #{unchecked-id} ids)
                                                                             (throw (ex-info "check failed" {}))
@@ -811,7 +810,7 @@
         ;; only run if that savepoint rolled back cleanly.
         (mt/with-dynamic-fn-redefs [search.db/spec-index-doc-ids-reducible
                                     (fn [& _]
-                                      (mdb/streaming-reducible-query ["SELECT no_such_column FROM report_card"]))]
+                                      (mdb/streaming-reducible-query {:select [:no_such_column] :from [(t2/table-name :model/Card)]}))]
           (delete-cards-by-hand! [card-id]))
         (is (false? (t2/exists? :model/Card :id card-id)))))))
 
@@ -885,7 +884,7 @@
                                           "action"         (get (cascading-documents-of card-id) "action"))
               existing-doc-ids (mt/original-fn #'search.ingestion/existing-doc-ids)]
           ;; A raw delete, so the action's document is left for the reconcile to purge.
-          (t2/query {:delete-from :action, :where [:= :id action-id]})
+          (t2/query {:delete-from (t2/table-name :model/Action), :where [:= :id action-id]})
           (mt/with-dynamic-fn-redefs [search.ingestion/existing-doc-ids (fn [search-model ids]
                                                                           (if (= "indexed-entity" search-model)
                                                                             (throw (ex-info "reconcile failed" {}))
@@ -931,7 +930,7 @@
 (deftest handle-rows-across-partitions-test
   (testing "an event with more rows than one batch has every row handed to the index"
     (let [batches (atom [])]
-      (with-redefs [app-db.query/create-partition-size 2]
+      (mt/with-partition-size 2
         (mt/with-dynamic-fn-redefs [search/bulk-update! (fn [instances] (swap! batches conj (count instances)))]
           (#'search.events/handle! (mapv (fn [i] {:model :model/Card :operation :create :object {:id i}}) (range 1 6)) nil)))
       (is (= [2 2 1] @batches)))))

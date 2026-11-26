@@ -24,13 +24,14 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private no-active-run-clause
+(defn- no-active-run-clause
   "Honey SQL clause matching TransformRunCancelation rows whose run is no longer active."
+  []
   [:not [:exists ^:allow-subquery
          {:select [1]
-          :from   [[:transform_run :wr]]
+          :from   [[(t2/table-name :model/TransformRun) :wr]]
           :where  [:and
-                   [:= :wr.id :transform_run_cancelation.run_id]
+                   [:= :wr.id (u/qualified-key (t2/table-name :model/TransformRunCancelation) :run_id)]
                    :wr.is_active]}]])
 
 ;;; ------------------------------------------------ Transform ------------------------------------------------
@@ -60,14 +61,12 @@
 (mu/defn transforms-by-ids
   "A map from id to the Transform for each of `ids` that exists."
   [ids :- [:sequential ::lib.schema.id/transform]]
-  (if (seq ids)
-    (t2/select-pk->fn identity :model/Transform :id [:in [:auto/param ids]])
-    {}))
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Transform :id [:in %]) ids))
 
 (mu/defn transforms
   "The Transforms with `transform-ids`."
   [transform-ids :- [:or [:set ::lib.schema.id/transform] [:sequential ::lib.schema.id/transform]]]
-  (t2/select :model/Transform :id [:in transform-ids]))
+  (mdb/select-batched #(t2/select :model/Transform :id [:in %]) transform-ids))
 
 (mu/defn transforms-of-source-types
   "The Transforms whose source type is one of `source-types`, optionally narrowed to `database-id`, ordered by ID."
@@ -91,17 +90,20 @@
 (mu/defn transform-summaries-by-id
   "A map of ID to the ID, name, and Collection ID of the Transforms with `transform-ids`."
   [transform-ids :- [:set ::lib.schema.id/transform]]
-  (t2/select-pk->fn identity [:model/Transform :id :name :collection_id] :id [:in transform-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn identity [:model/Transform :id :name :collection_id] :id [:in %])
+                          transform-ids))
 
 (mu/defn transform-names-by-id
   "A map of ID to name for the Transforms with `transform-ids`."
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
-  (t2/select-pk->fn :name :model/Transform :id [:in transform-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :name :model/Transform :id [:in %]) transform-ids))
 
-(mu/defn transform-last-checkpoint-value
-  "The last checkpoint value of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] :id [:auto/param transform-id]))
+(mu/defn transform-last-checkpoint-values :- [:map-of ::lib.schema.id/transform [:maybe :string]]
+  "The last checkpoint value of each of the Transforms with `transform-ids`, by id."
+  [transform-ids :- [:sequential ::lib.schema.id/transform]]
+  (mdb/select-batched-map #(t2/select-pk->fn :last_checkpoint_value [:model/Transform :id :last_checkpoint_value]
+                                             :id [:in %])
+                          transform-ids))
 
 (mu/defn insert-transforms! :- [:sequential ::transforms.schema/transform]
   "Insert the Transform `rows` and return the new instances."
@@ -116,17 +118,17 @@
 (mu/defn transform-ids-for-source-databases :- [:sequential ::lib.schema.id/transform]
   "The ids of the Transforms reading from the Databases with `database-ids`."
   [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
-  (vec (t2/select-pks-vec :model/Transform :source_database_id [:in [:auto/param database-ids]])))
+  (mdb/select-batched #(t2/select-pks-vec :model/Transform :source_database_id [:in %]) database-ids))
 
 (mu/defn transforms-in-collections
   "The Transforms in the Collections with `collection-ids`."
   [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
-  (t2/select :model/Transform :collection_id [:in [:auto/param collection-ids]]))
+  (mdb/select-batched #(t2/select :model/Transform :collection_id [:in %]) collection-ids))
 
 (mu/defn collections-by-ids
   "The Collections with `collection-ids`."
   [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
-  (t2/select :model/Collection :id [:in [:auto/param collection-ids]]))
+  (mdb/select-batched #(t2/select :model/Collection :id [:in %]) collection-ids))
 
 ;;; ---------------------------------------------- Transform tags ----------------------------------------------
 
@@ -138,7 +140,7 @@
 (mu/defn existing-tag-ids
   "The subset of `tag-ids` that exist."
   [tag-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids]))
+  (mdb/select-batched-set #(t2/select-fn-set :id :model/TransformTag :id [:in %]) tag-ids))
 
 (mu/defn tag-names-to-ids :- [:map-of :string ms/PositiveInt]
   "The map from the stored name of every TransformTag to its id, as the unique index on the name sees it, not as a
@@ -162,17 +164,20 @@
 (mu/defn transform-tag-links
   "The tag links of the Transforms with `transform-ids`, ordered by position."
   [transform-ids :- [:or [:set [:maybe ::lib.schema.id/transform]] [:sequential [:maybe ::lib.schema.id/transform]]]]
-  (t2/select :model/TransformTransformTag :transform_id [:in transform-ids] {:order-by [[:position :asc]]}))
+  (vec (sort-by :position (mdb/select-batched #(t2/select :model/TransformTransformTag :transform_id [:in %]
+                                                          {:order-by [[:position :asc]]})
+                                              transform-ids))))
 
 (mu/defn transform-tag-links-for-tags
   "The tag ID and Transform ID of the tag links of the TransformTags with `tag-ids`."
   [tag-ids :- [:set ms/PositiveInt]]
-  (t2/select [:model/TransformTransformTag :tag_id :transform_id] :tag_id [:in tag-ids]))
+  (mdb/select-batched #(t2/select [:model/TransformTransformTag :tag_id :transform_id] :tag_id [:in %]) tag-ids))
 
 (mu/defn transform-ids-with-tags
   "The IDs of the Transforms tagged with one of `tag-ids`."
   [tag-ids :- [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
-  (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids]))
+  (mdb/select-batched-set #(t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in %])
+                          tag-ids))
 
 (defn- job-schedule-rows
   "Rows of Transform ID and the schedule of the TransformJobs that run it through a shared tag, narrowed
@@ -180,9 +185,9 @@
   [where]
   (t2/select :model/TransformTransformTag
              {:select [:ttt.transform_id [:job.schedule :schedule]]
-              :from   [[:transform_transform_tag :ttt]]
-              :join   [[:transform_job_transform_tag :jtt] [:= :ttt.tag_id :jtt.tag_id]
-                       [:transform_job :job] [:= :jtt.job_id :job.id]]
+              :from   [[(t2/table-name :model/TransformTransformTag) :ttt]]
+              :join   [[(t2/table-name :model/TransformJobTransformTag) :jtt] [:= :ttt.tag_id :jtt.tag_id]
+                       [(t2/table-name :model/TransformJob) :job] [:= :jtt.job_id :job.id]]
               :where  where}))
 
 (mu/defn active-job-schedules
@@ -195,9 +200,10 @@
   "Rows of Transform ID and the schedule of each active TransformJob that runs it through a shared tag,
   for `transform-ids`."
   [transform-ids :- [:set ::lib.schema.id/transform]]
-  (job-schedule-rows [:and
-                      [:in :ttt.transform_id transform-ids]
-                      [:= :job.active true]]))
+  (mdb/select-batched #(job-schedule-rows [:and
+                                           [:in :ttt.transform_id %]
+                                           [:= :job.active true]])
+                      transform-ids))
 
 (mu/defn insert-transform-tag-links!
   "Insert the TransformTransformTag `rows`."
@@ -212,10 +218,10 @@
    positions    :- [:map-of {:min 1} ms/PositiveInt :int]]
   (t2/update! :model/TransformTransformTag
               :transform_id transform-id
-              :tag_id       [:in [:auto/param (vec (keys positions))]]
+              :tag_id       [:in (vec (keys positions))]
               {:position (into [:case]
                                (mapcat (fn [[tag-id position]]
-                                         [[:= :tag_id [:auto/param tag-id]] [:auto/param position]]))
+                                         [[:= :tag_id tag-id] position]))
                                positions)})
   nil)
 
@@ -260,7 +266,7 @@
 (mu/defn job-names-by-id
   "A map of ID to name for the TransformJobs with `job-ids`."
   [job-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :name :model/TransformJob :id [:in %]) job-ids))
 
 (mu/defn flip-job-active! :- :int
   "Mark the TransformJob with `job-id`, which is not `active?` yet, `active?`, returning the number of rows updated."
@@ -276,7 +282,9 @@
 (mu/defn job-tag-links
   "The tag links of the TransformJobs with `job-ids`, ordered by position."
   [job-ids :- [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
-  (t2/select :model/TransformJobTransformTag :job_id [:in job-ids] {:order-by [[:position :asc]]}))
+  (vec (sort-by :position (mdb/select-batched #(t2/select :model/TransformJobTransformTag :job_id [:in %]
+                                                          {:order-by [[:position :asc]]})
+                                              job-ids))))
 
 (mu/defn insert-job-tag-links!
   "Insert the TransformJobTransformTag `rows`."
@@ -291,10 +299,10 @@
    positions :- [:map-of {:min 1} ms/PositiveInt :int]]
   (t2/update! :model/TransformJobTransformTag
               :job_id job-id
-              :tag_id [:in [:auto/param (vec (keys positions))]]
+              :tag_id [:in (vec (keys positions))]
               {:position (into [:case]
                                (mapcat (fn [[tag-id position]]
-                                         [[:= :tag_id [:auto/param tag-id]] [:auto/param position]]))
+                                         [[:= :tag_id tag-id] position]))
                                positions)})
   nil)
 
@@ -314,12 +322,7 @@
 (mu/defn runs
   "The TransformRuns with `run-ids`."
   [run-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/TransformRun :id [:in run-ids]))
-
-(mu/defn runs-for-transform
-  "The TransformRuns of the Transform with `transform-id`, newest first."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select :model/TransformRun :transform_id transform-id {:order-by [[:start_time :desc] [:end_time :desc]]}))
+  (mdb/select-batched #(t2/select :model/TransformRun :id [:in %]) run-ids))
 
 (mu/defn runs-for-job-run
   "The TransformRuns of the TransformJobRun with `job-run-id`, oldest first."
@@ -352,7 +355,7 @@
                      (seq transform-tag-ids)
                      (conj [:in :transform_id ^:allow-subquery
                             {:select [:transform_id]
-                             :from   [:transform_transform_tag]
+                             :from   [(t2/table-name :model/TransformTransformTag)]
                              :where  [:in :tag_id transform-tag-ids]}])
 
                      (seq statuses)
@@ -372,7 +375,7 @@
   "Returns a `:left-join` clause for run listing sort columns that require joining other tables."
   [sort-column]
   (case (keyword sort-column)
-    :transform-name [:transform [:= :transform_run.transform_id :transform.id]]
+    :transform-name [[(t2/table-name :model/Transform) :transform] [:= (u/qualified-key (t2/table-name :model/TransformRun) :transform_id) :transform.id]]
     nil))
 
 (defn- label-case
@@ -395,14 +398,14 @@
   [tag-name-labels]
   ^:allow-subquery
   {:select [[(label-case :tt.built_in_type tag-name-labels :tt.name) :tag_name]]
-   :from   [[:transform_transform_tag :ttt]]
-   :join   [[:transform_tag :tt] [:= :ttt.tag_id :tt.id]]
+   :from   [[(t2/table-name :model/TransformTransformTag) :ttt]]
+   :join   [[(t2/table-name :model/TransformTag) :tt] [:= :ttt.tag_id :tt.id]]
    :where  [:and
-            [:= :ttt.transform_id :transform_run.transform_id]
+            [:= :ttt.transform_id (u/qualified-key (t2/table-name :model/TransformRun) :transform_id)]
             [:= :ttt.position ^:allow-subquery
              {:select [[[:min :ttt2.position]]]
-              :from   [[:transform_transform_tag :ttt2]]
-              :where  [:= :ttt2.transform_id :transform_run.transform_id]}]]})
+              :from   [[(t2/table-name :model/TransformTransformTag) :ttt2]]
+              :where  [:= :ttt2.transform_id (u/qualified-key (t2/table-name :model/TransformRun) :transform_id)]}]]})
 
 (defn- paged-runs-order-by
   "Builds a `:order-by` clause for the paged run listing, translating display values for sortable columns per
@@ -429,12 +432,14 @@
        ;; directions — null means "no measurable duration yet," not
        ;; "longest duration."
        :duration       [[[:is :end_time nil] :asc]
-                        [(h2x/calculate-interval-honeysql-form
-                          (mdb/db-type) :end_time :start_time)
+                        [(case (mdb/db-type)
+                           :postgres [:- :end_time :start_time]
+                           :mysql    [:timestampdiff :microsecond :start_time :end_time]
+                           :h2       [:datediff [:literal "MILLISECOND"] :start_time :end_time])
                          sort-direction]]
        [[:start_time sort-direction]
         [:end_time   sort-direction-with-nulls]])
-     [:transform_run.id sort-direction])))
+     [(u/qualified-key (t2/table-name :model/TransformRun) :id) sort-direction])))
 
 (mr/def ::run-filters
   [:map {:closed true}
@@ -467,7 +472,7 @@
                                                              run-method-labels tag-name-labels)
                               :offset   offset
                               :limit    limit}
-                             :select (when join-clause [:transform_run.*])
+                             :select (when join-clause [(u/qualified-key (t2/table-name :model/TransformRun) :*)])
                              :where where-clause
                              :left-join join-clause))))
 
@@ -479,19 +484,18 @@
 (mu/defn latest-runs-reducible
   "Reducible latest TransformRun of each Transform with `transform-ids`."
   [transform-ids :- [:set ::lib.schema.id/transform]]
-  (t2/reducible-select :model/TransformRun
-                       {:with   [[:latest_runs
-                                  ^:allow-subquery
-                                  {:select [:*
-                                            [[:over [[:row_number]
-                                                     ^:allow-subquery {:partition-by :transform_id
-                                                                       :order-by     [[:start_time :desc]]}]]
-                                             :rn]]
-                                   :from   [:transform_run]
-                                   :where  [:in :transform_id transform-ids]}]]
-                        :select [:*]
-                        :from   [:latest_runs]
-                        :where  [:= :rn [:inline 1]]}))
+  (mdb/select-batched-reducible (fn [ids]
+                                  (let [ranked ^:allow-subquery {:partition-by :transform_id
+                                                                 :order-by     [[:start_time :desc]]}]
+                                    (t2/reducible-select :model/TransformRun
+                                                         {:with   [[:latest_runs
+                                                                    ^:allow-subquery
+                                                                    {:select [:* [[:over [[:row_number] ranked]] :rn]]
+                                                                     :from   [(t2/table-name :model/TransformRun)]
+                                                                     :where  [:in :transform_id ids]}]]
+                                                          :select [:*]
+                                                          :from   [:latest_runs]
+                                                          :where  [:= :rn [:inline 1]]}))) transform-ids))
 
 (mu/defn active-run-for-transform
   "The active TransformRun of the Transform with `transform-id`, or nil. `transform-id` is nil for a
@@ -504,23 +508,25 @@
   "The IDs of the active TransformRuns whose `parent-column` is `parent-run-id`."
   [parent-column :- [:enum :job_run_id :dag_run_id]
    parent-run-id :- ms/PositiveInt]
-  (t2/select-pks-vec :model/TransformRun parent-column parent-run-id :is_active true))
+  (vec (t2/select-pks-vec :model/TransformRun parent-column parent-run-id :is_active true)))
 
 (mu/defn lock-active-runs
   "The active TransformRuns among `run-ids`, locked for update."
   [run-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/TransformRun {:where [:and [:= :is_active true] [:in :id run-ids]]
-                                  :for   :update}))
+  (mdb/select-batched #(t2/select :model/TransformRun {:where [:and [:= :is_active true] [:in :id %]]
+                                                       :for   :update})
+                      run-ids))
 
 (mu/defn last-success-times
   "Rows of Transform ID and the latest `end_time` of its succeeded runs for `transform-ids`."
   [transform-ids :- [:set ::lib.schema.id/transform]]
-  (t2/select :model/TransformRun
-             {:select   [:transform_id [[:max :end_time] :last_success]]
-              :where    [:and
-                         [:in :transform_id transform-ids]
-                         [:= :status "succeeded"]]
-              :group-by [:transform_id]}))
+  (mdb/select-batched #(t2/select :model/TransformRun
+                                  {:select   [:transform_id [[:max :end_time] :last_success]]
+                                   :where    [:and
+                                              [:in :transform_id %]
+                                              [:= :status "succeeded"]]
+                                   :group-by [:transform_id]})
+                      transform-ids))
 
 (mu/defn latest-run-start-times-query
   "HoneySQL map selecting each transform's most recent run `start_time` (any status) as
@@ -534,7 +540,7 @@
                               [:set ::lib.schema.id/transform]
                               [:sequential ::lib.schema.id/transform]]]]
    (cond-> ^:allow-subquery {:select   [:transform_id [[:max :start_time] :last_start]]
-                             :from     [:transform_run]
+                             :from     [(t2/table-name :model/TransformRun)]
                              :group-by [:transform_id]}
      (seq transform-ids) (assoc :where [:in :transform_id transform-ids]))))
 
@@ -545,7 +551,10 @@
   [transform-ids :- [:maybe [:or
                              [:set ::lib.schema.id/transform]
                              [:sequential ::lib.schema.id/transform]]]]
-  (t2/select :model/TransformRun (h2x/assert-map-or-nil! (latest-run-start-times-query transform-ids))))
+  (if (seq transform-ids)
+    (mdb/select-batched #(t2/select :model/TransformRun (h2x/assert-map-or-nil! (latest-run-start-times-query %)))
+                        transform-ids)
+    (t2/select :model/TransformRun (h2x/assert-map-or-nil! (latest-run-start-times-query nil)))))
 
 (mu/defn insert-run!
   "Insert `run` and return the new instance."
@@ -572,40 +581,52 @@
   (t2/update! :model/TransformRun :transform_id transform-id {:start_time run-time :end_time run-time}))
 
 (mu/defn set-table-dependencies!
-  "Store `dependencies-json` as the cached table dependencies of the Transform with `transform-id`, returning the
-  number updated, with a statement against its table that publishes no event."
-  [transform-id      :- ::lib.schema.id/transform
-   dependencies-json :- :string]
-  (t2/update! (t2/table-name :model/Transform) :id transform-id {:table_dependencies dependencies-json}))
+  "Store each JSON string of `id->dependencies-json` as the cached table dependencies of the Transforms it is the
+  value of, returning the number updated, with one statement against their table for each distinct string and
+  partition of its ids that publishes no event."
+  [id->dependencies-json :- [:map-of ::lib.schema.id/transform :string]]
+  (transduce (map (fn [[dependencies-json ids]]
+                    (mdb/sum-batched mdb/update-partition-size #(t2/update! (t2/table-name :model/Transform) :id [:in %]
+                                                                            {:table_dependencies dependencies-json}) ids)))
+             +
+             0
+             (u/group-by val key id->dependencies-json)))
 
 (mu/defn cancel-active-runs!
   "Mark the active TransformRuns among `run-ids` canceled because the user asked but the run could not be stopped."
   [run-ids :- [:sequential ms/PositiveInt]]
-  (t2/update! :model/TransformRun
-              :id [:in run-ids]
-              :is_active true
-              {:status    :canceled
-               :end_time  :%now
-               :is_active nil
-               :message   "Canceled by user but could not guarantee run stopped."}))
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/TransformRun
+                                                          :id [:in %]
+                                                          :is_active true
+                                                          {:status    :canceled
+                                                           :end_time  :%now
+                                                           :is_active nil
+                                                           :message   "Canceled by user but could not guarantee run stopped."}) run-ids))
 
-(mu/defn mark-run-canceling!
-  "Set the status of the TransformRun with `run-id` to canceling."
-  [run-id :- ms/PositiveInt]
-  (t2/update! :model/TransformRun :id run-id {:status "canceling"}))
+(mu/defn mark-runs-canceling!
+  "Set the status of the TransformRuns with `run-ids` to canceling."
+  [run-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/TransformRun :id [:in %] {:status "canceling"}) run-ids))
 
 ;;; -------------------------------------------- Run cancelations --------------------------------------------
 
-(mu/defn insert-cancelation-for-active-run!
-  "Record a cancelation request for the TransformRun with `run-id` if it is active and none exists yet."
-  [run-id :- ms/PositiveInt]
-  (t2/query-one [(str "INSERT INTO transform_run_cancelation (run_id) "
-                      "SELECT transform_run.id "
-                      "FROM transform_run "
-                      "WHERE transform_run.id = ? "
-                      "AND transform_run.is_active "
-                      "AND NOT EXISTS (SELECT 1 FROM transform_run_cancelation WHERE run_id = ?)")
-                 run-id run-id]))
+(mu/defn insert-cancelations-for-active-runs!
+  "Record a cancelation request for each of the TransformRuns with `run-ids` that is active and has none yet."
+  [run-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (mdb/sum-batched mdb/update-partition-size
+                   (fn [ids]
+                     (t2/query-one {:insert-into [[(t2/table-name :model/TransformRunCancelation) [:run_id]]
+                                                  ^:allow-subquery
+                                                  {:select [:r.id]
+                                                   :from   [[(t2/table-name :model/TransformRun) :r]]
+                                                   :where  [:and
+                                                            [:in :r.id ids]
+                                                            :r.is_active
+                                                            [:not-exists ^:allow-subquery
+                                                             {:select [1]
+                                                              :from   [[(t2/table-name :model/TransformRunCancelation) :c]]
+                                                              :where  [:= :c.run_id :r.id]}]]}]}))
+                   run-ids))
 
 (mu/defn cancelations-reducible
   "Reducible TransformRunCancelations."
@@ -617,17 +638,17 @@
   [age  :- ms/PositiveInt
    unit :- :keyword]
   (t2/select [:model/TransformRunCancelation :run_id :time]
-             :time [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]))
+             :time [:< [:date-add :%now (- age) unit]]))
 
 (mu/defn delete-cancelation-for-inactive-run!
   "Delete the TransformRunCancelation of the TransformRun with `run-id` if that run is no longer active."
   [run-id :- ms/PositiveInt]
-  (t2/delete! :model/TransformRunCancelation {:where [:and [:= :run_id run-id] no-active-run-clause]}))
+  (t2/delete! :model/TransformRunCancelation {:where [:and [:= :run_id run-id] (no-active-run-clause)]}))
 
 (mu/defn delete-cancelations-for-inactive-runs!
   "Delete every TransformRunCancelation whose run is no longer active."
   []
-  (t2/delete! :model/TransformRunCancelation {:where no-active-run-clause}))
+  (t2/delete! :model/TransformRunCancelation {:where (no-active-run-clause)}))
 
 ;;; ------------------------------------------- Job and DAG runs -------------------------------------------
 
@@ -719,19 +740,18 @@
 (mu/defn latest-job-runs-reducible
   "Reducible latest TransformJobRun of each TransformJob with `job-ids`."
   [job-ids :- [:set ms/PositiveInt]]
-  (t2/reducible-select :model/TransformJobRun
-                       {:with   [[:ranked_runs
-                                  ^:allow-subquery
-                                  {:select [:*
-                                            [[:over [[:row_number]
-                                                     ^:allow-subquery {:partition-by :job_id
-                                                                       :order-by     [[:start_time :desc]]}]]
-                                             :rn]]
-                                   :from   [:transform_job_run]
-                                   :where  [:in :job_id job-ids]}]]
-                        :select [:*]
-                        :from   [:ranked_runs]
-                        :where  [:= :rn [:inline 1]]}))
+  (mdb/select-batched-reducible (fn [ids]
+                                  (let [ranked ^:allow-subquery {:partition-by :job_id
+                                                                 :order-by     [[:start_time :desc]]}]
+                                    (t2/reducible-select :model/TransformJobRun
+                                                         {:with   [[:ranked_runs
+                                                                    ^:allow-subquery
+                                                                    {:select [:* [[:over [[:row_number] ranked]] :rn]]
+                                                                     :from   [(t2/table-name :model/TransformJobRun)]
+                                                                     :where  [:in :job_id ids]}]]
+                                                          :select [:*]
+                                                          :from   [:ranked_runs]
+                                                          :where  [:= :rn [:inline 1]]}))) job-ids))
 
 (mu/defn active-job-run-for-job
   "The active TransformJobRun of the TransformJob with `job-id`, or nil."
@@ -776,7 +796,7 @@
 (defn- job-run-subquery
   [transform-ids]
   ^:allow-subquery
-  {:select [[(h2x/literal "job") :run_type]
+  {:select [[[:literal "job"] :run_type]
             :id
             [:job_id :entity_id]
             [:job_name :entity_name]
@@ -785,41 +805,41 @@
             :run_method
             :status :is_active :start_time :end_time :message
             [nil :user_id]]
-   :from   [:transform_job_run]
+   :from   [(t2/table-name :model/TransformJobRun)]
    :where  (if (seq transform-ids)
              ;; only job runs that actually ran one of these transforms
              [:exists ^:allow-subquery {:select [[[:inline 1]]]
-                                        :from   [[:transform_run :member]]
+                                        :from   [[(t2/table-name :model/TransformRun) :member]]
                                         :where  [:and
-                                                 [:= :member.job_run_id :transform_job_run.id]
+                                                 [:= :member.job_run_id (u/qualified-key (t2/table-name :model/TransformJobRun) :id)]
                                                  [:in :member.transform_id transform-ids]]}]
              true)})
 
 (defn- dag-run-subquery
   [transform-ids]
   ^:allow-subquery
-  {:select [[(h2x/literal "dag") :run_type]
+  {:select [[[:literal "dag"] :run_type]
             :id
             [:source_transform_id :entity_id]
             [:source_transform_name :entity_name]
             :direction
             :transform_count
-            [(h2x/literal "manual") :run_method]
+            [[:literal "manual"] :run_method]
             :status :is_active :start_time :end_time :message
             :user_id]
-   :from   [:transform_dag_run]
+   :from   [(t2/table-name :model/TransformDagRun)]
    :where  (if (seq transform-ids)
              [:exists ^:allow-subquery {:select [[[:inline 1]]]
-                                        :from   [[:transform_run :member]]
+                                        :from   [[(t2/table-name :model/TransformRun) :member]]
                                         :where  [:and
-                                                 [:= :member.dag_run_id :transform_dag_run.id]
+                                                 [:= :member.dag_run_id (u/qualified-key (t2/table-name :model/TransformDagRun) :id)]
                                                  [:in :member.transform_id transform-ids]]}]
              true)})
 
 (defn- transform-run-subquery
   [transform-ids]
   ^:allow-subquery
-  {:select [[(h2x/literal "transform") :run_type]
+  {:select [[[:literal "transform"] :run_type]
             :id
             [:transform_id :entity_id]
             [:transform_name :entity_name]
@@ -828,7 +848,7 @@
             :run_method
             :status :is_active :start_time :end_time :message
             :user_id]
-   :from   [:transform_run]
+   :from   [(t2/table-name :model/TransformRun)]
    ;; standalone runs only: those not coordinated by a job or DAG run
    :where  (cond-> [:and
                     [:= :job_run_id nil]
@@ -929,14 +949,14 @@
 (mu/defn app-db-now
   "The current time according to the application database."
   []
-  (:now (t2/query-one {:select [[(h2x/current-datetime-honeysql-form (mdb/db-type)) :now]]})))
+  (:now (t2/query-one {:select [[[:current-timestamp] :now]]})))
 
 ;;; ----------------------------------------------- Other models -----------------------------------------------
 
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id [:auto/param database-id]))
+  (t2/select-one :model/Database :id database-id))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
@@ -946,7 +966,7 @@
 (mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
+  (mdb/select-batched #(t2/select :model/Database :id [:in %]) database-ids))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
@@ -956,12 +976,13 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (mdb/select-batched #(t2/select :model/Table :id [:in %]) table-ids))
 
 (mu/defn table-indexes-for-transforms
   "The TableIndexes of the Transforms with `transform-ids`, ordered by index name."
   [transform-ids :- [:set ::lib.schema.id/transform]]
-  (t2/select :model/TableIndex :transform_id [:in transform-ids] {:order-by [[:index_name :asc]]}))
+  (mdb/select-batched #(t2/select :model/TableIndex :transform_id [:in %] {:order-by [[:index_name :asc]]})
+                      transform-ids))
 
 (mu/defn field
   "The Field with `field-id`, or nil."
@@ -971,7 +992,7 @@
 (mu/defn databases-by-ids :- [:sequential :map]
   "The Databases with `database-ids`."
   [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in [:auto/param database-ids]]))
+  (mdb/select-batched #(t2/select :model/Database :id [:in %]) database-ids))
 
 (mu/defn active-field-ids-by-names :- [:map-of ::lib.schema.id/table [:map-of :string ::lib.schema.id/field]]
   "A map of Table id to a map of name to ID for the active Fields of the Tables with `table-ids`."
@@ -979,12 +1000,13 @@
   (reduce (fn [acc {:keys [table_id id], field-name :name}]
             (assoc-in acc [table_id field-name] id))
           {}
-          (t2/select [:model/Field :table_id :name :id] :table_id [:in [:auto/param table-ids]] :active true)))
+          (mdb/select-batched #(t2/select [:model/Field :table_id :name :id] :table_id [:in %] :active true)
+                              table-ids)))
 
 (mu/defn active-users
   "The active Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select :model/User :id [:in user-ids] :is_active true))
+  (mdb/select-batched #(t2/select :model/User :id [:in %] :is_active true) user-ids))
 
 (mu/defn active-admins
   "The active superusers."
@@ -994,20 +1016,21 @@
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in %])
+                          user-ids))
 
 (mu/defn synced-transform-items :- [:sequential ::transforms.schema/transform]
   "The Transforms with `ids`, with their Collection and its ancestors, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection :transforms)]
-    (-> (t2/select [:model/Transform :id :name :collection_id] :id [:in ids])
+    (-> (mdb/select-batched #(t2/select [:model/Transform :id :name :collection_id] :id [:in %]) ids)
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
 
 (mu/defn synced-transform-tag-items :- [:sequential ::transforms.schema/transform-tag]
   "The TransformTags with `ids`, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
-  (t2/select [:model/TransformTag :id :name] :id [:in ids]))
+  (mdb/select-batched #(t2/select [:model/TransformTag :id :name] :id [:in %]) ids))
 
 (mu/defn dependency-transform-items :- [:maybe :map]
   "The query of the Transforms the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: all of
@@ -1017,8 +1040,8 @@
   (when (or is-superuser? is-data-analyst?)
     (let [location (collections.listing/collection-location :collection :transforms)]
       {:select    [[:transform.id :entity_id] [:transform.name :name] [location :location]]
-       :from      [:transform]
-       :left-join [:collection [:= :transform.collection_id :collection.id]]
+       :from      [[(t2/table-name :model/Transform) :transform]]
+       :left-join [[(t2/table-name :model/Collection) :collection] [:= :transform.collection_id :collection.id]]
        :where     (into [:and]
                         (remove nil?)
                         [(when-not is-superuser?
@@ -1038,8 +1061,8 @@
    {:keys [pinned-state created-by-id]} :- :map]
   (when (nil? created-by-id)
     (let [enabled-types (transforms.gating/enabled-source-types-for-user)]
-      {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
-       :from   [[:transform :transform]]
+      {:select [:id :collection_id :name [[:literal "transform"] :model] :description :entity_id]
+       :from   [[(t2/table-name :model/Transform) :transform]]
        :where  [:and
                 (collections.listing/poison-when-pinned-clause pinned-state)
                 [:= :collection_id (:id collection)]
@@ -1069,4 +1092,4 @@
                 [:ended_at  {:optional true} [:maybe [:or :string :keyword]]]
                 [:is_active {:optional true} [:maybe :boolean]]
                 [:message   {:optional true} [:maybe :string]]]]
-  (t2/query (rt/terminal-statement model [:is_active true] run-ids terminal)))
+  [(mdb/sum-batched mdb/update-partition-size #(first (t2/query (rt/terminal-statement model [:is_active true] % terminal))) run-ids)])

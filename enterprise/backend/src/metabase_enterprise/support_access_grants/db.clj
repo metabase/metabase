@@ -4,6 +4,7 @@
   (:require
    [malli.util :as mut]
    [metabase-enterprise.support-access-grants.schema :as support-access-grants.schema]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -76,7 +77,7 @@
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User :id [:auto/param user-id]))
+  (t2/select-one :model/User :id user-id))
 
 (mu/defn user-by-email
   "The User with `email`, or nil."
@@ -91,7 +92,10 @@
 (mu/defn user-names-and-emails
   "A map of User ID to first name and email for `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pk->fn #(select-keys % [:first_name :email]) [:model/User :id :first_name :email] :id [:in user-ids]))
+  (mdb/select-batched-map (fn [ids]
+                            (t2/select-pk->fn #(select-keys % [:first_name :email]) [:model/User :id :first_name :email]
+                                              :id [:in ids]))
+                          user-ids))
 
 (mu/defn unended-session-exists-for-user?
   "Whether the User with `user-id` has a Session whose ending has not been recorded."

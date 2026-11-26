@@ -9,7 +9,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as search.scoring]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -28,11 +27,14 @@
   "Reducible ID, published flag, data layer, and data authority of the active Tables that are published or
   authoritative."
   []
-  (t2/reducible-select [:model/Table :id :is_published :data_layer :data_authority]
-                       {:where [:and
-                                [:= :active true]
-                                [:or [:= :is_published true]
-                                 [:= :data_authority "authoritative"]]]}))
+  (t2/reducible-select [:model/Table :t.id :t.data_layer :t.data_authority
+                        [:s.is_published :is_published]]
+                       {:from      [[(t2/table-name :model/Table) :t]]
+                        :left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
+                        :where     [:and
+                                    [:= :t.active true]
+                                    [:or [:= :s.is_published true]
+                                     [:= :t.data_authority "authoritative"]]]}))
 
 (mu/defn official-collection-ids
   "The IDs of the official Collections."
@@ -42,40 +44,41 @@
 (mu/defn unarchived-dashboard-ids-in-collections-reducible
   "Reducible `:id` rows of the unarchived Dashboards in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/reducible-select [:model/Dashboard :id]
-                       {:where [:and [:= :archived false]
-                                [:in :collection_id collection-ids]]}))
+  (mdb/select-batched-reducible #(t2/reducible-select [:model/Dashboard :id]
+                                                      {:where [:and [:= :archived false]
+                                                               [:in :collection_id %]]}) collection-ids))
 
 (mu/defn collection-owners-and-locations
   "The ID, owner, and location of the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :personal_owner_id :location] :id [:in collection-ids]))
+  (mdb/select-batched #(t2/select [:model/Collection :id :personal_owner_id :location] :id [:in %]) collection-ids))
 
 (mu/defn personal-collection-owners
   "The ID and owner of the personal Collections among `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :personal_owner_id]
-             :id [:in collection-ids]
-             :personal_owner_id [:not= nil]))
+  (mdb/select-batched #(t2/select [:model/Collection :id :personal_owner_id]
+                                  :id [:in %]
+                                  :personal_owner_id [:not= nil])
+                      collection-ids))
 
 (mu/defn collection-locations
   "The ID and location of the raw collection rows with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select [:collection :id :location] :id [:in collection-ids]))
+  (mdb/select-batched #(t2/select [(t2/table-name :model/Collection) :id :location] :id [:in %]) collection-ids))
 
 (mu/defn instances
   "The instances of `modelable` with `ids`.
   A modelable is a model, or a vector of a model and the columns to select."
   [modelable :- [:or :keyword [:cat :keyword [:+ :keyword]]]
    ids       :- [:sequential ms/PositiveInt]]
-  (t2/select modelable :id [:in ids]))
+  (mdb/select-batched #(t2/select modelable :id [:in %]) ids))
 
 (defn- search-doc-select
   [{:keys [id model]}]
   ;; these have to be real SQL literals rather than plain strings: a string compiles to a `?` parameter, and H2 cannot
   ;; work out the type of a parameter in the select list of a CTE (`Unknown data type: "?, ?"`)
   ^:allow-subquery
-  {:select [[(h2x/literal (str id))] [(h2x/literal model)]]})
+  {:select [[[:literal (str id)]] [[:literal model]]]})
 
 (defn- search-index-select
   "A `search_index` CTE selecting the `:id` and `:model` of each of `search-results` (each `{:id :model}`)."
@@ -86,7 +89,7 @@
              ;; which works with all supported appdbs. https://dev.mysql.com/doc/refman/8.4/en/values.html
              ^:allow-subquery
              {:union (map search-doc-select search-results)}]]
-   :select [[[:cast :search_index.model_id (if (= :mysql (mdb/db-type)) :unsigned :int)] :id]
+   :select [[[:cast :search_index.model_id (if (= :mysql (mdb/db-type)) :unsigned :integer)] :id]
             [:search_index.model :model]]
    :from   [:search_index]})
 

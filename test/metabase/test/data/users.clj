@@ -199,9 +199,11 @@
   (locking tokens
     (reset! tokens {})))
 
-(defn- client-fn [the-client username & args]
+(defn- client-fn! [the-client username & args]
   (letfn [(thunk []
-            (apply the-client (username->token username) args))
+            (let [token (username->token username)]
+              (session/mark-session-active! (session/hash-session-key token))
+              (apply the-client token args)))
           (rethrow-when-not-401 [e]
             (when-not (= (:status-code (ex-data e)) 401)
               (throw e)))]
@@ -225,13 +227,13 @@
                                   {:user username}
                                   e)))))))))))
 
-(defn- user-request
+(defn- user-request!
   [the-client user & args]
   (initialize/initialize-if-needed! :db :test-users :web-server)
   (if (keyword? user)
     (do
       (fetch-user user)
-      (apply client-fn the-client user args))
+      (apply client-fn! the-client user args))
     (let [user-id (u/the-id user)
           session-key (session/generate-session-key)
           session-id (session/generate-session-id)]
@@ -240,14 +242,14 @@
       ;; Do not use `with-temp` here. The request handler runs in-process on this thread, so a rollback-only
       ;; transaction around the Session would also discard every app DB write made by the request. Delete only
       ;; the Session explicitly instead.
-      (t2/insert! :core_session {:id         session-id
-                                 :key_hashed (session/hash-session-key session-key)
-                                 :user_id    user-id
-                                 :created_at (mi/now)})
+      (t2/insert! (t2/table-name :model/Session) {:id         session-id
+                                                  :key_hashed (session/hash-session-key session-key)
+                                                  :user_id    user-id
+                                                  :created_at (mi/now)})
       (try
         (apply the-client session-key args)
         (finally
-          (t2/delete! :core_session :id session-id))))))
+          (t2/delete! (t2/table-name :model/Session) :id session-id))))))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                     request-options? http-body-map? & {:as query-params}])} user-http-request
@@ -256,24 +258,24 @@
   The request will be executed with a temporary session id.
 
   Note: this makes a mock API call, not an actual HTTP call, use [[user-real-request]] for that."
-  (partial user-request client/client))
+  (partial user-request! client/client))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                     request-options? http-body-map? & {:as query-params}])} user-http-request-full-response
   "Like user-http-request but uses the full-response client so will return the http response instead of the body"
-  (partial user-request client/client-full-response))
+  (partial user-request! client/client-full-response))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                     request-options? http-body-map? & {:as query-params}])} user-real-request
   "Like [[user-http-request]] but instead of calling the app handler, this makes an actual http request."
-  (partial user-request client/real-client))
+  (partial user-request! client/real-client))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                     request-options? http-body-map? & {:as query-params}])} user-real-request-full-response
   "Like [[user-real-request]] but returns the full HTTP response map instead of just the body. Useful for
   tests that need the underlying `:http-client` (e.g. to forcibly close the connection and simulate a client
   disconnect on a streaming response)."
-  (partial user-request client/client-real-response))
+  (partial user-request! client/client-real-response))
 
 (defn do-with-test-user [user-kwd thunk]
   (t/testing (format "\nwith test user %s\n" user-kwd)

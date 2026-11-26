@@ -2,6 +2,7 @@
   "Application database queries for the scim module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for transactions."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -61,19 +62,20 @@
 (mu/defn user-ids-by-entity-ids
   "The IDs of the Users with `entity-ids`."
   [entity-ids :- [:sequential :string]]
-  (t2/select-fn-set :id :model/User {:where [:in :entity_id entity-ids]}))
+  (mdb/select-batched-set #(t2/select-fn-set :id :model/User {:where [:in :entity_id %]}) entity-ids))
 
 (mu/defn user-group-memberships
   "Rows of User ID, group name, and group entity ID for the memberships of the Users with `user-ids`, excluding the
   groups with `excluded-group-ids`."
   [user-ids           :- [:sequential ::lib.schema.id/user]
    excluded-group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/PermissionsGroupMembership :pgm.user_id :pg.name :pg.entity_id]
-             {:from  [[:permissions_group_membership :pgm]]
-              :join  [[:permissions_group :pg] [:= :pg.id :group_id]]
-              :where (into [:and [:in :user_id user-ids]]
-                           (map (fn [group-id] [:not= :pg.id group-id]))
-                           excluded-group-ids)}))
+  (mdb/select-batched #(t2/select [:model/PermissionsGroupMembership :pgm.user_id :pg.name :pg.entity_id]
+                                  {:from  [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                                   :join  [[(t2/table-name :model/PermissionsGroup) :pg] [:= :pg.id :group_id]]
+                                   :where (into [:and [:in :user_id %]]
+                                                (map (fn [group-id] [:not= :pg.id group-id]))
+                                                excluded-group-ids)})
+                      user-ids))
 
 (defn- manageable-group-expr
   [excluded-group-ids group-name]
@@ -120,7 +122,8 @@
   "Rows of group ID, member email, and member entity ID for the memberships of the PermissionsGroups with
   `group-ids`."
   [group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/PermissionsGroupMembership :pgm.group_id :u.email :u.entity_id]
-             {:from  [[:permissions_group_membership :pgm]]
-              :join  [[:core_user :u] [:= :u.id :pgm.user_id]]
-              :where [:in :pgm.group_id group-ids]}))
+  (mdb/select-batched #(t2/select [:model/PermissionsGroupMembership :pgm.group_id :u.email :u.entity_id]
+                                  {:from  [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                                   :join  [[(t2/table-name :model/User) :u] [:= :u.id :pgm.user_id]]
+                                   :where [:in :pgm.group_id %]})
+                      group-ids))

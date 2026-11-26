@@ -12,6 +12,7 @@
    [metabase.collections.schema :as collections.schema]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
@@ -61,7 +62,7 @@
 (mu/defn dashcards-of-dashboards
   "The DashboardCards of the Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select :model/DashboardCard :dashboard_id [:in dashboard-ids]))
+  (mdb/select-batched #(t2/select :model/DashboardCard :dashboard_id [:in %]) dashboard-ids))
 
 (mu/defn hydrate-snapshot-parts
   "The `dashboards` with their `:tabs` and their `:dashcards`, each of which with its `:series`, as a Revision records a
@@ -78,31 +79,29 @@
   "The ids among `card-ids` of unarchived Cards that belong to the Dashboard with `dashboard-id` or to no Dashboard."
   [card-ids     :- [:sequential ::lib.schema.id/card]
    dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-pks-set :model/Card
-                     {:where [:and
-                              [:in :id card-ids]
-                              [:= :archived false]
-                              [:or
-                               [:= :dashboard_id dashboard-id]
-                               [:= :dashboard_id nil]]]}))
+  (mdb/select-batched-set #(t2/select-pks-set :model/Card
+                                              {:where [:and
+                                                       [:in :id %]
+                                                       [:= :archived false]
+                                                       [:or
+                                                        [:= :dashboard_id dashboard-id]
+                                                        [:= :dashboard_id nil]]]}) card-ids))
 
 (mu/defn active-card-ids
   "The ids among `card-ids` of unarchived Cards."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pks-set :model/Card {:where [:and [:in :id card-ids] [:= :archived false]]}))
+  (mdb/select-batched-set #(t2/select-pks-set :model/Card {:where [:and [:in :id %] [:= :archived false]]}) card-ids))
 
 (mu/defn dashboard-collection-rows
   "The Dashboards with `dashboard-ids` narrowed to `:id` and `:collection_id`, the columns their permission hydrations
   read."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select [:model/Dashboard :id :collection_id] :id [:in dashboard-ids]))
+  (mdb/select-batched #(t2/select [:model/Dashboard :id :collection_id] :id [:in %]) dashboard-ids))
 
 (mu/defn dashboards
   "The Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (if (seq dashboard-ids)
-    (t2/select :model/Dashboard :id [:in dashboard-ids])
-    []))
+  (mdb/select-batched #(t2/select :model/Dashboard :id [:in %]) dashboard-ids))
 
 (mu/defn insert-dashboards!
   "Insert the Dashboard `rows` and return the inserted instances, in the order of the rows."
@@ -113,14 +112,12 @@
   "Apply `changes` to the Dashboards with `dashboard-ids`, returning the number updated."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]
    changes       :- (mut/dissoc ::dashboards.schema/dashboard.update :id)]
-  (t2/update! :model/Dashboard :id [:in dashboard-ids] changes))
+  (mdb/sum-batched mdb/update-partition-size #(t2/update! :model/Dashboard :id [:in %] changes) dashboard-ids))
 
 (mu/defn dashboards-by-ids
   "The Dashboards with `dashboard-ids`, by id."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (if (seq dashboard-ids)
-    (t2/select-pk->fn identity :model/Dashboard :id [:in dashboard-ids])
-    {}))
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Dashboard :id [:in %]) dashboard-ids))
 
 (mu/defn update-dashboards-by-changes! :- :nil
   "Apply each of `updates`, the `:id` of a Dashboard and the columns to change, with one statement for each set of columns
@@ -132,44 +129,50 @@
 (mu/defn pulse-ids-for-dashboards
   "The ids of the Pulses of the Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (vec (t2/select-pks-vec :model/Pulse :dashboard_id [:in dashboard-ids])))
+  (mdb/select-batched #(t2/select-pks-vec :model/Pulse :dashboard_id [:in %]) dashboard-ids))
 
 (mu/defn dashboard-tabs-for-dashboards
   "The DashboardTabs of the Dashboards with `dashboard-ids`, in dashboard then position order."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select :model/DashboardTab
-             :dashboard_id [:in dashboard-ids]
-             {:order-by [[:dashboard_id :asc] [:position :asc] [:id :asc]]}))
+  (vec (sort-by :dashboard_id
+                (mdb/select-batched #(t2/select :model/DashboardTab
+                                                :dashboard_id [:in %]
+                                                {:order-by [[:dashboard_id :asc] [:position :asc] [:id :asc]]})
+                                    dashboard-ids))))
 
 (mu/defn dashboard-collection-authority-levels
   "The id and Collection `authority_level` of the Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
-  (mdb/query {:select    [:dashboard.id :collection.authority_level]
-              :from      [[:report_dashboard :dashboard]]
-              :left-join [[:collection :collection] [:= :collection.id :dashboard.collection_id]]
-              :where     [:in :dashboard.id dashboard-ids]}))
+  (mdb/select-batched #(mdb/query {:select    [:dashboard.id :collection.authority_level]
+                                   :from      [[(t2/table-name :model/Dashboard) :dashboard]]
+                                   :left-join [[(t2/table-name :model/Collection) :collection] [:= :collection.id :dashboard.collection_id]]
+                                   :where     [:in :dashboard.id %]})
+                      dashboard-ids))
 
 (mu/defn dashcards-with-visible-cards-for-dashboards
   "The DashboardCards of the Dashboards with `dashboard-ids` whose Card is visible (unarchived, a dashboard question
   not archived by itself, or absent), with their Card's Collection authority level, in dashboard then creation order."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select :model/DashboardCard
-             {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
-              :from      [[:report_dashboardcard :dashcard]]
-              :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
-                          [:collection :collection] [:= :collection.id :card.collection_id]]
-              :where     [:and
-                          [:in :dashcard.dashboard_id dashboard-ids]
-                          [:or
-                           ;; show it if:
-                           ;; - the card isn't archived
-                           [:= :card.archived false]
-                           ;; - the card is archived BUT it's a dashboard question that wasn't archived by itself
-                           [:and
-                            [:not= :card.dashboard_id nil]
-                            [:= :card.archived_directly false]]
-                           [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
-              :order-by  [[:dashcard.dashboard_id] [:dashcard.created_at :asc]]}))
+  (vec (sort-by :dashboard_id
+                (mdb/select-batched
+                 #(t2/select :model/DashboardCard
+                             {:select    [:dashcard.* [:collection.authority_level :collection_authority_level]]
+                              :from      [[(t2/table-name :model/DashboardCard) :dashcard]]
+                              :left-join [[(t2/table-name :model/Card) :card] [:= :dashcard.card_id :card.id]
+                                          [(t2/table-name :model/Collection) :collection] [:= :collection.id :card.collection_id]]
+                              :where     [:and
+                                          [:in :dashcard.dashboard_id %]
+                                          [:or
+                                           ;; show it if:
+                                           ;; - the card isn't archived
+                                           [:= :card.archived false]
+                                           ;; - the card is archived BUT it's a dashboard question that wasn't archived by itself
+                                           [:and
+                                            [:not= :card.dashboard_id nil]
+                                            [:= :card.archived_directly false]]
+                                           [:= :card.archived nil]]] ; e.g. DashCards with no corresponding Card, e.g. text Cards
+                              :order-by  [[:dashcard.dashboard_id] [:dashcard.created_at :asc] [:dashcard.id :asc]]})
+                 dashboard-ids))))
 
 (mu/defn internal-dashboard-question-ids
   "The ids of the Cards internal to the Dashboard with `dashboard-id`, or nil."
@@ -180,49 +183,47 @@
   "The Cards with `card-ids` whose `archived` flag differs from `archived?`, which setting it changes."
   [card-ids  :- [:sequential ::lib.schema.id/card]
    archived? :- :boolean]
-  (t2/select :model/Card :id [:in card-ids] :archived (not archived?)))
+  (mdb/select-batched #(t2/select :model/Card :id [:in %] :archived (not archived?)) card-ids))
 
-(mu/defn questions-archived-with-dashboard
-  "The unarchived Cards internal to the Dashboard with `dashboard-id`, which archiving it archives along with it."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/Card :dashboard_id dashboard-id :archived false))
+(mu/defn questions-archived-with-dashboards
+  "The unarchived Cards internal to the Dashboards with `dashboard-ids`, which archiving them archives along with them."
+  [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
+  (mdb/select-batched #(t2/select :model/Card :dashboard_id [:in %] :archived false) dashboard-ids))
 
-(mu/defn questions-restored-with-dashboard
-  "The Cards internal to the Dashboard with `dashboard-id` that were archived along with it, which restoring it
+(mu/defn questions-restored-with-dashboards
+  "The Cards internal to the Dashboards with `dashboard-ids` that were archived along with them, which restoring them
   restores."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/Card :dashboard_id dashboard-id :archived true :archived_directly false))
+  [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
+  (mdb/select-batched #(t2/select :model/Card :dashboard_id [:in %] :archived true :archived_directly false)
+                      dashboard-ids))
 
 (mu/defn question-ids-archived-with-dashboards
   "The IDs of the unarchived Cards internal to the Dashboards with `dashboard-ids`, which archiving them archives along
   with them."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select-pks-vec :model/Card :dashboard_id [:in dashboard-ids] :archived false))
+  (not-empty (mdb/select-batched #(t2/select-pks-vec :model/Card :dashboard_id [:in %] :archived false) dashboard-ids)))
 
 (mu/defn question-ids-restored-with-dashboards
   "The IDs of the Cards internal to the Dashboards with `dashboard-ids` that were archived along with them, which
   restoring them restores."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select-pks-vec :model/Card :dashboard_id [:in dashboard-ids] :archived true :archived_directly false))
+  (not-empty (mdb/select-batched #(t2/select-pks-vec :model/Card :dashboard_id [:in %] :archived true :archived_directly false)
+                                 dashboard-ids)))
 
 (mu/defn question-ids-of-dashboards
   "The IDs of the Cards internal to the Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select-pks-vec :model/Card :dashboard_id [:in dashboard-ids]))
+  (not-empty (mdb/select-batched #(t2/select-pks-vec :model/Card :dashboard_id [:in %]) dashboard-ids)))
 
 (mu/defn cards-by-ids
   "The Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (seq ids)
-    (t2/select :model/Card :id [:in ids])
-    []))
+  (mdb/select-batched #(t2/select :model/Card :id [:in %]) ids))
 
 (mu/defn actions-by-ids
   "The Actions with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (if (seq ids)
-    (t2/select :model/Action :id [:in ids])
-    []))
+  (mdb/select-batched #(t2/select :model/Action :id [:in %]) ids))
 
 (mu/defn card-query-columns
   "The query-relevant columns of the Card with `card-id`, or nil."
@@ -232,12 +233,12 @@
 (mu/defn card-collection-ids :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/collection]]
   "A map of Card id to the id of its Collection, nil for the root, for the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn :collection_id :model/Card :id [:in card-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :collection_id :model/Card :id [:in %]) card-ids))
 
 (mu/defn card-queries
   "A map of Card id to query for the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :dataset_query :model/Card :id [:in %]) card-ids))
 
 (defn dashboard-question-exists?
   "Does the Dashboard with `dashboard-id` hold an unarchived Card saved inside it?"
@@ -247,31 +248,53 @@
 (defn card-internal-to-other-dashboard?
   "Is any Card among `card-ids` saved inside a dashboard other than the one with `dashboard-id`?"
   [dashboard-id card-ids]
-  (t2/exists? :model/Card
-              {:where [:and
-                       [:not= :dashboard_id dashboard-id]
-                       [:not= :dashboard_id nil]
-                       [:in :id card-ids]]}))
+  (boolean (some #(t2/exists? :model/Card
+                              {:where [:and
+                                       [:not= :dashboard_id dashboard-id]
+                                       [:not= :dashboard_id nil]
+                                       [:in :id %]]})
+                 (mdb/select-partitions card-ids))))
 
 (mu/defn action-entity-ids-in
   "The entity ids among `entity-ids` that name an existing Action."
   [entity-ids :- [:set :string]]
-  (t2/select-fn-set :entity_id [:model/Action :entity_id] :entity_id [:in entity-ids]))
+  (mdb/select-batched-set #(t2/select-fn-set :entity_id [:model/Action :entity_id] :entity_id [:in %]) entity-ids))
 
 (mu/defn dashcard-series-columns
   "The id, Card id, and DashboardCard id of the DashboardCardSeries of the DashboardCards with `dashcard-ids`."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/select [:model/DashboardCardSeries :id :card_id :dashboardcard_id] :dashboardcard_id [:in dashcard-ids]))
+  (mdb/select-batched #(t2/select [:model/DashboardCardSeries :id :card_id :dashboardcard_id] :dashboardcard_id [:in %])
+                      dashcard-ids))
 
 (mu/defn series-cards-for-dashcards
   "The series Cards of the DashboardCards with `dashcard-ids`, each with its `:dashboardcard_id`, in series order."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/select [:model/Card :id :name :description :display :dataset_query :type :database_id
-              :visualization_settings :collection_id :card_schema :entity_id :result_metadata
-              :dimensions :dimension_mappings :series.dashboardcard_id]
-             {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
-              :where     [:in :series.dashboardcard_id dashcard-ids]
-              :order-by  [[:series.position :asc]]}))
+  (mdb/select-batched #(t2/select [:model/Card :id :name :description :display :dataset_query :type :database_id
+                                   :visualization_settings :collection_id :card_schema :entity_id :result_metadata
+                                   :dimensions :dimension_mappings :series.dashboardcard_id]
+                                  {:left-join [[(t2/table-name :model/DashboardCardSeries) :series] [:= (u/qualified-key (t2/table-name :model/Card) :id) :series.card_id]]
+                                   :where     [:in :series.dashboardcard_id %]
+                                   :order-by  [[:series.position :asc]]})
+                      dashcard-ids))
+
+(mu/defn dashcard-cards-for-dashboards
+  "The `:dashboard_id` and `:card_id` of every DashboardCard of the Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/select [:model/DashboardCard :dashboard_id :card_id] :dashboard_id [:in dashboard-ids]))
+
+(mu/defn dashcard-series-cards-for-dashboards
+  "The owning Dashboard id and the series `:card_id` of every DashboardCardSeries on a DashboardCard of the Dashboards
+  with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (mdb/query {:select [[:dashcard.dashboard_id :dashboard_id] [:series.card_id :card_id]]
+              :from   [[(t2/table-name :model/DashboardCardSeries) :series]]
+              :join   [[(t2/table-name :model/DashboardCard) :dashcard] [:= :dashcard.id :series.dashboardcard_id]]
+              :where  [:in :dashcard.dashboard_id dashboard-ids]}))
+
+(mu/defn parameters-for-dashboards
+  "The id, `:parameters`, and `:embedding_params` of the Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/select [:model/Dashboard :id :parameters :embedding_params] :id [:in dashboard-ids]))
 
 (mu/defn dashcard
   "The DashboardCard with `dashcard-id`, or nil."
@@ -282,10 +305,10 @@
   "The unarchived Cards added to the DashboardCard with `dashcard-id` as series (the 'add series' feature)."
   [dashcard-id :- [:maybe ::lib.schema.id/dashcard]]
   (mdb/query {:select    [:newcard.*]
-              :from      [[:report_dashboardcard :dashcard]]
-              :left-join [[:dashboardcard_series :dashcardseries]
+              :from      [[(t2/table-name :model/DashboardCard) :dashcard]]
+              :left-join [[(t2/table-name :model/DashboardCardSeries) :dashcardseries]
                           [:= :dashcard.id :dashcardseries.dashboardcard_id]
-                          [:report_card :newcard]
+                          [(t2/table-name :model/Card) :newcard]
                           [:= :dashcardseries.card_id :newcard.id]]
               :where     [:and
                           [:= :newcard.archived false]
@@ -294,18 +317,18 @@
 (mu/defn dashcards-by-ids
   "The DashboardCards with `dashcard-ids`."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/select :model/DashboardCard :id [:in dashcard-ids]))
+  (mdb/select-batched #(t2/select :model/DashboardCard :id [:in %]) dashcard-ids))
 
 (mu/defn id->dashcard
   "The DashboardCards with `dashcard-ids`, by id."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/select-pk->fn identity :model/DashboardCard :id [:in dashcard-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/DashboardCard :id [:in %]) dashcard-ids))
 
 (mu/defn dashcards-in-tabs
   "The DashboardCards of the Dashboard with `dashboard-id` on the DashboardTabs with `tab-ids`."
   [dashboard-id :- ::lib.schema.id/dashboard
    tab-ids      :- [:sequential ms/PositiveInt]]
-  (t2/select :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id [:in tab-ids]))
+  (mdb/select-batched #(t2/select :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id [:in %]) tab-ids))
 
 (mu/defn insert-dashcards!
   "Insert the DashboardCard `rows` and return the inserted instances, in the order of the rows."
@@ -322,17 +345,17 @@
 (mu/defn delete-dashcards!
   "Delete the DashboardCards with `dashcard-ids`, returning the number deleted."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/delete! :model/DashboardCard :id [:in dashcard-ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/DashboardCard :id [:in %]) dashcard-ids))
 
 (mu/defn dashcard-series-for-dashcards
   "The DashboardCardSeries of the DashboardCards with `dashcard-ids`."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/select :model/DashboardCardSeries :dashboardcard_id [:in dashcard-ids]))
+  (mdb/select-batched #(t2/select :model/DashboardCardSeries :dashboardcard_id [:in %]) dashcard-ids))
 
 (mu/defn dashcard-series-by-ids
   "The DashboardCardSeries with `series-ids`."
   [series-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/DashboardCardSeries :id [:in series-ids]))
+  (mdb/select-batched #(t2/select :model/DashboardCardSeries :id [:in %]) series-ids))
 
 (defn parameter-card-card-ids
   "The Card ids referenced by the ParameterCards of the Dashboard with `dashboard-id`."
@@ -369,9 +392,10 @@
   "A map of DashboardCard id to Card id for the DashboardCards with `dashcard-ids` on the Dashboard with
   `dashboard-id`."
   [dashboard-id dashcard-ids]
-  (t2/select-pk->fn :card_id :model/DashboardCard
-                    :dashboard_id dashboard-id
-                    :id           [:in dashcard-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :card_id :model/DashboardCard
+                                             :dashboard_id dashboard-id
+                                             :id           [:in %])
+                          dashcard-ids))
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 
@@ -424,7 +448,7 @@
           :let           [maybe-aliased-col (get model-col-alias->honeysql-clause col)]]
       (cond
         (= col :model)
-        [(h2x/literal model) :model]
+        [[:literal model] :model]
 
         maybe-aliased-col
         maybe-aliased-col
@@ -472,11 +496,12 @@
 
     (= model "collection")
     (mapv #(assoc % :model model)
-          (t2/select [:model/Collection :id :name :description :type :namespace] :id [:in ids]))
+          (mdb/select-batched #(t2/select [:model/Collection :id :name :description :type :namespace] :id [:in %]) ids))
 
     (contains? serialization/link-card-model->toucan-model model)
-    (t2/select (serialization/link-card-model->toucan-model model)
-               (h2x/assert-map-or-nil! (link-card-info-query-for-model model ids)))
+    (mdb/select-batched #(t2/select (serialization/link-card-model->toucan-model model)
+                                    (h2x/assert-map-or-nil! (link-card-info-query-for-model model %)))
+                        ids)
 
     :else
     []))
@@ -493,18 +518,21 @@
   "The `:type` and `:namespace` of the Collections with `collection-ids`, the columns their read check reads that
   [[link-card-info-rows]] does not carry, keyed by id."
   [collection-ids :- [:sequential [:or :int :string]]]
-  (if (empty? collection-ids)
-    {}
-    (into {}
-          (map (juxt :id #(select-keys % [:type :namespace])))
-          (t2/select [:model/Collection :id :type :namespace]
-                     :id [:in (mapv ensure-integer-link-card-id collection-ids)]))))
+  (into {}
+        (map (juxt :id #(select-keys % [:type :namespace])))
+        (mdb/select-batched #(t2/select [:model/Collection :id :type :namespace]
+                                        :id [:in (mapv ensure-integer-link-card-id %)])
+                            collection-ids)))
 
 (mu/defn link-card-info-rows
   "The name, description, and related columns of the entities the link cards `link-card-model->ids`
   (`[[model #{ids}] ...]`) point at."
   [link-card-model->ids :- [:sequential [:tuple :string [:or [:set [:or :int :string]] [:sequential [:or :int :string]]]]]]
-  (t2/query (link-card-info-query link-card-model->ids)))
+  (mdb/select-batched #(t2/query (link-card-info-query (map (fn [[model model-pairs]] [model (mapv second model-pairs)])
+                                                            (group-by first %))))
+                      (for [[model ids] link-card-model->ids
+                            id          ids]
+                        [model id])))
 
 (mu/defn dashcard-reference-problems :- [:map {:closed true}
                                          [:document-card-ids [:sequential ms/PositiveInt]]
@@ -513,89 +541,90 @@
   to a Document, and a map from each of `tab-ids` to the Dashboard it belongs to, each read once, nil for none."
   [tab-ids  :- [:maybe [:sequential ms/PositiveInt]]
    card-ids :- [:maybe [:sequential ms/PositiveInt]]]
-  {:document-card-ids (if (seq card-ids)
-                        (vec (t2/select-pks-vec :model/Card :id [:in card-ids] :document_id [:<> nil]))
-                        [])
-   :tab-dashboard-ids (if (seq tab-ids)
-                        (into {} (t2/select-pk->fn :dashboard_id :model/DashboardTab :id [:in tab-ids]))
-                        {})})
+  {:document-card-ids (mdb/select-batched #(t2/select-pks-vec :model/Card :id [:in %] :document_id [:<> nil]) card-ids)
+   :tab-dashboard-ids (mdb/select-batched-map #(t2/select-pk->fn :dashboard_id :model/DashboardTab :id [:in %]) tab-ids)})
 
 (mu/defn pulse-cards-in-tabs
   "The PulseCards of the DashboardCards on the DashboardTabs with `tab-ids`, which the delete of the tabs deletes with
   them."
   [tab-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/PulseCard
-             :dashboard_card_id [:in ^:allow-subquery {:select [:id]
-                                                       :from   [:report_dashboardcard]
-                                                       :where  [:in :dashboard_tab_id tab-ids]}]))
+  (mdb/select-batched #(t2/select :model/PulseCard
+                                  :dashboard_card_id [:in ^:allow-subquery {:select [:id]
+                                                                            :from   [(t2/table-name :model/DashboardCard)]
+                                                                            :where  [:in :dashboard_tab_id %]}])
+                      tab-ids))
 
 (mu/defn delete-dashboard-tabs!
   "Delete the DashboardTabs with `tab-ids`, returning the number deleted."
   [tab-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/DashboardTab :id [:in tab-ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/DashboardTab :id [:in %]) tab-ids))
 
 (mu/defn dashcards-serdes-columns
   "The id, Dashboard id, Card, Action, parameter mappings, and visualization settings of the DashboardCards of the
   Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select [:model/DashboardCard :id :dashboard_id :card_id :action_id :parameter_mappings :visualization_settings]
-             :dashboard_id [:in [:auto/param dashboard-ids]]))
+  (mdb/select-batched #(t2/select [:model/DashboardCard :id :dashboard_id :card_id :action_id :parameter_mappings :visualization_settings]
+                                  :dashboard_id [:in %])
+                      dashboard-ids))
 
 (mu/defn synced-dashboard-items :- [:sequential ::dashboards.schema/dashboard]
   "The Dashboards with `ids`, with their Collection and its ancestors, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
   (let [root (collection.root/hydrated-root-collection)]
-    (-> (t2/select [:model/Dashboard :id :name :collection_id] :id [:in ids])
+    (-> (mdb/select-batched #(t2/select [:model/Dashboard :id :name :collection_id] :id [:in %]) ids)
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
 
-(mu/defn stale-dashboard-candidates :- ::staleness/query
+(mu/defn stale-dashboard-candidates :- ::funnysql.schema/query.select
   "The query of the Dashboards that are stale for `opts`, `{:collection-ids (:all | #{int|nil}), :cutoff-date local-date}`."
   [opts :- ::staleness/candidates-options]
-  ^:allow-subquery {:select [:report_dashboard.id
-                             [(h2x/literal "Dashboard") :model]
-                             [:report_dashboard.name :name]
+  ^:allow-subquery {:select [:dashboard.id
+                             [[:literal "Dashboard"] :model]
+                             [:dashboard.name :name]
                              [:last_viewed_at :last_used_at]
-                             :report_dashboard.collection_id]
-                    :from :report_dashboard
-                    :left-join [:pulse [:and
-                                        [:= :pulse.archived false]
-                                        [:= :pulse.dashboard_id :report_dashboard.id]]
-                                :collection [:= :collection.id :report_dashboard.collection_id]
-                                :moderation_review [:and
-                                                    [:= :moderation_review.moderated_item_id :report_dashboard.id]
-                                                    [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
-                                                    [:= :moderation_review.most_recent true]
-                                                    [:= :moderation_review.status (h2x/literal "verified")]]]
+                             :dashboard.collection_id]
+                    :from [[(t2/table-name :model/Dashboard) :dashboard]]
+                    :left-join [[(t2/table-name :model/Pulse) :pulse] [:and
+                                                                       [:= :pulse.archived false]
+                                                                       [:= :pulse.dashboard_id :dashboard.id]]
+                                [(t2/table-name :model/Collection) :collection] [:= :collection.id :dashboard.collection_id]
+                                [(t2/table-name :model/ModerationReview) :mr] [:and
+                                                                               [:= :mr.moderated_item_id :dashboard.id]
+                                                                               [:= :mr.moderated_item_type [:literal "dashboard"]]
+                                                                               [:= :mr.most_recent true]
+                                                                               [:= :mr.status [:literal "verified"]]]]
                     :where [:and
                             [:= :pulse.id nil]
-                            [:= :moderation_review.id nil]
-                            [:= :report_dashboard.archived false]
-                            [:<= :report_dashboard.last_viewed_at (:cutoff-date opts)]
+                            [:= :mr.id nil]
+                            [:= :dashboard.archived false]
+                            [:<= :dashboard.last_viewed_at (:cutoff-date opts)]
                             [:= :collection.type nil]
                             (when (embed.settings/some-embedding-enabled?)
-                              [:= :report_dashboard.enable_embedding false])
+                              [:= :dashboard.enable_embedding false])
                             (when (setting/get :enable-public-sharing)
-                              [:= :report_dashboard.public_uuid nil])
-                            (staleness/collection-filter :report_dashboard.collection_id opts)]})
+                              [:= :dashboard.public_uuid nil])
+                            (staleness/collection-filter :dashboard.collection_id opts)]})
 
 (mu/defn stale-dashboard-items
   "The listing columns of the Dashboards with `dashboard-ids`, with the hydrations the stale content page shows."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
-  (-> (t2/select [:model/Dashboard
-                  :id
-                  :description
-                  :collection_id
-                  :name
-                  :entity_id
-                  :archived
-                  :collection_position
-                  [:last_viewed_at :last_used_at]
-                  ["dashboard" :model]
-                  [nil :dashboard_id]
-                  [nil :location]
-                  [nil :database_id]]
-                 :id [:in dashboard-ids])
+  (-> (mdb/select-batched
+       (fn [dashboard-ids]
+         (t2/select [:model/Dashboard
+                     :id
+                     :description
+                     :collection_id
+                     :name
+                     :entity_id
+                     :archived
+                     :collection_position
+                     [:last_viewed_at :last_used_at]
+                     ["dashboard" :model]
+                     [nil :dashboard_id]
+                     [nil :location]
+                     [nil :database_id]]
+                    :id [:in dashboard-ids]))
+       dashboard-ids)
       (t2/hydrate :can_write :can_delete :can_restore [:collection :effective_location])))
 
 (mu/defn dependency-dashboard-items :- :map
@@ -606,8 +635,8 @@
    :- :metabase.dependencies.items/items-opts]
   (let [location (collections.listing/collection-location :collection nil)]
     {:select    [[:dashboard.id :entity_id] [:dashboard.name :name] [location :location]]
-     :from      [[:report_dashboard :dashboard]]
-     :left-join [:collection [:= :dashboard.collection_id :collection.id]]
+     :from      [[(t2/table-name :model/Dashboard) :dashboard]]
+     :left-join [[(t2/table-name :model/Collection) :collection] [:= :dashboard.collection_id :collection.id]]
      :where     (into [:and]
                       (remove nil?)
                       [(collections.listing/visible-in-collections-clause :dashboard opts include-archived nil)
@@ -625,7 +654,7 @@
                [:last_viewed_at :last_used_at]
                :d.collection_id
                :d.archived_directly
-               [(h2x/literal "dashboard") :model]
+               [[:literal "dashboard"] :model]
                [:u.id :last_edit_user]
                :d.archived
                [:u.email :last_edit_email]
@@ -633,16 +662,16 @@
                [:u.last_name :last_edit_last_name]
                [:r.timestamp :last_edit_timestamp]
                [:mr.status :moderated_status]]
-   :from      [[:report_dashboard :d]]
-   :left-join [[:moderation_review :mr] [:and
-                                         [:= :mr.moderated_item_id :d.id]
-                                         [:= :mr.most_recent true]
-                                         [:= :mr.moderated_item_type (h2x/literal "dashboard")]]
-               [:revision :r] [:and
-                               [:= :r.model_id :d.id]
-                               [:= :r.model (h2x/literal "Dashboard")]
-                               (revisions.sql/newest-revision-clause :r "Dashboard" :d.id)]
-               [:core_user :u] [:= :u.id :r.user_id]]
+   :from      [[(t2/table-name :model/Dashboard) :d]]
+   :left-join [[(t2/table-name :model/ModerationReview) :mr] [:and
+                                                              [:= :mr.moderated_item_id :d.id]
+                                                              [:= :mr.most_recent true]
+                                                              [:= :mr.moderated_item_type [:literal "dashboard"]]]
+               [(t2/table-name :model/Revision) :r] [:and
+                                                     [:= :r.model_id :d.id]
+                                                     [:= :r.model [:literal "Dashboard"]]
+                                                     (revisions.sql/newest-revision-clause :r "Dashboard" :d.id)]
+               [(t2/table-name :model/User) :u] [:= :u.id :r.user_id]]
    :where     [:and
                (collections.listing/visible-items-clause :d.collection_id archived? {:root-namespace nil})
                (if (collection/is-trash? collection)
@@ -659,27 +688,31 @@
   "The Dashboards with `dashboard-ids` with their Collection and moderation status."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/hydrate
-   (t2/select :model/Dashboard
-              {:select [:dash.id
-                        :dash.name
-                        :dash.description
-                        :dash.archived
-                        [:dash.collection_id :entity-coll-id]
-                        [:c.id :collection_id]
-                        [:c.name :collection_name]
-                        [:c.authority_level :collection_authority_level]
-                        [:mr.status :moderated-status]]
-               :from [[:report_dashboard :dash]]
-               :where [:in :dash.id dashboard-ids]
-               :left-join [[:moderation_review :mr]
-                           [:and
-                            [:= :mr.moderated_item_id :dash.id]
-                            [:= :mr.moderated_item_type "dashboard"]
-                            [:= :mr.most_recent true]]
-                           [:collection :c]
-                           [:and
-                            [:= :c.id :dash.collection_id]
-                            [:= :c.archived false]]]}) :can_read :can_write))
+   (mdb/select-batched
+    (fn [dashboard-ids]
+      (t2/select :model/Dashboard
+                 {:select [:dash.id
+                           :dash.name
+                           :dash.description
+                           :dash.archived
+                           [:dash.collection_id :entity-coll-id]
+                           [:c.id :collection_id]
+                           [:c.name :collection_name]
+                           [:c.authority_level :collection_authority_level]
+                           [:mr.status :moderated-status]]
+                  :from [[(t2/table-name :model/Dashboard) :dash]]
+                  :where [:in :dash.id dashboard-ids]
+                  :left-join [[(t2/table-name :model/ModerationReview) :mr]
+                              [:and
+                               [:= :mr.moderated_item_id :dash.id]
+                               [:= :mr.moderated_item_type "dashboard"]
+                               [:= :mr.most_recent true]]
+                              [(t2/table-name :model/Collection) :c]
+                              [:and
+                               [:= :c.id :dash.collection_id]
+                               [:= :c.archived false]]]}))
+    dashboard-ids)
+   :can_read :can_write))
 
 (mu/defn update-dashboards-last-viewed-at!
   "Move `last_viewed_at` of each Dashboard in `dashboard-id->timestamp` forward to its timestamp, without touching
@@ -687,13 +720,15 @@
   staleness on this field until the next re-index or edit)."
   [dashboard-id->timestamp :- [:map-of ms/PositiveInt ms/TemporalInstant]]
   #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log leaves out usage stats
-  (t2/query {:update (t2/table-name :model/Dashboard)
-             :set    {:last_viewed_at (into [:case]
-                                            (mapcat (fn [[id timestamp]]
-                                                      [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
-                                                    dashboard-id->timestamp))
-                      :updated_at :updated_at}
-             :where  [:in :id (keys dashboard-id->timestamp)]}))
+  (run! (fn [entries]
+          (t2/query {:update (t2/table-name :model/Dashboard)
+                     :set    {:last_viewed_at (into [:case]
+                                                    (mapcat (fn [[id timestamp]]
+                                                              [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
+                                                            entries))
+                              :updated_at :updated_at}
+                     :where  [:in :id (map first entries)]}))
+        (partition-all mdb/update-partition-size dashboard-id->timestamp)))
 
 (mu/defn set-dashboard-last-viewed-at!
   "Set `last_viewed_at` of the Dashboard with `dashboard-id`, returning the number updated."
@@ -711,7 +746,20 @@
                                 :collection_position (collection/position-clause positions)}
               {:collection_position [direction :collection_position 1]}))
 
+(mu/defn positioned-dashboards-in-collections :- [:sequential [:map {:closed true}
+                                                               [:id                  ms/PositiveInt]
+                                                               [:collection_id       [:maybe ms/PositiveInt]]
+                                                               [:collection_position ms/PositiveInt]]]
+  "The `:id`, `:collection_id` and `:collection_position` of the Dashboards that have a position in the Collections with
+  `collection-ids`, nil for the root."
+  [collection-ids :- [:sequential [:maybe ::lib.schema.id/collection]]]
+  (let [select-positioned #(t2/select [:model/Dashboard :id :collection_id :collection_position]
+                                      {:where [:and [:not= :collection_position nil] (collection/collection-ids-clause %)]})]
+    (if (seq collection-ids)
+      (mdb/select-batched select-positioned collection-ids)
+      (select-positioned []))))
+
 (mu/defn dashcards-of-actions
   "The DashboardCards of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select :model/DashboardCard :action_id [:in action-ids]))
+  (mdb/select-batched #(t2/select :model/DashboardCard :action_id [:in %]) action-ids))

@@ -1,6 +1,7 @@
 (ns metabase.permissions.models.permissions-group-membership-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.db :as app-db.db]
    [metabase.app-db.query :as app-db.query]
    [metabase.events.test-util :as events.tu]
    [metabase.permissions.core :as perms]
@@ -301,6 +302,24 @@
                               {:user admin-id :group group-id :is-group-manager? true}])))
       (is (not (t2/exists? :model/PermissionsGroupMembership :group_id group-id))))))
 
+(deftest adding-admin-and-group-manager-together-is-refused-test
+  (testing "one call cannot add a User to Administrators and make them a group manager, in either order"
+    (mt/with-temp [:model/User             {user-id :id} {}
+                   :model/PermissionsGroup {group-id :id} {}]
+      (let [admin   {:user user-id, :group (admin-group-id)}
+            manager {:user user-id, :group group-id, :is-group-manager? true}]
+        (doseq [pgms [[admin manager] [manager admin]]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Admin cannot be a group manager"
+                                (perms-group-membership/add-users-to-groups! pgms)))
+          (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)))
+          (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id (admin-group-id)))))
+        (testing "with the two rows in different batches"
+          (with-redefs [app-db.query/create-partition-size 1]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Admin cannot be a group manager"
+                                  (perms-group-membership/add-users-to-groups! [admin manager])))
+            (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)))
+            (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id (admin-group-id))))))))))
+
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
     (mt/with-model-cleanup [:model/User]
@@ -370,11 +389,10 @@
                  :model/User             {user-3 :id}   {}]
     (let [user-ids [user-1 user-2 user-3]
           members  #(t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id group-id)]
-      (with-redefs [app-db.query/create-partition-size 1
-                    app-db.query/delete-partition-size 1]
+      (mt/with-partition-size 1
         (testing "an addition of three users with constants lowered adds all three in three inserts and publishes one event"
           (let [calls (atom 0)]
-            (mt/with-dynamic-fn-redefs [app-db.query/insert-returning-instances! (let [f (mt/original-fn #'app-db.query/insert-returning-instances!)] (fn [& args] (swap! calls inc) (apply f args)))]
+            (mt/with-dynamic-fn-redefs [app-db.db/insert-returning-instances! (let [f (mt/original-fn #'app-db.db/insert-returning-instances!)] (fn [& args] (swap! calls inc) (apply f args)))]
               (is (= [:event/group-membership-create]
                      (events.tu/published-topics!
                       #(perms-group-membership/add-users-to-groups! (for [user-id user-ids] {:user user-id :group group-id}))))))

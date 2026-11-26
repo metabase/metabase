@@ -6,7 +6,6 @@
    [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.string :as u.str]))
 
@@ -188,6 +187,6 @@
    ;; `lang` is a `regconfig` and `weight` is a `"char"`; both have to be real SQL literals, since Postgres cannot
    ;; resolve either overload from an `?` parameter bound as `varchar`
    [:setweight
-    [:to_tsvector (h2x/literal lang)
+    [:to_tsvector [:literal lang]
      [:cast (u.str/limit-bytes text search.ingestion.query/max-searchable-value-length) :text]]
-    (h2x/literal weight)]))
+    [:literal weight]]))

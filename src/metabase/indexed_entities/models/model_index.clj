@@ -23,7 +23,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; model lifecycle ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -181,7 +182,12 @@
                                                          (if (> (count values-to-index) max-indexed-values)
                                                            "overflow"
                                                            "indexed")))
-        (run! search/update! (indexed-entities.db/model-index-values-reducible (:id model-index)))
+        (transduce (comp (map t2.realize/realize)
+                         (partition-all app-db/create-partition-size)
+                         (map search/bulk-update!))
+                   (constantly nil)
+                   nil
+                   (indexed-entities.db/model-index-values-reducible (:id model-index)))
         (catch Exception e
           (log/errorf "Error saving model-index values for model-index: %d, model: %d: %s"
                       (:id model-index) (:model_id model-index) (ex-message e))

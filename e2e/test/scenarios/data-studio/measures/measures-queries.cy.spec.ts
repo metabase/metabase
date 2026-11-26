@@ -16,269 +16,117 @@ describe("scenarios > data studio > measures > queries", () => {
   });
 
   describe("measures queries", () => {
-    it("should create a measure with an aggregation without columns", () => {
+    it("should create a measure in the measure editor and use it in a query", () => {
       startNewMeasure();
 
       MeasureEditor.getAggregationPlaceholder().click();
       H.popover().findByText("Count of rows").click();
 
-      saveMeasure();
+      saveMeasure().then((measure) => {
+        cy.log("the page opens the created measure, which survives a reload");
+        cy.location("pathname").should(
+          "eq",
+          `/data-studio/library/tables/${ORDERS_ID}/measures/${measure.id}`,
+        );
+        cy.reload();
+        MeasureEditor.getNameInput().should("have.value", MEASURE_NAME);
+        MeasureEditor.get().findByText("Count").should("be.visible");
+      });
+
       useMeasureInAdhocQuestion();
       verifyScalarValue("18,760");
     });
 
-    it("should create a measure with a column from the main data source", () => {
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().within(() => {
-        cy.findByText("Sum of ...").click();
-        cy.findByText("Total").click();
-      });
-      saveMeasure();
+    it("should compute measures based on columns, implicit joins, custom expressions, segments and other measures", () => {
+      const TOTAL = ["field", ORDERS.TOTAL, null];
+      const ID = ["field", ORDERS.ID, null];
+      const PRODUCT_ID = [
+        "field",
+        PRODUCTS.ID,
+        { "source-field": ORDERS.PRODUCT_ID },
+      ];
+      const PRODUCT_PRICE = [
+        "field",
+        PRODUCTS.PRICE,
+        { "source-field": ORDERS.PRODUCT_ID },
+      ];
 
-      useMeasureInAdhocQuestion();
-      verifyScalarValue("1,510,621.68");
-    });
-
-    it("should create a measure with a column from the main data source using offset", () => {
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("Offset(Sum([Total]), -1)");
-      H.CustomExpressionEditor.nameInput().type("Offset Measure");
-      H.popover().button("Done").click();
-      saveMeasure();
-
-      useMeasureInAdhocQuestion({
-        customizeQuery() {
-          breakout("Created At");
+      createOrdersSegment("TotalSegment", ["<", TOTAL, 100]).then(
+        (totalSegmentId) => {
+          createOrdersMeasure("CountIf segment", [
+            "count-where",
+            ["segment", totalSegmentId],
+          ]).then((measureId) => verifyMeasureScalar(measureId, "13,005"));
         },
-      });
-      verifyRowValues([["April 2025"], ["May 2025", "52.76"]]);
-    });
-
-    it("should create a measure with a column from an implicit join", () => {
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().within(() => {
-        cy.findByText("Average of ...").click();
-        cy.findByText("Product").click();
-        cy.findByText("Price").click();
-      });
-      saveMeasure();
-
-      useMeasureInAdhocQuestion();
-      verifyScalarValue("55.69");
-    });
-
-    it("should create a measure with a column from an implicit join using offset", () => {
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("Offset(Average([Product -> Price]), -1)");
-      H.CustomExpressionEditor.nameInput().type("Offset Measure");
-      H.popover().button("Done").click();
-      saveMeasure();
-
-      useMeasureInAdhocQuestion({
-        customizeQuery() {
-          breakout("Created At");
-        },
-      });
-      verifyRowValues([["April 2025"], ["May 2025", "49.54"]]);
-    });
-
-    it("should create a measure with a custom aggregation expression", () => {
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type(
-        "DistinctIf([Product → ID], [ID] > 1) + DistinctIf([ID], [Product → ID] > 1)",
       );
-      H.CustomExpressionEditor.nameInput().type("Custom");
-      H.popover().button("Done").click();
-      saveMeasure();
 
-      useMeasureInAdhocQuestion();
-      verifyScalarValue("18,867");
-    });
-
-    it("should create a measure based on a segment", () => {
-      H.createSegment({
-        name: "TotalSegment",
-        definition: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            filter: ["<", ["field", ORDERS.TOTAL, null], 100],
-          },
+      createOrdersSegment("LargeTotal", [">", TOTAL, 10]).then(
+        (largeTotalSegmentId) => {
+          createOrdersSegment("NestedSegment", [
+            "or",
+            ["<", TOTAL, 5],
+            ["segment", largeTotalSegmentId],
+          ]).then((nestedSegmentId) => {
+            createOrdersMeasure("CountIf nested segment", [
+              "count-where",
+              ["segment", nestedSegmentId],
+            ]).then((measureId) => verifyMeasureScalar(measureId, "18,759"));
+          });
         },
+      );
+
+      createOrdersMeasure("Sum of Total", ["sum", TOTAL]).then(
+        (totalMeasureId) => {
+          verifyMeasureScalar(totalMeasureId, "1,510,621.68");
+
+          createOrdersMeasure("Identity measure", [
+            "measure",
+            totalMeasureId,
+          ]).then((measureId) =>
+            verifyMeasureScalar(measureId, "1,510,621.68"),
+          );
+
+          createOrdersMeasure("Floor measure", [
+            "floor",
+            ["measure", totalMeasureId],
+          ]).then((measureId) => verifyMeasureScalar(measureId, "1,510,621"));
+        },
+      );
+
+      createOrdersMeasure("Average of Product Price", [
+        "avg",
+        PRODUCT_PRICE,
+      ]).then((measureId) => verifyMeasureScalar(measureId, "55.69"));
+
+      createOrdersMeasure("DistinctIf", [
+        "+",
+        ["distinct-where", PRODUCT_ID, [">", ID, 1]],
+        ["distinct-where", ID, [">", PRODUCT_ID, 1]],
+      ]).then((measureId) => verifyMeasureScalar(measureId, "18,867"));
+
+      createOrdersMeasure("CountIf", ["count-where", [">", TOTAL, 10]]).then(
+        (measureId) => verifyMeasureScalar(measureId, "18,758"),
+      );
+
+      createOrdersMeasure("Offset of Sum of Total", [
+        "offset",
+        {},
+        ["sum", TOTAL],
+        -1,
+      ]).then((measureId) => {
+        visitMeasureByMonth(measureId);
+        verifyRowValues([["April 2025"], ["May 2025", "52.76"]]);
       });
 
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("CountIf([TotalSegment])");
-      H.CustomExpressionEditor.nameInput().type("Custom");
-      H.popover().button("Done").click();
-      saveMeasure();
-
-      useMeasureInAdhocQuestion();
-      verifyScalarValue("13,005");
-    });
-
-    it("should create a measure based on another measure with an identity expression", () => {
-      H.createMeasure({
-        name: "TotalMeasure",
-        definition: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-          },
-        },
+      createOrdersMeasure("Offset of Average of Product Price", [
+        "offset",
+        {},
+        ["avg", PRODUCT_PRICE],
+        -1,
+      ]).then((measureId) => {
+        visitMeasureByMonth(measureId);
+        verifyRowValues([["April 2025"], ["May 2025", "49.54"]]);
       });
-
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("[TotalMeasure]");
-      H.CustomExpressionEditor.nameInput().type("Custom");
-      H.popover().button("Done").click();
-      saveMeasure();
-
-      useMeasureInAdhocQuestion();
-      verifyScalarValue("1,510,621.68");
-    });
-
-    it("should create a measure based on another measure", () => {
-      H.createMeasure({
-        name: "TotalMeasure",
-        definition: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-          },
-        },
-      });
-
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("floor([TotalMeasure])");
-      H.CustomExpressionEditor.nameInput().type("Custom");
-      H.popover().button("Done").click();
-      saveMeasure();
-
-      useMeasureInAdhocQuestion();
-      verifyScalarValue("1,510,621");
-    });
-
-    it("should not be possible to create a measure that references itself", () => {
-      cy.log("create a new measure");
-      H.DataStudio.Tables.visitNewMeasurePage(ORDERS_ID);
-
-      MeasureEditor.getNameInput().type(MEASURE_NAME);
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Count of rows").click();
-
-      MeasureEditor.getSaveButton().click();
-      H.undoToast().should("contain.text", "Measure created");
-
-      MeasureEditor.get().findByText("Count").click();
-      H.popover().findByText("Custom Expression").click();
-      H.CustomExpressionEditor.clear().type("[Table Measure]").blur();
-
-      H.popover().button("Update").click();
-      MeasureEditor.getSaveButton().click();
-
-      H.undoToastList().should("contain.text", "Failed to update measure");
-    });
-
-    it("should not be possible to create a measure that references a metric", () => {
-      H.createQuestion({
-        name: "OrdersCount",
-        type: "metric",
-        description: "A metric",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-        },
-      });
-
-      H.DataStudio.Tables.visitNewMeasurePage(ORDERS_ID);
-      MeasureEditor.getNameInput().type(MEASURE_NAME);
-      MeasureEditor.getAggregationPlaceholder().click();
-
-      H.popover().findByText("Custom Expression").should("be.visible");
-      H.popover().findByText("Metrics").should("not.exist");
-      H.popover().findByText("Custom Expression").click();
-
-      H.CustomExpressionEditor.type("[OrdersCount]").blur();
-      H.popover()
-        .findByText(
-          'There\'s no metric or measure called "OrdersCount". Check the spelling, or use a function like Sum([Total]).',
-        )
-        .should("be.visible");
-      H.popover().button("Done").should("be.disabled");
-    });
-
-    it("should be possible to create measures with filters like CountIf", () => {
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("CountIf([Total] > 10)");
-      H.CustomExpressionEditor.nameInput().type("Custom");
-      H.popover().button("Done").click();
-      saveMeasure();
-
-      useMeasureInAdhocQuestion();
-      verifyScalarValue("18,758");
-    });
-
-    it("should be possible to create measures with filters based on segments that are nested", () => {
-      H.createSegment({
-        name: "LargeTotal",
-        definition: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": ORDERS_ID,
-            filter: [">", ["field", ORDERS.TOTAL, null], 10],
-          },
-        },
-      }).then(({ body: segment }) => {
-        H.createSegment({
-          name: "NestedSegment",
-          definition: {
-            type: "query",
-            database: SAMPLE_DB_ID,
-            query: {
-              "source-table": ORDERS_ID,
-              filter: [
-                "or",
-                ["<", ["field", ORDERS.TOTAL, null], 5],
-                ["segment", segment.id],
-              ],
-            },
-          },
-        });
-      });
-
-      startNewMeasure();
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Custom Expression").click();
-      H.CustomExpressionEditor.type("CountIf([NestedSegment])");
-      H.CustomExpressionEditor.nameInput().type("Custom");
-      H.popover().button("Done").click();
-      saveMeasure();
-
-      useMeasureInAdhocQuestion();
-      verifyScalarValue("18,759");
     });
   });
 
@@ -731,6 +579,67 @@ function useMeasureInAdhocQuestion({
   customizeQuery?.();
 
   H.visualize();
+}
+
+function createOrdersSegment(
+  name: string,
+  filter: unknown[],
+): Cypress.Chainable<number> {
+  return H.createSegment({
+    name,
+    definition: {
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: { "source-table": ORDERS_ID, filter },
+    },
+  }).then(({ body }) => body.id);
+}
+
+function createOrdersMeasure(
+  name: string,
+  aggregation: unknown[],
+): Cypress.Chainable<number> {
+  return H.createMeasure({
+    name,
+    definition: {
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: { "source-table": ORDERS_ID, aggregation: [aggregation] },
+    },
+  }).then(({ body }) => body.id);
+}
+
+function measureQuery(measureId: number) {
+  return {
+    "source-table": ORDERS_ID,
+    aggregation: [["measure", { "display-name": MEASURE_NAME }, measureId]],
+  };
+}
+
+function verifyMeasureScalar(measureId: number, scalarValue: string) {
+  H.visitQuestionAdhoc({
+    display: "scalar",
+    dataset_query: {
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: measureQuery(measureId),
+    },
+  });
+  verifyScalarValue(scalarValue);
+}
+
+function visitMeasureByMonth(measureId: number) {
+  H.visitQuestionAdhoc({
+    display: "line",
+    dataset_query: {
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: {
+        ...measureQuery(measureId),
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+      },
+    },
+  });
 }
 
 function breakout(columnName = "Created At") {

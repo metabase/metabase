@@ -25,7 +25,7 @@
    [metabase.transforms.models.transform :as transform]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
-   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -707,7 +707,7 @@
                    :model/Card {b :id} {:name "B"}
                    :model/Card {c :id} {:name "C"}]
       (let [inserts (atom 0)
-            before  (or (:id (t2/query-one {:select [[:%max.id :id]] :from [:audit_log]})) 0)]
+            before  (or (:id (t2/query-one {:select [[:%max.id :id]] :from [(t2/table-name :model/AuditLog)]})) 0)]
         (mt/with-dynamic-fn-redefs [audit-app.db/insert-audit-logs! (let [f (mt/original-fn #'audit-app.db/insert-audit-logs!)]
                                                                       (fn [rows] (swap! inserts inc) (f rows)))]
           (mt/with-current-user (mt/user->id :rasta)
@@ -716,7 +716,7 @@
         (is (= [["card-update" b] ["card-update" c] ["card-update" a]]
                (mapv (juxt :topic :model_id)
                      (t2/query {:select   [:topic :model_id]
-                                :from     [:audit_log]
+                                :from     [(t2/table-name :model/AuditLog)]
                                 :where    [:and [:> :id before] [:in :model_id [a b c]] [:= :model "Card"]]
                                 :order-by [[:id :asc]]}))))))))
 
@@ -731,16 +731,28 @@
              (mt/latest-audit-log-entry :user-reactivated user-id))))))
 
 (deftest table-publication-is-recorded-test
-  (mt/with-temp [:model/Table table {:name "My Cool Table"}]
+  (mt/with-temp [:model/Table             table {:name "My Cool Table"}
+                 :model/TableUserSettings {settings-id :id} {:table_id (:id table) :display_name "My Cool Table"}]
     (mt/with-current-user (mt/user->id :rasta)
       (doseq [[published? topic] [[true :table-publish] [false :table-unpublish]]]
-        (table/update-tables! [{:id (:id table) :is_published published?}])
+        (table-user-settings/update-table-user-settings! [{:id settings-id :is_published published?}])
         (is (=? {:topic    topic
                  :user_id  (mt/user->id :rasta)
                  :model    "Table"
                  :model_id (:id table)
                  :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
                 (mt/latest-audit-log-entry topic (:id table))))))))
+
+(deftest table-publication-by-new-settings-is-recorded-test
+  (mt/with-temp [:model/Table table {:name "My Cool Table"}]
+    (mt/with-current-user (mt/user->id :rasta)
+      (table-user-settings/create-table-user-settings! [{:table_id (:id table) :is_published true}])
+      (is (=? {:topic    :table-publish
+               :user_id  (mt/user->id :rasta)
+               :model    "Table"
+               :model_id (:id table)
+               :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
+              (mt/latest-audit-log-entry :table-publish (:id table)))))))
 
 (defn- update!
   "Apply `changes` to the Card or Dashboard `id` through the write function of its model, which publishes the event."
@@ -826,7 +838,7 @@
                  :model/PermissionsGroup {group-id :id} {}]
     (let [{key-id :id} (mt/user-http-request :crowberto :post 200 "api-key" {:group_id group-id :name "Bookkept key"})]
       (mt/with-current-user (mt/user->id :rasta)
-        (let [before (or (:id (t2/query-one {:select [[:%max.id :id]] :from [:audit_log]})) 0)]
+        (let [before (or (:id (t2/query-one {:select [[:%max.id :id]] :from [(t2/table-name :model/AuditLog)]})) 0)]
           (t2/update! :model/User :id user-id {:last_login (java.time.OffsetDateTime/now)})
           (t2/update! :model/Pulse :id pulse-id {:collection_position 1})
           (t2/update! :model/Card :id (t2/select-one-pk :model/Card) {:view_count 3})
@@ -852,3 +864,25 @@
       (testing model
         (audit-statement-count! model column 1)
         (is (= (audit-statement-count! model column 2) (audit-statement-count! model column 6)))))))
+
+(defn- publication-statement-count!
+  "The number of statements that the audit log runs for the publication of `n` new Tables with one call."
+  [n]
+  (let [table-ids (t2/insert-returning-pks! :model/Table (repeatedly n #(assoc (mt/with-temp-defaults :model/Table)
+                                                                               :name (str "Published " (random-uuid)))))]
+    (try
+      (mt/with-current-user (mt/user->id :crowberto)
+        (events.tu/consumer-statement-count! :model/TableUserSettings
+                                             (map (fn [id] {:table_id id :is_published false}) table-ids)
+                                             (fn [ids]
+                                               (table-user-settings/update-table-user-settings!
+                                                (mapv (fn [id] {:id id :is_published true}) ids)))
+                                             #(mt/with-premium-features #{:audit-app} (%))
+                                             #(mt/with-premium-features #{} (%))))
+      (finally
+        (t2/delete! :model/Table :id [:in table-ids])))))
+
+(deftest batch-of-publications-records-with-fixed-statements-test
+  (testing "the publication of 2 or 6 Tables in one batch records their audit rows with the same number of statements"
+    (publication-statement-count! 1)
+    (is (= (publication-statement-count! 2) (publication-statement-count! 6)))))

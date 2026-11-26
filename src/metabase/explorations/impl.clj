@@ -129,11 +129,7 @@
     (if (empty? broken-ids)
       cards
       (do
-        (doseq [id broken-ids]
-          (try
-            (metrics/sync-dimensions! :metadata/metric id)
-            (catch Throwable e
-              (log/warnf e "Failed to sync dimensions for metric card %d" id))))
+        (metrics/sync-dimensions! :metadata/metric broken-ids {:skip-failures? true})
         (let [healed (u/index-by :id (explorations.db/cards-for-explorations broken-ids))]
           (mapv #(or (get healed (:id %)) %) cards))))))
 

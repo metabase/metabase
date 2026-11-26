@@ -211,19 +211,29 @@
     :else
     nil))
 
-(defn- field-fingerprint
-  [field-id]
-  (some-> (usage-metadata.db/raw-field-fingerprint field-id)
-          decode-fingerprint))
+(defn- profiled-dimension-row?
+  [{:keys [source_type ownership_mode field_id]}]
+  (and (= source_type :table)
+       (= ownership_mode :direct)
+       (pos-int? field_id)))
+
+(defn- field-fingerprints
+  "The decoded fingerprints of the Fields with `field-ids`, by Field id."
+  [field-ids]
+  (into {}
+        (keep (fn [[field-id fingerprint]]
+                (when-let [fingerprint (decode-fingerprint fingerprint)]
+                  [field-id fingerprint])))
+        (when (seq field-ids)
+          (usage-metadata.db/raw-field-fingerprints (vec field-ids)))))
 
 (defn- profile-rows-for-dimensions
   [bucket-date dimension-rows]
-  (into []
-        (mapcat (fn [{:keys [source_type source_id ownership_mode field_id count]}]
-                  (when (and (= source_type :table)
-                             (= ownership_mode :direct)
-                             (pos-int? field_id))
-                    (when-let [fingerprint (field-fingerprint field_id)]
+  (let [profiled     (filter profiled-dimension-row? dimension-rows)
+        fingerprints (field-fingerprints (into #{} (map :field_id) profiled))]
+    (into []
+          (mapcat (fn [{:keys [source_type source_id field_id count]}]
+                    (when-let [fingerprint (get fingerprints field_id)]
                       (for [{:keys [observation_type observation_value]} (fingerprint-observations fingerprint)]
                         {:source_type       source_type
                          :source_id         source_id
@@ -232,8 +242,8 @@
                          :observation_type  observation_type
                          :observation_value observation_value
                          :bucket_date       bucket-date
-                         :count             count})))))
-        dimension-rows))
+                         :count             count}))))
+          profiled)))
 
 (defn- process-query-row
   [bucket-date hash->count stats {:keys [query_hash query]}]

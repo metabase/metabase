@@ -187,7 +187,7 @@
               (is (= #{(:id group)} (membership->groups-ids (get-membership user 200))))))
           (testing "admin cannot be group manager"
             (mt/with-temp [:model/User new-user {:is_superuser true}]
-              (is (= "Admin cannot be a group manager."
+              (is (= (str "Admin cannot be a group manager of " (:name group) ".")
                      (mt/user-http-request user :post 400 "permissions/membership"
                                            {:group_id         (:id group)
                                             :user_id          (:id new-user)
@@ -425,7 +425,7 @@
       (mt/with-model-cleanup [:model/User]
         (let [[admin] (user/create-users! [{:email "admin-group-manager@example.com" :is_superuser true}])]
           (mt/with-temp [:model/PermissionsGroup group {}]
-            (is (= "Admin cannot be a group manager."
+            (is (= (str "Admin cannot be a group manager of " (:name group) ".")
                    (mt/user-http-request :crowberto :put 400 (format "user/%d" (:id admin))
                                          {:user_group_memberships [{:id (:id (perms-group/all-users))}
                                                                    {:id (:id (perms-group/admin))}

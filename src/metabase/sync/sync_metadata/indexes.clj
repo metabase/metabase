@@ -5,6 +5,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.warehouse-schema.models.field :as field]))
@@ -25,11 +26,12 @@
       (set (filter some? (concat normal-indexes-field-ids nested-indexes-field-ids))))))
 
 (defn maybe-sync-indexes-for-table!
-  "Sync the indexes for `table` if the driver supports storing index info."
-  [database table]
+  "Sync the indexes for `table` if the driver supports storing index info, with the
+  [[fetch-metadata/table-remapper]] `remap-table` of `database`."
+  [database table remap-table]
   (if (driver.u/supports? (driver.u/database->driver database) :index-info database)
     (sync-util/with-error-handling (format "Error syncing Indexes for %s" (sync-util/name-for-logging table))
-      (let [indexes                    (fetch-metadata/index-metadata database table)
+      (let [indexes                    (fetch-metadata/index-metadata database table remap-table)
             indexed-field-ids          (indexes->field-ids (:id table) indexes)
             existing-indexed-field-ids (sync.db/indexed-field-ids-for-table (:id table))
             [removing adding]          (data/diff existing-indexed-field-ids indexed-field-ids)]
@@ -39,8 +41,8 @@
           (log/infof "Marking Field %d as indexed" field-id))
         (if (or (seq adding) (seq removing))
           (let [indexed (set indexed-field-ids)]
-            (field/update-fields! (mapv (fn [id] {:id id :database_indexed (contains? indexed id)})
-                                        (sync.db/field-ids-of-table (:id table))))
+            (sync.updates/update-fields! (mapv (fn [id] {:id id :database_indexed (contains? indexed id)})
+                                               (sync.db/field-ids-of-table (:id table))))
             {:total-indexes   (count indexed-field-ids)
              :added-indexes   (count adding)
              :removed-indexes (count removing)})
@@ -86,8 +88,8 @@
       (log/infof "Marking %d fields as indexed" adding-count)
       (doseq [field-ids (partition-all 100 adding)]
         (log/tracef "Marking Fields as indexed: %s" (pr-str field-ids)))
-      (field/update-fields! (concat (for [id removing] {:id id :database_indexed false})
-                                    (for [id adding] {:id id :database_indexed true})))
+      (sync.updates/update-fields! (concat (for [id removing] {:id id :database_indexed false})
+                                           (for [id adding] {:id id :database_indexed true})))
       (if (or (seq adding) (seq removing))
         {:total-indexes   (count indexed-field-ids)
          :added-indexes   adding-count
@@ -100,8 +102,9 @@
   (if (driver.u/supports? (driver.u/database->driver database) :index-info database)
     (if (driver.u/supports? (driver.u/database->driver database) :describe-indexes database)
       (sync-all-indexes! database)
-      (transduce (map #(maybe-sync-indexes-for-table! database %))
-                 (partial merge-with +)
-                 empty-stats
-                 (sync-util/reducible-sync-tables database)))
+      (let [remap-table (fetch-metadata/table-remapper database)]
+        (transduce (map #(maybe-sync-indexes-for-table! database % remap-table))
+                   (partial merge-with +)
+                   empty-stats
+                   (sync-util/reducible-sync-tables database))))
     empty-stats))

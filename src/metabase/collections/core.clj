@@ -33,7 +33,6 @@
   library-metrics-collection-type
   location-path
   location-path->ids
-  root-collection-type-by-id
   set-remote-synced!
   shared-tenant-collection?
   slugify

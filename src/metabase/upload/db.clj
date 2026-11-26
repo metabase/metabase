@@ -2,6 +2,7 @@
   "Application database queries for the upload module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
    [metabase.util :as u]
@@ -23,7 +24,7 @@
 (mu/defn database-is-attached-dwh?
   "Whether the Database with `database-id` is an attached data warehouse."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :is_attached_dwh :model/Database :id [:auto/param database-id]))
+  (t2/select-one-fn :is_attached_dwh :model/Database :id database-id))
 
 (mu/defn active-fields-for-table
   "The active Fields of the Table with `table-id`."
@@ -46,10 +47,11 @@
   (let [user-edited        (user-edited-field-names table-id (set (keys name->display-name)))
         name->display-name (apply dissoc name->display-name user-edited)]
     (vec (for [{:keys [id name display_name]} (when (seq name->display-name)
-                                                (t2/select [:model/Field :id :name :display_name]
-                                                           {:where [:and
-                                                                    [:= :table_id table-id]
-                                                                    [:in [:lower :name] (keys name->display-name)]]}))
+                                                (app-db/select-batched #(t2/select [:model/Field :id :name :display_name]
+                                                                                   {:where [:and
+                                                                                            [:= :table_id table-id]
+                                                                                            [:in [:lower :name] %]]})
+                                                                       (keys name->display-name)))
                :let  [lower-name (u/lower-case-en name)]
                :when (= display_name (humanization/name->human-readable-name lower-name))]
            {:id id :display_name (name->display-name lower-name)}))))
@@ -61,14 +63,6 @@
              :table_id table-id
              :type     :model
              :archived false))
-
-(mu/defn card-query-and-metadata
-  "The query-relevant columns of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  ;; Spelled out rather than calling `metabase.queries.core/card-query-info`: `queries` loads `upload` (via
-  ;; `driver-api`), so requiring its API namespace back from here is a cyclic load. `queries.card-schema` is the
-  ;; dependency-free namespace that exists for exactly this.
-  (t2/select-one (queries.card-schema/selection) :id card-id))
 
 (mu/defn unarchived-card-ids-for-table
   "The ids of the unarchived Cards of the Table with `table-id`."
@@ -83,4 +77,4 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (app-db/select-batched #(t2/select :model/Table :id [:in %]) table-ids))

@@ -557,7 +557,7 @@
   "Throw a real app DB error, the way a failed Toucan query does, without leaving the transaction aborted."
   [& _]
   (t2/with-transaction [_conn]
-    (t2/query ["SELECT no_such_column FROM metabase_field"])))
+    (t2/query {:select [:no_such_column] :from [(t2/table-name :model/Field)]})))
 
 (defn- card-tag
   "A `:card` template tag for Card 1."

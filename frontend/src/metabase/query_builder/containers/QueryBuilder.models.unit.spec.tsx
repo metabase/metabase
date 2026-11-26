@@ -1039,6 +1039,10 @@ describe("QueryBuilder > models", () => {
 
       expect(await screen.findByTestId("chart-container")).toBeInTheDocument();
       expect(screen.queryByTestId("table-root")).not.toBeInTheDocument();
+      const timeseriesChrome = await screen.findByTestId("timeseries-chrome");
+      for (const text of ["View", "All time", "by", "Year"]) {
+        expect(within(timeseriesChrome).getByText(text)).toBeInTheDocument();
+      }
 
       const menu = await openActionsMenu();
       await userEvent.click(
@@ -1056,6 +1060,8 @@ describe("QueryBuilder > models", () => {
       });
       expect(await screen.findByTestId("table-root")).toBeInTheDocument();
       expect(screen.queryByTestId("chart-container")).not.toBeInTheDocument();
+      // metabase#28599
+      expect(screen.queryByTestId("timeseries-chrome")).not.toBeInTheDocument();
       await expectToBeModel();
 
       const toast = await screen.findByTestId("toast-undo");

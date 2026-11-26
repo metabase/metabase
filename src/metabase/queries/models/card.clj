@@ -55,6 +55,7 @@
    [metabase.queries.serialization :as queries.serialization]
    [metabase.queries.staleness :as queries.staleness]
    [metabase.queries.xrays :as queries.xrays]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.card-writes :as qp.card-writes]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.replacement.spec :as replacement]
@@ -66,7 +67,6 @@
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -140,6 +140,18 @@
   [metric]
   (some? (:dimensions (queries.db/raw-card-dimensions (:id metric)))))
 
+(defmethod metrics/initialized-dimension-ids :metadata/metric
+  [_metadata-type metrics]
+  (queries.db/card-ids-with-raw-dimensions (into [] (keep :id) metrics)))
+
+(defmethod metrics/save-all-dimensions! :metadata/metric
+  [_metadata-type changes]
+  (update-cards! (into []
+                       (keep (fn [[metric dimensions dimension-mappings]]
+                               (when-let [metric-id (:id metric)]
+                                 {:id metric-id :dimensions dimensions :dimension_mappings dimension-mappings})))
+                       changes)))
+
 (t2/deftransforms :model/Card
   {:dataset_query          lib-be/transform-query
    :public_uuid            (mi/transform-encrypted-text "report_card.public_uuid")
@@ -160,12 +172,27 @@
   (derive :hook/entity-id))
 
 (defn- summary-card-snapshots
-  "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it
-  is not one or has none. Such a card renders only those snapshots — a composite links its own plus one per source —
-  so it is gated on their artifact verdicts rather than on the Summary's content gate over every thread."
-  [card document]
-  (when (and (:exploration_id document) (:id card))
-    (not-empty (queries.db/stored-result-gate-inputs-for-card (:id card)))))
+  "The snapshots of those of `cards` that are ephemeral Cards of an exploration Summary, which render only their own
+  snapshots, by Card id, read together; `document-id` finds the parent Document of a Card in `documents`."
+  [cards document-id documents]
+  (let [card-ids (into []
+                       (comp (filter #(and (:id %) (:exploration_id (get documents (document-id %)))))
+                             (map :id)
+                             (distinct))
+                       cards)]
+    (if (seq card-ids)
+      (into {}
+            (filter (comp seq val))
+            (queries.db/stored-result-gate-inputs-for-cards card-ids))
+      {})))
+
+(defn- snapshot-verdicts
+  "Whether the current user may be served each of the snapshots in `id->snapshots`, by snapshot, answered together."
+  [id->snapshots]
+  (let [snapshots (into [] (comp (mapcat val) (distinct)) id->snapshots)]
+    (zipmap snapshots (cached-result/cached-result-view-answers
+                       snapshots
+                       {:share-token-reads? true}))))
 
 (defn- parent-documents
   "The parent Documents of `cards`, hydrated with the permission `k`, as `{:document-id f, :documents {id document}}`,
@@ -207,7 +234,11 @@
         {:keys [document-id documents]} (parent-documents rows :can_read)
         summary-readable                (delay (collection/content-readable-collection-ids
                                                 (map :collection_id (vals documents))
-                                                {:root-namespace nil, :audit-rules? false}))]
+                                                {:root-namespace nil, :audit-rules? false}))
+        id->snapshots                   (summary-card-snapshots (filter #(contains? readable (:collection_id %)) rows)
+                                                                document-id
+                                                                documents)
+        verdicts                        (delay (snapshot-verdicts id->snapshots))]
     (for [card cards]
       (when card
         (vary-meta card assoc :can_read
@@ -216,10 +247,16 @@
                          (let [id (document-id card)]
                            (or (nil? id)
                                (when-let [document (get documents id)]
-                                 (if-let [snapshots (summary-card-snapshots card document)]
+                                 (if-let [snapshots (get id->snapshots (:id card))]
                                    (and (contains? @summary-readable (:collection_id document))
-                                        (every? cached-result/viewer-can-view-cached-result? snapshots))
-                                   (mi/can-read? (t2/hydrate document :can_read)))))))))))))
+                                        (every? @verdicts snapshots))
+                                   (mi/can-read? document))))))))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Card :can_query]
+  "Whether the current user may run the query of each of `cards`: they read it, and the query permission check allows
+  its `dataset_query`."
+  [_model k cards]
+  (query-perms/assoc-can-query cards k :dataset_query))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :can_write]
   "Whether the current user writes each of `cards`: its Collection's content, and, for a Card of a Document, the
@@ -258,10 +295,10 @@
   [:and
    [:= :type "metric"]
    [:= :archived false]
-   (perms/visible-collections-filter-clause :report_card.collection_id (api/current-user-info) {:include-trash-collection? false
-                                                                                                :include-archived-items    :exclude
-                                                                                                :permission-level          :read
-                                                                                                :root-namespace            nil})])
+   (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Card) :collection_id) (api/current-user-info) {:include-trash-collection? false
+                                                                                                                                  :include-archived-items    :exclude
+                                                                                                                                  :permission-level          :read
+                                                                                                                                  :root-namespace            nil})])
 
 (mu/defn- source-card-id :- [:maybe ::lib.schema.id/card]
   [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
@@ -405,11 +442,16 @@
        (map (juxt :id :name))
        (into {})))
 
+(defn- moves-into-dashboard?
+  "Whether `changes` move `card` into a Dashboard it is not in."
+  [card changes]
+  (boolean (and (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided))
+                (:dashboard_id changes))))
+
 (defn- assert-is-valid-dashboard-internal-update [changes card]
   ;; Clients re-send the current `dashboard_id` on every save, so only a genuine move into a dashboard is checked
   ;; (#82237).
-  (when (and (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided))
-             (:dashboard_id changes))
+  (when (moves-into-dashboard? card changes)
     (let [dashboard-id->name (other-dashboard-id->name card changes)]
       (when (seq dashboard-id->name)
         (throw (ex-info
@@ -436,11 +478,11 @@
   (cond-> card
     (dashboard-internal-card? card) check-dashboard-internal-card-shape))
 
-(defenterprise pre-update-check-sandbox-constraints
-  "Throws when a change of the result metadata of a Card stops it matching the Tables of its sandboxes, which OSS never
-  does."
+(defenterprise pre-update-check-sandboxes-constraints
+  "Throws when a change of the result metadata of a Card of `card-changes`, `[stored-card changes]` pairs, stops it
+  matching the Tables of its sandboxes, which OSS never does."
   metabase-enterprise.sandbox.models.sandbox
-  [_ _])
+  [_])
 
 (defenterprise sandboxes-allow-card-delete?
   "Whether sandboxing lets the current user delete `card`, which only an admin may when a sandbox is built out of it,
@@ -879,13 +921,16 @@
         (some? (:action_id dashcard))
         (some? (:virtual_card settings)))))
 
-(defn- shared-dashboard-timelines-readable?
-  "Whether the current user reads the timelines of `cards` that a public or embedded `dashboard` shows to anyone."
-  [dashboard cards]
-  (or (not (and api/*current-user-id*
-                (or (:public_uuid dashboard) (:enable_embedding dashboard))))
-      (every? mi/can-read?
-              (t2/hydrate (queries.db/timelines (into #{} (mapcat card-exposed-timeline-ids) cards)) :can_read))))
+(defn- shared-dashboards-timelines-readable?
+  "Whether the current user reads the timelines that the public or embedded Dashboards of `dashboard-cards`,
+  `[dashboard cards]` pairs, show to anyone for their `cards`, with the timelines read together."
+  [dashboard-cards]
+  (or (not api/*current-user-id*)
+      (timelines-readable? (into #{}
+                                 (comp (filter (fn [[dashboard _]] (or (:public_uuid dashboard) (:enable_embedding dashboard))))
+                                       (mapcat second)
+                                       (mapcat card-exposed-timeline-ids))
+                                 dashboard-cards))))
 
 (defn check-shared-dashboard-timeline-permissions!
   "Placing `cards` on `dashboard` shows their selected timeline events to anyone who opens it when the dashboard is
@@ -1048,23 +1093,30 @@
   (and (collection/can-write-collection-or-root? collection-id {:root-namespace nil})
        (timeline-selection-readable? card *copy-source-card*)))
 
-(defn- dashboard-move-permitted?
-  "Whether the current user may do what `changes` do to the Dashboard of `card`: write the Dashboards it appears in,
-  and read the timelines it shows on the Dashboard it moves into when that is shared."
-  [card changes]
-  (or (not (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided)))
-      (and (every? mi/can-write? (t2/hydrate (queries.db/card-dashboards card) :can_write))
-           (or (nil? (:dashboard_id changes))
-               (shared-dashboard-timelines-readable? (queries.db/dashboard (:dashboard_id changes))
-                                                     [(merge card changes)])))))
+(defn- dashboards-move-permitted?
+  "Whether the current user may do what the changes of each of `card-changes`, `[card changes]` pairs, do to the
+  Dashboard of the Card: write the Dashboards it appears in, and read the timelines it shows on the Dashboard it moves
+  into when that is shared, with the Dashboards each way and the timelines read together."
+  [card-changes]
+  (let [moving (filterv (fn [[card changes]]
+                          (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided)))
+                        card-changes)]
+    (or (empty? moving)
+        (let [in-dashboards (t2/hydrate (mapv first moving) :in_dashboards)
+              targets       (u/index-by :id (queries.db/dashboards (into #{} (keep (comp :dashboard_id second)) moving)))]
+          (and (every? mi/can-write? (t2/hydrate (vec (vals (u/index-by :id (mapcat :in_dashboards in-dashboards)))) :can_write))
+               (shared-dashboards-timelines-readable?
+                (mapv (fn [[card changes]]
+                        [(get targets (:dashboard_id changes)) [(merge card changes)]])
+                      moving)))))))
 
 (defn- summary-owner-writable
-  "A function from one of `cards` to whether the current user writes the Exploration whose Summary holds it, or nil
-  for a Card of no Summary, with the Documents and Explorations loaded once, and only when `changes` archive or
-  restore one of `cards` alone."
-  [cards changes]
-  (let [doc->exploration (when-let [ids (and (some #(mi/changes-only-archived? % changes) cards)
-                                             (seq (into [] (comp (keep :document_id) (distinct)) cards)))]
+  "A function from one of the cards of `card-changes`, `[card changes]` pairs, to whether the current user writes the
+  Exploration whose Summary holds it, or nil for a Card of no Summary, with the Documents and Explorations loaded once,
+  and only when the changes archive or restore one of them alone."
+  [card-changes]
+  (let [doc->exploration (when-let [ids (and (some (fn [[card changes]] (mi/changes-only-archived? card changes)) card-changes)
+                                             (seq (into [] (comp (map first) (keep :document_id) (distinct)) card-changes)))]
                            (into {} (comp (mapcat #(queries.db/documents-collection-and-exploration (vec %)))
                                           (keep (fn [{:keys [id exploration_id]}] (when exploration_id [id exploration_id]))))
                                  (partition-all mdb/update-partition-size ids)))
@@ -1080,29 +1132,63 @@
 (defn- can-update-apart-from-collection-and-sandboxes?
   "Whether the current user may apply `changes` to `card` as far as every rule but where its Collection changes and
   sandboxing go, where `summary-owner-writable` answers an archive or restore of a Summary Card, which no user writes,
-  at its Exploration."
-  [card changes summary-owner-writable]
+  at its Exploration, and `dashboard-move-permitted` is whether they may do what `changes` do to its Dashboard."
+  [card changes summary-owner-writable dashboard-move-permitted]
   (and (let [owner-writable (when (mi/changes-only-archived? card changes) (summary-owner-writable card))]
          (if (some? owner-writable)
            owner-writable
            (or (changes-only-public-link? card changes) (mi/can-write? card))))
        (can-change-public-link? card changes)
-       (dashboard-move-permitted? card changes)
+       dashboard-move-permitted
        (can-change-embedding? card changes)
        (timeline-selection-readable? (merge card changes) card)))
 
 (defmethod mi/can-update? :model/Card
   [card changes]
-  (and (can-update-apart-from-collection-and-sandboxes? card changes (summary-owner-writable [card] changes))
+  (and (can-update-apart-from-collection-and-sandboxes? card changes
+                                                        (summary-owner-writable [[card changes]])
+                                                        (dashboards-move-permitted? [[card changes]]))
        (collection/can-move? card changes)
        (sandboxes-allow-card-update? card (changing-columns card changes sandbox-guarded-columns))))
 
+(defn can-update-cards?
+  "Whether the current user may apply to each Card of `card-changes`, `[card changes]` pairs of Cards hydrated with
+  `:can_write`, its own changes, as [[mi/can-update?]] answers for one, with what the Cards depend on read together."
+  [card-changes]
+  (and (let [owner-writable        (summary-owner-writable card-changes)
+             dashboard-move-permitted (dashboards-move-permitted? card-changes)]
+         (every? (fn [[card changes]]
+                   (can-update-apart-from-collection-and-sandboxes? card changes owner-writable dashboard-move-permitted))
+                 card-changes))
+       (every? (fn [[_ group]] (collection/can-move-all? (mapv first group) (second (first group))))
+               (group-by (comp #(select-keys % [:collection_id]) second) card-changes))
+       (sandboxes-allow-cards-update? (into []
+                                            (comp (filter (fn [[card changes]] (seq (changing-columns card changes sandbox-guarded-columns))))
+                                                  (map first))
+                                            card-changes))))
+
+(defn first-update-refused
+  "The first of `card-changes`, `[card changes]` pairs of Cards hydrated with `:can_write`, that [[mi/can-update?]]
+  refuses, throwing the 404 it throws for a Collection that does not exist, nil when it refuses none, with the
+  Collections read together and the other rules asked pair by pair up to the first refusal."
+  [card-changes]
+  (some (fn [[[card changes :as pair] move]]
+          (cond
+            (not (can-update-apart-from-collection-and-sandboxes? card changes
+                                                                  (summary-owner-writable [pair])
+                                                                  (dashboards-move-permitted? [pair])))
+            pair
+
+            (= :not-found move) (api/check-404 nil)
+            (not move)          pair
+
+            (not (sandboxes-allow-card-update? card (changing-columns card changes sandbox-guarded-columns)))
+            pair))
+        (map vector card-changes (collection/move-answers card-changes))))
+
 (defmethod mi/can-update-all? :model/Card
   [_model cards changes]
-  (and (let [owner-writable (summary-owner-writable cards changes)]
-         (every? #(can-update-apart-from-collection-and-sandboxes? % changes owner-writable) cards))
-       (collection/can-move-all? cards changes)
-       (sandboxes-allow-cards-update? (filterv #(seq (changing-columns % changes sandbox-guarded-columns)) cards))))
+  (can-update-cards? (mapv #(vector % changes) cards)))
 
 (defn- data-app-card-error
   "A 400 error for a card in a data app's collection, with `message`."
@@ -1278,7 +1364,7 @@
 
 (defmethod mi/non-internal-filter-clause :model/Card
   [_model alias]
-  [:not= (h2x/identifier :field alias :creator_id) config/internal-mb-user-id])
+  [:not= (u/qualified-key alias :creator_id) config/internal-mb-user-id])
 
 (defn sole-dashboard-id
   "Given a card, returns the dashboard_id of the *sole* dashboard it's in, or `nil` if it's not in exactly one dashboard."
@@ -1340,12 +1426,16 @@
   "Hydrate can_manage_db onto cards. Indicates whether the current user has access to the database admin page for the
   database powering this card."
   [_model _k cards]
-  (map
-   (fn [card]
-     (assoc card
-            :can_manage_db
-            (perms/user-has-permission-for-databases? (perms/user-info api/*current-user-id*) :perms/manage-database :yes [(:database_id card)])))
-   cards))
+  (let [values (perms/database-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                    :perms/manage-database
+                                                    (into [] (comp (keep :database_id) (distinct)) cards))]
+    (map
+     (fn [card]
+       (assoc card
+              :can_manage_db
+              (boolean (when-let [db-id (:database_id card)]
+                         (perms/at-least-as-permissive? :perms/manage-database (get values db-id) :yes)))))
+     cards)))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
   [_model k cards]
@@ -1714,13 +1804,23 @@
     (when (seq all)
       (actions.models/delete-actions! (actions.models/action-ids-of-models all)))))
 
+(def ^:private alert-content-columns
+  "The columns of a Card whose change can invalidate the alerts of the Card."
+  [:display :visualization_settings :dataset_query])
+
+(defn- change-invalidates-alerts?
+  "Whether `changes` to the Card `before` touch what its alerts depend on and invalidate them, `after` holding the Cards
+  by id as they are after their writes."
+  [before changes after]
+  (and (some #(contains? changes %) alert-content-columns)
+       (pulse/card-change-invalidates-alerts? before (get after (:id before)))))
+
 (defn- delete-alerts-of-changed-cards!
   "Deletes the alerts of the Cards among `updates` that their change from `before` to `after` invalidates."
   [updates after]
   (let [ids (into []
                   (keep (fn [{:keys [before changes]}]
-                          (when (and (some #(contains? changes %) [:display :visualization_settings :dataset_query])
-                                     (pulse/card-change-invalidates-alerts? before (get after (:id before))))
+                          (when (change-invalidates-alerts? before changes after)
                             (:id before))))
                   updates)]
     (when (seq ids)
@@ -1883,8 +1983,8 @@
             all-dep-ids))))
 
 (def ^:private alert-affecting-columns
-  "The columns of a Card whose change can delete the alerts of the Card."
-  [:archived :display :visualization_settings :dataset_query])
+  "The columns of a Card whose change can delete its alerts: archiving, and the columns that can invalidate them."
+  (conj alert-content-columns :archived))
 
 (defn- assoc-updated-result-metadata
   "`[updates futures]`: the `updates`, each of a Card that gives a query with the result metadata of the query when
@@ -1946,23 +2046,23 @@
                                   (comp (filter (fn [{:keys [changes]}] (some #(contains? changes %) alert-affecting-columns)))
                                         (map (comp :id :before)))
                                   entries))]
-    (let [by-card  (queries.db/active-card-notifications-by-card ids)
-          hydrated (u/index-by :id (notification.models/hydrate-notification (into [] cat (vals by-card))))]
-      (update-vals by-card (fn [notifications] (mapv (comp hydrated :id) notifications))))))
+    (notification.models/notifications-for-cards ids)))
 
 (defn- notify-stopped-alerts!
   "Tells the recipients of `notifications`, those of the alerts of the Cards among `entries` read before the change,
-  that the alerts were deleted by the Cards being archived on their own or changed in a way that invalidates them."
+  once the change commits, that the alerts were deleted by the Cards being archived on their own or changed in a way
+  that invalidates them."
   [entries after notifications actor]
-  (doseq [{:keys [before changes]} entries
-          :let                     [id (:id before)]
-          :when                    (seq (get notifications id))
-          :when                    (or (not (:archived changes))
-                                       (boolean (get changes :archived_directly (:archived_directly before))))]
-    (pulse/notify-alerts-deleted! :old-card      before
-                                  :new-card      (or (get after id) (merge before changes))
-                                  :actor         actor
-                                  :notifications (get notifications id))))
+  (mdb/do-after-commit
+   #(pulse/notify-alerts-deleted!
+     actor
+     (for [{:keys [before changes]} entries
+           :let                     [id (:id before)]
+           :when                    (seq (get notifications id))
+           :when                    (or (change-invalidates-alerts? before changes after)
+                                        (and (:archived changes)
+                                             (get changes :archived_directly (:archived_directly before))))]
+       [before (or (get after id) (merge before changes)) (get notifications id)]))))
 
 (defn- cascade-database-changes!
   "Updates the Cards that use a Card among `entries` whose Database changes as a source, transitively, so that the
@@ -2092,9 +2192,8 @@
       (params/assert-valid-parameter-mappings changes)))
   (check-field-filter-fields-are-from-correct-database
    (into [] (keep #(when-let [query (:dataset_query (:changes %))] {:dataset_query query})) entries))
-  (doseq [{:keys [before changes]} entries
-          :when                    (contains? changes :result_metadata)]
-    (pre-update-check-sandbox-constraints (merge before changes) changes)))
+  (pre-update-check-sandboxes-constraints
+   (into [] (keep (fn [{:keys [before changes]}] (when (contains? changes :result_metadata) [before changes]))) entries)))
 
 (defn- write-card-changes!
   "Writes the changes of `entries`, after what a Card that `writer` changes needs: the verification of the Cards whose
@@ -2346,6 +2445,14 @@
                                                                                    (:collection_position card))})
                                                           previous)))))))
 
+(defmethod collection/positioned-rows-in-collections :model/Card
+  [_model collection-ids]
+  (queries.db/positioned-cards-in-collections (vec collection-ids)))
+
+(defmethod collection/update-positions! :model/Card
+  [_model id->position]
+  (update-cards! (mapv (fn [[id position]] {:id id :collection_position position}) id->position)))
+
 (mu/defn invalidate-cached-results! :- :int
   "Set `cache_invalidated_at` of the Cards with `card-ids` to `invalidated-at`, in one statement through the model, so
   that the cached results stored before it are not served, publishing their updates; returns the number updated."
@@ -2365,14 +2472,17 @@
   (invalidate-cached-results! card-ids invalidated-at))
 
 (mu/defn link-to-metabot-conversation! :- :int
-  "Record that the Card with `card-id` was saved from the MetabotConversation with `conversation-id` as `chart-id`, in
-  the change log and in one statement that publishes no event, returning the number updated."
-  [card-id         :- ::lib.schema.id/card
-   conversation-id :- :string
-   chart-id        :- :string]
-  (t2/with-transaction [_conn]
-    (change-log/log-rows! :model/Card :update :id card-id)
-    (queries.db/set-card-metabot-chart! card-id conversation-id chart-id)))
+  "Record that the Card of each `[card-id chart-id]` of `card-chart-ids` was saved from the MetabotConversation with
+  `conversation-id` as its chart, in the change log and in one statement per Card that publishes no event, returning
+  the number updated."
+  [conversation-id :- :string
+   card-chart-ids  :- [:sequential [:tuple ::lib.schema.id/card :string]]]
+  (if (empty? card-chart-ids)
+    0
+    (t2/with-transaction [_conn]
+      (change-log/log-changes! :model/Card :update (mapv (fn [[card-id _]] {:id card-id}) card-chart-ids))
+      (transduce (map (fn [[card-id chart-id]] (queries.db/set-card-metabot-chart! card-id conversation-id chart-id)))
+                 + 0 card-chart-ids))))
 
 (defmethod qp.card-writes/touch-last-used! :model/Card
   [_model card-id->timestamp]
@@ -2424,29 +2534,36 @@
     (when (seq rows)
       (write-followers! create-followers! :model/DashboardCard rows))))
 
-(defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card size]
-  (autoplace-dashcards-for-cards! (hydrated-dashboards [dashboard-id])
-                                  [{:dashboard-id dashboard-id :dashboard-tab-id maybe-dashboard-tab-id :card card :size size}]))
-
 (defn- delete-dashcards!
   "Deletes the DashboardCards with `dashcard-ids` through their model, whose namespace requires this one."
   [dashcard-ids]
   (when (seq dashcard-ids)
     (write-followers! delete-followers! :model/DashboardCard (vec dashcard-ids))))
 
-(defn- autoremove-dashcard-for-card!
-  [card-id dashboard-id]
-  (delete-dashcards! (queries.db/dashcard-ids-for-card-on-dashboard card-id dashboard-id))
-  (when-let [dashcard-ids (seq (map :id (queries.db/dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
-    (write-followers! delete-followers! :model/DashboardCardSeries (vec dashcard-ids))))
+(defn- remove-dashcards!
+  "Deletes the DashboardCards and DashboardCardSeries that show a Card of `leaving`, `[card-id dashboard-id]` pairs,
+  on that Dashboard, and a Card of `leaving-others`, such pairs too, on any other Dashboard, each read together."
+  [leaving leaving-others]
+  (when (or (seq leaving) (seq leaving-others))
+    (let [card-ids   (vec (into #{} (map first) (concat leaving leaving-others)))
+          leaving    (set leaving)
+          keep-only  (into {} leaving-others)
+          removed?   (fn [{:keys [card_id dashboard_id]}]
+                       (or (contains? leaving [card_id dashboard_id])
+                           (when-let [dashboard-id (get keep-only card_id)]
+                             (not= dashboard-id dashboard_id))))]
+      (delete-dashcards! (into [] (comp (filter removed?) (map :id)) (queries.db/dashcards-for-cards card-ids)))
+      (when-let [series-ids (seq (into [] (comp (filter removed?) (map :id)) (queries.db/dashcard-series-for-cards card-ids)))]
+        (write-followers! delete-followers! :model/DashboardCardSeries (vec series-ids))))))
 
-(defn- autoplace-or-remove-dashcards-for-card!
-  "When moving around dashboard questions (cards that are internal to a dashboard), we need to remove or autoplace new
-  DashboardQuestions."
+(defn- dashboard-placement
+  "What the update `card-updates` of `card-before-update` does to its DashboardCards, a map of `:place`, the entry for
+  [[autoplace-dashcards-for-cards!]] that puts it on its Dashboard, `:leave`, the Dashboard it leaves, and
+  `:leave-others`, the Dashboard it moves into when `delete-old-dashcards?` takes it off all the others, each nil when
+  the update does not."
   [{:as card-before-update
-    card-id :id
-    old-archived :archived
-    old-dashboard-id :dashboard_id}
+    old-dashboard-id :dashboard_id
+    old-archived :archived}
    {:as card-updates
     dashboard-id-update :dashboard_id
     dashboard-tab-id :dashboard_tab_id
@@ -2467,33 +2584,31 @@
     (api/check-400
      (not (and dashboard-tab-id
                (not new-dashboard-id))))
-    ;; we'll end up unarchived and a dashboard card => make sure we autoplace
-    (when (and on-dashboard-after? (not archived-after?))
-      (autoplace-dashcard-for-card! new-dashboard-id dashboard-tab-id card-before-update nil))
-    (when (and
-           ;; we start out as a DQ, and
-           on-dashboard-before?
-           (or
-            ;; we're moving to a *different* dashboard,
-            (and on-dashboard-after?
-                 dashboard-changes?)
-            ;; we're archiving the DQ, or
-            (and archived-after?
-                 on-dashboard-after?)
-            ;; we're moving the DQ to a collection, AND the user has told us to delete
-            (and (not on-dashboard-after?)
-                 delete-old-dashcards?)))
-      (autoremove-dashcard-for-card! card-id old-dashboard-id))
-    ;; we're moving from a collection to a dashboard, and the user has told us to remove the dashcards for other
-    ;; dashboards
-    (when (and on-dashboard-after?
-               (not on-dashboard-before?)
-               delete-old-dashcards?)
-      ;; TODO: should we publish events here? might be expensive, and it might not be right to show "card X was
-      ;; removed from the dashboard" since you can't restore to the previous state...
-      (delete-dashcards! (queries.db/dashcard-ids-for-card-off-dashboard card-id new-dashboard-id))
-      (when-let [ids (seq (map :id (queries.db/dashcard-series-for-card-off-dashboard card-id new-dashboard-id)))]
-        (write-followers! delete-followers! :model/DashboardCardSeries (vec ids))))))
+    {;; we'll end up unarchived and a dashboard card => make sure we autoplace
+     :place (when (and on-dashboard-after? (not archived-after?))
+              {:dashboard-id new-dashboard-id :dashboard-tab-id dashboard-tab-id :card card-before-update :size nil})
+     :leave (when (and
+                   ;; we start out as a DQ, and
+                   on-dashboard-before?
+                   (or
+                    ;; we're moving to a *different* dashboard,
+                    (and on-dashboard-after?
+                         dashboard-changes?)
+                    ;; we're archiving the DQ, or
+                    (and archived-after?
+                         on-dashboard-after?)
+                    ;; we're moving the DQ to a collection, AND the user has told us to delete
+                    (and (not on-dashboard-after?)
+                         delete-old-dashcards?)))
+              old-dashboard-id)
+     ;; we're moving from a collection to a dashboard, and the user has told us to remove the dashcards for other
+     ;; dashboards
+     ;; TODO: should we publish events here? might be expensive, and it might not be right to show "card X was
+     ;; removed from the dashboard" since you can't restore to the previous state...
+     :leave-others (when (and on-dashboard-after?
+                              (not on-dashboard-before?)
+                              delete-old-dashcards?)
+                     new-dashboard-id)}))
 
 (defn new-card-row
   "The row for [[create-cards!]] that a new Card of `creator-id` takes from `card`: the columns of `card` a user sets
@@ -2520,14 +2635,33 @@
                                                :card card :size (:size row)})
                                             placed)))))
 
+(defn place-updated-dashboard-questions!
+  "Puts each Card `before` of `card-updates`, `[before updates]` pairs of a Card and the columns of an update with its
+  `:dashboard_tab_id`, on the Dashboard that its `updates` move it to and takes its DashboardCards off the Dashboard
+  it leaves, or all the others when `delete-old-dashcards?`, throwing a 400 for a tab with no Dashboard, for a Card on
+  other Dashboards moved into one, and for a change a dashboard question does not allow, with the Dashboards read
+  together and each kind of row written with one call."
+  [card-updates delete-old-dashcards?]
+  (let [placements (mapv (fn [[before updates]] (dashboard-placement before updates delete-old-dashcards?)) card-updates)
+        entries    (into [] (keep :place) placements)]
+    (when (seq entries)
+      (autoplace-dashcards-for-cards! (hydrated-dashboards (map :dashboard-id entries)) entries))
+    (remove-dashcards! (into [] (keep (fn [[[before _] {:keys [leave]}]] (when leave [(:id before) leave])))
+                             (map vector card-updates placements))
+                       (into [] (keep (fn [[[before _] {:keys [leave-others]}]] (when leave-others [(:id before) leave-others])))
+                             (map vector card-updates placements)))
+    (let [moving   (filterv (fn [[before updates]] (moves-into-dashboard? before updates)) card-updates)
+          id->card (zipmap (map (comp :id first) moving)
+                           (t2/hydrate (mapv (comp #(dissoc % :in_dashboards) first) moving) :in_dashboards))]
+      (run! (fn [[before updates]] (assert-is-valid-dashboard-internal-update updates (get id->card (:id before) before)))
+            card-updates))))
+
 (defn place-updated-dashboard-question!
   "Puts the Card `before` on the Dashboard that `updates`, the columns of an update and its `:dashboard_tab_id`, move
-  it to and takes its DashboardCards off the Dashboard it leaves, or all the others when `delete-old-dashcards?`,
-  throwing a 400 for a tab with no Dashboard, for a Card on other Dashboards moved into one, and for a change a
-  dashboard question does not allow."
+  it to, as [[place-updated-dashboard-questions!]] does for one Card, and returns `updates`."
   [before updates delete-old-dashcards?]
-  (autoplace-or-remove-dashcards-for-card! before updates delete-old-dashcards?)
-  (assert-is-valid-dashboard-internal-update updates before))
+  (place-updated-dashboard-questions! [[before updates]] delete-old-dashcards?)
+  updates)
 
 (defn card-changes
   "The changes for [[update-cards!]] that the request `changes` make: the columns of `changes` that an update writes,
@@ -2566,6 +2700,25 @@
   [card-id _user-id snapshot]
   (parameter-card/check-new-parameter-source-card-permissions "card" card-id (:parameters snapshot))
   snapshot)
+
+(defmethod public-sharing/shown-card-ids :model/Card
+  [_model card-ids]
+  (zipmap card-ids (map hash-set card-ids)))
+
+(defmethod public-sharing/value-list-sources :model/Card
+  [_model card-ids]
+  ;; A question's anonymous reach includes the questions its filters draw value lists from.
+  (->> (queries.db/card-parameters-for-cards card-ids)
+       (map (fn [{:keys [id parameters]}]
+              [id (vec (for [parameter parameters
+                             :let  [card-id (parameter-card/values-source-card-id parameter)]
+                             :when card-id]
+                         {:parameter parameter, :card-id card-id}))]))
+       (into {})))
+
+(defmethod public-sharing/embedding-params :model/Card
+  [_model card-ids]
+  (into {} (map (juxt :id :embedding_params)) (queries.db/card-parameters-for-cards card-ids)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -43,24 +43,22 @@
       (mt/with-model-cleanup [:model/User :model/Collection]
         (let [[{user-id :id}]         (user/create-users! [{:email "published-venues@example.com"}])
               [{collection-id :id}] (collection/create-collections! [{:name "Library Data" :type "library-data"}])]
-          (mt/with-temp-vals-in-db :model/Table (mt/id :venues) (select-keys (t2/select-one :model/Table :id (mt/id :venues))
-                                                                             [:is_published :collection_id])
-            (try
-              (schema.table-user-settings/upsert-table-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
-                                                                      {:is_published  true
-                                                                       :collection_id collection-id})
-              (let [all-users (perms/all-users-group)]
-                (perms/set-database-permission! all-users (mt/id) :perms/view-data      db-view-data)
-                (perms/set-database-permission! all-users (mt/id) :perms/create-queries :no)
-                (if grant?
-                  (perms/grant-collection-read-permissions! all-users collection-id)
-                  (perms/revoke-collection-permissions!     all-users collection-id))
-                (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data      :unrestricted)
-                (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no))
-              (f user-id collection-id)
-              (finally
-                (schema.table-user-settings/unset-table-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
-                                                                       [:is_published :collection_id])))))))))
+          (try
+            (schema.table-user-settings/upsert-table-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
+                                                                    {:is_published  true
+                                                                     :collection_id collection-id})
+            (let [all-users (perms/all-users-group)]
+              (perms/set-database-permission! all-users (mt/id) :perms/view-data      db-view-data)
+              (perms/set-database-permission! all-users (mt/id) :perms/create-queries :no)
+              (if grant?
+                (perms/grant-collection-read-permissions! all-users collection-id)
+                (perms/revoke-collection-permissions!     all-users collection-id))
+              (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data      :unrestricted)
+              (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no))
+            (f user-id collection-id)
+            (finally
+              (schema.table-user-settings/unset-table-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
+                                                                     [:is_published :collection_id]))))))))
 
 (deftest published-table-test
   (testing "Published tables grant query access via collection permissions only with library enabled\n"
@@ -87,7 +85,9 @@
                     (perms/set-database-permission! group-id (mt/id) :perms/view-data      view-data)
                     (perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
                     (when table-is-published?
-                      (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id collection-id}))
+                      (schema.table-user-settings/upsert-table-user-settings!
+                       (t2/select-one :model/Table :id (mt/id :venues))
+                       {:is_published true :collection_id collection-id}))
                     (if collection-readable?
                       (perms/grant-collection-read-permissions! group-id collection-id)
                       (do
@@ -99,7 +99,7 @@
                                   collection-readable?
                                   table-is-published?
                                   (not= view-data :blocked))
-                             (query-perms/can-run-query? mbql-query))))))))))))))
+                             (first (query-perms/query-run-answers [mbql-query])))))))))))))))
 
 (deftest published-table-does-not-grant-view-data-test
   (mt/with-premium-features #{:library}
@@ -110,7 +110,9 @@
           (let [[{user-id :id}] (user/create-users! [{:email "view-data-test@example.com"}])
                 [collection]  (collection/create-collections! [{:name "Library Data" :type "library-data"}])]
             ;; Publish the venues table into this collection
-            (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+            (schema.table-user-settings/upsert-table-user-settings!
+             (t2/select-one :model/Table :id (mt/id :venues))
+             {:is_published true :collection_id (u/the-id collection)})
             (let [all-users (perms/all-users-group)]
               ;; Set database-level permissions first to establish baseline
               (perms/set-database-permission! all-users (mt/id) :perms/view-data :blocked)
@@ -221,7 +223,9 @@
         {:gtaps {:venues {:query (mt/mbql-query venues {:filter [:= $venues.price 4]})}}}
         (mt/with-temp [:model/Collection {collection-id :id} {:type "library-data"}]
           (try
-            (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id collection-id})
+            (schema.table-user-settings/upsert-table-user-settings!
+             (t2/select-one :model/Table :id (mt/id :venues))
+             {:is_published true :collection_id collection-id})
             (perms/grant-collection-read-permissions! &group collection-id)
             (testing "POST /api/dataset row count reflects the sandbox filter, not the full table"
               (let [full-count  (mt/with-test-user :crowberto
@@ -237,4 +241,6 @@
                 (is (every? #(= 4 (nth % price-index)) (mt/rows result))
                     "every returned row has price = 4, per the sandbox filter")))
             (finally
-              (t2/update! :model/Table :id (mt/id :venues) {:is_published false :collection_id nil}))))))))
+              (schema.table-user-settings/unset-table-user-settings!
+               (t2/select-one :model/Table :id (mt/id :venues))
+               [:is_published :collection_id]))))))))

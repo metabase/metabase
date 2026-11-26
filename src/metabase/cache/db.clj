@@ -14,17 +14,17 @@
 (mu/defn database-with-ids
   "A Database whose id is in `ids`, or nil."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-one :model/Database :id [:in ids]))
+  (some #(t2/select-one :model/Database :id [:in %]) (app-db/select-partitions ids)))
 
 (mu/defn dashboard-with-ids
   "A Dashboard whose id is in `ids`, or nil."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-one :model/Dashboard :id [:in ids]))
+  (some #(t2/select-one :model/Dashboard :id [:in %]) (app-db/select-partitions ids)))
 
 (mu/defn card-with-ids
   "A Card whose id is in `ids`, or nil."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-one :model/Card :id [:in ids]))
+  (some #(t2/select-one :model/Card :id [:in %]) (app-db/select-partitions ids)))
 
 (mu/defn dashboard-collection-id
   "The `:collection_id` of the Dashboard with `dashboard-id`, or nil."
@@ -39,42 +39,34 @@
 (mu/defn dashboard-collection-ids :- [:map-of ::lib.schema.id/dashboard [:maybe ::lib.schema.id/collection]]
   "The `:collection_id` of each of the Dashboards with `dashboard-ids`, by id."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (if (seq dashboard-ids)
-    (t2/select-fn->fn :id :collection_id [:model/Dashboard :id :collection_id] :id [:in dashboard-ids])
-    {}))
+  (app-db/select-batched-map #(t2/select-fn->fn :id :collection_id [:model/Dashboard :id :collection_id] :id [:in %])
+                             dashboard-ids))
 
 (mu/defn card-collection-ids :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/collection]]
   "The `:collection_id` of each of the Cards with `card-ids`, by id."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (if (seq card-ids)
-    (t2/select-fn->fn :id :collection_id [:model/Card :id :collection_id] :id [:in card-ids])
-    {}))
+  (app-db/select-batched-map #(t2/select-fn->fn :id :collection_id [:model/Card :id :collection_id] :id [:in %])
+                             card-ids))
 
 (mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (if (seq database-ids)
-    (t2/select :model/Database :id [:in database-ids])
-    []))
+  (app-db/select-batched #(t2/select :model/Database :id [:in %]) database-ids))
 
 (mu/defn dashboards
   "The Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (if (seq dashboard-ids)
-    (t2/select :model/Dashboard :id [:in dashboard-ids])
-    []))
+  (app-db/select-batched #(t2/select :model/Dashboard :id [:in %]) dashboard-ids))
 
 (mu/defn cards
   "The Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (if (seq card-ids)
-    (t2/select :model/Card :id [:in card-ids])
-    []))
+  (app-db/select-batched #(t2/select :model/Card :id [:in %]) card-ids))
 
 (mu/defn cache-config
   "The CacheConfig with primary key `pk`, or nil."
   [pk :- ms/PositiveInt]
-  (t2/select-one :model/CacheConfig :id [:auto/param pk]))
+  (t2/select-one :model/CacheConfig :id pk))
 
 (mu/defn root-ttl-cache-config
   "The root TTL CacheConfig, or nil."
@@ -85,8 +77,8 @@
   "Convert a sort column to the appropriate SQL order-by expression."
   [sort-column]
   (case sort-column
-    :name       [:coalesce :report_card.name :report_dashboard.name]
-    :collection [:coalesce :report_card.collection_id :report_dashboard.collection_id]
+    :name       [:coalesce :card.name :dashboard.name]
+    :collection [:coalesce :card.collection_id :dashboard.collection_id]
     :policy     :cache_config.strategy))
 
 (defn- base-query
@@ -94,34 +86,35 @@
   [models collection id]
   (if id
     {:select [:cache_config.*]
-     :from   [:cache_config]
+     :from   [[(t2/table-name :model/CacheConfig) :cache_config]]
      :where  [:and [:in :model models] [:= :model_id id]]}
     {:select    [:cache_config.*
-                 [[:coalesce :report_card.name :report_dashboard.name] :item_name]
-                 [[:coalesce :report_card.collection_id :report_dashboard.collection_id] :collection_id]
+                 [[:coalesce :card.name :dashboard.name] :item_name]
+                 [[:coalesce :card.collection_id :dashboard.collection_id] :collection_id]
                  [:collection.name :collection_name]
                  [:collection.authority_level :collection_authority_level]
                  [:collection.type :collection_type]]
-     :from      [:cache_config]
-     :left-join [:report_card      [:and
-                                    [:= :model "question"]
-                                    [:= :model_id :report_card.id]
-                                    (when collection
-                                      [:= :report_card.collection_id collection])]
-                 :report_dashboard [:and
-                                    [:= :model "dashboard"]
-                                    [:= :model_id :report_dashboard.id]
-                                    (when collection
-                                      [:= :report_dashboard.collection_id collection])]
-                 :collection       [:= :collection.id
-                                    [:coalesce :report_card.collection_id
-                                     :report_dashboard.collection_id]]]
+     :from      [[(t2/table-name :model/CacheConfig) :cache_config]]
+     :left-join [[(t2/table-name :model/Card) :card]
+                 [:and
+                  [:= :model "question"]
+                  [:= :model_id :card.id]
+                  (when collection
+                    [:= :card.collection_id collection])]
+                 [(t2/table-name :model/Dashboard) :dashboard]
+                 [:and
+                  [:= :model "dashboard"]
+                  [:= :model_id :dashboard.id]
+                  (when collection
+                    [:= :dashboard.collection_id collection])]
+                 [(t2/table-name :model/Collection) :collection]
+                 [:= :collection.id [:coalesce :card.collection_id :dashboard.collection_id]]]
      :where     [:and
                  [:in :model models]
                  [:case
-                  [:= :model "question"]  [:!= :report_card.id nil]
-                  [:= :model "dashboard"] [:!= :report_dashboard.id nil]
-                  :else                             true]]}))
+                  [:= :model "question"]  [:!= :card.id nil]
+                  [:= :model "dashboard"] [:!= :dashboard.id nil]
+                  :else                   true]]}))
 
 (mu/defn cache-configs-page
   "The CacheConfigs of `models` in `collection` (or of the entity with `id`), with the name and Collection of the
@@ -170,35 +163,33 @@
   "The CacheConfigs for `model` and `model-ids`."
   [model     :- :string
    model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
-  (t2/select :model/CacheConfig :model model :model_id [:in model-ids]))
+  (app-db/select-batched #(t2/select :model/CacheConfig :model model :model_id [:in %]) model-ids))
 
 (mu/defn cache-config-ids-for-targets :- [:sequential ms/PositiveInt]
-  "The ids of the CacheConfigs for `model` and `model-ids`, read `app-db/delete-partition-size` targets at a time."
+  "The ids of the CacheConfigs for `model` and `model-ids`."
   [model     :- :string
    model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
-  (into []
-        (mapcat #(t2/select-pks-vec :model/CacheConfig :model model :model_id [:in (vec %)]))
-        (partition-all app-db/delete-partition-size model-ids)))
+  (app-db/select-batched #(t2/select-pks-vec :model/CacheConfig :model model :model_id [:in %]) model-ids))
 
 (mu/defn card-ids-for-databases
   "The ids of the Cards of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-fn-vec :id [:model/Card :id] :database_id [:in database-ids]))
+  (not-empty (app-db/select-batched #(t2/select-fn-vec :id [:model/Card :id] :database_id [:in %]) database-ids)))
 
 (mu/defn dashboard-card-ids
   "The Card ids of the DashboardCards of the Dashboards with `dashboard-ids` (nil for DashboardCards without a Card)."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select-fn-vec :card_id [:model/DashboardCard :card_id] :dashboard_id [:in dashboard-ids]))
+  (not-empty (app-db/select-batched #(t2/select-fn-vec :card_id [:model/DashboardCard :card_id] :dashboard_id [:in %]) dashboard-ids)))
 
 (mu/defn invalidate-cache-configs!
   "Set `invalidated_at` of the CacheConfigs identified by the `[model model-id]` pairs to `invalidated-at`, returning
   the number updated."
   [model+ids      :- [:sequential [:tuple :string ms/IntGreaterThanOrEqualToZero]]
    invalidated-at :- ms/TemporalInstant]
-  (t2/query-one {:update (t2/table-name :model/CacheConfig)
-                 :set    {:invalidated_at invalidated-at}
-                 :where  (into [:or] (for [[model model-id] model+ids]
-                                       [:and [:= :model model] [:= :model_id model-id]]))}))
+  (app-db/sum-batched app-db/update-partition-size #(t2/query-one {:update (t2/table-name :model/CacheConfig)
+                                                                   :set    {:invalidated_at invalidated-at}
+                                                                   :where  (into [:or] (for [[model model-id] %]
+                                                                                         [:and [:= :model model] [:= :model_id model-id]]))}) model+ids))
 
 (mu/defn cache-config-exists?
   "Whether any CacheConfig exists."

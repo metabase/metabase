@@ -131,7 +131,8 @@
                  :table-privileges
                  ;; Index sync is turned off across the application as it is not used ATM.
                  #_:index-info
-                 :database-replication]]
+                 :database-replication
+                 :stage-ctes/nest-single-row-aggregation]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
@@ -556,7 +557,7 @@
 
 (mu/defn- date-trunc
   [unit :- driver-api/schema.temporal-bucketing.unit.date-time.truncate
-   expr :- ::h2x/expr]
+   expr :- [:maybe [:or :keyword :string number? :boolean sequential? inst? [:fn #(instance? java.time.temporal.Temporal %)]]]]
   ;; Branches are ordered most-specific-first because `database-or-effective-type-isa?` checks `isa?` on the effective
   ;; type fallback: `:type/TimeWithTZ` is a descendant of `:type/Time`, so the timetz branch must run first to avoid a
   ;; nested-source-query `timetz` column being routed to the plain-time path (#75193, #68065).
@@ -628,7 +629,7 @@
 
 (mu/defn- enum-cast
   [database-type :- driver-api/schema.common.non-blank-string
-   raw-value      :- ::h2x/expr]
+   raw-value      :- [:maybe [:or :keyword :string number? :boolean sequential? inst? [:fn #(instance? java.time.temporal.Temporal %)]]]]
   (-> [:cast raw-value (apply h2x/identifier :type-name (enum-type-components database-type))]
       (h2x/with-database-type-info database-type)))
 

@@ -7,60 +7,63 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.schema :as model-persistence.schema]
    [metabase.tracing.core :as tracing]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn persisted-info-listing
-  "Up to `limit` PersistedInfo listing rows (id, database, definition, active, state, error, refresh window,
-  table name, creator, card name/archived/type, database name, and collection id/name/authority level) for
-  unarchived model Cards, optionally narrowed to `persisted-info-id`, `db-ids`, and/or `card-id`, newest
-  refresh first, paginated from `offset` by `limit`."
+  "Up to `limit` PersistedInfo listing rows (id, database, definition, active, state, error, refresh window, table
+  name, creator, card name/archived/type, database name, and collection id/name/authority level) for unarchived model
+  Cards, optionally narrowed to `persisted-info-id`, `db-ids`, and/or `card-id`, newest refresh first, paginated from
+  `offset` by `limit`, where a nil `db-ids` does not narrow by Database and an empty one lists nothing."
   [persisted-info-id :- [:maybe ms/PositiveInt]
    db-ids            :- [:maybe [:sequential ::lib.schema.id/database]]
    card-id           :- [:maybe ::lib.schema.id/card]
    limit             :- [:maybe ms/PositiveInt]
    offset            :- [:maybe ms/IntGreaterThanOrEqualToZero]]
-  (t2/select :model/PersistedInfo
-             (cond-> {:select    [:p.id :p.database_id :p.definition
-                                  :p.active :p.state :p.error
-                                  :p.refresh_begin :p.refresh_end
-                                  :p.table_name :p.creator_id
-                                  :p.card_id [:c.name :card_name]
-                                  [:c.archived :card_archived]
-                                  [:c.type :card_type]
-                                  [:db.name :database_name]
-                                  [:col.id :collection_id] [:col.name :collection_name]
-                                  [:col.authority_level :collection_authority_level]]
-                      :from      [[:persisted_info :p]]
-                      :left-join [[:metabase_database :db] [:= :db.id :p.database_id]
-                                  [:report_card :c]        [:= :c.id :p.card_id]
-                                  [:collection :col]       [:= :c.collection_id :col.id]]
-                      :where     [:and
-                                  [:= :c.type "model"]
-                                  [:= :c.archived false]]
-                      :order-by  [[:p.refresh_begin :desc]]}
-               persisted-info-id (sql.helpers/where [:= :p.id persisted-info-id])
-               (seq db-ids)      (sql.helpers/where [:in :p.database_id db-ids])
-               card-id           (sql.helpers/where [:= :p.card_id card-id])
-               limit             (sql.helpers/limit limit)
-               offset            (sql.helpers/offset offset))))
+  (if (and (some? db-ids) (empty? db-ids))
+    []
+    (t2/select :model/PersistedInfo
+               (cond-> {:select    [:p.id :p.database_id :p.definition
+                                    :p.active :p.state :p.error
+                                    :p.refresh_begin :p.refresh_end
+                                    :p.table_name :p.creator_id
+                                    :p.card_id [:c.name :card_name]
+                                    [:c.archived :card_archived]
+                                    [:c.type :card_type]
+                                    [:db.name :database_name]
+                                    [:col.id :collection_id] [:col.name :collection_name]
+                                    [:col.authority_level :collection_authority_level]]
+                        :from      [[(t2/table-name :model/PersistedInfo) :p]]
+                        :left-join [[(t2/table-name :model/Database) :db] [:= :db.id :p.database_id]
+                                    [(t2/table-name :model/Card) :c]        [:= :c.id :p.card_id]
+                                    [(t2/table-name :model/Collection) :col]       [:= :c.collection_id :col.id]]
+                        :where     [:and
+                                    [:= :c.type "model"]
+                                    [:= :c.archived false]]
+                        :order-by  [[:p.refresh_begin :desc]]}
+                 persisted-info-id (sql.helpers/where [:= :p.id persisted-info-id])
+                 (some? db-ids)    (sql.helpers/where [:in :p.database_id db-ids])
+                 card-id           (sql.helpers/where [:= :p.card_id card-id])
+                 limit             (sql.helpers/limit limit)
+                 offset            (sql.helpers/offset offset)))))
 
 (mu/defn deletable-prunable-persisted-infos
   "The PersistedInfos in one of `states` for over an hour, or attached to an archived question, or whose
   Card has been deleted — the records [[metabase.model-persistence.task.persist-refresh]] may unpersist."
   [states :- [:set :string]]
   (let [hsql {:select    [:p.*]
-              :from      [[:persisted_info :p]]
-              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+              :from      [[(t2/table-name :model/PersistedInfo) :p]]
+              :left-join [[(t2/table-name :model/Card) :c] [:= :c.id :p.card_id]]
               :where     [:or
                           [:and
                            [:in :state states]
                            ;; Buffer deletions for an hour if the prune job happens soon after setting
                            ;; state: 1. so people have a chance to change their mind, 2. so a query
                            ;; running against the cache doesn't get ripped out.
-                           [:< :state_change_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
+                           [:< :state_change_at [:date-add :%now -1 :hour]]]
                           [:= :c.type "question"]
                           [:= :c.archived true]
                           ;; card_id is set to null when the corresponding card is deleted
@@ -74,8 +77,8 @@
   [database-id :- ::lib.schema.id/database
    states      :- [:set :string]]
   (let [hsql {:select    [:p.* :c.type :c.archived :c.name]
-              :from      [[:persisted_info :p]]
-              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+              :from      [[(t2/table-name :model/PersistedInfo) :p]]
+              :left-join [[(t2/table-name :model/Card) :c] [:= :c.id :p.card_id]]
               :where     [:and
                           [:= :p.database_id database-id]
                           [:in :p.state states]
@@ -88,7 +91,7 @@
 (mu/defn persisted-infos-by-ids
   "The PersistedInfos with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/PersistedInfo :id [:in ids]))
+  (mdb/select-batched #(t2/select :model/PersistedInfo :id [:in %]) ids))
 
 (mu/defn persisted-info
   "The PersistedInfo with `id`, or nil."
@@ -103,12 +106,12 @@
 (mu/defn cards-for-persistence
   "The Cards with `card-ids`."
   [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
-  (t2/select :model/Card :id [:in card-ids]))
+  (mdb/select-batched #(t2/select :model/Card :id [:in %]) card-ids))
 
 (mu/defn card-ids-with-persisted-info
   "The ids of the Cards among `card-ids` that have a PersistedInfo."
   [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
-  (t2/select-fn-set :card_id :model/PersistedInfo :card_id [:in card-ids]))
+  (mdb/select-batched-set #(t2/select-fn-set :card_id :model/PersistedInfo :card_id [:in %]) card-ids))
 
 (mu/defn persisted-info-state
   "The state of the PersistedInfo with `id`, or nil."
@@ -124,17 +127,21 @@
   "The Card ids among `card-ids` whose PersistedInfo is in one of `states`."
   [card-ids :- [:sequential ::lib.schema.id/card]
    states   :- [:set :string]]
-  (t2/select-fn-set :card_id :model/PersistedInfo :card_id [:in card-ids] :state [:in states]))
+  (mdb/select-batched-set #(t2/select-fn-set :card_id :model/PersistedInfo :card_id [:in %] :state [:in states]) card-ids))
 
 (mu/defn persisted-model-count-for-databases
   "The number of PersistedInfos of unarchived model Cards of the Databases with `database-ids`."
   [database-ids :- [:or [:set ::lib.schema.id/database] [:sequential ::lib.schema.id/database]]]
-  (t2/count :model/PersistedInfo {:from [[:persisted_info :p]]
-                                  :join [[:report_card :c] [:= :c.id :p.card_id]]
-                                  :where [:and
-                                          [:in :p.database_id database-ids]
-                                          [:= :c.type "model"]
-                                          [:not :c.archived]]}))
+  (if (empty? database-ids)
+    0
+    (transduce (map #(t2/count :model/PersistedInfo {:from [[(t2/table-name :model/PersistedInfo) :p]]
+                                                     :join [[(t2/table-name :model/Card) :c] [:= :c.id :p.card_id]]
+                                                     :where [:and
+                                                             [:in :p.database_id %]
+                                                             [:= :c.type "model"]
+                                                             [:not :c.archived]]}))
+               + 0
+               (mdb/select-partitions (distinct database-ids)))))
 
 (mu/defn insert-persisted-info!
   "Insert the PersistedInfo `row` and return the inserted instance."
@@ -184,13 +191,15 @@
   "Apply `changes` to the PersistedInfos with `ids`."
   [ids     :- [:sequential ms/PositiveInt]
    changes :- persisted-info-changes]
-  (update-persisted-info-rows! (t2/select [:model/PersistedInfo :id :state :active] :id [:in ids]) changes))
+  (update-persisted-info-rows! (mdb/select-batched #(t2/select [:model/PersistedInfo :id :state :active] :id [:in %]) ids)
+                               changes))
 
 (mu/defn update-persisted-infos-for-databases!
   "Apply `changes` to the PersistedInfos of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]
    changes      :- persisted-info-changes]
-  (update-persisted-info-rows! (t2/select [:model/PersistedInfo :id :state :active] :database_id [:in database-ids])
+  (update-persisted-info-rows! (mdb/select-batched #(t2/select [:model/PersistedInfo :id :state :active] :database_id [:in %])
+                                                   database-ids)
                                changes))
 
 (mu/defn update-all-persisted-infos!
@@ -202,7 +211,8 @@
   "Apply `changes` to the active PersistedInfos of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]
    changes  :- persisted-info-changes]
-  (update-persisted-info-rows! (t2/select [:model/PersistedInfo :id :state :active] :active true :card_id [:in card-ids])
+  (update-persisted-info-rows! (mdb/select-batched #(t2/select [:model/PersistedInfo :id :state :active] :active true :card_id [:in %])
+                                                   card-ids)
                                changes))
 
 (mu/defn reset-persisted-info-to-creating!
@@ -215,7 +225,7 @@
   [database-id :- ::lib.schema.id/database
    state       :- :string]
   (t2/query-one
-   {:update [:persisted_info]
+   {:update [(t2/table-name :model/PersistedInfo)]
     :where [:and
             [:= :database_id database-id]
             [:= :state "deletable"]]
@@ -232,8 +242,8 @@
                       [:= :type "model"]
                       [:not [:exists ^:allow-subquery
                              {:select [1]
-                              :from [:persisted_info]
-                              :where [:= :persisted_info.card_id :report_card.id]}]]]}))
+                              :from [(t2/table-name :model/PersistedInfo)]
+                              :where [:= (u/qualified-key (t2/table-name :model/PersistedInfo) :card_id) (u/qualified-key (t2/table-name :model/Card) :id)]}]]]}))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -253,7 +263,7 @@
 (mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
+  (mdb/select-batched #(t2/select :model/Database :id [:in %]) database-ids))
 
 (mu/defn all-databases
   "Every Database."

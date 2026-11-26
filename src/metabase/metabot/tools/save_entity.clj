@@ -161,7 +161,7 @@
   A permission refusal ends the turn; invalid query content can be corrected by the agent."
   [dataset-query]
   (try
-    (query-perms/check-run-permissions-for-query dataset-query)
+    (query-perms/check-run-permissions-for-queries [dataset-query])
     (catch clojure.lang.ExceptionInfo e
       (let [status-code (:status-code (ex-data e))]
         (cond
@@ -205,6 +205,13 @@
                         (some-> (get-in chart [:chart_config :display_type]) keyword)
                         :table)}))
 
+(defn- check-chart-curated
+  "Throws, when this Metabot uses only curated content, unless `dataset-query` of the chart `chart-id` reads only
+  curated content."
+  [chart-id dataset-query]
+  (when (shared/curated-only?)
+    (curation/check-curated-query! (str "chart " chart-id) dataset-query)))
+
 (defn savable-chart
   "The chart `chart-id` from agent memory as `{:dataset_query :display}`, ready to save as a card.
   Throws when the chart is unknown or the user can't run its query, and, when this Metabot uses only curated
@@ -213,9 +220,28 @@
   (let [{:keys [dataset_query] :as chart} (resolve-chart chart-id)]
     (check-query-permissions! dataset_query)
     ;; A chart may hold a query from the user's viewing context, which nothing judged on the way in.
-    (when (shared/curated-only?)
-      (curation/check-curated-query! (str "chart " chart-id) dataset_query))
+    (check-chart-curated chart-id dataset_query)
     chart))
+
+(defn savable-charts
+  "[[savable-chart]] of each of `chart-ids` in order: one run permission check of all their queries, then the curation
+  of each chart, falling back to one chart at a time, so that a refusal names the same chart, when a query is not a map
+  or the combined resolve or check throws an `Exception`."
+  [chart-ids]
+  (if-let [charts (try
+                    (let [charts (mapv resolve-chart chart-ids)]
+                      (when (every? (comp map? :dataset_query) charts)
+                        (query-perms/check-run-permissions-for-queries (mapv :dataset_query charts))
+                        charts))
+                    (catch InterruptedException e
+                      (throw e))
+                    (catch Exception _
+                      nil))]
+    (mapv (fn [chart-id {:keys [dataset_query] :as chart}]
+            (check-chart-curated chart-id dataset_query)
+            chart)
+          chart-ids charts)
+    (mapv savable-chart chart-ids)))
 
 (defn personal-collection-id
   "The current user's personal collection ID. Throws [[no-personal-collection!]] when the user has none."
@@ -390,7 +416,7 @@
                             "dashboard"  (save-to-dashboard! args)
                             "document"   (save-to-document! args))]
                 (when-let [conversation-id (shared/current-conversation-id)]
-                  (queries.card/link-to-metabot-conversation! (:id (:card saved)) conversation-id chart_id))
+                  (queries.card/link-to-metabot-conversation! conversation-id [[(:id (:card saved)) chart_id]]))
                 saved)))
           instruction-text (te/lines
                             (str "Saved \"" question-name "\" to " destination-name ".")

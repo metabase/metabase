@@ -32,7 +32,7 @@
         ;; keyword is an identifier. These are the injection vectors the guard exists for.
         [[:raw "1) OR 1=1 --"]]
         [[:inline "1) OR 1=1 --"]]
-        [{:select [:id] :from [:core_user]}]
+        [{:select [:id] :from [(t2/table-name :model/User)]}]
         ['user_id]
         ;; one bad element among good ones is still refused
         [1 2 "3"]))
@@ -82,13 +82,30 @@
               (try
                 (is (= (:auth_identity_id session) (:auth_identity_id again)))
                 (finally
-                  (t2/delete! :core_session :id (:id again))))))
+                  (t2/delete! (t2/table-name :model/Session) :id (:id again))))))
           (testing "the stamped session is not live, so it can never be listed or revoked by criteria"
-            (is (empty? (t2/query (merge session.query/session-from-and-joins
+            (is (empty? (t2/query (merge (session.query/session-from-and-joins)
                                          {:select [[:session.id :id]]
                                           :where  (into [:and [:= :session.user_id user-id]]
                                                         (session.query/live-session-conditions
                                                          (session.query/liveness-params)))})))))
           (finally
-            (t2/delete! :core_session :id (:id session))
+            (t2/delete! (t2/table-name :model/Session) :id (:id session))
             (t2/delete! :model/AuthIdentity :user_id user-id :provider session.query/mcp-provider)))))))
+
+(deftest partitioned-reads-match-single-statement-reads-test
+  (let [table-ids (t2/select-pks-vec :model/Table :db_id (mt/id) {:order-by [[:id :asc]]})
+        user-ids  (t2/select-pks-vec :model/User {:order-by [[:id :asc]]})
+        read-all  (fn []
+                    {:fields  (mcp.db/active-visible-fields-for-tables table-ids)
+                     :tables  (set (map :id (mcp.db/active-tables-by-ids table-ids)))
+                     :tenants (mcp.db/user-id->tenant-id user-ids)
+                     :users   (mcp.db/active-user-ids user-ids)})
+        single    (read-all)
+        partition-reads (fn [] (mt/with-partition-size 2
+                                 (read-all)))]
+    (is (seq (:fields single)))
+    (is (= (sort-by (juxt :position :id) (:fields single)) (:fields single)))
+    (is (= single (partition-reads)))
+    (is (< (t2/with-call-count [calls] (read-all) (calls))
+           (t2/with-call-count [calls] (partition-reads) (calls))))))

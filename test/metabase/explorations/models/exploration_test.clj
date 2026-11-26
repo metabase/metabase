@@ -16,7 +16,8 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -278,3 +279,82 @@
       (testing "an archived Exploration may go into an archived Collection"
         (exploration/update-explorations! [{:id id :archived true :collection_id archived-id}])
         (is (= archived-id (stored)))))))
+
+(defn- archive-call-count
+  "The number of statements it takes to ask whether rasta may archive `explorations`, which must be allowed."
+  [explorations]
+  (mt/with-current-user (mt/user->id :rasta)
+    (t2/with-call-count [call-count]
+      (is (true? (mi/can-update-each? :model/Exploration explorations {:archived true})))
+      (call-count))))
+
+(deftest can-update-each-archive-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-model-cleanup [:model/Collection :model/Exploration]
+      (let [coll-ids        (t2/insert-returning-pks! :model/Collection
+                                                      (repeatedly 41 #(t2.with-temp/with-temp-defaults :model/Collection)))
+            _               (doseq [coll-id (butlast coll-ids)]
+                              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id))
+            exploration-ids (t2/insert-returning-pks! :model/Exploration
+                                                      (for [coll-id coll-ids]
+                                                        (assoc (t2.with-temp/with-temp-defaults :model/Exploration)
+                                                               :collection_id coll-id)))
+            explorations    (t2/select :model/Exploration :id [:in exploration-ids] {:order-by [[:id :asc]]})
+            writable        (vec (butlast explorations))]
+        (testing "a batch with one Exploration rasta cannot write is refused"
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (false? (mi/can-update-each? :model/Exploration (conj (subvec writable 0 3) (last explorations))
+                                             {:archived true})))))
+        (testing "the question takes as many statements for 40 Explorations as for 10"
+          (archive-call-count (subvec writable 0 2))
+          (is (= (archive-call-count (subvec writable 0 10))
+                 (archive-call-count writable))))))))
+
+(defn- per-row-can-read?
+  "The answer the per-row `:can_read` hydration gave: the parent row loaded alone and asked."
+  [parent-model parent-id]
+  (boolean (some-> (t2/select-one parent-model :id parent-id) (t2/hydrate :can_read) mi/can-read?)))
+
+(deftest child-can-read-statements-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Collection open   {}
+                 :model/Collection closed {}
+                 :model/Card       metric {:type :metric, :dataset_query (venues-count-query)}]
+    (mt/with-non-admin-groups-no-collection-perms open
+      (mt/with-non-admin-groups-no-collection-perms closed
+        (perms/grant-collection-read-permissions! (perms-group/all-users) open)
+        (mt/with-model-cleanup [:model/Exploration]
+          (let [user-id      (mt/user->id :crowberto)
+                explorations (sort-by :id (t2/insert-returning-instances! :model/Exploration
+                                                                          (for [i (range 6)]
+                                                                            {:name          (str "x" i)
+                                                                             :creator_id    user-id
+                                                                             :collection_id (:id (if (even? i) open closed))})))
+                threads      (sort-by :id (t2/insert-returning-instances! :model/ExplorationThread
+                                                                          (for [e explorations] {:exploration_id (:id e)})))
+                blocks       (sort-by :id (t2/insert-returning-instances! :model/ExplorationBlock
+                                                                          (for [t threads] {:exploration_thread_id (:id t)})))
+                pages        (sort-by :id (t2/insert-returning-instances! :model/ExplorationPage
+                                                                          (for [b blocks]
+                                                                            {:exploration_block_id (:id b), :card_id (:id metric)
+                                                                             :dimension_id "d1", :query_type "default"})))
+                queries      (sort-by :id (t2/insert-returning-instances! :model/ExplorationQuery
+                                                                          (for [[t p] (map vector threads pages)]
+                                                                            {:exploration_thread_id (:id t), :page_id (:id p)
+                                                                             :card_id (:id metric), :dimension_id "d1", :database_id (mt/id)
+                                                                             :dataset_query (venues-count-query)})))]
+            (mt/with-test-user :rasta
+              (doseq [[model rows parent-model parent-key] [[:model/ExplorationThread threads :model/Exploration :exploration_id]
+                                                            [:model/ExplorationBlock blocks :model/ExplorationThread :exploration_thread_id]
+                                                            [:model/ExplorationPage pages :model/ExplorationBlock :exploration_block_id]
+                                                            [:model/ExplorationQuery queries :model/ExplorationThread :exploration_thread_id]]]
+                (testing model
+                  (let [hydrate (fn [n]
+                                  (t2/with-call-count [call-count]
+                                    (let [hydrated (doall (t2/hydrate (vec (take n rows)) :can_read))]
+                                      {:statements (call-count)
+                                       :values     (mapv mi/can-read? hydrated)})))]
+                    (hydrate 1)
+                    (is (= (:statements (hydrate 2)) (:statements (hydrate 6))))
+                    (is (= [true false true false true false] (:values (hydrate 6))))
+                    (is (= (mapv #(per-row-can-read? parent-model (parent-key %)) rows)
+                           (:values (hydrate 6))))))))))))))

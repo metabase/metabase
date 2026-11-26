@@ -239,17 +239,17 @@
 
 (deftest can-query?-default-falls-back-to-can-read?-test
   (testing "Default implementation falls back to can-read?"
-    ;; Use Card model which uses the default can-query? implementation
-    (mt/with-temp [:model/Card card {}]
+    ;; Use Dashboard model which uses the default can-query? implementation
+    (mt/with-temp [:model/Dashboard dashboard {}]
       (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
-        (is (true? (mi/can-query? (t2/hydrate card :can_query)))))
+        (is (true? (mi/can-query? (t2/hydrate dashboard :can_query)))))
       (mt/with-dynamic-fn-redefs [mi/can-read? (constantly false)]
-        (is (false? (mi/can-query? (t2/hydrate card :can_query))))))))
+        (is (false? (mi/can-query? (t2/hydrate dashboard :can_query))))))))
 
 (deftest can-query-hydration-returns-boolean-test
   (testing ":can_query hydration returns a boolean value"
-    (mt/with-temp [:model/Card card {}]
-      (let [hydrated (t2/hydrate card :can_query)]
+    (mt/with-temp [:model/Dashboard dashboard {}]
+      (let [hydrated (t2/hydrate dashboard :can_query)]
         (is (contains? hydrated :can_query))
         (is (boolean? (:can_query hydrated)))))))
 
@@ -325,7 +325,7 @@
     (t2/delete! ::clean-hooks :key guard-test-key)
     (is (nil? (t2/select-one ::clean-hooks :key guard-test-key)))
     (finally
-      (t2/delete! :setting :key guard-test-key))))
+      (t2/delete! (t2/table-name :model/Setting) :key guard-test-key))))
 
 (deftest hook-running-statement-throws-test
   (try
@@ -333,23 +333,23 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"before-insert hook of .*reading-before-insert ran 1 app-DB statement"
                             (t2/insert! ::reading-before-insert {:key guard-test-key, :value "v"})))
-      (is (nil? (t2/select-one :setting :key guard-test-key))))
+      (is (nil? (t2/select-one (t2/table-name :model/Setting) :key guard-test-key))))
     (testing "before-update and before-delete"
-      (t2/insert! :setting {:key guard-test-key, :value "v"})
+      (t2/insert! (t2/table-name :model/Setting) {:key guard-test-key, :value "v"})
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"before-update hook of .*reading-before-update"
                             (t2/update! ::reading-before-update :key guard-test-key {:value "w"})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"before-delete hook of .*reading-before-delete"
                             (t2/delete! ::reading-before-delete :key guard-test-key)))
-      (is (= "v" (t2/select-one-fn :value :setting :key guard-test-key)))
-      (t2/delete! :setting :key guard-test-key))
+      (is (= "v" (t2/select-one-fn :value (t2/table-name :model/Setting) :key guard-test-key)))
+      (t2/delete! (t2/table-name :model/Setting) :key guard-test-key))
     (testing "after-insert"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"after-insert hook of .*reading-after-insert"
                             (t2/insert! ::reading-after-insert {:key guard-test-key, :value "v"}))))
     (finally
-      (t2/delete! :setting :key guard-test-key))))
+      (t2/delete! (t2/table-name :model/Setting) :key guard-test-key))))
 
 (deftest hook-reading-setting-while-cache-refreshes-passes-statement-guard-test
   (try
@@ -357,24 +357,40 @@
     (testing "hook read its setting from refreshed cache"
       (is (some? (setting.cache/cache)))
       (is (= (str (setting/get :site-locale))
-             (t2/select-one-fn :value :setting :key guard-test-key))))
+             (t2/select-one-fn :value (t2/table-name :model/Setting) :key guard-test-key))))
     (finally
-      (t2/delete! :setting :key guard-test-key))))
+      (t2/delete! (t2/table-name :model/Setting) :key guard-test-key))))
 
 (deftest before-update-with-different-changes-per-row-throws-test
   (let [other-key (str guard-test-key "-other")]
     (try
-      (t2/insert! :setting [{:key guard-test-key, :value "v"} {:key other-key, :value "v"}])
+      (t2/insert! (t2/table-name :model/Setting) [{:key guard-test-key, :value "v"} {:key other-key, :value "v"}])
       (testing "a multi-row update whose hook derives a different value for each row"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"before-update hook of .*key-deriving-before-update returned different changes for the rows of one update \(keys: :value\)"
                               (t2/update! ::key-deriving-before-update :key [:in [guard-test-key other-key]] {:value "w"})))
-        (is (= #{"v"} (t2/select-fn-set :value :setting :key [:in [guard-test-key other-key]]))))
+        (is (= #{"v"} (t2/select-fn-set :value (t2/table-name :model/Setting) :key [:in [guard-test-key other-key]]))))
       (testing "a single-row update of the same hook"
         (t2/update! ::key-deriving-before-update :key guard-test-key {:value "w"})
-        (is (= (str guard-test-key "-derived") (t2/select-one-fn :value :setting :key guard-test-key))))
+        (is (= (str guard-test-key "-derived") (t2/select-one-fn :value (t2/table-name :model/Setting) :key guard-test-key))))
       (testing "a multi-row update whose hook gives every row the same changes"
         (t2/update! ::clean-hooks :key [:in [guard-test-key other-key]] {:value "x"})
-        (is (= #{"x?"} (t2/select-fn-set :value :setting :key [:in [guard-test-key other-key]]))))
+        (is (= #{"x?"} (t2/select-fn-set :value (t2/table-name :model/Setting) :key [:in [guard-test-key other-key]]))))
       (finally
-        (t2/delete! :setting :key [:in [guard-test-key other-key]])))))
+        (t2/delete! (t2/table-name :model/Setting) :key [:in [guard-test-key other-key]])))))
+
+(deftest ^:synchronized automagic-hydration-partitions-test
+  (let [user-ids (mapv mt/user->id [:rasta :crowberto :lucky :trashbird :rasta])
+        cards    (fn [n] (mapv #(t2/instance :model/Card {:id %2, :creator_id %1}) (take n user-ids) (range 1 (inc n))))
+        hydrate  (fn [rows] (t2/with-call-count [call-count]
+                              [(mapv (comp :id :creator) (t2/hydrate rows :creator)) (call-count)]))]
+    (testing "rows beyond one partition hydrate as they do in one statement"
+      (let [[expected statements] (hydrate (cards 5))]
+        (is (= user-ids expected))
+        (is (= statements (second (hydrate (cards 2)))))
+        (is (= expected (first (mt/with-partition-size 2
+                                 (hydrate (cards 5))))))))
+    (testing "each partition of rows reads with its own statement"
+      (is (< (second (hydrate (cards 5)))
+             (second (mt/with-partition-size 2
+                       (hydrate (cards 5)))))))))

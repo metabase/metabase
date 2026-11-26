@@ -48,7 +48,7 @@
 (defn- raw-types
   "The stored `[base_type coercion_strategy effective_type]` of the Field with `id`, as strings."
   [id]
-  (let [row (first (t2/query {:select [:base_type :coercion_strategy :effective_type] :from [:metabase_field] :where [:= :id id]}))]
+  (let [row (first (t2/query {:select [:base_type :coercion_strategy :effective_type] :from [(t2/table-name :model/Field)] :where [:= :id id]}))]
     (mapv row [:base_type :coercion_strategy :effective_type])))
 
 (defn- insert-with-types!
@@ -56,7 +56,7 @@
   [table-id n [base strategy effective]]
   (let [id (t2/insert-returning-pk! :model/Field {:table_id table-id :name (str "F" n) :base_type :type/Text
                                                   :database_type "TEXT" :position 0})]
-    (t2/query-one {:update :metabase_field
+    (t2/query-one {:update (t2/table-name :model/Field)
                    :set    {:base_type base :coercion_strategy strategy :effective_type effective}
                    :where  [:= :id id]})
     id))

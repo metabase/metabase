@@ -26,7 +26,8 @@
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2])
   (:import
    (java.time LocalDate)))
 
@@ -161,12 +162,12 @@
   (assert (true? verified) "filter for non-verified cards is not supported")
   (if (premium-features/has-feature? :content-verification)
     (-> query
-        (sql.helpers/join :moderation_review
-                          [:= :moderation_review.moderated_item_id
+        (sql.helpers/join [(t2/table-name :model/ModerationReview) :vmr]
+                          [:= :vmr.moderated_item_id
                            (search.config/column-with-model-alias model :id)])
-        (sql.helpers/where [:= :moderation_review.status "verified"]
-                           [:= :moderation_review.moderated_item_type "card"]
-                           [:= :moderation_review.most_recent true]))
+        (sql.helpers/where [:= :vmr.status "verified"]
+                           [:= :vmr.moderated_item_type "card"]
+                           [:= :vmr.most_recent true]))
     (sql.helpers/where query false-clause)))
 
 (defmethod build-optional-filter-query [:verified "dataset"]
@@ -182,12 +183,12 @@
   (assert (true? verified) "filter for non-verified dashboards is not supported")
   (if (premium-features/has-feature? :content-verification)
     (-> query
-        (sql.helpers/join :moderation_review
-                          [:= :moderation_review.moderated_item_id
+        (sql.helpers/join [(t2/table-name :model/ModerationReview) :vmr]
+                          [:= :vmr.moderated_item_id
                            (search.config/column-with-model-alias model :id)])
-        (sql.helpers/where [:= :moderation_review.status "verified"]
-                           [:= :moderation_review.moderated_item_type "dashboard"]
-                           [:= :moderation_review.most_recent true]))
+        (sql.helpers/where [:= :vmr.status "verified"]
+                           [:= :vmr.moderated_item_type "dashboard"]
+                           [:= :vmr.most_recent true]))
     (sql.helpers/where query false-clause)))
 
 ;; Curated filters — the "verified or curated content" setting for Metabot. The canonical rule is
@@ -207,13 +208,13 @@
                      (conj [:= :cur_coll.authority_level "official"]))]
     (-> query
         (cond-> (premium-features/has-feature? :content-verification)
-          (sql.helpers/left-join [:moderation_review :cur_mr]
+          (sql.helpers/left-join [(t2/table-name :model/ModerationReview) :cur_mr]
                                  [:and
                                   [:= :cur_mr.moderated_item_id (search.config/column-with-model-alias model :id)]
                                   [:= :cur_mr.moderated_item_type item-type]
                                   [:= :cur_mr.most_recent true]]))
         (cond-> (premium-features/has-feature? :official-collections)
-          (sql.helpers/left-join [:collection :cur_coll]
+          (sql.helpers/left-join [(t2/table-name :model/Collection) :cur_coll]
                                  [:= :cur_coll.id (search.config/column-with-model-alias model :collection_id)]))
         (sql.helpers/where (if (seq or-clauses) (into [:or] or-clauses) false-clause)))))
 
@@ -233,7 +234,7 @@
   (let [authoritative   [:= (search.config/column-with-model-alias model :data_authority) "authoritative"]
         published-final (when (premium-features/has-feature? :library)
                           [:and
-                           [:= (search.config/column-with-model-alias model :is_published) true]
+                           [:= :table_settings.is_published true]
                            [:= (search.config/column-with-model-alias model :data_layer) "final"]])]
     (sql.helpers/where query (cond-> [:or authoritative]
                                published-final (conj published-final)))))
@@ -245,9 +246,10 @@
     ;; A measure or segment is curated when its parent table is published into the Library.
     ;; This engine has no index row to read the table's root collection type from, so it only checks that the
     ;; parent table is published, and only with the :library feature, like the table filter above.
-    ;; The legacy query joins the parent table as `table`; see metabase.search.in-place.legacy/search-query-for-model.
+    ;; The legacy query joins the settings of the parent table as `table_settings`; see
+    ;; metabase.search.in-place.legacy/search-query-for-model.
     (sql.helpers/where query (if (premium-features/has-feature? :library)
-                               [:= :table.is_published true]
+                               [:= :table_settings.is_published true]
                                false-clause))))
 
 ;; Created at filters
@@ -287,16 +289,7 @@
 ;; Last edited by filter
 
 (defn- joined-with-table?
-  "Check if  the query have a join with `table`.
-  Note: this does a very shallow check by only checking if the join-clause is the same.
-  Using the same table with a different alias will return false.
-
-    (-> (sql.helpers/select :*)
-        (sql.helpers/from [:a])
-        (sql.helpers/join :b [:= :a.id :b.id])
-        (joined-with-table? :join :b))
-
-    ;; => true"
+  "Whether `query` has a `join-type` join with `table`, compared as the join clause is written."
   [query join-type table]
   (->> (get query join-type) (partition 2) (map first) (some #(= % table)) boolean))
 
@@ -306,34 +299,34 @@
     [_filter model query editor-ids]
     (cond-> query
       ;; both last-edited-by and last-edited-at join with revision, so we should be careful not to join twice
-      (not (joined-with-table? query :join :revision))
-      (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
-          (sql.helpers/where [:= :revision.model (search-model/search-model->revision-model model)]
-                             (revisions.sql/newest-revision-clause :revision
+      (not (joined-with-table? query :join [(t2/table-name :model/Revision) :rev]))
+      (-> (sql.helpers/join [(t2/table-name :model/Revision) :rev] [:= :rev.model_id (search.config/column-with-model-alias model :id)])
+          (sql.helpers/where [:= :rev.model (search-model/search-model->revision-model model)]
+                             (revisions.sql/newest-revision-clause :rev
                                                                    (search-model/search-model->revision-model model)
                                                                    (search.config/column-with-model-alias model :id))))
       (= 1 (count editor-ids))
-      (sql.helpers/where [:= :revision.user_id (first editor-ids)])
+      (sql.helpers/where [:= :rev.user_id (first editor-ids)])
 
       (> (count editor-ids) 1)
-      (sql.helpers/where [:in :revision.user_id editor-ids]))))
+      (sql.helpers/where [:in :rev.user_id editor-ids]))))
 
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-at model]
     [_filter model query last-edited-at]
     (cond-> query
       ;; both last-edited-by and last-edited-at join with revision, so we should be careful not to join twice
-      (not (joined-with-table? query :join :revision))
-      (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
-          (sql.helpers/where [:= :revision.model (search-model/search-model->revision-model model)]
-                             (revisions.sql/newest-revision-clause :revision
+      (not (joined-with-table? query :join [(t2/table-name :model/Revision) :rev]))
+      (-> (sql.helpers/join [(t2/table-name :model/Revision) :rev] [:= :rev.model_id (search.config/column-with-model-alias model :id)])
+          (sql.helpers/where [:= :rev.model (search-model/search-model->revision-model model)]
+                             (revisions.sql/newest-revision-clause :rev
                                                                    (search-model/search-model->revision-model model)
                                                                    (search.config/column-with-model-alias model :id))))
       true
       ;; on UI we showed the the last edit info from revision.timestamp
       ;; not the model.updated_at column
       ;; to be consistent we use revision.timestamp to do the filtering
-      (sql.helpers/where (date-range-filter-clause :revision.timestamp last-edited-at)))))
+      (sql.helpers/where (date-range-filter-clause :rev.timestamp last-edited-at)))))
 
 ;; TODO: once we record revision for actions, we should update this to use the same approach with dashboard/card
 (defmethod build-optional-filter-query [:last-edited-at "action"]
@@ -367,16 +360,14 @@
                             [:like :collection.location (str "%" (collection/location-path collection-id) "%")]])))))
 
 (defmethod build-optional-filter-query [:collection "table"]
-  [_filter model query collection-id]
+  [_filter _model query collection-id]
   ;; Tables in collections are an EE feature (library)
   (if (premium-features/has-feature? :library)
-    (let [collection-col (search.config/column-with-model-alias model :collection_id)
-          published-col  (search.config/column-with-model-alias model :is_published)]
-      (sql.helpers/where query [:and
-                                [:= published-col true]
-                                [:or
-                                 [:= collection-col collection-id]
-                                 [:like :collection.location (str "%" (collection/location-path collection-id) "%")]]]))
+    (sql.helpers/where query [:and
+                              [:= :table_settings.is_published true]
+                              [:or
+                               [:= :table_settings.collection_id collection-id]
+                               [:like :collection.location (str "%" (collection/location-path collection-id) "%")]]])
     ;; OSS: tables don't belong to collections
     (sql.helpers/where query false-clause)))
 

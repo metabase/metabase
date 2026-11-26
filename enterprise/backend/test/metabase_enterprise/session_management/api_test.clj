@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
-   [metabase.app-db.core :as mdb]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.session.models.session :as models.session]
@@ -16,7 +15,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -27,10 +25,10 @@
                               (f))))
 
 (defn- ago [amount unit]
-  (h2x/add-interval-honeysql-form (mdb/db-type) (h2x/current-datetime-honeysql-form (mdb/db-type)) (- amount) unit))
+  [:date-add [:current-timestamp] (- amount) unit])
 
 (defn- from-now [amount unit]
-  (h2x/add-interval-honeysql-form (mdb/db-type) (h2x/current-datetime-honeysql-form (mdb/db-type)) amount unit))
+  [:date-add [:current-timestamp] amount unit])
 
 (defn- insert-session!
   "Insert a `core_session` row directly, bypassing the model hooks so timestamps can be arbitrary (including DB-side)
@@ -724,6 +722,27 @@
                   (is (= "User" model))
                   (is (= user-id model_id))
                   (is (= revoked (:count details))))))))))))
+
+(deftest revoke-audit-statement-count-test
+  (mt/with-additional-premium-features #{:audit-app}
+    (mt/with-model-cleanup [:model/AuditLog :model/User]
+      (let [statements (fn [n]
+                         (let [user-ids    (t2/insert-returning-pks! :model/User
+                                                                     (for [i (range n)]
+                                                                       {:first_name "Test"
+                                                                        :last_name  "User"
+                                                                        :email      (format "revoke-%d-%d@example.com" n i)
+                                                                        :password   "password"}))
+                               session-ids (mapv insert-session! user-ids)]
+                           (t2/with-call-count [call-count]
+                             (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:ids session-ids})
+                             (u/prog1 (call-count)
+                               (is (= (set user-ids)
+                                      (t2/select-fn-set :model_id :model/AuditLog
+                                                        :topic "session-revoked" :model_id [:in user-ids])))))))]
+        (statements 2)
+        (testing "POST /api/ee/session-management/revoke costs as many statements for 10 users as for 40"
+          (is (= (statements 10) (statements 40))))))))
 
 (deftest revoke-logs-without-audit-feature-test
   (testing "the revoke is logged even when the audit log is not being written"
