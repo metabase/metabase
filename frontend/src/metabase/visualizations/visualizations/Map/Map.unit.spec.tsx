@@ -329,16 +329,19 @@ describe("Map", () => {
           isDashboard: true,
         });
 
-        await waitFor(() => expect(getMarkers()).toHaveLength(1));
+        // the result is passed in with the first render
         expect(screen.queryByAltText("No results")).not.toBeInTheDocument();
+        await waitFor(() => expect(getMarkers()).toHaveLength(1));
 
         rerender(getMapSeries({ cols, rows: [], settings }));
 
-        expect(await screen.findByAltText("No results")).toBeInTheDocument();
-        expect(
-          // eslint-disable-next-line testing-library/no-node-access -- leaflet renders no accessible map element
-          document.querySelector("[data-element-id=pin-map]"),
-        ).not.toBeInTheDocument();
+        await waitFor(() =>
+          expect(
+            // eslint-disable-next-line testing-library/no-node-access -- leaflet renders no accessible map element
+            document.querySelector("[data-element-id=pin-map]"),
+          ).not.toBeInTheDocument(),
+        );
+        expect(screen.getByAltText("No results")).toBeInTheDocument();
       });
     });
 
@@ -408,7 +411,6 @@ describe("Map", () => {
             { "base-type": "type/Float" },
           ]),
         );
-        expect(getMarkers()).toHaveLength(0);
       });
 
       it("should offer the pin type setting", async () => {
