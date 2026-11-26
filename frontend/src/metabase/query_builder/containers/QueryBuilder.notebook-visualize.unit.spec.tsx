@@ -51,6 +51,7 @@ beforeAll(() =>
 /** The parts of a submitted MBQL 5 query that these tests check. */
 type SubmittedClause = [string, Record<string, unknown>, ...unknown[]];
 type SubmittedStage = {
+  "source-card"?: number;
   aggregation?: SubmittedClause[];
   breakout?: SubmittedClause[];
   filters?: SubmittedClause[];
@@ -88,6 +89,8 @@ function createDataset(
 }
 
 const EMPTY_DATASET = createDataset([], []);
+
+const NATIVE_CARD_ID = 15725;
 
 async function setupNotebook(
   stage: TestStageWithSourceSpec,
@@ -384,7 +387,7 @@ describe("QueryBuilder > visualizing a notebook query based on a native question
       field_ref: ["field", "VAL", { "base-type": "type/Integer" }],
     });
     const nativeCard = createMockCard({
-      id: 15725,
+      id: NATIVE_CARD_ID,
       name: "15725",
       dataset_query: Lib.toJsQuery(
         Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
@@ -530,9 +533,12 @@ function isCountAndSumOfValByCat({ stages }: SubmittedQuery) {
   if (stages.length !== 1) {
     return false;
   }
-  const [{ aggregation = [], breakout = [] }] = stages;
+  const [{ aggregation = [], breakout = [], ...stage }] = stages;
   const [count, sum] = aggregation;
   return (
+    stage["source-card"] === NATIVE_CARD_ID &&
+    stage.filters == null &&
+    stage["order-by"] == null &&
     aggregation.length === 2 &&
     count[0] === "count" &&
     sum[0] === "sum" &&

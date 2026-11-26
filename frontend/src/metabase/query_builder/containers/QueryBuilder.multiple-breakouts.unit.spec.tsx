@@ -88,8 +88,10 @@ const EMPTY_DATASET = createDataset([], []);
 const DATABASE = createSampleDatabase({ auto_run_queries: true });
 
 type SubmittedStage = {
+  sourceTable: unknown;
   breakout: unknown[];
   filters: unknown[];
+  orderBy: unknown[];
 };
 
 function toArray(value: unknown): unknown[] | null {
@@ -106,8 +108,10 @@ function getSubmittedStage(call: CallLog): SubmittedStage {
     throw new Error("Unexpected query");
   }
   return {
+    sourceTable: "source-table" in stage ? stage["source-table"] : null,
     breakout: "breakout" in stage ? (toArray(stage.breakout) ?? []) : [],
     filters: "filters" in stage ? (toArray(stage.filters) ?? []) : [],
+    orderBy: "order-by" in stage ? (toArray(stage["order-by"]) ?? []) : [],
   };
 }
 
@@ -215,7 +219,14 @@ describe("QueryBuilder > multiple breakouts of the same column", () => {
       response: (call: CallLog) => {
         const stage = getSubmittedStage(call);
         const units = getBreakoutUnits(stage);
-        if (units.join() !== "quarter,month") {
+        const isOrdersByQuarterAndMonth =
+          stage.sourceTable === ORDERS_ID &&
+          stage.orderBy.length === 0 &&
+          stage.breakout.every(
+            (clause) => toArray(clause)?.[2] === ORDERS.CREATED_AT,
+          ) &&
+          units.join() === "quarter,month";
+        if (!isOrdersByQuarterAndMonth) {
           return EMPTY_DATASET;
         }
         const dates = getFilterDates(stage);

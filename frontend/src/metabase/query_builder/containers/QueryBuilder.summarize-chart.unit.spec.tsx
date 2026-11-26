@@ -319,6 +319,19 @@ function getStageAggregations(body: unknown): unknown[] {
   });
 }
 
+/** `["field", { "temporal-unit": unit }, fieldId]` → `unit` of each breakout */
+function getStageBreakoutUnits(body: unknown): unknown[] {
+  const breakouts = toArray(getFirstStage(body)?.breakout) ?? [];
+  return breakouts.map((clause) => {
+    const options = toArray(clause)?.[1];
+    return typeof options === "object" &&
+      options != null &&
+      "temporal-unit" in options
+      ? options["temporal-unit"]
+      : null;
+  });
+}
+
 /** `["field", opts, nameOrId]` → `nameOrId` of each breakout */
 function getStageBreakoutColumns(body: unknown): unknown[] {
   const breakouts = toArray(getFirstStage(body)?.breakout) ?? [];
@@ -409,7 +422,16 @@ describe("QueryBuilder > summarize sidebar > aggregations", () => {
     fetchMock.modifyRoute("dataset-post", {
       response: (call: CallLog) => {
         const body = getRequestBody(call);
-        if (getFirstStage(body)?.["order-by"] != null) {
+        const stage = getFirstStage(body);
+        const isOrdersByYearWithoutSortOrFilter =
+          stage?.["source-table"] === ORDERS_ID &&
+          stage["order-by"] == null &&
+          stage.filters == null &&
+          JSON.stringify(getStageBreakoutColumns(body)) ===
+            JSON.stringify([ORDERS.CREATED_AT]) &&
+          JSON.stringify(getStageBreakoutUnits(body)) ===
+            JSON.stringify(["year"]);
+        if (!isOrdersByYearWithoutSortOrFilter) {
           return EMPTY_DATASET;
         }
         const aggregations = JSON.stringify(getStageAggregations(body));
@@ -457,6 +479,9 @@ describe("QueryBuilder > summarize sidebar > aggregations", () => {
       ["sum", ORDERS.TOTAL],
     ]);
     expect(getFirstStage(body)?.["order-by"]).toBeUndefined();
+    expect(getFirstStage(body)).toMatchObject({ "source-table": ORDERS_ID });
+    expect(getStageBreakoutColumns(body)).toEqual([ORDERS.CREATED_AT]);
+    expect(getStageBreakoutUnits(body)).toEqual(["year"]);
     expect(
       within(getSidebar()).queryByLabelText("Sum of Subtotal"),
     ).not.toBeInTheDocument();
@@ -559,13 +584,20 @@ describe("QueryBuilder > summarize sidebar > aggregations", () => {
     fetchMock.modifyRoute("dataset-post", {
       response: (call: CallLog) => {
         const body = getRequestBody(call);
+        const stage = getFirstStage(body);
+        const isNativeCardWithoutSortOrFilter =
+          stage?.["source-card"] === nativeCard.id &&
+          stage["order-by"] == null &&
+          stage.filters == null;
         const hasBothAggregations =
           JSON.stringify(getStageAggregations(body)) ===
           JSON.stringify([["count"], ["sum", "VAL"]]);
         const isGroupedByCat =
           JSON.stringify(getStageBreakoutColumns(body)) ===
           JSON.stringify(["CAT"]);
-        return hasBothAggregations && isGroupedByCat
+        return isNativeCardWithoutSortOrFilter &&
+          hasBothAggregations &&
+          isGroupedByCat
           ? createDataset(
               [catBreakoutColumn, COUNT_COLUMN, sumOfValColumn],
               [["A", 1, 5]],
@@ -588,6 +620,11 @@ describe("QueryBuilder > summarize sidebar > aggregations", () => {
     const body = await waitForDatasetRequest(previousCount);
     expect(getStageAggregations(body)).toEqual([["count"], ["sum", "VAL"]]);
     expect(getStageBreakoutColumns(body)).toEqual(["CAT"]);
+    expect(getFirstStage(body)).toMatchObject({
+      "source-card": nativeCard.id,
+    });
+    expect(getFirstStage(body)?.filters).toBeUndefined();
+    expect(getFirstStage(body)?.["order-by"]).toBeUndefined();
 
     await userEvent.click(
       within(getSidebar()).getByRole("button", { name: "Done" }),

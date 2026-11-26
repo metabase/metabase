@@ -329,6 +329,12 @@ describe("Notebook", () => {
     await userEvent.click(within(step).getByTestId("step-preview-button"));
 
     expect(await screen.findByText("52.76")).toBeInTheDocument();
+    const [previewCall] = fetchMock.callHistory
+      .calls("path:/api/dataset")
+      .slice(-1);
+    expect(
+      isOffsetOfSumOfTotalQuery(JSON.parse(String(previewCall.options.body))),
+    ).toBe(true);
     expect(screen.getByText("May 2025")).toBeInTheDocument();
     expect(screen.getByText("April 2025")).toBeInTheDocument();
   });
@@ -468,26 +474,46 @@ function toArray(value: unknown): unknown[] | null {
   return Array.isArray(value) ? value : null;
 }
 
-/** `["offset", opts, ["sum", opts, ["field", opts, ORDERS.TOTAL]], -1]` */
+/**
+ * One stage on Orders: `["offset", opts, ["sum", opts, ["field", opts,
+ * ORDERS.TOTAL]], -1]` by Created At: Month, without filters or sorting.
+ */
 function isOffsetOfSumOfTotalQuery(body: unknown) {
   if (typeof body !== "object" || body == null || !("stages" in body)) {
     return false;
   }
-  const [stage] = toArray(body.stages) ?? [];
-  const aggregations =
-    typeof stage === "object" && stage != null && "aggregation" in stage
-      ? toArray(stage.aggregation)
-      : null;
-  const [offset] = aggregations ?? [];
-  const [offsetOperator, , sum, offsetValue] = toArray(offset) ?? [];
+  const stages = toArray(body.stages) ?? [];
+  const [stage] = stages;
+  if (stages.length !== 1 || typeof stage !== "object" || stage == null) {
+    return false;
+  }
+  const stageEntries = Object.fromEntries(Object.entries(stage));
+  const aggregations = toArray(stageEntries.aggregation) ?? [];
+  const breakouts = toArray(stageEntries.breakout) ?? [];
+  const [offsetOperator, , sum, offsetValue] = toArray(aggregations[0]) ?? [];
   const [sumOperator, , column] = toArray(sum) ?? [];
   const [columnType, , fieldId] = toArray(column) ?? [];
+  const [breakoutType, breakoutOptions, breakoutFieldId] =
+    toArray(breakouts[0]) ?? [];
+  const breakoutUnit =
+    typeof breakoutOptions === "object" &&
+    breakoutOptions != null &&
+    "temporal-unit" in breakoutOptions
+      ? breakoutOptions["temporal-unit"]
+      : null;
   return (
-    aggregations?.length === 1 &&
+    stageEntries["source-table"] === ORDERS_ID &&
+    stageEntries.filters == null &&
+    stageEntries["order-by"] == null &&
+    aggregations.length === 1 &&
     offsetOperator === "offset" &&
     offsetValue === -1 &&
     sumOperator === "sum" &&
     columnType === "field" &&
-    fieldId === ORDERS.TOTAL
+    fieldId === ORDERS.TOTAL &&
+    breakouts.length === 1 &&
+    breakoutType === "field" &&
+    breakoutFieldId === ORDERS.CREATED_AT &&
+    breakoutUnit === "month"
   );
 }
