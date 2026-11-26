@@ -1,0 +1,11 @@
+entry_id,customer_id,consultant,entry_date,hours,is_billable
+1,1,ana,2026-01-05,40,true
+2,1,ben,2026-01-12,40,true
+3,1,ana,2026-01-19,20,true
+4,1,ben,2026-01-26,10,false
+5,2,ana,2026-01-14,30,true
+6,2,ben,2026-01-21,10,true
+7,1,ana,2026-02-09,50,true
+8,2,ben,2026-02-16,20,true
+9,2,ana,2026-02-23,20,true
+10,3,ben,2026-02-27,15,true

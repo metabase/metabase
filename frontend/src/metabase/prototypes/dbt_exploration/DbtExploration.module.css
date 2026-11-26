@@ -1,0 +1,54 @@
+.table {
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  width: 100%;
+}
+
+.table th,
+.table td {
+  padding: 0.375rem 0.75rem;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+  white-space: nowrap;
+}
+
+.table th {
+  text-align: left;
+  font-weight: 700;
+  color: var(--mb-color-text-secondary);
+}
+
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.panel {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.code {
+  font-size: 0.8125rem;
+  white-space: pre;
+  overflow-x: auto;
+  max-height: 32rem;
+}
+
+.tableScroll {
+  overflow-x: auto;
+  max-height: 32rem;
+}
+
+.sqlInput {
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 0.8125rem;
+}
+
+.error {
+  color: var(--mb-color-error);
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 0.8125rem;
+  white-space: pre-wrap;
+}

@@ -34,6 +34,7 @@
     "@dnd-kit/modifiers": "^6.0.1",
     "@dnd-kit/sortable": "^8.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@duckdb/duckdb-wasm": "1.33.1-dev57.0",
     "@emotion/cache": "^11.14.0",
     "@emotion/is-prop-valid": "^1.1.1",
     "@emotion/react": "^11.14.0",

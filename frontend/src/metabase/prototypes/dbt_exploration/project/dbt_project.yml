@@ -1,0 +1,5 @@
+name: metrics_demo
+version: "1.0"
+profile: metrics_demo
+seed-paths: [seeds]
+model-paths: [models]

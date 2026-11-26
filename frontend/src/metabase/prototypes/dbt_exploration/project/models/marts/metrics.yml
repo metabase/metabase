@@ -1,0 +1,25 @@
+metrics:
+  # Simple metric on fact table 1
+  - name: revenue
+    label: Revenue
+    type: simple
+    type_params: {measure: invoice_amount}
+    filter: "{{ Dimension('invoice__status') }} = 'paid'"
+
+  # Simple metric on fact table 2
+  - name: billable_hours
+    label: Billable hours
+    type: simple
+    type_params: {measure: hours}
+    filter: "{{ Dimension('time_entry__is_billable') }}"
+
+  # Cross-fact metric: each input is aggregated on its own table first,
+  # then joined on metric_time + whatever entities/dimensions you group by.
+  - name: revenue_per_billable_hour
+    label: Revenue per billable hour
+    type: derived
+    type_params:
+      expr: revenue / nullif(billable_hours, 0)
+      metrics:
+        - name: revenue
+        - name: billable_hours

@@ -1,0 +1,4 @@
+customer_id,customer_name,segment
+1,Acme,enterprise
+2,Globex,smb
+3,Initech,smb
