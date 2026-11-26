@@ -65,10 +65,20 @@ From the repository root: `bun run build-ui-package` builds `dist/`, and `bun ru
 
 ## Releasing
 
-1. In a normal PR, bump `version` in `package.json` and add a `CHANGELOG.md` entry.
-2. In `0.x`, a minor release may break compatibility; a patch must not. Any Mantine upgrade in Metabase is a minor release.
-3. `X.Y.Z` publishes to the `latest` dist-tag and `X.Y.Z-canary.N` to `canary`. No other version shape is accepted.
-4. Run the "Release UI Package" workflow from `master`; other refs skip all jobs. Run it first with `dry_run` on (the default), then again with it off.
+For a change that affects consumers of `@metabase/ui`, add a changeset to your PR:
+
+```sh
+cd frontend/ui-package
+mise exec -- bunx --bun @changesets/cli@3.0.3 add
+```
+
+Choose `patch`, `minor`, or `major` and write a summary for package consumers. In `0.x`, a minor release may break compatibility; a patch must not. A Mantine upgrade in Metabase is a minor release. Commit the generated file under `.changeset/`. Changes that don't affect consumers don't need a changeset.
+
+When changesets land on `master`, the **UI Package Changesets** workflow opens or updates a release PR with the next version and changelog. Merging that PR runs **Release UI Package** to smoke-test, publish, and tag the merge commit. Ordinary changeset PRs don't publish anything.
+
+You can still run **Release UI Package** manually from `master` to dry-run or publish the version already committed there. Stable `X.Y.Z` versions publish to `latest`; manually prepared `X.Y.Z-canary.N` versions publish to `canary`.
+
+If the release PR merges before Changesets accounts for a newly landed changeset, publishing stops. Wait for the next release PR (or run **UI Package Changesets** manually to refresh it) rather than manually publishing the stale version.
 
 Before enabling live publishing, create the GitHub environment `ui-package-release` and restrict deployments to the `master` branch only. In npm, register `metabase/metabase`, workflow `release-ui-package.yml`, and environment `ui-package-release` as the trusted publisher. Enable `npm publish` under **Allowed actions**; staged publish alone is not enough.
 
@@ -76,7 +86,7 @@ A dry run resolves the version, checks that the `ui-v<version>` tag and the npm 
 
 The tested archive is uploaded as the `metabase-ui-<version>-<sha7>-attempt-<n>` artifact, also on dry runs, and kept for 90 days. A real run builds and tests again, publishes the archive its own smoke job tested, then pushes the `ui-v<version>` tag on the released commit. It doesn't reuse an earlier dry run's archive.
 
-If the publish job succeeded but the tag job failed, use **Re-run failed jobs** to retry the tag job. If npm accepted the tarball but the publish job reported failure, do not retry the publish. Compare `npm view @metabase/ui@<version> dist.integrity` with the SHA-512 integrity of the tested tarball (`sha512-` followed by the base64-encoded digest). Only if they match, and the tag is absent, create the tag on the commit recorded in that run's summary.
+To retry a failed automatic release, use **Re-run failed jobs** on the original run. If no run exists, dispatch **Release UI Package** from `master` with `release_commit` set to the full SHA of the intended release on `master`. If npm accepted the tarball but the publish job reported failure, do not retry the publish. Compare `npm view @metabase/ui@<version> dist.integrity` with the SHA-512 integrity of the tested tarball (`sha512-` followed by the base64-encoded digest). Only if they match, and the tag is absent, create the tag on the commit recorded in that run's summary.
 
 ### Manual first publish
 

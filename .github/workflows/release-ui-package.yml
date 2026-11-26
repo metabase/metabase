@@ -1,5 +1,4 @@
-# Releases @metabase/ui from master: builds and smoke-tests one tarball, then (unless
-# dry_run) publishes that exact file to npm and tags the commit ui-v<version>.
+# Merging the Changesets release PR publishes the smoke-tested tarball and tags the merge commit.
 #
 # npm trusted publisher registration for @metabase/ui must match:
 #   repository: metabase/metabase, workflow: release-ui-package.yml, environment: ui-package-release
@@ -8,6 +7,11 @@ name: Release UI Package
 run-name: Release @metabase/ui from ${{ github.ref_name }}${{ inputs.dry_run && ' (dry run)' || '' }}
 
 on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+    paths:
+      - 'frontend/ui-package/package.json'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -15,10 +19,20 @@ on:
         type: boolean
         required: false
         default: true
+      release_commit:
+        description: "Optional full SHA of a release commit on master, for recovery only"
+        type: string
+        required: false
 
 concurrency:
-  group: release-ui-package
-  cancel-in-progress: false
+  group: >-
+    ${{ github.ref == 'refs/heads/master' &&
+        (github.event_name == 'workflow_dispatch' ||
+         (github.event.pull_request.merged == true &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.head.ref == 'changeset-release/master')) &&
+        'release-ui-package' || github.run_id }}
+  queue: max
 
 permissions:
   contents: read
@@ -30,18 +44,54 @@ defaults:
 
 jobs:
   determine-release:
-    if: ${{ github.repository == 'metabase/metabase' && github.ref == 'refs/heads/master' }}
+    if: >-
+      ${{ github.repository == 'metabase/metabase' && github.ref == 'refs/heads/master' &&
+          (github.event_name == 'workflow_dispatch' ||
+           (github.event.pull_request.merged == true &&
+            github.event.pull_request.head.repo.full_name == github.repository &&
+            github.event.pull_request.head.ref == 'changeset-release/master')) }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       version: ${{ steps.resolve.outputs.version }}
       npm_tag: ${{ steps.resolve.outputs.npm_tag }}
       git_tag: ${{ steps.resolve.outputs.git_tag }}
+      commit: ${{ steps.commit.outputs.sha }}
     steps:
+      - name: Resolve release commit
+        id: commit
+        env:
+          SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+          RECOVERY_SHA: ${{ inputs.release_commit }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -n "$RECOVERY_SHA" ]; then
+            if [[ ! "$RECOVERY_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+              echo '::error::Enter a full Git commit SHA.'
+              exit 1
+            fi
+            STATUS=$(gh api "repos/$GITHUB_REPOSITORY/compare/$RECOVERY_SHA...$GITHUB_SHA" --jq '.status')
+            if [[ "$STATUS" != ahead && "$STATUS" != identical ]]; then
+              echo '::error::The recovery commit must be on master.'
+              exit 1
+            fi
+            SHA=$RECOVERY_SHA
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
       - name: Check out the code
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ steps.commit.outputs.sha }}
+
+      - name: Reject an out-of-date Changesets release
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          PENDING=$(git ls-files -- 'frontend/ui-package/.changeset/*.md' ':!frontend/ui-package/.changeset/README.md')
+          if [ -n "$PENDING" ]; then
+            echo '::error::The release PR did not consume all UI changesets. Merge the refreshed release PR to publish.'
+            exit 1
+          fi
 
       - name: Resolve release from package.json
         id: resolve
@@ -94,7 +144,7 @@ jobs:
       - name: Check out the code
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.determine-release.outputs.commit }}
 
       # apply-patches stays on: the package build fails on an unpatched Mantine.
       - name: Prepare front-end environment
@@ -110,7 +160,7 @@ jobs:
         id: artifact
         env:
           VERSION: ${{ needs.determine-release.outputs.version }}
-          SHA: ${{ github.sha }}
+          SHA: ${{ needs.determine-release.outputs.commit }}
           ATTEMPT: ${{ github.run_attempt }}
         run: echo "name=metabase-ui-$VERSION-${SHA::7}-attempt-$ATTEMPT" >> "$GITHUB_OUTPUT"
 
@@ -132,8 +182,8 @@ jobs:
           NPM_TAG: ${{ needs.determine-release.outputs.npm_tag }}
           GIT_TAG: ${{ needs.determine-release.outputs.git_tag }}
           ARTIFACT: ${{ steps.artifact.outputs.name }}
-          COMMIT: ${{ github.sha }}
-          DRY_RUN: ${{ inputs.dry_run }}
+          COMMIT: ${{ needs.determine-release.outputs.commit }}
+          DRY_RUN: ${{ inputs.dry_run || false }}
         run: |
           {
             echo "## Release @metabase/ui"
@@ -215,7 +265,7 @@ jobs:
       - name: Check out the released commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.determine-release.outputs.commit }}
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Configure git identity
