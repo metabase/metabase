@@ -145,10 +145,7 @@ describe("DataAppView", () => {
   });
 
   it("sandboxes the app iframe: scripts run, but it can't navigate the host or open unsandboxed popups", () => {
-    setup({
-      data: createMockDataApp({ name: "Sales" }),
-      enableUrlMirroring: true,
-    });
+    setup({ data: createMockDataApp({ name: "Sales" }) });
 
     const sandboxTokens = (
       screen.getByTitle("Sales").getAttribute("sandbox") ?? ""
