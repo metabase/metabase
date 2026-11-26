@@ -108,6 +108,7 @@ export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
     description:
       "The metrics map top-down, one metric at a time: pick the top metric and click cards to open what each is built from.",
     group: "Iteration 2",
+    draft: true,
     Component: MetricsMapV2Prototype,
   },
   {

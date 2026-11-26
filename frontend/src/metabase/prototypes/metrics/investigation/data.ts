@@ -301,3 +301,31 @@ export function formatValue(node: InvestigationNode, value: number): string {
 
 export const formatPct = (delta: number, digits = 1) =>
   `${delta >= 0 ? "+" : "−"}${(Math.abs(delta) * 100).toFixed(digits)}%`;
+
+export type Series = { label: string; values: number[] };
+
+export const SERIES_COLORS = [
+  "var(--mb-color-accent0)",
+  "var(--mb-color-accent1)",
+  "var(--mb-color-accent2)",
+  "var(--mb-color-accent3)",
+  "var(--mb-color-accent4)",
+];
+
+/** Each breakout value's monthly series: its share of the total, then its own change. */
+export function breakoutSeriesOf(
+  node: InvestigationNode,
+  tab: BreakoutTab,
+  scale = 1,
+): Series[] {
+  const total = seriesOf(node, scale);
+  const n = total.length;
+  return tab.items.map((item) => ({
+    label: item.label,
+    values: total.map((value, i) =>
+      i === n - 1
+        ? node.previous * scale * item.share * (1 + item.delta)
+        : value * item.share,
+    ),
+  }));
+}

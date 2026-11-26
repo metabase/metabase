@@ -15,7 +15,6 @@ import {
 import cx from "classnames";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-import { useListCardsQuery, useListMeasuresQuery } from "metabase/api";
 import { PillTabNavigation } from "metabase/common/components/PillTabNavigation";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import {
@@ -24,7 +23,6 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import {
   ActionIcon,
-  Badge,
   Box,
   Breadcrumbs,
   Button,
@@ -36,7 +34,6 @@ import {
   Select,
   Stack,
   Text,
-  Tooltip,
   UnstyledButton,
   useColorScheme,
 } from "metabase/ui";
@@ -45,6 +42,7 @@ import { LineChart } from "../Sparkline";
 import T from "../tree/MetricTreeHiFi.module.css";
 import M from "../tree/MetricsMap.module.css";
 
+import { ExplorerModal } from "./ExplorerModal";
 import S from "./Investigation.module.css";
 import { TrendChart } from "./TrendChart";
 import {
@@ -53,6 +51,8 @@ import {
   type Operator,
   PERIODS,
   ROOT_ID,
+  SERIES_COLORS,
+  breakoutSeriesOf,
   formatPct,
   formatValue,
   seriesOf,
@@ -83,7 +83,7 @@ function viewOf(node: InvestigationNode, filter: Filter | null): View {
         ?.items.find((candidate) => candidate.label === filter.label)
     : undefined;
   if (!item) {
-    return { ...node, delta, scale: 1 };
+    return { ...node, delta, verdict: biggestMoveOf(node, delta), scale: 1 };
   }
   const previous = node.previous * item.share;
   return {
@@ -93,6 +93,16 @@ function viewOf(node: InvestigationNode, filter: Filter | null): View {
     verdict: `${formatPct(item.delta, 0)} in ${item.label} vs ${formatPct(delta, 0)} overall`,
     scale: item.share,
   };
+}
+
+/** The breakout value, across all tabs, that moved the most this period. */
+function biggestMoveOf(node: InvestigationNode, overall: number): string {
+  const [top] = node.breakouts
+    .flatMap((tab) => tab.items)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+  return top
+    ? `${formatPct(top.delta, 0)} in ${top.label} vs ${formatPct(overall, 0)} overall`
+    : node.verdict;
 }
 
 /** How much of the parent's change this term explains, in the parent's units. */
@@ -319,6 +329,9 @@ function Investigation() {
                 node={NODES[selectedId]}
                 filter={filter}
                 comparison={comparison}
+                periodLabel={
+                  PERIODS.find((option) => option.value === period)?.label ?? ""
+                }
                 onFilter={setFilter}
                 onClose={() => setSelectedId(null)}
               />
@@ -426,19 +439,6 @@ function NodeCard({ data }: NodeProps<CardNode>) {
         <Box fz={16} fw={700} c="text-primary" flex={1} className={T.truncate}>
           {node.name}
         </Box>
-        {data.driverShare != null && (
-          <Tooltip
-            label={`Explains most of ${NODES[pathTo(node.id).at(-2) ?? ROOT_ID].name}'s change`}
-          >
-            <Badge
-              variant="light"
-              color="brand"
-              style={{ textTransform: "none" }}
-            >
-              Biggest driver
-            </Badge>
-          </Tooltip>
-        )}
       </Group>
       <Group className={T.row} px="lg" py="sm" gap="md" wrap="nowrap">
         <Stack gap={0} flex={1} miw={0}>
@@ -537,12 +537,14 @@ function SidePanel({
   node,
   filter,
   comparison,
+  periodLabel,
   onFilter,
   onClose,
 }: {
   node: InvestigationNode;
   filter: Filter | null;
   comparison: string;
+  periodLabel: string;
   onFilter: (filter: Filter | null) => void;
   onClose: () => void;
 }) {
@@ -559,7 +561,7 @@ function SidePanel({
     .sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact));
   const maxImpact = Math.max(...rows.map((row) => Math.abs(row.impact)), 1e-9);
 
-  const explorerUrl = useExplorerUrl(node.name);
+  const [isExplorerOpen, setIsExplorerOpen] = useState(false);
 
   return (
     <Box className={S.panel}>
@@ -596,7 +598,11 @@ function SidePanel({
         </Stack>
 
         <Box>
-          <TrendChart values={seriesOf(node, 1)} annotation={node.annotation} />
+          <TrendChart
+            values={seriesOf(node, 1)}
+            bars={breakoutSeriesOf(node, tab)}
+            annotation={node.annotation}
+          />
           {node.annotation.label && (
             <Text fz="xs" c="text-secondary" mt="xs">
               {node.annotation.label}
@@ -639,9 +645,25 @@ function SidePanel({
                   }
                 >
                   <Group gap="md" wrap="nowrap">
-                    <Text fz="sm" w={130} className={S.truncate}>
-                      {row.label}
-                    </Text>
+                    <Group gap="sm" w={130} wrap="nowrap">
+                      <Box
+                        w={8}
+                        h={8}
+                        style={{
+                          flexShrink: 0,
+                          borderRadius: "50%",
+                          background:
+                            SERIES_COLORS[
+                              tab.items.findIndex(
+                                (item) => item.label === row.label,
+                              ) % SERIES_COLORS.length
+                            ],
+                        }}
+                      />
+                      <Text fz="sm" className={S.truncate}>
+                        {row.label}
+                      </Text>
+                    </Group>
                     <Box className={S.barTrack}>
                       <Box className={S.barAxis} />
                       <Box
@@ -683,30 +705,20 @@ function SidePanel({
         <Button
           variant="default"
           leftSection={<FixedSizeIcon name="external" />}
-          component="a"
-          href={explorerUrl}
-          target="_blank"
+          onClick={() => setIsExplorerOpen(true)}
         >
           Open in Metric Explorer
         </Button>
       </Stack>
+      {isExplorerOpen && (
+        <ExplorerModal
+          node={node}
+          initialTabId={tab.id}
+          filter={filter}
+          periodLabel={periodLabel}
+          onClose={() => setIsExplorerOpen(false)}
+        />
+      )}
     </Box>
   );
-}
-
-/**
- * The Explorer URL for the Sample Database metric or measure with this name,
- * or the empty Explorer when the local instance has neither.
- */
-function useExplorerUrl(name: string): string {
-  const { data: cards = [] } = useListCardsQuery({ f: "all" });
-  const { data: measures = [] } = useListMeasuresQuery();
-  const metric = cards.find(
-    (card) => card.type === "metric" && !card.archived && card.name === name,
-  );
-  if (metric) {
-    return `/explore?metricId=${metric.id}`;
-  }
-  const measure = measures.find((candidate) => candidate.name === name);
-  return measure ? `/explore?measureId=${measure.id}` : "/explore";
 }
