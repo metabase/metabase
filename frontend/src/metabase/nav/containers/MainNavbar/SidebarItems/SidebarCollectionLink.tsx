@@ -100,7 +100,7 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
 
     const content = (
       <>
-        <TreeNode.IconContainer transparent={false} c="core-brand">
+        <TreeNode.IconContainer transparent={false} className={S.icon}>
           <Icon {...icon} />
         </TreeNode.IconContainer>
         <SidebarItemName>{collection.name}</SidebarItemName>

@@ -53,7 +53,7 @@ function SidebarLinkIcon({ icon }: SidebarLinkIconProps) {
   const hasIconUrl = "iconUrl" in iconProps && iconProps.iconUrl;
 
   return (
-    <TreeNode.IconContainer transparent={false} c="core-brand">
+    <TreeNode.IconContainer transparent={false} className={S.icon}>
       {hasIconUrl ? (
         <EntityIcon
           name={iconProps.name}

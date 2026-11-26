@@ -1,5 +1,5 @@
 import { useDisclosure, useLocalStorage } from "@mantine/hooks";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
@@ -41,6 +41,7 @@ import type { Collection, IconName } from "metabase-types/api";
 
 import { SidebarSection } from "../Sidebar";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
+import SidebarItemsS from "../SidebarItems/SidebarItems.module.css";
 import {
   trackAddDataModalOpened,
   trackNewCollectionFromNavInitiated,
@@ -94,9 +95,15 @@ const BROWSE_METRICS_URL = "/browse/metrics";
 const BROWSE_DATABASES_URL = "/browse/databases";
 const BROWSE_MODELS_URL = "/browse/models";
 
+// PROTOTYPE: the rows under the tabs use the secondary icon color (hovered
+// and selected rows go back to brand), so they read apart from the tabs.
+const SUB_NAV_STYLE = {
+  "--nav-item-icon-color": "var(--mb-color-icon-secondary)",
+} as CSSProperties;
+
 function NavTabSection({ children }: { children: ReactNode }) {
   return (
-    <SidebarSection mt="md">
+    <SidebarSection mt="md" style={SUB_NAV_STYLE}>
       <ErrorBoundary>{children}</ErrorBoundary>
     </SidebarSection>
   );
@@ -737,6 +744,11 @@ export function TabsNavbarView({
                   key={tab.id}
                   icon={tab.icon}
                   isSelected={tab.id === activeTab.id}
+                  className={
+                    tab.id === activeTab.id
+                      ? SidebarItemsS.tabSelected
+                      : undefined
+                  }
                   onClick={() => {
                     setStoredTabId(tab.id);
                     // Some tabs open a page too: Ask AI a new conversation
