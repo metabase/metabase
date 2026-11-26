@@ -24,6 +24,18 @@ summary: Changes to the Metabase driver interface, listed by release.
   throws or takes longer than its time limit, and then for the rest of the run for that database. Sync stores the
   method with each fingerprint, in `metabase_field.fingerprint_origin`.
 
+- New multimethod `metabase.driver.sql.query-processor/table-sample->honeysql`, for a SQL driver's built-in block
+  sample (such as `TABLESAMPLE SYSTEM`). It returns the `FROM` item for a compiled table identifier and
+  `{:percent p}`. The compiler calls it for a query stage with `:table-sample`. The `:sql` default throws. A driver
+  that implements it uses `metabase.driver.common.table-rows-sample/block-sample` as its
+  `metabase.driver/table-random-sample`. A driver with its own `apply-top-level-clause` for `:source-table` must call
+  the new method itself. The Postgres driver is the first to use it.
+
+- `metabase.driver.sql-jdbc.sync/sample-json-row-honeysql` `[driver table-identifier json-field-identifiers
+  pk-identifiers]` -- new multimethod that returns the query sync uses to sample rows of JSON columns, to find their
+  nested field columns. Each JSON value must come back as JSON text. Override it if the driver reads JSON values as
+  something other than text, or if the default query (a join on the first and last PKs) is slow for the database.
+
 - New driver feature `:stage-ctes/nest-single-row-aggregation`. Drivers that use `:stage-ctes` can opt in to put an
   aggregation with no breakouts over a previous stage in its own stage CTE. This is for databases like Postgres that
   do not use an index for `MIN`/`MAX` when the aggregation is in a `SELECT` that has a `WITH` clause. The default is

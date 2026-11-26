@@ -36,6 +36,10 @@ import {
 
 import { TransformTestRunsPage } from "./TransformTestRunsPage";
 
+const { trackSimpleEvent } = jest.requireMock<{
+  trackSimpleEvent: jest.Mock;
+}>("metabase/analytics");
+
 const QUERY_SOURCE: QueryTransformSource = {
   type: "query",
   query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
@@ -88,6 +92,10 @@ function getLastRunsRequestUrl() {
 }
 
 describe("TransformTestRunsPage", () => {
+  afterEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   it("lists the runs with their status and who started them", async () => {
     setup({
       response: createMockListDataTestRunsResponse({
@@ -142,19 +150,46 @@ describe("TransformTestRunsPage", () => {
     expect(router?.location.search).toBe("?page=2");
   });
 
-  it("runs the test", async () => {
+  it("runs the test and shows the new run", async () => {
+    const runs = [
+      createMockDataTestRunWithUser({ id: 1, status: "passed" }),
+      createMockDataTestRunWithUser({ id: 2, status: "passed" }),
+    ];
+    // Registered before `setup` so that these routes match first.
+    fetchMock.get("path:/api/ee/data-test-run", ({ url }) => {
+      const params = new URL(url).searchParams;
+      const data =
+        params.get("test-type") === "transform" && params.get("test-id") === "2"
+          ? runs
+          : [];
+      return createMockListDataTestRunsResponse({
+        data,
+        total: data.length,
+      });
+    });
+    fetchMock.post("path:/api/ee/transform-test/2/run", () => {
+      runs.push(createMockDataTestRunWithUser({ id: 3, status: "passed" }));
+      return { status: "passed", expectations: [], tables: {} };
+    });
     setup();
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /Run now/ }),
+    expect(await screen.findAllByRole("row", { name: /Passed/ })).toHaveLength(
+      2,
     );
+    await userEvent.click(screen.getByRole("button", { name: /Run now/ }));
 
     await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called("path:/api/ee/transform-test/2/run", {
-          method: "POST",
-        }),
-      ).toBe(true);
+      expect(screen.getAllByRole("row", { name: /Passed/ })).toHaveLength(3);
+    });
+    expect(
+      fetchMock.callHistory.called("path:/api/ee/transform-test/2/run", {
+        method: "POST",
+      }),
+    ).toBe(true);
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "transform_test_trigger_manual_run",
+      target_id: 2,
+      triggered_from: "test_runs",
     });
   });
 

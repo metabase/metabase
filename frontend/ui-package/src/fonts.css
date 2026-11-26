@@ -1,0 +1,34 @@
+/* Lato, the font Metabase uses by default. Paths are relative to this file in dist. */
+
+@font-face {
+  font-family: Lato;
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    local("Lato Regular"),
+    local("Lato-Regular"),
+    url("./fonts/Lato/lato-v16-latin-regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: Lato;
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    local("Lato Bold"),
+    local("Lato-Bold"),
+    url("./fonts/Lato/lato-v16-latin-700.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: Lato;
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src:
+    local("Lato Black"),
+    local("Lato-Black"),
+    url("./fonts/Lato/lato-v16-latin-900.woff2") format("woff2");
+}

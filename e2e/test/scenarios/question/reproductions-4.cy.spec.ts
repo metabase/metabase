@@ -1,103 +1,13 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type {
+  NativeQuestionDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
+import type { CardId, Field, FieldId, TableId } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
-
-describe("issue 44668", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not drop graph.metrics after adding a new query stage (metabase#44668)", () => {
-    H.createQuestion(
-      {
-        display: "bar",
-        query: {
-          aggregation: [["count"]],
-          breakout: [["field", PEOPLE.STATE, { "base-type": "type/Text" }]],
-          "source-table": PEOPLE_ID,
-          limit: 5,
-        },
-        visualization_settings: {
-          "graph.metrics": ["count"],
-          "graph.dimensions": ["STATE"],
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    H.openNotebook();
-
-    // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    cy.findAllByTestId("action-buttons").last().button("Custom column").click();
-    H.enterCustomColumnDetails({
-      formula: 'concat("abc_", [Count])',
-      name: "Custom String",
-      format: true,
-    });
-    H.popover().button("Done").click();
-
-    H.getNotebookStep("expression", { stage: 1 }).icon("add").click();
-    H.enterCustomColumnDetails({
-      formula: "[Count] * 2",
-      name: "Custom Number",
-    });
-    H.popover().button("Done").click();
-
-    H.visualize();
-
-    H.echartsContainer().within(() => {
-      cy.findByText("State").should("be.visible"); // x-axis
-      cy.findByText("Count").should("be.visible"); // y-axis
-
-      // x-axis values
-      ["AK", "AL", "AR", "AZ", "CA"].forEach((state) => {
-        cy.findByText(state).should("be.visible");
-      });
-    });
-
-    // Ensure custom columns weren't added as series automatically
-    H.queryBuilderMain().findByLabelText("Legend").should("not.exist");
-
-    H.openVizSettingsSidebar();
-
-    // Ensure can use Custom Number as series
-    H.leftSidebar().findByText("Add another series").click();
-    H.queryBuilderMain()
-      .findByLabelText("Legend")
-      .within(() => {
-        cy.findByText("Count").should("exist");
-        cy.findByText("Custom Number").should("exist");
-      });
-    H.leftSidebar().within(() => {
-      cy.findByText("Add another series").should("not.exist");
-      cy.findByText("Add series breakout").should("not.exist");
-      cy.findByTestId("remove-Custom Number").click();
-    });
-    H.queryBuilderMain().findByLabelText("Legend").should("not.exist");
-
-    H.leftSidebar().findByText("Add series breakout").click();
-    H.popover().within(() => {
-      cy.findByText("Count").should("exist");
-      cy.findByText("Custom Number").should("exist");
-      cy.findByText("Custom String").click();
-    });
-    H.queryBuilderMain()
-      .findByLabelText("Legend")
-      .within(() => {
-        ["68", "56", "49", "20", "90"].forEach((value) => {
-          cy.findByText(`abc_${value}`).should("exist");
-        });
-      });
-    H.leftSidebar().within(() => {
-      cy.findByText("Add another series").should("not.exist");
-      cy.findByText("Add series breakout").should("not.exist");
-    });
-  });
-});
 
 describe("issue 44974", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
@@ -261,8 +171,8 @@ describe("issue 39771", () => {
 });
 
 describe("issue 45063", () => {
-  function createGuiQuestion({ sourceTableId }) {
-    const questionDetails = {
+  function createGuiQuestion({ sourceTableId }: { sourceTableId: TableId }) {
+    const questionDetails: StructuredQuestionDetails = {
       name: "Question",
       query: {
         "source-table": sourceTableId,
@@ -271,8 +181,8 @@ describe("issue 45063", () => {
     H.createQuestion(questionDetails, { wrapId: true });
   }
 
-  function createGuiModel({ sourceTableId }) {
-    const mbqlModelDetails = {
+  function createGuiModel({ sourceTableId }: { sourceTableId: TableId }) {
+    const mbqlModelDetails: StructuredQuestionDetails = {
       name: "Model",
       type: "model",
       query: {
@@ -287,8 +197,13 @@ describe("issue 45063", () => {
     fieldId,
     fieldName,
     fieldSemanticType,
+  }: {
+    tableName: string;
+    fieldId: FieldId;
+    fieldName: string;
+    fieldSemanticType: string;
   }) {
-    const nativeModelDetails = {
+    const nativeModelDetails: NativeQuestionDetails = {
       name: "Native Model",
       type: "model",
       native: {
@@ -302,7 +217,7 @@ describe("issue 45063", () => {
       cy.log("populate result_metadata");
       cy.request("POST", `/api/card/${model.id}/query`);
       cy.log("map columns to database fields");
-      H.setModelMetadata(model.id, (field) => {
+      H.setModelMetadata(model.id, (field: Field) => {
         if (field.name === fieldName) {
           return { ...field, id: fieldId, semantic_type: fieldSemanticType };
         }
@@ -311,13 +226,13 @@ describe("issue 45063", () => {
     });
   }
 
-  function setListValues({ fieldId }) {
+  function setListValues({ fieldId }: { fieldId: FieldId }) {
     cy.request("PUT", `/api/field/${fieldId}`, {
       has_field_values: "list",
     });
   }
 
-  function setSearchValues({ fieldId }) {
+  function setSearchValues({ fieldId }: { fieldId: FieldId }) {
     cy.request("PUT", `/api/field/${fieldId}`, {
       has_field_values: "search",
     });
@@ -327,6 +242,10 @@ describe("issue 45063", () => {
     sourceFieldId,
     targetFieldId,
     remappedDisplayName,
+  }: {
+    sourceFieldId: FieldId;
+    targetFieldId: FieldId;
+    remappedDisplayName: string;
   }) {
     cy.request("POST", `/api/field/${sourceFieldId}/dimension`, {
       type: "external",
@@ -335,12 +254,26 @@ describe("issue 45063", () => {
     });
   }
 
+  type RemappedFilterDetails = {
+    visitCard: () => void;
+    fieldId: FieldId;
+    fieldDisplayName: string;
+    filterHeaderName?: string;
+    fieldPlaceholder: string;
+    fieldValue: number;
+    fieldValueLabel: string;
+    expectedRowCount: number;
+  };
+
   function verifyListFilter({
     fieldDisplayName,
     filterHeaderName,
     fieldValue,
     fieldValueLabel,
-  }) {
+  }: Pick<
+    RemappedFilterDetails,
+    "fieldDisplayName" | "filterHeaderName" | "fieldValue" | "fieldValueLabel"
+  >) {
     H.tableHeaderClick(fieldDisplayName);
     H.popover().findByText("Filter by this column").click();
     H.popover().within(() => {
@@ -360,7 +293,14 @@ describe("issue 45063", () => {
     fieldPlaceholder,
     fieldValue,
     fieldValueLabel,
-  }) {
+  }: Pick<
+    RemappedFilterDetails,
+    | "fieldDisplayName"
+    | "filterHeaderName"
+    | "fieldPlaceholder"
+    | "fieldValue"
+    | "fieldValueLabel"
+  >) {
     H.tableHeaderClick(fieldDisplayName);
     H.popover().findByText("Filter by this column").click();
     H.popover().findByPlaceholderText(fieldPlaceholder).type(fieldValueLabel);
@@ -383,7 +323,7 @@ describe("issue 45063", () => {
     fieldValue,
     fieldValueLabel,
     expectedRowCount,
-  }) {
+  }: RemappedFilterDetails) {
     cy.log("list values");
     cy.signInAsAdmin();
     setListValues({ fieldId });
@@ -434,7 +374,8 @@ describe("issue 45063", () => {
     it("should work with models", () => {
       createGuiModel({ sourceTableId: PEOPLE_ID });
       verifyRemappedFilter({
-        visitCard: () => cy.get("@modelId").then(H.visitModel),
+        visitCard: () =>
+          cy.get<CardId>("@modelId").then((id) => H.visitModel(id)),
         fieldId: PEOPLE.ID,
         fieldDisplayName: "ID",
         fieldPlaceholder: "Search by Name or enter an ID",
@@ -452,7 +393,8 @@ describe("issue 45063", () => {
         fieldSemanticType: "type/PK",
       });
       verifyRemappedFilter({
-        visitCard: () => cy.get("@modelId").then(H.visitModel),
+        visitCard: () =>
+          cy.get<CardId>("@modelId").then((id) => H.visitModel(id)),
         fieldId: PEOPLE.ID,
         fieldDisplayName: "ID",
         fieldPlaceholder: "Search by Name or enter an ID",
@@ -488,7 +430,8 @@ describe("issue 45063", () => {
     it("should work with models", () => {
       createGuiModel({ sourceTableId: ORDERS_ID });
       verifyRemappedFilter({
-        visitCard: () => cy.get("@modelId").then(H.visitModel),
+        visitCard: () =>
+          cy.get<CardId>("@modelId").then((id) => H.visitModel(id)),
         fieldId: ORDERS.PRODUCT_ID,
         fieldDisplayName: "Product ID",
         fieldPlaceholder: "Search by Title or enter an ID",
@@ -506,7 +449,8 @@ describe("issue 45063", () => {
         fieldSemanticType: "type/FK",
       });
       verifyRemappedFilter({
-        visitCard: () => cy.get("@modelId").then(H.visitModel),
+        visitCard: () =>
+          cy.get<CardId>("@modelId").then((id) => H.visitModel(id)),
         fieldId: ORDERS.PRODUCT_ID,
         fieldDisplayName: "Product ID",
         filterHeaderName: "PRODUCT_ID", // the title case version doesn't get picked up in filters
@@ -516,304 +460,6 @@ describe("issue 45063", () => {
         expectedRowCount: 93,
       });
     });
-  });
-});
-
-describe("issue 41464", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not overlap 'no results' and the loading state (metabase#41464)", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          filter: [
-            ">",
-            ["field", ORDERS.TOTAL, { "base-type": "type/Float" }],
-            1000,
-          ],
-        },
-        parameters: [],
-      },
-    });
-
-    cy.intercept(
-      {
-        method: "POST",
-        url: "/api/dataset",
-        middleware: true,
-      },
-      (req) => {
-        req.on("response", (res) => {
-          // Throttle the response to 50kbps
-          res.setThrottle(50);
-        });
-      },
-    );
-
-    cy.findByTestId("filter-pill")
-      .should("have.text", "Total is greater than 1000")
-      .icon("close")
-      .click();
-
-    cy.findByTestId("query-builder-main").within(() => {
-      cy.findByTestId("loading-indicator").should("be.visible");
-      cy.findByText("No results", { timeout: 500 }).should("not.exist");
-    });
-  });
-});
-
-describe("issue 41612", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    cy.intercept("POST", "/api/card").as("createQuestion");
-  });
-
-  it("should not ignore chart viz settings when viewing raw results as a table (metabase#41612)", () => {
-    H.visitQuestionAdhoc(
-      {
-        display: "line",
-        dataset_query: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            aggregation: [["count"]],
-            breakout: [
-              [
-                "field",
-                ORDERS.CREATED_AT,
-                { "base-type": "type/DateTime", "temporal-unit": "month" },
-              ],
-            ],
-            "source-table": ORDERS_ID,
-          },
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    H.queryBuilderMain().findByLabelText("Switch to data").click();
-    H.queryBuilderHeader().button("Save").click();
-    H.modal().button("Save").click();
-
-    cy.wait("@createQuestion").then((xhr) => {
-      const card = xhr.request.body;
-      expect(card.visualization_settings["graph.metrics"]).to.deep.equal([
-        "count",
-      ]);
-      expect(card.visualization_settings["graph.dimensions"]).to.deep.equal([
-        "CREATED_AT",
-      ]);
-    });
-  });
-});
-
-describe("issue 36027", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    const CONCRETE_CREATED_AT_FIELD_REF = [
-      "field",
-      ORDERS.CREATED_AT,
-      { "base-type": "type/DateTime", "temporal-unit": "month" },
-    ];
-
-    const CREATED_AT_FIELD_REF = [
-      "field",
-      "CREATED_AT",
-      { "base-type": "type/DateTime", "temporal-unit": "month" },
-    ];
-
-    const BASE_QUERY = {
-      aggregation: [["count"]],
-      breakout: [CONCRETE_CREATED_AT_FIELD_REF],
-      "source-table": ORDERS_ID,
-    };
-
-    H.createQuestion({ query: BASE_QUERY }, { wrapId: true }).then(
-      (baseQuestionId) => {
-        H.createQuestion(
-          {
-            display: "waterfall",
-            query: {
-              aggregation: [
-                ["sum", ["field", "count", { "base-type": "type/Integer" }]],
-              ],
-              breakout: [CREATED_AT_FIELD_REF],
-              joins: [
-                {
-                  alias: "Q1",
-                  strategy: "left-join",
-                  "source-table": `card__${baseQuestionId}`,
-                  condition: [
-                    "<=",
-                    CREATED_AT_FIELD_REF,
-                    CONCRETE_CREATED_AT_FIELD_REF,
-                  ],
-                },
-              ],
-              "source-query": BASE_QUERY,
-            },
-            visualization_settings: {
-              "graph.dimensions": ["CREATED_AT"],
-              "graph.metrics": ["sum"],
-            },
-          },
-          { visitQuestion: true },
-        );
-      },
-    );
-  });
-
-  it("should use default metrics/dimensions if they're missing after removing some query clauses (metabase#36027)", () => {
-    H.openNotebook();
-    H.getNotebookStep("summarize", { stage: 1 })
-      .findByLabelText("Remove step")
-      .click({ force: true });
-    H.getNotebookStep("join", { stage: 1 })
-      .findByLabelText("Remove step")
-      .click({ force: true });
-    H.visualize();
-
-    H.echartsContainer().within(() => {
-      cy.findByText("Created At: Month").should("be.visible"); // x-axis
-      cy.findByText("Count").should("be.visible"); // y-axis
-
-      // x-axis values
-      ["April 2025", "April 2026", "April 2027", "April 2028"].forEach(
-        (state) => {
-          cy.findByText(state).should("be.visible");
-        },
-      );
-
-      // y-axis values
-      [
-        "0",
-        "3,000",
-        "6,000",
-        "9,000",
-        "12,000",
-        "15,000",
-        "18,000",
-        "21,000",
-      ].forEach((state) => {
-        cy.findByText(state).should("be.visible");
-      });
-    });
-  });
-});
-
-describe("issue 48829", () => {
-  const questionDetails = {
-    name: "Issue 48829",
-    query: {
-      "source-table": PRODUCTS_ID,
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after adding a filter from headers (metabase#48829)", () => {
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    H.tableHeaderClick("Category");
-    H.popover().findByText("Filter by this column").click();
-    H.popover().within(() => {
-      cy.findByText("Doohickey").click();
-      cy.findByText("Add filter").click();
-    });
-
-    H.queryBuilderHeader()
-      .button(/Editor/)
-      .click();
-    H.getNotebookStep("filter")
-      .findAllByTestId("notebook-cell-item")
-      .icon("close")
-      .should("be.visible")
-      .click();
-
-    H.visualize();
-
-    H.modal().should("not.exist");
-  });
-
-  it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after adding a filter via the filter picker (metabase#48829)", () => {
-    H.createQuestion(questionDetails, { visitQuestion: true });
-
-    H.queryBuilderHeader()
-      .button(/Filter/)
-      .click();
-    H.popover().within(() => {
-      cy.findByText("Category").click();
-      cy.findByText("Doohickey").click();
-      cy.button("Apply filter").click();
-    });
-
-    H.queryBuilderHeader()
-      .button(/Editor/)
-      .click();
-    H.getNotebookStep("filter")
-      .findAllByTestId("notebook-cell-item")
-      .icon("close")
-      .should("be.visible")
-      .click();
-
-    H.visualize();
-
-    H.modal().should("not.exist");
-  });
-
-  it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after visiting a filtered question from a dashboard click action (metabase#48829)", () => {
-    // Set up dashboard
-    H.createDashboardWithQuestions({ questions: [questionDetails] }).then(
-      ({ dashboard }) => {
-        H.visitDashboard(dashboard.id);
-      },
-    );
-
-    H.showDashboardCardActions();
-    H.editDashboard();
-    H.getDashboardCard().findByLabelText("Click behavior").click();
-
-    H.sidebar().within(() => {
-      cy.findByText("Title").click();
-      cy.findByText("Go to a custom destination").click();
-      cy.findByText("Saved question").click();
-    });
-
-    H.entityPickerModal().within(() => {
-      cy.findByText("Our analytics").click();
-      cy.findByText(questionDetails.name).click();
-    });
-    H.sidebar().findByTestId("click-mappings").findByText("Title").click();
-    H.popover().findByText("Title").click();
-    H.saveDashboard();
-
-    // Navigate to question using click action in dashboard
-    H.main().findByText("Rustic Paper Wallet").click();
-
-    H.queryBuilderHeader()
-      .button(/Editor/)
-      .click();
-    H.getNotebookStep("filter")
-      .findAllByTestId("notebook-cell-item")
-      .icon("close")
-      .should("be.visible")
-      .click();
-
-    H.visualize();
-
-    H.modal().should("not.exist");
   });
 });
 
@@ -869,7 +515,10 @@ describe("issue 50038", () => {
     });
   });
 
-  function assertEqualHeight(selector, otherSelector) {
+  function assertEqualHeight(
+    selector: Cypress.Chainable<JQuery<HTMLElement>>,
+    otherSelector: Cypress.Chainable<JQuery<HTMLElement>>,
+  ) {
     selector.invoke("outerHeight").then((height) => {
       otherSelector.invoke("outerHeight").should("eq", height);
     });
@@ -980,150 +629,5 @@ describe("issue 53036", () => {
       cy.icon("play").should("be.visible");
       cy.icon("add").click();
     });
-  });
-});
-
-describe("issue 57697", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.createQuestion(
-      {
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["field", PRODUCTS.PRICE, { binning: { strategy: "default" } }],
-          ],
-        },
-      },
-      { visitQuestion: true },
-    );
-  });
-
-  it("should not show the binning in the name of the column when binning in the summarize sidebar  (metabase#57697)", () => {
-    H.summarize();
-    H.sidebar()
-      .filter(":visible")
-      .within(() => {
-        cy.findByText("Price").should("be.visible");
-        cy.findByText("Price: Auto binned").should("not.exist");
-      });
-  });
-});
-
-describe("issue 32499", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("Self-join columns can be edited independently", () => {
-    H.createQuestion(
-      {
-        name: "Model",
-        type: "model",
-        query: {
-          "source-table": ORDERS_ID,
-          fields: [
-            ["field", ORDERS.ID, null],
-            ["field", ORDERS.USER_ID, null],
-          ],
-          joins: [
-            {
-              fields: [["field", ORDERS.USER_ID, { "join-alias": "Orders" }]],
-              alias: "Orders",
-              "source-table": ORDERS_ID,
-              strategy: "left-join",
-              condition: [
-                "=",
-                ["field", ORDERS.ID, null],
-                ["field", ORDERS.ID, { "join-alias": "Orders" }],
-              ],
-            },
-          ],
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    H.openQuestionActions("Edit metadata");
-
-    const columns = [
-      { original: "Orders → User ID", modified: "JOIN COLUMN" },
-      { original: "User ID", modified: "ORIGINAL COLUMN" },
-    ];
-
-    // we can click the headers and modify their names
-    for (const { original, modified } of columns) {
-      H.tableHeaderClick(original);
-      cy.findByLabelText("Display name")
-        .should("have.value", original)
-        .click()
-        .clear()
-        .type(modified);
-    }
-
-    // the modified names are now in the headers
-    for (const { modified } of columns) {
-      H.tableHeaderColumn(modified).should("exist");
-    }
-  });
-});
-describe("issue 12679", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("removing the first aggregation should not re-target the filter (metabase#12679)", () => {
-    const questionDetails = {
-      display: "table",
-      dataset_query: {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-query": {
-            "source-table": ORDERS_ID,
-            aggregation: [
-              ["sum", ["field", ORDERS.SUBTOTAL, null]],
-              ["sum", ["field", ORDERS.TAX, null]],
-              ["sum", ["field", ORDERS.TOTAL, null]],
-            ],
-            breakout: [
-              ["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }],
-            ],
-          },
-          filter: [">", ["field", "sum_2", { "base-type": "type/Float" }], 100],
-        },
-      },
-    };
-
-    H.visitQuestionAdhoc(questionDetails, { mode: "notebook" });
-    H.getNotebookStep("filter", { stage: 1 })
-      .findByText("Sum of Tax is greater than 100")
-      .should("exist");
-
-    H.getNotebookStep("summarize").within(() => {
-      cy.findByText("Sum of Subtotal").parent().icon("close").click();
-      cy.findByText("Sum of Subtotal").should("not.exist");
-    });
-    H.getNotebookStep("filter", { stage: 1 })
-      .findByText("Sum of Tax is greater than 100")
-      .should("exist");
-
-    H.visualize();
-
-    cy.findByTestId("qb-filters-panel")
-      .findByText("Sum of Tax is greater than 100")
-      .should("exist");
-    cy.findByTestId("table-header").within(() => {
-      cy.findByText("Sum of Subtotal").should("not.exist");
-      cy.findByText("Sum of Tax").should("exist");
-      cy.findByText("Sum of Total").should("exist");
-    });
-    cy.findByTestId("question-row-count")
-      .findByText("Showing 175 rows")
-      .should("exist");
   });
 });

@@ -1,12 +1,12 @@
 import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
-import { MantineProvider } from "@mantine/core";
+import { MantineProvider, getPrimaryShade } from "@mantine/core";
 import { type ReactNode, useContext, useMemo } from "react";
 
 import type { ColorName } from "metabase/ui/colors/types";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { getCspNonce } from "metabase/utils/csp";
 import { deepMerge } from "metabase/utils/deep-merge";
-import type { ColorSettings } from "metabase-types/api";
+import type { ColorSettings } from "metabase-types/api/color-settings";
 
 import { getThemeOverrides } from "../../../theme";
 import "../../overlays/Popover/register-popover-dropdown";
@@ -87,16 +87,12 @@ export const ThemeProvider = ({
       },
       fn: {
         themeColor: (color: ColorName): string => {
-          const { primaryShade, primaryColor } = baseTheme;
+          const shade = getPrimaryShade(baseTheme, resolvedColorScheme);
 
           return color in baseTheme.colors
-            ? // Unjustified type cast. FIXME
-              baseTheme.colors[color][primaryShade as number]
+            ? baseTheme.colors[color][shade]
             : // Unjustified type cast. FIXME
-              baseTheme.colors[primaryColor as ColorName][
-                // Unjustified type cast. FIXME
-                primaryShade as number
-              ];
+              baseTheme.colors[baseTheme.primaryColor as ColorName][shade];
         },
       },
     } as MantineTheme;
