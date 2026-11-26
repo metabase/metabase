@@ -447,7 +447,8 @@
   - The parts `[{:type :text :id \"t1\" :text \"First.\"} {:type :text :id \"t2\" :text \"Second.\"}]` have two ids, so
     they stay two parts.
 
-  Blank text is text that is only whitespace. [[messages/sent-part?]] is the one place that drops it."
+  Blank text is text that is only whitespace. [[messages/sent-part?]] is the one place that drops it before the
+  request goes to a provider adapter."
   [parts]
   ;; Memory must keep each text block as one part, as the stored turn does (both use `combine-text-parts-xf`).
   ;; Text streams as one part per delta. When memory keeps the deltas, the next turn's history does not start with
