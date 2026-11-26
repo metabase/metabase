@@ -1518,7 +1518,8 @@
               (with-redefs [sql-jdbc.execute/execute-statement! (fn [driver stmt sql]
                                                                   (reset! sql-result sql)
                                                                   (orig driver stmt sql))
-                            driver/query-result-metadata        (get-method driver/query-result-metadata :default)]
+                            driver/query-result-metadata        (get-method driver/query-result-metadata :default)
+                            card.metadata/metadata-sync-wait-ms 30000]
                 (mt/user-http-request
                  :crowberto :post 200 "card"
                  (assoc (card-with-name-and-query card-name)
