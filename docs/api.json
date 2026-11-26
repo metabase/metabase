@@ -20132,6 +20132,10 @@
             "type" : "boolean",
             "description" : "Should we skip persisting `result_metadata` to a saved Card while still returning it in query results? Used by\n       `metabase.query-processor.middleware.results-metadata`; default `false`. Has no effect when\n       `skip-results-metadata?` is true."
           },
+          "card-reference?" : {
+            "type" : "boolean",
+            "description" : "Whether this query is a card that a native query references, e.g. with `{{#123}}`. The compiled query goes inside\n  the native query, so SQL drivers compile it without stage CTEs."
+          },
           "pivot?" : {
             "anyOf" : [ {
               "type" : "boolean"
@@ -54135,9 +54139,25 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "last_sync_attempted_at" : {
+                      "anyOf" : [ {
+                        "description" : "value must be a valid date/time/datetime",
+                        "type" : "string",
+                        "format" : "date-time"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "last_sync_error" : {
+                      "anyOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
-                  "required" : [ "last_checked_at", "advisories" ]
+                  "required" : [ "last_checked_at", "last_sync_attempted_at", "last_sync_error", "advisories" ]
                 }
               }
             }
