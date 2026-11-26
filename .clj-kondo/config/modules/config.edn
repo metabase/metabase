@@ -2218,7 +2218,6 @@
   {:team "UX West"
    :api  #{metabase.product-feedback.init}
    :uses #{analytics
-           app-db
            channel
            premium-features
            settings
