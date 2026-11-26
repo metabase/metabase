@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.dependencies :as remote-sync.dependencies]
    [metabase-enterprise.remote-sync.protocol :as protocol]
+   [metabase-enterprise.remote-sync.protocol.fs :as fs]
    [metabase-enterprise.remote-sync.protocol.git :as git]
    [metabase.collections.core :as collections]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -25,6 +26,21 @@
   :getter (fn [] (some? (setting/get :remote-sync-url)))
   :audit :never
   :doc false)
+
+(defsetting remote-sync-source-type
+  (deferred-tru "Where remote sync keeps the synced content: in a git repository (git) or in a folder on the disk of the server (fs), which this instance only pulls from: the folder itself when no branch is set, or the directory of it the branch names.")
+  :feature :remote-sync
+  :type :keyword
+  :visibility :internal
+  :export? false
+  :encryption :no
+  :default :git
+  :setter :none
+  :getter (fn []
+            (let [value (setting/get-value-of-type :keyword :remote-sync-source-type)]
+              (or (#{:git :fs} value)
+                  (throw (ex-info (tru "The remote sync source type must be git or fs.") {:value value})))))
+  :audit :never)
 
 (defsetting remote-sync-branch
   (deferred-tru "The branch of the repository to sync with, such as `main`.")
@@ -64,6 +80,10 @@
   :export? false
   :encryption :no
   :default :read-only
+  :getter (fn []
+            (if (= :fs (remote-sync-source-type))
+              :read-only
+              (setting/get-value-of-type :keyword :remote-sync-type)))
   :setter (fn [new-value]
             (let [new-value (or new-value :read-only)
                   valid-types #{:read-only :read-write}
@@ -117,10 +137,17 @@
   []
   (boolean (and (remote-sync-enabled) (= :read-only (remote-sync-type)))))
 
+(defn- repository-of
+  "The repository at `url`, a git repository authenticated with `token` or a folder, as the source type says."
+  [url token]
+  (case (remote-sync-source-type)
+    :git (git/repository url token)
+    :fs  (fs/repository url)))
+
 (defn repository
   "The repository of the remote sync settings."
   []
-  (git/repository (setting/get :remote-sync-url) (setting/get :remote-sync-token)))
+  (repository-of (setting/get :remote-sync-url) (setting/get :remote-sync-token)))
 
 (defn- token
   "The token `settings` give, the saved one when they give none or give it obfuscated."
@@ -133,16 +160,16 @@
 
 (defn check-repository!
   "Throws unless the repository at the `:remote-sync-url` of `settings`, the saved one by default, can be reached with
-  their token, and has their `:remote-sync-branch` when they give one. The URL is an `http://`, `https://` or `file://`
-  URL, or a local path."
+  their token, and has their `:remote-sync-branch` when they give one. The URL of a git repository is an `http://`,
+  `https://` or `file://` URL, or a local path, and that of a folder a `file:///` URL."
   [settings]
   (let [url (or (:remote-sync-url settings) (setting/get :remote-sync-url))]
     (when (str/blank? url)
       (throw (ex-info (tru "Remote sync isn''t set up.") {})))
-    (when-not (or (not (str/includes? url ":")) (re-find #"^(https?|file)://" url))
+    (when-not (or (= :fs (remote-sync-source-type)) (not (str/includes? url ":")) (re-find #"^(https?|file)://" url))
       (throw (ex-info (tru "Use an HTTP or HTTPS repository URL, such as https://github.com/your-org/your-repo.git.")
                       {})))
-    (let [branches (protocol/branches (git/repository url (token settings)))
+    (let [branches (protocol/branches (repository-of url (token settings)))
           branch   (:remote-sync-branch settings)]
       (when (and (not (str/blank? branch)) (not (some #{branch} branches)))
         (throw (ex-info (tru "The repository has no branch {0}." branch) {:branch branch}))))))
@@ -152,13 +179,16 @@
 
 (defn save!
   "Saves the remote sync `settings`, except those set by environment variables, checking the repository first when they
-  change it, turning remote sync off for a blank URL and syncing the default branch when they name none."
+  change it, turning remote sync off for a blank URL, syncing the default branch when they name none, and refusing the
+  URL of a folder, which only its environment variable sets, so that nobody points a pull at another folder."
   [settings]
   (let [settings (into {} (remove #(= :env (setting/get-raw-value-source (key %)))) (select-keys settings setting-keys))]
     (if (and (contains? settings :remote-sync-url) (str/blank? (:remote-sync-url settings)))
       (do (run! #(setting/set! % nil) [:remote-sync-url :remote-sync-token :remote-sync-branch])
           (collections/clear-remote-synced-collection!))
       (do
+        (when (and (= :fs (remote-sync-source-type)) (contains? settings :remote-sync-url))
+          (throw (ex-info (tru "Set the folder to sync with in the MB_REMOTE_SYNC_URL environment variable.") {})))
         (when (some settings [:remote-sync-url :remote-sync-token :remote-sync-branch])
           (check-repository! settings))
         (t2/with-transaction [_conn]

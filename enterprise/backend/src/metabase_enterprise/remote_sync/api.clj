@@ -52,15 +52,17 @@
 
 (defn- local-changes
   "The changes to the synced content of the app DB since the last sync, all of it when the repository lacks the version
-  of the last sync."
+  of the last sync, and none on a read-only instance, where it can't change."
   []
-  (let [repo         (remote-sync.settings/repository)
-        base-version (tasks/base-version)
-        known?       #(protocol/has-version? repo base-version)]
-    (when (and base-version (not (known?)))
-      (protocol/fetch! repo))
-    (sync/local-changes (content/tree-documents repo (when (and base-version (known?)) base-version))
-                        (content/local-documents))))
+  (if (remote-sync/read-only?)
+    []
+    (let [repo         (remote-sync.settings/repository)
+          base-version (tasks/base-version)
+          known?       #(protocol/has-version? repo base-version)]
+      (when (and base-version (not (known?)))
+        (protocol/fetch! repo))
+      (sync/local-changes (content/tree-documents repo (when (and base-version (known?)) base-version))
+                          (content/local-documents)))))
 
 (defn- removed-rows
   "The rows of the app DB the deleted changes among `changes` still find, which remote sync no longer syncs, by the
@@ -128,7 +130,8 @@
 
 (api.macros/defendpoint :post "/import" :- ::remote-sync.schema/import-response
   "Pull the synced content of the remote branch, or of `branch` to switch to it, into this instance, keeping its local
-  changes when `merge`, discarding them when `force`, and refusing when it has some otherwise."
+  changes when `merge`, discarding them when `force` or on a read-only instance, and refusing when it has some
+  otherwise."
   [_route
    _query
    {:keys [branch force merge expected_branch]}
@@ -152,7 +155,7 @@
     (let [task (started (tasks/start! {:type "import" :branch branch :user-id user :event :event/remote-sync-import}
                                       (fn [report]
                                         (sync/pull! (remote-sync.settings/repository) branch (tasks/base-version)
-                                                    {:force? force :report report}))))]
+                                                    {:force? (or force (remote-sync/read-only?)) :report report}))))]
       {:status :success :task_id (:id task)})))
 
 (api.macros/defendpoint :get "/is-dirty" :- ::remote-sync.schema/is-dirty-response
