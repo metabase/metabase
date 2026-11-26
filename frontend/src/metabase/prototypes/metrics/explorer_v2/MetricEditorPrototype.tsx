@@ -50,7 +50,11 @@ import {
   Text,
 } from "metabase/ui";
 import type * as LibMetric from "metabase-lib/metric";
-import type { Card as CardType, MathOperator } from "metabase-types/api";
+import type {
+  Card as CardType,
+  MathOperator,
+  Measure,
+} from "metabase-types/api";
 
 import { MetricTabContent, isRealTab } from "../MetricTabContent";
 
@@ -99,6 +103,16 @@ import {
   newKey,
 } from "./formula";
 import {
+  AGGREGATION_ITEMS,
+  aggregationItems,
+  equivalentMeasure,
+  isAggregationId,
+  isBackingMeasure,
+  parseAggregation,
+  useInlineAggregations,
+  useSampleTables,
+} from "./inlineAggregations";
+import {
   EMPTY_PANEL,
   type PanelMapping,
   type PanelModel,
@@ -139,10 +153,19 @@ function useSourceItems(segments: SegmentSpec[]) {
   const { metrics, isLoading: isLoadingMetrics } = useMetrics();
   const { data: measures = [], isLoading: isLoadingMeasures } =
     useListMeasuresQuery();
+  const { tableName } = useSampleTables();
+  const tableOfMeasure = useCallback(
+    (measure?: { name: string; table_id: CardType["table_id"] }) =>
+      measure
+        ? (MEASURE_TABLES[measure.name] ??
+          (measure.table_id != null ? tableName(measure.table_id) : undefined))
+        : undefined,
+    [tableName],
+  );
 
   const items = useMemo((): BarItem[] => {
     const measureItems = measures
-      .filter((measure) => !measure.archived)
+      .filter((measure) => !measure.archived && !isBackingMeasure(measure))
       .map(
         (measure): BarItem => ({
           id: `measure:${measure.id}`,
@@ -150,7 +173,7 @@ function useSourceItems(segments: SegmentSpec[]) {
           icon: "ruler",
           info:
             measure.description ?? measure.definition_description ?? undefined,
-          section: MEASURE_TABLES[measure.name] ?? "Measures",
+          section: tableOfMeasure(measure) ?? "Measures",
           sectionIcon: "table",
         }),
       )
@@ -180,10 +203,20 @@ function useSourceItems(segments: SegmentSpec[]) {
       }),
     );
     return [...measureItems, ...compositeItems, ...metricItems];
-  }, [measures, metrics]);
+  }, [measures, metrics, tableOfMeasure]);
+  const newAggregationItems = useMemo(
+    () =>
+      aggregationItems(
+        measures.filter((m) => !m.archived).map((measure) => measure.name),
+      ),
+    [measures],
+  );
 
   const nameOf = (id: string) =>
-    items.find((item) => item.id === id)?.label ?? id;
+    [...items, ...AGGREGATION_ITEMS].find((item) => item.id === id)?.label ??
+    // The measure behind an inline aggregation, kept out of the picker.
+    measures.find((measure) => `measure:${measure.id}` === id)?.name ??
+    id;
   /** The example's measures this instance doesn't have, by name. */
   const missingFor = (example: MetricExample) =>
     measuresOf(example).filter(
@@ -204,9 +237,11 @@ function useSourceItems(segments: SegmentSpec[]) {
         exampleDraft(example, idOf),
       ]),
     );
-    const tableOfMeasure = (measure?: { name: string }) =>
-      measure ? MEASURE_TABLES[measure.name] : undefined;
     const tableOf = (id: string) => {
+      const aggregation = parseAggregation(id);
+      if (aggregation) {
+        return aggregation.table;
+      }
       const [type, rawId] = id.split(":");
       if (type === "measure") {
         return tableOfMeasure(measures.find((m) => String(m.id) === rawId));
@@ -226,7 +261,9 @@ function useSourceItems(segments: SegmentSpec[]) {
         segments.find((segment) => segment.name === name) ?? null,
       inner: (id) => inner.get(id) ?? null,
       leaf: (id) => {
-        const item = items.find((candidate) => candidate.id === id);
+        const item = [...items, ...AGGREGATION_ITEMS].find(
+          (candidate) => candidate.id === id,
+        );
         const table = tableOf(id);
         return item
           ? {
@@ -237,12 +274,13 @@ function useSourceItems(segments: SegmentSpec[]) {
           : null;
       },
     };
-  }, [items, measures, metrics, idOf, segments]);
+  }, [items, measures, metrics, idOf, segments, tableOfMeasure]);
 
   return {
     metrics,
     measures,
     items,
+    aggregationItems: newAggregationItems,
     nameOf,
     resolver,
     idOf,
@@ -386,6 +424,9 @@ export function MetricEditorPrototype() {
                   : EMPTY_DRAFT)
             }
             items={sources.items}
+            aggregationItems={sources.aggregationItems}
+            measures={sources.measures}
+            idOf={sources.idOf}
             nameOf={sources.nameOf}
             resolver={sources.resolver}
             segments={segments}
@@ -418,6 +459,9 @@ function MetricEditorPage({
   isNew,
   initial,
   items,
+  aggregationItems,
+  measures,
+  idOf,
   nameOf,
   resolver,
   segments,
@@ -432,6 +476,9 @@ function MetricEditorPage({
   isNew: boolean;
   initial: MetricDraft;
   items: BarItem[];
+  aggregationItems: BarItem[];
+  measures: Measure[];
+  idOf: (measureName: string) => string;
   nameOf: (id: string) => string;
   resolver: Resolver;
   segments: SegmentSpec[];
@@ -447,14 +494,55 @@ function MetricEditorPage({
   // Up here, not in the Explorer below: the Dimensions tab reads the same
   // loaded measures the chart does.
   const viewerState = useViewerState();
+  const aggregationIds = [
+    ...new Set(
+      draft.formula.flatMap((token) =>
+        token.kind === "term" && isAggregationId(token.measureId)
+          ? [token.measureId]
+          : [],
+      ),
+    ),
+  ];
+  const inline = useInlineAggregations(measures, aggregationIds);
+  /** The saved measure or metric a pill runs as, or null until it exists. */
+  const sourceOf = (id: string) =>
+    isAggregationId(id) ? inline.sourceOf(id) : id;
+
+  const replacePill = (from: string, to: string) =>
+    setDraft((d) => ({
+      ...d,
+      formula: d.formula.map((token) =>
+        token.kind === "term" && token.measureId === from
+          ? { ...token, measureId: to }
+          : token,
+      ),
+    }));
+  const handleSaveAsMeasure = async (id: string, name: string) => {
+    const measureId = await inline.saveAsMeasure(id, name);
+    if (measureId != null) {
+      replacePill(id, `measure:${measureId}`);
+    }
+  };
+  const equivalentOf = (id: string) => {
+    const aggregation = parseAggregation(id);
+    const name = aggregation && equivalentMeasure(aggregation);
+    const isSaved = measures.some(
+      (measure) => measure.name === name && !measure.archived,
+    );
+    return name && isSaved ? idOf(name) : undefined;
+  };
 
   // The metric's real dimensions, and with them what the scripted filter bar
   // may filter by.
   const model = panelModel(draft, {
     name: nameOf,
     inner: resolver.inner,
-    definition: (id) =>
-      viewerState.definitions[toSourceId(id)]?.definition ?? null,
+    definition: (id) => {
+      const source = sourceOf(id);
+      return source
+        ? (viewerState.definitions[toSourceId(source)]?.definition ?? null)
+        : null;
+    },
   });
   const scripted = {
     ...draft,
@@ -489,6 +577,7 @@ function MetricEditorPage({
 
   return (
     <PageContainer pt="md" h="auto">
+      {inline.loaders}
       <PaneHeader
         icon="metric"
         breadcrumbs={
@@ -570,6 +659,7 @@ function MetricEditorPage({
           model={model}
           onPanelChange={setPanel}
           items={items}
+          aggregationItems={aggregationItems}
           nameOf={nameOf}
           resolver={resolver}
           segments={segments}
@@ -577,6 +667,9 @@ function MetricEditorPage({
           filterProblem={filterProblem}
           pillActions={pillActions}
           onChange={setDraft}
+          sourceOf={sourceOf}
+          onSaveAsMeasure={handleSaveAsMeasure}
+          equivalentOf={equivalentOf}
         />
       </Card>
     </PageContainer>
@@ -667,8 +760,17 @@ function EmbeddedExplorer({
   filterProblem,
   pillActions,
   onChange,
+  sourceOf,
+  onSaveAsMeasure,
+  equivalentOf,
+  aggregationItems,
 }: {
+  aggregationItems: BarItem[];
   pillActions: PillActions;
+  /** The saved measure or metric a pill runs as, or null until it exists. */
+  sourceOf: (id: string) => string | null;
+  onSaveAsMeasure: (id: string, name: string) => void;
+  equivalentOf: (id: string) => string | undefined;
   viewerState: ReturnType<typeof useViewerState>;
   draft: MetricDraft;
   /** The draft as the scripted filter bar sees its dimensions. */
@@ -693,16 +795,29 @@ function EmbeddedExplorer({
 
   // Math over measures only: metrics that are math themselves are replaced
   // by their parts, and each measure carries every filter that applies to it.
-  const flat = flattenDraft(scripted, resolver);
+  // Inline aggregations run as the measures behind them, once those exist.
+  const flat = flattenDraft(scripted, resolver).map((token) =>
+    token.kind === "term"
+      ? { ...token, measureId: sourceOf(token.measureId) ?? token.measureId }
+      : token,
+  );
+  const isBacked = flat.every(
+    (token) => token.kind !== "term" || !isAggregationId(token.measureId),
+  );
   const sourceIds = [
     ...new Set(
-      flat.flatMap((token) => (token.kind === "term" ? [token.measureId] : [])),
+      flat.flatMap((token) =>
+        token.kind === "term" && !isAggregationId(token.measureId)
+          ? [token.measureId]
+          : [],
+      ),
     ),
   ];
   const loadedCount = sourceIds.filter(
     (id) => definitions[toSourceId(id)]?.definition != null,
   ).length;
   const isValid =
+    isBacked &&
     isComplete(draft.formula) &&
     findProblem(draft.formula, nameOf) == null &&
     filterProblem == null;
@@ -743,7 +858,11 @@ function EmbeddedExplorer({
                   : undefined,
               unshared: namePills(metricDimensions(inner, resolver)),
             }
-          : { first: MEASURE_COLUMNS[nameOf(id)], alias: nameOf(id) }),
+          : {
+              first:
+                parseAggregation(id)?.column ?? MEASURE_COLUMNS[nameOf(id)],
+              alias: nameOf(id),
+            }),
       },
     );
   };
@@ -797,6 +916,12 @@ function EmbeddedExplorer({
               draft={draft}
               onChange={onChange}
               measureItems={items}
+              aggregationItems={aggregationItems}
+              canSaveAsMeasure={(id) =>
+                sourceOf(id) != null && isAggregationId(id)
+              }
+              onSaveAsMeasure={onSaveAsMeasure}
+              equivalentOf={equivalentOf}
               measureName={nameOf}
               layout="explorer"
               whereFilters={whereFilters}

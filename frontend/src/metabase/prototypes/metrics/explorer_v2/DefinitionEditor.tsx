@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -16,6 +16,7 @@ import {
   TextInput,
   Tooltip,
 } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import { getMeasure } from "../data";
 
@@ -67,6 +68,10 @@ export function DefinitionEditor({
   segmentFilter,
   canNameFilter,
   onNameFilter,
+  aggregationItems = [],
+  canSaveAsMeasure,
+  onSaveAsMeasure,
+  equivalentOf,
 }: {
   draft: MetricDraft;
   onChange: (draft: MetricDraft) => void;
@@ -92,6 +97,13 @@ export function DefinitionEditor({
   canNameFilter?: (measureId: string) => boolean;
   /** Called with the new segment; the pill then shows its name. */
   onNameFilter?: (measureId: string, filter: string, name: string) => void;
+  /** Aggregations to type straight in, like Sum(Orders.Total); offered once typing. */
+  aggregationItems?: BarItem[];
+  /** Whether the pill is an inline aggregation that can be saved as a measure. */
+  canSaveAsMeasure?: (measureId: string) => boolean;
+  onSaveAsMeasure?: (measureId: string, name: string) => void;
+  /** A saved measure that is the same aggregation, by its item id. */
+  equivalentOf?: (measureId: string) => string | undefined;
 }) {
   const { formula, where } = draft;
   const setFormula = (next: FormulaToken[]) =>
@@ -116,6 +128,10 @@ export function DefinitionEditor({
   );
 
   const problem = findProblem(formula, measureName) ?? extraProblem ?? null;
+  const searchTerms = (query: string) => [
+    ...search(measureItems, query),
+    ...(query.trim() === "" ? [] : search(aggregationItems, query)),
+  ];
   const hasProblem = (key: string) => problem?.keys.includes(key) ?? false;
 
   const isEditing = (key: string, part: string) =>
@@ -212,7 +228,7 @@ export function DefinitionEditor({
       }),
     );
     return [
-      ...search(measureItems, query),
+      ...searchTerms(query),
       ...search(logic, query),
       ...search(filterOptions, query),
     ];
@@ -359,7 +375,7 @@ export function DefinitionEditor({
           <span className={cx(S.seg, S.segEditing)}>
             <InlineSuggest
               placeholder={name}
-              getItems={(query) => search(measureItems, query)}
+              getItems={searchTerms}
               onPick={(item) => {
                 replaceToken(token.key, { ...token, measureId: item.id });
                 finish();
@@ -408,6 +424,24 @@ export function DefinitionEditor({
           >
             {name}
           </button>
+        )}
+        {onSaveAsMeasure && canSaveAsMeasure?.(token.measureId) && (
+          <SaveAsMeasure
+            equivalent={equivalentOf?.(token.measureId)}
+            equivalentName={measureName}
+            onSave={(measureName) =>
+              onSaveAsMeasure(token.measureId, measureName)
+            }
+            onUseEquivalent={(id) =>
+              setFormula(
+                formula.map((t) =>
+                  t.kind === "term" && t.measureId === token.measureId
+                    ? { ...t, measureId: id }
+                    : t,
+                ),
+              )
+            }
+          />
         )}
         {token.filters.map((filter) =>
           isEditing(token.key, `filter:${filter}`) ? (
@@ -755,6 +789,86 @@ function NameFilter({
   onClose: () => void;
   onSave: (name: string) => void;
 }) {
+  return (
+    <NamePopover
+      defaultOpen={defaultOpen}
+      onClose={onClose}
+      onSave={onSave}
+      label="Name this filter"
+      icon="label"
+      placeholder="Like Large orders"
+      actionLabel="Save segment"
+    />
+  );
+}
+
+/**
+ * Turns an inline aggregation into a named measure on its table, so other
+ * metrics can reuse it. Offers the saved measure it duplicates, if any.
+ */
+function SaveAsMeasure({
+  equivalent,
+  equivalentName,
+  onSave,
+  onUseEquivalent,
+}: {
+  equivalent?: string;
+  equivalentName: (id: string) => string;
+  onSave: (name: string) => void;
+  onUseEquivalent: (id: string) => void;
+}) {
+  return (
+    <NamePopover
+      defaultOpen={false}
+      onClose={() => undefined}
+      onSave={onSave}
+      label="Save as measure"
+      icon="bookmark"
+      placeholder="Like Revenue"
+      actionLabel="Save measure"
+      note={
+        equivalent ? (
+          <Group gap="xs" wrap="nowrap" justify="space-between">
+            <Text size="sm" c="text-secondary">
+              {`Same as ${equivalentName(equivalent)}.`}
+            </Text>
+            <Button
+              variant="subtle"
+              size="compact-sm"
+              onClick={() => onUseEquivalent(equivalent)}
+            >
+              {`Use ${equivalentName(equivalent)}`}
+            </Button>
+          </Group>
+        ) : (
+          <Text size="sm" c="text-secondary">
+            Name it to reuse it in other metrics.
+          </Text>
+        )
+      }
+    />
+  );
+}
+
+function NamePopover({
+  defaultOpen,
+  onClose,
+  onSave,
+  label,
+  icon,
+  placeholder,
+  actionLabel,
+  note,
+}: {
+  defaultOpen: boolean;
+  onClose: () => void;
+  onSave: (name: string) => void;
+  label: string;
+  icon: IconName;
+  placeholder: string;
+  actionLabel: string;
+  note?: ReactNode;
+}) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [name, setName] = useState("");
   const trimmed = name.trim();
@@ -778,21 +892,22 @@ function NameFilter({
       trapFocus
     >
       <Popover.Target>
-        <Tooltip label="Name this filter" disabled={isOpen}>
+        <Tooltip label={label} disabled={isOpen}>
           <button
             className={S.nameFilter}
-            aria-label="Name this filter"
+            aria-label={label}
             onClick={() => toggle(!isOpen)}
           >
-            <Icon name="label" size={12} />
+            <Icon name={icon} size={12} />
           </button>
         </Tooltip>
       </Popover.Target>
       <Popover.Dropdown>
         <Stack gap="sm" p="md" w="18rem">
+          {note}
           <TextInput
             data-autofocus
-            placeholder="Like Large orders"
+            placeholder={placeholder}
             value={name}
             onChange={(event) => setName(event.target.value)}
             onKeyDown={(event) => {
@@ -809,7 +924,7 @@ function NameFilter({
               disabled={trimmed === ""}
               onClick={save}
             >
-              Save segment
+              {actionLabel}
             </Button>
           </Group>
         </Stack>

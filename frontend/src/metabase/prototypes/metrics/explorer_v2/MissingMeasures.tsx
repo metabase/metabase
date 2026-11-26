@@ -16,10 +16,13 @@ import { MEASURE_COLUMNS, MEASURE_TABLES } from "./catalog";
 
 const STAGE = 0;
 
-/** "Sum of Payment" on Invoices, or "Count" when the measure adds up no column. */
-function buildDefinition(
+export type AggregationOperator = "count" | "sum" | "avg";
+
+/** "Sum of Payment" on Invoices, or "Count" of its rows. */
+export function buildDefinition(
   provider: Lib.MetadataProvider,
   table: Table,
+  operatorName: AggregationOperator,
   columnName: string | undefined,
 ): DatasetQuery | null {
   const tableMetadata = Lib.tableOrCardMetadata(provider, table.id);
@@ -29,13 +32,12 @@ function buildDefinition(
   const query = Lib.queryFromTableOrCardMetadata(provider, tableMetadata);
   const operator = Lib.availableAggregationOperators(query, STAGE).find(
     (candidate) =>
-      Lib.displayInfo(query, STAGE, candidate).shortName ===
-      (columnName ? "sum" : "count"),
+      Lib.displayInfo(query, STAGE, candidate).shortName === operatorName,
   );
   if (!operator) {
     return null;
   }
-  if (!columnName) {
+  if (operatorName === "count") {
     return Lib.toJsQuery(
       Lib.aggregate(query, STAGE, Lib.aggregationClause(operator)),
     );
@@ -52,7 +54,7 @@ function buildDefinition(
 }
 
 /** Puts a table's fields in the store, for the metadata provider to read. */
-function LoadTable({ id }: { id: TableId }) {
+export function LoadTable({ id }: { id: TableId }) {
   useGetTableQueryMetadataQuery({ id });
   return null;
 }
@@ -86,7 +88,12 @@ export function MissingMeasures({ names }: { names: string[] }) {
     return {
       name,
       definition: table
-        ? buildDefinition(provider, table, MEASURE_COLUMNS[name])
+        ? buildDefinition(
+            provider,
+            table,
+            MEASURE_COLUMNS[name] ? "sum" : "count",
+            MEASURE_COLUMNS[name],
+          )
         : null,
     };
   });
