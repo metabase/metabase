@@ -4,21 +4,25 @@ import { createTestEditor } from "../test-editor";
 const A = pill("A");
 const B = pill("B");
 
+const countHidden = (editor: ReturnType<typeof createTestEditor>["editor"]) =>
+  editor.view.dom.querySelectorAll("[data-hidden]").length;
+
 const getHiddenCount = (...stages: Parameters<typeof createTestEditor>) =>
-  createTestEditor(...stages).editor.view.dom.querySelectorAll("[data-hidden]")
-    .length;
+  countHidden(createTestEditor(...stages).editor);
 
 describe("hidden then", () => {
-  it("hides a then with no row filters before it", () => {
-    expect(getHiddenCount([], [A])).toBe(1);
-  });
+  it.each([
+    { stages: [[], [A]], hidden: 1 },
+    { stages: [[], [], [A]], hidden: 2 },
+  ])(
+    "hides every then with no row filters before it in $stages",
+    ({ stages, hidden }) => {
+      expect(getHiddenCount(...stages)).toBe(hidden);
+    },
+  );
 
   it("shows a then after a row filter", () => {
     expect(getHiddenCount([A], [B])).toBe(0);
-  });
-
-  it("hides every then before the first filter", () => {
-    expect(getHiddenCount([], [], [A])).toBe(2);
   });
 
   it("hides the then of an empty stage", () => {
@@ -27,5 +31,11 @@ describe("hidden then", () => {
 
   it("hides the then of an empty last stage", () => {
     expect(getHiddenCount([A], [])).toBe(1);
+  });
+
+  it("shows a then after a row filter that is being edited", () => {
+    const { editor, editPillAt } = createTestEditor([A], [B]);
+    editPillAt(1, A);
+    expect(countHidden(editor)).toBe(0);
   });
 });

@@ -6,7 +6,10 @@ import { Menu } from "metabase/ui";
 import type { FilterOperator } from "../../types";
 import type { GetAnchorRect } from "../AnchorTarget/AnchorTarget";
 import { getOperatorText } from "../OperatorPart/utils";
-import { SuggestionMenu } from "../SuggestionMenu/SuggestionMenu";
+import {
+  SuggestionMenu,
+  SuggestionSection,
+} from "../SuggestionMenu/SuggestionMenu";
 import { useSuggestionKeys } from "../SuggestionMenu/use-suggestion-keys";
 
 import { findExactOperator, findOperators } from "./utils";
@@ -58,16 +61,18 @@ export const OperatorPopup = ({
 
   return (
     <SuggestionMenu getAnchorRect={getAnchorRect}>
-      {items.map((operator, index) => (
-        <Menu.Item
-          key={operator.key}
-          aria-selected={index === activeIndex}
-          onMouseEnter={() => setActiveIndex(index)}
-          onClick={() => onPick(operator)}
-        >
-          {getOperatorText(operator)}
-        </Menu.Item>
-      ))}
+      <SuggestionSection>
+        {items.map((operator, index) => (
+          <Menu.Item
+            key={operator.key}
+            aria-selected={index === activeIndex}
+            onMouseEnter={() => setActiveIndex(index)}
+            onClick={() => onPick(operator)}
+          >
+            {getOperatorText(operator)}
+          </Menu.Item>
+        ))}
+      </SuggestionSection>
     </SuggestionMenu>
   );
 };

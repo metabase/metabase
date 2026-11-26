@@ -1,13 +1,19 @@
-import { Editor, findChildren } from "@tiptap/core";
+import { type AnyExtension, Editor, findChildren } from "@tiptap/core";
 import Document from "@tiptap/extension-document";
 import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
 
-import type { Token } from "../model";
+import type { PillToken, Token } from "../model";
+import { MOCK_ADAPTER, type MockFilter } from "../test-utils";
+import type { FilterBarAdapter, FilterColumn, FilterOperator } from "../types";
 
 import { documentToTokens, tokensToContent } from "./document";
+import { createDraftActions } from "./draft/actions";
+import { insertPillDraft } from "./draft/layout";
+import { createDraftActionKeys } from "./draft/plugins/action-keys";
 import { createDraftKeys } from "./draft/plugins/keys";
 import { createDraftLifecycle } from "./draft/plugins/lifecycle";
+import { findDraftAt } from "./draft/read";
 import {
   createColumnNode,
   createConnectorNode,
@@ -27,7 +33,22 @@ import { createHiddenThen } from "./plugins/hidden-then";
 import { createFilterBarKeys } from "./plugins/keys";
 import { createParens } from "./plugins/parens";
 
-export const createTestEditor = (...stages: Token<string>[][]) => {
+const EDIT_COLUMN: FilterColumn = { key: "c", label: "C", icon: "int" };
+const EDIT_OPERATOR: FilterOperator = {
+  key: "=",
+  label: "is",
+  valueKind: "multi",
+};
+
+type KeyModifiers = Pick<
+  KeyboardEventInit,
+  "shiftKey" | "metaKey" | "ctrlKey" | "altKey"
+>;
+
+export const createTestEditorWith = <F = string>(
+  extensions: AnyExtension[],
+  ...stages: Token<F>[][]
+) => {
   const editor = new Editor({
     extensions: [
       Document,
@@ -52,20 +73,26 @@ export const createTestEditor = (...stages: Token<string>[][]) => {
       createHiddenThen(),
       createBlankClick(),
       createCaret("caret"),
+      ...extensions,
     ],
     content: tokensToContent(stages),
   });
 
-  const getStages = () => documentToTokens<string>(editor.state.doc);
+  const getStages = () => documentToTokens<F>(editor.state.doc);
 
   const placeCaret = (gap: number) => editor.commands.setTextSelection(1 + gap);
 
   const selectNode = (index: number) =>
     editor.commands.setNodeSelection(1 + index);
 
-  const press = (key: string) =>
-    editor.view.someProp("handleKeyDown", (handle) =>
-      handle(editor.view, new KeyboardEvent("keydown", { key })),
+  const press = (key: string, modifiers: KeyModifiers = {}) =>
+    Boolean(
+      editor.view.someProp("handleKeyDown", (handle) =>
+        handle(
+          editor.view,
+          new KeyboardEvent("keydown", { key, ...modifiers }),
+        ),
+      ),
     );
 
   const type = (text: string) => {
@@ -85,6 +112,27 @@ export const createTestEditor = (...stages: Token<string>[][]) => {
     return draft ? { pos: draft.pos, text: draft.node.textContent } : null;
   };
 
+  const editPillAt = (pos: number, token: PillToken<F>, stage = 0) =>
+    insertPillDraft(
+      editor,
+      { from: pos, to: pos + 1 },
+      { token, stage },
+      {
+        column: { type: "column", column: EDIT_COLUMN, stage },
+        operator: { type: "operator", operator: EDIT_OPERATOR },
+        values: [],
+      },
+      "value",
+    );
+
+  const getCaretDraft = () => {
+    const draft = findDraftAt(editor.state.selection.$from);
+    if (!draft) {
+      throw new Error("Expected a draft at the caret");
+    }
+    return draft;
+  };
+
   return {
     editor,
     getStages,
@@ -93,5 +141,29 @@ export const createTestEditor = (...stages: Token<string>[][]) => {
     press,
     type,
     findDraft,
+    getCaretDraft,
+    editPillAt,
   };
+};
+
+export const createTestEditor = (...stages: Token<string>[][]) =>
+  createTestEditorWith<string>([], ...stages);
+
+export const createActionsTestEditor = ({
+  stages = [],
+  adapter = MOCK_ADAPTER,
+}: {
+  stages?: Token<MockFilter>[][];
+  adapter?: FilterBarAdapter<MockFilter>;
+} = {}) => {
+  const openFilterEditor = jest.fn();
+  const actions = createDraftActions<MockFilter>({
+    getAdapter: () => adapter,
+    openFilterEditor,
+  });
+  const testEditor = createTestEditorWith<MockFilter>(
+    [createDraftActionKeys(actions)],
+    ...stages,
+  );
+  return { ...testEditor, actions, openFilterEditor };
 };

@@ -1,40 +1,21 @@
-import { Editor } from "@tiptap/core";
-import Document from "@tiptap/extension-document";
-import Paragraph from "@tiptap/extension-paragraph";
-import Text from "@tiptap/extension-text";
 import { UndoRedo } from "@tiptap/extensions";
 
 import { pillToken } from "../model";
 import { AND, createTestPill, pill } from "../test-utils";
 
-import {
-  documentToTokens,
-  replacePillTokens,
-  tokensToContent,
-} from "./document";
-import { createConnectorNode, createPillNode } from "./nodes/nodes";
+import { replacePillTokens } from "./document";
+import { createTestEditorWith } from "./test-editor";
 
 const A = pill("A");
 const B = pill("B");
 
 const setup = () => {
-  const editor = new Editor({
-    extensions: [
-      Document,
-      Paragraph,
-      Text,
-      UndoRedo,
-      createPillNode(),
-      createConnectorNode("and"),
-    ],
-    content: tokensToContent([[A, AND, B]]),
-  });
+  const testEditor = createTestEditorWith([UndoRedo], [A, AND, B]);
   const removeFirstPill = () => {
-    editor.commands.setNodeSelection(1);
-    editor.commands.deleteSelection();
+    testEditor.selectNode(0);
+    testEditor.editor.commands.deleteSelection();
   };
-  const getStages = () => documentToTokens<string>(editor.state.doc);
-  return { editor, removeFirstPill, getStages };
+  return { ...testEditor, removeFirstPill };
 };
 
 describe("undo", () => {
@@ -53,5 +34,6 @@ describe("undo", () => {
     expect(getStages()[0][1]).toBe(newB);
     editor.commands.undo();
     expect(getStages()[0][0]).toBe(A);
+    expect(getStages()[0][2]).toBe(newB);
   });
 });

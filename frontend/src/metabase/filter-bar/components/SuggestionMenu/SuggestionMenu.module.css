@@ -7,6 +7,10 @@
   overflow-y: auto;
 }
 
+.section + .section {
+  border-top: 0.5px solid var(--mb-color-border-neutral);
+}
+
 .footer {
   border-top: 0.5px solid var(--mb-color-border-neutral);
 }

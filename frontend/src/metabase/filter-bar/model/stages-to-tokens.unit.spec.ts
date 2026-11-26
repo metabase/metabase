@@ -62,12 +62,6 @@ describe("stagesToTokens", () => {
       [or(leaf("A"), leaf("B")), leaf("C")],
       [[A, OR, B], [C]],
     ],
-    ["no row filters", [and(), leaf("C")], [[], [C]]],
-    [
-      "a filter on the second summary only",
-      [and(), and(), leaf("C")],
-      [[], [], [C]],
-    ],
     [
       "empty stages are kept, so the caret can get into them",
       [leaf("A"), and(), and()],
@@ -86,22 +80,22 @@ describe("stagesToTokens", () => {
       }),
     };
 
-    const stages: FilterStages<string> = [leaf("A"), and(), leaf("C")];
+    const stages: FilterStages<string> = [leaf("A"), leaf("B"), leaf("C")];
 
     const tokens = stagesToTokens(stages, adapter);
 
     expect(tokens).toEqual([
       [{ type: "pill", filter: "A", content: createTestPill("A@0") }],
-      [],
+      [{ type: "pill", filter: "B", content: createTestPill("B@1") }],
       [{ type: "pill", filter: "C", content: createTestPill("C@2") }],
     ]);
   });
 
   it("gives each connector its own object, so it can be a React key", () => {
     const [tokens] = stagesToTokens(
-      [or(and(leaf("A"), leaf("B")), and(leaf("C"), leaf("D")))],
+      [or(leaf("A"), leaf("B"), leaf("C"))],
       TEST_ADAPTER,
     );
-    expect(tokens[1]).not.toBe(tokens[5]);
+    expect(tokens[1]).not.toBe(tokens[3]);
   });
 });

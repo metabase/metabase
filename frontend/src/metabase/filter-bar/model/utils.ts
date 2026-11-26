@@ -55,16 +55,24 @@ const isSameToken = <F>(token: Token<F>, other: Token<F>) =>
     ? isPillToken(other) && _.isEqual(token.content, other.content)
     : token.type === other.type;
 
+const dropTrailingEmptyStages = <F>(stages: TokenStages<F>) =>
+  stages.slice(0, stages.findLastIndex((tokens) => tokens.length > 0) + 1);
+
 export const isSameStages = <F>(
   stages: TokenStages<F>,
   other: TokenStages<F>,
-) =>
-  stages.length === other.length &&
-  stages.every(
-    (tokens, stage) =>
-      tokens.length === other[stage].length &&
-      tokens.every((token, index) => isSameToken(token, other[stage][index])),
+) => {
+  const left = dropTrailingEmptyStages(stages);
+  const right = dropTrailingEmptyStages(other);
+  return (
+    left.length === right.length &&
+    left.every(
+      (tokens, stage) =>
+        tokens.length === right[stage].length &&
+        tokens.every((token, index) => isSameToken(token, right[stage][index])),
+    )
   );
+};
 
 export const hasOr = <F>(tokens: readonly Token<F>[]) => tokens.some(isOrToken);
 

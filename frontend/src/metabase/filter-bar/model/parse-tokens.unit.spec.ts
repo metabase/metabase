@@ -27,6 +27,11 @@ describe("parseTokens", () => {
     ["and", [[A, AND, B]], [and(leaf("A"), leaf("B"))]],
     ["or", [[A, OR, B]], [or(leaf("A"), leaf("B"))]],
     [
+      "a chain of ors as one flat or",
+      [[A, OR, B, OR, C]],
+      [or(leaf("A"), leaf("B"), leaf("C"))],
+    ],
+    [
       "pills side by side without an or as and",
       [[A, B, OPEN, C, CLOSE]],
       [and(leaf("A"), leaf("B"), leaf("C"))],
@@ -80,18 +85,13 @@ describe("parseTokens", () => {
       [or(leaf("A"), leaf("B")), and(leaf("C"), leaf("D"))],
     ],
     ["no row filters", [[], [C]], [and(), leaf("C")]],
-    [
-      "a filter on the second summary only",
-      [[], [], [C]],
-      [and(), and(), leaf("C")],
-    ],
-    ["an empty last stage", [[A], []], [leaf("A"), and()]],
   ])("parses %s", (_, stages, expected) => {
     expect(parseTokens(stages)).toEqual({ type: "ok", stages: expected });
   });
 
   it.each<[string, TokenStages<string>, ParseErrorCode, number, number[]]>([
     ["and at the end", [[A, AND]], "missing-operand", 0, [1]],
+    ["an open parenthesis at the end", [[A, OPEN]], "missing-operand", 0, [1]],
     ["or at the start", [[OR, A]], "missing-operand", 0, [0]],
     ["two connectors in a row", [[A, AND, OR, B]], "missing-operand", 0, [2]],
     [
@@ -161,13 +161,8 @@ describe("parseTokens", () => {
   });
 
   it.each<[string, FilterStages<string>]>([
-    ["and inside or", [or(and(leaf("A"), leaf("B")), leaf("C"))]],
-    [
-      "nested groups",
-      [and(leaf("A"), or(leaf("B"), and(leaf("C"), or(leaf("D"), leaf("E")))))],
-    ],
     ["two stages", [and(leaf("A"), or(leaf("B"), leaf("C"))), leaf("D")]],
-    ["an empty stage between", [leaf("A"), and(), leaf("C")]],
+    ["hidden ands", [and(leaf("A"), leaf("B"), leaf("C"))]],
   ])("reads back the tokens of stages: %s", (_, stages) => {
     expect(parseTokens(stagesToTokens(stages, TEST_ADAPTER))).toEqual({
       type: "ok",

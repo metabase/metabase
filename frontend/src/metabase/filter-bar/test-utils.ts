@@ -1,3 +1,5 @@
+import { Fragment, createElement } from "react";
+
 import {
   type PillToken,
   closeToken,
@@ -10,6 +12,7 @@ import type {
   FilterBarAdapter,
   FilterBarStageAdapter,
   FilterColumn,
+  FilterEditorProps,
   FilterOperator,
   FilterParts,
   FilterStages,
@@ -181,6 +184,24 @@ const getMockColumnGroups = (stage: number): ColumnGroup<MockFilter>[] => [
   },
 ];
 
+const renderMockFilterEditor = ({
+  onChange,
+  onClose,
+}: FilterEditorProps<MockFilter>) =>
+  createElement(
+    Fragment,
+    null,
+    createElement(
+      "button",
+      {
+        type: "button",
+        onClick: () => onChange({ type: "segment", name: "Big orders" }),
+      },
+      "Apply",
+    ),
+    createElement("button", { type: "button", onClick: onClose }, "Close"),
+  );
+
 export const MOCK_ADAPTER: FilterBarAdapter<MockFilter> = {
   stage: (stage) => ({
     columnGroups: () => getMockColumnGroups(stage),
@@ -193,6 +214,7 @@ export const MOCK_ADAPTER: FilterBarAdapter<MockFilter> = {
     }),
     toPill: toMockPill,
     formatValues: formatMockValues,
+    renderFilterEditor: renderMockFilterEditor,
   }),
 };
 

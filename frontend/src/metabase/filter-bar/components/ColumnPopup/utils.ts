@@ -40,6 +40,20 @@ export const buildList = <F>(
   });
 };
 
+export const splitByGroup = <F>(rows: readonly ListRow<F>[]) => {
+  const starts = rows.flatMap((row, index) =>
+    row.type === "group" ? [index] : [],
+  );
+  return starts.map((start, order) => {
+    const header = rows[start];
+    return {
+      start,
+      rows: rows.slice(start, starts[order + 1]),
+      isCollapsed: header.type === "group" && header.isCollapsed,
+    };
+  });
+};
+
 const isNavigableRow = <F>(row: ListRow<F>) => row.type !== "section";
 
 export const getFirstItemIndex = <F>(rows: readonly ListRow<F>[]) =>

@@ -7,7 +7,7 @@ import { PAREN_TEXT } from "../../model";
 const OPERATORS = ["AND", "OR", PAREN_TEXT.open, PAREN_TEXT.close];
 
 export const LogicOperatorsHint = () => (
-  <Flex align="center" justify="space-between" h="2rem" px="xl">
+  <Flex align="center" justify="space-between" py="sm" px="xl">
     <Flex align="center" gap="sm" c="text-secondary">
       <Icon name="info" size={12} />
       <Text fz="sm" lh={1.15} c="inherit">

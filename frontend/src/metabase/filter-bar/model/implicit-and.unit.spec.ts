@@ -18,6 +18,21 @@ describe("applyImplicitAnds", () => {
     ]);
   });
 
+  it.each([
+    [
+      "a close parenthesis and a pill",
+      [OPEN, A, OR, B, CLOSE, C],
+      [OPEN, A, OR, B, CLOSE, AND, C],
+    ],
+    [
+      "two groups",
+      [OPEN, A, OR, B, CLOSE, OPEN, C, OR, D, CLOSE],
+      [OPEN, A, OR, B, CLOSE, AND, OPEN, C, OR, D, CLOSE],
+    ],
+  ])("writes out an and between %s", (_, tokens, expected) => {
+    expect(applyImplicitAnds([tokens])).toEqual([expected]);
+  });
+
   it("decides for each stage on its own", () => {
     expect(
       applyImplicitAnds([
@@ -33,6 +48,7 @@ describe("applyImplicitAnds", () => {
   it("keeps the tokens that are already right", () => {
     const stages = [[A, AND, B, OR, C], [D]];
     const [rows, summary] = applyImplicitAnds(stages);
+    expect(rows).toHaveLength(stages[0].length);
     expect(rows.every((token, index) => token === stages[0][index])).toBe(true);
     expect(summary[0]).toBe(D);
   });

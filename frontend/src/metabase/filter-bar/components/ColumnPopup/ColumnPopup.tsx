@@ -7,7 +7,10 @@ import type { ConnectorToken } from "../../model";
 import type { ColumnGroup, ColumnItem } from "../../types";
 import type { GetAnchorRect } from "../AnchorTarget/AnchorTarget";
 import { LogicOperatorsHint } from "../LogicOperatorsHint/LogicOperatorsHint";
-import { SuggestionMenu } from "../SuggestionMenu/SuggestionMenu";
+import {
+  SuggestionMenu,
+  SuggestionSection,
+} from "../SuggestionMenu/SuggestionMenu";
 import { useSuggestionKeys } from "../SuggestionMenu/use-suggestion-keys";
 
 import { ColumnRow } from "./ColumnRow/ColumnRow";
@@ -17,6 +20,7 @@ import {
   findExactItem,
   getFirstItemIndex,
   getNextIndex,
+  splitByGroup,
 } from "./utils";
 
 type ColumnPopupProps<F> = {
@@ -95,23 +99,31 @@ export const ColumnPopup = <F,>({
       footer={<LogicOperatorsHint />}
     >
       {connector && (
-        <Menu.Item
-          aria-selected={activeIndex < 0}
-          onMouseEnter={() => setActiveIndex(-1)}
-          onClick={() => onPickConnector(connector)}
-        >
-          {connector.toUpperCase()}
-        </Menu.Item>
+        <SuggestionSection>
+          <Menu.Item
+            aria-selected={activeIndex < 0}
+            onMouseEnter={() => setActiveIndex(-1)}
+            onClick={() => onPickConnector(connector)}
+          >
+            {connector.toUpperCase()}
+          </Menu.Item>
+        </SuggestionSection>
       )}
-      {rows.map((row, index) => (
-        <ColumnRow
-          key={row.key}
-          row={row}
-          isFirst={index === 0}
-          isActive={index === activeIndex}
-          onHover={() => setActiveIndex(index)}
-          onClick={() => pick(row)}
-        />
+      {splitByGroup(rows).map((section) => (
+        <SuggestionSection
+          key={section.rows[0].key}
+          isCollapsed={section.isCollapsed}
+        >
+          {section.rows.map((row, offset) => (
+            <ColumnRow
+              key={row.key}
+              row={row}
+              isActive={section.start + offset === activeIndex}
+              onHover={() => setActiveIndex(section.start + offset)}
+              onClick={() => pick(row)}
+            />
+          ))}
+        </SuggestionSection>
       ))}
     </SuggestionMenu>
   );

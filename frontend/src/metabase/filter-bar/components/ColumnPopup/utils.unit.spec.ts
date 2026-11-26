@@ -6,6 +6,7 @@ import {
   type ListRow,
   buildList,
   findExactItem,
+  getFirstItemIndex,
   getItemDisplay,
   getNextIndex,
 } from "./utils";
@@ -71,23 +72,46 @@ describe("buildList", () => {
   });
 
   it("keeps only the matches in their order and opens collapsed groups", () => {
-    const rows = buildList<string>(
-      [ORDERS, PEOPLE],
-      "created",
-      new Set(["Orders"]),
-    );
+    const rows = buildList<string>([ORDERS, PEOPLE], "a", new Set(["Orders"]));
     expect(describeRows(rows)).toEqual([
       "group Orders",
+      "Total",
       "section Dates",
       "Created At",
       "Created",
+      "group People",
+      "Name",
+      "Email",
     ]);
   });
 
-  it("drops groups and sections without matches", () => {
+  it("does not open collapsed groups for a whitespace-only query", () => {
+    const rows = buildList<string>([ORDERS, PEOPLE], "  ", new Set(["Orders"]));
+    expect(describeRows(rows)).toEqual([
+      "group Orders (collapsed)",
+      "group People",
+      "Name",
+      "Email",
+    ]);
+  });
+
+  it.each<[string, string[]]>([
+    ["mail", ["group People", "Email"]],
+    ["total", ["group Orders", "Total"]],
+  ])("drops groups and sections without matches for %j", (query, rows) => {
     expect(
-      describeRows(buildList<string>([ORDERS, PEOPLE], "mail", new Set())),
-    ).toEqual(["group People", "Email"]);
+      describeRows(buildList<string>([ORDERS, PEOPLE], query, new Set())),
+    ).toEqual(rows);
+  });
+});
+
+describe("getFirstItemIndex", () => {
+  it.each<[string, string, number]>([
+    ["the group header", "", 1],
+    ["the group and section headers", "created", 2],
+  ])("skips %s", (_, query, index) => {
+    const rows = buildList<string>([ORDERS], query, new Set());
+    expect(getFirstItemIndex(rows)).toBe(index);
   });
 });
 
@@ -105,21 +129,21 @@ describe("getNextIndex", () => {
   it("wraps around", () => {
     expect(getNextIndex(rows, 0, -1)).toBe(5);
   });
+
+  it.each<1 | -1>([1, -1])(
+    "stays put when nothing else is navigable (step %d)",
+    (step) => {
+      const collapsed = buildList<string>([ORDERS], "", new Set(["Orders"]));
+      expect(getNextIndex(collapsed, 0, step)).toBe(0);
+    },
+  );
 });
 
 describe("findExactItem", () => {
   const rows = buildList<string>([ORDERS, PEOPLE], "", new Set());
 
-  it("finds the item whose label is the query", () => {
-    const found = findExactItem(rows, "total");
-    expect(found && getItemDisplay(found).label).toBe("Total");
-  });
-
-  it("finds nothing when the query starts another label too", () => {
-    expect(findExactItem(rows, "created")).toBeNull();
-  });
-
-  it("finds nothing for an empty query", () => {
-    expect(findExactItem(rows, " ")).toBeNull();
+  it("finds an item in a later group", () => {
+    const found = findExactItem(rows, "email");
+    expect(found && getItemDisplay(found).label).toBe("Email");
   });
 });

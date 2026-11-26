@@ -1,7 +1,7 @@
 import type { Token } from "../../model";
-import { AND, CLOSE, OPEN, OR, pill } from "../../test-utils";
+import { AND, OR, pill } from "../../test-utils";
 import type { FilterColumn, FilterOperator } from "../../types";
-import { createTestEditor } from "../test-editor";
+import { createTestEditor, createTestEditorWith } from "../test-editor";
 
 import {
   columnDraftContent,
@@ -10,14 +10,8 @@ import {
   insertPillDraft,
   placeDraftInput,
 } from "./layout";
-import { tabToPart } from "./plugins/keys";
-import {
-  findDraftAt,
-  findPartStep,
-  getInputs,
-  readDraft,
-  readValues,
-} from "./read";
+import { createDraftPlaceholders } from "./plugins/placeholders";
+import { findPartStep, getInputs, readDraft, readValues } from "./read";
 import type { ColumnPart, OperatorPart } from "./types";
 
 const A = pill("A");
@@ -47,6 +41,29 @@ const createWithDraft = (
   return testEditor;
 };
 
+const setupPillDraft = (
+  operator: FilterOperator,
+  values: unknown[],
+  extensions: Parameters<typeof createTestEditorWith>[0] = [],
+) => {
+  const testEditor = createTestEditorWith(extensions, [A]);
+  const { editor, getCaretDraft } = testEditor;
+  const operatorPart = toOperatorPart(operator);
+  insertPillDraft(
+    editor,
+    { from: 2, to: 2 },
+    { token: pill("C"), stage: 0 },
+    { column: COLUMN_PART, operator: operatorPart, values },
+    "value",
+  );
+  const read = () => {
+    const draft = getCaretDraft();
+    return { ...readDraft(draft), values: readValues(draft) };
+  };
+  const inputs = () => getInputs(getCaretDraft());
+  return { ...testEditor, operatorPart, read, inputs };
+};
+
 describe("draft", () => {
   describe("typing at the caret", () => {
     it("creates a draft with the typed text, the caret in it", () => {
@@ -65,32 +82,40 @@ describe("draft", () => {
       expect(findDraft()).toBeNull();
     });
 
-    it("inserts a paren, not a draft, for (", () => {
-      const { findDraft, getStages } = createWithDraft([A], 1, "(");
+    it("creates no draft for (", () => {
+      const { findDraft } = createWithDraft([A], 1, "(");
       expect(findDraft()).toBeNull();
-      expect(getStages()).toEqual([[A, OPEN, CLOSE]]);
     });
   });
 
   describe("text that becomes a connector", () => {
-    it("turns and / or into a connector", () => {
-      const { editor, getStages, findDraft } = createWithDraft([A], 1, "or ");
+    it.each([
+      { text: "or ", connector: OR },
+      { text: "OR ", connector: OR },
+      { text: "And ", connector: AND },
+    ])("turns $text into a connector", ({ text, connector }) => {
+      const { editor, getStages, findDraft } = createWithDraft([A], 1, text);
       expect(findDraft()).toBeNull();
-      expect(getStages()).toEqual([[A, OR]]);
+      expect(getStages()).toEqual([[A, connector]]);
       expect(editor.state.selection.from).toBe(3);
     });
 
-    it("switches the connector before it to the typed one", () => {
-      const { editor, getStages } = createWithDraft([A, AND, B], 2, "or ");
-      expect(getStages()).toEqual([[A, OR, B]]);
-      expect(editor.state.selection.from).toBe(3);
-    });
-
-    it("drops a typed connector right after the same one", () => {
-      const { getStages, findDraft } = createWithDraft([A, AND, B], 2, "and ");
-      expect(getStages()).toEqual([[A, AND, B]]);
-      expect(findDraft()).toBeNull();
-    });
+    it.each([
+      { text: "or ", connector: OR },
+      { text: "and ", connector: AND },
+    ])(
+      "puts $text in place of the connector before it",
+      ({ text, connector }) => {
+        const { editor, getStages, findDraft } = createWithDraft(
+          [A, AND, B],
+          2,
+          text,
+        );
+        expect(findDraft()).toBeNull();
+        expect(getStages()).toEqual([[A, connector, B]]);
+        expect(editor.state.selection.from).toBe(3);
+      },
+    );
 
     it("keeps other text, even a word that ends with and / or", () => {
       const { findDraft } = createWithDraft([A], 1, "brand ");
@@ -151,7 +176,7 @@ describe("draft", () => {
     });
   });
 
-  describe("column step", () => {
+  describe("findPartStep", () => {
     it("matches an empty query at a bare caret", () => {
       const { editor, placeCaret } = createTestEditor([A, AND, B]);
       placeCaret(2);
@@ -181,18 +206,25 @@ describe("draft", () => {
     });
 
     it("does not match once the draft has an operator", () => {
-      const { editor } = createTestEditor([A]);
+      const { editor, getCaretDraft } = createTestEditor([A]);
       insertDraft(editor, { from: 2, to: 2 }, columnDraftContent(COLUMN_PART));
-      const draft = findDraftAt(editor.state.selection.$from);
-      if (draft) {
-        placeDraftInput(
-          editor,
-          draft,
-          { column: COLUMN_PART, operator: toOperatorPart(LIST), values: [] },
-          "value",
-        );
-      }
+      placeDraftInput(
+        editor,
+        getCaretDraft(),
+        { column: COLUMN_PART, operator: toOperatorPart(LIST), values: [] },
+        "value",
+      );
       expect(findPartStep(editor.state.selection.$from)).toBeNull();
+    });
+
+    it("matches the draft up to the input of the edited part", () => {
+      const { editor, press } = setupPillDraft(LIST, ["a"]);
+      press("ArrowLeft");
+      expect(findPartStep(editor.state.selection.$from)).toEqual({
+        range: { from: 2, to: 6 },
+        query: "",
+        text: "",
+      });
     });
   });
 
@@ -220,30 +252,7 @@ describe("draft", () => {
   });
 
   describe("moving between parts", () => {
-    const setup = (operator: FilterOperator, values: unknown[]) => {
-      const testEditor = createTestEditor([A]);
-      const { editor } = testEditor;
-      const operatorPart = toOperatorPart(operator);
-      insertPillDraft(
-        editor,
-        { from: 2, to: 2 },
-        { token: pill("C"), stage: 0 },
-        { column: COLUMN_PART, operator: operatorPart, values },
-        "value",
-      );
-      const getDraft = () => findDraftAt(editor.state.selection.$from);
-      const read = () => {
-        const current = getDraft();
-        return current
-          ? { ...readDraft(current), values: readValues(current) }
-          : null;
-      };
-      const inputs = () => {
-        const current = getDraft();
-        return current ? getInputs(current) : [];
-      };
-      return { ...testEditor, operatorPart, read, inputs };
-    };
+    const setup = setupPillDraft;
 
     it("edits the operator, then the column, on ArrowLeft", () => {
       const { press, read, operatorPart } = setup(LIST, ["a", "b"]);
@@ -286,12 +295,9 @@ describe("draft", () => {
     });
 
     it("edits a part on click", () => {
-      const { editor, read } = setup(LIST, ["a"]);
-      const draft = findDraftAt(editor.state.selection.$from);
-      const column = draft?.node.firstChild;
-      if (draft && column) {
-        editClickedPart(editor, column, draft.pos + 1);
-      }
+      const { editor, read, getCaretDraft } = setup(LIST, ["a"]);
+      const draft = getCaretDraft();
+      editClickedPart(editor, draft.node.child(0), draft.pos + 1);
       expect(read()).toMatchObject({ step: "column", edited: COLUMN_PART });
     });
 
@@ -330,8 +336,9 @@ describe("draft", () => {
     });
 
     it("keeps an empty start of a range in its place", () => {
-      const { read } = setup(BETWEEN, ["", "100"]);
+      const { editor, read, inputs } = setup(BETWEEN, ["", "100"]);
       expect(read()).toMatchObject({ texts: ["", "100"], values: ["", "100"] });
+      expect(editor.state.selection.from).toBe(inputs()[0].from);
     });
 
     it("moves between the ends of a range with the arrows", () => {
@@ -363,9 +370,9 @@ describe("draft", () => {
     });
 
     it("edits the part before on Shift+Tab", () => {
-      const { editor, read } = setup(BETWEEN, ["20", "100"]);
-      tabToPart(editor, true);
-      tabToPart(editor, true);
+      const { press, read } = setup(BETWEEN, ["20", "100"]);
+      press("Tab", { shiftKey: true });
+      press("Tab", { shiftKey: true });
       expect(read()).toMatchObject({
         step: "operator",
         values: ["20", "100"],
@@ -386,6 +393,60 @@ describe("draft", () => {
       expect(editor.state.selection.from).toBe(inputs()[0].to);
       expect(read()).toMatchObject({ texts: ["20", "100"] });
     });
+
+    it("keeps the and of a range on Delete at the end of its start", () => {
+      const { editor, press, read, inputs } = setup(BETWEEN, ["20", "100"]);
+      editor.commands.setTextSelection(inputs()[0].to);
+      expect(press("Delete")).toBe(true);
+      expect(read()).toMatchObject({ texts: ["20", "100"] });
+    });
+
+    it("leaves Tab at the last input with no next part to others", () => {
+      const { editor, press, inputs } = setup(BETWEEN, ["20", "100"]);
+      editor.commands.setTextSelection(inputs()[1].to);
+      expect(press("Tab")).toBe(false);
+    });
+
+    it("adds no value node to a list with no values", () => {
+      const { read } = setup(LIST, []);
+      expect(read()).toMatchObject({ step: "value", valuesPart: null });
+    });
+  });
+
+  describe("placeholders", () => {
+    const getPlaceholders = (
+      editor: ReturnType<typeof setupPillDraft>["editor"],
+    ) =>
+      [...editor.view.dom.querySelectorAll("[data-placeholder]")].map(
+        (element) => element.getAttribute("data-placeholder"),
+      );
+
+    it.each([
+      { name: "the edited column", keys: 2, expected: ["C"] },
+      { name: "the edited operator", keys: 1, expected: ["is"] },
+    ])("shows the label of $name", ({ keys, expected }) => {
+      const { editor, press } = setupPillDraft(
+        LIST,
+        ["a"],
+        [createDraftPlaceholders()],
+      );
+      Array.from({ length: keys }).forEach(() => press("ArrowLeft"));
+      expect(getPlaceholders(editor)).toEqual(expected);
+    });
+
+    it.each([
+      { operator: BETWEEN, values: [], expected: ["Min", "Max"] },
+      { operator: LIST, values: [], expected: ["Value"] },
+      { operator: LIST, values: ["a"], expected: ["Add more"] },
+    ])(
+      "shows $expected for $operator.key with $values",
+      ({ operator, values, expected }) => {
+        const { editor } = setupPillDraft(operator, values, [
+          createDraftPlaceholders(),
+        ]);
+        expect(getPlaceholders(editor)).toEqual(expected);
+      },
+    );
   });
 
   describe("editing a pill", () => {

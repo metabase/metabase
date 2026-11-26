@@ -12,6 +12,20 @@ type SuggestionMenuProps = {
   children: ReactNode;
 };
 
+type SuggestionSectionProps = {
+  isCollapsed?: boolean;
+  children: ReactNode;
+};
+
+export const SuggestionSection = ({
+  isCollapsed = false,
+  children,
+}: SuggestionSectionProps) => (
+  <Box className={S.section} px="lg" pt="md" pb={isCollapsed ? "md" : "xl"}>
+    {children}
+  </Box>
+);
+
 export const SuggestionMenu = ({
   getAnchorRect,
   footer,
@@ -34,11 +48,9 @@ export const SuggestionMenu = ({
       w="20rem"
       mah="25rem"
       p={0}
-      onMouseDown={(event) => event.preventDefault()}
+      onMouseDownCapture={(event) => event.preventDefault()}
     >
-      <Box className={S.items} p="sm">
-        {children}
-      </Box>
+      <Box className={S.items}>{children}</Box>
       {footer && <Box className={S.footer}>{footer}</Box>}
     </Menu.Dropdown>
   </Menu>

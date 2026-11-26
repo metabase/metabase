@@ -23,9 +23,9 @@ describe("findExact", () => {
   });
 
   it("finds nothing when two items have the label", () => {
-    expect(findExact(["Created At", "Created At"], label, "created at")).toBe(
-      null,
-    );
+    expect(
+      findExact(["Created At", "Created At"], label, "created at"),
+    ).toBeNull();
   });
 
   it("finds nothing for an empty query", () => {

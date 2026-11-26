@@ -2,7 +2,8 @@ import { Extension } from "@tiptap/core";
 import { type EditorState, Plugin } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
-import { isPillNode, isThenNode } from "../nodes/types";
+import { getEditedPill } from "../nodes/nodes";
+import { isDraftNode, isPillNode, isThenNode } from "../nodes/types";
 
 const createHiddenThenDecorations = ({ doc }: EditorState) => {
   const thens: { from: number; to: number; pillsBefore: number }[] = [];
@@ -15,7 +16,8 @@ const createHiddenThenDecorations = ({ doc }: EditorState) => {
         pillsBefore: pillCount,
       });
     }
-    if (isPillNode(node)) {
+    const isEditedPill = isDraftNode(node) && getEditedPill(node) !== null;
+    if (isPillNode(node) || isEditedPill) {
       pillCount += 1;
     }
   });
