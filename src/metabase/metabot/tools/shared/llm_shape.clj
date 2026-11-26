@@ -796,15 +796,15 @@
   A filter on the dashboard the user is viewing can also carry `:current_value`, the value on the user's screen.
   A filter without that key says nothing about its value on screen."
   [{:keys [id name type default connected_dashcards] :as parameter}]
-  (str "<filter id=\"" (escape-xml id)
-       "\" name=\"" (escape-xml (dashboard-filter-name name))
-       "\" type=\"" (escape-xml (u/qualified-name type)) "\""
+  ;; A dashboard's editors write its filters, and a link can set the value on the user's screen
+  (str "<filter id=\"" (escape-xml-attr-line id)
+       "\" name=\"" (escape-xml-attr-line (dashboard-filter-name name))
+       "\" type=\"" (escape-xml-attr-line (u/qualified-name type)) "\""
        (when (some? default)
-         (str " default=\"" (escape-xml (dashboard-filter-value default)) "\""))
+         (str " default=\"" (escape-xml-attr-line (dashboard-filter-value default)) "\""))
        (when-let [[_ value] (find parameter :current_value)]
          (if (dashboard-filter-cleared? value)
            " cleared=\"true\""
-           ;; A link can set the value on the user's screen, so it is text others can write
            (str " current_value=\"" (escape-xml-attr-line (dashboard-filter-value value)) "\"")))
        (when (seq connected_dashcards)
          (str " connected_dashcards=\"" (str/join ", " connected_dashcards) "\""))
