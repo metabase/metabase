@@ -112,6 +112,26 @@ const setup = async (enablePublicSharing = false) => {
 const findRow = (name: string) =>
   screen.findByRole("row", { name: new RegExp(name) });
 
+// Each list loads from its own endpoint, so wait for a row of every list.
+const findAllLists = async () => {
+  for (const name of [
+    "Public dashboard",
+    "Public question",
+    "Public action",
+    "Test Document",
+  ]) {
+    await findRow(name);
+  }
+};
+
+// The switch stays disabled until the PUT and the settings refetch are done.
+const waitForSettingSaved = async () => {
+  await waitFor(() => {
+    expect(screen.getByRole("switch")).toBeEnabled();
+  });
+  expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+};
+
 describe("PublicSharingSettingsPage", () => {
   it("should render the PublicSharingSettingsPage with public sharing disabled", async () => {
     await setup(false);
@@ -163,24 +183,24 @@ describe("PublicSharingSettingsPage", () => {
     await waitFor(async () => {
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
+      const { url: putUrl, body: putBody } = puts[0];
+      expect(putUrl).toContain("/api/setting/enable-public-sharing");
+      expect(putBody).toEqual({ value: true });
     });
-
-    const puts = await findRequests("PUT");
-    const { url: putUrl, body: putBody } = puts[0];
-
-    expect(putUrl).toContain("/api/setting/enable-public-sharing");
-    expect(putBody).toEqual({ value: true });
 
     // Should show success toast
     await waitFor(() => {
       const toast = screen.getByLabelText("check_filled icon");
       expect(toast).toBeInTheDocument();
     });
+    await waitForSettingSaved();
+    await findAllLists();
   });
 
   it("should turn public sharing off and hide the shared lists", async () => {
     await setup(true);
-    expect(await screen.findByText("Public dashboard")).toBeInTheDocument();
+    await findAllLists();
+    expect(screen.getByText("Public dashboard")).toBeInTheDocument();
 
     const setting = screen.getByTestId("enable-public-sharing-setting");
     expect(within(setting).getByText("Enabled")).toBeInTheDocument();
@@ -188,10 +208,13 @@ describe("PublicSharingSettingsPage", () => {
     await userEvent.click(within(setting).getByLabelText("Enabled"));
 
     expect(await within(setting).findByText("Disabled")).toBeInTheDocument();
-    const puts = await findRequests("PUT");
-    expect(puts).toHaveLength(1);
-    expect(puts[0].url).toMatch(/\/api\/setting\/enable-public-sharing$/);
-    expect(puts[0].body).toEqual({ value: false });
+    await waitFor(async () => {
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+      expect(puts[0].url).toMatch(/\/api\/setting\/enable-public-sharing$/);
+      expect(puts[0].body).toEqual({ value: false });
+    });
+    await waitForSettingSaved();
 
     await waitFor(() => {
       expect(screen.queryByText("Shared dashboards")).not.toBeInTheDocument();
