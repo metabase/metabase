@@ -510,16 +510,25 @@
   \"postwalk\" fashion). Doesn't support `&parents` anaphora yet."
   [form & clauses]
   (let [replace-fn-symb (gensym "replace-")
+        walk-fn-symb (gensym "replace-all-")
         contains-&parents? (contains-symbol? clauses '&parents)]
     (when contains-&parents?
       (throw (ex-info "&parents is not supported by replace-all." {})))
-    `(perf/postwalk (fn ~replace-fn-symb [~'&match]
-                      ~(skip-non-colls (colls-only-clauses? (partition 2 clauses))
-                                       `(match-one ~'&match
-                                          ~@clauses
-                                          ~'_ ~'&match)
-                                       '&match))
-                    ~form)))
+    (if (colls-only-clauses? (partition 2 clauses))
+      ;; Like `perf/postwalk`, but returns a value that isn't a collection as is, without a call.
+      `((fn ~walk-fn-symb [~'&match]
+          (if (coll? ~'&match)
+            (let [~'&match (perf/walk ~walk-fn-symb identity ~'&match)]
+              (match-one ~'&match
+                ~@clauses
+                ~'_ ~'&match))
+            ~'&match))
+        ~form)
+      `(perf/postwalk (fn ~replace-fn-symb [~'&match]
+                        (match-one ~'&match
+                          ~@clauses
+                          ~'_ ~'&match))
+                      ~form))))
 
 (defmacro replace-in
   "Like `replace`, but only replaces things in the part of `x` in the keypath `ks` (i.e. the way to `update-in` works.)"

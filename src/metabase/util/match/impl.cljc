@@ -70,6 +70,9 @@
   [match-fn form clause-parents]
   {:pre [(fn? match-fn)]}
   (cond
+    (not (coll? form))
+    nil
+
     ;; Records may implement their own reduce (e.g. toucan2's IdentityQuery reduces over its rows), so go through
     ;; their entries with `seq`, like `metabase.util.performance/walk` does.
     (record? form)
