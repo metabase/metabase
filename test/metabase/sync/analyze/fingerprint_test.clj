@@ -593,6 +593,9 @@
     (let [[fingerprint origin] (merge-catalog {:global {:distinct-count 51 :nil% 0.0}} :sampled)]
       (is (= {:distinct-count 51 :nil% 0.0} (:global fingerprint)))
       (is (= #{"global.distinct-count" "global.nil%"} (set (map :part (:parts origin)))))))
+  (testing "a distinct count that is not exact is at least the sample's"
+    (is (= 40 (get-in (first (merge-catalog {:global {:distinct-count 5}} :sampled)) [:global :distinct-count])))
+    (is (= 5 (get-in (first (merge-catalog {:global {:distinct-count 5}} :exact)) [:global :distinct-count]))))
   (testing "a distinct count of 0, which a catalog gives when it does not count NULL, is not used"
     (is (= sample-fingerprint (first (merge-catalog {:global {:distinct-count 0}} :sampled)))))
   (testing "a range from a catalog that is not exact only widens the sample's"
