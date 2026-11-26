@@ -1479,3 +1479,30 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+(deftest table-row-count-estimates-test
+  (mt/test-driver :mysql
+    (testing "describe-database gives the row count estimate of each table, from information_schema.TABLES"
+      (let [tables (into [] (:tables (driver/describe-database :mysql (lib.metadata/database (mt/metadata-provider)))))
+            venues (m/find-first (comp #{"venues"} :name) tables)]
+        (is (pos-int? (:estimated_row_count venues)))))
+    (testing "when the estimates cannot be read, the tables come without them"
+      (mt/with-dynamic-fn-redefs [mysql/query-row-count-estimates (fn [_conn] (throw (ex-info "no estimates" {})))]
+        (let [tables (into [] (:tables (driver/describe-database :mysql (lib.metadata/database (mt/metadata-provider)))))]
+          (is (seq tables))
+          (is (not-any? #(contains? % :estimated_row_count) tables)))))))
+
+(deftest with-row-count-estimates-test
+  (testing "A table with no estimate gets nil, so that sync clears a stored one"
+    (mt/with-dynamic-fn-redefs [mysql/query-row-count-estimates (constantly {"venues" 100})]
+      (is (= [{:name "venues" :estimated_row_count 100}
+              {:name "empty" :estimated_row_count nil}]
+             (into [] (#'mysql/with-row-count-estimates nil [{:name "venues"} {:name "empty"}])))))))
+
+(deftest ^:parallel row-count-estimates-test
+  (testing "an empty table gets no estimate, as on Postgres, since InnoDB often gives 0 for a table it has not analyzed"
+    (is (= {"venues" 100 "orders" 18000}
+           (#'mysql/row-count-estimates [{:table_name "venues" :table_rows 100}
+                                         {:table_name "orders" :table_rows (biginteger 18000)}
+                                         {:table_name "empty" :table_rows 0}
+                                         {:table_name "a_view" :table_rows nil}])))))
