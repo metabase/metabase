@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import {
+  useGetWorktreeQuery,
   useImportChangesMutation,
   useLazyGetRemoteSyncIsDirtyQuery,
 } from "metabase-enterprise/api";
 
 import { trackPullChanges } from "../../analytics";
-import { getIsRemoteSyncVisible } from "../../selectors";
+import { getCurrentWorktreeId, getIsRemoteSyncVisible } from "../../selectors";
 import { SyncTaskModal } from "../SyncTaskModal";
 
 import { PullModal } from "./PullModal";
@@ -26,7 +28,12 @@ type ControlsModal =
 
 export function AppBarControls() {
   const isVisible = useSelector(getIsRemoteSyncVisible);
-  const branch = useSetting("remote-sync-branch");
+  const worktreeId = useSelector(getCurrentWorktreeId);
+  const settingBranch = useSetting("remote-sync-branch");
+  const { data: worktree } = useGetWorktreeQuery(
+    isVisible && worktreeId != null ? worktreeId : skipToken,
+  );
+  const branch = worktreeId != null ? worktree?.branch : settingBranch;
 
   if (!isVisible || !branch) {
     return null;
