@@ -3,9 +3,12 @@ import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
 import { findRequests } from "__support__/server-mocks";
+import type { GroupTableAccessPolicy } from "metabase-types/api";
 import { createMockPermissionsGraph } from "metabase-types/api/mocks";
+import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { Api } from "./api";
+import { groupTableAccessPolicyApi } from "./group-table-access-policy";
 import { permissionApi } from "./permission";
 
 let activeStore: ReturnType<typeof getStore> | undefined;
@@ -19,6 +22,27 @@ function setup() {
 }
 
 const GRAPH = createMockPermissionsGraph({ groups: [], databases: [] });
+
+const MARKETING_GROUP_ID = 5;
+
+const ORDERS_POLICY_DRAFT: Omit<GroupTableAccessPolicy, "id"> = {
+  group_id: MARKETING_GROUP_ID,
+  table_id: ORDERS_ID,
+  card_id: null,
+  attribute_remappings: {
+    user_id: [
+      "dimension",
+      ["field", ORDERS.USER_ID, { "base-type": "type/Integer" }],
+      { "stage-number": 0 },
+    ],
+  },
+  permission_id: null,
+};
+
+const ORDERS_POLICY: GroupTableAccessPolicy = {
+  id: 1,
+  ...ORDERS_POLICY_DRAFT,
+};
 
 describe("permissionApi data-permissions graph", () => {
   afterEach(() => {
@@ -80,5 +104,37 @@ describe("permissionApi data-permissions graph", () => {
     const [request] = await findRequests("PUT");
     expect(request.url).toContain("/api/permissions/graph");
     expect(request.body).toEqual(body);
+  });
+
+  it("refetches a row and column security policy after the graph saves it", async () => {
+    let storedPolicy: GroupTableAccessPolicy | null = null;
+    fetchMock.get("path:/api/mt/gtap", () => storedPolicy ?? 204);
+    fetchMock.put("path:/api/permissions/graph", () => {
+      storedPolicy = ORDERS_POLICY;
+      return GRAPH;
+    });
+    const { store } = setup();
+    const { getGroupTableAccessPolicy } = groupTableAccessPolicyApi.endpoints;
+    const policyParams = { group_id: MARKETING_GROUP_ID, table_id: ORDERS_ID };
+
+    const beforeSave = store.dispatch(
+      getGroupTableAccessPolicy.initiate(policyParams),
+    );
+    expect((await beforeSave).data).toBeNull();
+    beforeSave.unsubscribe();
+
+    await store.dispatch(
+      permissionApi.endpoints.updatePermissionsGraph.initiate({
+        groups: {},
+        revision: 1,
+        sandboxes: [ORDERS_POLICY_DRAFT],
+      }),
+    );
+
+    const afterSave = store.dispatch(
+      getGroupTableAccessPolicy.initiate(policyParams),
+    );
+    expect((await afterSave).data).toEqual(ORDERS_POLICY);
+    afterSave.unsubscribe();
   });
 });
