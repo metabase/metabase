@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 
 import { Ellipsified, type TextProps } from "metabase/ui";
 
+import type { DraftStep } from "../../editor";
+
 import S from "./PillPart.module.css";
 
 type PillPartVariant =
@@ -22,6 +24,8 @@ const VARIANT_PROPS: Record<PillPartVariant, TextProps> = {
 
 type PillPartProps = {
   variant: PillPartVariant;
+  part?: DraftStep;
+  isTruncated?: boolean;
   tooltip?: ReactNode;
   alwaysShowTooltip?: boolean;
   children: ReactNode;
@@ -29,6 +33,8 @@ type PillPartProps = {
 
 export const PillPart = ({
   variant,
+  part,
+  isTruncated = true,
   tooltip,
   alwaysShowTooltip,
   children,
@@ -36,14 +42,14 @@ export const PillPart = ({
   <Ellipsified
     className={cx(S.part, { [S.column]: variant === "column" })}
     span
-    px="xxs"
-    py="xxxs"
     fz="sm"
     lh={1.15}
     tooltip={tooltip}
     alwaysShowTooltip={alwaysShowTooltip}
     tooltipProps={{ multiline: true, maw: "20rem" }}
+    data-part={part}
     {...VARIANT_PROPS[variant]}
+    maw={isTruncated ? VARIANT_PROPS[variant].maw : "none"}
   >
     {children}
   </Ellipsified>

@@ -1,9 +1,12 @@
 import { NodeViewWrapper } from "@tiptap/react";
+import { t } from "ttag";
 
-import { StageSeparator } from "../StageSeparator/StageSeparator";
+import { Text } from "metabase/ui";
 
 export const ThenNodeView = () => (
   <NodeViewWrapper as="span">
-    <StageSeparator />
+    <Text component="span" c="text-secondary" fz="xs" fs="italic">
+      {t`then`}
+    </Text>
   </NodeViewWrapper>
 );

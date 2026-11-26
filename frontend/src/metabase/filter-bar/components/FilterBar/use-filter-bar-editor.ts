@@ -1,90 +1,80 @@
 import type { Editor } from "@tiptap/core";
 import { useEditor } from "@tiptap/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLatest } from "react-use";
 
 import {
-  documentToTokens,
-  documentToTokensWithPositions,
+  type FilterEditorRequest,
+  getPillRectAt,
+  highlightErrors,
+  normalizeDocument,
+  placePillAt,
+  readTokens,
+  replaceDocument,
+  replacePillTokens,
   tokensToContent,
-} from "../../editor/document";
-import { setErrorPositions } from "../../editor/error-highlight";
-import { createPillRegistry } from "../../editor/pill-registry";
-import { applyImplicitAnds } from "../../model/implicit-and";
-import { normalizeTokens } from "../../model/normalize-tokens";
-import { parseTokens } from "../../model/parse-tokens";
-import { stagesToTokens } from "../../model/stages-to-tokens";
-import type { ParseError } from "../../model/types";
-import { isEmptyTree, isSameStages } from "../../model/utils";
+} from "../../editor";
+import {
+  type ParseError,
+  isEmptyTree,
+  isSameStages,
+  parseTokens,
+  pillToken,
+  stagesToTokens,
+} from "../../model";
 import type { FilterBarProps } from "../../types";
 
 import { createExtensions } from "./extensions";
-
-const valueToTokens = <F>(
-  value: FilterBarProps<F>["value"],
-  adapter: FilterBarProps<F>["adapter"],
-) => applyImplicitAnds(stagesToTokens(value, adapter));
-
-const hasText = (editor: Editor) => {
-  let found = false;
-  editor.state.doc.descendants((node) => {
-    found ||= node.isText;
-  });
-  return found;
-};
 
 export const useFilterBarEditor = <F>({
   value,
   onChange,
   adapter,
+  autoFocus = false,
 }: FilterBarProps<F>) => {
-  const [registry] = useState(() => createPillRegistry<F>());
+  const [filterEditorRequest, setFilterEditorRequest] =
+    useState<FilterEditorRequest<F> | null>(null);
+  const adapterRef = useLatest(adapter);
+  const getAdapter = useCallback(() => adapterRef.current, [adapterRef]);
   const extensions = useMemo(
-    () => createExtensions(adapter, registry),
-    [adapter, registry],
+    () =>
+      createExtensions({
+        getAdapter,
+        openFilterEditor: setFilterEditorRequest,
+      }),
+    [getAdapter],
   );
   const [error, setError] = useState<ParseError | null>(null);
   const isValidatingRef = useRef(false);
-  const emittedRef = useRef({ value, tokens: valueToTokens(value, adapter) });
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  const [initialTokens] = useState(() => stagesToTokens(value, adapter));
+  const [initialContent] = useState(() => tokensToContent(initialTokens));
+  const syncedTokensRef = useRef(initialTokens);
+  const onChangeRef = useLatest(onChange);
 
-  const showError = (editor: Editor) => {
-    const { doc } = editor.state;
-    const result = parseTokens(documentToTokens(doc, registry));
-    const isShown = isValidatingRef.current && result.type === "error";
-    const error = isShown ? result : null;
-    const items = documentToTokensWithPositions(doc, registry);
-    const positions = (error?.indexes ?? []).flatMap((index) => {
-      const item = error ? items[error.stage]?.[index] : undefined;
-      return item ? [item.pos] : [];
-    });
-    setError(error);
-    setErrorPositions(editor, positions);
-  };
+  const showError = useCallback((editor: Editor) => {
+    setError(highlightErrors(editor, isValidatingRef.current));
+  }, []);
 
   const emit = (editor: Editor) => {
-    const tokens = documentToTokens(editor.state.doc, registry);
+    const tokens = readTokens<F>(editor);
     const result = parseTokens(tokens);
-    const isSame = isSameStages(emittedRef.current.tokens, tokens);
-    if (result.type === "ok" && !isSame) {
-      emittedRef.current = { value: result.stages, tokens };
+    const hasFiltersChanged = !isSameStages(syncedTokensRef.current, tokens);
+    if (result.type === "ok" && hasFiltersChanged) {
+      syncedTokensRef.current = tokens;
       onChangeRef.current(result.stages);
     }
   };
 
   const settle = (editor: Editor) => {
-    const tokens = documentToTokens(editor.state.doc, registry);
-    const normalized = normalizeTokens(tokens);
     isValidatingRef.current = true;
-    if (!isSameStages(normalized, tokens) || hasText(editor)) {
-      editor.commands.setContent(tokensToContent(normalized, registry));
-    }
+    normalizeDocument<F>(editor);
     showError(editor);
   };
 
   const editor = useEditor({
     extensions,
-    content: tokensToContent(valueToTokens(value, adapter), registry),
+    content: initialContent,
+    autofocus: autoFocus ? "end" : false,
     editorProps: { attributes: { spellcheck: "false" } },
     onUpdate: ({ editor }) => {
       emit(editor);
@@ -94,22 +84,57 @@ export const useFilterBarEditor = <F>({
   });
 
   useEffect(() => {
-    const isOwnValue = value === emittedRef.current.value;
-    if (!editor || isOwnValue) {
+    if (!editor) {
       return;
     }
-    const tokens = valueToTokens(value, adapter);
-    emittedRef.current = { value, tokens };
+    const incomingTokens = stagesToTokens(value, adapter);
+    const isEchoOfOwnChange = isSameStages(
+      syncedTokensRef.current,
+      incomingTokens,
+    );
+    if (isEchoOfOwnChange) {
+      replacePillTokens(editor, incomingTokens);
+      syncedTokensRef.current = incomingTokens;
+      return;
+    }
+    syncedTokensRef.current = incomingTokens;
     isValidatingRef.current = false;
-    editor.commands.setContent(tokensToContent(tokens, registry), {
-      emitUpdate: false,
-    });
-    setError(null);
-    setErrorPositions(editor, []);
-  }, [editor, value, adapter, registry]);
+    replaceDocument(editor, incomingTokens, { emitUpdate: false });
+    showError(editor);
+  }, [editor, value, adapter, showError]);
 
   const hasFilters = value.some((tree) => !isEmptyTree(tree));
-  const clear = () => onChange([]);
+  const clear = () => {
+    onChange([]);
+  };
 
-  return { editor, error, hasFilters, clear };
+  const getFilterEditorRect = () =>
+    editor && filterEditorRequest
+      ? getPillRectAt(editor, filterEditorRequest.pos)
+      : null;
+
+  const closeFilterEditor = () => {
+    setFilterEditorRequest(null);
+    editor?.commands.focus();
+  };
+
+  const applyFilter = (filter: F) => {
+    if (editor && filterEditorRequest) {
+      const { pos, stage } = filterEditorRequest;
+      const token = pillToken(filter, adapter.stage(stage).toPill(filter));
+      placePillAt(editor, pos, token, stage);
+    }
+    closeFilterEditor();
+  };
+
+  return {
+    editor,
+    error,
+    hasFilters,
+    clear,
+    filterEditorRequest,
+    getFilterEditorRect,
+    applyFilter,
+    closeFilterEditor,
+  };
 };

@@ -1,10 +1,10 @@
-import type { Token } from "./model/types";
 import {
+  type PillToken,
   closeToken,
   connectorToken,
   openToken,
   pillToken,
-} from "./model/utils";
+} from "./model";
 import type {
   ColumnGroup,
   FilterBarAdapter,
@@ -32,11 +32,10 @@ const TEST_STAGE_ADAPTER: FilterBarStageAdapter<string> = {
 };
 
 export const TEST_ADAPTER: FilterBarAdapter<string> = {
-  supportsOr: true,
   stage: () => TEST_STAGE_ADAPTER,
 };
 
-export const pill = (filter: string): Token<string> =>
+export const pill = (filter: string): PillToken<string> =>
   pillToken(filter, createTestPill(filter));
 
 export const AND = connectorToken("and");
@@ -157,6 +156,8 @@ const getMockColumnGroups = (stage: number): ColumnGroup<MockFilter>[] => [
             ? MOCK_SEGMENTS.map((name) => ({
                 type: "filter",
                 filter: { type: "segment", name },
+                label: name,
+                icon: "segment",
               }))
             : [],
       },
@@ -181,7 +182,6 @@ const getMockColumnGroups = (stage: number): ColumnGroup<MockFilter>[] => [
 ];
 
 export const MOCK_ADAPTER: FilterBarAdapter<MockFilter> = {
-  supportsOr: true,
   stage: (stage) => ({
     columnGroups: () => getMockColumnGroups(stage),
     operators: (column) => findColumn(column.key)?.operators ?? null,
@@ -229,8 +229,6 @@ export const MOCK_STAGES: FilterStages<MockFilter> = [
       ),
       leaf(mockFilter("subtotal", "between", "20", "100")),
     ),
-    leaf(mockSegment("Active users")),
-    leaf(mockExpression("[Subtotal] * [Tax] > 10")),
   ),
   leaf(mockFilter("count", ">", "5")),
 ];

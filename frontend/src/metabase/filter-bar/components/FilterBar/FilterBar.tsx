@@ -5,21 +5,32 @@ import { t } from "ttag";
 import { ActionIcon, Flex, Icon, Text } from "metabase/ui";
 
 import type { FilterBarProps } from "../../types";
+import { FilterEditorPopover } from "../FilterEditorPopover/FilterEditorPopover";
 
 import S from "./FilterBar.module.css";
 import { useFilterBarEditor } from "./use-filter-bar-editor";
 
 export const FilterBar = <F,>(props: FilterBarProps<F>) => {
-  const { editor, error, hasFilters, clear } = useFilterBarEditor(props);
+  const {
+    editor,
+    error,
+    hasFilters,
+    clear,
+    filterEditorRequest,
+    getFilterEditorRect,
+    applyFilter,
+    closeFilterEditor,
+  } = useFilterBarEditor(props);
+  const filterEditorContent =
+    filterEditorRequest &&
+    props.adapter.stage(filterEditorRequest.stage).renderFilterEditor?.({
+      ...filterEditorRequest,
+      onChange: applyFilter,
+      onClose: closeFilterEditor,
+    });
 
   return (
-    <Flex
-      align="center"
-      gap="sm"
-      mih="3rem"
-      pr="xxl"
-      bg="background_page-secondary"
-    >
+    <Flex align="center" gap="sm" pr="xxl" bg="background_page-secondary">
       <EditorContent className={S.editor} editor={editor} />
       {error && (
         <Text size="sm" c="feedback-negative" lh={1}>
@@ -36,6 +47,14 @@ export const FilterBar = <F,>(props: FilterBarProps<F>) => {
             )
             .exhaustive()}
         </Text>
+      )}
+      {filterEditorContent && (
+        <FilterEditorPopover
+          getAnchorRect={getFilterEditorRect}
+          onClose={closeFilterEditor}
+        >
+          {filterEditorContent}
+        </FilterEditorPopover>
       )}
       {hasFilters && (
         <ActionIcon

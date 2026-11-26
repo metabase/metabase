@@ -1,29 +1,48 @@
+import Document from "@tiptap/extension-document";
+import Paragraph from "@tiptap/extension-paragraph";
+import Text from "@tiptap/extension-text";
+import { UndoRedo } from "@tiptap/extensions";
 import { type NodeViewProps, ReactNodeViewRenderer } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 
-import { createCaret } from "../../editor/caret";
-import { createErrorHighlight } from "../../editor/error-highlight";
-import { createHiddenThen } from "../../editor/hidden-then";
 import {
+  type DraftActionsOptions,
+  createBlankClick,
+  createCaret,
+  createColumnNode,
   createConnectorNode,
+  createDraftActionKeys,
+  createDraftActions,
+  createDraftInputNode,
+  createDraftKeys,
+  createDraftLifecycle,
+  createDraftNode,
+  createDraftPlaceholders,
+  createErrorHighlight,
+  createFilterBarKeys,
+  createHiddenThen,
+  createOperatorNode,
   createParenNode,
+  createParens,
   createPillNode,
+  createRangeAndNode,
   createThenNode,
-} from "../../editor/nodes";
-import type { PillRegistry } from "../../editor/pill-registry";
-import { createFilterBarRules } from "../../editor/rules";
-import type { ConnectorToken, ParenToken } from "../../model/types";
-import type { FilterBarAdapter } from "../../types";
+  createValueNode,
+} from "../../editor";
+import type { ConnectorToken, ParenToken } from "../../model";
 import { ConnectorNodeView } from "../ConnectorNodeView/ConnectorNodeView";
+import { DraftNodeView } from "../DraftNodeView/DraftNodeView";
+import DraftS from "../DraftNodeView/DraftNodeView.module.css";
+import { DraftPartNodeView } from "../DraftPartNodeView/DraftPartNodeView";
 import { PillNodeView } from "../PillNodeView/PillNodeView";
+import { RangeAndNodeView } from "../RangeAndNodeView/RangeAndNodeView";
 import { ThenNodeView } from "../ThenNodeView/ThenNodeView";
 
 import S from "./FilterBar.module.css";
+import { createDraftSuggestion } from "./draft-suggestion";
 
-export const createExtensions = <F,>(
-  adapter: FilterBarAdapter<F>,
-  registry: PillRegistry<F>,
-) => {
+export const createExtensions = <F,>(options: DraftActionsOptions<F>) => {
+  const { getAdapter } = options;
+  const actions = createDraftActions(options);
   const withDecorations = {
     update: ({ updateProps }: { updateProps: () => void }) => {
       updateProps();
@@ -41,30 +60,23 @@ export const createExtensions = <F,>(
   };
 
   const PillView = (props: NodeViewProps) => (
-    <PillNodeView {...props} adapter={adapter} registry={registry} />
+    <PillNodeView {...props} adapter={getAdapter()} />
+  );
+
+  const PartView = (props: NodeViewProps) => (
+    <DraftPartNodeView
+      {...props}
+      formatValues={(stage, parts) =>
+        getAdapter().stage(stage).formatValues(parts)
+      }
+    />
   );
 
   return [
-    StarterKit.configure({
-      blockquote: false,
-      bold: false,
-      bulletList: false,
-      code: false,
-      codeBlock: false,
-      dropcursor: false,
-      gapcursor: false,
-      hardBreak: false,
-      heading: false,
-      horizontalRule: false,
-      italic: false,
-      link: false,
-      listItem: false,
-      listKeymap: false,
-      orderedList: false,
-      strike: false,
-      trailingNode: false,
-      underline: false,
-    }),
+    Document,
+    Paragraph,
+    Text,
+    UndoRedo,
     createPillNode().extend({
       addNodeView: () => ReactNodeViewRenderer(PillView, withDecorations),
     }),
@@ -72,12 +84,37 @@ export const createExtensions = <F,>(
     createConnectorNode("or").extend(connectorView("or")),
     createParenNode("open").extend(connectorView("open")),
     createParenNode("close").extend(connectorView("close")),
+    createDraftNode().extend({
+      addNodeView: () => ReactNodeViewRenderer(DraftNodeView),
+    }),
+    createDraftInputNode().extend({
+      renderHTML: () => ["span", { class: DraftS.input }, 0],
+    }),
+    createColumnNode().extend({
+      addNodeView: () => ReactNodeViewRenderer(PartView),
+    }),
+    createOperatorNode().extend({
+      addNodeView: () => ReactNodeViewRenderer(PartView),
+    }),
+    createRangeAndNode().extend({
+      addNodeView: () => ReactNodeViewRenderer(RangeAndNodeView),
+    }),
+    createValueNode().extend({
+      addNodeView: () => ReactNodeViewRenderer(PartView),
+    }),
     createThenNode().extend({
       addNodeView: () => ReactNodeViewRenderer(ThenNodeView),
     }),
-    createFilterBarRules(),
+    createFilterBarKeys(),
+    createParens(),
     createErrorHighlight(),
     createHiddenThen(),
+    createBlankClick(),
     createCaret(S.caret),
+    createDraftKeys(),
+    createDraftLifecycle(),
+    createDraftPlaceholders(),
+    createDraftActionKeys(actions),
+    createDraftSuggestion({ getAdapter, actions }),
   ];
 };

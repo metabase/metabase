@@ -1,9 +1,9 @@
 import { match } from "ts-pattern";
-import { t } from "ttag";
 
-import { SYMBOL_OPERATOR_KEYS } from "../../constants";
 import type { FilterParts } from "../../types";
+import { OperatorPart } from "../OperatorPart/OperatorPart";
 import { PillPart } from "../PillPart/PillPart";
+import { PillRange } from "../PillRange/PillRange";
 import { PillValues } from "../PillValues/PillValues";
 
 type PillPartsProps = {
@@ -12,27 +12,18 @@ type PillPartsProps = {
 };
 
 export const PillParts = ({ parts, formatValues }: PillPartsProps) => {
-  const { column, operator, values } = parts;
-  const isSymbol = SYMBOL_OPERATOR_KEYS.includes(operator.key);
+  const { column, operator } = parts;
 
   return (
     <>
-      <PillPart variant="column">{column.label}</PillPart>
-      <PillPart variant={isSymbol ? "operatorSymbol" : "operator"}>
-        {isSymbol ? operator.key : operator.label}
+      <PillPart variant="column" part="column">
+        {column.label}
       </PillPart>
+      <OperatorPart operator={operator} />
       {match(operator.valueKind)
         .with("none", () => null)
         .with("range", () => (
-          <>
-            <PillPart variant="value">
-              {formatValues({ ...parts, values: values.slice(0, 1) })}
-            </PillPart>
-            <PillPart variant="operator">{t`and`}</PillPart>
-            <PillPart variant="value">
-              {formatValues({ ...parts, values: values.slice(1) })}
-            </PillPart>
-          </>
+          <PillRange parts={parts} formatValues={formatValues} />
         ))
         .with("single", "multi", () => (
           <PillValues parts={parts} formatValues={formatValues} />

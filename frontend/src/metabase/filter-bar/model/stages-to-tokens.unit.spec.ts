@@ -41,6 +41,11 @@ describe("stagesToTokens", () => {
       [[A, AND, OPEN, B, OR, C, AND, OPEN, D, OR, E, CLOSE, CLOSE]],
     ],
     [
+      "ands are hidden while the stage has no or",
+      [and(leaf("A"), leaf("B"), leaf("C"))],
+      [[A, B, C]],
+    ],
+    [
       "the same connective nested needs no parentheses",
       [or(leaf("A"), or(leaf("B"), leaf("C")))],
       [[A, OR, B, OR, C]],
@@ -94,9 +99,9 @@ describe("stagesToTokens", () => {
 
   it("gives each connector its own object, so it can be a React key", () => {
     const [tokens] = stagesToTokens(
-      [and(leaf("A"), leaf("B"), leaf("C"))],
+      [or(and(leaf("A"), leaf("B")), and(leaf("C"), leaf("D")))],
       TEST_ADAPTER,
     );
-    expect(tokens[1]).not.toBe(tokens[3]);
+    expect(tokens[1]).not.toBe(tokens[5]);
   });
 });

@@ -1,24 +1,33 @@
-import { Editor } from "@tiptap/core";
+import { Editor, findChildren } from "@tiptap/core";
 import Document from "@tiptap/extension-document";
 import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
 
-import type { Token } from "../model/types";
+import type { Token } from "../model";
 
-import { createCaret } from "./caret";
 import { documentToTokens, tokensToContent } from "./document";
-import { createHiddenThen } from "./hidden-then";
+import { createDraftKeys } from "./draft/plugins/keys";
+import { createDraftLifecycle } from "./draft/plugins/lifecycle";
 import {
+  createColumnNode,
   createConnectorNode,
+  createDraftInputNode,
+  createDraftNode,
+  createOperatorNode,
   createParenNode,
   createPillNode,
+  createRangeAndNode,
   createThenNode,
-} from "./nodes";
-import { createPillRegistry } from "./pill-registry";
-import { createFilterBarRules } from "./rules";
+  createValueNode,
+} from "./nodes/nodes";
+import { isDraftNode } from "./nodes/types";
+import { createBlankClick } from "./plugins/blank-click";
+import { createCaret } from "./plugins/caret";
+import { createHiddenThen } from "./plugins/hidden-then";
+import { createFilterBarKeys } from "./plugins/keys";
+import { createParens } from "./plugins/parens";
 
 export const createTestEditor = (...stages: Token<string>[][]) => {
-  const registry = createPillRegistry<string>();
   const editor = new Editor({
     extensions: [
       Document,
@@ -30,14 +39,24 @@ export const createTestEditor = (...stages: Token<string>[][]) => {
       createParenNode("open"),
       createParenNode("close"),
       createThenNode(),
-      createFilterBarRules(),
+      createDraftNode(),
+      createDraftInputNode(),
+      createColumnNode(),
+      createOperatorNode(),
+      createValueNode(),
+      createRangeAndNode(),
+      createDraftKeys(),
+      createDraftLifecycle(),
+      createFilterBarKeys(),
+      createParens(),
       createHiddenThen(),
+      createBlankClick(),
       createCaret("caret"),
     ],
-    content: tokensToContent(stages, registry),
+    content: tokensToContent(stages),
   });
 
-  const getStages = () => documentToTokens(editor.state.doc, registry);
+  const getStages = () => documentToTokens<string>(editor.state.doc);
 
   const placeCaret = (gap: number) => editor.commands.setTextSelection(1 + gap);
 
@@ -61,5 +80,18 @@ export const createTestEditor = (...stages: Token<string>[][]) => {
     });
   };
 
-  return { editor, getStages, placeCaret, selectNode, press, type };
+  const findDraft = () => {
+    const [draft] = findChildren(editor.state.doc, isDraftNode);
+    return draft ? { pos: draft.pos, text: draft.node.textContent } : null;
+  };
+
+  return {
+    editor,
+    getStages,
+    placeCaret,
+    selectNode,
+    press,
+    type,
+    findDraft,
+  };
 };

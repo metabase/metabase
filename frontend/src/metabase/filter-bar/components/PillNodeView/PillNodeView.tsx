@@ -1,14 +1,11 @@
 import { type NodeViewProps, NodeViewWrapper } from "@tiptap/react";
 
-import { hasErrorDecoration } from "../../editor/error-highlight";
-import { getPillId, getStage } from "../../editor/nodes";
-import type { PillRegistry } from "../../editor/pill-registry";
+import { getPillToken, getStage, hasErrorDecoration } from "../../editor";
 import type { FilterBarAdapter } from "../../types";
 import { FilterPill } from "../FilterPill/FilterPill";
 
 type PillNodeViewProps<F> = NodeViewProps & {
   adapter: FilterBarAdapter<F>;
-  registry: PillRegistry<F>;
 };
 
 export const PillNodeView = <F,>({
@@ -17,9 +14,8 @@ export const PillNodeView = <F,>({
   decorations,
   deleteNode,
   adapter,
-  registry,
 }: PillNodeViewProps<F>) => {
-  const token = registry.get(getPillId(node));
+  const token = getPillToken<F>(node);
   const stageAdapter = adapter.stage(getStage(node));
 
   if (!token) {

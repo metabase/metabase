@@ -1,0 +1,12 @@
+.dropdown {
+  display: flex;
+  flex-direction: column;
+}
+
+.items {
+  overflow-y: auto;
+}
+
+.footer {
+  border-top: 0.5px solid var(--mb-color-border-neutral);
+}

@@ -1,6 +1,5 @@
-import { pill } from "../test-utils";
-
-import { createTestEditor } from "./test-editor";
+import { pill } from "../../test-utils";
+import { createTestEditor } from "../test-editor";
 
 const A = pill("A");
 const B = pill("B");

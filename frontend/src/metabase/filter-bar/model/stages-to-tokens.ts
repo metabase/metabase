@@ -6,6 +6,7 @@ import {
   isLeafTree,
 } from "../types";
 
+import { applyImplicitAnds } from "./implicit-and";
 import type { NodeType, Token, TokenStages } from "./types";
 import {
   PRECEDENCE,
@@ -45,6 +46,8 @@ export const stagesToTokens = <F>(
   stages: FilterStages<F>,
   adapter: FilterBarAdapter<F>,
 ): TokenStages<F> =>
-  stages.map((tree, stage) =>
-    isEmptyTree(tree) ? [] : treeToTokens(tree, adapter.stage(stage)),
+  applyImplicitAnds(
+    stages.map((tree, stage) =>
+      isEmptyTree(tree) ? [] : treeToTokens(tree, adapter.stage(stage)),
+    ),
   );

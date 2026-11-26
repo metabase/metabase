@@ -1,7 +1,6 @@
 import { P, match } from "ts-pattern";
-import { t } from "ttag";
 
-import { ActionIcon, FixedSizeIcon, Flex, Icon } from "metabase/ui";
+import { FixedSizeIcon, Flex } from "metabase/ui";
 
 import {
   type FilterParts,
@@ -10,6 +9,7 @@ import {
   isOpaquePillContent,
   isPartsPillContent,
 } from "../../types";
+import { PillFrame } from "../PillFrame/PillFrame";
 import { PillPart } from "../PillPart/PillPart";
 import { PillParts } from "../PillParts/PillParts";
 
@@ -33,19 +33,11 @@ export const FilterPill = ({
   const isOpaque = isOpaquePillContent(content);
 
   return (
-    <Flex
-      className={S.pill}
-      component="span"
-      align="center"
-      gap="xxs"
-      py="xxs"
-      pr="xs"
+    <PillFrame
+      isSelected={isSelected}
+      hasError={hasError}
       pl={isOpaque ? "sm" : "xxs"}
-      bdrs="lg"
-      bg="background_surface-primary"
-      data-testid="filter-pill"
-      data-selected={isSelected || undefined}
-      data-error={hasError || undefined}
+      onRemove={onRemove}
     >
       <Flex
         className={S.parts}
@@ -69,18 +61,6 @@ export const FilterPill = ({
           ))
           .exhaustive()}
       </Flex>
-      <ActionIcon
-        size="xs"
-        variant="subtle"
-        aria-label={t`Remove filter`}
-        onMouseDown={(event) => event.preventDefault()}
-        onClick={(event) => {
-          event.stopPropagation();
-          onRemove();
-        }}
-      >
-        <Icon name="close" />
-      </ActionIcon>
-    </Flex>
+    </PillFrame>
   );
 };

@@ -1,12 +1,11 @@
-import { AND, CLOSE, OPEN, OR, pill } from "../test-utils";
-
-import { createTestEditor } from "./test-editor";
+import { AND, CLOSE, OPEN, OR, pill } from "../../test-utils";
+import { createTestEditor } from "../test-editor";
 
 const A = pill("A");
 const B = pill("B");
 const C = pill("C");
 
-describe("filter bar rules", () => {
+describe("filter bar keys", () => {
   describe("removing", () => {
     it("removes a selected pill and leaves its connector to blur", () => {
       const { getStages, selectNode, press } = createTestEditor([A, OR, B]);
@@ -134,81 +133,6 @@ describe("filter bar rules", () => {
       selectNode(1);
       press("Enter");
       expect(getStages()).toEqual([[A, AND, B, OR, C]]);
-    });
-
-    it("turns typed and / or into connectors", () => {
-      const { getStages, placeCaret, type } = createTestEditor([A, OR, B, C]);
-      placeCaret(3);
-      type("or ");
-      expect(getStages()).toEqual([[A, OR, B, OR, C]]);
-    });
-
-    it("drops a typed connector right after the same one", () => {
-      const { editor, getStages, placeCaret, type } = createTestEditor([
-        A,
-        AND,
-        B,
-      ]);
-      placeCaret(2);
-      type("and ");
-      expect(getStages()).toEqual([[A, AND, B]]);
-      expect(editor.state.selection.from).toBe(3);
-      expect(editor.view.dom).not.toHaveTextContent("and");
-    });
-
-    it("switches the connector before the caret to the typed one", () => {
-      const { editor, getStages, placeCaret, type } = createTestEditor([
-        A,
-        AND,
-        B,
-      ]);
-      placeCaret(2);
-      type("or ");
-      expect(getStages()).toEqual([[A, OR, B]]);
-      expect(editor.state.selection.from).toBe(3);
-    });
-
-    it("keeps a word that only ends with and / or as text", () => {
-      const { editor, getStages, placeCaret, type } = createTestEditor([A]);
-      placeCaret(1);
-      type("brand ");
-      expect(getStages()).toEqual([[A]]);
-      expect(editor.view.dom).toHaveTextContent("brand");
-    });
-  });
-
-  describe("parens", () => {
-    it("( adds its ), and an OR leaves the missing connector to blur", () => {
-      const { getStages, placeCaret, type } = createTestEditor([A, OR, B]);
-      placeCaret(3);
-      type("(");
-      expect(getStages()).toEqual([[A, OR, B, OPEN, CLOSE]]);
-    });
-
-    it("( before a pill adds no )", () => {
-      const { getStages, placeCaret, type } = createTestEditor([A, OR, B]);
-      placeCaret(2);
-      type("(");
-      expect(getStages()).toEqual([[A, OR, OPEN, B]]);
-    });
-
-    it(") adds a ) when there is none after the caret", () => {
-      const { getStages, placeCaret, type } = createTestEditor([OPEN, A]);
-      placeCaret(2);
-      type(")");
-      expect(getStages()).toEqual([[OPEN, A, CLOSE]]);
-    });
-
-    it(") steps over an existing )", () => {
-      const { editor, getStages, placeCaret, type } = createTestEditor([
-        OPEN,
-        A,
-        CLOSE,
-      ]);
-      placeCaret(2);
-      type(")");
-      expect(getStages()).toEqual([[OPEN, A, CLOSE]]);
-      expect(editor.state.selection.from).toBe(4);
     });
   });
 });

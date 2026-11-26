@@ -1,8 +1,17 @@
 .part {
+  padding: var(--mantine-spacing-xxxs) var(--mantine-spacing-xxs);
   border-radius: var(--mantine-radius-xxxs);
 
   &:not(:last-child) {
     margin-right: -2px;
+  }
+}
+
+.part[data-part] {
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-secondary);
   }
 }
 

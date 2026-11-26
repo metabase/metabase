@@ -4,10 +4,9 @@ import {
   isAndToken,
   isCloseToken,
   isOpenToken,
-  isOrToken,
   isPillToken,
 } from "./types";
-import { connectorToken } from "./utils";
+import { connectorToken, hasOr } from "./utils";
 
 const startsOperand = <F>(token: Token<F>) =>
   isPillToken(token) || isOpenToken(token);
@@ -27,7 +26,7 @@ const writeOutAnds = <F>(tokens: readonly Token<F>[]): Token<F>[] =>
 // decides on its own.
 export const applyImplicitAnds = <F>(stages: TokenStages<F>): TokenStages<F> =>
   stages.map((tokens) =>
-    tokens.some(isOrToken)
+    hasOr(tokens)
       ? writeOutAnds(tokens)
       : tokens.filter((token) => !isAndToken(token)),
   );

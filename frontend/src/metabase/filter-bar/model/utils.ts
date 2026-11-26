@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { type FilterTree, type PillContent, isLeafTree } from "../types";
 
 import {
@@ -5,9 +7,11 @@ import {
   type ConnectorToken,
   type NodeType,
   type OpenToken,
+  type ParenToken,
   type PillToken,
   type Token,
   type TokenStages,
+  isOrToken,
   isPillToken,
 } from "./types";
 
@@ -48,7 +52,7 @@ export const join = <T>(
 
 const isSameToken = <F>(token: Token<F>, other: Token<F>) =>
   isPillToken(token)
-    ? isPillToken(other) && token.filter === other.filter
+    ? isPillToken(other) && _.isEqual(token.content, other.content)
     : token.type === other.type;
 
 export const isSameStages = <F>(
@@ -61,3 +65,10 @@ export const isSameStages = <F>(
       tokens.length === other[stage].length &&
       tokens.every((token, index) => isSameToken(token, other[stage][index])),
   );
+
+export const hasOr = <F>(tokens: readonly Token<F>[]) => tokens.some(isOrToken);
+
+export const PAREN_TEXT: Record<ParenToken["type"], string> = {
+  open: "(",
+  close: ")",
+};

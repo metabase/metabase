@@ -1,8 +1,9 @@
-import { MAX_SHOWN_VALUES } from "../../constants";
 import type { FilterParts } from "../../types";
 import { PillPart } from "../PillPart/PillPart";
 
 import S from "./PillValues.module.css";
+
+const MAX_SHOWN_VALUES = 3;
 
 type PillValuesProps = {
   parts: FilterParts;
@@ -18,6 +19,7 @@ export const PillValues = ({ parts, formatValues }: PillValuesProps) => {
     <>
       <PillPart
         variant="value"
+        part="value"
         tooltip={formatValues(parts)}
         alwaysShowTooltip={hiddenCount > 0}
       >

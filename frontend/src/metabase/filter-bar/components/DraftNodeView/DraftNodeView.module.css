@@ -1,0 +1,51 @@
+.parts {
+  display: inline-flex;
+  align-items: center;
+  padding-right: var(--mantine-spacing-xxs);
+  border-right: 0.5px solid var(--mb-color-border-neutral);
+  line-height: 1;
+}
+
+.parts > * {
+  display: inline-flex;
+  align-items: center;
+}
+
+.parts :global(.react-renderer):has(+ :global(.react-renderer)) {
+  margin-right: -2px;
+}
+
+.parts :global(.node-value):not(:has(+ .input)) .comma {
+  display: none;
+}
+
+.parts :global(.node-value):has(+ .input) [data-part] {
+  cursor: text;
+
+  &:hover {
+    background-color: transparent;
+  }
+}
+
+.input {
+  min-height: 0.875rem;
+  padding: var(--mantine-spacing-xxxs) var(--mantine-spacing-xxs);
+  border-radius: var(--mantine-radius-xxxs);
+  background-color: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-text-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 0.875rem;
+  white-space: pre;
+
+  &[data-placeholder]::after {
+    content: attr(data-placeholder);
+    color: var(--mb-color-text-disabled);
+    font-weight: normal;
+  }
+
+  &:first-child {
+    border-radius: var(--mantine-radius-sm) var(--mantine-radius-xxxs)
+      var(--mantine-radius-xxxs) var(--mantine-radius-sm);
+  }
+}

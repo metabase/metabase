@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import type { IconName } from "metabase-types/api";
 
-export type LeafTree<F> = { type: "leaf"; filter: F };
+type LeafTree<F> = { type: "leaf"; filter: F };
 
 export type FilterTree<F> =
   | LeafTree<F>
@@ -31,13 +31,13 @@ export type FilterParts = {
   values: readonly unknown[];
 };
 
-export type PartsPillContent = { type: "parts"; parts: FilterParts };
-export type OpaquePillContent = {
+type PartsPillContent = { type: "parts"; parts: FilterParts };
+type OpaquePillContent = {
   type: "opaque";
   displayName: string;
   icon: IconName;
 };
-export type ExpressionPillContent = { type: "expression"; expression: string };
+type ExpressionPillContent = { type: "expression"; expression: string };
 
 export type PillContent =
   | PartsPillContent
@@ -46,7 +46,7 @@ export type PillContent =
 
 export type ColumnItem<F> =
   | { type: "column"; column: FilterColumn; stage?: number }
-  | { type: "filter"; filter: F };
+  | { type: "filter"; filter: F; label: string; icon: IconName };
 
 export type ColumnSection<F> = {
   label?: string;
@@ -77,7 +77,6 @@ export type FilterBarStageAdapter<F> = {
 };
 
 export type FilterBarAdapter<F> = {
-  supportsOr: boolean;
   stage: (index: number) => FilterBarStageAdapter<F>;
 };
 
@@ -85,6 +84,7 @@ export type FilterBarProps<F> = {
   value: FilterStages<F>;
   onChange: (stages: FilterStages<F>) => void;
   adapter: FilterBarAdapter<F>;
+  autoFocus?: boolean;
 };
 
 export const isLeafTree = <F>(tree: FilterTree<F>): tree is LeafTree<F> =>

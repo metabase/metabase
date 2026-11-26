@@ -2,6 +2,9 @@ import { type Editor, Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
+import { type ParseError, parseTokens } from "../../model";
+import { documentToTokens, documentToTokensWithPositions } from "../document";
+
 const ERROR_KEY = new PluginKey<DecorationSet>("filterBarErrors");
 const ERROR_SPEC = { isError: true };
 
@@ -39,9 +42,24 @@ export const createErrorHighlight = () =>
     ],
   });
 
-export const setErrorPositions = (editor: Editor, positions: number[]) => {
+const highlightNodesAt = (editor: Editor, positions: number[]) => {
   editor.view.dispatch(editor.state.tr.setMeta(ERROR_KEY, positions));
 };
 
 export const hasErrorDecoration = (decorations: readonly Decoration[]) =>
   decorations.some((decoration) => decoration.spec === ERROR_SPEC);
+
+export const highlightErrors = (
+  editor: Editor,
+  isShown: boolean,
+): ParseError | null => {
+  const result = parseTokens(documentToTokens(editor.state.doc));
+  const items = documentToTokensWithPositions(editor.state.doc);
+  const error = isShown && result.type === "error" ? result : null;
+  const positions = (error?.indexes ?? []).flatMap((index) => {
+    const item = error ? items[error.stage]?.[index] : undefined;
+    return item ? [item.pos] : [];
+  });
+  highlightNodesAt(editor, positions);
+  return error;
+};

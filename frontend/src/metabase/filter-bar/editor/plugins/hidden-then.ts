@@ -2,7 +2,7 @@ import { Extension } from "@tiptap/core";
 import { type EditorState, Plugin } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
-import { isPillNode, isThenNode } from "./nodes";
+import { isPillNode, isThenNode } from "../nodes/types";
 
 const createHiddenThenDecorations = ({ doc }: EditorState) => {
   const thens: { from: number; to: number; pillsBefore: number }[] = [];
