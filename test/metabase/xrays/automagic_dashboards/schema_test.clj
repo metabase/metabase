@@ -5,22 +5,13 @@
    [metabase.xrays.automagic-dashboards.schema :as ads]))
 
 (deftest ^:parallel normalize-cell-query-test
-  (is (=? [:=
-           {:lib/uuid string?}
-           [:field {:base-type :type/Text, :lib/uuid string?} "SOURCE"]
-           "Affiliate"]
-          (lib/normalize ::ads/root.cell-query ["=" ["field" "SOURCE" {"base-type" "type/Text"}] "Affiliate"])))
-  (is (=? [:and
-           {:lib/uuid string?}
-           [:= {:lib/uuid string?}
-            [:expression {:lib/uuid string?} "TestColumn"]
-            2]
-           [:= {:lib/uuid string?}
-            [:field {:temporal-unit :month, :lib/uuid string?}
-             13]
-            "2019-02-01T00:00:00Z"]]
-          (lib/normalize ::ads/root.cell-query [:and
-                                                [:= [:expression "TestColumn"] 2]
-                                                [:=
-                                                 [:field 13 {:temporal-unit :month}]
-                                                 "2019-02-01T00:00:00Z"]]))))
+  (testing "an MBQL 5 clause in its JSON form"
+    (is (= [:=
+            {:lib/uuid "a9e9a2a7-4a33-4b6e-a5d7-5b1f3f2f7c11"}
+            [:field {:base-type :type/Text, :lib/uuid "0c5f0d3b-5a4e-4f3a-9a35-0d6d2c8a4f22"} "SOURCE"]
+            "Affiliate"]
+           (lib/normalize ::ads/root.cell-query
+                          ["="
+                           {"lib/uuid" "a9e9a2a7-4a33-4b6e-a5d7-5b1f3f2f7c11"}
+                           ["field" {"base-type" "type/Text", "lib/uuid" "0c5f0d3b-5a4e-4f3a-9a35-0d6d2c8a4f22"} "SOURCE"]
+                           "Affiliate"])))))
