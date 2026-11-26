@@ -15,6 +15,7 @@ import { Flex, Stack } from "metabase/ui";
 import { trackAlertsManagementEditClicked } from "../analytics";
 
 import S from "./NotificationDetailSidebar.module.css";
+import { NotificationDetailBodySkeleton } from "./NotificationDetailSidebarSkeleton";
 import { SidebarBody } from "./SidebarBody";
 import { SidebarHeader } from "./SidebarHeader";
 import type { SidebarProps } from "./types";
@@ -93,7 +94,7 @@ export const NotificationDetailSidebar = ({
               isDetailFetching={isDetailFetching}
             />
           ) : (
-            <LoadingAndErrorWrapper loading={isDetailFetching} />
+            isDetailFetching && <NotificationDetailBodySkeleton />
           )}
         </Stack>
       </Flex>

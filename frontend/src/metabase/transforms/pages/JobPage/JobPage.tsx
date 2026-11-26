@@ -27,6 +27,10 @@ import {
   JobMoreMenu,
 } from "../../components/JobMoreMenu";
 import { JobTabs } from "../../components/JobTabs";
+import {
+  JobEditorSkeleton,
+  TransformPageSkeleton,
+} from "../../components/TransformSkeletons";
 import { POLLING_INTERVAL } from "../../constants";
 
 type JobPageParams = {
@@ -59,10 +63,18 @@ export function JobPage() {
 
   const isLoading = isLoadingJob || isLoadingDatabases;
   const error = jobError || databasesError;
-  if (isLoading || error != null || job == null) {
+  if (isLoading) {
+    return (
+      <TransformPageSkeleton withIcon={false} gap="2.5rem">
+        <JobEditorSkeleton />
+      </TransformPageSkeleton>
+    );
+  }
+
+  if (error != null || job == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }

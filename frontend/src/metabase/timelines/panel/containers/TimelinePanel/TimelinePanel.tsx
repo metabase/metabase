@@ -4,6 +4,7 @@ import { useGetCollectionQuery } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { TimelinePanelSkeleton } from "metabase/timelines/common/components/TimelineSkeletons";
 import type { CollectionId, TimelineEvent } from "metabase-types/api";
 
 import TimelinePanel from "../../components/TimelinePanel";
@@ -29,7 +30,12 @@ function TimelinePanelContainer({
   const onArchiveEvent = (event: TimelineEvent) =>
     archive({ id: event.id, model: "timeline-event" }, true);
   return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+    <LoadingAndErrorWrapper
+      loading={isLoading}
+      error={error}
+      loader={<TimelinePanelSkeleton />}
+      noWrapper
+    >
       {collection ? (
         <TimelinePanel
           {...props}

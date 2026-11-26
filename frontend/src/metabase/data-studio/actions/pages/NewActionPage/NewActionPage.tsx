@@ -9,6 +9,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import {
+  CodeEditorSkeleton,
+  PageSkeleton,
+} from "metabase/common/data-studio/components/PageSkeleton";
+import {
   PaneHeader,
   PaneHeaderActions,
   PaneHeaderInput,
@@ -54,10 +58,18 @@ function NewQueryActionPage() {
     [databases],
   );
 
-  if (isLoading || error != null) {
+  if (isLoading) {
+    return (
+      <PageSkeleton breadcrumbs={<NewActionBreadcrumbs />}>
+        <CodeEditorSkeleton withTopBar />
+      </PageSkeleton>
+    );
+  }
+
+  if (error != null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }
@@ -130,12 +142,7 @@ function NewQueryActionPageBody({ databases }: NewQueryActionPageBodyProps) {
               onCancel={() => navigate(Urls.dataStudioActions())}
             />
           }
-          breadcrumbs={
-            <DataStudioBreadcrumbs>
-              <Link to={Urls.dataStudioActions()}>{t`Data actions`}</Link>
-              {t`New action`}
-            </DataStudioBreadcrumbs>
-          }
+          breadcrumbs={<NewActionBreadcrumbs />}
         />
         <QueryActionEditorPane>
           <QueryActionEditor
@@ -218,12 +225,7 @@ function NewImplicitActionPage({ initialTableId }: NewImplicitActionPageProps) {
               onCancel={() => navigate(Urls.dataStudioActions())}
             />
           }
-          breadcrumbs={
-            <DataStudioBreadcrumbs>
-              <Link to={Urls.dataStudioActions()}>{t`Data actions`}</Link>
-              {t`New action`}
-            </DataStudioBreadcrumbs>
-          }
+          breadcrumbs={<NewActionBreadcrumbs />}
         />
         <ImplicitActionDefinitionContent
           tableId={tableId}
@@ -246,5 +248,14 @@ function NewImplicitActionPage({ initialTableId }: NewImplicitActionPageProps) {
         isLocationAllowed={isLocationAllowed}
       />
     </>
+  );
+}
+
+function NewActionBreadcrumbs() {
+  return (
+    <DataStudioBreadcrumbs>
+      <Link to={Urls.dataStudioActions()}>{t`Data actions`}</Link>
+      {t`New action`}
+    </DataStudioBreadcrumbs>
   );
 }

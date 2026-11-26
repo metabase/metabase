@@ -26,6 +26,7 @@ import type {
 import { JobRunInfoSection } from "./JobRunInfoSection";
 import S from "./JobRunSidebar.module.css";
 import { TransformRunItem } from "./TransformRunItem";
+import { TransformRunItemsSkeleton } from "./TransformRunItemsSkeleton";
 
 type JobRunSidebarProps = {
   jobId: TransformJobId;
@@ -118,7 +119,13 @@ function TransformRunList({
   error,
 }: TransformRunListProps) {
   if (isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<TransformRunItemsSkeleton />}
+      />
+    );
   }
 
   if (transformRuns.length === 0) {

@@ -1,12 +1,26 @@
-import { useCallback, useMemo } from "react";
-import { t } from "ttag";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
+import { MeasuredSkeleton } from "metabase/common/components/Skeletons";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/current-user";
+import {
+  getSketchLandingCards,
+  saveDashboardSketch,
+  useDashboardSketch,
+} from "metabase/dashboard/dashboard-sketch";
+import { getDashboardHeaderParameters } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/redux";
-import { Loader } from "metabase/ui";
+import { Box } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
 import { useDashboardContext } from "../../../context";
@@ -15,6 +29,7 @@ import {
   type DashboardGridProps,
 } from "../../DashboardGrid";
 import { DashboardGridSkeleton } from "../../DashboardGridSkeleton";
+import { DashboardGridSample } from "../../DashboardSketchSamples";
 import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,
@@ -73,13 +88,48 @@ export const Grid = ({
 
   const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
 
-  if (!dashboard) {
-    return <DashboardGridSkeleton dashboardId={dashboardId} />;
-  }
+  // A refetch of a dashboard that's already open keeps its cards on screen,
+  // but shouldn't flash the empty state while it might be gaining cards.
+  const isRefetchingWhileEmpty = isLoadingWithoutCards && isEmpty;
+  const isLoading = !dashboard || isRefetchingWhileEmpty;
 
-  // Only a refetch of a dashboard that's already open gets here.
-  if (isLoadingWithoutCards) {
-    return <Loader size="lg" label={t`Loading…`} />;
+  const headerParameters = useSelector(getDashboardHeaderParameters);
+  const sketch = useDashboardSketch(dashboardId);
+  const hasSketchCards =
+    sketch != null && getSketchLandingCards(sketch).length > 0;
+
+  useEffect(() => {
+    if (dashboard && !isLoading && !isEditing) {
+      saveDashboardSketch({
+        dashboard,
+        selectedTabId,
+        tabDashcards: currentTabDashcards,
+        headerParameters,
+      });
+    }
+  }, [
+    dashboard,
+    isLoading,
+    isEditing,
+    selectedTabId,
+    currentTabDashcards,
+    headerParameters,
+  ]);
+
+  const classicSkeleton = <DashboardGridSkeleton dashboardId={dashboardId} />;
+  const gridSample =
+    sketch && hasSketchCards ? (
+      <MeasuredSkeleton loading alwaysFromSample classic={classicSkeleton}>
+        <DashboardGridSample sketch={sketch} />
+      </MeasuredSkeleton>
+    ) : null;
+
+  if (isLoading) {
+    // A dashboard never shown before has no layout to draw yet. Otherwise the
+    // skeleton is swapped for the real grid at once, rather than revealed: the
+    // cards land where their skeletons were, and each reveals itself whole
+    // once its query is done (see DashCardCrossfade)
+    return gridSample ?? classicSkeleton;
   }
 
   if (isEmpty) {
@@ -96,26 +146,76 @@ export const Grid = ({
       );
     }
 
-    if (dashboardHasCards && !tabHasCards) {
-      return isEditableDashboard ? (
-        <DashboardEmptyState
-          canCreateQuestions={canCreateQuestions}
-          addQuestion={handleAddQuestion}
-          isDashboardEmpty={false}
-          isEditing={isEditing}
-        />
-      ) : (
-        <DashboardEmptyStateWithoutAddPrompt isDashboardEmpty={false} />
-      );
-    }
+    return isEditableDashboard ? (
+      <DashboardEmptyState
+        canCreateQuestions={canCreateQuestions}
+        addQuestion={handleAddQuestion}
+        isDashboardEmpty={false}
+        isEditing={isEditing}
+      />
+    ) : (
+      <DashboardEmptyStateWithoutAddPrompt isDashboardEmpty={false} />
+    );
   }
 
   return (
-    <DashboardGridConnected
-      handleSetEditing={handleSetEditing}
-      className={className}
-      style={style}
-      p={p}
-    />
+    <SampleUntilGridDrawn sample={gridSample}>
+      <DashboardGridConnected
+        handleSetEditing={handleSetEditing}
+        className={className}
+        style={style}
+        p={p}
+      />
+    </SampleUntilGridDrawn>
+  );
+};
+
+/**
+ * The grid draws nothing on its first render, until it has measured its
+ * width, which on a large dashboard can be a couple hundred milliseconds
+ * after the dashboard arrives. Until then, the grid's skeleton stays in its
+ * place, over the grid laid out unseen, so the page doesn't blank between the
+ * two. Once the grid has drawn, it stays in charge of its own loading states.
+ */
+const SampleUntilGridDrawn = ({
+  sample,
+  children,
+}: {
+  sample: ReactNode;
+  children: ReactNode;
+}) => {
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [isGridDrawn, setIsGridDrawn] = useState(sample == null);
+
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (isGridDrawn || !grid) {
+      return;
+    }
+    const checkGridDrawn = () => {
+      if (grid.querySelector(".react-grid-layout")) {
+        setIsGridDrawn(true);
+      }
+    };
+    checkGridDrawn();
+    const observer = new MutationObserver(checkGridDrawn);
+    observer.observe(grid, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [isGridDrawn]);
+
+  return (
+    <Box pos="relative">
+      <Box
+        ref={gridRef}
+        pos={isGridDrawn ? undefined : "absolute"}
+        top={0}
+        left={0}
+        right={0}
+        style={isGridDrawn ? undefined : { visibility: "hidden" }}
+      >
+        {children}
+      </Box>
+      {!isGridDrawn && sample}
+    </Box>
   );
 };

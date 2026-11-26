@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { useScrollToTop } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
@@ -130,27 +131,28 @@ export const SessionsTable = ({
 
   return (
     <MonitorTableCard aria-busy={isFetching} data-testid="sessions-table">
-      {sessions === undefined ? (
-        <TreeTableSkeleton
-          showCheckboxes={showCheckboxes}
-          columnWidths={getColumnWidths(isEndedTab)}
-        />
-      ) : (
-        <>
-          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
-          <TreeTable
-            instance={instance}
-            hierarchical={false}
+      <SkeletonSwap
+        loading={sessions === undefined}
+        skeleton={
+          <TreeTableSkeleton
             showCheckboxes={showCheckboxes}
-            onHeaderCheckboxClick={() => instance.table.toggleAllRowsSelected()}
-            headerCheckboxAriaLabel={t`Select all`}
-            ariaLabel={t`Sessions`}
-            onRowClick={handleRowActivate}
-            getRowProps={getRowProps}
-            emptyState={<MonitorEmptyState label={emptyLabel} />}
+            columnWidths={getColumnWidths(isEndedTab)}
           />
-        </>
-      )}
+        }
+      >
+        <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+        <TreeTable
+          instance={instance}
+          hierarchical={false}
+          showCheckboxes={showCheckboxes}
+          onHeaderCheckboxClick={() => instance.table.toggleAllRowsSelected()}
+          headerCheckboxAriaLabel={t`Select all`}
+          ariaLabel={t`Sessions`}
+          onRowClick={handleRowActivate}
+          getRowProps={getRowProps}
+          emptyState={<MonitorEmptyState label={emptyLabel} />}
+        />
+      </SkeletonSwap>
     </MonitorTableCard>
   );
 };

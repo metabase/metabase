@@ -1,4 +1,4 @@
-import { act, render, screen } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 
 describe("LoadingAndErrorWrapper", () => {
@@ -26,38 +26,21 @@ describe("LoadingAndErrorWrapper", () => {
       ).not.toThrow();
     });
 
-    describe("cycling", () => {
-      it("should cycle through loading messages if provided", () => {
-        jest.useFakeTimers();
+    it("should render the given loader inside the loading skeleton", () => {
+      render(
+        <LoadingAndErrorWrapper
+          loading={true}
+          loader={<div data-testid="custom-skeleton" />}
+        >
+          <div>Content</div>
+        </LoadingAndErrorWrapper>,
+      );
 
-        const interval = 6000;
-
-        render(
-          <LoadingAndErrorWrapper
-            loading={true}
-            error={null}
-            getLoadingMessages={() => ["One", "Two", "Three"]}
-            messageInterval={interval}
-          />,
-        );
-
-        expect(screen.getByText("One")).toBeInTheDocument();
-        act(() => {
-          jest.advanceTimersByTime(interval);
-        });
-
-        expect(screen.getByText("Two")).toBeInTheDocument();
-        act(() => {
-          jest.advanceTimersByTime(interval);
-        });
-
-        expect(screen.getByText("Three")).toBeInTheDocument();
-        act(() => {
-          jest.advanceTimersByTime(interval);
-        });
-
-        expect(screen.getByText("One")).toBeInTheDocument();
-      });
+      expect(screen.getByTestId("loading-indicator")).toContainElement(
+        screen.getByTestId("custom-skeleton"),
+      );
+      expect(screen.getByRole("status")).toHaveTextContent("Loading...");
+      expect(screen.queryByText("Content")).not.toBeInTheDocument();
     });
   });
 

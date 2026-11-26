@@ -10,6 +10,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
+import { ListSkeleton } from "metabase/common/components/Skeletons";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import type { Document } from "metabase-types/api";
@@ -48,7 +49,21 @@ export function DocumentRevisionHistorySidebar({
     <Sidesheet isOpen title={t`History`} onClose={onClose} closeHotkey="]">
       <SidesheetCard>
         {isLoading || error ? (
-          <LoadingAndErrorWrapper loading={isLoading} error={error} />
+          <LoadingAndErrorWrapper
+            loading={isLoading}
+            error={error}
+            loader={
+              <ListSkeleton
+                rows={6}
+                iconSize={24}
+                textHeight={14}
+                withDescription
+                gap="xxl"
+                px="xl"
+                py="lg"
+              />
+            }
+          />
         ) : (
           <RevisionHistoryTimeline
             events={events}

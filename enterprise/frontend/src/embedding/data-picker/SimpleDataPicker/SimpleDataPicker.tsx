@@ -4,8 +4,10 @@ import { useMemo } from "react";
 
 import { skipToken, useSearchQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { ListSkeleton } from "metabase/common/components/Skeletons";
 import type { DataSource } from "metabase/embedding-sdk/types/components/data-picker";
 import { PLUGIN_LIBRARY, type SimpleDataPickerProps } from "metabase/plugins";
+import { CONTAINER_WIDTH } from "metabase/querying/common/components/DataSelector/constants";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import { useSetting } from "metabase/settings";
 import { Box, Popover } from "metabase/ui";
@@ -83,6 +85,7 @@ export function SimpleDataPicker({
         <DelayedLoadingAndErrorWrapper
           loading={isLoading || isLibraryLoading}
           error={error ?? libraryError}
+          loader={<ListSkeleton rows={6} w={CONTAINER_WIDTH} p="md" gap={17} />}
         >
           <SimpleDataPickerView
             selectedSource={selectedSource}

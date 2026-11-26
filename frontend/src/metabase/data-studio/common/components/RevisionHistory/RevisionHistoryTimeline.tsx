@@ -3,12 +3,14 @@ import { t } from "ttag";
 
 import { useListRevisionsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { getUserId } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Center, Stack, Text, Timeline } from "metabase/ui";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
 import type { RevisionEntityType } from "metabase-types/api";
 
+import { RevisionHistoryTimelineSkeleton } from "./RevisionHistoryTimelineSkeleton";
 import { RevisionItem } from "./RevisionItem";
 import type { DefinitionType, RevisionActionDescriptor } from "./types";
 
@@ -44,10 +46,18 @@ export function RevisionHistoryTimeline({
     );
   }, [revisions, currentUserId]);
 
-  if (isLoading || error != null) {
+  if (isLoading) {
+    return (
+      <LoadingSkeleton>
+        <RevisionHistoryTimelineSkeleton />
+      </LoadingSkeleton>
+    );
+  }
+
+  if (error != null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }

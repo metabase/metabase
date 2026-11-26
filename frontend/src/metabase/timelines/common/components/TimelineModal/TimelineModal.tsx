@@ -5,6 +5,11 @@ import {
   type LoadingAndErrorWrapperProps,
 } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
+  FormSkeleton,
+  ListSkeleton,
+  LoadingSkeleton,
+} from "metabase/common/components/Skeletons";
+import {
   Flex,
   type FlexProps,
   Modal,
@@ -65,15 +70,28 @@ export const TimelineModal = ({
   </Modal.Root>
 );
 
-/** A spinner, or the error, filling a `tall` `TimelineModal`. */
+/** A skeleton of the modal's body while loading, or the error, filling a `tall` `TimelineModal`. */
 export const TimelineModalLoadingState = ({
   loading,
   error,
-}: Pick<LoadingAndErrorWrapperProps, "loading" | "error">) => (
+  variant = "list",
+}: Pick<LoadingAndErrorWrapperProps, "loading" | "error"> & {
+  /** The shape of the body that is loading. Defaults to `"list"`. */
+  variant?: "list" | "form";
+}) => (
   <LoadingAndErrorWrapper
     className={S.loading}
     loading={loading}
     error={error}
+    loader={
+      <LoadingSkeleton>
+        {variant === "form" ? (
+          <FormSkeleton fields={4} withSubmit />
+        ) : (
+          <ListSkeleton rows={6} />
+        )}
+      </LoadingSkeleton>
+    }
   />
 );
 

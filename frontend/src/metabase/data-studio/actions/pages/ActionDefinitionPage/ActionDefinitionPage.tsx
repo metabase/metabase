@@ -6,6 +6,7 @@ import { findErrorMessage, getErrorMessage } from "metabase/api/utils";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { CodeEditorSkeleton } from "metabase/common/data-studio/components/PageSkeleton";
 import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { hasNativeWritePermissions } from "metabase/common/utils/database";
@@ -24,6 +25,7 @@ import type {
 
 import { trackDataActionQueryUpdated } from "../../analytics";
 import { ActionHeader } from "../../components/ActionHeader";
+import { ActionPageSkeleton } from "../../components/ActionPageSkeleton";
 import { ImplicitActionDefinitionContent } from "../../components/ImplicitActionDefinitionContent";
 import { QueryActionDefinitionContent } from "../../components/QueryActionDefinitionContent";
 import { QueryActionEditor } from "../../components/QueryActionEditor";
@@ -36,10 +38,18 @@ import { canEditActionQuery } from "../../utils";
 export function ActionDefinitionPage() {
   const { action, isLoading, error } = useRouteAction();
 
-  if (isLoading || error != null || action == null) {
+  if (isLoading) {
+    return (
+      <ActionPageSkeleton>
+        <CodeEditorSkeleton withTopBar />
+      </ActionPageSkeleton>
+    );
+  }
+
+  if (error != null || action == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }
@@ -64,10 +74,18 @@ function QueryActionDefinitionPage({ action }: QueryActionDefinitionPageProps) {
     [databases],
   );
 
-  if (isLoading || error != null) {
+  if (isLoading) {
+    return (
+      <ActionPageSkeleton isEditMode={isEditRoute}>
+        <CodeEditorSkeleton withTopBar />
+      </ActionPageSkeleton>
+    );
+  }
+
+  if (error != null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }

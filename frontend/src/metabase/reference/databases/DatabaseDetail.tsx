@@ -9,6 +9,7 @@ import { connect } from "metabase/redux";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
+import { ReferenceDetailSkeleton } from "metabase/reference/components/ReferenceSkeletons";
 import * as actions from "metabase/reference/reference";
 import { updateDatabase } from "metabase/reference/update-actions";
 import type { Database, User } from "metabase-types/api";
@@ -119,8 +120,17 @@ const DatabaseDetail = (props: DatabaseDetailProps) => {
         nameFormField={getFormField("name")}
       />
       <LoadingAndErrorWrapper
-        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        loading={!loadingError && !saveError && loading}
         error={saveError ?? loadingError}
+        loader={
+          <ReferenceDetailSkeleton
+            titles={[
+              t`Description`,
+              t`Why this database is interesting`,
+              t`Things to be aware of about this database`,
+            ]}
+          />
+        }
       >
         {() => (
           <div className={CS.wrapper}>

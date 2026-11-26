@@ -10,6 +10,7 @@ import R from "metabase/reference/Reference.module.css";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
+import { ReferenceListSkeleton } from "metabase/reference/components/ReferenceSkeletons";
 import type { Database, Table, TableId } from "metabase-types/api";
 
 import ReferenceHeader from "../components/ReferenceHeader";
@@ -89,6 +90,7 @@ class TableList extends Component<TableListProps> {
         <LoadingAndErrorWrapper
           loading={!loadingError && loading}
           error={loadingError}
+          loader={<ReferenceListSkeleton />}
         >
           {() =>
             tables.length > 0 ? (

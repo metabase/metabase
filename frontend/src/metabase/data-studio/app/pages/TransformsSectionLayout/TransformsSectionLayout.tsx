@@ -1,20 +1,34 @@
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  LoadingSkeleton,
+  SkeletonSwap,
+} from "metabase/common/components/Skeletons";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import {
+  CodeEditorSkeleton,
+  PageSkeleton,
+} from "metabase/common/data-studio/components/PageSkeleton";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Outlet } from "metabase/router";
+import { Outlet, useParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
+import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import { useTransformSupportedDbs } from "metabase/transforms/hooks/use-transform-supported-dbs";
 import { EnableTransformsPage } from "metabase/transforms/pages/EnableTransformsPage/EnableTransformsPage";
 import { getShouldShowTransformsUpsell } from "metabase/transforms/selectors";
+import { Card, Skeleton, TreeTableSkeleton } from "metabase/ui";
 
 import { SectionLayout } from "../../components/SectionLayout";
 
 import { NoWritableDatabasesEmptyState } from "./NoWritableDatabasesEmptyState";
 
+const TRANSFORM_TAB_COUNT = 5;
+
 export function TransformsSectionLayout() {
+  const params = useParams();
   usePageTitle(t`Transforms`, { titleIndex: 1 });
   const shouldShowUpsell = useSelector(getShouldShowTransformsUpsell);
   const isTransformsSetupComplete = useSetting("transforms-setup-complete");
@@ -28,23 +42,44 @@ export function TransformsSectionLayout() {
     return <EnableTransformsPage />;
   }
 
-  if (!isLoadingDatabases && transformsDatabases?.length === 0) {
-    return (
-      <SectionLayout>
-        <NoWritableDatabasesEmptyState />
-      </SectionLayout>
-    );
-  }
+  const isTransformDetailRoute = Boolean(params.transformId);
 
   return (
     <SectionLayout>
-      <LoadingAndErrorWrapper
+      <SkeletonSwap
         loading={isLoadingDatabases}
-        error={databasesError}
-        noWrapper
+        skeleton={
+          isTransformDetailRoute ? (
+            <PageSkeleton tabCount={TRANSFORM_TAB_COUNT}>
+              <CodeEditorSkeleton withTopBar />
+            </PageSkeleton>
+          ) : (
+            <TransformListSkeleton />
+          )
+        }
       >
-        <Outlet />
-      </LoadingAndErrorWrapper>
+        {transformsDatabases?.length === 0 ? (
+          <NoWritableDatabasesEmptyState />
+        ) : (
+          <LoadingAndErrorWrapper error={databasesError} noWrapper>
+            <Outlet />
+          </LoadingAndErrorWrapper>
+        )}
+      </SkeletonSwap>
     </SectionLayout>
+  );
+}
+
+function TransformListSkeleton() {
+  return (
+    <PageContainer gap={0}>
+      <TransformsHeader />
+      <LoadingSkeleton>
+        <Skeleton h={40} radius="sm" />
+        <Card withBorder p={0}>
+          <TreeTableSkeleton columnWidths={[0.35, 0.15, 0.15, 0.2, 0.05]} />
+        </Card>
+      </LoadingSkeleton>
+    </PageContainer>
   );
 }

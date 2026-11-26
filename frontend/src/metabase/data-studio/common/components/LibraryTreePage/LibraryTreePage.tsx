@@ -3,6 +3,7 @@ import { type ReactNode, useEffect } from "react";
 import { t } from "ttag";
 
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { SectionLayout } from "metabase/data-studio/app/components/SectionLayout";
@@ -142,9 +143,12 @@ export function LibraryTreePage({
                 {pageMenu && <LibraryPageMenu {...pageMenu} />}
               </Flex>
               <Card withBorder p={0}>
-                {isLoading ? (
-                  <TreeTableSkeleton columnWidths={[0.6, 0.2, 0.05]} />
-                ) : (
+                <SkeletonSwap
+                  loading={isLoading}
+                  skeleton={
+                    <TreeTableSkeleton columnWidths={[0.6, 0.2, 0.05]} />
+                  }
+                >
                   <TreeTable
                     instance={treeTableInstance}
                     showCheckboxes={!isRemoteSyncReadOnly}
@@ -165,7 +169,7 @@ export function LibraryTreePage({
                     }}
                     isChildrenLoading={isChildrenLoading}
                   />
-                )}
+                </SkeletonSwap>
               </Card>
             </>
           )}

@@ -5,7 +5,12 @@ import {
   useGetDatabaseMetadataQuery,
   useListDatabaseSchemaTablesQuery,
 } from "metabase/api";
+import { BrowseCardsSkeleton } from "metabase/browse/components/BrowseSkeletons";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  LoadingSkeleton,
+  MeasuredSkeleton,
+} from "metabase/common/components/Skeletons";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
@@ -14,7 +19,7 @@ import type { DatabaseId, Table } from "metabase-types/api";
 
 import { RELOAD_INTERVAL } from "../../constants";
 
-import { TableBrowserInner } from "./TableBrowserInner";
+import { TableBrowserInner, type TableBrowserTable } from "./TableBrowserInner";
 
 type RouteParams = {
   dbId?: string;
@@ -30,6 +35,32 @@ type TableBrowserContainerProps = {
 };
 
 const EMPTY_TABLES: Table[] = [];
+
+export const TABLE_CARDS_SKELETON_COUNT = 12;
+
+// Typical table names, so a first visit's skeleton has realistic line lengths.
+// Later visits draw the grid's shape as last shown.
+const SAMPLE_TABLES: TableBrowserTable[] = [
+  "Orders",
+  "Products",
+  "Customers",
+  "Order line items",
+  "Invoices",
+  "Subscriptions",
+  "Accounts",
+  "Page view events",
+  "Reviews",
+  "Payments",
+  "Shipments",
+  "Support tickets",
+].map((name, index) => ({
+  id: -(index + 1),
+  db_id: -1,
+  name,
+  display_name: name,
+  initial_sync_status: "complete",
+  is_writable: false,
+}));
 
 const getDatabaseId = (
   props: TableBrowserContainerProps,
@@ -91,15 +122,27 @@ export const TableBrowser = (props: TableBrowserContainerProps) => {
     return null;
   }
 
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} noWrapper />;
+  }
+
   return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+    <MeasuredSkeleton
+      loading={isLoading}
+      id={`browse-tables-${dbId}-${schemaName ?? ""}`}
+      classic={
+        <LoadingSkeleton>
+          <BrowseCardsSkeleton cards={TABLE_CARDS_SKELETON_COUNT} withCrumbs />
+        </LoadingSkeleton>
+      }
+    >
       <TableBrowserInner
-        tables={tables}
+        tables={isLoading ? SAMPLE_TABLES : tables}
         dbId={dbId}
         schemaName={schemaName}
         xraysEnabled={xraysEnabled}
         showSchemaInHeader={showSchemaInHeader}
       />
-    </LoadingAndErrorWrapper>
+    </MeasuredSkeleton>
   );
 };

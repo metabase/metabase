@@ -5,10 +5,11 @@ import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteMod
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
-import { Button, Center, Group, Icon, Tooltip } from "metabase/ui";
+import { Button, Center, Group, Icon, Skeleton, Tooltip } from "metabase/ui";
 
 import { trackDataActionExecuted } from "../../analytics";
 import { ActionHeader } from "../../components/ActionHeader";
+import { ActionPageSkeleton } from "../../components/ActionPageSkeleton";
 import { useActionDatabase } from "../../hooks/use-action-database";
 import { useRouteAction } from "../../hooks/use-route-action";
 
@@ -30,10 +31,14 @@ export function ActionRunPage() {
   const isLoading = isLoadingAction || isLoadingDatabase;
   const error = actionError ?? databaseError;
 
-  if (isLoading || error != null || action == null) {
+  if (isLoading) {
+    return <ActionRunPageSkeleton />;
+  }
+
+  if (error != null || action == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }
@@ -69,5 +74,17 @@ export function ActionRunPage() {
         }
       />
     </PageContainer>
+  );
+}
+
+function ActionRunPageSkeleton() {
+  return (
+    <ActionPageSkeleton>
+      <TitleSection label={t`Run this action`}>
+        <Group p="xl">
+          <Skeleton h={32} w={80} radius="xs" />
+        </Group>
+      </TitleSection>
+    </ActionPageSkeleton>
   );
 }

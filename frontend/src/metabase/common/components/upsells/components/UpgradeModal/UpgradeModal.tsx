@@ -7,7 +7,11 @@ import {
   useGetPlanQuery,
   useStartTrialMutation,
 } from "metabase/api/cloud-proxy";
-import { Center, Loader, Modal } from "metabase/ui";
+import {
+  LoadingSkeleton,
+  getSkeletonLineWidth,
+} from "metabase/common/components/Skeletons";
+import { Box, Divider, Flex, Modal, Skeleton, Stack } from "metabase/ui";
 
 import {
   UpgradeModalError,
@@ -154,9 +158,7 @@ export function UpgradeModal({ opened, onClose }: UpgradeModalProps) {
       {...getStepModalProps()}
     >
       {step === "initial" && isDataLoading && !hasQueryError && (
-        <Center h={200}>
-          <Loader />
-        </Center>
+        <UpgradeModalInitialSkeleton />
       )}
       {step === "initial" && !isDataLoading && !hasQueryError && (
         <UpgradeModalInitial
@@ -173,5 +175,47 @@ export function UpgradeModal({ opened, onClose }: UpgradeModalProps) {
       )}
       {isErrorShown && <UpgradeModalError onClose={handleClose} />}
     </Modal>
+  );
+}
+
+const PRO_FEATURE_COUNT = 3;
+
+function UpgradeModalInitialSkeleton() {
+  return (
+    <LoadingSkeleton gap="xl">
+      <Flex align="center" gap="sm">
+        <Skeleton h={24} w={24} radius="xs" />
+        <Skeleton h={24} w="60%" radius="xs" />
+      </Flex>
+      <Box
+        bg="background_page-secondary"
+        p="xl"
+        style={{ borderRadius: "var(--mantine-radius-sm)" }}
+      >
+        <Stack gap="lg">
+          <Flex justify="space-between" align="center">
+            <Skeleton h={16} w="30%" radius="xs" />
+            <Skeleton h={12} w="25%" radius="xs" />
+          </Flex>
+          <Stack gap="sm">
+            {Array.from({ length: PRO_FEATURE_COUNT }, (_, index) => (
+              <Flex key={index} align="center" gap="sm">
+                <Skeleton h={16} w={16} radius="xs" />
+                <Skeleton h={12} w={getSkeletonLineWidth(index)} radius="xs" />
+              </Flex>
+            ))}
+          </Stack>
+          <Divider />
+          <Flex justify="space-between" align="center">
+            <Skeleton h={12} w="25%" radius="xs" />
+            <Skeleton h={16} w="15%" radius="xs" />
+          </Flex>
+        </Stack>
+      </Box>
+      <Flex justify="flex-end" gap="md">
+        <Skeleton h={40} w={80} radius="sm" />
+        <Skeleton h={40} w={160} radius="sm" />
+      </Flex>
+    </LoadingSkeleton>
   );
 }

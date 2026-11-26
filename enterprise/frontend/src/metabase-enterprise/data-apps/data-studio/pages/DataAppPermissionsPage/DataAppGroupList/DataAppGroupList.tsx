@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import { useSetting } from "metabase/settings";
 import {
@@ -112,15 +113,18 @@ export function DataAppGroupList({
   return (
     <Flex direction="column" flex={1} mih={0}>
       <Card withBorder p={0}>
-        {isLoading ? (
-          <TreeTableSkeleton
-            columnWidths={
-              isTenantsEnabled
-                ? [0.35, 0.2, 0.3, 0.1, 0.05]
-                : [0.4, 0.2, 0.35, 0.05]
-            }
-          />
-        ) : (
+        <SkeletonSwap
+          loading={isLoading}
+          skeleton={
+            <TreeTableSkeleton
+              columnWidths={
+                isTenantsEnabled
+                  ? [0.35, 0.2, 0.3, 0.1, 0.05]
+                  : [0.4, 0.2, 0.35, 0.05]
+              }
+            />
+          }
+        >
           <TreeTable
             instance={treeTableInstance}
             onRowClick={(row) => onSelectGroup(row.original.id)}
@@ -130,7 +134,7 @@ export function DataAppGroupList({
               />
             }
           />
-        )}
+        </SkeletonSwap>
       </Card>
     </Flex>
   );

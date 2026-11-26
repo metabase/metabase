@@ -6,7 +6,15 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { trackDataStudioTableUnpublished } from "metabase/common/data-studio/analytics";
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { UnpublishTablesModalProps } from "metabase/plugins";
-import { Button, FocusTrap, List, Modal, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  FocusTrap,
+  List,
+  Modal,
+  Skeleton,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { useUnpublishTablesMutation } from "metabase-enterprise/api";
 import type {
   BulkTableInfo,
@@ -54,11 +62,14 @@ type ModalTitleProps = {
 };
 
 function ModalTitle({ databaseIds, schemaIds, tableIds }: ModalTitleProps) {
-  const { data } = useGetTableSelectionInfoQuery({
+  const { data, isLoading } = useGetTableSelectionInfoQuery({
     database_ids: databaseIds,
     schema_ids: schemaIds,
     table_ids: tableIds,
   });
+  if (isLoading) {
+    return <Skeleton h={24} w="70%" radius="xs" />;
+  }
   if (!data) {
     return null;
   }
@@ -91,7 +102,13 @@ function ModalBody({
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   if (isLoading || error != null || data == null) {
-    return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <DelayedLoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<ModalBodySkeleton />}
+      />
+    );
   }
 
   const { selected_table, published_downstream_tables } = data;
@@ -141,6 +158,18 @@ function ModalBody({
         </Button>
       </Modal.Footer>
     </>
+  );
+}
+
+function ModalBodySkeleton() {
+  return (
+    <Stack gap={0}>
+      <Skeleton h={14} w="75%" radius="xs" />
+      <Modal.Footer>
+        <Skeleton h={40} w={80} radius="sm" />
+        <Skeleton h={40} w={140} radius="sm" />
+      </Modal.Footer>
+    </Stack>
   );
 }
 

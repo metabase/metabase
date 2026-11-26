@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { DateTime } from "metabase/common/components/DateTime";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
@@ -97,7 +98,15 @@ export function DataAppListPage() {
     return <LoadingAndErrorWrapper loading={false} error={error} />;
   }
 
-  const isEmpty = !isLoading && apps.length === 0;
+  const searchInput = (
+    <TextInput
+      placeholder={t`Search...`}
+      leftSection={<Icon name="search" />}
+      bdrs="sm"
+      value={searchQuery}
+      onChange={(event) => setSearchQuery(event.target.value)}
+    />
+  );
 
   return (
     <PageContainer data-testid="data-app-list" gap={0}>
@@ -106,23 +115,27 @@ export function DataAppListPage() {
           <DataStudioBreadcrumbs>{t`Data apps`}</DataStudioBreadcrumbs>
         }
       />
-      {isEmpty ? (
-        <DataAppListEmptyState />
-      ) : (
-        <Stack style={{ overflow: "hidden" }}>
-          {!isLoading && <DataAppBuildGuide />}
-          <TextInput
-            placeholder={t`Search...`}
-            leftSection={<Icon name="search" />}
-            bdrs="sm"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
-          <Flex direction="column" flex={1} mih={0}>
-            <Card withBorder p={0}>
-              {isLoading ? (
+      <SkeletonSwap
+        loading={isLoading}
+        skeleton={
+          <Stack style={{ overflow: "hidden" }}>
+            {searchInput}
+            <Flex direction="column" flex={1} mih={0}>
+              <Card withBorder p={0}>
                 <TreeTableSkeleton columnWidths={[0.3, 0.3, 0.15, 0.2, 0.05]} />
-              ) : (
+              </Card>
+            </Flex>
+          </Stack>
+        }
+      >
+        {apps.length === 0 ? (
+          <DataAppListEmptyState />
+        ) : (
+          <Stack style={{ overflow: "hidden" }}>
+            <DataAppBuildGuide />
+            {searchInput}
+            <Flex direction="column" flex={1} mih={0}>
+              <Card withBorder p={0}>
                 <TreeTable
                   instance={treeTableInstance}
                   emptyState={
@@ -132,11 +145,11 @@ export function DataAppListPage() {
                   }
                   onRowClick={handleRowActivate}
                 />
-              )}
-            </Card>
-          </Flex>
-        </Stack>
-      )}
+              </Card>
+            </Flex>
+          </Stack>
+        )}
+      </SkeletonSwap>
     </PageContainer>
   );
 }

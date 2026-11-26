@@ -1,3 +1,5 @@
+/* The axis is a border on the image, outside the faint, pulsing group the
+   chart is drawn in, so it takes the same faintness in its own color */
 .root {
-  border-bottom: 1px solid currentColor;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
 }

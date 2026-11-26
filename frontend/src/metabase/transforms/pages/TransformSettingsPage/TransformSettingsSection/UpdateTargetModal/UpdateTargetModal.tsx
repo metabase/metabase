@@ -19,6 +19,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
+import { ModalFormSkeleton } from "metabase/transforms/components/TransformSkeletons";
 import { sourceDatabaseId } from "metabase/transforms/utils";
 import { Button, FocusTrap, Modal, Radio, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
@@ -110,7 +111,13 @@ function UpdateTargetForm({
   );
 
   if (isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<ModalFormSkeleton fields={2} />}
+      />
+    );
   }
 
   const handleSubmit = async (values: EditTransformValues) => {

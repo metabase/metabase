@@ -30,6 +30,10 @@ import type {
 } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
+import {
+  TransformEditorSkeleton,
+  TransformPageSkeleton,
+} from "../../components/TransformSkeletons";
 import { NAME_MAX_LENGTH } from "../../constants";
 import { useSourceState } from "../../hooks/use-source-state";
 import { getValidationResult, isCompleteSource } from "../../utils";
@@ -57,10 +61,14 @@ function NewTransformPage({ initialSource }: NewTransformPageProps) {
   const isEditorLoaded = useQueryEditorChunk();
   const isLoading = isLoadingDatabases || !isEditorLoaded;
 
-  if (isLoading || error != null || transformsDatabases == null) {
+  if (isLoading) {
+    return <NewTransformPageSkeleton />;
+  }
+
+  if (error != null || transformsDatabases == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }
@@ -242,15 +250,27 @@ export function NewCardTransformPage() {
     [card],
   );
 
-  if (isLoading || error || initialSource == null) {
+  if (isLoading) {
+    return <NewTransformPageSkeleton />;
+  }
+
+  if (error || initialSource == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }
 
   return <NewTransformPage initialSource={initialSource} />;
+}
+
+function NewTransformPageSkeleton() {
+  return (
+    <TransformPageSkeleton withIcon={false} withTabs={false}>
+      <TransformEditorSkeleton />
+    </TransformPageSkeleton>
+  );
 }
 
 // The editor is a separate chunk. Folding it into the wait this page already

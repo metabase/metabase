@@ -4,11 +4,15 @@ import { useListRevisionsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getActivityTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
+import { getSkeletonLineWidth } from "metabase/common/components/Skeletons";
 import { getUser } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
+import { Flex, Skeleton, Stack } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { revertToRevision } from "../actions";
+
+const SKELETON_EVENT_COUNT = 5;
 
 interface QuestionActivityTimelineProps {
   question: Question;
@@ -38,7 +42,13 @@ export function QuestionActivityTimeline({
   );
 
   if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <LoadingAndErrorWrapper
+        loading={isLoading}
+        error={error}
+        loader={<TimelineSkeleton />}
+      />
+    );
   }
 
   return (
@@ -49,5 +59,21 @@ export function QuestionActivityTimeline({
       canWrite={question.canWrite()}
       entity="card"
     />
+  );
+}
+
+function TimelineSkeleton() {
+  return (
+    <Stack gap={0}>
+      {Array.from({ length: SKELETON_EVENT_COUNT }, (_, index) => (
+        <Flex key={index} align="flex-start" gap="lg" px="xl" py="lg">
+          <Skeleton h={24} w={24} circle flex="none" />
+          <Stack gap="sm" flex={1} pt="xxs">
+            <Skeleton h={14} w={getSkeletonLineWidth(index)} radius="xs" />
+            <Skeleton h={10} w={80} radius="xs" />
+          </Stack>
+        </Flex>
+      ))}
+    </Stack>
   );
 }

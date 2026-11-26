@@ -24,11 +24,11 @@ const setup = ({ isLoading = false }: SetupProps = {}) => {
 };
 
 describe("SearchFilterPopoverWrapper", () => {
-  it("should render loading spinner when isLoading is true", () => {
+  it("should render a loading skeleton when isLoading is true", () => {
     setup({ isLoading: true });
 
-    const loadingSpinner = screen.getByTestId("loading-indicator");
-    expect(loadingSpinner).toBeInTheDocument();
+    const loadingSkeleton = screen.getByTestId("loading-indicator");
+    expect(loadingSkeleton).toBeInTheDocument();
   });
 
   it("should render children content when isLoading is false", () => {

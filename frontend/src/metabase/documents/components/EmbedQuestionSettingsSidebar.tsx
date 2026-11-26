@@ -3,6 +3,10 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
+import {
+  FormSkeleton,
+  LoadingSkeleton,
+} from "metabase/common/components/Skeletons";
 import { useDispatch, useSelector } from "metabase/redux";
 import {
   ActionIcon,
@@ -11,8 +15,9 @@ import {
   Ellipsified,
   Group,
   Icon,
-  Loader,
   Menu,
+  Repeat,
+  Skeleton,
   Stack,
   Text,
 } from "metabase/ui";
@@ -99,14 +104,7 @@ export const EmbedQuestionSettingsSidebar = ({
   }, [dispatch]);
 
   if (isLoading || !series) {
-    return (
-      <Stack gap="xl" p="xl" className={S.loadingContainer}>
-        <Box className={S.loadingContent}>
-          <Loader size="lg" />
-          <Text>{t`Loading question settings...`}</Text>
-        </Box>
-      </Stack>
-    );
+    return <EmbedQuestionSettingsSidebarSkeleton onClose={handleDone} />;
   }
 
   if (!card || !series) {
@@ -217,3 +215,38 @@ export const EmbedQuestionSettingsSidebar = ({
     </Box>
   );
 };
+
+function EmbedQuestionSettingsSidebarSkeleton({
+  onClose,
+}: {
+  onClose: () => void;
+}) {
+  return (
+    <LoadingSkeleton className={S.container} gap={0}>
+      <Box className={S.header}>
+        <Group wrap="nowrap" justify="space-between" align="flex-start">
+          <Group wrap="nowrap" flex={1} align="center" p="lg">
+            <Text size="md" fw="bold" flex="none">{t`Visualize as`}</Text>
+            <Skeleton h={32} w={120} radius="sm" />
+          </Group>
+          <ActionIcon variant="subtle" mt="1rem" mr="1rem" onClick={onClose}>
+            <Icon name="close" />
+          </ActionIcon>
+        </Group>
+      </Box>
+      <Stack className={S.settingsContent} p="lg" gap="xl">
+        <Group gap="lg">
+          <Repeat times={3}>
+            <Skeleton h={14} w={56} radius="xs" />
+          </Repeat>
+        </Group>
+        <FormSkeleton fields={4} />
+      </Stack>
+      <Box className={S.footer}>
+        <Button fullWidth variant="filled" onClick={onClose}>
+          {t`Done`}
+        </Button>
+      </Box>
+    </LoadingSkeleton>
+  );
+}

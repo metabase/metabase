@@ -10,7 +10,6 @@ import { listTag } from "metabase/api/tags";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { deletePermanently } from "metabase/archive/actions";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Toaster } from "metabase/common/components/Toaster";
 import {
   type SetCollectionDestination,
@@ -46,6 +45,7 @@ import { ViewLeftSidebarContainer } from "../ViewLeftSidebarContainer";
 import { ViewMainContainer } from "../ViewMainContainer";
 import { ViewRightSidebarContainer } from "../ViewRightSidebarContainer";
 
+import { QueryBuilderSkeleton } from "./QueryBuilderSkeleton";
 import S from "./View.module.css";
 
 type SpreadProps = ComponentProps<typeof ViewHeaderContainer> &
@@ -173,7 +173,9 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
     // no question yet means we are still initializing, so keep it simple
     if (!question) {
       return (
-        <LoadingAndErrorWrapper className={CS.fullHeight} loading ref={ref} />
+        <div className={CS.fullHeight} ref={ref}>
+          <QueryBuilderSkeleton />
+        </div>
       );
     }
 

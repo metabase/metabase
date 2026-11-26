@@ -1,9 +1,10 @@
 import cx from "classnames";
-import { msgid, ngettext, t } from "ttag";
+import { msgid, ngettext } from "ttag";
 
 import { useGetFieldQuery, useGetFieldValuesQuery } from "metabase/api";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
+import { Box, Skeleton, Stack, Text } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
@@ -65,7 +66,13 @@ export function GlobalFingerprint({
               w="100%"
               aria-hidden={!isLoading}
               visible={isLoading}
-            >{t`Getting distinct values...`}</Fade>
+            >
+              {isLoading && (
+                <LoadingSkeleton>
+                  <Skeleton h="1em" w={120} radius="xs" />
+                </LoadingSkeleton>
+              )}
+            </Fade>
           )}
         </Box>
       )}
@@ -129,9 +136,7 @@ function ShortenedFieldValuesList({
   return (
     <Box pos="relative" h={isLoading ? "1.8em" : "1.5em"} lh="1em">
       <Fade pos="absolute" top={0} left={0} w="100%" visible={isLoading}>
-        <Flex justify="center">
-          <Loader size={18} color="core-brand" />
-        </Flex>
+        {isLoading && <Skeleton h="1.3em" w="80%" radius="xs" />}
       </Fade>
       <Fade pos="absolute" w="100%" slide visible={!isLoading}>
         <Text

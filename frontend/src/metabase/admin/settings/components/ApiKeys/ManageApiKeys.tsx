@@ -6,6 +6,7 @@ import ApiKeysEmptyIllustration from "assets/img/api-keys-empty.svg?component";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { MeasuredSkeleton } from "metabase/common/components/Skeletons";
 import { SettingsPageWrapper } from "metabase/settings-components";
 import {
   ActionIcon,
@@ -38,6 +39,24 @@ import { formatMaskedKey } from "./utils";
 type Modal = null | "create" | "edit" | "delete";
 
 const getNodeId = (apiKey: ApiKey) => String(apiKey.id);
+
+// Typical keys, so a first visit's skeleton has realistic line lengths.
+// Later visits draw the table's shape as last shown.
+const SAMPLE_API_KEYS: ApiKey[] = [
+  { name: "Production ETL", group: "Administrators", author: "Maria Chen" },
+  { name: "Slack reporting bot", group: "Marketing", author: "James Okafor" },
+  { name: "dbt Cloud sync", group: "Data team", author: "Priya Raman" },
+  { name: "Embedding service", group: "All Users", author: "Maria Chen" },
+].map(({ name, group, author }, index) => ({
+  id: -(index + 1),
+  name,
+  group: { id: -(index + 1), name: group },
+  creator_id: -1,
+  masked_key: "mb_x7Rk****",
+  created_at: "2026-10-14T16:32:00Z",
+  updated_at: "2026-10-14T16:32:00Z",
+  updated_by: { id: -1, common_name: author },
+}));
 
 function ApiKeyActionsMenu({
   apiKey,
@@ -223,7 +242,6 @@ export const ManageApiKeys = () => {
   }, []);
 
   const hasKeys = sortedApiKeys.length > 0;
-  const showLoadingOrError = isLoading || Boolean(error);
 
   return (
     <SettingsPageWrapper>
@@ -259,28 +277,40 @@ export const ManageApiKeys = () => {
         </Group>
       </Group>
       <Card withBorder radius="sm" p={0} style={{ overflow: "hidden" }}>
-        {showLoadingOrError ? (
+        {error ? (
           <Box p="xxl" mih="20rem">
-            <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
+            <DelayedLoadingAndErrorWrapper loading={false} error={error} />
           </Box>
-        ) : hasKeys ? (
-          <ApiKeysTable
-            apiKeys={sortedApiKeys}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
         ) : (
-          <Center mih="20rem" data-testid="empty-table-warning">
-            <EmptyState
-              illustrationElement={
-                <Box c="text-primary" lh={0}>
-                  <ApiKeysEmptyIllustration aria-hidden />
-                </Box>
-              }
-              message={t`No API keys yet`}
-              spacing="sm"
-            />
-          </Center>
+          <MeasuredSkeleton
+            loading={isLoading}
+            id="admin-api-keys"
+            classic={
+              <Box p="xxl" mih="20rem">
+                <DelayedLoadingAndErrorWrapper loading error={null} />
+              </Box>
+            }
+          >
+            {isLoading || hasKeys ? (
+              <ApiKeysTable
+                apiKeys={isLoading ? SAMPLE_API_KEYS : sortedApiKeys}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            ) : (
+              <Center mih="20rem" data-testid="empty-table-warning">
+                <EmptyState
+                  illustrationElement={
+                    <Box c="text-primary" lh={0}>
+                      <ApiKeysEmptyIllustration aria-hidden />
+                    </Box>
+                  }
+                  message={t`No API keys yet`}
+                  spacing="sm"
+                />
+              </Center>
+            )}
+          </MeasuredSkeleton>
         )}
       </Card>
     </SettingsPageWrapper>

@@ -14,6 +14,7 @@ import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import { Formula } from "metabase/reference/components/Formula";
 import { List } from "metabase/reference/components/List";
+import { ReferenceDetailSkeleton } from "metabase/reference/components/ReferenceSkeletons";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { updateSegment } from "metabase/reference/update-actions";
@@ -182,8 +183,18 @@ const SegmentDetail = (props: SegmentDetailProps) => {
         />
       )}
       <LoadingAndErrorWrapper
-        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        loading={!loadingError && !saveError && loading}
         error={saveError ?? loadingError}
+        loader={
+          <ReferenceDetailSkeleton
+            titles={[
+              t`Table this is based on`,
+              t`Description`,
+              t`Why this Segment is interesting`,
+              t`Things to be aware of about this Segment`,
+            ]}
+          />
+        }
       >
         {() => (
           <div className={CS.wrapper}>

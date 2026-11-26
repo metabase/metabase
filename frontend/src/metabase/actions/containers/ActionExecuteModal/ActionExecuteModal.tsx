@@ -3,6 +3,7 @@ import { useCallback } from "react";
 
 import { skipToken, useGetActionQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { FormSkeleton } from "metabase/common/components/Skeletons";
 import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
@@ -95,7 +96,11 @@ export const ActionExecuteModal = ({
       data-testid="action-execute-modal"
     >
       {error || isLoading || !action ? (
-        <LoadingAndErrorWrapper error={error} loading={isLoading} />
+        <LoadingAndErrorWrapper
+          error={error}
+          loading={isLoading}
+          loader={<FormSkeleton fields={3} withSubmit />}
+        />
       ) : (
         <ActionParametersInputForm
           action={action}

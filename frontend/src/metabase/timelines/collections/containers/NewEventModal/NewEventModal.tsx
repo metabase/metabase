@@ -50,7 +50,11 @@ function NewEventModalContainer({ params, onClose }: ModalComponentProps) {
       tall={isLoading || !!error || !timeline}
     >
       {isLoading || error || !timeline ? (
-        <TimelineModalLoadingState loading={isLoading} error={error} />
+        <TimelineModalLoadingState
+          loading={isLoading}
+          error={error}
+          variant="form"
+        />
       ) : (
         <NewEventForm
           source="collections"

@@ -10,6 +10,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useLocation, useNavigate } from "metabase/router";
 import { DetailedViewSwitch } from "metabase/transforms/components/DetailedViewSwitch";
+import { RunListSkeleton } from "metabase/transforms/components/TransformSkeletons";
 import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { isActiveRunStatus } from "metabase/transforms/utils";
@@ -34,6 +35,8 @@ import {
 } from "./utils";
 
 const EMPTY_RUNS: TransformGraphRun[] = [];
+const FILTER_SKELETON_WIDTHS = [100, 130, 130, 130, 110, 110];
+const COLUMN_SKELETON_WIDTHS = [0.25, 0.1, 0.1, 0.1, 0.15, 0.15, 0.15];
 
 export function TransformGraphRunListPage() {
   const location = useLocation();
@@ -138,9 +141,21 @@ export function TransformGraphRunListPage() {
     >
       <Stack className={S.main} flex={1} px="3.5rem" pb="lg" gap={0}>
         <TransformsHeader />
-        {isLoading || error != null ? (
+        {isLoading ? (
+          <RunListSkeleton
+            filterWidths={FILTER_SKELETON_WIDTHS}
+            columnWidths={COLUMN_SKELETON_WIDTHS}
+            rowsCount={PAGE_SIZE}
+            actions={
+              <DetailedViewSwitch
+                detailed={false}
+                params={Urls.pickCommonRunListParams(params)}
+              />
+            }
+          />
+        ) : error != null ? (
           <Center h="100%">
-            <LoadingAndErrorWrapper loading={isLoading} error={error} />
+            <LoadingAndErrorWrapper error={error} />
           </Center>
         ) : (
           <Stack flex="0 1 auto" mih={0} gap="xl" pt="2.5rem">

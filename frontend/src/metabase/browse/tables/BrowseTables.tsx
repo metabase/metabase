@@ -9,8 +9,9 @@ import type { DatabaseId } from "metabase-types/api";
 
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
+import { BrowsePageSkeleton } from "../components/BrowseSkeletons";
 
-import { TableBrowser } from "./TableBrowser";
+import { TABLE_CARDS_SKELETON_COUNT, TableBrowser } from "./TableBrowser";
 
 const BrowseTablesPage = ({
   dbId,
@@ -47,8 +48,12 @@ const BrowseTablesByDatabaseName = ({
   const { data, error, isLoading } = useListDatabasesQuery();
   const database = findDatabaseByName(data?.data ?? [], databaseName);
 
-  if (error || isLoading) {
-    return <LoadingAndErrorWrapper error={error} loading={isLoading} />;
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} />;
+  }
+
+  if (isLoading) {
+    return <BrowsePageSkeleton cards={TABLE_CARDS_SKELETON_COUNT} withCrumbs />;
   }
 
   if (!database) {

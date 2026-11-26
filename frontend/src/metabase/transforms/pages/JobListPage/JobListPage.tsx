@@ -6,6 +6,7 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
@@ -148,9 +149,12 @@ export const JobListPage = () => {
 
         <Flex direction="column" flex={1} mih={0}>
           <Card withBorder p={0}>
-            {isLoading ? (
-              <TreeTableSkeleton columnWidths={[0.55, 0.3, 0.1, 0.05]} />
-            ) : (
+            <SkeletonSwap
+              loading={isLoading}
+              skeleton={
+                <TreeTableSkeleton columnWidths={[0.55, 0.3, 0.1, 0.05]} />
+              }
+            >
               <TreeTable
                 instance={treeTableInstance}
                 emptyState={
@@ -158,7 +162,7 @@ export const JobListPage = () => {
                 }
                 onRowClick={handleRowActivate}
               />
-            )}
+            </SkeletonSwap>
           </Card>
         </Flex>
       </Stack>

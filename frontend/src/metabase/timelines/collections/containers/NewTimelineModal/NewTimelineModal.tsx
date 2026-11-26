@@ -53,7 +53,11 @@ function NewTimelineModalContainer({
       tall={isLoading || !!error || !collection}
     >
       {isLoading || error || !collection ? (
-        <TimelineModalLoadingState loading={isLoading} error={error} />
+        <TimelineModalLoadingState
+          loading={isLoading}
+          error={error}
+          variant="form"
+        />
       ) : (
         <NewTimelineForm
           collection={collection}

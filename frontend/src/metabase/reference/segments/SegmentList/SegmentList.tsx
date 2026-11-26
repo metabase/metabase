@@ -13,6 +13,7 @@ import { useSelector } from "metabase/redux";
 import { List } from "metabase/reference/components/List";
 import S from "metabase/reference/components/List/List.module.css";
 import { ListItem } from "metabase/reference/components/ListItem";
+import { ReferenceListSkeleton } from "metabase/reference/components/ReferenceSkeletons";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
@@ -53,7 +54,11 @@ export function SegmentList({ style }: SegmentListProps) {
   return (
     <div style={style} className={CS.full}>
       <ReferenceHeader name={t`Segments`} />
-      <LoadingAndErrorWrapper loading={!error && isLoading} error={error}>
+      <LoadingAndErrorWrapper
+        loading={!error && isLoading}
+        error={error}
+        loader={<ReferenceListSkeleton />}
+      >
         {() =>
           segments.length > 0 ? (
             <div className={cx(CS.wrapper, CS.wrapperTrim)}>

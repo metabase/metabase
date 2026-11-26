@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { TreeTableSkeleton } from "metabase/ui";
 
 import { useSelection } from "../../contexts/SelectionContext";
@@ -187,25 +188,29 @@ export function Tree({
     setSelectedSchemas,
   ]);
 
-  if (isLoading) {
-    return (
-      <TreeTableSkeleton showCheckboxes columnWidths={[0.5, 0.15, 0.1, 0.1]} />
-    );
-  }
-
-  if (tree.children.length === 0) {
-    return <EmptyState title={t`No data to show`} />;
-  }
-
   return (
-    <TablePickerTreeTable
-      tree={tree}
-      path={path}
-      isExpanded={isExpanded}
-      isLibraryEnabled={isLibraryEnabled}
-      onToggle={toggle}
-      onChange={onChange}
-      reload={reload}
-    />
+    <SkeletonSwap
+      loading={isLoading}
+      skeleton={
+        <TreeTableSkeleton
+          showCheckboxes
+          columnWidths={[0.5, 0.15, 0.1, 0.1]}
+        />
+      }
+    >
+      {tree.children.length === 0 ? (
+        <EmptyState title={t`No data to show`} />
+      ) : (
+        <TablePickerTreeTable
+          tree={tree}
+          path={path}
+          isExpanded={isExpanded}
+          isLibraryEnabled={isLibraryEnabled}
+          onToggle={toggle}
+          onChange={onChange}
+          reload={reload}
+        />
+      )}
+    </SkeletonSwap>
   );
 }

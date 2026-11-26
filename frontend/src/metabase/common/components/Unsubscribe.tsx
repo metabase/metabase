@@ -10,13 +10,22 @@ import {
 } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { useSelector } from "metabase/redux";
 import { useSearchParams } from "metabase/router";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
-import { Box, Button, Center, Flex, Icon, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Center,
+  Flex,
+  Icon,
+  Skeleton,
+  Stack,
+  Text,
+} from "metabase/ui";
 
 import S from "./Unsubscribe.module.css";
 
@@ -65,7 +74,7 @@ export const UnsubscribePage = (): JSX.Element => {
   if (isLoading) {
     return (
       <UnsubscribeRoot>
-        <LoadingAndErrorWrapper loading={isLoading} />
+        <SubscriptionChangeSkeleton />
       </UnsubscribeRoot>
     );
   }
@@ -153,6 +162,19 @@ function SuccessfulRequestWrapper({
         {buttonText}
       </Button>
     </Stack>
+  );
+}
+
+function SubscriptionChangeSkeleton() {
+  return (
+    <LoadingSkeleton align="center">
+      <Skeleton h={62} w={62} circle />
+      <Stack gap="sm" align="center" w="100%" mb="0.75rem">
+        <Skeleton h={14} w="90%" radius="xs" />
+        <Skeleton h={14} w="60%" radius="xs" />
+      </Stack>
+      <Skeleton h={40} w={96} radius="sm" />
+    </LoadingSkeleton>
   );
 }
 

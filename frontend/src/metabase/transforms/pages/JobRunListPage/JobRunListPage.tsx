@@ -33,6 +33,7 @@ import {
   JobMoreMenu,
 } from "../../components/JobMoreMenu";
 import { JobTabs } from "../../components/JobTabs";
+import { RunListSkeleton } from "../../components/TransformSkeletons";
 
 import S from "./JobRunListPage.module.css";
 import { JobRunSidebar } from "./JobRunSidebar";
@@ -42,6 +43,8 @@ import type { JobRunSortOptions } from "./types";
 import { getParsedParams, getSortOptions } from "./utils";
 
 const EMPTY_RUNS: TransformJobRun[] = [];
+const FILTER_SKELETON_WIDTHS = [180, 180, 180];
+const COLUMN_SKELETON_WIDTHS = [0.2, 0.2, 0.2, 0.2, 0.2];
 
 export function JobRunListPage() {
   const location = useLocation();
@@ -174,9 +177,15 @@ export function JobRunListPage() {
             onNameChange={onNameChange}
           />
         )}
-        {isLoading || error != null ? (
+        {isLoading ? (
+          <RunListSkeleton
+            filterWidths={FILTER_SKELETON_WIDTHS}
+            columnWidths={COLUMN_SKELETON_WIDTHS}
+            rowsCount={PAGE_SIZE}
+          />
+        ) : error != null ? (
           <Center h="100%">
-            <LoadingAndErrorWrapper loading={isLoading} error={error} />
+            <LoadingAndErrorWrapper error={error} />
           </Center>
         ) : (
           <Stack flex="0 1 auto" mih={0} gap="xl" pt="2.5rem">

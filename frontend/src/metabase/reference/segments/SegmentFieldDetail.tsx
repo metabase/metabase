@@ -13,6 +13,7 @@ import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import { List } from "metabase/reference/components/List";
+import { ReferenceDetailSkeleton } from "metabase/reference/components/ReferenceSkeletons";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import * as actions from "metabase/reference/reference";
 import { updateField } from "metabase/reference/update-actions";
@@ -163,8 +164,20 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
         nameFormField={getFormField("name")}
       />
       <LoadingAndErrorWrapper
-        loading={!loadingError && !saveError && (loading || isSubmitting)}
+        loading={!loadingError && !saveError && loading}
         error={saveError ?? loadingError}
+        loader={
+          <ReferenceDetailSkeleton
+            titles={[
+              t`Description`,
+              t`Actual name in database`,
+              t`Why this field is interesting`,
+              t`Things to be aware of about this field`,
+              t`Data type`,
+              t`Field type`,
+            ]}
+          />
+        }
       >
         {() =>
           entity == null || table == null ? null : (

@@ -8,12 +8,23 @@ import {
   type PillTab,
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
+import {
+  LoadingSkeleton,
+  SkeletonSwap,
+} from "metabase/common/components/Skeletons";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Outlet, useLocation } from "metabase/router";
 import { useSetting } from "metabase/settings";
-import { Flex, Loader, Stack } from "metabase/ui";
+import {
+  Card,
+  Flex,
+  SimpleGrid,
+  Skeleton,
+  Stack,
+  TreeTableSkeleton,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { NewQuestionButton } from "metabase-enterprise/monitor/ai-auditing/components/NewQuestionButton";
 import { useAuditRowCount } from "metabase-enterprise/monitor/ai-auditing/hooks/useAuditRowCount";
@@ -42,12 +53,14 @@ type RouteContentProps = {
   children: ReactNode;
   error: unknown;
   isInitialLoading: boolean;
+  isTableRoute: boolean;
 };
 
 function RouteContent({
   children,
   error,
   isInitialLoading,
+  isTableRoute,
 }: RouteContentProps) {
   if (error !== undefined && error !== null) {
     return (
@@ -57,15 +70,45 @@ function RouteContent({
     );
   }
 
-  if (isInitialLoading) {
-    return (
-      <Flex mih="60vh" align="center" justify="center">
-        <Loader size="lg" />
-      </Flex>
-    );
-  }
+  return (
+    <SkeletonSwap
+      loading={isInitialLoading}
+      skeleton={
+        <LoadingSkeleton gap={0} flex="0 1 auto" mih={0}>
+          {isTableRoute ? <EventsTableSkeleton /> : <UsageOverviewSkeleton />}
+        </LoadingSkeleton>
+      }
+    >
+      {children}
+    </SkeletonSwap>
+  );
+}
 
-  return children;
+// Matches ApiKeyUsagePage: the key activity table, a timeline, and two breakouts
+function UsageOverviewSkeleton() {
+  return (
+    <Stack gap="xl">
+      <Skeleton h={500} />
+      <Skeleton h={320} />
+      <SimpleGrid cols={2} spacing="xl">
+        <Skeleton h={500} />
+        <Skeleton h={500} />
+      </SimpleGrid>
+    </Stack>
+  );
+}
+
+const EVENTS_TABLE_SKELETON_COLUMN_WIDTHS = [0.2, 0.2, 0.15, 0.15, 0.15, 0.15];
+
+function EventsTableSkeleton() {
+  return (
+    <Card withBorder p={0} mih={0}>
+      <TreeTableSkeleton
+        rowsCount={12}
+        columnWidths={EVENTS_TABLE_SKELETON_COLUMN_WIDTHS}
+      />
+    </Card>
+  );
 }
 
 export function ApiKeyUsageSectionLayout() {
@@ -218,6 +261,7 @@ export function ApiKeyUsageSectionLayout() {
     <RouteContent
       error={error ?? usageAudit.error ?? groupMembersAudit.error}
       isInitialLoading={isInitialLoading}
+      isTableRoute={isTableRoute}
     >
       {showEmpty ? (
         <ApiKeyUsageEmptyState />

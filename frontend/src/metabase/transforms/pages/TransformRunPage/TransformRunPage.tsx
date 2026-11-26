@@ -7,6 +7,10 @@ import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { TransformHeader } from "../../components/TransformHeader";
+import {
+  TransformPageSkeleton,
+  TransformRunSectionSkeleton,
+} from "../../components/TransformSkeletons";
 
 import { RunSection } from "./RunSection";
 
@@ -27,10 +31,18 @@ export const TransformRunPage = () => {
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
 
-  if (isLoading || error || !transform) {
+  if (isLoading) {
+    return (
+      <TransformPageSkeleton>
+        <TransformRunSectionSkeleton />
+      </TransformPageSkeleton>
+    );
+  }
+
+  if (error || !transform) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }

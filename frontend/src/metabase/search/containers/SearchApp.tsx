@@ -6,6 +6,12 @@ import { useSearchQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { SAMPLE_SEARCH_RESULTS } from "metabase/common/components/SearchResult/sample-search-results";
+import {
+  LoadingSkeleton,
+  MeasuredSkeleton,
+  getSkeletonLineWidth,
+} from "metabase/common/components/Skeletons";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import {
   filterEnabledSearchTypes,
@@ -23,10 +29,21 @@ import { queryToSearch, useLocation, useNavigate } from "metabase/router";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
-import { Box, Flex, Group, Paper, Stack, Text } from "metabase/ui";
-import type { SearchRequest } from "metabase-types/api";
+import {
+  Box,
+  Flex,
+  Group,
+  Paper,
+  Skeleton,
+  Stack,
+  Text,
+  rem,
+} from "metabase/ui";
+import type { SearchRequest, SearchResult } from "metabase-types/api";
 
 import S from "./SearchApp.module.css";
+
+const SEARCH_RESULTS_SKELETON_ROWS = 8;
 
 const getPageFromLocation = (location: Location) => {
   const page = new URLSearchParams(location.search).get("page");
@@ -92,8 +109,16 @@ export function SearchApp() {
     });
   };
 
-  const { data, error, isFetching, requestId } = useSearchQuery(query);
+  // `currentData` is only for the current query, so a new search or page
+  // doesn't show the previous one's results while it loads.
+  const {
+    currentData: data,
+    error,
+    isFetching,
+    requestId,
+  } = useSearchQuery(query);
   const list = useMemo(() => data?.data ?? [], [data?.data]);
+  const isLoading = isFetching && !data;
 
   return (
     <Flex className={S.main} data-testid="search-app">
@@ -105,11 +130,9 @@ export function SearchApp() {
           <SearchSidebar value={searchFilters} onChange={onFilterChange} />
         </Stack>
         <Box flex={1}>
-          {(error || isFetching) && (
-            <LoadingAndErrorWrapper error={error} loading={isFetching} />
-          )}
+          {!!error && <LoadingAndErrorWrapper error={error} />}
 
-          {!error && !isFetching && list.length === 0 && (
+          {!error && !isLoading && list.length === 0 && (
             <Paper shadow="lg" p="2rem">
               <EmptyState
                 title={t`Didn't find anything`}
@@ -119,32 +142,97 @@ export function SearchApp() {
             </Paper>
           )}
 
-          {!error && !isFetching && list.length > 0 && (
-            <Box>
-              <SearchResultSection
-                totalResults={data?.total ?? 0}
-                results={list}
-                searchEngine={data?.engine}
-                searchRequestId={requestId}
-                searchTerm={searchText}
-                page={page}
-                pageSize={PAGE_SIZE}
-              />
-              <Group justify="flex-end" align="center" my="1rem">
-                <PaginationControls
-                  showTotal
-                  pageSize={PAGE_SIZE}
-                  page={page}
-                  itemsLength={list.length}
+          {!error && (isLoading || list.length > 0) && (
+            <MeasuredSkeleton
+              loading={isLoading}
+              id="search-page"
+              classic={<SearchResultSectionSkeleton />}
+            >
+              {isLoading ? (
+                <SearchResultsPage
+                  results={SAMPLE_SEARCH_RESULTS}
+                  total={SAMPLE_SEARCH_RESULTS.length}
+                  page={0}
+                />
+              ) : (
+                <SearchResultsPage
+                  results={list}
                   total={data?.total ?? 0}
+                  searchEngine={data?.engine}
+                  searchRequestId={requestId}
+                  searchTerm={searchText}
+                  page={page}
                   onNextPage={() => advancePage(1)}
                   onPreviousPage={() => advancePage(-1)}
                 />
-              </Group>
-            </Box>
+              )}
+            </MeasuredSkeleton>
           )}
         </Box>
       </Flex>
     </Flex>
   );
 }
+
+type SearchResultsPageProps = {
+  results: SearchResult[];
+  total: number;
+  searchEngine?: string;
+  searchRequestId?: string;
+  searchTerm?: string;
+  page: number;
+  onNextPage?: () => void;
+  onPreviousPage?: () => void;
+};
+
+/** A page of results and the controls to page through them. */
+const SearchResultsPage = ({
+  results,
+  total,
+  searchEngine,
+  searchRequestId,
+  searchTerm,
+  page,
+  onNextPage,
+  onPreviousPage,
+}: SearchResultsPageProps) => (
+  <Box>
+    <SearchResultSection
+      totalResults={total}
+      results={results}
+      searchEngine={searchEngine}
+      searchRequestId={searchRequestId}
+      searchTerm={searchTerm}
+      page={page}
+      pageSize={PAGE_SIZE}
+    />
+    <Group justify="flex-end" align="center" my="1rem">
+      <PaginationControls
+        showTotal
+        pageSize={PAGE_SIZE}
+        page={page}
+        itemsLength={results.length}
+        total={total}
+        onNextPage={onNextPage}
+        onPreviousPage={onPreviousPage}
+      />
+    </Group>
+  </Box>
+);
+
+const SearchResultSectionSkeleton = () => (
+  <Paper px="sm" py="lg">
+    <LoadingSkeleton gap="sm">
+      <Skeleton h={12} w={80} ml="sm" mb="sm" radius="xs" />
+      {Array.from({ length: SEARCH_RESULTS_SKELETON_ROWS }, (_, index) => (
+        <Flex key={index} align="flex-start" gap="0.75rem" p="sm">
+          <Skeleton h={rem(32)} w={rem(32)} radius="xs" flex="none" />
+          <Stack gap="sm" flex={1} pt="xs">
+            <Skeleton h={14} w={getSkeletonLineWidth(index)} radius="xs" />
+            <Skeleton h={10} w={getSkeletonLineWidth(index + 3)} radius="xs" />
+          </Stack>
+        </Flex>
+      ))}
+    </LoadingSkeleton>
+  </Paper>
+);

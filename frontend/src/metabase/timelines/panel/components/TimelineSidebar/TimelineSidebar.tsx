@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { TimelinePanelSkeleton } from "metabase/timelines/common/components/TimelineSkeletons";
 import { Box, Button, Icon } from "metabase/ui";
 import {
   hideTimelineEvents,
@@ -153,7 +154,11 @@ export const TimelineSidebar = ({
     <>
       <SidebarContent title={title} onClose={onClose}>
         {isLoading || error != null ? (
-          <LoadingAndErrorWrapper loading={isLoading} error={error} />
+          <LoadingAndErrorWrapper
+            loading={isLoading}
+            error={error}
+            loader={<TimelinePanelSkeleton />}
+          />
         ) : (
           <>
             {isFocused && onShowAllEvents && (

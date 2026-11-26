@@ -8,6 +8,7 @@ import { modelIconMap } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
 import S from "metabase/reference/components/List/List.module.css";
+import { ReferenceRevisionsSkeleton } from "metabase/reference/components/ReferenceSkeletons";
 import { Revision } from "metabase/segments";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
 import type {
@@ -72,6 +73,7 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
         <LoadingAndErrorWrapper
           loading={!loadingError && loading}
           error={loadingError}
+          loader={<ReferenceRevisionsSkeleton />}
         >
           {() =>
             Object.keys(revisions).length > 0 && table != null ? (

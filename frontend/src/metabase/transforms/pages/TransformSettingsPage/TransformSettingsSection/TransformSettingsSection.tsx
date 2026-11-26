@@ -8,6 +8,7 @@ import {
   useUpdateTransformMutation,
 } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import {
   TablePath,
   TablePathItem,
@@ -16,7 +17,15 @@ import { TitleSection } from "metabase/common/data-studio/components/TitleSectio
 import { useMetadataToasts } from "metabase/common/hooks";
 import { UserInput } from "metabase/metadata/components";
 import { TransformOwnerAvatar } from "metabase/transforms/components/TransformOwnerAvatar/TransformOwnerAvatar";
-import { Button, Divider, Group, Icon, Loader, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  Divider,
+  Group,
+  Icon,
+  Skeleton,
+  Stack,
+  Text,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Transform, UserId } from "metabase-types/api";
 
@@ -24,6 +33,9 @@ import { isTransformRunning, sourceDatabaseId } from "../../../utils";
 
 import { UpdateIncrementalSettings } from "./UpdateIncrementalSettings";
 import { UpdateTargetModal } from "./UpdateTargetModal";
+
+// database, schema, and table name
+const TARGET_SKELETON_WIDTHS = [120, 100, 140];
 
 type TransformSettingsSectionProps = {
   transform: Transform;
@@ -94,7 +106,15 @@ function TargetInfo({ transform }: TargetInfoProps) {
   const isLoading = isDatabaseLoading || isSchemasLoading;
 
   if (isLoading) {
-    return <Loader size="sm" />;
+    return (
+      <LoadingSkeleton>
+        <Group gap="sm">
+          {TARGET_SKELETON_WIDTHS.map((width, index) => (
+            <Skeleton key={index} h={14} w={width} radius="xs" />
+          ))}
+        </Group>
+      </LoadingSkeleton>
+    );
   }
 
   const targetSchemaExists = schemas?.some(

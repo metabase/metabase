@@ -13,6 +13,7 @@ import { Modal } from "metabase/ui";
 import type { LoggerDurationUnit } from "metabase-types/api";
 
 import { LogLevelsForm } from "./LogLevelsForm";
+import { LogLevelsFormSkeleton } from "./LogLevelsFormSkeleton";
 import type { AllowedTimeUnit } from "./types";
 
 interface Props {
@@ -86,6 +87,7 @@ export const LogLevelsModal = ({ onClose }: Props) => {
       <LoadingAndErrorWrapper
         error={presetsError}
         loading={isLoadingPresets}
+        loader={<LogLevelsFormSkeleton />}
         noWrapper
       >
         {() => (

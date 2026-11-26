@@ -1,4 +1,7 @@
+import { useState } from "react";
+
 import { Box, Flex, Skeleton, Stack } from "metabase/ui";
+import { getRememberedList } from "metabase/ui/utils/remembered-skeletons";
 
 import { CHECKBOX_COLUMN_WIDTH, DEFAULT_ROW_HEIGHT } from "../constants";
 
@@ -14,11 +17,25 @@ interface TreeTableSkeletonProps {
 }
 
 export function TreeTableSkeleton({
-  rowsCount = DEFAULT_ROWS_COUNT,
+  rowsCount: defaultRowsCount = DEFAULT_ROWS_COUNT,
   showCheckboxes = false,
   columnWidths = [0.4, 0.15, 0.1, 0.1],
 }: TreeTableSkeletonProps) {
+  // PROTOTYPE: as many rows as the list on this page showed last time
+  const [remembered] = useState(getRememberedList);
+  const rowsCount = remembered?.rows ?? defaultRowsCount;
   const getColumnWidth = (index: number) => `${columnWidths[index] * 100}%`;
+
+  // It was empty last time: hold the empty state's room rather than draw rows
+  if (remembered?.emptyHeight != null) {
+    return (
+      <Box
+        h={remembered.emptyHeight}
+        flex="0 0 auto"
+        data-testid="tree-table-skeleton"
+      />
+    );
+  }
 
   return (
     <Stack gap={0} flex={1} mih={0} data-testid="tree-table-skeleton">

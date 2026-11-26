@@ -42,7 +42,7 @@ const MIN_TEXT_LINE_CHARS = 3;
 const MAX_TEXT_LINE_CHARS = 40;
 
 /** The grid geometry react-grid-layout uses, handed to the CSS. */
-const GRID_GEOMETRY_STYLE = {
+export const GRID_GEOMETRY_STYLE = {
   "--grid-columns": GRID_WIDTH,
   "--grid-aspect-ratio": GRID_ASPECT_RATIO,
   "--grid-min-row-height": `${MIN_ROW_HEIGHT}px`,

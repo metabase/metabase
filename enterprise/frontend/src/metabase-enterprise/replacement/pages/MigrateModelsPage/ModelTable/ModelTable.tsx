@@ -1,6 +1,7 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import {
   TreeTable,
   TreeTableSkeleton,
@@ -35,9 +36,12 @@ export function ModelTable({
     onRowActivate: handleRowActivate,
   });
 
-  return isLoading ? (
-    <TreeTableSkeleton columnWidths={getColumnWidths()} />
-  ) : (
-    <TreeTable instance={treeTableInstance} onRowClick={handleRowActivate} />
+  return (
+    <SkeletonSwap
+      loading={isLoading}
+      skeleton={<TreeTableSkeleton columnWidths={getColumnWidths()} />}
+    >
+      <TreeTable instance={treeTableInstance} onRowClick={handleRowActivate} />
+    </SkeletonSwap>
   );
 }

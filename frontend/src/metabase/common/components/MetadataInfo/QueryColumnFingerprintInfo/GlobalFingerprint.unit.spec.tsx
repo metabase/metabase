@@ -34,9 +34,12 @@ describe("GlobalFingerprint", () => {
     it("should not fetch field values when field values are empty", async () => {
       setup(PEOPLE.ADDRESS);
       expect(await screen.findByText(/distinct values/)).toBeInTheDocument();
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
       expect(
-        screen.queryByText("Getting distinct values..."),
-      ).not.toBeInTheDocument();
+        fetchMock.callHistory.called(
+          `path:/api/field/${PEOPLE.ADDRESS}/values`,
+        ),
+      ).toBe(false);
     });
   });
 
@@ -44,10 +47,13 @@ describe("GlobalFingerprint", () => {
     it("should fetch field values when field values are empty", async () => {
       setup(PRODUCTS.CATEGORY);
 
-      expect(
-        await screen.findByText("Getting distinct values..."),
-      ).toBeInTheDocument();
       expect(await screen.findByText("4 distinct values")).toBeInTheDocument();
+      expect(
+        fetchMock.callHistory.called(
+          `path:/api/field/${PRODUCTS.CATEGORY}/values`,
+        ),
+      ).toBe(true);
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
     });
   });
 
@@ -58,8 +64,6 @@ describe("GlobalFingerprint", () => {
         fetchMock.callHistory.called(`path:/api/field/${MISSING_FIELD_ID}`),
       ).toBe(true),
     );
-    expect(
-      screen.queryByText("Getting distinct values..."),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
   });
 });

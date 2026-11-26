@@ -11,6 +11,7 @@ import { DeleteAlertConfirmModal } from "metabase/notifications/modals/DeleteAle
 import { useSearchParams } from "metabase/router";
 import type { Notification } from "metabase-types/api";
 
+import { NotificationConfirmModalSkeleton } from "../../components/NotificationModalSkeleton";
 import { getAlertId } from "../../selectors";
 
 type DeleteAlertModalProps = {
@@ -56,8 +57,12 @@ export const DeleteAlertModal = ({
     onClose();
   };
 
+  if (isLoading) {
+    return <NotificationConfirmModalSkeleton onClose={onClose} />;
+  }
+
   return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error}>
+    <LoadingAndErrorWrapper error={error}>
       {() =>
         notification ? (
           <DeleteAlertConfirmModal

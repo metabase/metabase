@@ -15,7 +15,6 @@ import {
 } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { canUserCreateQueries } from "metabase/current-user";
 import type {
@@ -52,6 +51,7 @@ import type {
 
 import { DataSelectorDataBucketPicker as DataBucketPicker } from "../DataSelectorDataBucketPicker";
 import { DataSelectorDatabasePicker as DatabasePicker } from "../DataSelectorDatabasePicker";
+import { DataSelectorLoading } from "../DataSelectorLoading";
 import { DataSelectorSchemaPicker as SchemaPicker } from "../DataSelectorSchemaPicker";
 import { DataSelectorTablePicker as TablePicker } from "../DataSelectorTablePicker";
 import {
@@ -1054,7 +1054,7 @@ export class UnconnectedDataSelector extends Component<
     const selectedSource = getSelectedSource(selectedCardId, selectedTable);
 
     if (this.isSearchLoading()) {
-      return <LoadingAndErrorWrapper loading />;
+      return <DataSelectorLoading />;
     }
 
     if (this.hasDataAccess()) {

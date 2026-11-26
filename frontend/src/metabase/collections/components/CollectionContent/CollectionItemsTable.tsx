@@ -18,6 +18,11 @@ import {
   useListCollectionItemsQuery,
 } from "metabase/api";
 import {
+  toCollectionSketchItems,
+  updateCollectionSketch,
+  useCollectionSketch,
+} from "metabase/collections/collection-sketch";
+import {
   ALL_MODELS,
   COLLECTION_PAGE_SIZE,
   type CollectionContentTableColumn,
@@ -36,6 +41,10 @@ import { ItemsTable } from "metabase/common/components/ItemsTable";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import {
+  LoadingSkeleton,
+  MeasuredSkeleton,
+} from "metabase/common/components/Skeletons";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
@@ -53,6 +62,7 @@ import type {
   SortingOptions,
 } from "metabase-types/api";
 
+import { getCollectionSample } from "./CollectionContentSample";
 import { CollectionItemsToolbar } from "./CollectionItemsToolbar";
 import { getCollectionItemsScope } from "./utils";
 
@@ -343,6 +353,7 @@ const CollectionItemsTableContent = ({
   bookmarks,
   clear,
   collection,
+  collectionId,
   createBookmark,
   databases,
   deleteBookmark,
@@ -372,7 +383,10 @@ const CollectionItemsTableContent = ({
   const { data, isFetching, isLoading, error } =
     useListCollectionItemsQuery(itemsQuery);
 
-  const items = data?.data ?? [];
+  const sketch = useCollectionSketch(collectionId);
+  const items = isLoading
+    ? getCollectionSample(sketch).items
+    : (data?.data ?? []);
   const totalMatchingItems = data?.total;
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),
@@ -400,12 +414,7 @@ const CollectionItemsTableContent = ({
   const hasNoItems = !isFetching && !error && items.length === 0;
   const isEmpty = hasNoItems && !hasActiveFilters;
 
-  if (isEmpty) {
-    return <EmptyContentComponent collection={collection} />;
-  }
-
   const showNoResults = hasNoItems && hasActiveFilters;
-  const showTable = !showNoResults;
   // Shared by the skeleton and the loaded table, so both render the same header and columns.
   const sharedTableProps = {
     collection,
@@ -414,9 +423,20 @@ const CollectionItemsTableContent = ({
     visibleColumnsMap,
   };
 
+  // The first page as shown unfiltered, for the next visit's skeleton
+  const loadedItems = data?.data;
+  const isFirstUnfilteredPage = page === 0 && !hasActiveFilters;
+  useEffect(() => {
+    if (collectionId != null && loadedItems && isFirstUnfilteredPage) {
+      updateCollectionSketch(collectionId, {
+        items: toCollectionSketchItems(loadedItems),
+      });
+    }
+  }, [collectionId, loadedItems, isFirstUnfilteredPage]);
+
   return (
     <>
-      {showToolbar && (
+      {showToolbar && !isEmpty && (
         <CollectionItemsToolbar
           searchText={searchText}
           availableModels={availableModels}
@@ -426,16 +446,23 @@ const CollectionItemsTableContent = ({
           isSearching={isSearching}
         />
       )}
-      {showNoResults && <CollectionNoResults hasSearchText={hasSearchText} />}
-      {showTable && (
-        <Box data-testid="collection-table">
-          <DelayedLoadingAndErrorWrapper
-            error={error}
-            loading={isLoading}
-            loader={
-              <ItemsTable withSkeleton items={[]} {...sharedTableProps} />
-            }
-          >
+      <MeasuredSkeleton
+        loading={isLoading}
+        alwaysFromSample
+        classic={
+          <LoadingSkeleton>
+            <ItemsTable withSkeleton items={[]} {...sharedTableProps} />
+          </LoadingSkeleton>
+        }
+      >
+        {error ? (
+          <DelayedLoadingAndErrorWrapper error={error} loading={false} />
+        ) : isEmpty ? (
+          <EmptyContentComponent collection={collection} />
+        ) : showNoResults ? (
+          <CollectionNoResults hasSearchText={hasSearchText} />
+        ) : (
+          <Box data-testid="collection-table">
             <ItemsTable
               {...sharedTableProps}
               databases={databases}
@@ -454,29 +481,29 @@ const CollectionItemsTableContent = ({
               onSelectNone={clear}
               onClick={onClick}
             />
-          </DelayedLoadingAndErrorWrapper>
-          <div
-            className={cx(
-              CS.flex,
-              CS.justifyEnd,
-              CS.my3,
-              CS.syncStatusAwarePagination,
-            )}
-          >
-            {hasPagination && (
-              <PaginationControls
-                showTotal
-                page={page}
-                pageSize={pageSize}
-                total={totalMatchingItems}
-                itemsLength={items.length}
-                onNextPage={onNextPage}
-                onPreviousPage={onPreviousPage}
-              />
-            )}
-          </div>
-        </Box>
-      )}
+            <div
+              className={cx(
+                CS.flex,
+                CS.justifyEnd,
+                CS.my3,
+                CS.syncStatusAwarePagination,
+              )}
+            >
+              {hasPagination && (
+                <PaginationControls
+                  showTotal
+                  page={page}
+                  pageSize={pageSize}
+                  total={totalMatchingItems}
+                  itemsLength={items.length}
+                  onNextPage={onNextPage}
+                  onPreviousPage={onPreviousPage}
+                />
+              )}
+            </div>
+          </Box>
+        )}
+      </MeasuredSkeleton>
     </>
   );
 };

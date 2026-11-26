@@ -44,7 +44,11 @@ function EditEventModalContainer({
       onClose={onClose}
     >
       {isLoading || error || !event ? (
-        <TimelineModalLoadingState loading={isLoading} error={error} />
+        <TimelineModalLoadingState
+          loading={isLoading}
+          error={error}
+          variant="form"
+        />
       ) : (
         <EditEventForm
           event={event}

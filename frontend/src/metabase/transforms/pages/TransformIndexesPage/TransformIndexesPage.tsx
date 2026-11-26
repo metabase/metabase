@@ -9,6 +9,7 @@ import {
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { LoadingSkeleton } from "metabase/common/components/Skeletons";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useToast } from "metabase/common/hooks";
@@ -24,6 +25,10 @@ import { isNullOrUndefined } from "metabase/utils/types";
 import type { TableIndexEntry, Transform } from "metabase-types/api";
 
 import { TransformHeader } from "../../components/TransformHeader";
+import {
+  TransformIndexesSkeleton,
+  TransformPageSkeleton,
+} from "../../components/TransformSkeletons";
 
 import { IndexEditorModal } from "./IndexEditorModal/IndexEditorModal";
 import { IndexPageActions } from "./IndexPageActions";
@@ -48,10 +53,18 @@ export function TransformIndexesPage() {
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
 
-  if (transform === undefined || isLoading || !isNullOrUndefined(error)) {
+  if (isLoading) {
+    return (
+      <TransformPageSkeleton>
+        <TransformIndexesSkeleton />
+      </TransformPageSkeleton>
+    );
+  }
+
+  if (transform === undefined || !isNullOrUndefined(error)) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }
@@ -93,10 +106,18 @@ function TransformIndexesContent({
   const handleCreate = () => setEditorState({});
   const handleEdit = (index: TableIndexEntry) => setEditorState({ index });
 
-  if (isLoading || !isNullOrUndefined(error)) {
+  if (isLoading) {
+    return (
+      <LoadingSkeleton>
+        <TransformIndexesSkeleton />
+      </LoadingSkeleton>
+    );
+  }
+
+  if (!isNullOrUndefined(error)) {
     return (
       <Center flex={1}>
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }

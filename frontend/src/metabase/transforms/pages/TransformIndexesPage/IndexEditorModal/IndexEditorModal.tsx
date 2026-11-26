@@ -16,6 +16,7 @@ import {
   trackTransformIndexCreated,
   trackTransformIndexUpdated,
 } from "metabase/transforms/analytics";
+import { ModalFormSkeleton } from "metabase/transforms/components/TransformSkeletons";
 import { type ComboboxItem, Modal, Text } from "metabase/ui";
 import { getObjectKeys } from "metabase/utils/objects";
 import type {
@@ -137,7 +138,11 @@ export function IndexEditorModal({
       onClose={onClose}
     >
       {isLoading || error !== undefined ? (
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper
+          loading={isLoading}
+          error={error}
+          loader={<ModalFormSkeleton fields={3} />}
+        />
       ) : kind === undefined ||
         method === undefined ||
         tableId === undefined ? (

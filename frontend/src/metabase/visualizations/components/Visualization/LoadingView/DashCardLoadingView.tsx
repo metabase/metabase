@@ -7,7 +7,6 @@ import CS from "metabase/css/core/index.css";
 import { Box, Button, HoverCard, Icon, Text, Transition } from "metabase/ui";
 import { duration } from "metabase/utils/formatting";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
-import type { CardDisplayType } from "metabase-types/api";
 
 import type { LoadingViewProps } from "./LoadingView";
 
@@ -15,7 +14,7 @@ export const DashCardLoadingView = ({
   isSlow,
   expectedDuration,
   display,
-}: LoadingViewProps & { display?: CardDisplayType }) => {
+}: LoadingViewProps) => {
   const { url, showMetabaseLinks } = useLearnUrl(
     "metabase-basics/administration/administration-and-operation/making-dashboards-faster",
   );

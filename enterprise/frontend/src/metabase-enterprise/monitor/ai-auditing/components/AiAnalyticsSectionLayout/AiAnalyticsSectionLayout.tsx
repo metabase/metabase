@@ -5,9 +5,20 @@ import {
   type PillTab,
   PillTabNavigation,
 } from "metabase/common/components/PillTabNavigation";
+import {
+  LoadingSkeleton,
+  SkeletonSwap,
+} from "metabase/common/components/Skeletons";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
-import { Flex, Loader, Stack } from "metabase/ui";
+import {
+  Card,
+  Flex,
+  SimpleGrid,
+  Skeleton,
+  Stack,
+  TreeTableSkeleton,
+} from "metabase/ui";
 
 type AiAnalyticsSectionLayoutProps = {
   children: ReactNode;
@@ -46,6 +57,7 @@ export function AiAnalyticsSectionLayout({
         error={error}
         isInitialLoading={isInitialLoading}
         showEmpty={showEmpty}
+        loader={isTableRoute ? <AnalyticsTableSkeleton /> : undefined}
       >
         {children}
       </RouteContent>
@@ -89,6 +101,8 @@ type RouteContentProps = {
   error: unknown;
   isInitialLoading: boolean;
   showEmpty?: boolean;
+  /** Placeholder for the initial load. Defaults to a layout of chart cards. */
+  loader?: ReactNode;
 };
 
 export function RouteContent({
@@ -97,6 +111,7 @@ export function RouteContent({
   error,
   isInitialLoading,
   showEmpty,
+  loader = <AnalyticsChartsSkeleton />,
 }: RouteContentProps) {
   if (error !== undefined && error !== null) {
     return (
@@ -106,21 +121,48 @@ export function RouteContent({
     );
   }
 
-  if (isInitialLoading) {
-    return (
-      <Flex mih="60vh" align="center" justify="center">
-        <Loader size="lg" />
-      </Flex>
-    );
-  }
+  return (
+    <SkeletonSwap
+      loading={isInitialLoading}
+      skeleton={
+        <LoadingSkeleton gap={0} flex="0 1 auto" mih={0}>
+          {loader}
+        </LoadingSkeleton>
+      }
+    >
+      {showEmpty ? (
+        <Flex flex={1} mih="60vh" align="center" justify="center">
+          {emptyState}
+        </Flex>
+      ) : (
+        children
+      )}
+    </SkeletonSwap>
+  );
+}
 
-  if (showEmpty) {
-    return (
-      <Flex flex={1} mih="60vh" align="center" justify="center">
-        {emptyState}
-      </Flex>
-    );
-  }
+// Matches the chart heights of the usage pages: a timeline over two breakouts
+function AnalyticsChartsSkeleton() {
+  return (
+    <Stack gap="xl">
+      <Skeleton h={320} />
+      <SimpleGrid cols={2} spacing="xl">
+        <Skeleton h={500} />
+        <Skeleton h={500} />
+      </SimpleGrid>
+    </Stack>
+  );
+}
 
-  return children;
+const TABLE_SKELETON_COLUMN_WIDTHS = [0.2, 0.2, 0.2, 0.2, 0.2];
+
+function AnalyticsTableSkeleton() {
+  return (
+    <Card withBorder p={0} mih={0}>
+      <TreeTableSkeleton
+        rowsCount={12}
+        columnWidths={TABLE_SKELETON_COLUMN_WIDTHS}
+      />
+    </Card>
+  );
 }

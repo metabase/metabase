@@ -78,6 +78,7 @@ import type {
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
+import { isCardDisplayType } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
 
 import { EmptyVizState } from "../EmptyVizState";
@@ -85,6 +86,7 @@ import { EmptyVizState } from "../EmptyVizState";
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
 import LoadingView, { type LoadingViewProps } from "./LoadingView";
+import { DashCardCrossfade } from "./LoadingView/DashCardCrossfade";
 import { DashCardLoadingView } from "./LoadingView/DashCardLoadingView";
 import NoResultsView from "./NoResultsView";
 import { VisualizationRenderedWrapper } from "./VisualizationRenderedWrapper";
@@ -749,6 +751,10 @@ class Visualization extends PureComponent<
     let noResults = false;
     let isPlaceholder = false;
     const loading = isLoading(series);
+    const firstCardDisplay = rawSeries[0]?.card?.display;
+    const loadingDisplay = isCardDisplayType(firstCardDisplay)
+      ? firstCardDisplay
+      : undefined;
 
     // don't try to load settings unless data is loaded
     const settings = this.props.settings || this.state.computedSettings;
@@ -846,6 +852,36 @@ class Visualization extends PureComponent<
       !replacementContent &&
       (!isVisualizerDashCard || React.Children.count(titleMenuItems) === 1);
 
+    const isNoResultsShown = (isDashboard || isMetricsViewer) && noResults;
+    const isErrorShown = error && !isRunning;
+    // Dashboard cards keep their loading view out of the states below, so
+    // DashCardCrossfade can crossfade from it into whichever comes next
+    const isLoadingViewShown =
+      !!loading &&
+      !replacementContent &&
+      !isNoResultsShown &&
+      !isErrorShown &&
+      !genericError;
+
+    const header = hasHeader ? (
+      <Box pt="0.625rem" px="sm" pb="xs" flex="0 0 auto">
+        <ChartCaption
+          series={series}
+          visualizerRawSeries={visualizerRawSeries}
+          settings={settings}
+          icon={headerIcon}
+          actionButtons={extra}
+          hasInfoTooltip={!isDashboard || !isEditing}
+          titleMenuItems={titleMenuItems}
+          width={width}
+          getHref={getHref}
+          onChangeCardAndRun={
+            canSelectTitle ? this.handleOnChangeCardAndRun : null
+          }
+        />
+      </Box>
+    ) : null;
+
     return (
       <ErrorBoundary
         onError={this.onErrorBoundaryError}
@@ -875,172 +911,172 @@ class Visualization extends PureComponent<
               </Box>
             </Box>
           )}
-          {!!hasHeader && (
-            <Box pt="0.625rem" px="sm" pb="xs" flex="0 0 auto">
-              <ChartCaption
-                series={series}
-                visualizerRawSeries={visualizerRawSeries}
-                settings={settings}
-                icon={headerIcon}
-                actionButtons={extra}
-                hasInfoTooltip={!isDashboard || !isEditing}
-                titleMenuItems={titleMenuItems}
-                width={width}
-                getHref={getHref}
-                onChangeCardAndRun={
-                  canSelectTitle ? this.handleOnChangeCardAndRun : null
-                }
-              />
-            </Box>
-          )}
-          {replacementContent ? (
-            replacementContent
-          ) : (isDashboard || isMetricsViewer) && noResults ? (
-            <NoResultsView isSmall={small} />
-          ) : error && !isRunning ? (
-            <ErrorView
-              error={errorMessageOverride ?? error}
-              icon={errorIcon}
-              isSmall={small}
-            />
-          ) : genericError ? (
-            <SmallGenericError bordered={false} />
-          ) : loading ? (
-            renderLoadingView({
+          <DashCardCrossfade
+            enabled={!!isDashboard}
+            loading={isLoadingViewShown}
+            header={header}
+            loadingView={renderLoadingView({
               expectedDuration,
               isSlow,
-            })
-          ) : isPlaceholder ? (
-            <EmptyVizState
-              chartType={visualization?.identifier}
-              isSummarizeSidebarOpen={isShowingSummarySidebar}
-              editSummary={isDashboard ? undefined : editSummary}
-              isNativeView={isNativeView}
-            />
-          ) : (
-            series &&
-            CardVisualization && (
-              <div
-                data-card-key={getCardKey(series[0].card?.id)}
-                className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
-                style={{ position: hasDevWatermark ? "relative" : undefined }}
-              >
-                {/* The same view the card shows while its data loads, so a
+              display: loadingDisplay,
+            })}
+          >
+            {replacementContent ? (
+              replacementContent
+            ) : isNoResultsShown ? (
+              <NoResultsView isSmall={small} />
+            ) : isErrorShown ? (
+              <ErrorView
+                error={errorMessageOverride ?? error}
+                icon={errorIcon}
+                isSmall={small}
+              />
+            ) : genericError ? (
+              <SmallGenericError bordered={false} />
+            ) : loading && !isDashboard ? (
+              renderLoadingView({
+                expectedDuration,
+                isSlow,
+                display: loadingDisplay,
+              })
+            ) : isPlaceholder ? (
+              <EmptyVizState
+                chartType={visualization?.identifier}
+                isSummarizeSidebarOpen={isShowingSummarySidebar}
+                editSummary={isDashboard ? undefined : editSummary}
+                isNativeView={isNativeView}
+              />
+            ) : (
+              series &&
+              CardVisualization && (
+                <div
+                  data-card-key={getCardKey(series[0].card?.id)}
+                  className={cx(CS.flex, CS.flexColumn, CS.flexFull)}
+                  style={{ position: hasDevWatermark ? "relative" : undefined }}
+                >
+                  {/* The same view the card shows while its data loads, so a
                     chunk that arrives after the data does not swap one
                     loading state for a different one. */}
-                <Suspense
-                  fallback={renderLoadingView({ expectedDuration, isSlow })}
-                >
-                  <VisualizationRenderedWrapper
-                    onRendered={this.handleVisualizationRendered}
+                  <Suspense
+                    fallback={renderLoadingView({
+                      expectedDuration,
+                      isSlow,
+                      display: loadingDisplay,
+                    })}
                   >
-                    <CardVisualization
-                      actionButtons={actionButtons}
-                      // NOTE: CardVisualization class used as a selector for tests
-                      className={cx(
-                        "CardVisualization",
-                        CS.flexFull,
-                        CS.flexBasisNone,
-                      )}
-                      card={series[0].card} // convenience for single-series visualizations
-                      canToggleSeriesVisibility={canToggleSeriesVisibility}
-                      clicked={clicked}
-                      data={series[0].data} // convenience for single-series visualizations
-                      dashboard={dashboard}
-                      dashcard={dashcard}
-                      dispatch={dispatch}
-                      errorIcon={errorIcon}
-                      fontFamily={fontFamily}
-                      getExtraDataForClick={getExtraDataForClick}
-                      getHref={getHref}
-                      getCardHref={getCardHref}
-                      gridSize={gridSize}
-                      hasColumnReordering={hasColumnReordering}
-                      headerIcon={hasHeader ? null : headerIcon}
-                      height={height}
-                      hovered={hovered}
-                      highlighted={highlighted}
-                      isDashboard={!!isDashboard}
-                      isDocument={!!isDocument}
-                      isEditing={!!isEditing}
-                      isEmbeddingSdk={isEmbeddingSdk}
-                      isFullscreen={!!isFullscreen}
-                      isMetricsViewer={!!isMetricsViewer}
-                      isMobile={!!isMobile}
-                      isVisualizer={!!isVisualizer}
-                      isVisualizerCard={isVisualizerDashCard}
-                      isObjectDetail={isObjectDetail}
-                      isPreviewing={isPreviewing}
-                      isRawTable={isRawTable}
-                      isQueryBuilder={!!isQueryBuilder}
-                      isStandaloneQuestion={!!isStandaloneQuestion}
-                      isSettings={!!isSettings}
-                      isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
-                      scrollToLastColumn={scrollToLastColumn}
-                      mode={mode}
-                      queryBuilderMode={queryBuilderMode}
-                      // Unjustified type cast. FIXME
-                      rawSeries={rawSeries as RawSeries}
-                      visualizerRawSeries={visualizerRawSeries}
-                      renderEmptyMessage={renderEmptyMessage}
-                      renderTableHeader={renderTableHeader}
-                      scrollToColumn={scrollToColumn}
-                      selectedTimelineEventIds={selectedTimelineEventIds}
-                      series={series}
-                      settings={settings}
-                      showAllLegendItems={showAllLegendItems}
-                      hideLegend={hideLegend}
-                      showTitle={!!showTitle}
-                      tableHeaderHeight={tableHeaderHeight}
-                      timelineEvents={timelineEvents}
-                      timelineEventsVisibility={timelineEventsVisibility}
-                      onTimelineEventsShown={onTimelineEventsShown}
-                      onTimelineEventsEnabledChange={
-                        onTimelineEventsEnabledChange
-                      }
-                      totalNumGridCols={totalNumGridCols}
-                      visualizationIsClickable={this.visualizationIsClickable}
-                      width={width}
-                      zoomedRowIndex={zoomedRowIndex}
-                      onZoomRow={onZoomRow}
-                      onActionDismissal={this.hideActions}
-                      onChangeCardAndRun={
-                        this.props.onChangeCardAndRun
-                          ? this.handleOnChangeCardAndRun
-                          : null
-                      }
-                      onBrush={this.props.onBrush}
-                      onDeselectTimelineEvents={onDeselectTimelineEvents}
-                      onHoverChange={this.handleHoverChange}
-                      onOpenTimelines={onOpenTimelines}
-                      onRender={this.onRender}
-                      onRenderError={this.onRenderError}
-                      onSelectTimelineEvents={onSelectTimelineEvents}
-                      onSeeAllEvents={onSeeAllEvents}
-                      onTogglePreviewing={onTogglePreviewing}
-                      onUpdateVisualizationSettings={
-                        onUpdateVisualizationSettings
-                      }
-                      onUpdateWarnings={onUpdateWarnings}
-                      onVisualizationClick={this.handleVisualizationClick}
-                      onHeaderColumnReorder={this.props.onHeaderColumnReorder}
-                      titleMenuItems={hasHeader ? undefined : titleMenuItems}
-                      tableFooterExtraButtons={tableFooterExtraButtons}
-                      // These props are only used by the table on the Erroring Questions admin page
-                      isSelectable={isSelectable}
-                      rowChecked={rowChecked}
-                      onAllSelectClick={onAllSelectClick}
-                      onRowSelectClick={onRowSelectClick}
-                      isSortable={isSortable}
-                      sorting={sorting}
-                      onSortingChange={onSortingChange}
-                    />
-                  </VisualizationRenderedWrapper>
-                </Suspense>
-                {hasDevWatermark && <Watermark card={series[0].card} />}
-              </div>
-            )
-          )}
+                    <VisualizationRenderedWrapper
+                      onRendered={this.handleVisualizationRendered}
+                    >
+                      <CardVisualization
+                        actionButtons={actionButtons}
+                        // NOTE: CardVisualization class used as a selector for tests
+                        className={cx(
+                          "CardVisualization",
+                          CS.flexFull,
+                          CS.flexBasisNone,
+                        )}
+                        card={series[0].card} // convenience for single-series visualizations
+                        canToggleSeriesVisibility={canToggleSeriesVisibility}
+                        clicked={clicked}
+                        data={series[0].data} // convenience for single-series visualizations
+                        dashboard={dashboard}
+                        dashcard={dashcard}
+                        dispatch={dispatch}
+                        errorIcon={errorIcon}
+                        fontFamily={fontFamily}
+                        getExtraDataForClick={getExtraDataForClick}
+                        getHref={getHref}
+                        getCardHref={getCardHref}
+                        gridSize={gridSize}
+                        hasColumnReordering={hasColumnReordering}
+                        headerIcon={hasHeader ? null : headerIcon}
+                        height={height}
+                        hovered={hovered}
+                        highlighted={highlighted}
+                        isDashboard={!!isDashboard}
+                        isDocument={!!isDocument}
+                        isEditing={!!isEditing}
+                        isEmbeddingSdk={isEmbeddingSdk}
+                        isFullscreen={!!isFullscreen}
+                        isMetricsViewer={!!isMetricsViewer}
+                        isMobile={!!isMobile}
+                        isVisualizer={!!isVisualizer}
+                        isVisualizerCard={isVisualizerDashCard}
+                        isObjectDetail={isObjectDetail}
+                        isPreviewing={isPreviewing}
+                        isRawTable={isRawTable}
+                        isQueryBuilder={!!isQueryBuilder}
+                        isStandaloneQuestion={!!isStandaloneQuestion}
+                        isSettings={!!isSettings}
+                        isShowingDetailsOnlyColumns={
+                          isShowingDetailsOnlyColumns
+                        }
+                        scrollToLastColumn={scrollToLastColumn}
+                        mode={mode}
+                        queryBuilderMode={queryBuilderMode}
+                        // Unjustified type cast. FIXME
+                        rawSeries={rawSeries as RawSeries}
+                        visualizerRawSeries={visualizerRawSeries}
+                        renderEmptyMessage={renderEmptyMessage}
+                        renderTableHeader={renderTableHeader}
+                        scrollToColumn={scrollToColumn}
+                        selectedTimelineEventIds={selectedTimelineEventIds}
+                        series={series}
+                        settings={settings}
+                        showAllLegendItems={showAllLegendItems}
+                        hideLegend={hideLegend}
+                        showTitle={!!showTitle}
+                        tableHeaderHeight={tableHeaderHeight}
+                        timelineEvents={timelineEvents}
+                        timelineEventsVisibility={timelineEventsVisibility}
+                        onTimelineEventsShown={onTimelineEventsShown}
+                        onTimelineEventsEnabledChange={
+                          onTimelineEventsEnabledChange
+                        }
+                        totalNumGridCols={totalNumGridCols}
+                        visualizationIsClickable={this.visualizationIsClickable}
+                        width={width}
+                        zoomedRowIndex={zoomedRowIndex}
+                        onZoomRow={onZoomRow}
+                        onActionDismissal={this.hideActions}
+                        onChangeCardAndRun={
+                          this.props.onChangeCardAndRun
+                            ? this.handleOnChangeCardAndRun
+                            : null
+                        }
+                        onBrush={this.props.onBrush}
+                        onDeselectTimelineEvents={onDeselectTimelineEvents}
+                        onHoverChange={this.handleHoverChange}
+                        onOpenTimelines={onOpenTimelines}
+                        onRender={this.onRender}
+                        onRenderError={this.onRenderError}
+                        onSelectTimelineEvents={onSelectTimelineEvents}
+                        onSeeAllEvents={onSeeAllEvents}
+                        onTogglePreviewing={onTogglePreviewing}
+                        onUpdateVisualizationSettings={
+                          onUpdateVisualizationSettings
+                        }
+                        onUpdateWarnings={onUpdateWarnings}
+                        onVisualizationClick={this.handleVisualizationClick}
+                        onHeaderColumnReorder={this.props.onHeaderColumnReorder}
+                        titleMenuItems={hasHeader ? undefined : titleMenuItems}
+                        tableFooterExtraButtons={tableFooterExtraButtons}
+                        // These props are only used by the table on the Erroring Questions admin page
+                        isSelectable={isSelectable}
+                        rowChecked={rowChecked}
+                        onAllSelectClick={onAllSelectClick}
+                        onRowSelectClick={onRowSelectClick}
+                        isSortable={isSortable}
+                        sorting={sorting}
+                        onSortingChange={onSortingChange}
+                      />
+                    </VisualizationRenderedWrapper>
+                  </Suspense>
+                  {hasDevWatermark && <Watermark card={series[0].card} />}
+                </div>
+              )
+            )}
+          </DashCardCrossfade>
           <ChartTooltip hovered={hovered} settings={settings} />
           {this.props.onChangeCardAndRun && (
             <ConnectedClickActionsPopover

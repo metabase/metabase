@@ -14,7 +14,7 @@ import {
   ActionIcon,
   Group,
   FixedSizeIcon as Icon,
-  Loader,
+  Skeleton,
   Stack,
   Text,
 } from "metabase/ui";
@@ -98,7 +98,7 @@ const SavedInValue = ({ question }: { question: Question }) => {
   }
 
   if (isLoading) {
-    return <Loader size="xs" />;
+    return <Skeleton h={14} w={120} radius="xs" />;
   }
 
   const collection = question.collection();

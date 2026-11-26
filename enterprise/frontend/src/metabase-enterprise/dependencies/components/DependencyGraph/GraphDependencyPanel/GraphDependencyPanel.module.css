@@ -5,3 +5,9 @@
   width: 32rem;
   pointer-events: all;
 }
+
+.skeletonItem {
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--mb-color-border-neutral);
+  }
+}

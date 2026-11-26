@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import { SkeletonSwap } from "metabase/common/components/Skeletons";
 import { useScrollToTop, useSortingStateChange } from "metabase/common/hooks";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
@@ -92,21 +93,20 @@ export const TasksTable = ({
 
   return (
     <MonitorTableCard aria-busy={isFetching} data-testid="tasks-table">
-      {isLoading ? (
-        <TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />
-      ) : (
-        <>
-          <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
-          <TreeTable
-            instance={treeTableInstance}
-            hierarchical={false}
-            ariaLabel={t`Tasks`}
-            emptyState={<MonitorEmptyState label={t`No results`} />}
-            getRowProps={() => ({ "data-testid": "task" })}
-            onRowClick={handleRowActivate}
-          />
-        </>
-      )}
+      <SkeletonSwap
+        loading={isLoading}
+        skeleton={<TreeTableSkeleton columnWidths={COLUMN_WIDTHS} />}
+      >
+        <LoadingOverlay visible={isFetching} data-testid="loading-overlay" />
+        <TreeTable
+          instance={treeTableInstance}
+          hierarchical={false}
+          ariaLabel={t`Tasks`}
+          emptyState={<MonitorEmptyState label={t`No results`} />}
+          getRowProps={() => ({ "data-testid": "task" })}
+          onRowClick={handleRowActivate}
+        />
+      </SkeletonSwap>
     </MonitorTableCard>
   );
 };

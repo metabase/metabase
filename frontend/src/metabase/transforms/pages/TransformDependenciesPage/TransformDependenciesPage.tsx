@@ -4,10 +4,11 @@ import { PageContainer } from "metabase/common/data-studio/components/PageContai
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Outlet, useParams } from "metabase/router";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
-import { Card, Center } from "metabase/ui";
+import { Card, Center, Skeleton } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { TransformHeader } from "../../components/TransformHeader";
+import { TransformPageSkeleton } from "../../components/TransformSkeletons";
 
 export type TransformDependenciesPageParams = {
   transformId: string;
@@ -26,10 +27,18 @@ export function TransformDependenciesPage() {
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
 
-  if (id == null || transform == null || isLoading || error != null) {
+  if (isLoading) {
+    return (
+      <TransformPageSkeleton>
+        <Skeleton flex={1} radius="md" />
+      </TransformPageSkeleton>
+    );
+  }
+
+  if (id == null || transform == null || error != null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper error={error} />
       </Center>
     );
   }
