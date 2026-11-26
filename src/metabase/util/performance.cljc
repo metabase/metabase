@@ -613,18 +613,20 @@
     ;; Don't care much about optimizing seq and generic coll cases. When efficiency is required, use vectors.
     (seq? form) (outer (add-original-meta (or (seq (mapv inner form)) ()) form))
 
-    ;; Rebuild a set only once an element changes, so an untouched set comes back identical. Every element before
-    ;; the first change came back as itself, so the new set starts from those.
+    ;; Rebuild a set only once an element changes, so an untouched set comes back identical. The `n` elements before
+    ;; the first change came back as themselves, so the new set starts from those.
     (set? form)
-    (let [unchanged (volatile! 0)
-          form'     (reduce (fn [acc x]
-                              (let [x' (inner x)]
-                                (cond
-                                  acc               (conj acc x')
-                                  (identical? x' x) (do (vswap! unchanged inc) nil)
-                                  :else             (conj (into (empty form) (take @unchanged) form) x'))))
-                            nil form)]
-      (outer (if form' (add-original-meta form' form) form)))
+    (let [first-change (reduce (fn [n x]
+                                 (let [x' (inner x)]
+                                   (if (identical? x' x) (inc n) (reduced [n x']))))
+                               0 form)]
+      (outer (if (vector? first-change)
+               (let [[n x'] first-change]
+                 (-> (into (empty form) (take n) form)
+                     (conj x')
+                     (into (comp (drop (inc n)) (map inner)) form)
+                     (add-original-meta form)))
+               form)))
 
     :else (outer (add-original-meta (into (empty form) (map inner) form) form))))
 
