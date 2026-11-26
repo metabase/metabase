@@ -174,27 +174,26 @@
 
 (defn to-tsquery-expr
   "Given the user input, construct a query in the Postgres tsvector query language.
-  The last word matches as a prefix, unless it closes a quoted phrase or the search `context` is `:metabot`.
-  A `:metabot` search matches whole words, or every plain word as a prefix when its text-search `language` is
-  `simple`; `language` defaults to [[tsv-language]]."
+  The last word matches as a prefix unless it closes a quoted phrase. A search whose `context` is `:metabot`
+  matches every plain word as a prefix instead."
   ([input]
    (to-tsquery-expr input nil))
-  ([input {:keys [context language]}]
+  ([input {:keys [context]}]
    (str
     (when input
       (let [trimmed        (str/trim input)
             metabot?       (= context :metabot)
-            ;; Prefix matching serves search as you type. Metabot sends whole keywords, and a prefix on its last
-            ;; keyword query alone would match words that no query names. The simple configuration stems nothing,
-            ;; so there a prefix on every word is what lets `customer` find `customers`. The H2 and MySQL app DBs
-            ;; build their own matches and read no context, so all of this holds on Postgres only.
-            prefix-words?  (and metabot? (= "simple" (or language (tsv-language))))
+            ;; Prefix matching serves search as you type. Metabot folds its keyword queries into one search, so a
+            ;; prefix on the last word alone depended on which query came last. Every word gets one instead: table
+            ;; names run words together (`pilot` finds `pilotskills`), and the simple configuration stems nothing
+            ;; (`customer` finds `customers`). The H2 and MySQL app DBs build their own matches and read no
+            ;; context, so this holds on Postgres only.
             complete?      (and (not metabot?)
                                 (not (str/ends-with? trimmed "\"")))
             maybe-complete (if complete? complete-last-word identity)]
         (->> (str/replace trimmed "\\" "\\\\")
              search-clauses
-             (map (partial process-clause prefix-words?))
+             (map (partial process-clause metabot?))
              (remove str/blank?)
              (str/join " | ")
              maybe-complete))))))

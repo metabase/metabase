@@ -79,16 +79,13 @@
     (is (= "'you''re':*"
            (search-expr "you're")))))
 
-(deftest ^:parallel metabot-search-does-not-complete-the-last-word-test
-  (testing "Metabot sends whole keywords, so under a stemming language each word matches only itself"
-    (is (= "'a' & 'b' | 'c'"
-           (search-expr "a b or c" {:context :metabot, :language "english"}))))
-  (testing "Under the simple language, which stems nothing, Metabot matches every plain word as a prefix"
+(deftest ^:parallel metabot-search-matches-every-word-as-a-prefix-test
+  (testing "Metabot matches every plain word as a prefix, and quoted phrases and negations exactly"
     (is (= "'a':* & 'b':* | 'c':* & !'d' & 'e' <-> 'f'"
-           (search-expr "a b or c -d \"e f\"" {:context :metabot, :language "simple"}))))
-  (testing "Other contexts still match the last word as a prefix, whatever the language"
+           (search-expr "a b or c -d \"e f\"" {:context :metabot}))))
+  (testing "Other contexts match only the last word as a prefix"
     (is (= "'a' & 'b' | 'c':*"
-           (search-expr "a b or c" {:context :search-app, :language "simple"})))))
+           (search-expr "a b or c" {:context :search-app})))))
 
 (deftest available-tsv-languages-test
   (when (= :postgres (mdb/db-type))

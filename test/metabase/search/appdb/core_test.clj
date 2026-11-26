@@ -23,25 +23,23 @@
 
 (deftest metabot-keyword-queries-match-any-query-and-every-word-in-each-test
   (when (= :postgres (mdb/db-type))
-    (testing "[\"orders\" \"monthly revenue\"] searches for orders, or monthly and revenue together, with no prefix"
+    (testing "[\"orders\" \"monthly revenue\"] searches for orders, or monthly and revenue together, each a prefix"
       (let [[folded] (search.engine/disjunction :search.engine/appdb ["orders" "monthly revenue"])
-            expr     (search.util/to-tsquery-expr folded {:context :metabot, :language "english"})
+            expr     (search.util/to-tsquery-expr folded {:context :metabot})
             ;; Postgres parses it as a search would, under the simple configuration, which stems nothing.
             parsed   (mdb/query {:select [[[:to_tsquery [:literal "simple"] [:lift expr]] :query]]})]
-        (is (= "'orders' | 'monthly' & 'revenue'"
+        (is (= "'orders':* | 'monthly':* & 'revenue':*"
                (str (:query (first parsed)))))))))
 
-(deftest postgres-search-passes-its-context-and-language-to-the-tsquery-test
-  (let [lifted (fn [language search-ctx]
-                 (mt/with-temporary-setting-values [search-language language]
-                   (some #(when (and (vector? %) (= :lift (first %))) (second %))
-                         (tree-seq coll? seq ((get-method specialization/base-query :postgres)
-                                              :search_index "order" search-ctx [:model_id])))))]
-    (testing "Metabot matches whole words under a stemming language, and prefixes them under simple"
-      (is (= "'order'" (lifted "english" {:context :metabot})))
-      (is (= "'order':*" (lifted "simple" {:context :metabot}))))
+(deftest postgres-search-passes-its-context-to-the-tsquery-test
+  (let [lifted (fn [search-ctx]
+                 (some #(when (and (vector? %) (= :lift (first %))) (second %))
+                       (tree-seq coll? seq ((get-method specialization/base-query :postgres)
+                                            :search_index "order item" search-ctx [:model_id]))))]
+    (testing "Metabot matches every word as a prefix"
+      (is (= "'order':* & 'item':*" (lifted {:context :metabot}))))
     (testing "Other searches match the last word as a prefix"
-      (is (= "'order':*" (lifted "english" {:context :search-app}))))))
+      (is (= "'order' & 'item':*" (lifted {:context :search-app}))))))
 
 (deftest locale-change-reindexes-after-commit-test
   (when (contains? #{:mysql :postgres} (mdb/db-type))
