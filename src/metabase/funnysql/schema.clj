@@ -11,13 +11,14 @@
 
 (mr/def ::bound-value
   "A non-numeric, non-boolean value Funny SQL binds as a `?` parameter: a string, a UUID, a date or time (`java.time` or
-  `java.util.Date`), or bytes."
+  `java.util.Date`), or bytes (an array or a JDBC `Blob`)."
   [:or
    :string
    :uuid
    ms/TemporalInstant
    (ms/InstanceOfClass java.util.Date)
-   [:fn {:error/message "a byte array"} bytes?]])
+   [:fn {:error/message "a byte array"} bytes?]
+   (ms/InstanceOfClass java.sql.Blob)])
 
 (mr/def ::bindable
   "A value a `?` parameter can carry: `nil`, a boolean, a number, a keyword, a [[::bound-value]], or a collection of
