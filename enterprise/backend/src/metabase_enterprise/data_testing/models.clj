@@ -83,11 +83,6 @@
       (for [saved-test tests]
         (assoc saved-test :last_run (get id->run (:id saved-test)))))))
 
-(methodical/defmethod t2/batched-hydrate [:model/TransformTest :last_run]
-  "Add the newest run, or nil, to each transform test."
-  [_model _k transform-tests]
-  (with-last-runs :transform transform-tests))
-
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
 (defn can-run-native-query?
@@ -285,52 +280,6 @@
                                               (not (remote-sync/synced-changes? model instance changes))
                                               (subject-writable? (some-> (subject-key instance) subject))))})))
 
-;;; ----------------------------------------------- Transform tests ------------------------------------------------
-
-(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_read]
-  "Add whether the current user can read the transform of each transform test, loading the transforms at once."
-  [_model k transform-tests]
-  (with-readable-subjects k transform-tests :transform_id
-    (data-testing.db/transforms (into [] (comp (keep :transform_id) (distinct)) transform-tests))))
-
-(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_write]
-  "Add whether the current user can write each transform test: they may edit its transform, on an instance where remote
-  sync does not keep synced content read-only, loading the transforms at once."
-  [_model k transform-tests]
-  (let [read-only? (remote-sync/read-only?)]
-    (assoc-subject-answers transform-tests k
-                           {:subject-key   :transform_id
-                            :subjects      (data-testing.db/transforms
-                                            (into [] (comp (keep :transform_id) (distinct)) transform-tests))
-                            :subject-k     :can_write
-                            :subject-check #(and (not read-only?) (mi/can-write? %))})))
-
-(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_query]
-  "Add whether the current user may run each transform test: they read it and may run its transform, as its
-  `:can_query` says, loading the transforms at once."
-  [_model k transform-tests]
-  (assoc-can-query transform-tests k :transform_id
-                   (data-testing.db/transforms (into [] (comp (keep :transform_id) (distinct)) transform-tests))))
-
-(defmethod mi/can-create? :model/TransformTest
-  [_model instance]
-  (can-create-test? (some-> (:transform_id instance) data-testing.db/transform) transforms-base.i/source-db-id))
-
-(defn- transform-writable?
-  "Whether the current user may edit the Transform `transform-id`."
-  [transform-id]
-  (boolean (some-> transform-id data-testing.db/transform (t2/hydrate :can_write) mi/can-write?)))
-
-(defmethod mi/can-update? :model/TransformTest
-  [instance changes]
-  (can-update-test? instance changes
-                    {:subject-key  :transform_id
-                     :load-subject data-testing.db/transform
-                     :db-id        transforms-base.i/source-db-id
-                     :writable?    (or (mi/can-write? instance)
-                                       (and (not (remote-sync/synced-changes? :model/TransformTest instance changes))
-                                            (transform-writable? (:transform_id instance))))}))
-
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
 (def ^:private saved-test-topics
@@ -482,19 +431,21 @@
   [id _user-id snapshot]
   (update-transform-tests! [(assoc snapshot :id id)] {:writer :revert}))
 
-(defn- check-transform-test-revert
-  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
-  [id _user-id snapshot]
-  (check-revert-available)
-  (when (validates-edit? :transform_id (reverted-keys (data-testing.db/transform-test id) snapshot))
-    (data-testing.errors/refusing
-     "transform-test"
-     #(data-testing.runner/validate-test :transform
-                                         (data-testing.db/transform (:transform_id snapshot))
-                                         (data-testing.runner/test-definition snapshot))))
-  snapshot)
-
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defn- validate-test
+  "Throws the typed refusal of a test of the Transform `transform-id` with `definition` that could not run."
+  [transform-id definition]
+  (data-testing.runner/validate-test :transform (data-testing.db/transform transform-id) definition))
+
+(defmethod saved-test-spec :model/TransformTest [_model]
+  {:test-type          :transform
+   :subject-key        :transform_id
+   :subject            data-testing.db/transform
+   :subjects           data-testing.db/transforms
+   :database-id        transforms-base.i/source-db-id
+   :validate-test      validate-test
+   :remote-sync-guard? true})
 
 (defmethod app-db-copy/spec :model/TransformTest [_model]
   {:skip? false})
@@ -521,7 +472,7 @@
    :skip          [:creator_id :entity_id]
    :schema        ::data-testing.schema/transform-test.revision
    :authorize     :snapshot
-   :before-revert check-transform-test-revert
+   :before-revert #(check-revert :model/TransformTest %1 %2 %3)
    :revert!       revert-transform-test!})
 
 (defmethod audit/spec :model/TransformTest [_model]
