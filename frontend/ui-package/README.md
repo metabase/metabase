@@ -86,7 +86,7 @@ A dry run resolves the version, checks that the `ui-v<version>` tag and the npm 
 
 The tested archive is uploaded as the `metabase-ui-<version>-<sha7>-attempt-<n>` artifact, also on dry runs, and kept for 90 days. A real run builds and tests again, publishes the archive its own smoke job tested, then pushes the `ui-v<version>` tag on the released commit. It doesn't reuse an earlier dry run's archive.
 
-To retry a failed automatic release, use **Re-run failed jobs** on the original run. If no run exists, dispatch **Release UI Package** from `master` with `release_commit` set to the full SHA of the intended release on `master`. If npm accepted the tarball but the publish job reported failure, do not retry the publish. Compare `npm view @metabase/ui@<version> dist.integrity` with the SHA-512 integrity of the tested tarball (`sha512-` followed by the base64-encoded digest). Only if they match, and the tag is absent, create the tag on the commit recorded in that run's summary.
+To retry a failed automatic release, use **Re-run failed jobs** on the original run. If npm accepted the tarball but the publish job reported failure, do not retry the publish. Compare `npm view @metabase/ui@<version> dist.integrity` with the SHA-512 integrity of the tested tarball (`sha512-` followed by the base64-encoded digest). Only if they match, and the tag is absent, create the tag on the commit recorded in that run's summary.
 
 ### Manual first publish
 

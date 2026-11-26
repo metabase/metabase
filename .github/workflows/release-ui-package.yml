@@ -19,20 +19,10 @@ on:
         type: boolean
         required: false
         default: true
-      release_commit:
-        description: "Optional full SHA of a release commit on master, for recovery only"
-        type: string
-        required: false
 
 concurrency:
-  group: >-
-    ${{ github.ref == 'refs/heads/master' &&
-        (github.event_name == 'workflow_dispatch' ||
-         (github.event.pull_request.merged == true &&
-          github.event.pull_request.head.repo.full_name == github.repository &&
-          github.event.pull_request.head.ref == 'changeset-release/master')) &&
-        'release-ui-package' || github.run_id }}
-  queue: max
+  group: release-ui-package
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -56,33 +46,11 @@ jobs:
       version: ${{ steps.resolve.outputs.version }}
       npm_tag: ${{ steps.resolve.outputs.npm_tag }}
       git_tag: ${{ steps.resolve.outputs.git_tag }}
-      commit: ${{ steps.commit.outputs.sha }}
     steps:
-      - name: Resolve release commit
-        id: commit
-        env:
-          SHA: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
-          RECOVERY_SHA: ${{ inputs.release_commit }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if [ -n "$RECOVERY_SHA" ]; then
-            if [[ ! "$RECOVERY_SHA" =~ ^[0-9a-f]{40}$ ]]; then
-              echo '::error::Enter a full Git commit SHA.'
-              exit 1
-            fi
-            STATUS=$(gh api "repos/$GITHUB_REPOSITORY/compare/$RECOVERY_SHA...$GITHUB_SHA" --jq '.status')
-            if [[ "$STATUS" != ahead && "$STATUS" != identical ]]; then
-              echo '::error::The recovery commit must be on master.'
-              exit 1
-            fi
-            SHA=$RECOVERY_SHA
-          fi
-          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-
       - name: Check out the code
         uses: actions/checkout@v7
         with:
-          ref: ${{ steps.commit.outputs.sha }}
+          ref: ${{ github.sha }}
 
       - name: Reject an out-of-date Changesets release
         if: ${{ github.event_name == 'pull_request' }}
@@ -144,7 +112,7 @@ jobs:
       - name: Check out the code
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.determine-release.outputs.commit }}
+          ref: ${{ github.sha }}
 
       # apply-patches stays on: the package build fails on an unpatched Mantine.
       - name: Prepare front-end environment
@@ -160,7 +128,7 @@ jobs:
         id: artifact
         env:
           VERSION: ${{ needs.determine-release.outputs.version }}
-          SHA: ${{ needs.determine-release.outputs.commit }}
+          SHA: ${{ github.sha }}
           ATTEMPT: ${{ github.run_attempt }}
         run: echo "name=metabase-ui-$VERSION-${SHA::7}-attempt-$ATTEMPT" >> "$GITHUB_OUTPUT"
 
@@ -182,7 +150,7 @@ jobs:
           NPM_TAG: ${{ needs.determine-release.outputs.npm_tag }}
           GIT_TAG: ${{ needs.determine-release.outputs.git_tag }}
           ARTIFACT: ${{ steps.artifact.outputs.name }}
-          COMMIT: ${{ needs.determine-release.outputs.commit }}
+          COMMIT: ${{ github.sha }}
           DRY_RUN: ${{ inputs.dry_run || false }}
         run: |
           {
@@ -265,7 +233,7 @@ jobs:
       - name: Check out the released commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.determine-release.outputs.commit }}
+          ref: ${{ github.sha }}
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Configure git identity
