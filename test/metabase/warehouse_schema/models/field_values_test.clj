@@ -986,3 +986,21 @@
               (is (< raw-count field-values/*distinct-limit*)
                   "source has few enough distinct values to not hit the LIMIT")
               (is (every? string? values)))))))))
+
+(deftest ^:parallel field-values-change-keep-too-large-test
+  (let [field     {:id 1 :name "f"}
+        too-large {:id 10 :field_id 1 :type :full :values ["a" "b"] :has_more_values true}]
+    (binding [field-values/*distinct-limit* 2]
+      (testing "a list that was too large and is still too large is kept when asked"
+        (is (= ::field-values/fv-skipped
+               (:result (field-values/field-values-change field too-large ["c" "d"] {:keep-too-large? true})))))
+      (testing "without the option it is stored again, as before"
+        (is (= ::field-values/fv-updated
+               (:result (field-values/field-values-change field too-large ["c" "d"] nil)))))
+      (testing "a list that becomes too large is stored"
+        (is (= ::field-values/fv-updated
+               (:result (field-values/field-values-change field (assoc too-large :has_more_values false) ["c" "d"]
+                                                          {:keep-too-large? true}))))))
+    (testing "a list that is no longer too large is stored"
+      (is (= ::field-values/fv-updated
+             (:result (field-values/field-values-change field too-large ["c"] {:keep-too-large? true})))))))

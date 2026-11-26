@@ -395,7 +395,7 @@
                                       {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
                                        :queries (count fields)
                                        :failed-fields #{}})]
-          (#'sync.field-values/table-field-values-changes (driver.u/lib-database db-id) table [nested-a nested-b plain-c] {})
+          (#'sync.field-values/table-field-values-changes (driver.u/lib-database db-id) table [nested-a nested-b plain-c] {} {:rescan? false})
           (testing "Plain field goes to batch path"
             (is (= [#{(:id plain-c)}] @calls-to-fetch-distinct-for-table)))
           (testing "Both nested-JSON children with the same name go to per-field, preserving each field's identity"
@@ -431,7 +431,7 @@
                                       {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
                                        :queries (count fields)
                                        :failed-fields #{}})]
-          (#'sync.field-values/table-field-values-changes (driver.u/lib-database db-id) table [json-field plain] {})
+          (#'sync.field-values/table-field-values-changes (driver.u/lib-database db-id) table [json-field plain] {} {:rescan? false})
           (is (= [#{(:id plain)}] @calls-to-fetch-distinct-for-table))
           (is (= [#{(:id json-field)}] @calls-to-fetch-distinct-per-field)))))))
 
@@ -504,7 +504,7 @@
   "Run both steps of field values sync over `database`, returning the result of each."
   [database]
   {:expired (#'sync.field-values/delete-expired-advanced-field-values-for-database! database)
-   :updated (#'sync.field-values/update-field-values-for-database! database)})
+   :updated (#'sync.field-values/update-field-values-for-database! database {:rescan? false})})
 
 (deftest update-field-values-statement-count-test
   (mt/with-dynamic-fn-redefs [qp/process-query distinct-values-a-and-b]
@@ -658,3 +658,22 @@
             (is (thrown? StackOverflowError
                          (update-field-values! (driver.u/lib-database (u/the-id db))))))
           (is (= 1 @writes)))))))
+
+(deftest ^:synchronized scheduled-scan-keeps-too-large-lists-test
+  (testing "the scheduled scan does not store again a list that is still too large, and a manual rescan does"
+    (mt/dataset test-data
+      (mt/with-temp [:model/FieldValues _ {:field_id        (mt/id :people :state)
+                                           :type            :full
+                                           :has_more_values true
+                                           :values          ["XX"]}]
+        (let [table  (t2/select-one :model/Table :id (mt/id :people))
+              stored #(t2/select-one-fn :values :model/FieldValues :field_id (mt/id :people :state) :type :full)]
+          ;; `people.state` has more than 10 values, so its list stays too large
+          (binding [field-values/*distinct-limit* (int 10)]
+            (testing "the scheduled scan keeps the stored values"
+              (sync.field-values/update-field-values-for-table! table)
+              (is (= ["XX"] (stored))))
+            (testing "a manual rescan stores the scanned values"
+              (sync.field-values/rescan-field-values-for-table! table)
+              (is (not= ["XX"] (stored)))
+              (is (= 10 (count (stored)))))))))))

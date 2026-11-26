@@ -197,7 +197,7 @@
                        :model/Table    {t4 :id} {:db_id d2, :schema "PUBLIC"}
                        :model/Table    {t5 :id} {:db_id d2, :schema "FOO"}]
           (with-redefs [quick-task/executor (delay pool)]
-            (mt/with-dynamic-fn-redefs [sync/update-field-values-for-table! (fn [table]
+            (mt/with-dynamic-fn-redefs [sync/rescan-field-values-for-table! (fn [table]
                                                                               (swap! tables conj table)
                                                                               (.countDown latch)
                                                                               nil)]

@@ -29,6 +29,8 @@
   reset-data-sensitivity!
   scan-data-sensitivity!]
  [metabase.sync.field-values
+  rescan-field-values!
+  rescan-field-values-for-table!
   update-field-values!
   update-field-values-for-table!]
  [metabase.sync.sync

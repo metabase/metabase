@@ -1121,8 +1121,8 @@
         (if *rescan-values-async*
           (quick-task/submit-task!
            (fn []
-             (sync/update-field-values! (u/the-id db))))
-          (sync/update-field-values! (u/the-id db))))))
+             (sync/rescan-field-values! (u/the-id db))))
+          (sync/rescan-field-values! (u/the-id db))))))
   {:status :ok})
 
 (defn- delete-all-field-values-for-database! [database-or-id]

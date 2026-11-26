@@ -471,8 +471,12 @@
   "What persisting `raw-values`, the raw distinct values of one Field from the warehouse, changes against
   `existing-fv`, its full FieldValues or nil: `{:result r}` with `r` one of `::fv-skipped`, `::fv-updated`,
   `::fv-created` or `::fv-deleted`, and the `:delete` Field id, `:create` row or `:update` row that
-  [[save-field-values-changes!]] writes."
-  [field existing-fv raw-values]
+  [[save-field-values-changes!]] writes.
+
+  With `:keep-too-large?`, a list that has more values than it holds and still does is not stored again: which values
+  the warehouse returns for such a Field is arbitrary, so storing them again changes nothing a user can rely on, and an
+  update deletes the Field's advanced FieldValues."
+  [field existing-fv raw-values {:keys [keep-too-large?]}]
   (let [field-name      (or (:name field) (:id field))
         row-cap-hit?    (>= (count raw-values) *distinct-limit*)
         {values        :values
@@ -492,6 +496,14 @@
                   :has_more_values       has-more-values
                   :values                values
                   :human_readable_values nil}})
+
+      (and keep-too-large?
+           has-more-values
+           (:has_more_values existing-fv)
+           (seq (:values existing-fv)))
+      (do
+        (log/debugf "FieldValues for Field %s are still too large. Keeping the stored ones..." field-name)
+        {:result ::fv-skipped})
 
       (and (= (:values existing-fv) values)
            (= (:has_more_values existing-fv) has-more-values))
@@ -545,7 +557,7 @@
 (defn persist-field-values!
   "Write what [[field-values-change]] returns for `field`, `existing-fv` and `raw-values`, and return its `:result`."
   [field existing-fv raw-values]
-  (let [change (field-values-change field existing-fv raw-values)]
+  (let [change (field-values-change field existing-fv raw-values nil)]
     (save-field-values-changes! [change])
     (:result change)))
 

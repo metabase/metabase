@@ -18,6 +18,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [metabase.warehouse-schema.models.field-values :as field-values]))
 
@@ -115,11 +116,11 @@
 (defn- table-field-values-changes
   "Fetch distinct values for `fields` from `table` and return `{:queries n :changes pairs}`: the number of warehouse
   queries and, for each of `fields`, a pair of the Field and what [[field-values/field-values-change]] returns for it,
-  or the Throwable fetching or comparing its values threw.
+  or the Throwable fetching or comparing its values threw. Unless `:rescan?`, a list that is still too large is kept.
 
   Nested fields (with a `:parent_id`) and unfolded JSON fields (with an `:nfc_path`) do not go in the UNION batch query,
   because it uses only the field name, which is not a column for these fields."
-  [database table fields fvs-map]
+  [database table fields fvs-map {:keys [rescan?]}]
   (if (empty? fields)
     {:queries 0 :changes []}
     (let [{nested true plain false}    (group-by (comp boolean (some-fn :parent_id :nfc_path)) fields)
@@ -138,7 +139,8 @@
                                    (sync-util/with-error-handling
                                     (format "Error updating field values for %s" (sync-util/name-for-logging field))
                                      (field-values/field-values-change
-                                      field (get fvs-map field-id) (get-in results [field-id :values] []))))]))
+                                      field (get fvs-map field-id) (get-in results [field-id :values] [])
+                                      {:keep-too-large? (not rescan?)})))]))
                       fields)})))
 
 (defn- save-changes!
@@ -166,12 +168,14 @@
 
 (defn- sync-fields-of-tables!
   "Fetch distinct values for the Fields of each of `tables`, by `table-id->fields`, each Table's Database by
-  `table-database`, and write their FieldValues at once, returning the counts of outcomes."
-  [tables table-database table-id->fields fvs-map]
+  `table-database`, and write their FieldValues at once, returning the counts of outcomes. `opts` as for
+  [[table-field-values-changes]]."
+  [tables table-database table-id->fields fvs-map opts]
   (let [fetched (lib-be/with-metadata-provider-cache
                   (mapv (fn [table]
                           (database-routing/with-anonymous-router-access
-                            (table-field-values-changes (table-database table) table (table-id->fields (:id table)) fvs-map)))
+                            (table-field-values-changes (table-database table) table (table-id->fields (:id table))
+                                                        fvs-map opts)))
                         tables))]
     (assoc (save-changes! (into [] (mapcat :changes) fetched))
            :queries (transduce (map :queries) + 0 fetched))))
@@ -191,7 +195,7 @@
                            (partition-all table-chunks/tables-per-chunk (keys by-table)))
             id->db   (database-routing/with-anonymous-router-access
                        (into {} (map (juxt identity driver.u/lib-database)) (distinct (map :db_id tables))))]
-        (sync-fields-of-tables! tables (comp id->db :db_id) by-table fvs-map)))))
+        (sync-fields-of-tables! tables (comp id->db :db_id) by-table fvs-map {:rescan? false})))))
 
 (defn- clear-field-values!
   "Delete the FieldValues of `fields`, which should no longer have any, returning the counts of the Fields that had
@@ -228,11 +232,17 @@
     :else
     true))
 
+(mr/def ::scan-options
+  [:map {:closed true}
+   [:rescan? :boolean]])
+
 (mu/defn- update-field-values-for-tables!
   "Update the FieldValues of the Fields of `tables` that need it, reading their Fields and FieldValues together, with
-  one UNION ALL query per Table on SQL drivers and one DISTINCT query per Field elsewhere."
+  one UNION ALL query per Table on SQL drivers and one DISTINCT query per Field elsewhere. A manual rescan
+  (`:rescan?`) also stores again the lists that are still too large."
   [database :- i/DatabaseInstance
-   tables   :- [:sequential i/TableInstance]]
+   tables   :- [:sequential i/TableInstance]
+   opts     :- ::scan-options]
   (let [limit             (sync.settings/scan-max-fields-per-table)
         table-id->scanned (fields-to-scan tables (inc limit))
         table-id->fields  (into {}
@@ -249,7 +259,7 @@
         fvs-map           (field-values/batched-get-latest-full-field-values (map u/the-id to-sync))
         last-used-at      (field-values/fields-last-used-at (vec (vals fvs-map)))
         table-id->to-sync (group-by :table_id (filter #(syncable? last-used-at % (get fvs-map (u/the-id %))) to-sync))]
-    (merge-with + clear-counts (sync-fields-of-tables! tables (constantly database) table-id->to-sync fvs-map))))
+    (merge-with + clear-counts (sync-fields-of-tables! tables (constantly database) table-id->to-sync fvs-map opts))))
 
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`.
@@ -260,15 +270,22 @@
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
-   (update-field-values-for-tables! database [table])))
+   (update-field-values-for-tables! database [table] {:rescan? false})))
+
+(mu/defn rescan-field-values-for-table!
+  "[[update-field-values-for-table!]] for a rescan a user asked for: lists that are still too large are stored again
+  too."
+  [table :- i/TableInstance]
+  (update-field-values-for-tables! (driver.u/lib-database (:db_id table)) [table] {:rescan? true}))
 
 (mu/defn- update-field-values-for-database!
-  [database :- i/DatabaseInstance]
+  [database :- i/DatabaseInstance
+   opts     :- ::scan-options]
   (tracing/with-span :sync "field-values.update" {:db/id (:id database)}
     (let [groups (table-chunks/groups (sync-util/reducible-sync-tables database)
                                       analyze/normal-field-counts
                                       (inc (sync.settings/scan-max-fields-per-table)))]
-      (transduce (map (partial update-field-values-for-tables! database)) (partial merge-with +) groups))))
+      (transduce (map #(update-field-values-for-tables! database % opts)) (partial merge-with +) groups))))
 
 (defn- update-field-values-summary [{:keys [created updated deleted errors probed queries]}]
   (format "Updated %d field value sets, created %d, deleted %d with %d errors (probed %d fields in %d queries)"
@@ -322,19 +339,31 @@
         (field-values/delete-field-values! ids))
       {:deleted (count ids)})))
 
-(def ^:private sync-field-values-steps
+(defn- sync-field-values-steps
+  "The steps of a scan of the FieldValues of a Database, with `opts` as for [[update-field-values-for-tables!]]."
+  [opts]
   [(sync-util/create-sync-step "delete-expired-advanced-field-values"
                                delete-expired-advanced-field-values-for-database!
                                delete-expired-advanced-field-values-summary)
    (sync-util/create-sync-step "update-field-values"
-                               update-field-values-for-database!
+                               #(update-field-values-for-database! % opts)
                                update-field-values-summary)])
+
+(defn- scan-field-values!
+  "Run the scan of the FieldValues of the Database with `database-id`, with `opts`."
+  [database-id opts]
+  (let [database (driver.u/lib-database database-id)]
+    (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s"
+                                                                   (sync-util/name-for-logging database))
+      (sync-util/run-sync-operation "field values scanning" database (sync-field-values-steps opts)))))
 
 (mu/defn update-field-values!
   "Update the advanced FieldValues (distinct values for categories and certain other fields that are shown
    in widgets like filters) for the Tables in the Database with `database-id` (as needed)."
   [database-id :- ::lib.schema.id/database]
-  (let [database (driver.u/lib-database database-id)]
-    (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s"
-                                                                   (sync-util/name-for-logging database))
-      (sync-util/run-sync-operation "field values scanning" database sync-field-values-steps))))
+  (scan-field-values! database-id {:rescan? false}))
+
+(mu/defn rescan-field-values!
+  "[[update-field-values!]] for a rescan a user asked for: lists that are still too large are stored again too."
+  [database-id :- ::lib.schema.id/database]
+  (scan-field-values! database-id {:rescan? true}))

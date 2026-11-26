@@ -234,7 +234,7 @@
     (events/publish-event! :event/table-manual-scan {:objects tables :user-id api/*current-user-id*})
     (request/as-admin
       (doseq [table tables]
-        (quick-task/submit-task! #(sync/update-field-values-for-table! table))))))
+        (quick-task/submit-task! #(sync/rescan-field-values-for-table! table))))))
 
 (api.macros/defendpoint :post "/discard-values" :- :nil
   "Batch version of /table/:id/discard_values. Takes an abstract table selection as /table/edit does."

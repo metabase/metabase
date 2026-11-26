@@ -1973,7 +1973,7 @@
         (try
           (mt/with-temp [:model/Database db {:engine "h2", :details (:details (mt/db))}]
             (with-redefs [quick-task/executor (delay pool)]
-              (mt/with-dynamic-fn-redefs [sync.field-values/update-field-values! (fn [synced-db]
+              (mt/with-dynamic-fn-redefs [sync.field-values/rescan-field-values! (fn [synced-db]
                                                                                    (when (= (u/the-id synced-db) (u/the-id db))
                                                                                      (deliver update-field-values-called? :sync-called)))]
                 (snowplow-test/with-fake-snowplow-collector
