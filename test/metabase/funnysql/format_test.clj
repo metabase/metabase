@@ -762,7 +762,7 @@
   (testing "other `:for` options compile or throw; they are never dropped"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"\QError compiling Honey SQL: No matching clause: :nowait\E"
+         #"\QError compiling Funny SQL: No matching clause: :nowait\E"
          (mu/disable-enforcement (funnysql.format/format {:select [:id], :from [:t], :for [:update :nowait]} :postgres))))))
 
 (deftest ^:parallel percent-keyword-niladic-function-test
