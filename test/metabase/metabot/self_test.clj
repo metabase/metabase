@@ -1598,6 +1598,35 @@
     (is (= "data-mystery"
            (-> (sse-events [{:type :mystery :id "x"}]) first :type)))))
 
+(deftest parts->aisdk-sse-xf-elapsed-ms-test
+  (testing "the finish event carries the server's elapsed time, read once at completion"
+    (let [calls  (atom 0)
+          events (sse-events {:elapsed-ms #(do (swap! calls inc) 1234)}
+                             [{:type :start :id "m"} {:type :text :id "t" :text "hi"} (usage-part "stop" "stop")])]
+      (is (=? {:type "finish" :messageMetadata {:elapsedMs 1234 :usage {:totalTokens 3}}}
+              (last events)))
+      (is (= 1 @calls))))
+  (testing "a turn that observed no usage still carries it"
+    (is (=? {:type "finish" :finishReason "error" :messageMetadata {:elapsedMs 50}}
+            (last (sse-events {:elapsed-ms (constantly 50)} [{:type :error :error {:message "boom"}}])))))
+  (testing "no :elapsed-ms, or one that returns nil, leaves it out"
+    (is (not (contains? (:messageMetadata (last (sse-events [(usage-part "stop" "stop")]))) :elapsedMs)))
+    (is (not (contains? (last (sse-events {:elapsed-ms (constantly nil)} [{:type :text :id "t" :text "hi"}]))
+                        :messageMetadata)))))
+
+(deftest format-error-frames-elapsed-ms-test
+  (let [finish-event (fn [frames]
+                       (some #(when (str/includes? % "\"finish\"") (json/decode+kw (subs % 6)))
+                             (str/split-lines frames)))
+        error-part   {:error {:message "boom"}}]
+    (testing "the closing finish of a failed stream carries the server's elapsed time"
+      (is (= {:type "finish" :finishReason "error" :messageMetadata {:elapsedMs 900}}
+             (finish-event (self.core/format-error-frames error-part 900)))))
+    (testing "without one it has no metadata"
+      (is (= {:type "finish" :finishReason "error"}
+             (finish-event (self.core/format-error-frames error-part))
+             (finish-event (self.core/format-error-frames error-part nil)))))))
+
 (deftest parts->aisdk-sse-xf-error-test
   (testing "an error before any :start synthesizes start + start-step, and flips finish_reason"
     (let [events (sse-events [{:type :error :error {:message "Something went wrong"}}])]

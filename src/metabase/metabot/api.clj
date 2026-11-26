@@ -42,7 +42,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.io OutputStream)))
+   (java.io OutputStream)
+   (java.time OffsetDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -200,13 +201,17 @@
   `start` event's `messageId` so a client that omitted one can still tell what
   was persisted. `:user-external-id` is the turn's user row `external_id`,
   emitted as the `start` event's `messageMetadata.userMessageId`.
+  `:assistant-created-at` is the `created_at` of that row, the start of the turn: the `finish`
+  event's `messageMetadata.elapsedMs` counts from it, and the row's `finished_at` gets the time
+  it counts to, so a reload shows the client the same number.
   `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
   it seeds the agent loop as the immutable baseline for this turn's state.
   `:full-context-replayed?` is true when `:history` replays a full `<context>` block
   (see [[metabot.persistence/replays-full-context?]]), so this turn sends only the time
   and what the user is viewing."
   [{:keys [metabot profile-id message context history conversation-id state debug?
-           eval-session-id assistant-msg-id external-id user-external-id title-job full-context-replayed?]}]
+           eval-session-id assistant-msg-id external-id user-external-id title-job full-context-replayed?
+           assistant-created-at]}]
   (let [enriched-context (metabot.context/create-context
                           ;; Server-authoritative: decided from the request's client header here, on the
                           ;; handler thread, before the agent moves to the streaming thread.
@@ -227,12 +232,21 @@
             ;; this, such turns finalize as `:finished true :error nil` — indistinguishable
             ;; from a clean success.
             thrown     (volatile! nil)
+            ;; When the turn ended, set by the first call of `elapsed-ms!`.
+            finished-at (volatile! nil)
+            ;; How long the turn took, for the `finish` event. The same two times go into the row, so
+            ;; `elapsedMs` of the stored message is the same number.
+            elapsed-ms! (fn []
+                          (metabot.persistence/elapsed-ms
+                           assistant-created-at
+                           (or @finished-at (vreset! finished-at (OffsetDateTime/now)))))
             ;; Read once, so the stream reports the same window the row's verdict is judged against.
             window     (metabot.self/context-window-tokens (metabot.settings/llm-metabot-provider))
             xf         (comp (u/tee-xf parts-atom)
                              (self.core/parts->aisdk-sse-xf
                               (cond-> {:message-id            external-id
-                                       :context-window-tokens window}
+                                       :context-window-tokens window
+                                       :elapsed-ms            elapsed-ms!}
                                 user-external-id (assoc :message-metadata {:userMessageId user-external-id})))
                              (inject-title-events-xf title-job conversation-id))]
         (try
@@ -276,7 +290,8 @@
             ;; client this very event.
             (try
               (.write os (.getBytes ^String (self.core/format-error-frames
-                                             {:error (metabot.persistence/throwable->error-payload t)})
+                                             {:error (metabot.persistence/throwable->error-payload t)}
+                                             (elapsed-ms!))
                                     "UTF-8"))
               (.flush os)
               (catch org.eclipse.jetty.io.EofException _
@@ -302,7 +317,8 @@
                  :turn-state            (some-> @memory-atom memory/turn-state)
                  :context-block         (some-> @memory-atom memory/context-block)
                  :full-context?         (some-> @memory-atom memory/context-block-full?)
-                 :context-window-tokens window))
+                 :context-window-tokens window
+                 :finished-at           @finished-at))
               (catch Exception e
                 (log/error "Failed to finalize assistant turn"
                            {:conversation-id  conversation-id
@@ -354,7 +370,7 @@
                                  (out-of-sync! :external-id-taken e)
                                  (throw e))))]
               {:messages messages :message-ids message-ids :turn turn}))
-          {:keys [assistant-msg-id assistant-external-id user-external-id]} turn
+          {:keys [assistant-msg-id assistant-external-id user-external-id assistant-created-at]} turn
           deleted?  (set message-ids)
           live      (remove #(deleted? (:id %)) messages)
           history   (metabot.persistence/history live)
@@ -381,6 +397,7 @@
         :assistant-msg-id       assistant-msg-id
         :external-id            assistant-external-id
         :user-external-id       user-external-id
+        :assistant-created-at   assistant-created-at
         :title-job              title-job}))))
 
 (defn- legacy->modern-query

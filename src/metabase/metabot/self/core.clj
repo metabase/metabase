@@ -718,11 +718,18 @@
 (defn format-error-frames
   "SSE frames that close a stream which failed mid-flight: the `error` event, a
   `finish` (finishReason \"error\"), and the `[DONE]` terminator — so the client
-  consumes a well-formed end instead of a truncated close."
-  [error-part]
-  (str (format-error-line error-part) "\n"
-       (format-sse-event {:type "finish" :finishReason "error"}) "\n"
-       done-sse-line "\n"))
+  consumes a well-formed end instead of a truncated close.
+
+  `elapsed-ms`, when given, is how long the server worked on the turn; the `finish` carries it as
+  `messageMetadata.elapsedMs`, as the `finish` of [[parts->aisdk-sse-xf]] does."
+  ([error-part]
+   (format-error-frames error-part nil))
+  ([error-part elapsed-ms]
+   (str (format-error-line error-part) "\n"
+        (format-sse-event (cond-> {:type "finish" :finishReason "error"}
+                            elapsed-ms (assoc :messageMetadata {:elapsedMs elapsed-ms})))
+        "\n"
+        done-sse-line "\n")))
 
 (defn- ->message-metadata
   "Translate accumulated per-model usage into the `finish` event's message
@@ -840,6 +847,9 @@
                              sees the same id we persist as `metabot_message.external_id`.
     :message-metadata      - When set, emitted as the `start` event's `messageMetadata`.
     :context-window-tokens - When set, echoed as `finish.messageMetadata.contextWindowTokens`.
+    :elapsed-ms            - When set, a function of no arguments that returns how long the server worked on
+                             the turn, in milliseconds. Called once, at completion; its value is emitted as
+                             `finish.messageMetadata.elapsedMs`.
 
   Input types and their SSE events:
     :start (1st)      -> start + start-step
@@ -855,7 +865,7 @@
     :finish           -> (recorded — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
   ([] (parts->aisdk-sse-xf nil))
-  ([{:keys [message-id message-metadata context-window-tokens]}]
+  ([{:keys [message-id message-metadata context-window-tokens elapsed-ms]}]
    (fn [rf]
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
@@ -902,7 +912,8 @@
          ([result]
           (let [metadata (merge (->message-metadata @usage-by-model @last-call context-window-tokens)
                                 (when @finish-error-code {:errorCode @finish-error-code})
-                                (when @provider-failure {:providerFailure @provider-failure}))
+                                (when @provider-failure {:providerFailure @provider-failure})
+                                (when-let [ms (when elapsed-ms (elapsed-ms))] {:elapsedMs ms}))
                 finish   (cond-> {:type         "finish"
                                   :finishReason (completion-finish-reason @finish-reason @error? @loop-finish-reason)}
                            (seq metadata) (assoc :messageMetadata metadata))]
