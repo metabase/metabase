@@ -383,3 +383,29 @@
              (is (contains? (listed :action-id action-id :include-archived true) test-id)))
            (testing "the test is still readable by id"
              (is (=? {:id test-id} (mt/user-http-request :crowberto :get 200 (str "ee/action-test/" test-id)))))))))))
+
+(deftest an-edit-that-keeps-a-test-on-an-archived-action-is-refused-test
+  (mt/with-premium-features #{:transforms-testing}
+    (do-with-action!
+     nil
+     (fn [action-id]
+       (mt/with-temp [:model/ActionTest {test-id :id} (body action-id)]
+         (let [path      (str "ee/action-test/" test-id)
+               test-name #(t2/select-one-fn :name :model/ActionTest :id test-id)]
+           (testing "control: a rename of a test of an action that is not archived is done"
+             (is (=? {:name "Renamed once"} (mt/user-http-request :crowberto :put 200 path {:name "Renamed once"}))))
+           (t2/update! :model/Action :id action-id {:archived true})
+           (testing "an edit of only the name is refused, and changes nothing"
+             (is (=? {:error-code "action-test.archived-subject"}
+                     (mt/user-http-request :crowberto :put 422 path {:name "Renamed twice"})))
+             (is (= "Renamed once" (test-name))))
+           (testing "an edit of what a run reads is refused"
+             (is (=? {:error-code "action-test.archived-subject"}
+                     (mt/user-http-request :crowberto :put 422 path {:inputs (inputs)}))))
+           (testing "after the action is restored, the rename is done"
+             (t2/update! :model/Action :id action-id {:archived false})
+             (is (=? {:name "Renamed twice"} (mt/user-http-request :crowberto :put 200 path {:name "Renamed twice"}))))
+           (testing "a test of an archived action can be deleted"
+             (t2/update! :model/Action :id action-id {:archived true})
+             (mt/user-http-request :crowberto :delete 204 path)
+             (is (not (t2/exists? :model/ActionTest :id test-id))))))))))

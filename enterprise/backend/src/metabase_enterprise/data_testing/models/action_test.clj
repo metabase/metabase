@@ -175,12 +175,13 @@
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
 (defmethod data-testing.models/saved-test-spec :model/ActionTest [_model]
-  {:test-type     :action
-   :subject-key   :action_id
-   :subject       data-testing.db/action
-   :subjects      data-testing.db/actions-by-ids
-   :database-id   :database_id
-   :validate-test validate-test})
+  {:test-type         :action
+   :subject-key       :action_id
+   :subject           data-testing.db/action
+   :subjects          data-testing.db/actions-by-ids
+   :database-id       :database_id
+   :validate-test     validate-test
+   :refuses-archived? true})
 
 (defmethod app-db-copy/spec :model/ActionTest [_model]
   {:skip? false})

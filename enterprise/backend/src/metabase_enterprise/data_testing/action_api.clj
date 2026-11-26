@@ -86,7 +86,8 @@
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/action-test
   "Update an action test. When the request body holds the action, the parameter values, the inputs or the expectations,
-  the updated test is checked as a new test is checked; an update of only the name or description is not checked."
+  the updated test is checked as a new test is checked. The update is refused when it leaves the test on an archived
+  action."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
