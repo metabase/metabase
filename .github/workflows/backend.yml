@@ -426,11 +426,16 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       # Run the launcher tests only when formatting inputs or CI tooling change, not on source-only PRs.
-      - name: Test cljfmt CI launcher
-        if: >-
+      - name: Set up Babashka for launcher tests
+        if: &test-cljfmt-launcher >-
           ${{ github.event_name == 'pull_request' && needs.gate.outputs.verdict == 'defer'
           && contains(fromJSON(needs.gate.outputs.matched), 'cljfmt_config') }}
-        run: python3 bin/cljfmt-ci/test_check.py
+        uses: turtlequeue/setup-babashka@d78ec6570aea3b614bc695cafcceb82eb45c2af9 # v1.8.0
+        with:
+          babashka-version: 1.12.212
+      - name: Test cljfmt CI launcher
+        if: *test-cljfmt-launcher
+        run: bb bin/cljfmt-ci/test_check.clj
       - name: Run cljfmt
         env:
           DIFF_BASE: ${{ needs.gate.outputs.diff-base }}
