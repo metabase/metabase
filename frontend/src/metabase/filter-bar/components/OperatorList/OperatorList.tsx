@@ -1,9 +1,8 @@
 import { type Ref, useMemo } from "react";
 
-import { Combobox, useCombobox } from "metabase/ui";
+import { Combobox, Flex, Text, useCombobox } from "metabase/ui";
 
 import type { FilterOperator, FilterOperatorGroup } from "../../types";
-import { getOperatorText } from "../OperatorPart/utils";
 import {
   type ListKeys,
   SuggestionList,
@@ -11,7 +10,7 @@ import {
   useListKeys,
 } from "../SuggestionList/SuggestionList";
 
-import { findExactOperator, findOperatorGroups } from "./utils";
+import { findExactOperator, findOperatorGroups, hasSymbolKey } from "./utils";
 
 type OperatorListProps = {
   groups: readonly FilterOperatorGroup[];
@@ -66,7 +65,12 @@ export const OperatorList = ({
                 store.selectOption(operators.indexOf(operator))
               }
             >
-              {getOperatorText(operator)}
+              <Flex justify="space-between" gap="md">
+                <Text c="inherit">{operator.label}</Text>
+                {hasSymbolKey(operator) && (
+                  <Text c="text-secondary">{operator.key}</Text>
+                )}
+              </Flex>
             </Combobox.Option>
           ))}
         </SuggestionSection>

@@ -489,6 +489,16 @@ describe("FilterBar", () => {
       ]);
     });
 
+    it("opens the column list again after a pick", async () => {
+      await setup();
+      await focusBar();
+
+      await click(screen.getByText("Active users"));
+
+      expect(screen.getByRole("listbox")).toBeInTheDocument();
+      expect(screen.getByText("Subtotal")).toBeInTheDocument();
+    });
+
     it("commits an operator without values right away", async () => {
       await setup();
       await focusBar();

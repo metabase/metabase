@@ -149,5 +149,13 @@ describe("filter bar keys", () => {
       press("Enter");
       expect(getStages()).toEqual([[A, OR, B]]);
     });
+
+    it("adds no new line on Enter at the caret", () => {
+      const { editor, getStages, press } = createTestEditor([A, OR, B]);
+      editor.commands.setTextSelection(2);
+      expect(press("Enter")).toBe(true);
+      expect(editor.state.doc.childCount).toBe(1);
+      expect(getStages()).toEqual([[A, OR, B]]);
+    });
   });
 });

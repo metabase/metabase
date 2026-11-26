@@ -1,6 +1,5 @@
 import type { Editor, Range } from "@tiptap/core";
 import { NodeSelection, PluginKey } from "@tiptap/pm/state";
-import { exitSuggestion } from "@tiptap/suggestion";
 import { match } from "ts-pattern";
 
 import { pillToken } from "../../model";
@@ -74,7 +73,6 @@ export const createDraftActions = <F>({
   ) => {
     const token = pillToken(filter, getAdapter().stage(stage).toPill(filter));
     placePill(editor, range, token, stage);
-    exitSuggestion(editor.view, DRAFT_SUGGESTION_KEY);
     return true;
   };
 

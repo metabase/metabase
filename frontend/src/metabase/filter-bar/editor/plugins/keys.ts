@@ -70,7 +70,10 @@ export const createFilterBarKeys = () =>
         jumpOverThen(editor, true) || removeNodeNextToCaret(editor, true),
       Delete: ({ editor }) =>
         jumpOverThen(editor, false) || removeNodeNextToCaret(editor, false),
-      Enter: ({ editor }) => toggleConnector(editor),
+      Enter: ({ editor }) => {
+        toggleConnector(editor);
+        return true;
+      },
       Home: ({ editor }) => editor.commands.selectTextblockStart(),
       End: ({ editor }) => editor.commands.selectTextblockEnd(),
       "Meta-ArrowLeft": ({ editor }) => editor.commands.selectTextblockStart(),

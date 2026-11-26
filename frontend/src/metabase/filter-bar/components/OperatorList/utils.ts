@@ -1,11 +1,11 @@
 import type { FilterOperator, FilterOperatorGroup } from "../../types";
 import { findExact, isMatch } from "../SuggestionList/search";
 
-const canTypeSymbol = (operator: FilterOperator) =>
+export const hasSymbolKey = (operator: FilterOperator) =>
   /^[^a-z]+$/i.test(operator.key);
 
 const getSearchTerms = (operator: FilterOperator) =>
-  canTypeSymbol(operator) ? [operator.label, operator.key] : [operator.label];
+  hasSymbolKey(operator) ? [operator.label, operator.key] : [operator.label];
 
 export const findOperators = (
   operators: readonly FilterOperator[],
@@ -29,7 +29,7 @@ export const findExactOperator = (
 ) => {
   const search = query.trim().toLowerCase();
   const byKey = operators.find(
-    (operator) => canTypeSymbol(operator) && operator.key === search,
+    (operator) => hasSymbolKey(operator) && operator.key === search,
   );
   return byKey ?? findExact(operators, (operator) => operator.label, query);
 };
