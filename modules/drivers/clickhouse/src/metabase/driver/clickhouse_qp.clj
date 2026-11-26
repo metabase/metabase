@@ -6,6 +6,7 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.clickhouse-introspection :as clickhouse-introspection]
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -142,8 +143,16 @@
         stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
         honeysql-expr ((get-method sql.qp/->honeysql [:sql :field]) driver clause)]
-    (if (driver-api/json-field? stored-field)
+    (cond
+      (driver-api/json-field? stored-field)
       (json-field->honeysql driver clause stored-field honeysql-expr)
+
+      ;; only the column itself: through a join or an earlier stage it is already the String
+      (and (clickhouse-introspection/variant-or-dynamic? (:database-type stored-field))
+           (integer? (driver-api/qp.add.source-table (lib.options/options clause))))
+      (h2x/cast "Nullable(String)" honeysql-expr)
+
+      :else
       honeysql-expr)))
 
 (defn- in-report-timezone
