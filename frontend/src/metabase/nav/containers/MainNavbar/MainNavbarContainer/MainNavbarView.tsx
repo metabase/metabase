@@ -34,6 +34,8 @@ import {
 import { useSetting, useUserSetting } from "metabase/settings";
 import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { DataAppsNavSection } from "metabase/prototypes/data-apps-discoverability/DataAppsNavSection";
+import { DATA_APPS_GUIDE_URL } from "metabase/prototypes/data-apps-discoverability/use-discovery-variant";
 import { isSmallScreen } from "metabase/utils/dom";
 import type { Bookmark, Collection } from "metabase-types/api";
 
@@ -302,7 +304,10 @@ export function MainNavbarView({
           </SidebarSection>
 
           {PLUGIN_DATA_APPS.isEnabled && (
-            <PLUGIN_DATA_APPS.MainNavbarSection onItemSelect={onItemSelect} />
+            <DataAppsNavSection
+              isGuideSelected={nonEntityItem?.url === DATA_APPS_GUIDE_URL}
+              onItemSelect={onItemSelect}
+            />
           )}
 
           <SidebarSection>

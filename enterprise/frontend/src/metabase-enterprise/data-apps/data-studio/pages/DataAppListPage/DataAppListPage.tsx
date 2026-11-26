@@ -7,6 +7,12 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
+import { SimpleGuideCard } from "metabase/prototypes/data-apps-discoverability/guide/SimpleGuideCard";
+import { getSimulatedDataApps } from "metabase/prototypes/data-apps-discoverability/simulated-data-apps";
+import {
+  useGuideLayout,
+  useSimulatedDataApps,
+} from "metabase/prototypes/data-apps-discoverability/use-discovery-variant";
 import { useNavigate } from "metabase/router";
 import {
   Card,
@@ -33,7 +39,17 @@ import { DataAppListEmptyState } from "./DataAppListEmptyState";
 export function DataAppListPage() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const { data: apps = [], isLoading, error } = useListDataAppsQuery();
+  const realAppsQuery = useListDataAppsQuery();
+  const { layout: guideLayout } = useGuideLayout();
+  // PROTOTYPE: the picker can swap the real list for five fake apps, or for none.
+  const { simulation } = useSimulatedDataApps();
+  const isSimulated = simulation !== "real";
+  const apps = useMemo(
+    () => getSimulatedDataApps(simulation, realAppsQuery.data ?? []),
+    [simulation, realAppsQuery.data],
+  );
+  const isLoading = !isSimulated && realAppsQuery.isLoading;
+  const error = isSimulated ? undefined : realAppsQuery.error;
 
   const handleRowActivate = useCallback(
     (row: { original: DataApp }) => {
@@ -106,7 +122,10 @@ export function DataAppListPage() {
           <DataStudioBreadcrumbs>{t`Data apps`}</DataStudioBreadcrumbs>
         }
       />
-      {isEmpty ? (
+      {isEmpty && guideLayout === "simple" ? (
+        // PROTOTYPE: the simple guide stands in for the empty state.
+        <SimpleGuideCard />
+      ) : isEmpty ? (
         <DataAppListEmptyState />
       ) : (
         <Stack style={{ overflow: "hidden" }}>
