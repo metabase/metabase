@@ -399,6 +399,61 @@
   [driver database]
   {:tables (describe-database-tables driver database)})
 
+;;; ------------------------------------------------ Change tokens ------------------------------------------------
+
+(defn- dataset-location
+  "The location of the dataset `dataset-id` of `project-id`, e.g. `US` or `europe-west1`, or nil when it is not found."
+  [^BigQuery client project-id dataset-id]
+  (some-> (.getDataset client (DatasetId/of project-id dataset-id) (u/varargs BigQuery$DatasetOption))
+          (.getLocation)))
+
+(defn- table-storage-honeysql
+  "Query on the `TABLE_STORAGE` view of `location` for the change tokens of the base tables of `dataset-ids`. The view
+  is region-qualified only: it has no dataset form."
+  [project-id location dataset-ids]
+  {:select [:table_schema :table_name :storage_last_modified_time :total_rows :total_logical_bytes]
+   :from   [[(keyword (format "%s.region-%s.INFORMATION_SCHEMA.TABLE_STORAGE" project-id (u/lower-case-en location)))]]
+   :where  [:and
+            [:= :deleted false]
+            [:= :table_type "BASE TABLE"]
+            [:in :table_schema (vec dataset-ids)]]})
+
+(defn- change-token
+  "The change token of a table from its row of [[table-storage-honeysql]]: the time data was last written to it, and
+  its row count and logical bytes. nil when the table has no data, since then the time is nil."
+  [{:keys [storage_last_modified_time total_rows total_logical_bytes]}]
+  (when storage_last_modified_time
+    (str/join ":" [storage_last_modified_time total_rows total_logical_bytes])))
+
+(defn- location-change-tokens
+  "The change tokens of the base tables of `dataset-ids` in `location`, by `[dataset-id table-name]`. Empty when the
+  view cannot be read, e.g. when `TABLE_STORAGE` is not enabled for the project, so those tables are read as before."
+  [driver database project-id location dataset-ids]
+  (try
+    (into {}
+          (map (juxt (juxt :table_schema :table_name) change-token))
+          (query-honeysql driver database (table-storage-honeysql project-id location dataset-ids)))
+    (catch Exception e
+      (log/warnf "Cannot read INFORMATION_SCHEMA.TABLE_STORAGE in region %s of project %s, so sync reads the tables there as before: %s"
+                 location project-id (ex-message e))
+      {})))
+
+(defmethod driver/table-change-tokens :bigquery-cloud-sdk
+  [driver database tables]
+  (let [details     (driver.conn/effective-details database)
+        project-id  (bigquery.common/get-project-id details)
+        client      (database-details->client details)
+        dataset-ids (into [] (comp (keep :schema) (distinct)) tables)
+        by-location (group-by #(dataset-location client project-id %) dataset-ids)
+        tokens      (into {}
+                          (mapcat (fn [[location ids]]
+                                    (when location
+                                      (location-change-tokens driver database project-id location ids))))
+                          by-location)]
+    (into {}
+          (map (juxt :id #(tokens [(:schema %) (:name %)])))
+          tables)))
+
 (defn- database-type->base-type
   [database-type]
   (case database-type
@@ -1203,6 +1258,7 @@
                               :set-timezone                     true
                               :split-part                       true
                               :stage-ctes                       true
+                              :table-change-tokens              true
                               ;; This driver reports inaccurate `:rows-affected` counts; the transforms layer
                               ;; falls back to a native `COUNT(*)` on the CTAS path.
                               ;; TODO: fix `execute-raw-queries!` to return accurate row counts for DDL
