@@ -149,10 +149,14 @@ function getFilterPreview(
   if (resultColumns.length !== resultNames.length) {
     return null;
   }
-  const kept = Lib.expressionClause(
-    "and",
-    resultColumns.map((column) => Lib.expressionClause("=", [column, true])),
+  const keptClauses = resultColumns.map((column) =>
+    Lib.expressionClause("=", [column, true]),
   );
+  // `and` takes 2 or more arguments.
+  const kept =
+    keptClauses.length === 1
+      ? keptClauses[0]
+      : Lib.expressionClause("and", keptClauses);
   const removed = Lib.expressionClause(
     "or",
     resultColumns.flatMap((column) => [
