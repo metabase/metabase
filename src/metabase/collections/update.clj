@@ -5,6 +5,7 @@
   module-linter's non-rest -> rest barrier, mirroring `metabase.collections.create`."
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
@@ -15,6 +16,7 @@
    ;; back into this module. `notification.card` requires only events, the notification models,
    ;; and toucan.
    [metabase.notification.card :as notification.card]
+   [metabase.notification.models :as models.notification]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -38,23 +40,26 @@
   "The `[card notifications]` pairs of the Cards in the Collection with `collection-id` that have alerts, which archiving
   the Collection deletes."
   [collection-id]
-  (vec (for [card          (collections.db/cards-in-collection collection-id)
-             :let          [notifications (seq (notification.card/card-notifications card))]
-             :when         notifications]
-         [card notifications])))
+  (let [cards   (collections.db/cards-in-collection collection-id)
+        by-card (notification.card/card-notifications cards)]
+    (vec (for [card  cards
+               :let  [notifications (seq (get by-card (:id card)))]
+               :when notifications]
+           [card notifications]))))
 
 (defn- delete-stopped-alerts!
   "Deletes the alerts of `stopped`, which archiving a Collection stops: the Cards in it follow its archive, so their
   own hooks leave their alerts."
   [stopped]
   (when-let [notification-ids (seq (for [[_card notifications] stopped, notification notifications] (:id notification)))]
-    (collections.db/delete-notifications! (vec notification-ids))))
+    (models.notification/delete-notifications! (vec notification-ids))))
 
 (defn- notify-stopped-alerts!
-  "Tells the recipients of the alerts of `stopped`, which archiving a Collection deleted, as archiving their Card does."
+  "Tells the recipients of the alerts of `stopped`, which archiving a Collection deleted, once the archive commits, as
+  archiving their Card does."
   [stopped actor]
-  (doseq [[card notifications] stopped]
-    (notification.card/notify-card-notifications-deleted! :card-archived actor card notifications)))
+  (mdb/do-after-commit
+   #(notification.card/notify-card-notifications-deleted! :card-archived actor stopped)))
 
 (defn- check-can-restore
   "Throws unless the current user may restore `collection` and what its archive took down, into the Collection that
@@ -83,7 +88,7 @@
                          (collection/parent-or-root (:namespace collection-before-update) new-parent-id))]
       (when (not= (:location collection-before-update) new-location)
         (api/update-check collection-before-update {:parent_id new-parent-id})
-        (collection/move-collection! collection-before-update new-location)))))
+        (collection/update-collections! [{:id (u/the-id collection-before-update) :location new-location}] nil)))))
 
 (defn- archive-or-restore!
   "Archives or restores the Collection, with what follows it, as `collection-updates` ask, checks permissions first, then
@@ -94,7 +99,7 @@
     (when-not archive?
       (check-can-restore collection-before-update collection-updates))
     (let [stopped (when archive? (stopped-alerts id))]
-      (collections.db/update-collection! id {:archived archive?})
+      (collection/update-collections! [{:id id :archived archive?}] nil)
       (delete-stopped-alerts! stopped)
       (when archive?
         (notify-stopped-alerts! stopped @api/*current-user*))
@@ -125,9 +130,9 @@
                      (:authority_level collection-before-update)))
       (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
       (api/check-403 api/*is-superuser?*))
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (when (seq updates)
-        (collections.db/update-collection! id updates))
+        (collection/update-collections! [(assoc updates :id id)] nil))
       (if archived-change?
         (archive-or-restore! collection-before-update collection-updates)
         (move-collection! collection-before-update collection-updates)))

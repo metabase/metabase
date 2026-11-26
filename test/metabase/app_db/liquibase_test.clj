@@ -155,11 +155,12 @@
                 changelog-table (liquibase/changelog-table-name liquibase)
                 decide          #(#'liquibase/decide-liquibase-file conn db)
                 set-latest!     (fn [id filename]
-                                  (jdbc/execute! {:connection conn} [(format "DELETE FROM %s" changelog-table)])
+                                  (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:delete-from (keyword changelog-table)}))
                                   (jdbc/execute! {:connection conn}
-                                                 [(format (str "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype) "
-                                                               "VALUES (?, 't', ?, CURRENT_TIMESTAMP, 1, 'EXECUTED')")
-                                                          changelog-table) id filename]))]
+                                                 (mdb.test-util/format-sql
+                                                  {:insert-into (keyword changelog-table)
+                                                   :columns     [:id :author :filename :dateexecuted :orderexecuted :exectype]
+                                                   :values      [[id "t" filename [:raw "CURRENT_TIMESTAMP"] 1 "EXECUTED"]]})))]
             (testing "a year-based directory positively identifies a modern version-less migration"
               ;; this is the case the id-shape heuristic alone cannot get right: an all-digit version-less id would
               ;; otherwise look exactly like a pre-4.2 changeset
@@ -185,18 +186,19 @@
             (testing "rows with the same dateexecuted (e.g. MySQL second precision): higher orderexecuted decides"
               ;; the 'latest changeset' must be resolved on the [dateexecuted orderexecuted] pair like the rest of the
               ;; version machinery, not on dateexecuted alone (which leaves the winner arbitrary among ties)
-              (jdbc/execute! {:connection conn} [(format "DELETE FROM %s" changelog-table)])
+              (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:delete-from (keyword changelog-table)}))
               (doseq [[id filename oe] [["316" "migrations/000_legacy_migrations.yaml" 1]
                                         ["v64.abc" "migrations/064/20260101_foo.yaml" 2]]]
                 (jdbc/execute! {:connection conn}
-                               [(format (str "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype) "
-                                             "VALUES (?, 't', ?, TIMESTAMP '2020-01-01 00:00:00', ?, 'EXECUTED')")
-                                        changelog-table) id filename oe]))
+                               (mdb.test-util/format-sql
+                                {:insert-into (keyword changelog-table)
+                                 :columns     [:id :author :filename :dateexecuted :orderexecuted :exectype]
+                                 :values      [[id "t" filename [:raw "TIMESTAMP '2020-01-01 00:00:00'"] oe "EXECUTED"]]})))
               (is (= liquibase/changelog-file (decide))
                   "the v64 row (orderexecuted 2) outranks the legacy row at the same timestamp"))))))))
 
 (defn- filename-of [conn changelog-table id]
-  (:filename (first (jdbc/query {:connection conn} [(format "SELECT filename FROM %s WHERE id = ?" changelog-table) id]))))
+  (:filename (first (jdbc/query {:connection conn} (mdb.test-util/format-sql {:select [:filename] :from [(keyword changelog-table)] :where [:= :id id]})))))
 
 (deftest consolidate-does-not-clobber-version-less-ids-test
   (testing "consolidate-liquibase-changesets! rewrites legacy ids' filenames but leaves version-less ids alone"
@@ -241,12 +243,12 @@
               (mdb.test-util/fabricate-history! conn ct [{:deployment "d64" :ran "x.64.0.0" :changesets ["boundary_row"]}])
               (liquibase/with-scope-locked liquibase (.update liquibase ""))
               (is (= "migrations/2026/versionless_dev.yaml" (filename-of conn ct "dev_run_a")) "sanity: applied under its year-dir path")
-              (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'd65' WHERE id = 'dev_run_a'" ct)])
+              (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:update (keyword ct) :set {:deployment_id "d65"} :where [:= :id "dev_run_a"]}))
               (versions/record-deployment-version! conn "d65" "x.65.0.0" true)
               ;; what an old binary's consolidation leaves behind, plus rows it must NOT touch: a pre-4.2 numeric id
               ;; that legitimately lives in the legacy file, the legacy-version-tracking marker, and a version-less row
               ;; that no longer exists in this changelog (nothing to repair it from)
-              (jdbc/execute! {:connection conn} [(format "UPDATE %s SET filename = ? WHERE id = 'dev_run_a'" ct) legacy])
+              (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:update (keyword ct) :set {:filename legacy} :where [:= :id "dev_run_a"]}))
               (mdb.test-util/fabricate-history! conn ct
                                                 [{:deployment "dep" :minutes-ago 0
                                                   :changesets [{:id "42" :author "legacy" :filename legacy}
@@ -259,7 +261,7 @@
               (is (= "legacy-version-tracking" (filename-of conn ct "v65.legacy-version-tracking")) "the marker is untouched")
               (is (= legacy (filename-of conn ct "gone_from_changelog")) "a row with no changeset to repair from is left alone")
               (testing "and the repaired row is reversed by a rollback again"
-                (jdbc/execute! {:connection conn} [(format "DELETE FROM %s WHERE deployment_id = 'dep'" ct)])
+                (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:delete-from (keyword ct) :where [:= :deployment_id "dep"]}))
                 (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.65.0")]
                   (rollback/rollback-major-version! conn liquibase false "64"))
                 (is (false? (versions/table-exists? "DEV_RUN_A_TABLE" conn)) "the DDL was reversed, not orphaned")
@@ -275,12 +277,12 @@
                   legacy "migrations/000_legacy_migrations.yaml"]
               (liquibase/with-scope-locked liquibase (.update liquibase ""))
               (jdbc/execute! {:connection conn}
-                             [(format "UPDATE %s SET filename = ? WHERE id = 'duplicate_versionless_id'" ct) legacy])
+                             (mdb.test-util/format-sql {:update (keyword ct) :set {:filename legacy} :where [:= :id "duplicate_versionless_id"]}))
               (mt/with-log-messages-for-level [messages [metabase.app-db.liquibase :warn]]
                 (liquibase/repair-version-less-filenames! conn liquibase ct)
                 (is (some #(re-find #"Cannot safely restore.*multiple files" (:message %)) (messages))))
               (is (= [legacy legacy]
                      (mapv :filename
                            (jdbc/query {:connection conn}
-                                       [(format "SELECT filename FROM %s WHERE id = 'duplicate_versionless_id' ORDER BY orderexecuted" ct)])))
+                                       (mdb.test-util/format-sql {:select [:filename] :from [(keyword ct)] :where [:= :id "duplicate_versionless_id"] :order-by [:orderexecuted]}))))
                   "neither row is incorrectly assigned to the other changeset's file"))))))))

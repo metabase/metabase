@@ -1,7 +1,7 @@
 import { compareVersions, getMajorVersion } from "metabase/utils/version";
 import type { Advisory, AdvisoryDownloadJarUrl } from "metabase-types/api";
 
-import { compareBySeverity, isAffected } from "../utils";
+import { compareBySeverity, isAcknowledged, isAffected } from "../utils";
 
 import type { AdvisoryFilter } from "./types";
 
@@ -19,10 +19,6 @@ export const getDownloadJarForInstance = (
     ) ?? null
   );
 };
-
-export function isAcknowledged(advisory: Advisory): boolean {
-  return advisory.acknowledged_at != null;
-}
 
 export function filterAdvisories(
   advisories: Advisory[],

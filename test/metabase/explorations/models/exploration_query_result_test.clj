@@ -3,8 +3,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.events.test-util :as events.tu]
+   [metabase.explorations.models.exploration-query-result :as exploration-query-result]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.test :as mt]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
@@ -97,7 +100,7 @@
 (defn- raw-chart-stats
   [id]
   (:chart_stats (t2/query-one {:select [:chart_stats]
-                               :from   [:exploration_query_result]
+                               :from   [(t2/table-name :model/ExplorationQueryResult)]
                                :where  [:= :id id]})))
 
 (deftest chart-stats-is-stored-as-json-test
@@ -149,7 +152,7 @@
         (let [id (query-result-row! stats-with-warehouse-values)]
           (is (= stats-with-warehouse-values
                  (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id)))
-          (t2/query-one {:update :exploration_query_result
+          (t2/query-one {:update (t2/table-name :model/ExplorationQueryResult)
                          :set    {:chart_stats (json/encode stats-with-warehouse-values)}
                          :where  [:= :id id]})
           (is (thrown? clojure.lang.ExceptionInfo
@@ -162,7 +165,7 @@
     (testing "with no key set there is nothing to decrypt with, so plaintext chart_stats reads back as-is"
       (encryption-test/with-secret-key nil
         (let [id (query-result-row! nil)]
-          (t2/query-one {:update :exploration_query_result
+          (t2/query-one {:update (t2/table-name :model/ExplorationQueryResult)
                          :set    {:chart_stats (json/encode stats-with-warehouse-values)}
                          :where  [:= :id id]})
           (is (= stats-with-warehouse-values
@@ -175,7 +178,75 @@
     (testing "an unparseable blob is logged and read as nil rather than breaking the whole select"
       (encryption-test/with-secret-key nil
         (let [id (query-result-row! nil)]
-          (t2/query-one {:update :exploration_query_result
+          (t2/query-one {:update (t2/table-name :model/ExplorationQueryResult)
                          :set    {:chart_stats "{not json ]["}
                          :where  [:= :id id]})
           (is (nil? (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Card                {card-id :id}        {:type :metric}
+                 :model/Exploration         {exploration-id :id} {}
+                 :model/ExplorationThread   {thread-id :id}      {:exploration_id exploration-id}
+                 :model/ExplorationBlock    {block-id :id}       {:exploration_thread_id thread-id}
+                 :model/ExplorationPage     {page-id :id}        {:exploration_block_id block-id :card_id card-id
+                                                                  :dimension_id "d1" :query_type "default"}]
+    (mt/with-model-cleanup [:model/StoredResult]
+      (let [rows (fn [n]
+                   (mapv (fn [i]
+                           {:stored_result_id     (t2/insert-returning-pk! :model/StoredResult
+                                                                           {:result_data   (byte-array [1 2 3])
+                                                                            :database_id   (mt/id)
+                                                                            :dataset_query (venues-count-query)})
+                            :exploration_query_id (t2/insert-returning-pk! :model/ExplorationQuery
+                                                                           {:exploration_thread_id thread-id :card_id card-id :page_id page-id
+                                                                            :database_id (mt/id) :dimension_id (str "d" i) :position i})})
+                         (range n)))]
+        (exploration-query-result/create-query-results! (rows 1))
+        (let [small (rows 2)
+              large (rows 6)]
+          (is (= (events.tu/statement-count! #(exploration-query-result/create-query-results! small))
+                 (events.tu/statement-count! #(exploration-query-result/create-query-results! large)))))))))
+
+(deftest create-ephemeral-card-statement-count-does-not-grow-with-queries-test
+  (testing "building a composite card from stamped snapshots of one query reads its source queries, results and snapshots in as many statements for many as for few"
+    (mt/with-temp [:model/Card              {card-id :id}        {:type :metric :dataset_query (venues-count-query)}
+                   :model/Exploration       {exploration-id :id} {}
+                   :model/ExplorationThread {thread-id :id}      {:exploration_id exploration-id}
+                   :model/ExplorationBlock  {block-id :id}       {:exploration_thread_id thread-id}
+                   :model/ExplorationPage   {page-id :id}        {:exploration_block_id block-id :card_id card-id
+                                                                  :dimension_id "d1" :query_type "default"}]
+      (mt/with-model-cleanup [:model/Card :model/StoredResult]
+        (let [query        (venues-count-query)
+              result-bytes (#'exploration-query-result/serialize-qp-result
+                            {:status    :completed
+                             :data      {:cols [{:name "x" :source :breakout} {:name "y" :source :aggregation}]
+                                         :rows [["a" 3] ["b" 1]]}
+                             :row_count 2})
+              stamp        (query-perms/stamped-resolved-source-ids query (query-perms/query->resolved-source-ids query))
+              query-ids    (fn [n]
+                             (vec (for [i (range n)]
+                                    (let [eq-id (t2/insert-returning-pk! :model/ExplorationQuery
+                                                                         {:exploration_thread_id thread-id :card_id card-id
+                                                                          :page_id page-id :database_id (mt/id)
+                                                                          :dimension_id (str "d" i) :position i
+                                                                          :status "done" :dataset_query query})
+                                          sr-id (t2/insert-returning-pk! :model/StoredResult
+                                                                         {:result_data         result-bytes
+                                                                          :creator_id          (mt/user->id :rasta)
+                                                                          :database_id         (mt/id)
+                                                                          :dataset_query       query
+                                                                          :row_count           2
+                                                                          :data_access_token   {}
+                                                                          :resolved_source_ids stamp})]
+                                      (exploration-query-result/create-query-results! [{:exploration_query_id eq-id
+                                                                                        :stored_result_id     sr-id}])
+                                      eq-id))))
+              build!       (fn [eq-ids]
+                             (mt/with-current-user (mt/user->id :rasta)
+                               (exploration-query-result/create-ephemeral-card-for-exploration-queries!
+                                eq-ids nil nil (mt/fetch-user :rasta) {:display "bar" :visualization-settings {}})))]
+          (build! (query-ids 2))
+          (let [small (query-ids 3)
+                large (query-ids 8)]
+            (is (= (t2/with-call-count [call-count] (build! small) (call-count))
+                   (t2/with-call-count [call-count] (build! large) (call-count))))))))))

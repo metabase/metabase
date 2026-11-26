@@ -1,8 +1,10 @@
 (ns metabase.documents.models.document
   (:require
+   [clojure.set :as set]
    [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
@@ -19,12 +21,14 @@
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as card]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
@@ -54,45 +58,25 @@
 (doto :model/Document
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive :hook/events))
+  (derive :hook/entity-id))
 
 ;;; ---------- Hooks ---------------------------------------------------------------------------------------------
 
-(defn- document-parent-archived?
-  "Whether the Collection that `document` is in, or the Exploration it summarizes, is archived."
-  [{:keys [collection_id exploration_id]}]
-  (boolean (or (collection/archived? collection_id)
-               (and exploration_id (documents.db/exploration-archived? exploration_id)))))
-
-(defmethod mi/after-archived-change :model/Document
-  [_model rows changes]
-  (doseq [{:keys [id]} rows]
-    (events/with-event-context {:archived-with [:model/Document id]}
-      (if (:archived changes)
-        (documents.db/archive-document-cards! id)
-        (documents.db/restore-document-cards! id)))))
-
 (t2/define-before-insert :model/Document
   [document]
-  (collection/check-collection-for :model/Document document)
   (public-sharing/add-public-uuid-prefix document))
 
 (t2/define-before-update :model/Document
-  [{:keys [id] :as document}]
+  [document]
   (let [changes (t2/changes document)]
-    (when (contains? changes :collection_id)
-      (collection/check-collection-for :model/Document document))
     (when (and (contains? changes :public_uuid_prefix)
                (not (contains? changes :public_uuid)))
       (throw (ex-info (tru "The public UUID prefix of a Document follows its public UUID; change the public UUID instead.")
                       {:status-code 400})))
-    (when (contains? changes :collection_id)
-      (documents.db/update-cards-for-document! id {:collection_id (:collection_id document)}))
     (cond-> (public-sharing/add-public-uuid-prefix-if-changed document)
-      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly document #(document-parent-archived? document))))))
+      (and (contains? changes :archived) (not (contains? changes :archived_directly)))
+      (assoc :archived_directly (documents.db/archived-directly-clause changes)))))
 
-(mi/define-update-in-transaction :model/Document)
 (t2/define-after-select :model/Document
   [document]
   (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
@@ -111,12 +95,12 @@
                  `documents` can't call the consumer directly — the module graph runs one way
                  (`explorations -> documents`) — so the consumer registers a callback here."}
   doc-content-visibility-fn
-  (atom (fn [_doc] true)))
+  (atom (fn [_documents] (fn [_document] true))))
 
 (defn register-doc-content-visibility-fn!
-  "Install the content-visibility gate (see [[doc-content-visibility-fn]]). Called once at the
-  consuming module's init. `f` takes a document and returns whether the current user may see its
-  rendered content."
+  "Install `f`, the content-visibility gate (see [[doc-content-visibility-fn]]), at the consuming module's init: it
+  takes the documents a caller is about to ask about and returns a predicate of whether the current user may see the
+  rendered content of one of them, reading for all of them together."
   [f]
   (reset! doc-content-visibility-fn f))
 
@@ -148,10 +132,10 @@
   `(binding [*content-gate-cache* (or *content-gate-cache* (atom {}))]
      ~@body))
 
-(defn content-visible?
-  "Run the registered content-visibility gate for `document`, guarding against re-entry and reusing
+(defn- content-visible-by?
+  "Run `visible?`, the registered content-visibility predicate, for `document`, guarding against re-entry and reusing
   a verdict already reached under [[with-content-gate-cache]]."
-  [document]
+  [visible? document]
   (let [id      (:id document)
         ;; Keyed by viewer as well as document: a verdict is only ever valid for the user it was
         ;; computed for, so a cache that outlives or crosses a user binding misses rather than
@@ -161,7 +145,7 @@
                   (if (contains? *content-gate-pending* id)
                     false
                     (binding [*content-gate-pending* (cond-> *content-gate-pending* id (conj id))]
-                      (boolean (@doc-content-visibility-fn document)))))]
+                      (boolean (visible? document)))))]
     (if (and id *content-gate-cache*)
       (if-some [cached (get @*content-gate-cache* k)]
         cached
@@ -173,15 +157,29 @@
 ;; can-read?/can-write? compose the collection-permission policy with the content-visibility gate:
 ;; a document's rendered body can embed data the viewer isn't entitled to, so content access can be
 ;; narrower than collection access.
+(defn- content-visible-fn
+  "A predicate of whether a Document of `documents` passes the registered content-visibility gate, which reads the
+  Exploration ids of those lacking one together."
+  [documents]
+  (let [ids                (into [] (comp (remove #(contains? % :exploration_id)) (keep :id)) documents)
+        id->exploration-id (documents.db/exploration-ids-by-document-id ids)
+        assoc-exploration   (fn [document]
+                              (cond-> document
+                                (contains? id->exploration-id (:id document))
+                                (assoc :exploration_id (get id->exploration-id (:id document)))))
+        visible?           (@doc-content-visibility-fn (mapv assoc-exploration documents))]
+    (fn [document]
+      (content-visible-by? visible? (assoc-exploration document)))))
+
 (methodical/defmethod t2/batched-hydrate [:model/Document :can_read]
   "Whether the current user reads each of `documents`, as the content of its Collection."
   [_model _k documents]
-  (collection/hydrate-content-can-read :model/Document documents {:audit-rules? false, :visible? content-visible?}))
+  (collection/hydrate-content-can-read :model/Document documents {:audit-rules? false, :visible? (content-visible-fn documents)}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :can_write]
   "Whether the current user writes each of `documents`, as the content of its Collection."
   [_model _k documents]
-  (collection/hydrate-content-can-write :model/Document documents {:audit-rules? false, :visible? content-visible?}))
+  (collection/hydrate-content-can-write :model/Document documents {:audit-rules? false, :visible? (content-visible-fn documents)}))
 
 (defn- collection-writable?
   "Whether the current user writes the Collection with `collection-id`, or the root Collection for nil."
@@ -193,16 +191,11 @@
   (collection-writable? collection-id))
 
 (defn- following-cards
-  "The Cards of the Document with `document-id` that archiving it, when `archive?`, or restoring it takes along."
-  [document-id archive?]
+  "The Cards of the Documents with `document-ids` that archiving them, when `archive?`, or restoring them takes along."
+  [document-ids archive?]
   (if archive?
-    (documents.db/cards-archived-with-document document-id)
-    (documents.db/cards-restored-with-document document-id)))
-
-(defn- archive-followers-updatable?
-  "Whether the current user may apply `changes` to the Cards of `document` that archiving or restoring it takes along."
-  [document changes]
-  (mi/archive-followers-updatable? document changes :model/Card (partial following-cards (:id document))))
+    (documents.db/cards-archived-with-documents document-ids)
+    (documents.db/cards-restored-with-documents document-ids)))
 
 (defn- summary-owner-writable
   "A function from one of `documents` to whether the current user writes the Exploration whose Summary it is, or nil
@@ -218,28 +211,153 @@
       (when-let [exploration-id (:exploration_id document)]
         (contains? writable exploration-id)))))
 
-(defn- can-update-with?
-  "Whether the current user may apply `changes` to `document`, where `summary-owner-writable` answers an archive or
-  restore of a Summary, whose content its Exploration's data decides, at its Exploration."
+(defn- writable-for?
+  "Whether the current user writes `document` as far as `changes` need, where `summary-owner-writable` answers an
+  archive or restore of a Summary, whose content its Exploration's data decides, at its Exploration."
   [document changes summary-owner-writable]
-  (boolean
-   (and (let [owner-writable (when (mi/changes-only-archived? document changes) (summary-owner-writable document))]
-          (if (some? owner-writable)
-            owner-writable
-            (mi/can-write? document)))
-        (archive-followers-updatable? document changes)
-        (collection/can-move? document changes)
-        (or (not-any? #(contains? changes %) [:public_uuid :made_public_by_id])
-            (mi/superuser?)))))
+  (let [owner-writable (when (mi/changes-only-archived? document changes) (summary-owner-writable document))]
+    (if (some? owner-writable)
+      owner-writable
+      (mi/can-write? document))))
+
+(defn- can-share?
+  "Whether the current user may do what `changes` do to the public link of a Document."
+  [changes]
+  (or (not-any? #(contains? changes %) [:public_uuid :made_public_by_id])
+      (mi/superuser?)))
 
 (defmethod mi/can-update? :model/Document
   [document changes]
-  (can-update-with? document changes (summary-owner-writable [document] changes)))
+  (mi/can-update-all? :model/Document [document] changes))
 
 (defmethod mi/can-update-all? :model/Document
   [_model documents changes]
   (let [owner-writable (summary-owner-writable documents changes)]
-    (every? #(can-update-with? % changes owner-writable) documents)))
+    (boolean
+     (and (every? #(writable-for? % changes owner-writable) documents)
+          (mi/archive-followers-updatable? documents changes :model/Card following-cards)
+          (collection/can-move-all-or-404? documents changes)
+          (can-share? changes)))))
+
+(defn- check-new-card
+  "The checks a new Card of a Document goes through, those `POST /api/card` runs before saving: create access to the
+  target collection, run permission on the query, read access to any card the parameters draw values from, and query
+  permission on the fields the parameter targets name."
+  [{query :dataset_query :as card}]
+  (api/create-check :model/Card card)
+  (query-perms/check-run-permissions-for-queries [(dissoc query :query-permissions/perms)])
+  (card/check-parameter-source-card-permissions (:parameters card))
+  (query-perms/check-parameter-field-permissions
+   (into []
+         (keep #(some-> % :target (params/param-target->field-id {:dataset_query query})))
+         (:parameters card))))
+
+(defn- check-clone
+  "Throws unless the user may create `source-card`, a copy of a Card they can already read, in its Collection: create
+  access to the target collection, without the authoring checks of [[check-new-card]] (UXW-5037)."
+  [source-card]
+  (card/with-copy-source-card source-card
+    (api/create-check :model/Card source-card)))
+
+(defn- new-cards-permitted?
+  "Whether [[check-new-card]] passes for each of `entries`, `{:data :source-card-id}`, answered for all of them from
+  reads that do not grow with their number, false when a check does not pass or throws, which [[check-new-cards]]
+  then tells apart by asking one by one, in order."
+  [entries]
+  (try
+    (let [sources (queries.card/readable-cards-by-id (into #{} (keep :source-card-id) entries))]
+      (and sources
+           (queries.card/can-create-all? (mapv (fn [{:keys [data source-card-id]}] [data (get sources source-card-id)]) entries))
+           (do (query-perms/check-run-permissions-for-queries
+                (into []
+                      (comp (keep (comp :dataset_query :data)) (distinct) (map #(dissoc % :query-permissions/perms)))
+                      entries))
+               true)
+           (card/parameter-source-cards-readable? (into [] (mapcat (comp :parameters :data)) entries))
+           (do (query-perms/check-parameter-field-permissions
+                (into []
+                      (comp (mapcat (fn [{{:keys [parameters dataset_query]} :data}]
+                                      (keep #(some-> % :target (params/param-target->field-id {:dataset_query dataset_query}))
+                                            parameters)))
+                            (distinct))
+                      entries))
+               true)))
+    (catch Exception _
+      false)))
+
+(defn- check-new-cards
+  "Throws, for the first of `entries`, `{:data :source-card-id}`, in order that the current user may not create, what
+  [[check-new-card]] throws for it, after reading the source Card it copies, if any."
+  [entries]
+  (when-not (new-cards-permitted? entries)
+    (run! (fn [{:keys [data source-card-id]}]
+            (card/with-copy-source-card (some->> source-card-id (api/read-check :model/Card))
+              (check-new-card data)))
+          entries)))
+
+(defn check-clone-cards
+  "Throws, for the first of `cards`, Cards that are copied into a Document in order, what its read check, then
+  [[check-clone]] of its copy in `sources`, throws, from reads that do not grow with their number when the user may
+  read and create all of them."
+  [cards sources]
+  (with-content-gate-cache
+    (let [cards (t2/hydrate cards :can_read)]
+      (when-not (and (every? mi/can-read? cards)
+                     (try (queries.card/can-create-all? (mapv (fn [source] [source source]) sources))
+                          (catch Exception _ false)))
+        (doseq [[card source] (map vector cards sources)]
+          (api/read-check card)
+          (check-clone source))))))
+
+(defn- embedded-cards-to-clone
+  "The existing Cards that the `document`, an AST of `content-type`, embeds and the Document with `document-id`, nil for
+  one not created yet, does not hold."
+  [document-id document content-type]
+  (let [card-ids (prose-mirror/collect-ast {:document document :content_type content-type}
+                                           #(when (and (= prose-mirror/card-embed-type (:type %))
+                                                       (pos-int? (:id (:attrs %))))
+                                              (:id (:attrs %))))]
+    (when (seq card-ids)
+      (if document-id
+        (documents.db/cards-not-in-document card-ids document-id)
+        (documents.db/cards-by-ids card-ids)))))
+
+(defn- check-document-cards
+  "Throws what the checks of the Cards a write of a Document makes throw, for the first Card in order that the current
+  user may not create: the existing `to-clone` Cards copied into `clone-collection-id`, then the `new-cards`, a map of
+  temporary id to data, put in `new-collection-id` unless they name another Collection."
+  [to-clone clone-collection-id new-cards new-collection-id]
+  (when (seq to-clone)
+    (check-clone-cards to-clone (mapv #(assoc % :collection_id clone-collection-id) to-clone)))
+  (when (seq new-cards)
+    (check-new-cards (mapv (fn [[_ card-data]]
+                             {:source-card-id (:source_card_id card-data)
+                              :data           (cond-> (dissoc card-data :source_card_id)
+                                                (nil? (:collection_id card-data)) (assoc :collection_id new-collection-id))})
+                           new-cards))))
+
+(defn check-creating-document-cards
+  "Throw what [[create-document-with-cards!]] must not do for the current user, copying a Card that they may not read
+  or create in the Collection or creating the new `cards` of `body`, the body of the creation, that they may not
+  create or whose query, parameters or source Card they may not use, with fixed statements for any number of Cards,
+  to be called before the write."
+  [{:keys [document collection_id cards]}]
+  (with-content-gate-cache
+    (check-document-cards (embedded-cards-to-clone nil document prose-mirror/prose-mirror-content-type)
+                          collection_id
+                          cards
+                          collection_id)))
+
+(defn check-updating-document-cards
+  "Throw what [[update-document-with-cards!]] must not do for the current user, as [[check-creating-document-cards]]
+  does for a creation, for `body` applied to `existing-document`, checking nothing unless `body` has a `:document`."
+  [existing-document {:keys [document collection_id cards] :as body}]
+  (when document
+    (with-content-gate-cache
+      (check-document-cards (embedded-cards-to-clone (:id existing-document) document (:content_type existing-document))
+                            (:collection_id existing-document)
+                            cards
+                            (if (contains? body :collection_id) collection_id (:collection_id existing-document))))))
 
 ;;; ---------- Hydration -----------------------------------------------------------------------------------------
 
@@ -270,7 +388,128 @@
     (for [doc documents]
       (assoc doc k (get cards-maps-by-doc-id (:id doc) {})))))
 
-;;; ---------- Write orchestration -------------------------------------------------------------------------------
+(defn- hydrate-document
+  "Fetch a document by id along with the derived fields the API returns. Does *not* check permissions or
+  publish a read event, so it is safe to use on write paths (PUT/POST) where recording a view would be
+  both semantically wrong and an extra, avoidable round-trip."
+  [id]
+  (t2/hydrate (documents.db/document id) :creator :can_write :can_delete :can_restore :is_remote_synced))
+
+(defn get-document
+  "Get document by id checking if the current user has permission to access and if the document exists.
+  Pass `:log-view? false` to skip publishing the `:event/document-read` view event."
+  [id & {:keys [log-view?] :or {log-view? true}}]
+  (u/prog1 (api/check-404
+            (api/read-check
+             (hydrate-document id)))
+    (when log-view?
+      (events/publish-event! :event/document-read
+                             {:object-id id
+                              :user-id api/*current-user-id*}))))
+
+;;; ---------- Writes --------------------------------------------------------------------------------------------
+
+(defn- check-documents
+  "Throw a 400 unless each of `rows`, holding the `:collection_id` and `:archived` state a Document is about to have,
+  satisfies these rules, checked for the first row that breaks one, with one read of the Collections:
+
+  - its Collection is in a namespace that holds Documents
+  - its Collection is not the library, its Data or its Metrics collection
+  - its Collection is not archived, unless the Document is"
+  [rows]
+  (collection/check-collections-for-model :model/Document rows))
+
+(defn- check-new-documents
+  "Throw a 400 unless every one of `rows`, new Documents, satisfies the rules of [[check-documents]]."
+  [rows]
+  (check-documents (map #(update % :archived boolean) rows)))
+
+(mu/defn create-documents! :- [:sequential (ms/InstanceOf :model/Document)]
+  "Insert the Document `rows` and return the inserted instances in the order of the rows, in one transaction,
+  publishing their create event, each Collection having to be able to hold a Document."
+  [rows :- [:sequential ::documents.schema/document.create]]
+  (app-db/create-batched! :model/Document rows
+                          {:before-create check-new-documents
+                           :after-create  #(events/publish-event! :event/document-create (events/create-event %))}))
+
+(defn- changed?
+  "Whether `row`, the columns to write, changes the column `k` of `stored`."
+  [stored row k]
+  (and (contains? row k) (not= (get row k) (get stored k))))
+
+(defn- move-cards!
+  "Moves the cards of the Documents with `ids` to `collection-id`."
+  [ids collection-id]
+  (when-let [card-ids (not-empty (documents.db/card-ids-of-documents ids))]
+    (queries.card/update-cards! (mapv (fn [id] {:id id :collection_id collection-id}) card-ids))))
+
+(defn- set-cards-archived!
+  "Archives the cards of the Documents with `ids`, which the Document archives, when `archived?`, and restores those that
+  its archive took down otherwise, their events carrying `context` or else the archive of the Document."
+  [ids archived? context]
+  (when-let [card-ids (not-empty (if archived?
+                                   (documents.db/card-ids-archived-with-documents ids)
+                                   (documents.db/card-ids-restored-with-documents ids)))]
+    (queries.card/update-cards! (mapv (fn [id] {:id id :archived archived?}) card-ids) {:context (or context {:archived-with [:model/Document (first ids)]})})))
+
+(defn- move-cards-of-moved!
+  "Moves the cards of the Documents of `moved`, rows holding the new `:collection_id`, to it, with one write for each
+  Collection."
+  [moved]
+  (doseq [[collection-id group] (group-by :collection_id moved)]
+    (move-cards! (mapv :id group) collection-id)))
+
+(defn- set-cards-archived-of!
+  "Archives or restores the cards of the Documents of `rows`, which change `archived`, with one write for each direction."
+  [rows context]
+  (doseq [[archived? group] (group-by (comp boolean :archived) rows)]
+    (set-cards-archived! (mapv :id group) archived? context)))
+
+(defn- moved-documents
+  "The rows of `updates`, which change `:collection_id` of the Documents `id->stored`, each with the `archived` state the
+  Document is about to have."
+  [updates id->stored]
+  (for [row   (filterv #(changed? (get id->stored (:id %)) % :collection_id) updates)]
+    (assoc row :archived (boolean (if (contains? row :archived) (:archived row) (:archived (get id->stored (:id row))))))))
+
+(defn- check-document-updates
+  "Throw a 400 unless every one of `updates` that moves a Document of `id->stored` satisfies these rules:
+
+  - its Collection is in a namespace that holds Documents
+  - its Collection is not the library, its Data or its Metrics collection
+  - its Collection is not archived, unless the Document is"
+  [updates id->stored]
+  (check-documents (moved-documents updates id->stored)))
+
+(mu/defn update-documents! :- :nil
+  "Apply `updates`, each the `:id` of a Document with the columns to give it, in one transaction, moving the cards of the
+  Documents that move first and archiving or restoring those of the Documents that change `archived` after, and
+  publishing their update event with the `:context` of `opts`."
+  ([updates :- [:sequential ::documents.schema/document.update]]
+   (update-documents! updates nil))
+  ([updates :- [:sequential ::documents.schema/document.update]
+    opts    :- :metabase.events.schema/write-opts]
+   (app-db/update-batched! :model/Document updates
+                           {:before-update (fn [updates id->stored]
+                                             (let [updates (filterv #(contains? id->stored (:id %)) updates)]
+                                               (check-document-updates updates id->stored)
+                                               (move-cards-of-moved! (moved-documents updates id->stored))
+                                               updates))
+                            :reread?       true
+                            :after-update  (fn [updates id->stored id->updated]
+                                             (set-cards-archived-of! (filterv #(changed? (get id->stored (:id %)) % :archived) updates)
+                                                                     (:context opts))
+                                             (when (seq updates)
+                                               (events/publish-event! :event/document-update
+                                                                      (events/update-event id->stored
+                                                                                           (mi/derive-archived-directly updates id->updated)
+                                                                                           opts))))})))
+
+(mu/defn delete-documents! :- :nil
+  "Delete the Documents with `ids` in one transaction, publishing their delete event right before the first statement."
+  [ids :- [:sequential ms/PositiveInt]]
+  (app-db/delete-batched! :model/Document ids
+                          {:before-delete #(events/publish-event! :event/document-delete (events/delete-event %))}))
 
 (def CardCreateSchema
   "Schema for a card created inline with a document (the `cards` map on create/update). The
@@ -289,34 +528,26 @@
    [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]
    [:source_card_id {:optional true} [:maybe ms/PositiveInt]]])
 
-(defn- create-card!
-  "The single choke point every document card-creation path (create, update, copy) funnels through. Runs the same
-  checks `POST /api/card` runs before saving: create access to the target collection, run permission on the query,
-  read access to any card the parameters draw values from, and query permission on the fields the parameter targets
-  name."
-  [{query :dataset_query :as card} creator]
-  (api/create-check :model/Card card)
-  (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
-  (card/check-parameter-source-card-permissions (:parameters card))
-  (query-perms/check-parameter-field-permissions
-   (into []
-         (keep #(some-> % :target (params/param-target->field-id {:dataset_query query})))
-         (:parameters card)))
-  (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
+(defn- create-card-rows!
+  "Creates a Card from each of `rows`, the rows [[queries.card/new-card-row]] gives, reconciling the positions in their
+  Collections, in one call of [[queries.card/create-cards!]], and returns the new Cards in order."
+  [rows]
+  (t2/with-transaction [_conn]
+    (run! #(collection/maybe-reconcile-collection-position! (select-keys % [:collection_id :collection_position])) rows)
+    (vec (queries.card/create-cards! rows))))
 
-(defn clone-card!
-  "Saves a copy of an existing card the user can already read, e.g. when embedding it into a document.
+(defn- new-document-card-row
+  "The row for [[create-card-rows!]] that `card`, a new Card of a Document, takes for `creator`."
+  [card creator]
+  (queries.card/new-card-row (assoc card :type :question :dashboard_id nil) (:id creator)))
 
-  Still checks create access to the target collection, but unlike [[create-card!]] deliberately skips the authoring
-  checks (run permission on the query, parameter source-card and parameter field permissions): the query and
-  parameters come from an existing card row the caller passed a read check on rather than from the request, so the
-  user is not authoring anything -- they may be able to view (and run) the source card without having permission to
-  write such a query themselves, e.g. a native card when they lack native query editing perms (UXW-5037). Running the
-  clone is still gated by the usual runtime permission checks, the same ones that gate running the source card."
-  [source-card creator]
-  (card/with-copy-source-card source-card
-    (api/create-check :model/Card source-card))
-  (card/create-card! (assoc source-card :type :question :dashboard_id nil) creator))
+(defn clone-cards!
+  "Saves a copy of each of `source-cards`, existing cards the user can already read, e.g. when copying a document, in
+  one call, and returns the new cards in order, checking nothing about the user, which [[check-clone-cards]] has done
+  without the authoring checks of new cards, since the query and parameters come from cards the caller passed a read
+  check on (UXW-5037)."
+  [source-cards creator]
+  (create-card-rows! (mapv #(new-document-card-row % creator) source-cards)))
 
 (mu/defn update-cards-in-ast :- [:map [:document :any]
                                  [:content_type :string]]
@@ -351,21 +582,19 @@
    document-collection-id :- [:or :nil ms/PositiveInt]
    creator :- :metabase.users.schema/user]
   (when (seq cards-to-create)
-    (reduce-kv
-     (fn [result-map original-key card-data]
-       (let [source-card-id   (:source_card_id card-data)
-             ;; Merge document info into card data
-             ;; Cards inherit document's collection_id if not explicitly specified
-             merged-card-data (-> card-data
-                                  (dissoc :source_card_id)
-                                  (assoc :document_id document-id)
-                                  (cond-> (nil? (:collection_id card-data))
-                                    (assoc :collection_id document-collection-id)))
-             new-card         (card/with-copy-source-card (some->> source-card-id (api/read-check :model/Card))
-                                (create-card! merged-card-data creator))]
-         (assoc result-map original-key (:id new-card))))
-     {}
-     cards-to-create)))
+    (let [entries (mapv (fn [[original-key card-data]]
+                          ;; Merge document info into card data
+                          ;; Cards inherit document's collection_id if not explicitly specified
+                          {:key            original-key
+                           :source-card-id (:source_card_id card-data)
+                           :data           (-> card-data
+                                               (dissoc :source_card_id)
+                                               (assoc :document_id document-id)
+                                               (cond-> (nil? (:collection_id card-data))
+                                                 (assoc :collection_id document-collection-id)))})
+                        cards-to-create)
+          created (create-card-rows! (mapv #(new-document-card-row (:data %) creator) entries))]
+      (zipmap (map :key entries) (map :id created)))))
 
 (mu/defn clone-cards-in-document! :- [:map-of ms/PositiveInt ms/PositiveInt]
   "Finds all cards in the document that are not associated with the document and clones the cards.
@@ -380,35 +609,11 @@
                                                                 (pos-int? (:id (:attrs %))))
                                                        (:id (:attrs %))))
         to-clone (when (seq card-ids)
-                   (documents.db/cards-not-in-document card-ids id))]
-    (with-content-gate-cache
-      (reduce (fn [accum card]
-                (api/read-check card)
-                (assoc accum
-                       (:id card)
-                       (:id (clone-card! (assoc card :document_id id :collection_id collection_id)
-                                         @api/*current-user*))))
-              {}
-              (t2/hydrate to-clone :can_read)))))
-
-(defn- hydrate-document
-  "Fetch a document by id along with the derived fields the API returns. Does *not* check permissions or
-  publish a read event, so it is safe to use on write paths (PUT/POST) where recording a view would be
-  both semantically wrong and an extra, avoidable round-trip."
-  [id]
-  (t2/hydrate (documents.db/document id) :creator :can_write :can_delete :can_restore :is_remote_synced))
-
-(defn get-document
-  "Get document by id checking if the current user has permission to access and if the document exists.
-  Pass `:log-view? false` to skip publishing the `:event/document-read` view event."
-  [id & {:keys [log-view?] :or {log-view? true}}]
-  (u/prog1 (api/check-404
-            (api/read-check
-             (hydrate-document id)))
-    (when log-view?
-      (events/publish-event! :event/document-read
-                             {:object-id id
-                              :user-id api/*current-user-id*}))))
+                   (documents.db/cards-not-in-document card-ids id))
+        sources  (mapv #(assoc % :document_id id :collection_id collection_id) to-clone)
+        created  (when (seq sources)
+                   (create-card-rows! (mapv #(new-document-card-row % @api/*current-user*) sources)))]
+    (zipmap (map :id sources) (map :id created))))
 
 (defn- draft-stored-result-pairings
   "From the incoming document AST and a draft→new card-id map, collect distinct
@@ -429,10 +634,9 @@
          distinct
          vec)))
 
-(mu/defn create-document!
-  "Create a Document, clone any embedded cards the document doesn't own, and return the created document. Permission checks
-  (`api/create-check`) are the caller's job, run before this — the same split the REST
-  `POST /api/document/` handler uses."
+(mu/defn create-document-with-cards!
+  "Create a Document, clone any embedded cards the document does not own, and return the id of the created Document,
+  leaving the permission checks (`api/create-check`) and the read of the result ([[get-document]]) to the caller."
   [{:keys [name document collection_id collection_position cards]}
    :- [:map {:closed true}
        [:name documents.schema/DocumentName]
@@ -440,48 +644,34 @@
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
-  (let [created-document (events/with-batched-events
-                           (when collection_position
-                             (api/maybe-reconcile-collection-position! {:collection_id collection_id
-                                                                        :collection_position collection_position}))
-                           (let [document-id (documents.db/insert-document! {:name name
-                                                                             :collection_id collection_id
-                                                                             :collection_position collection_position
-                                                                             :document document
-                                                                             :content_type prose-mirror/prose-mirror-content-type
-                                                                             :creator_id api/*current-user-id*})
-                                 cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
-                                                                                          :collection_id collection_id
-                                                                                          :document document
-                                                                                          :content_type prose-mirror/prose-mirror-content-type})
-                                                               (when-not (empty? cards)
-                                                                 (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
-                             (when (seq cards-to-update-in-ast)
-                               (documents.db/update-document! document-id
-                                                              (update-cards-in-ast
-                                                               {:document document
-                                                                :content_type prose-mirror/prose-mirror-content-type}
-                                                               cards-to-update-in-ast)))
-                             ;; `get-document`, so `:event/document-read` fires: the creator has to find the
-                             ;; document they just made in their recents, and that row is written only by this
-                             ;; event's handler. Creating is arguably not viewing — but the view count and
-                             ;; `view_log` row it also writes are the cost of the recents entry until the two
-                             ;; are decoupled; suppressing the event silently drops the document out of the
-                             ;; command palette (UXW-1786).
-                             ;;
-                             ;; The read check inside it still has to run: `can-read?` on a Document is
-                             ;; collection permissions *and* the content gate, and the gate adjudicates the
-                             ;; warehouse data the body embeds, so a document the creator may not read must not
-                             ;; come back rendered.
-                             (get-document document-id)))]
-    created-document))
+  (t2/with-transaction [_conn]
+    (when collection_position
+      (collection/maybe-reconcile-collection-position! {:collection_id collection_id
+                                                        :collection_position collection_position}))
+    (let [document-id (:id (first (create-documents! [{:name name
+                                                       :collection_id collection_id
+                                                       :collection_position collection_position
+                                                       :document document
+                                                       :content_type prose-mirror/prose-mirror-content-type
+                                                       :creator_id api/*current-user-id*}])))
+          cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
+                                                                   :collection_id collection_id
+                                                                   :document document
+                                                                   :content_type prose-mirror/prose-mirror-content-type})
+                                        (when-not (empty? cards)
+                                          (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
+      (when (seq cards-to-update-in-ast)
+        (update-documents! [(assoc (update-cards-in-ast
+                                    {:document document
+                                     :content_type prose-mirror/prose-mirror-content-type}
+                                    cards-to-update-in-ast) :id document-id)]))
+      document-id)))
 
-(mu/defn update-document!
-  "Apply `body` (any of `:name`, `:document`, `:collection_id`, `:collection_position`,
-  `:cards`, `:archived`) to `existing-document`, clone any newly-embedded cards the document
-  doesn't own, and return the updated document. Permission checks (write-check, archived state,
-  collection-move) are the caller's job, run before this — the same split the REST
-  `PUT /api/document/:id` handler uses."
+(mu/defn update-document-with-cards!
+  "Apply `body`, any of `:name`, `:document`, `:collection_id`, `:collection_position`, `:cards` and `:archived`, to
+  `existing-document`, clone any newly embedded cards the document does not own, and return the updated document,
+  leaving the permission checks (write-check, archived state, collection move) to the caller, as the REST
+  `PUT /api/document/:id` handler does."
   [existing-document :- ::documents.schema/document
    {:keys [name document collection_id collection_position cards] :as body}
    :- [:map {:closed true}
@@ -501,11 +691,11 @@
         target-collection-id (if (contains? body :collection_id)
                                collection_id
                                (:collection_id existing-document))]
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (when collection_position
-        (api/maybe-reconcile-collection-position! (select-keys existing-document [:collection_id :collection_position])
-                                                  {:collection_id       target-collection-id
-                                                   :collection_position collection_position}))
+        (collection/maybe-reconcile-collection-position! (select-keys existing-document [:collection_id :collection_position])
+                                                         {:collection_id       target-collection-id
+                                                          :collection_position collection_position}))
       (let [card-id-map (when document
                           (merge
                            (clone-cards-in-document! (assoc existing-document :document document))
@@ -515,29 +705,92 @@
             pairings (draft-stored-result-pairings document
                                                    (:content_type existing-document)
                                                    draft-card-id-map)]
-        (documents.db/update-document! document-id
-                                       (cond-> document-updates
-                                         document (merge (update-cards-in-ast
-                                                          {:document document
-                                                           :content_type (:content_type existing-document)}
-                                                          card-id-map))
-                                         name (assoc :name name)
-                                         (contains? body :collection_id) (assoc :collection_id collection_id)
-                                         ;; First body save clears the auto-created Summary placeholder flag.
-                                         (and (:is_placeholder existing-document)
-                                              (contains? body :document))
-                                         (assoc :is_placeholder false)))
+        (update-documents! [(assoc (cond-> document-updates
+                                     document (merge (update-cards-in-ast
+                                                      {:document document
+                                                       :content_type (:content_type existing-document)}
+                                                      card-id-map))
+                                     name (assoc :name name)
+                                     (contains? body :collection_id) (assoc :collection_id collection_id)
+                                     ;; First body save clears the auto-created Summary placeholder flag.
+                                     (and (:is_placeholder existing-document)
+                                          (contains? body :document))
+                                     (assoc :is_placeholder false)) :id document-id)])
         (when (seq pairings)
           (card/carry-pairings-for-document! document-id pairings))))
     (hydrate-document document-id)))
 
-;;; --------------------------------------------------- Specs ----------------------------------------------------
+(defmethod public-sharing/shown-card-ids :model/Document
+  [_model document-ids]
+  ;; An anonymous user who can open a document runs the query of each question that the document's content embeds
+  ;; inline and that belongs to the document. A document has no filters of its own, so it implements nothing else.
+  (let [owned-card-ids (->> (documents.db/card-ids-owned-by-documents document-ids)
+                            (reduce (fn [acc {:keys [id document_id]}]
+                                      (update acc document_id (fnil conj #{}) id))
+                                    {}))]
+    (->> (documents.db/contents-for-documents document-ids)
+         ;; `prose-mirror/card-ids` throws on any other content type, so a new one cannot go unread here
+         (map (fn [{document-id :id, :as document}]
+                [document-id (set/intersection (set (prose-mirror/card-ids document))
+                                               (get owned-card-ids document-id #{}))]))
+         (into {}))))
 
-(defmethod events/spec :model/Document
-  [_model]
-  {:create :event/document-create
-   :update :event/document-update
-   :delete :event/document-delete})
+(mu/defn increment-view-counts! :- :int
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Documents with `ids`, in one
+  plain statement that publishes no event for a usage stat no rule reads, and return the number updated."
+  [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
+  (app-db/increment-counts! :model/Document :view_count count->ids))
+
+(mu/defn set-last-viewed-at! :- :int
+  "Set `last_viewed_at` of the Document with `id`, through the model, which the testing API uses to backdate it, and
+  return the number updated."
+  [id   :- ms/PositiveInt
+   time :- ms/TemporalInstant]
+  (t2/with-transaction [_conn]
+    (let [previous (documents.db/document id)
+          updated  (documents.db/set-document-last-viewed-at! id time)]
+      (when previous
+        (events/publish-event! :event/document-update
+                               (events/update-event {id previous} [{:id id :last_viewed_at time}])))
+      updated)))
+
+(defmethod collection/shift-positions-in-collection! :model/Document
+  [_model collection-id positions direction]
+  (documents.db/shift-document-positions! collection-id positions direction))
+
+(defmethod collection/positioned-rows-in-collections :model/Document
+  [_model collection-ids]
+  (documents.db/positioned-documents-in-collections (vec collection-ids)))
+
+(defmethod collection/update-positions! :model/Document
+  [_model id->position]
+  (update-documents! (mapv (fn [[id position]] {:id id :collection_position position}) id->position)))
+
+(mu/defn revert-document! :- :int
+  "Write the revision `snapshot` to the Document with `id` in one statement without the cascades of an update."
+  [id        :- ms/PositiveInt
+   _user-id  :- [:maybe ::lib.schema.id/user]
+   snapshot  :- ::documents.schema/document.revision]
+  (t2/with-transaction [_conn]
+    (let [previous (documents.db/document id)
+          updated  (documents.db/update-document-columns! id snapshot)]
+      (when previous
+        (events/publish-event! :event/document-update
+                               (events/update-event {id previous} [(assoc snapshot :id id)]
+                                                    {:writer :revert})))
+      updated)))
+
+(defmethod collection/archive-in-collections! :model/Document
+  [model collection-ids opts]
+  (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
+    (update-documents! (mapv (fn [id] {:id id :archived true}) ids) opts)))
+
+(defmethod collection/restore-in-collections! :model/Document
+  [model collection-ids opts]
+  (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
+    (update-documents! (mapv (fn [id] {:id id :archived false}) ids) opts)))
+
+;;; ---------- Specs ---------------------------------------------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/Document [_model]
   {:skip? false})
@@ -553,7 +806,10 @@
    :defaults            {:archived          false
                          :archived_directly false}
    :import-dependencies documents.serialization/import-dependencies
-   :export-dependencies documents.serialization/export-dependencies})
+   :export-dependencies documents.serialization/export-dependencies
+   :insert!             create-documents!
+   :update!             #(do (update-documents! % {:writer :import}) %)
+   :delete!             delete-documents!})
 
 (defmethod remote-sync/spec :model/Document
   [_model]
@@ -561,9 +817,11 @@
    :synced-filter-clause documents.db/synced-documents-clause})
 
 (defmethod revisions/spec :model/Document [_model]
-  {:track [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]
-   :skip  [:collection_id :collection_position :creator_id :entity_id :last_viewed_at :made_public_by_id
-           :public_uuid :public_uuid_prefix :view_count]})
+  {:track   [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]
+   :skip    [:collection_id :collection_position :creator_id :entity_id :last_viewed_at :made_public_by_id
+             :public_uuid :public_uuid_prefix :view_count]
+   :schema  ::documents.schema/document.revision
+   :revert! revert-document!})
 
 (defmethod audit/spec :model/Document [_model]
   {:track          [:name :collection_id]

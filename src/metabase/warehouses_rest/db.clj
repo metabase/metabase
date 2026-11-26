@@ -4,32 +4,34 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mu/defn active-visible-tables-for-databases
-  "The active, visible Tables of the Databases with `database-ids`, in schema then display name order."
+  "The active, visible Tables of the Databases with `database-ids`, in schema then display name order within each
+  Database."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Table
-             :active          true
-             :db_id           [:in database-ids]
-             :visibility_type nil
-             {:order-by [[:%lower.schema :asc]
-                         [:%lower.display_name :asc]]}))
+  (mdb/select-batched #(t2/select :model/Table
+                                  :active          true
+                                  :db_id           [:in %]
+                                  :visibility_type nil
+                                  {:order-by [[:%lower.schema :asc]
+                                              [:%lower.display_name :asc]]})
+                      database-ids))
 
 (mu/defn active-visible-schemas-for-databases
   "The Database id and schema of each active, visible Table of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select [:model/Table :db_id :schema]
-             :db_id           [:in database-ids]
-             :active          true
-             :visibility_type nil))
+  (mdb/select-batched #(t2/select [:model/Table :db_id :schema]
+                                  :db_id           [:in %]
+                                  :active          true
+                                  :visibility_type nil)
+                      database-ids))
 
 (mu/defn databases-where
   "The Databases visible to the user with `user-id` (`is-superuser?`/`is-data-analyst?` further widen visibility), in
@@ -112,19 +114,19 @@
       ;; e.g. search-string = "123"
       (and (not-empty search-id) (empty? search-name))
       [:like
-       (h2x/cast (if (= (mdb/db-type) :mysql) :char :text) :report_card.id)
+       [:cast (u/qualified-key (t2/table-name :model/Card) :id) (if (= (mdb/db-type) :mysql) :char :text)]
        (str search-id "%")]
 
       ;; e.g. search-string = "123-foo"
       (and (not-empty search-id) (not-empty search-name))
       [:and
-       [:= :report_card.id (parse-long search-id)]
+       [:= (u/qualified-key (t2/table-name :model/Card) :id) (parse-long search-id)]
        ;; this is a prefix match to be consistent with substring matches on the entire slug
-       [:like [:lower :report_card.name] (h2x/like-prefix search-name)]]
+       [:like [:lower (u/qualified-key (t2/table-name :model/Card) :name)] (funnysql.util/like-prefix search-name)]]
 
       ;; e.g. search-string = "foo"
       (and (empty? search-id) (not-empty search-name))
-      [:like [:lower :report_card.name] (h2x/like-substring search-name)])))
+      [:like [:lower (u/qualified-key (t2/table-name :model/Card) :name)] (funnysql.util/like-substring search-name)])))
 
 (mu/defn autocomplete-cards
   "Up to 50 unarchived Cards of the Database with `database-id` matching `search-card-slug` (see
@@ -136,17 +138,17 @@
   (t2/select [:model/Card :id :type :database_id :name :collection_id
               [:collection.name :collection_name]]
              {:where    [:and
-                         [:= :report_card.database_id database-id]
-                         [:= :report_card.archived false]
+                         [:= (u/qualified-key (t2/table-name :model/Card) :database_id) database-id]
+                         [:= (u/qualified-key (t2/table-name :model/Card) :archived) false]
                          (when-not include-dashboard-questions?
-                           [:= :report_card.dashboard_id nil])
+                           [:= (u/qualified-key (t2/table-name :model/Card) :dashboard_id) nil])
                          (autocomplete-cards-search-clause search-card-slug)]
-              :left-join [[:collection :collection] [:= :collection.id :report_card.collection_id]]
+              :left-join [[(t2/table-name :model/Collection) :collection] [:= :collection.id (u/qualified-key (t2/table-name :model/Card) :collection_id)]]
               ;; prioritize models. This relies of `model` coming before `question` alphabetically, and Tamas pointed
               ;; out this is a little brittle. He's right -- once we put v2 Metrics in then we can replace this with a
               ;; fancy `CASE` expression or something so we can sort things exactly how we like.
               :order-by [[:type :asc]
-                         [:report_card.id :desc]] ; sort by most recently created after sorting by type
+                         [(u/qualified-key (t2/table-name :model/Card) :id) :desc]] ; sort by most recently created after sorting by type
               :limit    50}))
 
 (mu/defn autocomplete-fields
@@ -161,15 +163,15 @@
   ;; Pgsql now has an index on that (see migration `v49.2023-01-24T12:00:00`) as other dbms do not support indexes on
   ;; expressions.
   (t2/select [:model/Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
-             :metabase_field.active          true
-             :%lower.metabase_field/name     [:like like-pattern]
-             :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
+             (u/qualified-key (t2/table-name :model/Field) :active)          true
+             (u/qualified-key (t2/table-name :model/Field) :visibility_type) [:not-in ["sensitive" "retired"]]
              :table.db_id                    database-id
-             {:order-by   [[[:lower :metabase_field.name] :asc]
+             {:where      [:like [:lower (u/qualified-key (t2/table-name :model/Field) :name)] like-pattern]
+              :order-by   [[[:lower (u/qualified-key (t2/table-name :model/Field) :name)] :asc]
                            [[:lower :table.name] :asc]]
               ;; checking for table.active in join makes query faster when there are a lot of inactive tables
               :inner-join [[(t2/table-name :model/Table) :table] [:and :table.active
-                                                                  [:= :table.id :metabase_field.table_id]]]
+                                                                  [:= :table.id (u/qualified-key (t2/table-name :model/Field) :table_id)]]]
               :limit      limit}))
 
 (mu/defn table-ids-for-database
@@ -180,14 +182,10 @@
 (mu/defn non-sensitive-fields-for-tables
   "The id, name, display name, Table id, and types of the non-sensitive Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
-             :table_id        [:in table-ids]
-             :visibility_type [:not-in ["sensitive" "retired"]]))
-
-(mu/defn insert-database!
-  "Insert the Database `row` and return the inserted instance."
-  [row :- ::warehouses.schema/database.update]
-  (t2/insert-returning-instance! :model/Database row))
+  (mdb/select-batched #(t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
+                                  :table_id        [:in %]
+                                  :visibility_type [:not-in ["sensitive" "retired"]])
+                      table-ids))
 
 (mu/defn sample-database
   "The sample Database, or nil."
@@ -199,35 +197,10 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn update-database!
-  "Apply `changes` to the Database with `database-id`, returning the number updated."
-  [database-id :- ::lib.schema.id/database
-   changes     :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database :id database-id changes))
-
-(mu/defn delete-destination-databases!
-  "Delete the routing destination Databases of the Database with `router-database-id`, returning the number deleted."
+(mu/defn destination-database-ids :- [:sequential ::lib.schema.id/database]
+  "The ids of the routing destination Databases of the Database with `router-database-id`."
   [router-database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database :router_database_id router-database-id))
-
-(mu/defn delete-database!
-  "Delete the Database with `database-id`, returning the number deleted."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database :id database-id))
-
-(mu/defn mark-tables-sync-complete!
-  "Mark the initial sync of the Tables with `table-ids` complete, returning the number updated."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/update! :model/Table {:id [:in table-ids]} {:initial_sync_status "complete"}))
-
-(mu/defn delete-field-values-for-database!
-  "Delete the FieldValues of every Field of the Database with `database-id`, returning the number deleted."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/FieldValues
-              :field_id [:in ^:allow-subquery {:select     [:f.id]
-                                               :from       [[:metabase_field :f]]
-                                               :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
-                                               :where      [:= :t.db_id [:auto/param database-id]]}]))
+  (vec (t2/select-pks-vec :model/Database :router_database_id router-database-id)))
 
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`."
@@ -271,7 +244,7 @@
 (defn- card-usage-count-subquery
   [database-id model type-str]
   ^:allow-subquery {:select [[:%count.* model]]
-                    :from   [:report_card]
+                    :from   [(t2/table-name :model/Card)]
                     :where  [:and
                              [:= :database_id database-id]
                              [:= :type type-str]]})
@@ -286,13 +259,13 @@
              [(card-usage-count-subquery database-id :dataset "model") :dataset]
              [(card-usage-count-subquery database-id :metric "metric") :metric]
              [^:allow-subquery {:select [[:%count.* :segment]]
-                                :from   [:segment]
+                                :from   [(t2/table-name :model/Segment)]
                                 :where  [:in :table_id ^:allow-subquery {:select [:id]
-                                                                         :from   [:metabase_table]
+                                                                         :from   [(t2/table-name :model/Table)]
                                                                          :where  [:= :db_id database-id]}]}
               :segment]
              [^:allow-subquery {:select [[:%count.* :transform]]
-                                :from   [:transform]
+                                :from   [(t2/table-name :model/Transform)]
                                 :where  [:or
                                          [:= :source_database_id database-id]
                                          [:= :target_db_id database-id]]}

@@ -391,7 +391,7 @@ export function useSetCollection() {
           return () =>
             updateTable({
               id,
-              collection_id: table.collection_id,
+              collection_id: table.collection?.id ?? null,
             });
         })
         .with({ model: "timeline" }, async ({ id }) => {

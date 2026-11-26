@@ -159,12 +159,14 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.path :as permissions.path]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -214,14 +216,6 @@
                  (not *allow-root-entries*)))
     (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
                     {:status-code 400, :path object}))))
-
-(defn- assert-valid
-  "Check to make sure this `permissions` entry is something that's allowed to be saved (i.e. it has a valid `:object`
-   path and it's not for the admin group)."
-  [permissions]
-  (doseq [f [assert-not-admin-group
-             assert-valid-object]]
-    (f permissions)))
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
@@ -273,18 +267,10 @@
          (not= object (permissions.path/application-perms-path :subscription)))
     (tru "Cannot grant application permission to a tenant group.")))
 
-(defn- check-tenant-group-grant
-  "Throws a 400 when `permission` grants a tenant group what tenant groups cannot hold."
-  [{:keys [group_id object]}]
-  (when-let [error (tenant-group-grant-error object)]
-    (when (get (permissions.db/group-tenant-flags #{group_id}) group_id)
-      (throw (ex-info error {:status-code 400 :group-id group_id :object object})))))
-
 (t2/define-before-insert :model/Permissions
   [permissions]
-  (check-tenant-group-grant permissions)
   (u/prog1 (maybe-break-out-permission-data permissions)
-    (assert-valid permissions)
+    (assert-valid-object permissions)
     (log/debug (u/format-color :green "Granting permissions for group %s: %s" (:group_id permissions) (:object permissions)))))
 
 (t2/deftransforms :model/Permissions
@@ -295,12 +281,9 @@
   [_]
   (throw (ex-info (tru "You cannot update a permissions entry! Delete it and create a new one.") {:status-code 400})))
 
-(t2/define-before-delete :model/Permissions
-  [permissions]
-  (log/debug (u/format-color :red "Revoking permissions for group %s: %s" (:group_id permissions) (:object permissions)))
-  (assert-not-admin-group permissions))
-
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
+
+(declare create-permissions! delete-permissions!)
 
 (mu/defn delete-related-permissions!
   "Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
@@ -322,15 +305,15 @@
         paths    (conj (perms.u/->v2-path path) path)]
     (when-let [revoked (permissions.db/related-permission-objects group-id path paths)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id revoked))
-      (permissions.db/delete-related-permissions! group-id path paths))))
+      (delete-permissions! (permissions.db/related-permission-ids group-id path paths)))))
 
 (defn grant-permissions!
   "Grant the permissions `path` gives to `group-or-id`, returning nil."
   [group-or-id path]
   (try
-    (permissions.db/insert-permissions! (map (fn [path-object]
-                                               {:group_id (u/the-id group-or-id) :object path-object})
-                                             (distinct (conj (perms.u/->v2-path path) path))))
+    (create-permissions! (map (fn [path-object]
+                                {:group_id (u/the-id group-or-id) :object path-object})
+                              (distinct (conj (perms.u/->v2-path path) path))))
     nil
     ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
     (catch Throwable e
@@ -360,6 +343,58 @@
     (throw (ex-info (tru "Cannot grant application permission to a tenant group.") {})))
   (grant-permissions! group-or-id (permissions.path/application-perms-path perm-type)))
 
+(defn- check-application-access-changes
+  "Throws as [[grant-application-permissions!]] and [[revoke-application-permissions!]] would for the first of
+  `changes`, `[group-id perm-type value]` triples, that they refuse, where the groups with `revoking-group-ids` hold
+  rows a revoke deletes, with the groups read once."
+  [changes revoking-group-ids]
+  (let [granting-ids (into #{} (keep (fn [[group-id perm-type value]]
+                                       (when (and (= value :yes) (not= perm-type :subscription))
+                                         group-id)))
+                           changes)
+        tenant?      (when (seq granting-ids)
+                       (permissions.db/group-tenant-flags granting-ids))]
+    (doseq [[group-id perm-type value] changes]
+      (case value
+        :yes (when (and (get tenant? group-id) (not= perm-type :subscription))
+               (throw (ex-info (tru "Cannot grant application permission to a tenant group.") {})))
+        :no  (when (contains? revoking-group-ids group-id)
+               (assert-not-admin-group {:group_id group-id}))))))
+
+(defn- grant-paths!
+  "Grants each `[group-id path]` of `grants` with one call, or one at a time as [[grant-permissions!]] does when that
+  call fails."
+  [grants]
+  (when (seq grants)
+    (try
+      (create-permissions! (for [[group-id path] grants
+                                 object (distinct (conj (perms.u/->v2-path path) path))]
+                             {:group_id group-id :object object}))
+      (catch Throwable _
+        (doseq [[group-id path] grants]
+          (grant-permissions! group-id path))))))
+
+(mu/defn update-application-accesses!
+  "Grants (`:yes`) or revokes (`:no`) the application permission of each of `changes`, `[group-id perm-type value]`
+  triples, as [[grant-application-permissions!]] and [[revoke-application-permissions!]] would one triple at a time,
+  with the same refusals before any write."
+  [changes :- [:sequential [:tuple ms/PositiveInt [:enum :setting :monitoring :subscription] [:enum :yes :no]]]]
+  (let [paths   (for [[group-id perm-type value] changes]
+                  [group-id (permissions.path/application-perms-path perm-type) value])
+        related (for [[group-id path value] paths
+                      :when (= value :no)]
+                  [group-id path (conj (perms.u/->v2-path path) path)])
+        rows    (when (seq related)
+                  (permissions.db/related-permission-rows related))]
+    (check-application-access-changes changes (into #{} (map :group_id) rows))
+    (doseq [[group-id group-rows] (group-by :group_id rows)]
+      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id (into #{} (map :object) group-rows))))
+    (when (seq rows)
+      (delete-permissions! (mapv :id rows)))
+    (grant-paths! (for [[group-id path value] paths
+                        :when (= value :yes)]
+                    [group-id path]))))
+
 ;; TODO: We really have to figure out a better solution to these circular dependencies than this
 (defn- is-personal-collection-or-descendant-of-one? [collection]
   ((requiring-resolve 'metabase.collections.models.collection/is-personal-collection-or-descendant-of-one?) collection))
@@ -377,6 +412,21 @@
     collection-or-id
     (permissions.db/collection (u/the-id collection-or-id))))
 
+(defn- check-modifiable
+  "Throws unless `collection` can have its permissions modified, where `personal?` answers whether a Collection is a
+  Personal Collection or a descendant of one."
+  [collection personal?]
+  ;; Check whether the collection is the Trash collection or a descendant thereof; if so, throw an Exception. This
+  ;; is done because you can't modify the permissions of things in the Trash, you need to untrash them first.
+  (when (is-trash-or-descendant? collection)
+    (throw (ex-info (tru "You cannot edit permissions for the Trash collection or its descendants.") {})))
+  ;; Check whether the collection is a personal collection or a descendant thereof; if so, throw an Exception.
+  ;; This is done because we *should* never be editing granting/etc. permissions for *Personal* Collections to
+  ;; entire Groups! Their owner will get implicit permissions automatically, and of course admins will be able to
+  ;; see them,but a whole group should never be given some sort of access.
+  (when (personal? collection)
+    (throw (ex-info (tru "You cannot edit permissions for a Personal Collection or its descendants.") {}))))
+
 (mu/defn- check-is-modifiable-collection
   "Check whether `collection-or-id` refers to a collection that can have permissions modified. Personal collections, the
   Trash, and descendants of those can't have their permissions modified."
@@ -384,17 +434,22 @@
   ;; skip the whole thing for the root collection, we know it's not a personal collection, trash, or descendant of one
   ;; of them.
   (when-not (:metabase.collections.models.collection.root/is-root? collection-or-id)
-    (let [collection (collection-or-id->collection collection-or-id)]
-      ;; Check whether the collection is the Trash collection or a descendant thereof; if so, throw an Exception. This
-      ;; is done because you can't modify the permissions of things in the Trash, you need to untrash them first.
-      (when (is-trash-or-descendant? collection)
-        (throw (ex-info (tru "You cannot edit permissions for the Trash collection or its descendants.") {})))
-      ;; Check whether the collection is a personal collection or a descendant thereof; if so, throw an Exception.
-      ;; This is done because we *should* never be editing granting/etc. permissions for *Personal* Collections to
-      ;; entire Groups! Their owner will get implicit permissions automatically, and of course admins will be able to
-      ;; see them,but a whole group should never be given some sort of access.
-      (when (is-personal-collection-or-descendant-of-one? collection)
-        (throw (ex-info (tru "You cannot edit permissions for a Personal Collection or its descendants.") {}))))))
+    (check-modifiable (collection-or-id->collection collection-or-id) is-personal-collection-or-descendant-of-one?)))
+
+(defn- check-tenant-group-collection-grant
+  "Throws when a group, a tenant group when `tenant?`, may not receive `access`, `:read` or `:write`, on `collection`."
+  [tenant? collection access]
+  (when tenant?
+    (case access
+      :write
+      (throw (ex-info (tru "Tenant groups cannot have write access to any collections.") {}))
+
+      :read
+      (when-not (or (shared-tenant-collection? collection)
+                    ;; Tenant groups access data apps through read grants on its resource collection.
+                    (and (pos-int? (:id collection))
+                         (data-perms/collection-owned-by-data-app? (:id collection))))
+        (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {}))))))
 
 (mu/defn revoke-collection-permissions!
   "Revoke all access for `group-or-id` to a Collection."
@@ -406,22 +461,100 @@
   "Grant full access to a Collection, which means a user can view all Cards in the Collection and add/remove Cards."
   [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
   (check-is-modifiable-collection collection-or-id)
-  (when (perms-group/is-tenant-group? group-or-id)
-    (throw (ex-info (tru "Tenant groups cannot have write access to any collections.") {})))
+  (check-tenant-group-collection-grant (perms-group/is-tenant-group? group-or-id) nil :write)
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-readwrite-path collection-or-id)))
+
+(defn- collection-access-path
+  "The permissions path that grants `access`, `:write` or `:read`, on `collection-or-id`."
+  [collection-or-id access]
+  (case access
+    :write (permissions.path/collection-readwrite-path collection-or-id)
+    :read  (permissions.path/collection-read-path collection-or-id)))
+
+(defn- check-collection-access-changes
+  "Throws as [[revoke-collection-permissions!]] and the grant functions would for the first of `changes`, `[group-id
+  collection-or-id access]` triples, that they refuse, with the Collections and groups read once."
+  [changes]
+  (let [ids        (into [] (comp (map second) (remove :metabase.collections.models.collection.root/is-root?)
+                                  (map u/the-id) (distinct))
+                         changes)
+        collection (when (seq ids) (permissions.db/collections-by-id ids))
+        personal   (permissions.db/personal-or-descendant-collection-ids (set ids))
+        tenant?    (permissions.db/group-tenant-flags (into #{} (map first) changes))]
+    (doseq [[group-id collection-or-id access] changes
+            :let [root?    (:metabase.collections.models.collection.root/is-root? collection-or-id)
+                  resolved (if root? collection-or-id (get collection (u/the-id collection-or-id)))]]
+      (when-not root?
+        (check-modifiable resolved #(contains? personal (:id %))))
+      (when (#{:read :write} access)
+        (check-tenant-group-collection-grant (get tenant? group-id) resolved access)))))
+
+(mu/defn grant-collection-read-permissions-to-groups!
+  "Grant read access, as [[grant-collection-read-permissions!]] does, for each `[group-id collection-or-id]` of
+  `grants`: every pair is checked before anything is written, then the rows that the groups do not hold yet are
+  inserted at once."
+  [grants :- [:sequential [:tuple ms/PositiveInt permissions.path/CollectionOrID]]]
+  (when (seq grants)
+    (check-collection-access-changes (map (fn [[group-id collection-or-id]] [group-id collection-or-id :read]) grants))
+    (let [wanted (distinct (for [[group-id collection-or-id] grants
+                                 :let [path (permissions.path/collection-read-path collection-or-id)]
+                                 object (distinct (conj (perms.u/->v2-path path) path))]
+                             [group-id object]))
+          held   (permissions.db/held-permission-pairs (into [] (comp (map first) (distinct)) wanted)
+                                                       (into [] (comp (map second) (distinct)) wanted))]
+      (when-let [missing (seq (remove held wanted))]
+        (try
+          (create-permissions! (for [[group-id object] missing]
+                                 {:group_id group-id :object object}))
+          (catch Throwable e
+            (log/error (u/format-color 'red "Failed to grant permissions: %s" (ex-message e)))
+            (when config/is-test?
+              (throw e)))))))
+  nil)
 
 (mu/defn grant-collection-read-permissions!
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
   [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
-  (check-is-modifiable-collection collection-or-id)
-  (let [collection (collection-or-id->collection collection-or-id)]
-    (when (perms-group/is-tenant-group? group-or-id)
-      (when-not (or (shared-tenant-collection? collection)
-                    ;; Tenant groups access data apps through read grants on its resource collection.
-                    (and (pos-int? (:id collection))
-                         (data-perms/collection-owned-by-data-app? (:id collection))))
-        (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {})))))
-  (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
+  (grant-collection-read-permissions-to-groups! [[(u/the-id group-or-id) collection-or-id]]))
+
+(defn- revoke-collection-accesses!
+  "Deletes the Permissions rows related to the read-write path of each of `changes`, as
+  [[revoke-collection-permissions!]] does for one, reading them together."
+  [changes]
+  (when-let [related (seq (for [[group-id collection-or-id] changes
+                                :let [path (permissions.path/collection-readwrite-path collection-or-id)]]
+                            [group-id path (conj (perms.u/->v2-path path) path)]))]
+    (let [rows (permissions.db/related-permission-rows related)]
+      (doseq [[group-id group-rows] (group-by :group_id rows)]
+        (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id (into #{} (map :object) group-rows))))
+      (when (seq rows)
+        (delete-permissions! (mapv :id rows))))))
+
+(defn- grant-collection-accesses!
+  "Grants each of `changes` whose access is `:write` or `:read` with one call, or one at a time as
+  [[grant-permissions!]] does when that call fails."
+  [changes]
+  (let [grants (for [[group-id collection-or-id access] changes
+                     :when (#{:read :write} access)]
+                 [group-id (collection-access-path collection-or-id access)])]
+    (when (seq grants)
+      (try
+        (create-permissions! (for [[group-id path] grants
+                                   object (distinct (conj (perms.u/->v2-path path) path))]
+                               {:group_id group-id :object object}))
+        (catch Throwable _
+          (doseq [[group-id path] grants]
+            (grant-permissions! group-id path)))))))
+
+(mu/defn update-collection-accesses!
+  "Replaces the access of each group to each Collection of `changes`, `[group-id collection-or-id access]` triples where
+  `access` is `:write`, `:read` or `:none`, as [[revoke-collection-permissions!]] and then the matching grant would one
+  triple at a time, with the same refusals, before any write."
+  [changes :- [:sequential [:tuple ms/PositiveInt permissions.path/CollectionOrID [:enum :write :read :none]]]]
+  (when (seq changes)
+    (check-collection-access-changes changes)
+    (revoke-collection-accesses! changes)
+    (grant-collection-accesses! changes)))
 
 (defenterprise current-user-has-application-permissions?
   "Check if `*current-user*` has permissions for a application permissions of type `perm-type`.
@@ -429,6 +562,62 @@
   metabase-enterprise.advanced-permissions.common
   [_instance]
   false)
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn- check-tenant-group-grants
+  "Throws a 400 unless every one of `rows` satisfies these rules, with the groups read once and the message of the
+  first that breaks one:
+
+  - a tenant group holds no write access to a Collection
+  - a tenant group holds no application permission other than subscriptions"
+  [rows]
+  (when-let [refusable (seq (filter (comp tenant-group-grant-error :object) rows))]
+    (let [group-id->tenant? (permissions.db/group-tenant-flags (into #{} (map :group_id) refusable))]
+      (doseq [{:keys [group_id object]} refusable]
+        (when (get group-id->tenant? group_id)
+          (throw (ex-info (tenant-group-grant-error object) {:status-code 400 :group-id group_id :object object})))))))
+
+(defn- create-permissions-batch!
+  "Check and insert `rows`, one batch of a call, returning the number inserted."
+  [rows]
+  (check-tenant-group-grants rows)
+  (run! assert-not-admin-group rows)
+  (permissions.db/insert-permissions! rows))
+
+(mu/defn create-permissions! :- ms/IntGreaterThanOrEqualToZero
+  "Insert the Permissions `rows` in one transaction and return the number inserted; a row for the Admin group, or one
+  granting a tenant group what tenant groups cannot hold, is a 400."
+  [rows :- [:sequential ::permissions.schema/permissions.create]]
+  (t2/with-transaction [_conn]
+    (transduce (map (comp create-permissions-batch! vec)) + 0 (partition-all app-db/create-partition-size rows))))
+
+(defn- check-permissions-deletable
+  "Throws a 400 when one of the Permissions `rows` is a row of the Admin group."
+  [rows]
+  (run! #(assert-not-admin-group {:group_id %}) (into #{} (map :group_id) rows)))
+
+(mu/defn delete-permissions! :- :nil
+  "Delete the Permissions rows with `ids` in one transaction; a row of the Admin group among them is a 400 and deletes
+  nothing."
+  [ids :- [:maybe [:sequential ms/PositiveInt]]]
+  (app-db/delete-batched! :model/Permissions ids {:before-delete check-permissions-deletable}))
+
+(def collection-permission-ids
+  "The ids of the Permissions rows of a Collection, see [[permissions.db/collection-permission-ids]]."
+  permissions.db/collection-permission-ids)
+
+(def database-permission-ids
+  "The ids of the Permissions rows under a Database, see [[permissions.db/database-permission-ids]]."
+  permissions.db/database-permission-ids)
+
+(mu/defn delete-permissions-for-objects! :- [:maybe :int]
+  "Delete every Permissions row for `objects`, in one raw statement per `app-db/delete-partition-size` objects,
+  returning the number deleted; unlike [[delete-permissions!]] it deletes the Admin group's rows too, since a
+  Collection that moves into the tenant-specific namespace keeps no Permissions rows at all."
+  [objects :- [:sequential :string]]
+  (t2/with-transaction [_conn]
+    (permissions.db/delete-permissions-with-objects! objects)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

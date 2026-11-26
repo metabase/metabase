@@ -78,10 +78,10 @@
   :metabase/t2-query-namespace                               {:level :warning}
   :metabase/t2-implicit-pk                                   {:level :warning}
   :metabase/change-log-raw-write                             {:level :warning}
+  :metabase/foreign-model-write                              {:level :warning}
   ;; App-DB query hygiene: a value reaching a value slot unmarked, and a query written as
   ;; `:column value` pairs rather than a map. Off by default and enabled per namespace under
   ;; `:config-in-ns`; flip it on globally once every `db.clj` has been converted.
-  :metabase/unsafe-app-db-query                              {:level :off}
   :metabase/toucan-model-ns                                  {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
@@ -115,6 +115,7 @@
      metabase.actions.test-util/with-actions-test-data-and-actions-enabled
      metabase.actions.test-util/with-actions-test-data-tables
      metabase.analytics.snowplow-test/with-fake-snowplow-collector
+     metabase.app-db.test-util/with-partition-size
      metabase.channel.email-test/with-expected-messages
      metabase.channel.email-test/with-fake-inbox
      metabase.test.data.users/with-group
@@ -150,6 +151,7 @@
      metabase.test/with-model-cleanup
      metabase.test/with-non-admin-groups-no-root-collection-for-namespace-perms
      metabase.test/with-non-admin-groups-no-root-collection-perms
+     metabase.test/with-partition-size
      metabase.test/with-temp-env-var-value
      metabase.test/with-temp-vals-in-db
      metabase.test/with-temporary-raw-setting-values
@@ -388,6 +390,8 @@
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
    cheshire.core          {:message "Use metabase.util.json instead of cheshire.core directly."}
+   clojure.java.jdbc      {:message "Query the app DB with Toucan 2 and Honey SQL; raw JDBC only in the jdbc-namespaces group."}
+   next.jdbc              {:message "Query the app DB with Toucan 2 and Honey SQL; raw JDBC only in the jdbc-namespaces group."}
    clj-time.core          {:message "Use java-time.api or metabase.util.date-2 instead of clj-time"}
    clojure.tools.logging  {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
    grouper.core           {:message "Use metabase.util.grouper instead of grouper.core"}
@@ -907,6 +911,10 @@
  {:linters {:unresolved-symbol {:level :off}
             :metabase/modules  {:level :off}}}
 
+ :config-in-call
+ {;; defrecord has no docstring slot, yet kondo's CLJS pass asks for one on every record.
+  cljs.core/defrecord {:linters {:missing-docstring {:level :off}}}}
+
  ;;
  ;; TEST CONFIG
  ;;
@@ -923,6 +931,12 @@
    :name    test-namespaces}
   {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*).*$"
    :name    source-namespaces}
+  ;;
+  ;; namespaces that may use raw JDBC: drivers and warehouse connections, the app DB's H2 upgrade and result-set
+  ;; protocols, commands, the semantic search DB, partition DDL, the testing API, and the exception middleware's SQL chain.
+  ;;
+  {:pattern "^(?:metabase\\.driver(?:\\..*)?|metabase\\.app-db\\.(?:update-h2|jdbc-protocols)|metabase\\.cmd\\..*|metabase-enterprise\\.search\\.(?:semantic|entity-retrieval)\\..*|metabase\\.audit-app\\.task\\.partitions|metabase\\.testing-api\\..*|metabase\\.server\\.middleware\\.exceptions)$"
+   :name    jdbc-namespaces}
   {:pattern "(?:(?:^metabase\\.cmd.*)|(?:^build.*)|(?:^metabuild-common.*)|(?:^release.*)|(?:^i18n.*)|(?:^lint-migrations-file$))|(?:^mage.*)|(?:^load-namespaces.*)|(?:^dev\\..*)"
    :name    printable-namespaces}
   {:pattern "^metabase\\.(?:(?:lib)|(?:legacy-mbql))\\..*"
@@ -962,10 +976,10 @@
   {:pattern "(?:^mage.*)"
    :name    mage-namespaces}
   ;;
-  ;; the app-db module is the application database layer itself (connections, migrations, encryption), so it gets to
-  ;; run Toucan 2 queries anywhere.
+  ;; the app-db module's custom migrations keep their own queries, frozen at the version they shipped in; the rest of
+  ;; the module runs its queries in `metabase.app-db.db`.
   ;;
-  {:pattern "^metabase\\.app-db\\..*"
+  {:pattern "^metabase\\.app-db\\.custom-migrations.*"
    :name    app-db-namespaces}
   ;;
   ;; MCP source namespaces, OSS and enterprise, whose prose reaches an LLM agent, excluding test namespaces.
@@ -993,7 +1007,10 @@
     ;; `:metabase/prefer-with-dynamic-fn-redefs` already covers.
     :metabase/discourage-dynamic-vars                    {:level :off}
     :metabase/t2-query-namespace                         {:level :off}
+    :metabase/foreign-model-write                        {:level :off}
     :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
+    :discouraged-namespace                               {clojure.java.jdbc {:level :off}
+                                                          next.jdbc         {:level :off}}
 
     :discouraged-var
     {metabase.driver/database-supports? {:level :off}
@@ -1001,32 +1018,14 @@
      metabase.lib.core/->legacy-MBQL    {:level :off}}}}
 
   app-db-namespaces
-  {:linters {:metabase/t2-query-namespace {:level :off}}}
+  {:linters {:metabase/t2-query-namespace {:level :off}
+             :metabase/foreign-model-write {:level :off}}}
 
   agent-message-namespaces
   {:linters {:metabase/agent-message-lines {:level :warning}}}
 
   agent-exit-namespaces
   {:linters {:metabase/agent-message-exit {:level :warning}}}
-
-  ;; Namespaces whose values are marked. Adding one here is what keeps it that way; see
-  ;; `metabase.app-db.value-guard`.
-  metabase.content-translation.db
-  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
-  metabase.settings.db
-  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
-
-  metabase.auth-identity.db
-  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
-
-  metabase.usage-metadata.db
-  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
-
-  metabase.user-key-value.db
-  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
-
-  metabase.public-sharing.db
-  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
 
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
   ;; so leave these alone.
@@ -1041,6 +1040,10 @@
   ;; a cycle; it gets to use tools.logging directly.
   metabase.classloader.impl
   {:linters {:discouraged-namespace {clojure.tools.logging {:level :off}}}}
+
+  jdbc-namespaces
+  {:linters {:discouraged-namespace {clojure.java.jdbc {:level :off}
+                                     next.jdbc         {:level :off}}}}
 
   source-namespaces
   {:linters

@@ -3,9 +3,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.skills :as skills]
@@ -20,7 +22,13 @@
    [metabase.metabot.tools.write-dashboard :as write-dashboard]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
+   [metabase.queries.models.card :as queries.card]
+   [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
@@ -31,6 +39,12 @@
 (defn- venues-query []
   (lib/query (mt/metadata-provider)
              (lib.metadata/table (mt/metadata-provider) (mt/id :venues))))
+
+(defn- table-query
+  "A query over the test Table `table-key`."
+  [table-key]
+  (lib/query (mt/metadata-provider)
+             (lib.metadata/table (mt/metadata-provider) (mt/id table-key))))
 
 (defn- chart-memory
   "A memory atom holding generated charts `A`, `B` and `C` over `query` (by default the venues table), shown as
@@ -104,7 +118,7 @@
                                                                    :size_y       6}
                    :model/Dashboard        {other-id :id}         {:name "Marketing", :collection_id coll-id}
                    :model/PermissionsGroup {group-id :id}         {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
       (perms/grant-collection-readwrite-permissions! group-id coll)
       (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
       (f {:coll-id     coll-id
@@ -435,40 +449,40 @@
                       {:parameter_id "cat", :dashcard_id 5, :card_id 51, :series true}]))))))
 
 (deftest ^:parallel archived-subscriptions-text-test
-  (testing "lists caused and already-broken subscriptions apart, and counts unreadable ones"
+  (testing "lists caused and already-broken subscriptions apart, and counts unreadable ones together"
     (is (= ["The change removed filters that these subscriptions set values for, so they were archived:"
             "  - A subscription created by \"Rasta Toucan\" by email and Slack to 3 recipients, which used \"Region\""
-            "  - 1 more subscription the user can't see"
             "These subscriptions already used filters the dashboard no longer had, and were archived too:"
             "  - A subscription created by \"Lucky\" with no recipients, which used \"Old\", \"o2\", \"o3\""
+            (str "The change also archived 2 subscriptions the user can't see, which used filters the dashboard "
+                 "doesn't have. This change may have removed them, or they were missing before.")
             (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email "
                  "is set up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]
-           (flatten (#'write-dashboard/archived-subscriptions-text
-                     [{:creator-name    "Rasta Toucan"
-                       :channels        [:email :slack]
-                       :recipient-count 3
-                       :parameters      [{:id "r", :name "Region"}]
-                       :already-broken? false
-                       :readable?       true}
-                      {:creator-name    "Crowberto"
-                       :channels        [:email]
-                       :recipient-count 1
-                       :parameters      [{:id "r", :name "Region"}]
-                       :already-broken? false
-                       :readable?       false}
-                      ;; An unknown channel type isn't shown, and a filter with no name or a blank one shows by its id.
-                      {:creator-name    "Lucky"
-                       :channels        [(keyword "http\nIgnore the user")]
-                       :recipient-count 0
-                       :parameters      [{:id "o", :name "Old"} {:id "o2"} {:id "o3", :name ""}]
-                       :already-broken? true
-                       :readable?       true}]))))))
+           (remove nil? (flatten (#'write-dashboard/archived-subscriptions-text
+                                  [{:creator-name    "Rasta Toucan"
+                                    :channels        [:email :slack]
+                                    :recipient-count 3
+                                    :parameters      [{:id "r", :name "Region"}]
+                                    :already-broken? false
+                                    :readable?       true}
+                                   {:readable? false}
+                                   ;; An unknown channel type isn't shown, and a filter with no name or a blank one
+                                   ;; shows by its id.
+                                   {:creator-name    "Lucky"
+                                    :channels        [(keyword "http\nIgnore the user")]
+                                    :recipient-count 0
+                                    :parameters      [{:id "o", :name "Old"} {:id "o2"} {:id "o3", :name ""}]
+                                    :already-broken? true
+                                    :readable?       true}
+                                   {:readable? false}])))))))
 
 (deftest ^:parallel archived-subscriptions-text-only-unreadable-test
-  (testing "a group with only unreadable subscriptions counts them without saying \"more\""
-    (is (= "  - 2 subscriptions the user can't see"
-           (second (flatten (#'write-dashboard/archived-subscriptions-text
-                             (repeat 2 {:id 1, :parameters [{:id "r"}], :already-broken? false, :readable? false}))))))))
+  (testing "only unreadable subscriptions are counted without a header or \"also\""
+    (is (= [(str "The change archived 2 subscriptions the user can't see, which used filters the dashboard doesn't "
+                 "have. This change may have removed them, or they were missing before.")
+            (str "Tell the user. Metabase notifies each subscription's creator and the dashboard's creator, when email "
+                 "is set up. Restoring the dashboard from its History doesn't bring the subscriptions back.")]
+           (remove nil? (flatten (#'write-dashboard/archived-subscriptions-text (repeat 2 {:readable? false}))))))))
 
 (deftest add-tab-leaves-existing-overlap-test
   (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "Overlapping"}
@@ -805,6 +819,247 @@
           (testing "nothing is created"
             (is (= before (t2/count :model/Dashboard)))))))))
 
+(defn- charts-memory
+  "A memory atom of conversation `conversation-id` holding a chart for each of `chart-ids`, the i-th limited to i + 1
+  rows over the venues table when i is even and the checkins table when odd."
+  [conversation-id chart-ids]
+  (atom (cond-> {:state   {:queries {}
+                           :charts  (into {}
+                                          (map-indexed
+                                           (fn [i id]
+                                             (let [query (lib/limit (table-query (if (even? i) :venues :checkins)) (inc i))]
+                                               [id {:chart_id               id
+                                                    :queries                [query]
+                                                    :visualization_settings {:chart_type (if (even? i) :bar :line)}}])))
+                                          chart-ids)}
+                 :context {}}
+          conversation-id (assoc :conversation-id conversation-id))))
+
+(defn- add-chart-ops
+  "An `add_card` op for each of `chart-ids`, stacked from row `row`."
+  [chart-ids row]
+  (vec (map-indexed (fn [i id]
+                      {:op "add_card", :id (- (inc i)), :chart_id id, :name (str "Chart " id)
+                       :position {:row (+ row (* 6 i)), :col 0}, :size {:size_x 12, :size_y 6}})
+                    chart-ids)))
+
+(deftest save-charts-statement-count-test
+  (mt/with-model-cleanup [:model/Card :model/Dashboard]
+    (sales-dashboard!
+     (fn [{:keys [coll-id]}]
+       (mt/with-temp [:model/MetabotConversation {su-convo :id}   {:user_id (mt/user->id :crowberto)}
+                      :model/MetabotConversation {user-convo :id} {:user_id (mt/user->id :rasta)}]
+         (doseq [[user collection-id convo] [[:crowberto nil nil] [:crowberto nil su-convo]
+                                             [:rasta coll-id nil] [:rasta coll-id user-convo]]]
+           (testing (str user (when convo " in conversation"))
+             (mt/with-current-user (mt/user->id user)
+               (let [new-dashboard! #(first (t2/insert-returning-pks! :model/Dashboard
+                                                                      {:name          "Charts"
+                                                                       :collection_id collection-id
+                                                                       :creator_id    (mt/user->id user)}))
+                     calls!         (fn [prefix n]
+                                      (let [chart-ids    (mapv #(str prefix "-" %) (range n))
+                                            dashboard-id (new-dashboard!)]
+                                        (binding [shared/*memory-atom* (charts-memory convo chart-ids)]
+                                          (t2/with-call-count [call-count]
+                                            (lib-be/with-metadata-provider-cache
+                                              (call {:dashboard_id dashboard-id, :ops (add-chart-ops chart-ids 100)}))
+                                            (call-count)))))
+                     reference!     (fn [n]
+                                      (let [dashboard-id (new-dashboard!)
+                                            rows         (mapv #(queries.card/new-card-row
+                                                                 {:name                   (str "Reference " %)
+                                                                  :dataset_query          (lib/limit (table-query (if (even? %) :venues :checkins))
+                                                                                                     (inc %))
+                                                                  :display                :bar
+                                                                  :visualization_settings {}
+                                                                  :dashboard_id           dashboard-id}
+                                                                 (mt/user->id user))
+                                                               (range n))]
+                                        (t2/with-call-count [call-count]
+                                          (lib-be/with-metadata-provider-cache
+                                            (queries.card/create-cards! rows))
+                                          (call-count))))]
+                 (calls! "warm" 2)
+                 (reference! 2)
+                 (let [two     (calls! "two" 2)
+                       six     (calls! "six" 6)
+                       ref-two (reference! 2)
+                       ref-six (reference! 6)]
+                   (testing "more charts add no more statements than create-cards! adds for their rows"
+                     (is (<= (- six two) (- ref-six ref-two))))))))))))))
+
+(deftest save-charts-permission-check-statement-count-test
+  (testing "the run permissions of more charts on distinct Tables take no more statements, but for preprocessing"
+    (mt/with-model-cleanup [:model/Card]
+      (sales-dashboard!
+       (fn [{:keys [dash-id]}]
+         (mt/with-current-user (mt/user->id :rasta)
+           (let [tables  [:venues :checkins :users :categories :orders :people :products :reviews]
+                 check   (mt/original-fn #'query-perms/check-run-permissions-for-queries)
+                 save!   (fn [prefix table-keys]
+                           (let [chart-ids  (mapv #(str prefix "-" (name %)) table-keys)
+                                 statements (atom 0)
+                                 checked    (atom [])]
+                             (binding [shared/*memory-atom*
+                                       (atom {:state   {:queries {}
+                                                        :charts  (into {}
+                                                                       (map (fn [id table]
+                                                                              [id {:chart_id               id
+                                                                                   :queries                [(table-query table)]
+                                                                                   :visualization_settings {:chart_type :bar}}])
+                                                                            chart-ids table-keys))}
+                                              :context {}})]
+                               (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-queries
+                                                           (fn [queries & more]
+                                                             (swap! checked into queries)
+                                                             (t2/with-call-count [call-count]
+                                                               (try
+                                                                 (apply check queries more)
+                                                                 (finally
+                                                                   (swap! statements + (call-count))))))]
+                                 (lib-be/with-metadata-provider-cache
+                                   (call {:dashboard_id dash-id, :ops (add-chart-ops chart-ids 100)}))))
+                             {:statements @statements, :queries @checked}))
+                 preprocess! (fn [queries]
+                               (lib-be/with-metadata-provider-cache
+                                 (request/as-admin (doseq [query queries] (qp.preprocess/preprocess query)))
+                                 (t2/with-call-count [call-count]
+                                   (request/as-admin (doseq [query queries] (qp.preprocess/preprocess query)))
+                                   (call-count))))]
+             (save! "warm" (take 2 (drop 6 tables)))
+             (let [two (save! "two" (take 2 tables))
+                   six (save! "six" (take 6 (drop 2 tables)))]
+               (is (= (- (:statements six) (:statements two))
+                      (- (preprocess! (:queries six)) (preprocess! (:queries two)))))))))))))
+
+(deftest savable-charts-propagates-errors-test
+  (testing "an Error or an interrupt from the charts' permission check propagates"
+    (mt/with-current-user (mt/user->id :rasta)
+      (binding [shared/*memory-atom* (chart-memory)]
+        (doseq [thrown [(StackOverflowError.) (InterruptedException.)]]
+          (testing (str (class thrown))
+            (let [calls (atom 0)]
+              (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-queries (fn [& _]
+                                                                                          (swap! calls inc)
+                                                                                          (throw thrown))]
+                (is (= (class thrown)
+                       (try
+                         (save-entity/savable-charts ["A" "B"])
+                         nil
+                         (catch Throwable e
+                           (class e))))))
+              (is (= 1 @calls)))))))))
+
+(defn- chart-outcome
+  "What `thunk` does: `:allowed`, or the class, message and data of what it throws."
+  [thunk]
+  (try
+    (thunk)
+    :allowed
+    (catch Throwable e
+      {:class (class e)
+       :msg   (ex-message e)
+       :data  (dissoc (ex-data e) :query :toucan2/context-trace :cause)})))
+
+(deftest savable-charts-matches-per-chart-check-test
+  (testing "every ordered list of charts is refused or saved as when its charts are checked one at a time"
+    (let [memory     (atom {:state   {:queries {}
+                                      :charts  (into {}
+                                                     (for [[id query] {"ok"     (table-query :venues)
+                                                                       "cur"    (table-query :orders)
+                                                                       "perm"   (table-query :checkins)
+                                                                       "both"   (table-query :users)
+                                                                       "notmap" "SELECT 1"}]
+                                                       [id {:chart_id               id
+                                                            :queries                [query]
+                                                            :visualization_settings {:chart_type :bar}}]))}
+                            :context {}})
+          uncurated  #{(mt/id :orders) (mt/id :users)}
+          lists      (fn [ids]
+                       (concat (for [a ids b ids :when (not= a b)] [a b])
+                               (for [a ids b ids c ids :when (distinct? a b c)] [a b c])))]
+      (mt/with-no-data-perms-for-all-users!
+        (doseq [table [:venues :orders]]
+          (perms/set-table-permission! (perms/all-users-group) (mt/id table) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id table) :perms/create-queries :query-builder))
+        (mt/with-current-user (mt/user->id :rasta)
+          (binding [shared/*memory-atom* memory]
+            (mt/with-dynamic-fn-redefs [shared/curated-only?          (constantly true)
+                                        curation/check-curated-query! (fn [label query]
+                                                                        (when (contains? uncurated
+                                                                                         (or (get-in query [:stages 0 :source-table])
+                                                                                             (get-in query [:query :source-table])))
+                                                                          (throw (ex-info (str "not curated " label)
+                                                                                          {:status-code 400}))))]
+              (doseq [[label ids enforce?] [["schemas enforced" ["ok" "cur" "perm" "both" "unknown" "notmap"] true]
+                                            ["schemas off" ["ok" "cur" "perm" "notmap"] false]]
+                      chart-ids             (lists ids)]
+                (testing (str label " " chart-ids)
+                  (let [run (fn [thunk] (if enforce? (thunk) (mu/disable-enforcement (thunk))))]
+                    (is (= (run #(chart-outcome (fn [] (mapv save-entity/savable-chart chart-ids))))
+                           (run #(chart-outcome (fn [] (save-entity/savable-charts chart-ids))))))))))))))))
+
+(defn- saved-card-shape
+  "The columns of `card` that do not depend on its id or dashboard, with result metadata without fingerprints."
+  [card]
+  (-> (select-keys card [:name :display :dataset_query :visualization_settings :type :creator_id :archived
+                         :metabot_conversation_id :metabot_chart_id :result_metadata :parameters :parameter_mappings
+                         :query_type :database_id :table_id :collection_position :description :cache_ttl
+                         :document_id :card_schema])
+      (update :result_metadata #(mapv (fn [col] (dissoc col :fingerprint)) %))))
+
+(deftest save-charts-same-as-one-chart-per-call-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-additional-premium-features #{:audit-app}
+      (mt/with-temp [:model/Collection          {coll-id :id :as coll} {:name "Charts"}
+                     :model/Dashboard           {bulk-id :id}          {:name "At once", :collection_id coll-id}
+                     :model/Dashboard           {single-id :id}        {:name "One by one", :collection_id coll-id}
+                     :model/MetabotConversation {convo-id :id}         {:user_id (mt/user->id :rasta)}]
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
+        (mt/with-current-user (mt/user->id :rasta)
+          (binding [shared/*memory-atom* (charts-memory convo-id ["A" "B" "C" "D"])]
+            (let [ops      (add-chart-ops ["B" "A" "C" "D"] 6)
+                  first-op (assoc (first (add-chart-ops ["A"] 0)) :name "First name")
+                  save!    (fn [dash-id ops] (:saved_charts (event (call {:dashboard_id dash-id, :ops ops}))))]
+              (doseq [dash-id [bulk-id single-id]]
+                (save! dash-id [first-op]))
+              (let [bulk   (save! bulk-id ops)
+                    single (into [] (mapcat #(save! single-id [(assoc % :id -1)])) ops)
+                    cards  (fn [dash-id] (t2/select :model/Card :dashboard_id dash-id {:order-by [[:id :asc]]}))
+                    shape  (fn [dash-id saved]
+                             (let [id->index (into {} (map-indexed (fn [i card] [(:id card) i])) (cards dash-id))]
+                               {:saved     (mapv #(update % :card_id id->index) saved)
+                                :cards     (mapv saved-card-shape (cards dash-id))
+                                :dashcards (mapv #(-> % (dissoc :id :dashboard_tab_id) (update :card_id id->index))
+                                                 (dashcards dash-id))}))]
+                (testing "chart A reuses the question of the first call"
+                  (is (= (t2/select-one-pk :model/Card :dashboard_id bulk-id :metabot_chart_id "A")
+                         (:card_id (second bulk)))))
+                (testing "saving the charts in one call saves the same questions and dashcards as one call per chart"
+                  (is (= 4 (count (cards bulk-id))))
+                  (is (= (shape single-id single) (shape bulk-id bulk))))
+                (testing "audit rows record each new question, as one call per chart does"
+                  (is (= [3 3]
+                         (for [saved [bulk single]]
+                           (t2/count :model/AuditLog :topic :card-create :model "Card"
+                                     :model_id [:in (keep #(when (not= "A" (:chart_id %)) (:card_id %)) saved)])))))))))))))
+
+(deftest save-charts-refused-chart-saves-nothing-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Venues"}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+        (mt/with-current-user (mt/user->id :rasta)
+          (binding [shared/*memory-atom* (charts-memory nil ["A" "B" "C"])]
+            (testing "a chart in the middle whose query the user can't run ends the turn"
+              (is (=? {:class :unrecoverable, :code ::save-entity/no-query-permission}
+                      (failure {:dashboard_id dash-id, :ops (add-chart-ops ["A" "B" "C"] 0)}))))
+            (testing "no question and no dashcard is saved"
+              (is (zero? (t2/count :model/Card :dashboard_id dash-id)))
+              (is (empty? (dashcards dash-id))))))))))
+
 ;;; --------------------------------------------- Curated content --------------------------------------------------
 
 (defn- curated-dashboard!
@@ -1065,7 +1320,7 @@
                                                 {:op "set_series", :dashcard_id -1, :card_ids [card-id]}]})))))
            (testing "and so is one whose stored query can't be read"
              ;; Written past the model, whose transform refuses a query it can't parse.
-             (t2/query-one {:update :report_card, :set {:dataset_query "{\"bogus\":1}"}, :where [:= :id broken-q]})
+             (t2/query-one {:update (t2/table-name :model/Card), :set {:dataset_query "{\"bogus\":1}"}, :where [:= :id broken-q]})
              (is (=? {:code ::write-dashboard/cards-not-curated
                       :text (re-pattern (str "(?s)\\QQuestion " broken-q " \\E.*"))}
                      (failure {:dashboard_id dash-id

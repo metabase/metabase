@@ -29,6 +29,7 @@
     :model/Card                              metabase.queries.models.card
     :model/CardTest                          metabase-enterprise.data-testing.models.card-test
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
+    :model/ChangeLog                         metabase.change-log.models.change-log
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
     :model/CloudMigration                    metabase.cloud-migration.models.cloud-migration
@@ -152,7 +153,7 @@
     :model/Tenant                            metabase-enterprise.tenants.models
     :model/TestSuite                         metabase-enterprise.data-testing.models.test-suite
     :model/TestSuiteMember                   metabase-enterprise.data-testing.models.test-suite
-    :model/TestSuiteRun                      metabase-enterprise.data-testing.models.test-suite
+    :model/TestSuiteRun                      metabase-enterprise.data-testing.models.test-suite-run
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
     :model/Transform                         metabase.transforms.models.transform

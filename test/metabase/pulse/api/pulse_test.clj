@@ -14,6 +14,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.notification.send :as notification.send]
@@ -84,7 +85,7 @@
       (grant-collection-perms-fn! (perms-group/all-users) collection)
       ;; use db/execute! instead of t2/update! so the updated_at field doesn't get automatically updated!
       (when (seq pulses-or-ids)
-        (t2/query-one {:update :pulse
+        (t2/query-one {:update (t2/table-name :model/Pulse)
                        :set    {:collection_id (u/the-id collection)}
                        :where  [:in :id (set (map u/the-id pulses-or-ids))]}))
       (f))))
@@ -225,103 +226,53 @@
 
 (deftest create-pulse-refuses-incomplete-schedule-test
   (testing "POST /api/pulse refuses a channel whose schedule lacks what its type takes, a key left out counting as nil"
-    (mt/with-temp [:model/Collection collection {}
-                   :model/Card       card       {}]
-      (api.card-test/with-cards-in-readable-collection! [card]
-        (mt/with-model-cleanup [:model/Pulse]
-          (doseq [channel [(dissoc daily-email-channel :schedule_hour)
-                           (-> daily-email-channel (assoc :schedule_type "weekly") (dissoc :schedule_day))
-                           (-> daily-email-channel (assoc :schedule_type "monthly") (dissoc :schedule_day))]]
-            (testing (pr-str channel)
-              (mt/user-http-request :rasta :post 400 "pulse"
-                                    {:name          "Incomplete schedule"
-                                     :collection_id (u/the-id collection)
-                                     :cards         [{:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}]
-                                     :channels      [channel]})
-              (is (not (t2/exists? :model/Pulse :collection_id (u/the-id collection)))))))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[collection] (collection/create-collections! [{:name (mt/random-name)}])]
+        (mt/with-temp [:model/Card       card       {}]
+          (api.card-test/with-cards-in-readable-collection! [card]
+            (mt/with-model-cleanup [:model/Pulse]
+              (doseq [channel [(dissoc daily-email-channel :schedule_hour)
+                               (-> daily-email-channel (assoc :schedule_type "weekly") (dissoc :schedule_day))
+                               (-> daily-email-channel (assoc :schedule_type "monthly") (dissoc :schedule_day))]]
+                (testing (pr-str channel)
+                  (mt/user-http-request :rasta :post 400 "pulse"
+                                        {:name          "Incomplete schedule"
+                                         :collection_id (u/the-id collection)
+                                         :cards         [{:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}]
+                                         :channels      [channel]})
+                  (is (not (t2/exists? :model/Pulse :collection_id (u/the-id collection)))))))))))))
 
 (deftest create-pulse-with-email-subject-test
   (testing "POST /api/pulse stores an email subject that GET /api/pulse/:id returns"
-    (mt/with-temp [:model/Collection collection {}
-                   :model/Card       card       {}
-                   :model/Dashboard  dashboard  {:name "Birdcage KPIs" :collection_id (u/the-id collection)}]
-      (api.card-test/with-cards-in-readable-collection! [card]
-        (mt/with-model-cleanup [:model/Pulse]
-          (let [{pulse-id :id} (mt/user-http-request :rasta :post 200 "pulse"
-                                                     {:name          "Birdcage KPIs"
-                                                      :collection_id (u/the-id collection)
-                                                      :dashboard_id  (u/the-id dashboard)
-                                                      :cards         [{:id                (u/the-id card)
-                                                                       :include_csv       false
-                                                                       :include_xls       false
-                                                                       :dashboard_card_id nil}]
-                                                      :channels      [(assoc daily-email-channel
-                                                                             :details {:subject "Birdcage KPIs, Account A"})]})]
-            (is (=? {:channels [{:details {:subject "Birdcage KPIs, Account A"}}]}
-                    (mt/user-http-request :rasta :get 200 (str "pulse/" pulse-id))))))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[collection] (collection/create-collections! [{:name (mt/random-name)}])]
+        (mt/with-temp [:model/Card       card       {}
+                       :model/Dashboard  dashboard  {:name "Birdcage KPIs" :collection_id (u/the-id collection)}]
+          (api.card-test/with-cards-in-readable-collection! [card]
+            (mt/with-model-cleanup [:model/Pulse]
+              (let [{pulse-id :id} (mt/user-http-request :rasta :post 200 "pulse"
+                                                         {:name          "Birdcage KPIs"
+                                                          :collection_id (u/the-id collection)
+                                                          :dashboard_id  (u/the-id dashboard)
+                                                          :cards         [{:id                (u/the-id card)
+                                                                           :include_csv       false
+                                                                           :include_xls       false
+                                                                           :dashboard_card_id nil}]
+                                                          :channels      [(assoc daily-email-channel
+                                                                                 :details {:subject "Birdcage KPIs, Account A"})]})]
+                (is (=? {:channels [{:details {:subject "Birdcage KPIs, Account A"}}]}
+                        (mt/user-http-request :rasta :get 200 (str "pulse/" pulse-id))))))))))))
 
 (deftest create-test
   (testing "POST /api/pulse"
     (testing "legacy pulse"
       (mt/with-temp [:model/Card card-1 {}
                      :model/Card card-2 {}
-                     :model/Dashboard _ {:name "Birdcage KPIs"}
-                     :model/Collection collection {}]
-        (api.card-test/with-cards-in-readable-collection! [card-1 card-2]
-          (mt/with-model-cleanup [:model/Pulse]
-            (is (= (merge
-                    pulse-defaults
-                    {:name          "A Pulse"
-                     :creator_id    (mt/user->id :rasta)
-                     :creator       (user-details (mt/fetch-user :rasta))
-                     :cards         (for [card [card-1 card-2]]
-                                      (assoc (pulse-card-details card)
-                                             :collection_id true))
-                     :channels      [(merge pulse-channel-defaults
-                                            {:channel_type  "email"
-                                             :schedule_type "daily"
-                                             :schedule_hour 12
-                                             :recipients    []})]
-                     :collection_id true})
-                   (-> (mt/user-http-request :rasta :post 200 "pulse" {:name          "A Pulse"
-                                                                       :collection_id (u/the-id collection)
-                                                                       :cards         [{:id                (u/the-id card-1)
-                                                                                        :include_csv       false
-                                                                                        :include_xls       false
-                                                                                        :dashboard_card_id nil}
-                                                                                       {:id                (u/the-id card-2)
-                                                                                        :include_csv       false
-                                                                                        :include_xls       false
-                                                                                        :dashboard_card_id nil}]
-                                                                       :channels      [daily-email-channel]
-                                                                       :skip_if_empty false})
-                       pulse-response
-                       (update :channels remove-extra-channels-fields))))))))
-    (testing "dashboard subscriptions"
-      (mt/with-temp
-        [:model/Collection collection                   {}
-         :model/Card       card-1                       {}
-         :model/Card       card-2                       {}
-         :model/Dashboard  {permitted-dashboard-id :id} {:name "Birdcage KPIs" :collection_id (u/the-id collection)}
-         :model/Dashboard  {blocked-dashboard-id :id}   {:name "[redacted]"}]
-        (let [filter-params [{:id "abc123" :name "test" :type "date"}]
-              payload       {:name          "A Pulse"
-                             :collection_id (u/the-id collection)
-                             :cards         [{:id                (u/the-id card-1)
-                                              :include_csv       false
-                                              :include_xls       false
-                                              :dashboard_card_id nil}
-                                             {:id                (u/the-id card-2)
-                                              :include_csv       false
-                                              :include_xls       false
-                                              :dashboard_card_id nil}]
-                             :channels      [daily-email-channel]
-                             :dashboard_id  permitted-dashboard-id
-                             :skip_if_empty false
-                             :parameters filter-params}]
-          (api.card-test/with-cards-in-readable-collection! [card-1 card-2]
-            (mt/with-model-cleanup [:model/Pulse]
-              (testing "successful creation"
+                     :model/Dashboard _ {:name "Birdcage KPIs"}]
+        (mt/with-model-cleanup [:model/Collection]
+          (let [[collection] (collection/create-collections! [{:name (mt/random-name)}])]
+            (api.card-test/with-cards-in-readable-collection! [card-1 card-2]
+              (mt/with-model-cleanup [:model/Pulse]
                 (is (= (merge
                         pulse-defaults
                         {:name          "A Pulse"
@@ -335,15 +286,69 @@
                                                  :schedule_type "daily"
                                                  :schedule_hour 12
                                                  :recipients    []})]
-                         :collection_id true
-                         :dashboard_id  permitted-dashboard-id
-                         :parameters  filter-params})
-                       (-> (mt/user-http-request :rasta :post 200 "pulse" payload)
+                         :collection_id true})
+                       (-> (mt/user-http-request :rasta :post 200 "pulse" {:name          "A Pulse"
+                                                                           :collection_id (u/the-id collection)
+                                                                           :cards         [{:id                (u/the-id card-1)
+                                                                                            :include_csv       false
+                                                                                            :include_xls       false
+                                                                                            :dashboard_card_id nil}
+                                                                                           {:id                (u/the-id card-2)
+                                                                                            :include_csv       false
+                                                                                            :include_xls       false
+                                                                                            :dashboard_card_id nil}]
+                                                                           :channels      [daily-email-channel]
+                                                                           :skip_if_empty false})
                            pulse-response
-                           (update :channels remove-extra-channels-fields)))))
-              (testing "authorization"
-                (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :post 403 "pulse" (assoc payload :dashboard_id blocked-dashboard-id))))))))))))
+                           (update :channels remove-extra-channels-fields))))))))))
+    (testing "dashboard subscriptions"
+      (mt/with-model-cleanup [:model/Collection]
+        (let [[collection] (collection/create-collections! [{:name (mt/random-name)}])]
+          (mt/with-temp
+            [:model/Card       card-1                       {}
+             :model/Card       card-2                       {}
+             :model/Dashboard  {permitted-dashboard-id :id} {:name "Birdcage KPIs" :collection_id (u/the-id collection)}
+             :model/Dashboard  {blocked-dashboard-id :id}   {:name "[redacted]"}]
+            (let [filter-params [{:id "abc123" :name "test" :type "date"}]
+                  payload       {:name          "A Pulse"
+                                 :collection_id (u/the-id collection)
+                                 :cards         [{:id                (u/the-id card-1)
+                                                  :include_csv       false
+                                                  :include_xls       false
+                                                  :dashboard_card_id nil}
+                                                 {:id                (u/the-id card-2)
+                                                  :include_csv       false
+                                                  :include_xls       false
+                                                  :dashboard_card_id nil}]
+                                 :channels      [daily-email-channel]
+                                 :dashboard_id  permitted-dashboard-id
+                                 :skip_if_empty false
+                                 :parameters filter-params}]
+              (api.card-test/with-cards-in-readable-collection! [card-1 card-2]
+                (mt/with-model-cleanup [:model/Pulse]
+                  (testing "successful creation"
+                    (is (= (merge
+                            pulse-defaults
+                            {:name          "A Pulse"
+                             :creator_id    (mt/user->id :rasta)
+                             :creator       (user-details (mt/fetch-user :rasta))
+                             :cards         (for [card [card-1 card-2]]
+                                              (assoc (pulse-card-details card)
+                                                     :collection_id true))
+                             :channels      [(merge pulse-channel-defaults
+                                                    {:channel_type  "email"
+                                                     :schedule_type "daily"
+                                                     :schedule_hour 12
+                                                     :recipients    []})]
+                             :collection_id true
+                             :dashboard_id  permitted-dashboard-id
+                             :parameters  filter-params})
+                           (-> (mt/user-http-request :rasta :post 200 "pulse" payload)
+                               pulse-response
+                               (update :channels remove-extra-channels-fields)))))
+                  (testing "authorization"
+                    (is (= "You don't have permissions to do that."
+                           (mt/user-http-request :rasta :post 403 "pulse" (assoc payload :dashboard_id blocked-dashboard-id))))))))))))))
 
 (defn- plain-card-ref [card]
   {:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil})
@@ -510,12 +515,13 @@
                       (is (= nil
                              (:errors response))))))]
           (let [pulse-name (mt/random-name)]
-            (mt/with-temp [:model/Card       card {}
-                           :model/Collection collection] {}
-              (api.card-test/with-cards-in-readable-collection! [card]
-                (create-pulse! 200 pulse-name card collection)
-                (is (= {:collection_id (u/the-id collection), :collection_position 1}
-                       (mt/derecordize (t2/select-one [:model/Pulse :collection_id :collection_position] :name pulse-name)))))))
+            (mt/with-temp [:model/Card card {}]
+              (mt/with-model-cleanup [:model/Collection]
+                (let [[collection] (collection/create-collections! [{:name (mt/random-name)}])]
+                  (api.card-test/with-cards-in-readable-collection! [card]
+                    (create-pulse! 200 pulse-name card collection)
+                    (is (= {:collection_id (u/the-id collection), :collection_position 1}
+                           (mt/derecordize (t2/select-one [:model/Pulse :collection_id :collection_position] :name pulse-name)))))))))
           (testing "...but not if we don't have permissions for the Collection"
             (mt/with-non-admin-groups-no-root-collection-perms
               (let [pulse-name (mt/random-name)]
@@ -1119,31 +1125,32 @@
     (doseq [{:keys [message action expected]} move-test-definitions
             :let                              [expected (if (map? expected) [expected] expected)]]
       (testing (str "\n" message)
-        (mt/with-temp [:model/Collection collection-1 {}
-                       :model/Collection collection-2 {}
-                       :model/Card       card-1  {}]
-          (api.card-test/with-ordered-items collection-1 [:model/Pulse a
-                                                          :model/Pulse b
-                                                          :model/Pulse c
-                                                          :model/Pulse d]
-            (api.card-test/with-ordered-items collection-2 [:model/Card      e
-                                                            :model/Card      f
-                                                            :model/Dashboard g
-                                                            :model/Dashboard h]
-              (let [[action & args] action
-                    context         {:pulse      {:a a, :b b, :c c, :d d, :e e, :f f, :g g, :h h}
-                                     :collection {1 collection-1, 2 collection-2}
-                                     :card       {1 card-1}}]
-                (testing (str "\n" (pr-str (cons action args)))
-                  (apply move-pulse-test-action action context args)))
-              (testing "\nPositions after actions for"
-                (testing "Collection 1"
-                  (is (= (first expected)
-                         (api.card-test/get-name->collection-position :rasta (u/the-id collection-1)))))
-                (when (second expected)
-                  (testing "Collection 2"
-                    (is (= (second expected)
-                           (api.card-test/get-name->collection-position :rasta (u/the-id collection-2))))))))))))))
+        (mt/with-model-cleanup [:model/Collection]
+          (let [[collection-1 collection-2] (collection/create-collections! [{:name (mt/random-name)}
+                                                                             {:name (mt/random-name)}])]
+            (mt/with-temp [:model/Card card-1 {}]
+              (api.card-test/with-ordered-items collection-1 [:model/Pulse a
+                                                              :model/Pulse b
+                                                              :model/Pulse c
+                                                              :model/Pulse d]
+                (api.card-test/with-ordered-items collection-2 [:model/Card      e
+                                                                :model/Card      f
+                                                                :model/Dashboard g
+                                                                :model/Dashboard h]
+                  (let [[action & args] action
+                        context         {:pulse      {:a a, :b b, :c c, :d d, :e e, :f f, :g g, :h h}
+                                         :collection {1 collection-1, 2 collection-2}
+                                         :card       {1 card-1}}]
+                    (testing (str "\n" (pr-str (cons action args)))
+                      (apply move-pulse-test-action action context args)))
+                  (testing "\nPositions after actions for"
+                    (testing "Collection 1"
+                      (is (= (first expected)
+                             (api.card-test/get-name->collection-position :rasta (u/the-id collection-1)))))
+                    (when (second expected)
+                      (testing "Collection 2"
+                        (is (= (second expected)
+                               (api.card-test/get-name->collection-position :rasta (u/the-id collection-2))))))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 GET /api/pulse                                                 |
@@ -1215,7 +1222,7 @@
           (let [result (-> (mt/user-http-request :rasta :get 200 "pulse?creator_or_recipient=true")
                            (filter-pulse-results :id #{pulse-3-id})
                            first)]
-            (is (nil? (:cards result)))
+            (is (= [] (:cards result)))
             (is (nil? (get-in result [:channels 0 :recipients])))))))
     (testing "should not return alerts"
       (mt/with-temp [:model/Pulse pulse-1 {:name "ABCDEF"}
@@ -1247,6 +1254,77 @@
                      :model/Pulse     {pulse-id :id} {:dashboard_id dashboard-id}]
         (is (= [] (-> (mt/user-http-request :rasta :get 200 "pulse")
                       (filter-pulse-results :id #{pulse-id}))))))))
+
+(defn- insert-subscriptions!
+  "Insert `n` subscriptions of the Dashboard `dashboard-id` created by `creator-id`, each with a Card and a channel
+  that has `recipient-id` as a recipient when given, and return their ids."
+  [n creator-id dashboard-id card-id & [recipient-id]]
+  (let [ids (t2/insert-returning-pks! :model/Pulse
+                                      (for [_ (range n)]
+                                        (merge (mt/with-temp-defaults :model/Pulse)
+                                               {:creator_id   creator-id
+                                                :dashboard_id dashboard-id})))]
+    (t2/insert! :model/PulseCard (map-indexed (fn [i id] (merge (mt/with-temp-defaults :model/PulseCard)
+                                                                {:pulse_id id :card_id card-id :position i}))
+                                              ids))
+    (let [channel-ids (t2/insert-returning-pks! :model/PulseChannel
+                                                (map #(merge (mt/with-temp-defaults :model/PulseChannel) {:pulse_id %}) ids))]
+      (when recipient-id
+        (t2/insert! :model/PulseChannelRecipient (map (fn [channel-id] {:pulse_channel_id channel-id :user_id recipient-id})
+                                                      channel-ids))))
+    ids))
+
+(deftest list-statement-count-test
+  (testing "GET /api/pulse runs as many statements for 10 subscriptions as for 40, and lists what the user can write"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Pulse]
+        (mt/with-temp [:model/Collection {collection-id :id} {}
+                       :model/Dashboard  {dashboard-id :id} {:collection_id collection-id}
+                       :model/Card       {card-id :id} {:collection_id collection-id}]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+          (let [others   (insert-subscriptions! 3 (mt/user->id :crowberto) dashboard-id card-id)
+                list-ids #(set (map :id (mt/user-http-request :rasta :get 200 "pulse")))
+                count-of (fn [n]
+                           (let [own (insert-subscriptions! n (mt/user->id :rasta) dashboard-id card-id)]
+                             (list-ids)
+                             {:own   own
+                              :count (events.tu/real-statement-count! list-ids)}))
+                small    (count-of 10)
+                large    (count-of 40)]
+            (is (= (:count small) (:count large)))
+            (let [listed (list-ids)]
+              (is (every? listed (concat (:own small) (:own large))))
+              (is (not-any? listed others)))))))))
+
+(deftest list-as-recipient-statement-count-test
+  (testing "GET /api/pulse?creator_or_recipient=true runs as many statements for 10 subscriptions as for 40, and strips
+            the cards and recipients of those in a Collection the user cannot read"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Pulse]
+        (mt/with-temp [:model/Collection {readable-id :id} {}
+                       :model/Collection {hidden-id :id} {}
+                       :model/Dashboard  {readable-dashboard-id :id} {:collection_id readable-id}
+                       :model/Dashboard  {hidden-dashboard-id :id} {:collection_id hidden-id}
+                       :model/Card       {card-id :id} {:collection_id readable-id}]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) readable-id)
+          (let [rasta-id (mt/user->id :rasta)
+                list!    #(mt/user-http-request :rasta :get 200 "pulse?creator_or_recipient=true")
+                count-of (fn [n]
+                           (let [readable (insert-subscriptions! n (mt/user->id :crowberto) readable-dashboard-id card-id rasta-id)
+                                 hidden   (insert-subscriptions! n (mt/user->id :crowberto) hidden-dashboard-id card-id rasta-id)]
+                             (list!)
+                             {:readable readable
+                              :hidden   hidden
+                              :count    (events.tu/real-statement-count! list!)}))
+                small    (count-of 10)
+                large    (count-of 40)
+                by-id    (m/index-by :id (list!))]
+            (is (= (:count small) (:count large)))
+            (doseq [id (concat (:readable small) (:readable large))]
+              (is (seq (get-in by-id [id :cards]))))
+            (doseq [id (concat (:hidden small) (:hidden large))]
+              (is (= [] (get-in by-id [id :cards])))
+              (is (nil? (get-in by-id [id :channels 0 :recipients]))))))))))
 
 (deftest get-pulse-test
   (testing "GET /api/pulse/:id"

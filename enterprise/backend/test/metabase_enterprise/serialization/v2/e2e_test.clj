@@ -18,12 +18,14 @@
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase-enterprise.serialization.v2.storage.files :as storage.files]
    [metabase.collections.core :as collections]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.model-persistence.settings :as model-persistence.settings]
    [metabase.queries.card-schema :as card-schema]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.search.core :as search]
@@ -33,6 +35,7 @@
    [metabase.sync.sync :as sync.sync]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
+   [metabase.users.models.user]
    [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml]
    [metabase.warehouses.serialization :as warehouses.serialization]
@@ -43,6 +46,8 @@
    (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.users.models.user/keep-me)
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
 ;; Many tests here rely on the H2 test-data database via Card defaults, so we keep the H2 guard
@@ -385,79 +390,82 @@
                                           :db_id (:id db1s)}
                :model/Field      field1s {:name     (mt/random-name)
                                           :table_id (:id table1s)}
-               :model/Card       card1s  {:name (mt/random-name)}
-               :model/Card       card2s  {:name          "Card with parameter"
-                                          :database_id   (:id db1s)
-                                          :table_id      (:id table1s)
-                                          :collection_id (:id coll1s)
-                                          :parameters    [{:id                   "abc"
-                                                           :type                 "category"
-                                                           :name                 "CATEGORY"
-                                                           :values_source_type   "card"
-                                                           ;; card_id is in a different collection with dashboard's collection
-                                                           :values_source_config {:card_id     (:id card1s)
-                                                                                  :value_field [:field (:id field1s) nil]}}]}
-               :model/Dashboard  dash1s {:name          (mt/random-name)
-                                         :collection_id (:id coll1s)
-                                         :parameters    [{:id                   "abc"
-                                                          :type                 "category"
-                                                          :name                 "CATEGORY"
-                                                          :values_source_type   "card"
-                                                          ;; card_id is in a different collection with dashboard's collection
-                                                          :values_source_config {:card_id     (:id card1s)
-                                                                                 :value_field [:field (:id field1s) nil]}}]}]
-              (testing "make sure we insert ParameterCard when insert Dashboard/Card"
-                ;; one for parameter on card card2s, and one for parameter on dashboard dash1s
-                (is (= 2 (t2/count :model/ParameterCard))))
-              (testing "extract and store"
-                (let [extraction (into [] (extract/extract {:include-h2? true}))]
-                  (is (= [{:id                   "abc",
-                           :name                 "CATEGORY",
-                           :type                 :category,
-                           :values_source_config {:card_id     (:entity_id card1s),
-                                                  :value_field [:field
-                                                                ["my-db" nil "CUSTOMERS" (:name field1s)]
-                                                                nil]},
-                           :values_source_type   :card}]
-                         (:parameters (first (by-model extraction "Dashboard")))))
-                  ;; card1s has no parameters, card2s does.
-                  (is (= #{[]
-                           [{:id                   "abc",
-                             :name                 "CATEGORY",
-                             :type                 :category,
-                             :values_source_config {:card_id     (:entity_id card1s),
-                                                    :value_field [:field
-                                                                  ["my-db" nil "CUSTOMERS" (:name field1s)]
-                                                                  nil]},
-                             :values_source_type   :card}]}
-                         (set (map :parameters (by-model extraction "Card")))))
-                  (storage/store! (seq extraction) (storage.files/file-writer dump-dir))))
-              (testing "ingest and load"
-                (ts/with-db dest-db
-                  ;; ingest
-                  (testing "doing ingestion"
-                    (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))
-                        "successful"))
-                  (let [dash1d  (t2/select-one :model/Dashboard :name (:name dash1s))
-                        card1d  (t2/select-one :model/Card :name (:name card1s))
-                        card2d  (t2/select-one :model/Card :name (:name card2s))
-                        field1d (t2/select-one :model/Field :name (:name field1s))]
-                    (testing "parameter on dashboard is loaded correctly"
-                      (is (= {:card_id     (:id card1d),
-                              :value_field [:field (:id field1d) nil]}
-                             (-> dash1d
-                                 :parameters
-                                 first
-                                 :values_source_config)))
-                      (is (some? (t2/select-one :model/ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
-                    (testing "parameter on card is loaded correctly"
-                      (is (= {:card_id     (:id card1d),
-                              :value_field [:field (:id field1d) nil]}
-                             (-> card2d
-                                 :parameters
-                                 first
-                                 :values_source_config)))
-                      (is (some? (t2/select-one :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
+               :model/Card       card1s  {:name (mt/random-name)}]
+              (mt/with-model-cleanup [:model/Card :model/Dashboard]
+                (let [card2s (first (queries.card/create-cards! [(merge (mt/with-temp-defaults :model/Card)
+                                                                        {:name          "Card with parameter"
+                                                                         :database_id   (:id db1s)
+                                                                         :table_id      (:id table1s)
+                                                                         :collection_id (:id coll1s)
+                                                                         :parameters    [{:id                   "abc"
+                                                                                          :type                 :category
+                                                                                          :name                 "CATEGORY"
+                                                                                          :values_source_type   :card
+                                                                                          ;; card_id is in a different collection with dashboard's collection
+                                                                                          :values_source_config {:card_id     (:id card1s)
+                                                                                                                 :value_field [:field (:id field1s) nil]}}]})]))
+                      dash1s (first (dashboard/create-dashboards! [(merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at)
+                                                                          {:name          (mt/random-name)
+                                                                           :collection_id (:id coll1s)
+                                                                           :parameters    [{:id                   "abc"
+                                                                                            :type                 :category
+                                                                                            :name                 "CATEGORY"
+                                                                                            :values_source_type   :card
+                                                                                            ;; card_id is in a different collection with dashboard's collection
+                                                                                            :values_source_config {:card_id     (:id card1s)
+                                                                                                                   :value_field [:field (:id field1s) nil]}}]})]))]
+                  (testing "make sure we insert ParameterCard when insert Dashboard/Card"
+                    ;; one for parameter on card card2s, and one for parameter on dashboard dash1s
+                    (is (= 2 (t2/count :model/ParameterCard))))
+                  (testing "extract and store"
+                    (let [extraction (into [] (extract/extract {:include-h2? true}))]
+                      (is (= [{:id                   "abc",
+                               :name                 "CATEGORY",
+                               :type                 :category,
+                               :values_source_config {:card_id     (:entity_id card1s),
+                                                      :value_field [:field
+                                                                    ["my-db" nil "CUSTOMERS" (:name field1s)]
+                                                                    nil]},
+                               :values_source_type   :card}]
+                             (:parameters (first (by-model extraction "Dashboard")))))
+                      ;; card1s has no parameters, card2s does.
+                      (is (= #{[]
+                               [{:id                   "abc",
+                                 :name                 "CATEGORY",
+                                 :type                 :category,
+                                 :values_source_config {:card_id     (:entity_id card1s),
+                                                        :value_field [:field
+                                                                      ["my-db" nil "CUSTOMERS" (:name field1s)]
+                                                                      nil]},
+                                 :values_source_type   :card}]}
+                             (set (map :parameters (by-model extraction "Card")))))
+                      (storage/store! (seq extraction) (storage.files/file-writer dump-dir))))
+                  (testing "ingest and load"
+                    (ts/with-db dest-db
+                      ;; ingest
+                      (testing "doing ingestion"
+                        (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))
+                            "successful"))
+                      (let [dash1d  (t2/select-one :model/Dashboard :name (:name dash1s))
+                            card1d  (t2/select-one :model/Card :name (:name card1s))
+                            card2d  (t2/select-one :model/Card :name (:name card2s))
+                            field1d (t2/select-one :model/Field :name (:name field1s))]
+                        (testing "parameter on dashboard is loaded correctly"
+                          (is (= {:card_id     (:id card1d),
+                                  :value_field [:field (:id field1d) nil]}
+                                 (-> dash1d
+                                     :parameters
+                                     first
+                                     :values_source_config)))
+                          (is (some? (t2/select-one :model/ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+                        (testing "parameter on card is loaded correctly"
+                          (is (= {:card_id     (:id card1d),
+                                  :value_field [:field (:id field1d) nil]}
+                                 (-> card2d
+                                     :parameters
+                                     first
+                                     :values_source_config)))
+                          (is (some? (t2/select-one :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))))
 
 (deftest dashcards-with-link-cards-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -1302,6 +1310,24 @@
           (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
           (is (t2/exists? :model/Card :name "Preview Card")))))))
 
+(deftest table-transform-id-yaml-round-trip-test
+  (testing "Tables export without transform_id, and older exports that still carry it load"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db (ts/create! :model/Database :name "my-db" :engine :h2)]
+            (ts/create! :model/Table :name "customers" :schema "PUBLIC" :db_id (:id db))
+            (storage/store! (into [] (extract/extract {:include-h2? true :no-settings true}))
+                            (storage.files/file-writer dump-dir))))
+        (let [^File file (m/find-first #(str/ends-with? (.getName ^File %) "customers.yaml") (file-seq (io/file dump-dir)))
+              exported   (yaml/from-file file)]
+          (is (=? {:name "customers"} exported))
+          (is (not (contains? exported :transform_id)))
+          (dump/spit-yaml! file (assoc exported :transform_id "TransformEntityId0001")))
+        (ts/with-db dest-db
+          (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+          (is (t2/exists? :model/Table :name "customers")))))))
+
 (defn- create-native-transform!
   "Create, in the current app DB, a Transform named `transform-name` in the collection `collection-id`, by the User
   `creator`, that selects `1 AS ID` from Database `db` into the table `PUBLIC`.`target-name`."
@@ -1389,9 +1415,9 @@
         (ts/with-db dest-db
           (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
           (is (= #{"Library" "Data" "Metrics"}
-                 (t2/select-fn-set :name :collection :entity_id [:in ["librarylibrarylibrary"
-                                                                      "librarylibrarydatadat"
-                                                                      "librarylibrarymetrics"]]))))))))
+                 (t2/select-fn-set :name (t2/table-name :model/Collection) :entity_id [:in ["librarylibrarylibrary"
+                                                                                            "librarylibrarydatadat"
+                                                                                            "librarylibrarymetrics"]]))))))))
 
 (deftest translated-library-collection-name-import-test
   (testing "Library collection exported with its translated name loads with its stored name"
@@ -1406,7 +1432,7 @@
         (ts/with-db dest-db
           (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
           (is (= "Library"
-                 (t2/select-one-fn :name :collection :entity_id "librarylibrarylibrary"))))))))
+                 (t2/select-one-fn :name (t2/table-name :model/Collection) :entity_id "librarylibrarylibrary"))))))))
 
 (deftest transform-test-expectations-round-trip-test
   (testing "A transform test's expectations come back from an import as validated records, payload intact"
@@ -1671,8 +1697,7 @@
             (is (zero? (t2/count :model/AuditLog :model "CardTest")))
             (testing "control: an edit through the write function writes both"
               (mt/with-current-user (t2/select-one-pk :model/User :email "creator@example.com")
-                (data-testing.models.card-test/update-card-test!
-                 (t2/select-one-pk :model/CardTest :name "Revenue ignores refunds") {:description "Edited"}))
+                (data-testing.models.card-test/update-card-tests! [{:id (t2/select-one-pk :model/CardTest :name "Revenue ignores refunds") :description "Edited"}]))
               (is (= 1 (t2/count :model/Revision :model "CardTest")))
               (is (= 1 (t2/count :model/AuditLog :model "CardTest"))))))))))
 
@@ -1802,17 +1827,17 @@
           (load!))))
     {:revisions     (frequencies (map (juxt :model :is_creation :user_id)
                                       (t2/query {:select [:model :is_creation :user_id]
-                                                 :from   [:revision]
+                                                 :from   [(t2/table-name :model/Revision)]
                                                  :where  [:in :model ["Card" "Dashboard"]]})))
      :audit         (frequencies (map (juxt :topic :user_id)
                                       (t2/query {:select [:topic :user_id]
-                                                 :from   [:audit_log]
+                                                 :from   [(t2/table-name :model/AuditLog)]
                                                  :where  [:in :model ["Card" "Dashboard"]]})))
      :persisted     (set (t2/select-fn-vec :card_id :model/PersistedInfo))
      :syncs         @syncs}))
 
 (deftest import-by-user-records-as-user-edits-test
-  (testing "An import started by a user records its Cards and Dashboards as that user's creations, and starts no sync"
+  (testing "An import started by a user records its Cards and Dashboards as that user's creations, a Dashboard's parts as its update, and starts no sync"
     (mt/with-premium-features #{:audit-app}
       (ts/with-random-dump-dir [dump-dir "serdesv2-"]
         (ts/with-dbs [source-db dest-db]
@@ -1824,8 +1849,9 @@
                     _        (ts/create! :model/Database :name "my-db" :settings {:persist-models-enabled true})
                     records  (records-of-import! dump-dir importer)
                     model-id (t2/select-one-pk :model/Card :name "Revenue model")]
-                (is (= {["Card" true importer]      3
-                        ["Dashboard" true importer] 1}
+                (is (= {["Card" true importer]       3
+                        ["Dashboard" true importer]  1
+                        ["Dashboard" false importer] 1}
                        (:revisions records)))
                 (is (= {["card-create" importer]      3
                         ["dashboard-create" importer] 1}
@@ -1998,7 +2024,8 @@
                                    :creator_id   (:id creator)
                                    :name         "Elsewhere is tested"
                                    :expectations segment-test-expectations)
-              _        (t2/update! :model/Table :id (:table_id segment) {:is_published true :collection_id (:id library)})
+              _        (ts/create! :model/TableUserSettings
+                                   :table_id (:table_id segment) :is_published true :collection_id (:id library))
               exported (fn [opts model k]
                          (into #{}
                                (comp (filter #(= model (-> % :serdes/meta last :model)))

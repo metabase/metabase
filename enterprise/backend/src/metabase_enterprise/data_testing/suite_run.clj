@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.models.test-suite-run :as data-testing.models.test-suite-run]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
@@ -11,29 +12,39 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
+
+(defn- runnable?
+  "Whether `answer`, the current user's permission to run a test or what checking it threw, allows the run, rethrowing
+  what the check threw."
+  [answer]
+  (if (instance? Throwable answer)
+    (throw answer)
+    (boolean answer)))
 
 (mu/defn- run-member :- ::data-testing.schema/test-suite-run.member
   "Run `member` of a suite, given `saved-test`, the test it names, or nil, and return its outcome. An exception from
   loading the test's subject, checking the user's permission, or the run itself is the member's `:error`."
   [{:keys [test_type test_entity_id position]} :- ::data-testing.schema/test-suite.member
-   saved-test                                  :- [:maybe ::data-testing.schema/saved-test]]
+   saved-test                                  :- [:maybe ::data-testing.schema/saved-test]
+   runnable                                    :- [:maybe [:or :boolean (ms/InstanceOfClass Throwable)]]]
   (let [outcome {:test_type test_type :test_entity_id test_entity_id :position position}]
     (cond
       (nil? saved-test)               (assoc outcome :status :missing)
       (not (mi/can-read? saved-test)) (assoc outcome :status :forbidden)
       :else
-      (let [{:keys [subject can-run?]} (data-testing.test-type/spec test_type)
-            outcome                    (assoc outcome :test_id (:id saved-test) :name (:name saved-test))
-            run-id                     (volatile! nil)
-            with-run                   #(cond-> % @run-id (assoc :data_test_run_id @run-id))]
+      (let [{:keys [subject]} (data-testing.test-type/spec test_type)
+            outcome           (assoc outcome :test_id (:id saved-test) :name (:name saved-test))
+            run-id            (volatile! nil)
+            with-run          #(cond-> % @run-id (assoc :data_test_run_id @run-id))]
         (try
           (let [subject (subject saved-test)]
             (cond
               (nil? subject)              (assoc outcome :status :missing)
-              (not (can-run? saved-test)) (assoc outcome :status :forbidden)
+              (not (runnable? runnable))  (assoc outcome :status :forbidden)
               :else
               (let [result (data-testing.runner/run-test! test_type subject saved-test {:on-start #(vreset! run-id %)})]
                 (with-run (assoc outcome :status (:status result) :result result)))))
@@ -63,12 +74,15 @@
         {run-id :id} (data-testing.run-tracking/start-suite-run! (:id suite) api/*current-user-id*)
         finished?    (volatile! false)]
     (try
-      (let [outcomes (mapv #(run-member % (get tests (data-testing.suite/member-ref %))) members)
+      (let [runnable (data-testing.suite/runnable-answers tests)
+            outcomes (mapv #(let [ref (data-testing.suite/member-ref %)]
+                              (run-member % (get tests ref) (get runnable ref)))
+                           members)
             stored   (mapv stored-member outcomes)
             status   (if (every? #(= :passed (:status %)) outcomes) :passed :failed)
             status   (if (pos? (data-testing.run-tracking/finish-suite-run! run-id status stored))
                        status
-                       (do (data-testing.db/add-members-to-ended-suite-run! run-id stored)
+                       (do (data-testing.models.test-suite-run/add-members-to-ended-test-suite-run! run-id stored)
                            :timeout))]
         (vreset! finished? true)
         {:id       run-id

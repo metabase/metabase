@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.run-tracking.core :as rt]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform-run-cancelation :as cancel]
    [metabase.transforms.models.util :as transforms.models.u]
@@ -40,29 +41,19 @@
   {:status     mi/transform-keyword
    :run_method mi/transform-keyword})
 
-(t2/define-before-insert :model/TransformRun
-  [{:keys [transform_id] :as run}]
-  (if-let [transform (some-> transform_id transforms.db/transform-snapshot)]
-    (assoc run
-           :transform_name      (:name transform)
-           :transform_entity_id (:entity_id transform)
-           :metered_as          (premium-features/transform-metered-as (:source_type transform)))
-    run))
-
 ;; a run is only readable if its transform is; orphaned runs (transform deleted) are superuser-only
-(methodical/defmethod t2/simple-hydrate [:model/TransformRun :can_read]
-  [_model k instance]
-  (vary-meta instance assoc k
-             (boolean
-              (or api/*is-superuser?*
-                  (boolean (when-let [transform-id (:transform_id instance)]
-                             (some-> (transforms.db/transform transform-id) (t2/hydrate :can_read) mi/can-read?)))))))
-
-(mi/define-simple-hydration-method add-transform-runs
-  :transform-runs
-  "Add transform-runs for a transform. Must have :id field."
-  [transform]
-  (transforms.db/runs-for-transform (:id transform)))
+(methodical/defmethod t2/batched-hydrate [:model/TransformRun :can_read]
+  "Whether the current user can read each of `runs`: a superuser any, others those of a Transform they read, the
+  Transforms loaded and answered together."
+  [_model k runs]
+  (let [transforms (when-not api/*is-superuser?*
+                     (u/index-by :id (t2/hydrate (transforms.db/transforms
+                                                  (into [] (comp (remove nil?) (keep :transform_id) (distinct)) runs))
+                                                 :can_read)))]
+    (for [run runs]
+      (when run
+        (vary-meta run assoc k (boolean (or api/*is-superuser?*
+                                            (some-> (get transforms (:transform_id run)) mi/can-read?))))))))
 
 (mr/def ::canceled-run
   "A TransformRun force-canceled by [[cancel-old-canceling-runs!]], with the time its cancelation was requested."
@@ -95,156 +86,6 @@
   (when (seq transform-ids)
     (into [] (map (comp t2.realize/realize #(dissoc % :rn)))
           (transforms.db/latest-runs-reducible transform-ids))))
-
-(mu/defn start-run! :- ::transforms.schema/transform-run
-  "Start a run. If `user_id` is provided in properties, it will be stored with the run
-   and used for attribution in the audit log (avoiding 'External user' for scheduled runs).
-   The insert hook also captures `transform_name`, `transform_entity_id` and `metered_as` for historical reference."
-  ([transform-id :- ::lib.schema.id/transform]
-   (start-run! transform-id {}))
-  ([transform-id :- ::lib.schema.id/transform
-    properties   :- ::transforms.schema/transform-run.update]
-   (let [run (transforms.db/insert-run! (assoc properties
-                                               :transform_id transform-id
-                                               :status :started
-                                               :is_active true))]
-     ;; Pass user_id to the event so audit log properly attributes the run
-     (events/publish-event! :event/transform-run-start
-                            (cond-> {:object run}
-                              (:user_id run) (assoc :user-id (:user_id run))))
-     run)))
-
-(mu/defn succeed-started-run! :- :int
-  "Mark a started run as successfully completed."
-  ([run-id :- ms/PositiveInt]
-   (succeed-started-run! run-id {}))
-  ([run-id     :- ms/PositiveInt
-    properties :- ::transforms.schema/transform-run.update]
-   (u/prog1 (transforms.db/finish-active-run! run-id
-                                              (merge properties
-                                                     {:status    :succeeded
-                                                      :is_active nil}))
-     (cancel/delete-cancelation! run-id))))
-
-(mu/defn fail-started-run! :- :int
-  "Mark the started active run as failed and inactive."
-  [run-id     :- ms/PositiveInt
-   properties :- ::transforms.schema/transform-run.update]
-  (u/prog1 (transforms.db/finish-active-run! run-id
-                                             (merge properties
-                                                    {:status    :failed
-                                                     :is_active nil}))
-    (cancel/delete-cancelation! run-id)))
-
-(mu/defn cancel-run! :- :int
-  "Cancel a started run."
-  ([run-id :- ms/PositiveInt]
-   (cancel-run! run-id {:message "Canceled by user"}))
-  ([run-id     :- ms/PositiveInt
-    properties :- ::transforms.schema/transform-run.update]
-   (u/prog1 (transforms.db/finish-active-run! run-id
-                                              (merge properties
-                                                     {:status    :canceled
-                                                      :is_active nil}))
-     (cancel/delete-cancelation! run-id))))
-
-(mu/defn- publish-timeout-event! :- :nil
-  "Publish `:event/transform-run-timeout` for `run`. Wrapped so that audit-log handler
-  failures don't bubble into the caller's timeout flow."
-  [run :- ::transforms.schema/transform-run]
-  (try
-    (events/publish-event! :event/transform-run-timeout
-                           (cond-> {:object run}
-                             (:user_id run) (assoc :user-id (:user_id run))))
-    (catch Throwable t
-      (log/warnf "Failed to publish transform-run-timeout event for run %s: %s" (pr-str (:id run)) (ex-message t))))
-  nil)
-
-(mu/defn timeout-run! :- :int
-  "Mark a started run as timed out."
-  ([run-id :- ms/PositiveInt]
-   (timeout-run! run-id {}))
-  ([run-id     :- ms/PositiveInt
-    properties :- ::transforms.schema/transform-run.update]
-   (u/prog1 (transforms.db/finish-active-run! run-id
-                                              (merge properties
-                                                     {:message   "Timed out"
-                                                      :status    :timeout
-                                                      :is_active nil}))
-     (cancel/delete-cancelation! run-id)
-     (when (pos? <>)
-       (analytics/inc! :metabase-transforms/timeouts-total {:type "transform"})
-       (when-let [run (transforms.db/run run-id)]
-         (publish-timeout-event! run))))))
-
-(mu/defn- reap-transform-runs! :- [:maybe [:sequential ::transforms.schema/transform-run]]
-  "Reap active transform runs by `stale-column` into a timeout carrying `message`, publishing a timeout
-  event per run. See [[metabase.run-tracking.core/reap-orphaned!]]."
-  [stale-column :- [:enum :start_time :last_heartbeat]
-   age          :- ms/PositiveInt
-   unit         :- :keyword
-   message      :- :string]
-  (let [end-time (OffsetDateTime/now ZoneOffset/UTC)
-        reaped   (rt/reap-orphaned!
-                  {:model    :model/TransformRun
-                   :active   [:is_active true]
-                   :stale    [{:column stale-column :age age :unit unit}]
-                   :terminal {:status "timeout" :end_time :%now :is_active nil :message message}
-                   :metrics  {:total-metric   :metabase-transforms/timeouts-total
-                              :latency-metric :metabase-transforms/timeout-detection-latency-ms
-                              :tags           {:type "transform"}
-                              :latency-column stale-column
-                              :timeout-ms     (rt/unit->ms age unit)}})]
-    (doseq [run reaped]
-      (publish-timeout-event! (assoc run
-                                     :status    :timeout
-                                     :is_active nil
-                                     :end_time  end-time
-                                     :message   message)))
-    (cancel/delete-old-canceling-runs!)
-    reaped))
-
-(mu/defn timeout-old-runs! :- [:maybe [:sequential ::transforms.schema/transform-run]]
-  "Time out all active runs whose `start_time` is older than the specified age. Returns the rows that were
-  timed out."
-  [age  :- ms/PositiveInt
-   unit :- :keyword]
-  (reap-transform-runs! :start_time age unit "Timed out by metabase"))
-
-(mu/defn heartbeat-runs! :- :nil
-  "Stamp `last_heartbeat = now` on the given still-active `run-ids`."
-  [run-ids :- [:sequential ms/PositiveInt]]
-  (rt/heartbeat-ids! :model/TransformRun [:is_active true] :last_heartbeat run-ids)
-  nil)
-
-(mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::transforms.schema/transform-run]]
-  "Time out active runs whose `last_heartbeat` is older than `stale-minutes` (their owning process is
-  presumed dead). Returns the rows that were timed out."
-  [stale-minutes :- ms/PositiveInt]
-  (reap-transform-runs! :last_heartbeat stale-minutes :minute "Timed out: crashed"))
-
-(mu/defn cancel-old-canceling-runs! :- [:maybe [:vector ::canceled-run]]
-  "Atomically force-cancels active runs whose cancelation requests are older than `age` `unit`. Returns the
-  pre-update run rows we transitioned, each augmented with `:request_time` from its cancelation row, so callers
-  can emit observability only for runs we actually changed.
-
-  Race-free per app-db semantics: SELECT … FOR UPDATE row-locks the chosen runs across the transaction, so
-  concurrent writers (`cancel-run!`, `timeout-run!`) block until we commit and the matching UPDATE-by-id hits
-  exactly the locked rows. Rows another writer already transitioned (no longer `is_active`) simply drop out of
-  the lock set and are not reported."
-  [age  :- ms/PositiveInt
-   unit :- :keyword]
-  (t2/with-transaction [_conn]
-    (let [times  (into {} (map (juxt :run_id :time))
-                       (transforms.db/cancelations-requested-before age unit))
-          locked (when (seq times)
-                   (transforms.db/lock-active-runs (keys times)))]
-      (when (seq locked)
-        (transforms.db/cancel-active-runs! (mapv :id locked))
-        (cancel/delete-old-canceling-runs!))
-      (mapv #(assoc % :request_time (times (:id %)))
-            (when (seq locked)
-              (transforms.db/runs (mapv :id locked)))))))
 
 (mu/defn running-run-for-transform-id :- [:maybe ::transforms.schema/transform-run]
   "Return a single active transform run or nil."
@@ -336,6 +177,190 @@
      :limit  limit
      :offset offset
      :total  (transforms.db/paged-run-count filters)}))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn start-run! :- ::transforms.schema/transform-run
+  "Start a run. If `user_id` is provided in properties, it will be stored with the run
+   and used for attribution in the audit log (avoiding 'External user' for scheduled runs).
+   Stores the transform's `transform_name`, `transform_entity_id` and `metered_as` with the run for historical reference."
+  ([transform-id :- ::lib.schema.id/transform]
+   (start-run! transform-id {}))
+  ([transform-id :- ::lib.schema.id/transform
+    properties   :- ::transforms.schema/transform-run.update]
+   (let [transform (transforms.db/transform-snapshot transform-id)
+         run       (transforms.db/insert-run! (cond-> (assoc properties
+                                                             :transform_id transform-id
+                                                             :status :started
+                                                             :is_active true)
+                                                transform (assoc :transform_name      (:name transform)
+                                                                 :transform_entity_id (:entity_id transform)
+                                                                 :metered_as          (premium-features/transform-metered-as
+                                                                                       (:source_type transform)))))]
+     ;; Pass user_id to the event so audit log properly attributes the run
+     (events/publish-event! :event/transform-run-start
+                            (cond-> {:object run}
+                              (:user_id run) (assoc :user-id (:user_id run))))
+     run)))
+
+(mu/defn set-checkpoint-range! :- :int
+  "Record on the TransformRun with `run-id` the checkpoint range it reads, returning the number updated."
+  [run-id  :- ms/PositiveInt
+   changes :- [:map {:closed true}
+               [:checkpoint_filter_field_id {:optional true} [:maybe ::lib.schema.id/field]]
+               [:checkpoint_lo_value        {:optional true} [:maybe :string]]
+               [:checkpoint_hi_value        {:optional true} [:maybe :string]]]]
+  (transforms.db/update-run! run-id changes))
+
+(mu/defn set-message! :- :int
+  "Set the message of the TransformRun with `run-id`, returning the number updated."
+  [run-id  :- ms/PositiveInt
+   message :- [:maybe :string]]
+  (transforms.db/update-run! run-id {:message message}))
+
+(mu/defn set-run-times! :- :int
+  "Set `start_time` and `end_time` of every TransformRun of the Transform with `transform-id` to `run-time`, as the
+  testing API backdates them, and return the number updated."
+  [transform-id :- ::lib.schema.id/transform
+   run-time     :- ms/TemporalInstant]
+  (transforms.db/set-run-times-of-transform! transform-id run-time))
+
+(defmethod transforms-base.u/record-run-changes! :model/TransformRun
+  [_model run-id changes]
+  (set-checkpoint-range! run-id changes))
+
+(mu/defn succeed-started-run! :- :int
+  "Mark a started run as successfully completed."
+  ([run-id :- ms/PositiveInt]
+   (succeed-started-run! run-id {}))
+  ([run-id     :- ms/PositiveInt
+    properties :- ::transforms.schema/transform-run.update]
+   (u/prog1 (transforms.db/finish-active-run! run-id
+                                              (merge properties
+                                                     {:status    :succeeded
+                                                      :is_active nil}))
+     (cancel/delete-cancelation! run-id))))
+
+(mu/defn fail-started-run! :- :int
+  "Mark the started active run as failed and inactive."
+  [run-id     :- ms/PositiveInt
+   properties :- ::transforms.schema/transform-run.update]
+  (u/prog1 (transforms.db/finish-active-run! run-id
+                                             (merge properties
+                                                    {:status    :failed
+                                                     :is_active nil}))
+    (cancel/delete-cancelation! run-id)))
+
+(mu/defn cancel-run! :- :int
+  "Cancel a started run."
+  ([run-id :- ms/PositiveInt]
+   (cancel-run! run-id {:message "Canceled by user"}))
+  ([run-id     :- ms/PositiveInt
+    properties :- ::transforms.schema/transform-run.update]
+   (u/prog1 (transforms.db/finish-active-run! run-id
+                                              (merge properties
+                                                     {:status    :canceled
+                                                      :is_active nil}))
+     (cancel/delete-cancelation! run-id))))
+
+(mu/defn- publish-timeout-events! :- :nil
+  "Publish one `:event/transform-run-timeout` for `runs`, catching a failure of its handlers so that it does not fail
+  the caller's timeout flow."
+  [runs :- [:sequential ::transforms.schema/transform-run]]
+  (when (seq runs)
+    (try
+      (events/publish-event! :event/transform-run-timeout {:objects runs})
+      (catch Throwable t
+        (log/warnf "Failed to publish transform-run-timeout event for runs %s: %s" (pr-str (mapv :id runs)) (ex-message t)))))
+  nil)
+
+(mu/defn timeout-run! :- :int
+  "Mark a started run as timed out."
+  ([run-id :- ms/PositiveInt]
+   (timeout-run! run-id {}))
+  ([run-id     :- ms/PositiveInt
+    properties :- ::transforms.schema/transform-run.update]
+   (u/prog1 (transforms.db/finish-active-run! run-id
+                                              (merge properties
+                                                     {:message   "Timed out"
+                                                      :status    :timeout
+                                                      :is_active nil}))
+     (cancel/delete-cancelation! run-id)
+     (when (pos? <>)
+       (analytics/inc! :metabase-transforms/timeouts-total {:type "transform"})
+       (when-let [run (transforms.db/run run-id)]
+         (publish-timeout-events! [run]))))))
+
+(mu/defn- reap-transform-runs! :- [:maybe [:sequential ::transforms.schema/transform-run]]
+  "Reap the active transform runs that [[metabase.run-tracking.core/reap-orphaned!]] finds by `stale-column` into a
+  timeout carrying `message`, publishing one timeout event for all of them."
+  [stale-column :- [:enum :start_time :last_heartbeat]
+   age          :- ms/PositiveInt
+   unit         :- :keyword
+   message      :- :string]
+  (let [end-time (OffsetDateTime/now ZoneOffset/UTC)
+        reaped   (rt/reap-orphaned!
+                  {:model    :model/TransformRun
+                   :active   [:is_active true]
+                   :stale    [{:column stale-column :age age :unit unit}]
+                   :set-terminal! #(transforms.db/set-active-runs-terminal!
+                                    :model/TransformRun % {:status "timeout" :end_time :%now :is_active nil :message message})
+                   :metrics  {:total-metric   :metabase-transforms/timeouts-total
+                              :latency-metric :metabase-transforms/timeout-detection-latency-ms
+                              :tags           {:type "transform"}
+                              :latency-column stale-column
+                              :timeout-ms     (rt/unit->ms age unit)}})]
+    (publish-timeout-events! (mapv #(assoc %
+                                           :status    :timeout
+                                           :is_active nil
+                                           :end_time  end-time
+                                           :message   message)
+                                   reaped))
+    (cancel/delete-old-canceling-runs!)
+    reaped))
+
+(mu/defn timeout-old-runs! :- [:maybe [:sequential ::transforms.schema/transform-run]]
+  "Time out all active runs whose `start_time` is older than the specified age. Returns the rows that were
+  timed out."
+  [age  :- ms/PositiveInt
+   unit :- :keyword]
+  (reap-transform-runs! :start_time age unit "Timed out by metabase"))
+
+(mu/defn heartbeat-runs! :- :nil
+  "Stamp `last_heartbeat = now` on the given still-active `run-ids`."
+  [run-ids :- [:sequential ms/PositiveInt]]
+  (when (seq run-ids)
+    (transforms.db/heartbeat-active-runs! :model/TransformRun run-ids))
+  nil)
+
+(mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::transforms.schema/transform-run]]
+  "Time out active runs whose `last_heartbeat` is older than `stale-minutes` (their owning process is
+  presumed dead). Returns the rows that were timed out."
+  [stale-minutes :- ms/PositiveInt]
+  (reap-transform-runs! :last_heartbeat stale-minutes :minute "Timed out: crashed"))
+
+(mu/defn cancel-old-canceling-runs! :- [:maybe [:vector ::canceled-run]]
+  "Atomically force-cancels active runs whose cancelation requests are older than `age` `unit`. Returns the
+  pre-update run rows we transitioned, each augmented with `:request_time` from its cancelation row, so callers
+  can emit observability only for runs we actually changed.
+
+  Race-free per app-db semantics: SELECT … FOR UPDATE row-locks the chosen runs across the transaction, so
+  concurrent writers (`cancel-run!`, `timeout-run!`) block until we commit and the matching UPDATE-by-id hits
+  exactly the locked rows. Rows another writer already transitioned (no longer `is_active`) simply drop out of
+  the lock set and are not reported."
+  [age  :- ms/PositiveInt
+   unit :- :keyword]
+  (t2/with-transaction [_conn]
+    (let [times  (into {} (map (juxt :run_id :time))
+                       (transforms.db/cancelations-requested-before age unit))
+          locked (when (seq times)
+                   (transforms.db/lock-active-runs (keys times)))]
+      (when (seq locked)
+        (transforms.db/cancel-active-runs! (mapv :id locked))
+        (cancel/delete-old-canceling-runs!))
+      (mapv #(assoc % :request_time (times (:id %)))
+            (when (seq locked)
+              (transforms.db/runs (mapv :id locked)))))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

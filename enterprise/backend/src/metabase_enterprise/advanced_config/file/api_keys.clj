@@ -4,7 +4,8 @@
    [clojure.spec.alpha :as s]
    [metabase-enterprise.advanced-config.db :as advanced-config.db]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
-   [metabase.api-keys.core :as api-key]
+   [metabase.api-keys.core :as-alias api-keys]
+   [metabase.api-keys.models.api-key :as api-key]
    [metabase.permissions.core :as perms]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
@@ -76,19 +77,19 @@
         (log/info (u/format-color :green "Creating new API key"))
         ;; Create a user for the API key
         (let [email (format "api-key-user-%s@api-key.invalid" (random-uuid))
-              user  (advanced-config.db/insert-user! {:email      email
-                                                      :first_name name
-                                                      :last_name  ""
-                                                      :type       :api-key
-                                                      :password   (str (random-uuid))})]
+              [user]  (user/create-users! [{:email      email
+                                            :first_name name
+                                            :last_name  ""
+                                            :type       :api-key
+                                            :password   (str (random-uuid))}])]
           ;; Set permissions groups for the user
           (user/set-permissions-groups! user [(perms/all-users-group) {:id group-id}])
           ;; Create the API key
-          (advanced-config.db/insert-api-key! {:user_id               (u/the-id user)
-                                               :name                  name
-                                               ::api-key/unhashed-key unhashed-key
-                                               :creator_id            (u/the-id creator)
-                                               :updated_by_id         (u/the-id creator)}))))))
+          (first (api-key/create-api-keys! [{:user_id               (u/the-id user)
+                                             :name                  name
+                                             ::api-keys/unhashed-key unhashed-key
+                                             :creator_id            (u/the-id creator)
+                                             :updated_by_id         (u/the-id creator)}])))))))
 
 (defmethod advanced-config.file.i/initialize-section! :api-keys
   [_section-name api-keys]

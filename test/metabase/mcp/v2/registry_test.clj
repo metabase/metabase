@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
+   [metabase.lib-be.core :as lib-be]
    [metabase.mcp.usage :as mcp.usage]
    ;; Required for its side effect: loading it loads every tool namespace, which registers itself.
    [metabase.mcp.v2.api]
@@ -12,7 +13,8 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.malli.json-schema :as mu.json-schema]))
 
 (set! *warn-on-reflection* true)
 
@@ -98,6 +100,15 @@
       (is (= {:ok true :message "pong"} (:structuredContent result)))
       (testing "the internal error-code marker never reaches the client"
         (is (not (contains? result ::common/error-code)))))))
+
+(deftest ^:parallel call-tool-has-metadata-provider-cache-test
+  (testing "a tool runs with one metadata provider cache for its whole call"
+    (is (nil? (lib-be/metadata-provider-cache)))
+    (mt/with-dynamic-fn-redefs [v2.tu/test-echo (fn [_ _]
+                                                  (let [payload {:ok true :message (str "cache: " (some? (lib-be/metadata-provider-cache)))}]
+                                                    (common/success-content payload payload)))]
+      (is (= {:ok true :message "cache: true"}
+             (:structuredContent (:result (registry/call-tool #{"agent:content:read"} nil "test_echo" {}))))))))
 
 (deftest ^:parallel call-tool-validation-test
   (testing "malli validation failures surface as JSON-RPC invalid-params errors"
@@ -511,6 +522,16 @@
           (let [[_ label labelled-scope bare-scope] (re-find leading-permission-sentence description)]
             (is (= scope (or labelled-scope bare-scope)))
             (is (= (registry/english-scope-label scope) label))))))))
+
+(deftest ^:parallel published-schemas-have-no-one-of-or-all-of-test
+  (testing "OpenAI's strict tool mode rejects a tool whose schemas contain `oneOf` or `allOf` anywhere"
+    ;; a schema is free of both when dropping them from every subschema changes nothing
+    (let [free? (fn [schema] (= schema (mu.json-schema/postwalk-schemas #(dissoc % :oneOf :allOf) schema)))]
+      (is (= []
+             (for [{tool-name :name :as tool} (@#'registry/manifest)
+                   schema                     ((juxt :inputSchema :outputSchema) tool)
+                   :when                      (not (free? schema))]
+               tool-name))))))
 
 ;; not ^:parallel: flushes the shared manifest cache
 (deftest description-permission-text-ignores-caller-locale-test

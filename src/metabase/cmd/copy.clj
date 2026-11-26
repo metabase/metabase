@@ -152,8 +152,6 @@
     :model/ExplorationBookmark
     ;; 63+
     :model/McpFeedback
-    ;; Not in dependency order, and cannot be: `transform.target_table_id` and `metabase_table.transform_id`
-    ;; point at each other. Order does not matter -- `copy!` defers or disables FK checks for the whole load.
     :model/Transform
     :model/TransformTag
     :model/TransformTransformTag
@@ -223,7 +221,7 @@
   build before the table was copied still holds the rows its own migrations seeded, which can point at group ids the
   source never had."
   []
-  {:where [:in :group_id {:select [:id] :from [:permissions_group]}]})
+  {:where [:in :group_id {:select [:id] :from [(t2/table-name :model/PermissionsGroup)]}]})
 
 (def ^:private table-specs
   "The copy specs of the [[entities]] named by table, which have no model on some edition."
@@ -288,8 +286,11 @@
    sure we're not accidentally copying data into an existing application DB."
   [data-source]
   ;; check that there are no Users yet
-  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} ["SELECT count(*) AS cnt FROM core_user where not id = ?;"
-                                                               config/internal-mb-user-id])]
+  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source}
+                                    (sql/format {:select [[[:count :*] :cnt]]
+                                                 :from   [(t2/table-name :model/User)]
+                                                 :where  [:not= :id config/internal-mb-user-id]}
+                                                {:quoted false}))]
     (assert (integer? cnt))
     (when (pos? cnt)
       (throw (ex-info (trs "Target DB is already populated!")
@@ -320,9 +321,10 @@
   ;; work if done inside the same transaction.)
   (doseq [{constraint :constraint_name, table :table_name} (jdbc/query
                                                             conn
-                                                            [(str "SELECT * "
-                                                                  "FROM information_schema.table_constraints "
-                                                                  "WHERE constraint_type = 'FOREIGN KEY'")])]
+                                                            (sql/format {:select [:constraint_name :table_name]
+                                                                         :from   [:information_schema.table_constraints]
+                                                                         :where  [:= :constraint_type "FOREIGN KEY"]}
+                                                                        {:quoted false}))]
     (jdbc/execute! conn [(format "ALTER TABLE \"%s\" ALTER CONSTRAINT \"%s\" DEFERRABLE" table constraint)]))
   ;; now enable constraint deferring for the duration of the transaction
   (jdbc/execute! conn ["SET CONSTRAINTS ALL DEFERRED"]))
@@ -424,12 +426,14 @@
     (step (trs "Setting Postgres sequence ids to proper values...")
       (doseq [model entities
               :when (autoinc-id? model)
-              :let  [table-name (name (t2/table-name model))
-                     seq-name   (postgres-id-sequence-name model)
-                     sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val"
-                                        seq-name (name table-name))]]
+              :let  [sql-args (sql/format {:select [[[:setval
+                                                      [:inline (postgres-id-sequence-name model)]
+                                                      [:coalesce {:select [[[:max :id]]] :from [(t2/table-name model)]} 1]
+                                                      true]
+                                                     :val]]}
+                                          {:quoted false})]]
         (try
-          (jdbc/db-query-with-resultset target-db-conn [sql] :val)
+          (jdbc/db-query-with-resultset target-db-conn sql-args :val)
           (catch Throwable e
             (throw (ex-info (format "Error updating sequence values for %s: %s" model (ex-message e))
                             {:model model}
@@ -446,23 +450,24 @@
                                         table-name table-name)]]
         (jdbc/execute! target-db-conn sql)))))
 
-(def ^:private metabot-permissions-seed-sql
-  "The seed of changeset v61.98kjjhf. Dumps made by an OSS build before this table was copied hold the dumping build's
-  seed rows under its own group ids, so the source's magic groups can arrive with none."
-  "INSERT INTO metabot_permissions (group_id, perm_type, perm_value)
-   SELECT pg.id, d.perm_type, d.perm_value
-   FROM permissions_group pg
-   CROSS JOIN (
-     SELECT 'permission/metabot' AS perm_type, 'yes' AS perm_value
-     UNION ALL SELECT 'permission/metabot-sql-generation', 'yes'
-     UNION ALL SELECT 'permission/metabot-nlq', 'yes'
-     UNION ALL SELECT 'permission/metabot-other-tools', 'yes'
-   ) AS d
-   WHERE pg.magic_group_type IN ('admin', 'all-internal-users', 'data-analyst', 'all-external-users')
-     AND NOT EXISTS (
-       SELECT 1 FROM metabot_permissions mp
-       WHERE mp.group_id = pg.id AND mp.perm_type = d.perm_type
-     )")
+(defn- metabot-permissions-seed-queries
+  "The statements of the seed of changeset v61.98kjjhf, one for each metabot permission type, which dumps made by an OSS
+  build before this table was copied lack for the source's magic groups."
+  []
+  (for [perm-type ["permission/metabot"
+                   "permission/metabot-sql-generation"
+                   "permission/metabot-nlq"
+                   "permission/metabot-other-tools"]]
+    (sql/format
+     {:insert-into [[:metabot_permissions [:group_id :perm_type :perm_value]]
+                    {:select [:pg.id [perm-type] ["yes"]]
+                     :from   [[(t2/table-name :model/PermissionsGroup) :pg]]
+                     :where  [:and
+                              [:in :pg.magic_group_type ["admin" "all-internal-users" "data-analyst" "all-external-users"]]
+                              [:not-exists {:select [1]
+                                            :from   [[:metabot_permissions :mp]]
+                                            :where  [:and [:= :mp.group_id :pg.id] [:= :mp.perm_type perm-type]]}]]}]}
+     {:quoted false})))
 
 (mu/defn copy!
   "Copy data from a source application database into an empty destination application database."
@@ -506,4 +511,5 @@
   ;; finally, update sequence values (if needed)
   (update-sequence-values! target-db-type target-data-source)
   (step (trs "Seeding metabot permissions for magic groups without any...")
-    (jdbc/execute! {:datasource target-data-source} [metabot-permissions-seed-sql])))
+    (doseq [statement (metabot-permissions-seed-queries)]
+      (jdbc/execute! {:datasource target-data-source} statement))))

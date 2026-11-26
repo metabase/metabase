@@ -11,14 +11,19 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.lib.core :as lib]
+   [metabase.permissions.models.permissions :as permissions]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.models.card :as queries.card]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import
    (java.nio.file FileVisitOption Files LinkOption Path)
@@ -67,17 +72,17 @@
   ;; one transaction so a crash can't commit the database row yet skip the permissions guard below —
   ;; the next boot would see the database and no-op, leaving the stale permissions with no re-run path
   (t2/with-transaction [_conn]
-    (audit-app.db/insert-database! id
-                                   {:is_audit         true
-                                    :name             default-db-name
-                                    :description      "Internal Audit DB used to power metabase analytics."
-                                    :engine           engine
-                                    :is_full_sync     true
-                                    :is_on_demand     false
-                                    :creator_id       nil
-                                    :auto_run_queries true})
+    (database/create-databases! [{:id               id
+                                  :is_audit         true
+                                  :name             default-db-name
+                                  :description      "Internal Audit DB used to power metabase analytics."
+                                  :engine           engine
+                                  :is_full_sync     true
+                                  :is_on_demand     false
+                                  :creator_id       nil
+                                  :auto_run_queries true}])
     ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
-    (audit-app.db/delete-permissions-for-database! id)))
+    (permissions/delete-permissions! (permissions/database-permission-ids id))))
 
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
@@ -86,7 +91,7 @@
   ;; The flip commits, so on a multi-node mysql/h2 cluster other nodes can see engine="postgres" while
   ;; the load runs — the longstanding behavior of this pipeline (only #76551's single-transaction era
   ;; briefly hid it). Resolving serialized names against an overlay instead would avoid even that.
-  (audit-app.db/set-database-engine! audit-db-id "postgres")
+  (database/update-databases! [{:id audit-db-id :engine :postgres}])
   ;; do a separate select and update of table ids that are not downcased
   ;; we don't want to try to downcase audit db tables that may already have a downcased version
   ;; some older migrations have both upper and lowercased table names
@@ -94,41 +99,40 @@
   ;; has different syntax on different appdbs
   (let [table-ids-to-update (audit-app.db/table-ids-to-downcase audit-db-id)]
     (when (seq table-ids-to-update)
-      (audit-app.db/downcase-tables! table-ids-to-update)))
+      (table/update-tables! (for [id (vec table-ids-to-update)] {:id id :schema "public"}))
+      (table/change-case! (vec table-ids-to-update) :lower [:name])))
   (let [field-ids-to-update (audit-app.db/field-ids-to-downcase audit-db-id)]
     (when (seq field-ids-to-update)
-      (audit-app.db/downcase-fields! field-ids-to-update)))
+      (field/change-case! (vec field-ids-to-update) :lower [:name])))
   (log/info "Adjusted Audit DB for loading Analytics Content"))
 
 (defn- fix-h2-card-metadata! [audit-db-id]
-  (t2/with-connection [^java.sql.Connection conn]
-    (with-open [stmt (.prepareStatement conn "UPDATE \"REPORT_CARD\" SET \"RESULT_METADATA\" = ? WHERE \"ID\" = ?;")]
-      (reduce
-       (fn [_ card]
-         (when-let [result-metadata (not-empty (some-> (:result_metadata card) (json/decode true)))]
-           (let [fixed-metadata (for [col result-metadata]
-                                  (update col :name u/upper-case-en))
-                 json-metadata  (json/encode fixed-metadata)]
-             (.setString stmt 1 json-metadata)
-             (.setInt stmt 2 (:id card))
-             (.addBatch stmt))))
-       nil
-       (audit-app.db/card-result-metadata-reducible audit-db-id))
-      (.executeBatch stmt))))
+  (when-let [updates (not-empty
+                      (into []
+                            (keep (fn [card]
+                                    (when-let [result-metadata (not-empty (some-> (:result_metadata card)
+                                                                                  (json/decode true)))]
+                                      {:id              (:id card)
+                                       :result_metadata (mapv #(update % :name u/upper-case-en)
+                                                              (lib/normalize :metabase.queries.schema/card.result-metadata
+                                                                             result-metadata))
+                                       :updated_at      :updated_at})))
+                            (audit-app.db/card-result-metadata-reducible audit-db-id)))]
+    (queries.card/update-cards! updates {:writer :sync})))
 
 (defn- adjust-audit-db-to-host!
   [{audit-db-id :id :keys [engine] :as audit-db}]
   (when-not (= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
-    (audit-app.db/set-database-engine! audit-db-id (name (mdb/db-type)))
+    (database/update-databases! [{:id audit-db-id :engine (mdb/db-type)}])
     (case (mdb/db-type)
       :mysql
-      (audit-app.db/clear-table-schemas! audit-db-id)
+      (table/update-tables! (for [id (vec (table/ids-of-database audit-db-id))] {:id id :schema nil}))
 
       :h2
       (do
-        (audit-app.db/upcase-tables! audit-db-id)
-        (audit-app.db/upcase-fields! audit-db-id)
+        (table/change-case! (vec (table/ids-of-database audit-db-id)) :upper [:schema :name])
+        (field/change-case! (vec (field/ids-of-database audit-db-id)) :upper [:name])
         (fix-h2-card-metadata! audit-db-id))
 
       :postgres
@@ -378,19 +382,24 @@
           result-metadata)))
 
 (defn- repoint-cards-to-survivor!
-  "Move every card that references `orphan-table-id` onto `survivor-table-id` by rewriting its query and result
-   metadata. A card's `table_id` is derived from its `dataset_query` by `populate-query-fields`, so updating the
-   column alone is silently reverted — and the orphan's FK is ON DELETE CASCADE, so a card left behind is destroyed
-   when the orphan is deleted. Field ids are remapped onto the survivor's same-named fields."
-  [orphan-table-id survivor-table-id]
-  (let [field-id-remap (orphan->survivor-field-ids orphan-table-id survivor-table-id)]
-    (doseq [card (audit-app.db/cards-of-table orphan-table-id)]
-      (audit-app.db/update-card! (:id card)
-                                 (cond-> {:dataset_query (-> (:dataset_query card)
-                                                             (lib/replace-table-ids {orphan-table-id survivor-table-id})
-                                                             (lib/replace-field-ids field-id-remap))}
-                                   (:result_metadata card)
-                                   (assoc :result_metadata (remap-result-metadata field-id-remap (:result_metadata card))))))))
+  "Move every card that references one of the `orphan-table-ids` onto `survivor-table-id` by rewriting its query and
+   result metadata, in one write. A card's `table_id` is derived from its `dataset_query` by `populate-query-fields`,
+   so updating the column alone is silently reverted — and the orphan's FK is ON DELETE CASCADE, so a card left behind
+   is destroyed when the orphan is deleted. Field ids are remapped onto the survivor's same-named fields."
+  [orphan-table-ids survivor-table-id]
+  (let [table-id-remap (zipmap orphan-table-ids (repeat survivor-table-id))
+        field-id-remap (into {} (map #(orphan->survivor-field-ids % survivor-table-id)) orphan-table-ids)
+        cards          (vals (u/index-by :id (mapcat audit-app.db/cards-of-table orphan-table-ids)))]
+    (when (seq cards)
+      (queries.card/update-cards!
+       (mapv (fn [card]
+               (cond-> {:id            (:id card)
+                        :dataset_query (-> (:dataset_query card)
+                                           (lib/replace-table-ids table-id-remap)
+                                           (lib/replace-field-ids field-id-remap))}
+                 (:result_metadata card)
+                 (assoc :result_metadata (remap-result-metadata field-id-remap (:result_metadata card)))))
+             cards)))))
 
 (defn- reconcile-audit-db-duplicates!
   "Collapse duplicate `metabase_table` rows for the same audit view into a single active row at the host-canonical
@@ -421,13 +430,12 @@
               orphans           (remove #(= (:id %) (:id survivor)) rows)]
           ;; move content off each orphan, then delete it before re-canonicalizing the survivor so the survivor's
           ;; new (name, schema) can't collide with an orphan still sitting at that slot on idx_unique_table
-          (doseq [{orphan-id :id} orphans]
-            (repoint-cards-to-survivor! orphan-id (:id survivor))
-            (audit-app.db/delete-table! orphan-id))
+          (when (seq orphans)
+            (repoint-cards-to-survivor! (mapv :id orphans) (:id survivor))
+            (table/delete-tables! (mapv :id orphans)))
           ;; clear is_defective_duplicate so the survivor re-enters idx_unique_table (its unique_table_helper is
           ;; NULL — and thus excluded from the index — while the flag is set)
-          (audit-app.db/update-table! (:id survivor)
-                                      {:active true :name c-name :schema c-schema :is_defective_duplicate false})
+          (table/update-tables! [{:id (:id survivor) :active true :name c-name :schema c-schema :is_defective_duplicate false}])
           (log/infof "Reconciled %d duplicate audit view row(s) onto table id %s"
                      (count orphans) (:id survivor)))))))
 

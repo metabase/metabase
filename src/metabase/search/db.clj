@@ -4,6 +4,7 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.search.appdb.index-schema :as index-schema]
@@ -15,7 +16,7 @@
    [metabase.search.ingestion.query :as ingestion.query]
    [metabase.search.schema :as search.schema]
    [metabase.search.spec :as search.spec]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -29,7 +30,7 @@
                              :updated_at :search_vector :with_native_query_vector :search_terms
                              :native_search_terms}
                            (remove #{:id :created_at :updated_at} search.spec/attr-columns))]
-          [column {:optional true} ::h2x/expr])))
+          [column {:optional true} ::funnysql.schema/expr])))
 
 (mu/defn spec-index-reducible-rows
   "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)
@@ -167,12 +168,11 @@
   [table   :- [:or :keyword :string]
    entries :- [:sequential SearchIndexRow]]
   (when (seq entries)
-    (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
-          excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
+    (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))]
       (t2/query {:insert-into   table
                  :values        entries
                  :on-conflict   [:model :model_id]
-                 :do-update-set (with-meta (zipmap update-keys (map excluded-kw update-keys))
+                 :do-update-set (with-meta (zipmap update-keys (map #(u/qualified-key :excluded %) update-keys))
                                            {:allow-subquery true})}))))
 
 (mu/defn commit!
@@ -213,7 +213,7 @@
   [table      :- [:or :keyword :string]
    model      :- [:or :keyword :string]
    model-ids  :- [:or [:set [:or :string ms/PositiveInt]] [:sequential [:or :string ms/PositiveInt]]]]
-  (t2/delete! table :model model :model_id [:in model-ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! table :model model :model_id [:in %]) model-ids))
 
 (mu/defn insert-rows!
   "Insert `entries` into the search index `table`."
@@ -278,7 +278,7 @@
 
 (mu/defn insert-index-metadata!
   "Insert the SearchIndexMetadata `row`."
-  [row :- ::search.schema/search-index-metadata.update]
+  [row :- ::search.schema/search-index-metadata.create]
   (t2/insert! :model/SearchIndexMetadata row))
 
 (mu/defn delete-index-metadata-by-version!
@@ -402,7 +402,8 @@
 (mu/defn user-common-names
   "A map of User id to common name for the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in %])
+                          user-ids))
 
 (mu/defn card-result-metadata
   "A map of Card id to result metadata for the Cards with `card-ids`.
@@ -417,16 +418,17 @@
   (let [result-metadata-out (:out mi/transform-result-metadata)]
     (into {}
           (map (juxt :id (comp result-metadata-out :result_metadata)))
-          (when (seq card-ids)
-            (t2/select [(t2/table-name :model/Card) :id :result_metadata] :id [:in card-ids])))))
+          (mdb/select-batched #(t2/select [(t2/table-name :model/Card) :id :result_metadata] :id [:in %]) card-ids))))
 
 (mu/defn collection-permission-rows
   "The Collections with `collection-ids`, with the columns their `:can_write` hydration reads, which search results
   don't carry."
   [collection-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Collection :id :type :namespace :location :is_remote_synced] :id [:in collection-ids]))
+  (mdb/select-batched #(t2/select [:model/Collection :id :type :namespace :location :is_remote_synced] :id [:in %])
+                      collection-ids))
 
 (mu/defn document-exploration-ids
   "A map of the id of each Document in `document-ids` to its `:exploration_id`, nil for a Document in no Exploration."
   [document-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :exploration_id [:model/Document :id :exploration_id] :id [:in document-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :exploration_id [:model/Document :id :exploration_id] :id [:in %])
+                          document-ids))

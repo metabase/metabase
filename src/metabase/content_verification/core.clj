@@ -15,5 +15,4 @@
   moderation-status
   moderation-user-details]
  [metabase.content-verification.models.moderation-review
-  create-review!
   Statuses])

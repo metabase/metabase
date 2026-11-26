@@ -20,11 +20,14 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
+   [metabase.channel.models.channel :as channel.models]
    [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.spec :as eid-translation]
@@ -38,8 +41,10 @@
    [metabase.pulse.audit :as pulse.audit]
    [metabase.pulse.collection-items :as pulse.collection-items]
    [metabase.pulse.db :as pulse.db]
+   [metabase.pulse.models.pulse-card :as pulse-card]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.schema :as pulse.schema]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -57,8 +62,7 @@
 (doto :model/Pulse
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive :hook/events))
+  (derive :hook/entity-id))
 
 (def ^:private transform-pulse-parameters
   "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."
@@ -83,19 +87,15 @@
                     {:status-code 400}))))
 
 (defn- new-pulse
-  "`pulse`, a row an INSERT writes, without its nil columns, with the defaults of a Pulse, and filed in the Collection
-  of its Dashboard when it is a dashboard subscription."
-  [{:keys [dashboard_id] :as pulse}]
+  "`pulse`, a row an INSERT writes, without its nil columns and with the defaults of a Pulse."
+  [pulse]
   (merge {:parameters []}
-         (into {} (filter (comp some? val)) pulse)
-         {:collection_id (if dashboard_id
-                           (pulse.db/dashboard-collection-id dashboard_id)
-                           (:collection_id pulse))}))
+         (into {} (filter (comp some? val)) pulse)))
 
 (t2/define-before-insert :model/Pulse
   [pulse]
-  (u/prog1 (new-pulse pulse)
-    (collection/check-collection-for :model/Pulse <>)))
+  (cond-> (new-pulse pulse)
+    (:dashboard_id pulse) (assoc :collection_id (pulse.db/dashboard-collection-clause (:dashboard_id pulse)))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-moving-dashboard-subscriptions*
@@ -111,19 +111,11 @@
       (throw (ex-info (tru "dashboard ID of a dashboard subscription cannot be modified") {:status-code 400})))
     (when (and original-dashboard-id (contains? changes :collection_id) (not *allow-moving-dashboard-subscriptions*))
       (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") {:status-code 400})))
-    (when (contains? changes :collection_id)
-      (collection/check-collection-for :model/Pulse pulse))
     (when (some #(contains? changes %) [:dashboard_id :collection_position :alert_condition :alert_first_only :alert_above_goal])
       (check-dashboard-subscription pulse))
-    (when (contains? changes :archived)
-      (pulse.db/set-pulse-channels-enabled! (u/the-id pulse) (not (:archived changes))))
     (cond-> pulse
-      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly pulse #(collection/archived? (:collection_id pulse)))))))
-
-(t2/define-before-delete :model/Pulse
-  [pulse]
-  ;; to trigger deleting the scheduled jobs
-  (pulse.db/delete-pulse-channels-for-pulse! (u/the-id pulse)))
+      (and (contains? changes :archived) (not (contains? changes :archived_directly)))
+      (assoc :archived_directly (mi/archived-directly-clause :model/Pulse changes)))))
 
 ;;; ---------------------------------------------------- Permissions -----------------------------------------------------
 
@@ -165,14 +157,6 @@
       (into #{}
             (filter #(perms/collection-permission-at-least? (get permissions %) permission))
             (keys permissions)))))
-
-(defn- collection-permits?
-  "Whether the current user has `permission` on the Collection of `notification`: its Card's for an Alert, its own
-  otherwise."
-  [notification permission]
-  (let [owner (if (is-alert? notification) (get (alert-cards [notification]) (:id notification)) notification)]
-    (check-collection-key owner)
-    (contains? (collection-ids-permitting [(:collection_id owner)] permission) (:collection_id owner))))
 
 (defn- current-user-is-creator?
   [notification]
@@ -260,12 +244,12 @@
        (recipient-additions-permitted? pulse changes)))
 
 (defn- can-read-attachments?
-  "Return true if the card has attachments and those can be read. If it has no attachments, return true"
-  [card]
-  (if (or (:include_csv card) (:include_xls card))
-    (let [level (perms/download-perms-level (or (:dataset_query card) (pulse.db/card-query (:id card))) api/*current-user-id*)]
-      (and level (not= level  :no)))
-    true))
+  "Whether the current user can download the results of each of `cards` that has attachments, asked once for all."
+  [cards]
+  (let [attached  (filterv #(or (:include_csv %) (:include_xls %)) cards)
+        id->query (pulse.db/card-queries (into #{} (comp (remove :dataset_query) (map :id)) attached))
+        queries   (mapv #(or (:dataset_query %) (get id->query (:id %))) attached)]
+    (every? #(and % (not= % :no)) (perms/download-perms-levels queries api/*current-user-id*))))
 
 (defmethod mi/can-create? :model/Pulse
   [_m {cards :cards dashboard-id :dashboard_id collection-id :collection_id}]
@@ -275,7 +259,7 @@
          readable (t2/hydrate (pulse.db/cards card-ids) :can_read)]
      (and (= (count readable) (count card-ids))
           (every? mi/can-read? readable)
-          (every? can-read-attachments? cards)))
+          (can-read-attachments? cards)))
    ;; nil is root, except for a dashboard subscription, which the before-insert hook files with its dashboard
    (cond
      (some? collection-id) (some-> (pulse.db/collection collection-id) (t2/hydrate :can_write) mi/can-write?)
@@ -340,7 +324,7 @@
    [:email {:optional true} :string]])
 
 (def ^:private PulseChannelInput
-  "A PulseChannel as [[update-notification-channels!]]/[[create-pulse!]] accept it: a subset of `::pulse-channel`
+  "A PulseChannel as [[replace-pulse-channels!]] and [[create-pulses!]] accept it: a subset of `::pulse-channel`
   columns (`:id`/`:pulse_id` filled in server-side when absent) plus `:recipients`."
   [:map {:closed true}
    [:id             {:optional true} ms/PositiveInt]
@@ -358,26 +342,9 @@
    [:created_at     {:optional true} ms/TemporalInstant]
    [:updated_at     {:optional true} ms/TemporalInstant]])
 
-(def ^:private UpdateNotificationInput
-  "What [[update-notification!]] accepts: the keys of a Pulse/Alert to update, all optional except `:id`."
-  [:map {:closed true}
-   [:id                    ms/PositiveInt]
-   [:name                {:optional true} ms/NonBlankString]
-   [:alert_condition     {:optional true} AlertConditions]
-   [:alert_above_goal    {:optional true} boolean?]
-   [:alert_first_only    {:optional true} boolean?]
-   [:skip_if_empty       {:optional true} boolean?]
-   [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
-   [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-   [:cards               {:optional true} [:sequential CoercibleToCardRef]]
-   [:channels            {:optional true} [:sequential PulseChannelInput]]
-   [:archived            {:optional true} boolean?]
-   [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]])
-
 (def ^:private NotificationOrId
-  "A Pulse/Alert id, a full Pulse row, or [[update-notification!]]'s own argument map — the shapes
-  [[u/the-id]] is called with below."
-  [:or ms/PositiveInt ::pulse.schema/pulse UpdateNotificationInput])
+  "A Pulse/Alert id or a Pulse row — the shapes [[u/the-id]] is called with below."
+  [:or ms/PositiveInt ::pulse.schema/pulse [:map [:id ms/PositiveInt]]])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -500,11 +467,10 @@
   or a recipient."
   [{:keys [archived? dashboard-id user-id]
     :or   {archived? false}} :- RetrievePulsesOpts]
-  (for [pulse (pulse.db/pulses archived? dashboard-id user-id)]
-    (-> pulse
-        (dissoc :lower-name)
-        hydrate-notification
-        notification->pulse)))
+  (->> (pulse.db/pulses archived? dashboard-id user-id)
+       (mapv #(dissoc % :lower-name))
+       hydrate-notifications
+       (map notification->pulse)))
 
 (defn- tenant-scoped-caller?
   "True when the current user's recipient visibility is narrowed to their own tenant: every non-superuser
@@ -588,16 +554,34 @@
   [pulse]
   (first (maybe-filter-pulses-recipients [pulse])))
 
+(defn- strip-sensitive-metadata
+  "`pulse` without its cards and the recipients of its channels."
+  [pulse]
+  (-> (dissoc pulse :cards)
+      (update :channels
+              (fn [channels]
+                (map #(dissoc % :recipients) channels)))))
+
+(defn maybe-strip-pulses-sensitive-metadata
+  "[[maybe-strip-sensitive-metadata]] for `pulses`, with the permissions of the Collections they are in read
+  together."
+  [pulses]
+  (let [alert-cards (alert-cards (filter is-alert? pulses))
+        owners      (map #(if (is-alert? %) (get alert-cards (:id %)) %) pulses)
+        _           (run! check-collection-key owners)
+        permitted   (collection-ids-permitting (map :collection_id owners) :read)]
+    (map (fn [pulse owner]
+           (if (contains? permitted (:collection_id owner))
+             pulse
+             (strip-sensitive-metadata pulse)))
+         pulses
+         owners)))
+
 (defn maybe-strip-sensitive-metadata
   "If the current user does not have collection read permissions for the pulse, but can still read the pulse due to
   being the creator or a recipient, we return it with some metadata removed."
   [pulse]
-  (if (collection-permits? pulse :read)
-    pulse
-    (-> (dissoc pulse :cards)
-        (update :channels
-                (fn [channels]
-                  (map #(dissoc % :recipients) channels))))))
+  (first (maybe-strip-pulses-sensitive-metadata [pulse])))
 
 (mu/defn retrieve-user-alerts-for-card
   "Find all alerts for `card-id` that `user-id` is set to receive"
@@ -632,179 +616,511 @@
    :pivot_results     (get card :pivot_results false)
    :dashboard_card_id (get card :dashboard_card_id nil)})
 
-;;; ------------------------------------------ Other Persistence Functions -------------------------------------------
+;;; ------------------------------------------------------ Writes ----------------------------------------------------------
 
-(mu/defn update-notification-cards!
-  "Update the PulseCards for a given `notification-or-id`. `card-refs` should be a definitive collection of *all* Cards
-  for the Notification in the desired order. They should have keys like `id`, `include_csv`, and `include_xls`.
+(defn- moved-pulses
+  "The `pulses` whose Collection their changes, `changes-of` a Pulse, move."
+  [pulses changes-of]
+  (remove (fn [pulse]
+            (let [changes (changes-of pulse)]
+              (or (not (contains? changes :collection_id))
+                  (= (:collection_id pulse) (:collection_id changes)))))
+          pulses))
 
-  *  If a Card ID in `card-refs` has no corresponding existing `PulseCard` object, one will be created.
-  *  If an existing `PulseCard` has no corresponding ID in CARD-IDs, it will be deleted.
-  *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
-  [notification-or-id :- NotificationOrId
-   card-refs           :- [:maybe [:sequential CardRef]]]
-  ;; first off, just delete any cards associated with this pulse (we add them again below)
-  (pulse.db/delete-pulse-cards-for-pulse! (u/the-id notification-or-id))
-  ;; now just insert all of the cards that were given to us
-  (when (seq card-refs)
-    (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls format_rows pivot_results dashboard_card_id]}]
-                               {:pulse_id          (u/the-id notification-or-id)
-                                :card_id           card-id
-                                :position          i
-                                :include_csv       include_csv
-                                :include_xls       include_xls
-                                :format_rows       format_rows
-                                :pivot_results     pivot_results
-                                :dashboard_card_id dashboard_card_id})
-                             card-refs)]
-      (pulse.db/insert-pulse-cards! cards))))
+(defn- collection-parents
+  "The Collections of the `rows`, each holding `:collection_id`, as rows by id, read together."
+  [rows]
+  (when-let [ids (not-empty (into [] (comp (keep :collection_id) (distinct)) rows))]
+    (collection/collections-for-content-checks ids)))
 
-(mu/defn update-notification-channels!
-  "Update the PulseChannels for a given `notification-or-id`. `channels` should be a definitive collection of *all* of
-  the channels for the Notification.
+(defn- check-collection
+  "Throw unless the Collection of `row`, holding `:collection_id` and `:archived`, which `parents` has by id, satisfies
+  these rules:
 
-    * If a channel in the list has no existing `PulseChannel` object, one will be created.
+  - it can hold the content of a Pulse
+  - it is in a namespace a Pulse can go in
+  - it is not archived, unless the Pulse is"
+  [parents {:keys [collection_id archived]}]
+  (when collection_id
+    (let [parent (or (get parents collection_id) (collection/content-parent collection_id))]
+      (collection/check-allowed-content :model/Pulse parent)
+      (collection/check-collection-namespace :model/Pulse parent)
+      (collection/check-collection-not-archived archived parent))))
 
-    * If an existing `PulseChannel` has no corresponding entry in `channels`, it will be deleted.
+(defn- check-collections
+  "Throws unless the Collection of each of `rows`, each holding `:collection_id` and `:archived`, can hold a Pulse, for
+  the first row that cannot, reading the Collections together."
+  [rows]
+  (let [parents (collection-parents rows)]
+    (run! #(check-collection parents %) (into [] (comp (map #(select-keys % [:collection_id :archived])) (distinct)) rows))))
 
-    * All previously existing channels will be updated with their most recent information."
-  [notification-or-id :- NotificationOrId
-   channels           :- [:sequential PulseChannelInput]]
-  (let [existing-channels   (pulse.db/pulse-channels-for-pulse (u/the-id notification-or-id))
-        channels            (map-indexed
-                             (fn [idx channel]
-                               (assoc channel
-                                      :channel_type   (keyword (:channel_type channel))
-                                      :schedule_type  (keyword (:schedule_type channel))
-                                      :schedule_frame (keyword (:schedule_frame channel))
-                                      :pulse_id       (u/the-id notification-or-id)
-                                      ;; for "new channels" we assign it with an negative id so that
-                                      ;; row-diff will treat it as :to-create
-                                      :id             (or
-                                                       (:id channel)
-                                                       ;; new channel
-                                                       (- (inc idx)))))
-                             channels)
-        {:keys [to-create
-                to-update
-                to-delete]} (u/row-diff existing-channels
-                                        channels
-                                        {:to-compare #(dissoc % :created_at :updated_at)})]
-    (doseq [channel to-create]
-      (pulse-channel/create-pulse-channel! channel))
-    (doseq [channel to-update]
-      (assert (:id channel) "Cannot update a PulseChannel without an :id")
-      (pulse-channel/update-pulse-channel! channel))
-    (binding [pulse-channel/*archive-parent-pulse-when-last-channel-is-deleted* false]
-      (when (seq to-delete)
-        (assert (every? :id to-delete) "Cannot delete a PulseChannel without an :id")
-        (pulse.db/delete-pulse-channels! (map :id to-delete))))))
+(defn- check-moved-collections
+  "Throws unless the Collection each of the `pulses` moves to under its changes, `changes-of` a Pulse, can hold it."
+  [pulses changes-of]
+  (check-collections (map #(merge % (changes-of %)) (moved-pulses pulses changes-of))))
 
-(mu/defn- create-notification-and-add-cards-and-channels!
-  "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
-  add the Notification to `channels`. Returns the `id` of the newly created Notification."
-  [notification :- ::pulse.schema/pulse.update
-   card-refs    :- [:maybe [:sequential CardRef]]
-   channels     :- [:sequential PulseChannelInput]]
+(defn- changed-columns
+  "The part of `changes` that differs from the stored columns of `pulse`."
+  [pulse changes]
+  (into {} (remove (fn [[k v]] (= v (get pulse k)))) changes))
+
+(mu/defn- assoc-dashboard-collections :- [:sequential (mut/dissoc ::pulse.schema/pulse.update :id)]
+  "`pulses`, each filed in the Collection of its Dashboard when it is a dashboard subscription."
+  [pulses :- [:sequential (mut/dissoc ::pulse.schema/pulse.update :id)]]
+  (let [dashboards (when-let [ids (not-empty (into [] (comp (keep :dashboard_id) (distinct)) pulses))]
+                     (u/index-by :id (pulse.db/dashboards-by-id ids)))]
+    (mapv #(assoc % :collection_id (if-let [dashboard-id (:dashboard_id %)]
+                                     (:collection_id (get dashboards dashboard-id))
+                                     (:collection_id %)))
+          pulses)))
+
+(defn- column-changes
+  "The columns of the Pulse that `changes`, columns and parts, change."
+  [changes]
+  (u/select-keys-when changes
+                      :present [:collection_id :collection_position :archived]
+                      :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
+
+(defn- id->changes-of
+  "A map from id to the changes of the columns of each of `updates`, the id of a Pulse and its changes, that changes a
+  Pulse of `id->stored`."
+  [updates id->stored]
+  (into {}
+        (keep (fn [update]
+                (let [changes (column-changes (dissoc update :id))]
+                  (when (and (id->stored (:id update)) (seq changes))
+                    [(:id update) changes]))))
+        updates))
+
+(defn- enable-pulse-channels!
+  "Enable or disable the PulseChannels of the Pulses of `id->stored` whose `:archived` the changes in `id->changes` flip."
+  [id->stored id->changes]
+  (doseq [[archived ids] (group-by #(:archived (id->changes %))
+                                   (filter (fn [id]
+                                             (let [changes (id->changes id)]
+                                               (and (contains? changes :archived)
+                                                    (not= (:archived (id->stored id)) (:archived changes)))))
+                                           (keys id->changes)))]
+    (pulse-channel/set-pulse-channels-enabled! (vec ids) (not archived))))
+
+(defn- check-pulse-updates
+  "Throw unless the Collection that each Pulse of `id->stored` moves to under `updates`, each the id of a Pulse and its
+  changes, can hold it, as [[check-collection]] says."
+  [updates id->stored]
+  (let [id->changes (id->changes-of updates id->stored)]
+    (check-moved-collections (vals (select-keys id->stored (keys id->changes))) #(id->changes (:id %)))))
+
+(defn- prepare-pulse-updates
+  "The `updates` that change a column of a Pulse of `id->stored`, each with its columns only."
+  [updates id->stored]
+  (let [id->changes (id->changes-of updates id->stored)]
+    (into [] (comp (map :id) (filter id->changes) (distinct) (map #(assoc (id->changes %) :id %))) updates)))
+
+(defn- check-and-prepare-pulse-updates
+  "Check `updates` against `id->stored` with [[check-pulse-updates]] and return what [[prepare-pulse-updates]] makes of
+  them."
+  [updates id->stored]
+  (check-pulse-updates updates id->stored)
+  (prepare-pulse-updates updates id->stored))
+
+(defn- pulse-update-event
+  "The update event of the Pulses of `id->stored` that `updates` change, with the rows `id->updated` after the write."
+  [updates id->stored id->updated opts]
+  (events/update-event id->stored updates (assoc opts :objects id->updated)))
+
+(defn- publish-pulse-updates!
+  "Enable or disable the PulseChannels of the Pulses of `id->stored` whose `:archived` `updates` flip, then publish their
+  update event."
+  [opts updates id->stored id->updated]
+  (enable-pulse-channels! id->stored (into {} (map (juxt :id #(dissoc % :id))) updates))
+  (let [event (pulse-update-event updates id->stored id->updated opts)]
+    (when (seq (:changes event))
+      (events/publish-event! :event/pulse-update event))))
+
+(declare update-parts!)
+
+(def ^:private PulseChanges
+  "What [[update-pulses!]] sets on each of its Pulses: columns only."
+  [:map {:closed true}
+   [:name                {:optional true} ms/NonBlankString]
+   [:alert_condition     {:optional true} AlertConditions]
+   [:alert_above_goal    {:optional true} boolean?]
+   [:alert_first_only    {:optional true} boolean?]
+   [:skip_if_empty       {:optional true} boolean?]
+   [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position {:optional true} [:maybe ms/PositiveInt]]
+   [:archived            {:optional true} boolean?]
+   [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]])
+
+(def ^:private PulseUpdate
+  "What [[update-pulses!]] takes for each Pulse: its `:id` and the columns to change."
+  [:merge PulseChanges [:map {:closed true} [:id ::lib.schema.id/pulse]]])
+
+(def ^:private PulseChangesWithParts
+  "What [[update-pulse!]] sets on its Pulse: columns, and the `:cards` and `:channels` to replace."
+  [:map {:closed true}
+   [:name                {:optional true} ms/NonBlankString]
+   [:alert_condition     {:optional true} AlertConditions]
+   [:alert_above_goal    {:optional true} boolean?]
+   [:alert_first_only    {:optional true} boolean?]
+   [:skip_if_empty       {:optional true} boolean?]
+   [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position {:optional true} [:maybe ms/PositiveInt]]
+   [:cards               {:optional true} [:sequential CoercibleToCardRef]]
+   [:channels            {:optional true} [:sequential PulseChannelInput]]
+   [:archived            {:optional true} boolean?]
+   [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]])
+
+(mu/defn update-pulses! :- :nil
+  "Apply `updates`, each the id of a Pulse that exists and its columns only, in one transaction, publishing their
+  update event with `opts`, where a change of `:archived` also sets `archived_directly` and enables or disables the
+  PulseChannels, and a change of `:collection_id` checks that the new Collection can hold the Pulses."
+  ([updates :- [:sequential PulseUpdate]]
+   (update-pulses! updates nil))
+  ([updates :- [:sequential PulseUpdate]
+    opts    :- :metabase.events.schema/write-opts]
+   (mdb/update-batched! :model/Pulse updates
+                        {:before-update check-and-prepare-pulse-updates
+                         :reread?       true
+                         :after-update  #(publish-pulse-updates! opts %1 %2 %3)})))
+
+(defn- write-pulse-columns!
+  "Check and write the `changes` to the columns of the Pulse `stored`, if any, and return the update event of the write,
+  or nil when it changes no column."
+  [stored changes opts]
+  (let [id->stored {(:id stored) stored}
+        updates    [(assoc changes :id (:id stored))]]
+    (check-pulse-updates updates id->stored)
+    (when-let [updates (not-empty (prepare-pulse-updates updates id->stored))]
+      (pulse.db/update-pulses! updates)
+      (enable-pulse-channels! id->stored (into {} (map (juxt :id #(dissoc % :id))) updates))
+      (pulse-update-event updates id->stored (pulse.db/pulses-by-ids [(:id stored)]) opts))))
+
+(mu/defn update-pulse! :- :nil
+  "Apply `changes`, columns and the `:cards` and `:channels` to replace, to the Pulse with `pulse-id` when it exists,
+  publishing one update event with `opts`, last: a touch event when only its parts changed."
+  ([pulse-id :- ::lib.schema.id/pulse
+    changes  :- PulseChangesWithParts]
+   (update-pulse! pulse-id changes nil))
+  ([pulse-id :- ::lib.schema.id/pulse
+    changes  :- PulseChangesWithParts
+    opts     :- :metabase.events.schema/write-opts]
+   (t2/with-transaction [_conn]
+     (when-let [stored (get (pulse.db/pulses-by-ids [pulse-id]) pulse-id)]
+       (let [event    (write-pulse-columns! stored changes opts)
+             changed  (seq (:changes event))
+             parts    (update-parts! [(assoc changes :id pulse-id)])
+             touch    (when (and (not changed) (contains? parts pulse-id))
+                        (events/touch-event (vec (vals (pulse.db/pulses-by-ids [pulse-id]))) opts))]
+         (when-let [published (or (when changed event) touch)]
+           (events/publish-event! :event/pulse-update published)))))
+   nil))
+
+(mu/defn update-pulses-for-dashboards! :- :nil
+  "Set the name and Collection of the Pulses of each Dashboard of `changes-by-dashboard`, a map of Dashboard id to
+  `{:name .. :collection_id ..}`, in one statement for all of them, leaving `updated_at` untouched, as a change to the
+  Dashboard does, publishing the update event."
+  [changes-by-dashboard :- [:map-of ::lib.schema.id/dashboard (mut/dissoc ::pulse.schema/pulse.update :id)]]
+  (when (seq changes-by-dashboard)
+    (t2/with-transaction [_conn]
+      (let [pulses     (pulse.db/pulses-for-dashboards (vec (keys changes-by-dashboard)))
+            changes-of (fn [pulse] (get changes-by-dashboard (:dashboard_id pulse)))
+            changed    (filterv #(seq (changed-columns % (changes-of %))) pulses)]
+        (check-moved-collections pulses changes-of)
+        (when (seq changed)
+          (binding [*allow-moving-dashboard-subscriptions* true]
+            (run! pulse.db/update-pulses-for-dashboards!
+                  (map #(select-keys changes-by-dashboard %)
+                       (partition-all mdb/update-partition-size (distinct (map :dashboard_id changed))))))
+          (events/publish-event! :event/pulse-update
+                                 (events/update-event (u/index-by :id changed)
+                                                      (mapv #(assoc (changes-of %) :id (:id %)) changed)
+                                                      {:objects (into {} (map (fn [pulse] [(:id pulse) (merge pulse (changes-of pulse))])) changed)}))))))
+  nil)
+
+(defn- publish-touch!
+  "Publish, as the last step of a write of their parts, the update event of the Pulses with `pulse-ids`, which changed
+  none of their columns, so that the records of each Pulse are made once."
+  [pulse-ids]
+  (when-let [ids (not-empty (vec (distinct (keep identity pulse-ids))))]
+    (events/publish-event! :event/pulse-update (events/touch-event (vec (vals (pulse.db/pulses-by-ids ids)))))))
+
+(mu/defn append-pulse-cards! :- :nil
+  "Append the PulseCards `new-pulse-cards` to their Pulses, publishing, last, the update event of each Pulse that gains
+  one."
+  [new-pulse-cards :- [:sequential pulse-card/NewPulseCard]]
+  (when (seq new-pulse-cards)
+    (t2/with-transaction [_conn]
+      (run! pulse-card/append-pulse-cards! (map vec (partition-all mdb/create-partition-size new-pulse-cards)))
+      (publish-touch! (map :pulse_id new-pulse-cards))))
+  nil)
+
+(mu/defn delete-pulse-cards-for-dashcards! :- :nil
+  "Delete the PulseCards of the DashboardCards with `dashcard-ids`, publishing, last, the update event of each Pulse
+  that loses one."
+  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
+  (when (seq dashcard-ids)
+    (t2/with-transaction [_conn]
+      (when-let [cards (not-empty (pulse.db/pulse-cards-for-dashcards dashcard-ids))]
+        (pulse-card/delete-pulse-cards! (mapv :id cards))
+        (publish-touch! (map :pulse_id cards)))))
+  nil)
+
+(mu/defn update-pulse-channel-details! :- :nil
+  "Set the `:details` of the PulseChannel `pulse-channel`, a row as selected from the app DB, publishing, last, the update
+  event of its Pulse."
+  [pulse-channel :- [:map [:id ms/PositiveInt] [:pulse_id ::lib.schema.id/pulse]]
+   details       :- ::pulse.schema/pulse-channel.details]
   (t2/with-transaction [_conn]
-    (let [notification (pulse.db/insert-pulse! notification)]
-      (update-notification-cards! notification card-refs)
-      (update-notification-channels! notification channels)
-      (u/the-id notification))))
+    (pulse-channel/update-pulse-channel-details! pulse-channel details)
+    (publish-touch! [(:pulse_id pulse-channel)]))
+  nil)
 
-(mu/defn create-pulse!
-  "Create a new Pulse by inserting it into the database along with all associated pieces of data such as:
-  PulseCards, PulseChannels, and PulseChannelRecipients.
+(defn- delete-channels-and-publish!
+  "Delete the PulseChannels of `pulses`, and the SendPulse triggers of those, then publish the delete event of the
+  Pulses."
+  [opts pulses]
+  (pulse-channel/delete-pulse-channels! (mapv :id (pulse.db/pulse-channels-for-pulses (mapv :id pulses))))
+  (events/publish-event! :event/pulse-delete (events/delete-event pulses opts)))
 
-  Returns the newly created Pulse, or throws an Exception."
-  [cards    :- [:sequential CardRef]
-   channels :- [:sequential PulseChannelInput]
-   kvs      :- [:map {:closed true}
-                [:name                                 ms/NonBlankString]
-                [:creator_id                           ms/PositiveInt]
-                [:skip_if_empty       {:optional true} [:maybe :boolean]]
-                [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
-                [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-                [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-                [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]
-                [:disable_links       {:optional true} [:maybe ms/BooleanValue]]]]
-  (let [pulse-id (events/with-batched-events
-                   (create-notification-and-add-cards-and-channels! kvs cards channels))]
-    (retrieve-pulse pulse-id)))
+(mu/defn delete-pulses! :- :nil
+  "Delete the Pulses with `ids` along with their PulseChannels and the SendPulse triggers of those, in one transaction,
+  publishing their delete event right before the first Pulse statement."
+  ([ids :- [:sequential ::lib.schema.id/pulse]]
+   (delete-pulses! ids nil))
+  ([ids  :- [:sequential ::lib.schema.id/pulse]
+    opts :- :metabase.events.schema/write-opts]
+   (mdb/delete-batched! :model/Pulse ids {:before-delete #(delete-channels-and-publish! opts %)})))
 
-(defn create-alert!
-  "Creates a pulse with the correct fields specified for an alert"
-  [alert creator-id card-id channels]
-  (let [id (events/with-batched-events
-             (-> alert
-                 (assoc :skip_if_empty true, :creator_id creator-id)
-                 (create-notification-and-add-cards-and-channels! [card-id] channels)))]
-    (retrieve-alert id)))
+(mu/defn remove-pulse-channels! :- :nil
+  "Delete the PulseChannels with `channel-ids` and archive each Pulse left without a PulseChannel, publishing its
+  update event, while a Pulse that keeps a PulseChannel publishes none as the channels it loses are upkeep, not a
+  change of it."
+  ([channel-ids :- [:sequential ms/PositiveInt]]
+   (remove-pulse-channels! channel-ids nil))
+  ([channel-ids :- [:sequential ms/PositiveInt]
+    opts        :- :metabase.events.schema/write-opts]
+   (when (seq channel-ids)
+     (t2/with-transaction [_conn]
+       (let [pulse-ids (vec (distinct (map :pulse_id (pulse.db/pulse-channels-with-ids channel-ids))))]
+         (pulse-channel/delete-pulse-channels! channel-ids)
+         (when-let [emptied (not-empty (vec (remove (set (pulse.db/pulse-ids-with-channels pulse-ids)) pulse-ids)))]
+           (update-pulses! (mapv #(hash-map :id % :archived true) emptied) opts)))))
+   nil))
 
-(mu/defn- notification-or-id->existing-card-refs :- [:sequential CardRef]
-  [notification-or-id :- NotificationOrId]
-  (pulse.db/pulse-card-refs (u/the-id notification-or-id)))
+(defn- emptied-channel-ids
+  "The ids of the PulseChannels that lose their last recipient when `recipients` are deleted and have no raw email
+  addresses, as Slack PulseChannels and ones with email address subscriptions are never deleted with their recipients."
+  [recipients]
+  (when (seq recipients)
+    (let [channel-ids (into #{} (map :pulse_channel_id) recipients)
+          remaining   (merge (zipmap channel-ids (repeat 0))
+                             (pulse.db/pulse-channel-recipient-counts (vec channel-ids)))
+          deleting    (frequencies (map :pulse_channel_id recipients))
+          candidates  (filterv #(= (get deleting %) (get remaining %)) channel-ids)
+          details     (when (seq candidates) (pulse.db/pulse-channel-details-by-ids candidates))]
+      (filterv #(empty? (:emails (get details %))) candidates))))
 
-(mu/defn- card-refs-have-changed? :- :boolean
-  [notification-or-id :- NotificationOrId
-   new-card-refs      :- [:sequential CardRef]]
-  (not= (notification-or-id->existing-card-refs notification-or-id)
-        new-card-refs))
+(defn- delete-recipients!
+  "Delete the PulseChannelRecipients `recipients` and the PulseChannels they were the last recipients of, archiving
+  the Pulses left without a PulseChannel and publishing no event for a Pulse that keeps its PulseChannels, as a
+  recipient leaving is upkeep, not a change of the Pulse."
+  [recipients opts]
+  (when (seq recipients)
+    (t2/with-transaction [_conn]
+      (let [emptied   (vec (emptied-channel-ids recipients))
+            emptied?  (set emptied)
+            remaining (vec (remove (comp emptied? :pulse_channel_id) recipients))]
+        (remove-pulse-channels! emptied opts)
+        (when (seq remaining)
+          (pulse.db/delete-pulse-channel-recipients! (mapv :id remaining)))))))
 
-(mu/defn- update-notification-cards-if-changed!
-  [notification-or-id :- NotificationOrId
-   new-card-refs      :- [:sequential CardRef]]
-  (when (card-refs-have-changed? notification-or-id new-card-refs)
-    (update-notification-cards! notification-or-id new-card-refs)))
+(mu/defn delete-pulse-channel-recipients! :- :nil
+  "Delete the PulseChannelRecipients with `recipient-ids`, together with a PulseChannel that loses its last recipient
+  and has no raw email addresses, and archive its Pulse when it was the last PulseChannel of the Pulse."
+  [recipient-ids :- [:sequential ms/PositiveInt]]
+  (when (seq recipient-ids)
+    (delete-recipients! (pulse.db/pulse-channel-recipients-by-ids recipient-ids) nil))
+  nil)
 
-(mu/defn update-notification!
-  "Update the supplied keys in a `notification`."
-  [notification :- UpdateNotificationInput]
-  (pulse.db/update-pulse! (u/the-id notification)
-                          (u/select-keys-when notification
-                                              :present [:collection_id :collection_position :archived]
-                                              :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
-  ;; update Cards if the 'refs' have changed
-  (when (contains? notification :cards)
-    (update-notification-cards-if-changed! notification (map card->ref (:cards notification))))
-  ;; update channels as needed
-  (when (contains? notification :channels)
-    (update-notification-channels! notification (:channels notification))))
+(mu/defn delete-pulse-channel-recipients-for-users! :- :nil
+  "Delete every PulseChannelRecipient of the Users with `user-ids`, and the PulseChannels they were the last recipients
+  of, as [[delete-pulse-channel-recipients!]] does."
+  ([user-ids :- [:sequential ::lib.schema.id/user]]
+   (delete-pulse-channel-recipients-for-users! user-ids nil))
+  ([user-ids :- [:sequential ::lib.schema.id/user]
+    opts     :- :metabase.events.schema/write-opts]
+   (when (seq user-ids)
+     (delete-recipients! (pulse.db/pulse-channel-recipients-for-users user-ids) opts))
+   nil))
 
-(defn update-pulse!
-  "Update an existing Pulse, including all associated data such as: PulseCards, PulseChannels, and
-  PulseChannelRecipients.
+(defn- card-rows
+  "The PulseCard rows that put the Cards of `card-refs` on the Pulse with `pulse-id`, in order."
+  [pulse-id card-refs]
+  (vec (map-indexed (fn [i {card-id :id :keys [include_csv include_xls format_rows pivot_results dashboard_card_id]}]
+                      {:pulse_id          pulse-id
+                       :card_id           card-id
+                       :position          i
+                       :include_csv       include_csv
+                       :include_xls       include_xls
+                       :format_rows       format_rows
+                       :pivot_results     pivot_results
+                       :dashboard_card_id dashboard_card_id})
+                    card-refs)))
 
-  Returns the updated Pulse or throws an Exception."
-  [pulse]
-  (events/with-batched-events
-    (update-notification! pulse))
-  (retrieve-pulse (u/the-id pulse)))
+(defn- channel-row
+  "The PulseChannel `channel` of the Pulse with `pulse-id`, with the keywords of its columns."
+  [pulse-id channel]
+  (assoc channel
+         :channel_type   (keyword (:channel_type channel))
+         :schedule_type  (keyword (:schedule_type channel))
+         :schedule_frame (keyword (:schedule_frame channel))
+         :pulse_id       pulse-id))
 
-(defn- alert->notification
-  "Convert an 'Alert` back into the generic 'Notification' format."
-  [{:keys [card cards], :as alert}]
-  (let [card  (or card (first cards))
-        cards (when card [(card->ref card)])]
-    (cond-> (-> (assoc alert :skip_if_empty true)
-                (dissoc :card))
-      (seq cards) (assoc :cards cards))))
+(mu/defn- replace-pulse-cards! :- [:set ::lib.schema.id/pulse]
+  "Replace the PulseCards of each Pulse of `card-refs-by-pulse`, a map from its id to the CardRefs, a definitive
+  collection of *all* Cards of the Pulse in the desired order, with those, given the CardRefs it has now in `existing`, a
+  map from its id, and return the ids of the Pulses that had or gained a PulseCard."
+  [card-refs-by-pulse :- [:map-of ::lib.schema.id/pulse [:sequential CardRef]]
+   existing           :- [:map-of ::lib.schema.id/pulse [:sequential CardRef]]]
+  (when (seq card-refs-by-pulse)
+    (pulse-card/delete-pulse-cards! (pulse.db/pulse-card-ids-for-pulses (filterv #(seq (get existing %)) (keys card-refs-by-pulse))))
+    (pulse-card/create-pulse-cards! (into [] (mapcat (fn [[pulse-id card-refs]] (card-rows pulse-id card-refs))) card-refs-by-pulse)))
+  (into #{}
+        (filter (fn [pulse-id] (or (seq (get existing pulse-id)) (seq (get card-refs-by-pulse pulse-id)))))
+        (keys card-refs-by-pulse)))
 
-;; TODO - why do we make sure to strictly validate everything when we create a PULSE but not when we create an ALERT? (#40016)
-(defn update-alert!
-  "Updates the given `alert` and returns it"
-  [alert]
-  (events/with-batched-events
-    (update-notification! (alert->notification alert)))
-  (retrieve-alert (u/the-id alert)))
+(mu/defn- replace-pulse-channels! :- [:set ::lib.schema.id/pulse]
+  "Replace the PulseChannels of each Pulse of `channels-by-pulse`, a map from its id to a definitive collection of
+  *all* of its channels, creating a channel that has no existing PulseChannel, deleting an existing PulseChannel that
+  has no entry and updating the others with their most recent information, and return the ids of the Pulses that
+  changed any."
+  [channels-by-pulse :- [:map-of ::lib.schema.id/pulse [:sequential PulseChannelInput]]]
+  (if (empty? channels-by-pulse)
+    #{}
+    (let [existing (group-by :pulse_id (pulse.db/pulse-channels-for-pulses (vec (keys channels-by-pulse))))
+          diffs    (into {}
+                         (map (fn [[pulse-id channels]]
+                                [pulse-id (u/row-diff (get existing pulse-id)
+                                                      (map-indexed (fn [idx channel]
+                                                                     (assoc (channel-row pulse-id channel)
+                                                                            :id (or (:id channel) (- (inc idx)))))
+                                                                   channels)
+                                                      {:to-compare #(dissoc % :created_at :updated_at)})]))
+                         channels-by-pulse)
+          to-create (into [] (mapcat (comp :to-create val)) diffs)
+          to-update (into [] (mapcat (comp :to-update val)) diffs)
+          to-delete (into [] (mapcat (comp :to-delete val)) diffs)
+          created   (pulse-channel/create-pulse-channels! to-create)
+          _         (assert (every? :id to-update) "Cannot update a PulseChannel without an :id")
+          updated   (pulse-channel/update-pulse-channels! to-update)
+          _         (assert (every? :id to-delete) "Cannot delete a PulseChannel without an :id")
+          _         (when (seq to-delete)
+                      (pulse-channel/delete-pulse-channels! (mapv :id to-delete)))]
+      (into #{} (map :pulse_id) (concat created updated to-delete)))))
+
+(def ^:private PulseCreate
+  "What [[create-pulses!]] takes for one Pulse: its columns and the `:cards` and `:channels` it has."
+  [:map {:closed true}
+   [:name                                 ms/NonBlankString]
+   [:creator_id                           ms/PositiveInt]
+   [:cards                                [:sequential CardRef]]
+   [:channels                             [:sequential PulseChannelInput]]
+   [:skip_if_empty       {:optional true} [:maybe :boolean]]
+   [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
+   [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]
+   [:disable_links       {:optional true} [:maybe ms/BooleanValue]]])
+
+(defn- check-pulse-creates
+  "Throw unless every Pulse of `rows` satisfies these rules:
+
+  - it is in a Collection that can hold a Pulse (a dashboard subscription in that of its Dashboard)
+  - its PulseChannels are valid new ones"
+  [rows]
+  (let [checked (assoc-dashboard-collections (mapv #(dissoc % :cards :channels) rows))
+        parents (collection-parents checked)]
+    (doseq [[pulse row] (map vector checked rows)]
+      (check-collection parents pulse)
+      (pulse-channel/check-new-pulse-channels (map #(channel-row 0 %) (:channels row))))))
+
+(defn- create-pulse-batch!
+  "Check and insert `rows`, one batch of a call, with their PulseCards and PulseChannels, and return the inserted Pulses."
+  [rows]
+  (check-pulse-creates rows)
+  (let [pulses (pulse.db/insert-pulses! (mapv #(dissoc % :cards :channels) rows))]
+    (pulse-card/create-pulse-cards! (vec (mapcat (fn [row pulse] (card-rows (:id pulse) (:cards row))) rows pulses)))
+    (pulse-channel/create-pulse-channels! (vec (mapcat (fn [row pulse] (map #(channel-row (:id pulse) %) (:channels row))) rows pulses)))
+    pulses))
+
+(mu/defn create-pulses! :- [:sequential (ms/InstanceOf :model/Pulse)]
+  "Insert the Pulses of `rows` with their PulseCards, PulseChannels and PulseChannelRecipients in batches in one
+  transaction, publishing one create event for all, and return them with the standard hydrations, in order."
+  [rows :- [:sequential PulseCreate]]
+  (let [ids (t2/with-transaction [_conn]
+              (let [pulses (into [] (mapcat (comp create-pulse-batch! vec)) (partition-all mdb/create-partition-size rows))]
+                (when (seq pulses)
+                  (events/publish-event! :event/pulse-create (events/create-event pulses)))
+                (mapv :id pulses)))]
+    (if (seq ids)
+      (let [id->pulse (pulse.db/pulses-by-ids ids)]
+        (mapv notification->pulse (hydrate-notifications (mapv id->pulse ids))))
+      [])))
+
+(defn- update-parts!
+  "Replace the `:cards` and `:channels` that each of `rows` gives of its Pulse, returning the ids of the Pulses that
+  changed any."
+  [rows]
+  (let [with-cards (filterv #(contains? % :cards) rows)
+        existing   (when (seq with-cards)
+                     (update-vals (group-by :pulse_id (pulse.db/pulse-card-refs-for-pulses (mapv :id with-cards)))
+                                  (fn [refs] (mapv #(dissoc % :pulse_id) refs))))
+        changed    (into {}
+                         (keep (fn [{:keys [id cards]}]
+                                 (let [refs (mapv card->ref cards)]
+                                   (when (not= (get existing id []) refs)
+                                     [id refs]))))
+                         with-cards)]
+    (into (replace-pulse-cards! changed (or existing {}))
+          (replace-pulse-channels! (into {} (comp (filter #(contains? % :channels)) (map (juxt :id :channels))) rows)))))
+
+(defmethod collection/shift-positions-in-collection! :model/Pulse
+  [_model collection-id positions direction]
+  (pulse.db/shift-pulse-positions! collection-id positions direction))
+
+(defmethod collection/positioned-rows-in-collections :model/Pulse
+  [_model collection-ids]
+  (pulse.db/positioned-pulses-in-collections (vec collection-ids)))
+
+(defmethod collection/update-positions! :model/Pulse
+  [_model id->position]
+  (update-pulses! (mapv (fn [[id position]] {:id id :collection_position position}) id->position)))
+
+(defmethod collection/archive-in-collections! :model/Pulse
+  [model collection-ids opts]
+  (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
+    (update-pulses! (mapv #(hash-map :id % :archived true) ids) opts)))
+
+(defmethod collection/restore-in-collections! :model/Pulse
+  [model collection-ids opts]
+  (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
+    (update-pulses! (mapv #(hash-map :id % :archived false) ids) opts)))
+
+(defmethod collection/delete-in-collections! :model/Pulse
+  [model collection-ids opts]
+  (when-let [ids (not-empty (collection/item-ids-in-collections model collection-ids))]
+    (delete-pulses! ids opts)))
+
+(defmethod channel.models/delete-for-channels! :model/PulseChannel
+  [_model channel-ids opts]
+  (remove-pulse-channels! (pulse.db/pulse-channel-ids-for-channels channel-ids) opts))
+
+(defmethod user/delete-for-users! :model/PulseChannelRecipient
+  [_model user-ids opts]
+  (delete-pulse-channel-recipients-for-users! (vec user-ids) opts))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/Pulse
-  [_model]
-  {:create :event/pulse-create
-   :update :event/pulse-update
-   :delete :event/pulse-delete})
 
 (defmethod app-db-copy/spec :model/Pulse [_model]
   {:skip? false})
@@ -819,8 +1135,10 @@
    :track-redacted [:alert_above_goal :alert_condition :alert_first_only :archived :archived_directly :collection_id
                     :creator_id :dashboard_id :disable_links :name :parameters :skip_if_empty]
    :skip           [:collection_position :entity_id]
+   :hydrate        pulse.audit/hydrate
    :details        pulse.audit/details
    :state          pulse.audit/state
+   :touch          :row
    :topics         {:create pulse.audit/create-topic
                     :update :subscription-update}})
 

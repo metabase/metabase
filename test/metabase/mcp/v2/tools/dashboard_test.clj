@@ -281,42 +281,42 @@
   (let [mp (mt/metadata-provider)]
     (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
 
-(defn- do-with-series-dashboard
-  "Calls `f` with the ids of a dashboard whose one dashcard shows two venues cards, both connected to its `cat` filter.
-   One card is in a collection the non-admin groups can't read.
-   That hidden card is the dashcard's own card when `primary-hidden?`, and its series card otherwise.
-   `f` gets `{:dash-id :dc-id :open-card :hidden-card}`."
+(defn- do-with-series-dashboard!
+  "Call `f` with `{:dash-id :dc-id :open-card :hidden-card}` for a dashboard whose one dashcard shows two venues
+  cards, both connected to its `cat` filter, one of them in a collection the non-admin groups can't read, being the
+  dashcard's own card when `primary-hidden?` and its series card otherwise."
   [primary-hidden? f]
-  (mt/with-temp [:model/Collection {open-id :id}     {}
-                 :model/Collection {locked-id :id}   {}
-                 :model/Dashboard  {dash-id :id}     {:name          "Sales"
-                                                      :collection_id open-id
-                                                      :parameters    [{:id   "cat"
-                                                                       :name "Category"
-                                                                       :slug "category"
-                                                                       :type "category"}]}
-                 :model/Card       {open-card :id}   {:collection_id open-id
-                                                      :dataset_query (venues-query)}
-                 :model/Card       {hidden-card :id} {:collection_id locked-id
-                                                      :dataset_query (venues-query)}]
-    (let [[primary series] (if primary-hidden? [hidden-card open-card] [open-card hidden-card])]
-      (mt/with-temp [:model/DashboardCard       {dc-id :id} {:dashboard_id       dash-id
-                                                             :card_id            primary
-                                                             :parameter_mappings
-                                                             (for [card-id [primary series]]
-                                                               {:parameter_id "cat"
-                                                                :card_id      card-id
-                                                                :target       [:dimension
-                                                                               [:field (mt/id :venues :price) nil]]})}
-                     :model/DashboardCardSeries _           {:dashboardcard_id dc-id
-                                                             :card_id          series
-                                                             :position         0}]
-        (mt/with-non-admin-groups-no-collection-perms locked-id
-          (f {:dash-id dash-id, :dc-id dc-id, :open-card open-card, :hidden-card hidden-card}))))))
+  (mt/with-model-cleanup [:model/Collection]
+    (let [[{open-id :id}] (collection/create-collections! [{:name (mt/random-name)}])
+          [{locked-id :id}] (collection/create-collections! [{:name (mt/random-name)}])]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name          "Sales"
+                                                     :collection_id open-id
+                                                     :parameters    [{:id   "cat"
+                                                                      :name "Category"
+                                                                      :slug "category"
+                                                                      :type "category"}]}
+                     :model/Card {open-card :id} {:collection_id open-id
+                                                  :dataset_query (venues-query)}
+                     :model/Card {hidden-card :id} {:collection_id locked-id
+                                                    :dataset_query (venues-query)}]
+        (let [[primary series] (if primary-hidden? [hidden-card open-card] [open-card hidden-card])]
+          (mt/with-temp [:model/DashboardCard       {dc-id :id} {:dashboard_id       dash-id
+                                                                 :card_id            primary
+                                                                 :parameter_mappings
+                                                                 (for [card-id [primary series]]
+                                                                   {:parameter_id "cat"
+                                                                    :card_id      card-id
+                                                                    :target       [:dimension
+                                                                                   [:field (mt/id :venues :price) nil]]})}
+                         :model/DashboardCardSeries _           {:dashboardcard_id dc-id
+                                                                 :card_id          series
+                                                                 :position         0}]
+            (mt/with-non-admin-groups-no-collection-perms locked-id
+              (f {:dash-id dash-id, :dc-id dc-id, :open-card open-card, :hidden-card hidden-card}))))))))
 
 (deftest dropped-connections-leave-out-unreadable-cards-test
   (testing "a lost connection to a series card the user can't read isn't reported, as redaction hides its mapping"
-    (do-with-series-dashboard
+    (do-with-series-dashboard!
      false
      (fn [{:keys [dash-id dc-id hidden-card]}]
        (let [args (wire {:method        "update"
@@ -334,7 +334,7 @@
 
 (deftest dropped-connections-leave-out-dashcards-with-unreadable-cards-test
   (testing "a series card's lost connection isn't reported when redaction hides the dashcard's own card"
-    (do-with-series-dashboard
+    (do-with-series-dashboard!
      true
      (fn [{:keys [dash-id dc-id open-card]}]
        ;; No op can drop this connection for a user who can't read the dashcard's card, since every op that
@@ -350,7 +350,7 @@
 
 (deftest dropped-connections-leave-out-replaced-unreadable-cards-test
   (testing "a hidden card's lost connection isn't reported when replace_card puts a readable card in its place"
-    (do-with-series-dashboard
+    (do-with-series-dashboard!
      true
      (fn [{:keys [dash-id dc-id]}]
        (mt/with-temp [:model/Card {readable-card :id} {:dataset_query (venues-query)}]
@@ -371,89 +371,103 @@
 
 (deftest dropped-connections-report-replacements-with-unreadable-cards-test
   (testing "a connection the user saw is reported without the card when replace_card puts a hidden card in its place"
-    (mt/with-temp [:model/Collection    {open-id :id}     {}
-                   :model/Collection    {locked-id :id}   {}
-                   :model/Dashboard     {dash-id :id}     {:name          "Sales"
-                                                           :collection_id open-id
-                                                           :parameters    [{:id   "cat"
-                                                                            :name "Category"
-                                                                            :slug "category"
-                                                                            :type "category"}]}
-                   :model/Card          {open-card :id}   {:collection_id open-id
-                                                           :dataset_query (venues-query)}
-                   :model/Card          {hidden-card :id} {:collection_id locked-id
-                                                           :dataset_query (venues-query)}
-                   :model/DashboardCard {dc-id :id}       {:dashboard_id       dash-id
-                                                           :card_id            open-card
-                                                           :parameter_mappings [{:parameter_id "cat"
-                                                                                 :card_id      open-card
-                                                                                 :target       (category-target)}]}
-                   :model/DashboardCard _                 {:dashboard_id dash-id
-                                                           :card_id      hidden-card
-                                                           :row          6}]
-      (mt/with-non-admin-groups-no-collection-perms locked-id
-        (let [call (fn [user validate-only?]
-                     (-> (call-tool! user v2.tu/all-scopes "dashboard_write"
-                                     (wire {:method        "update"
-                                            :id            dash-id
-                                            :validate_only validate-only?
-                                            :ops           [{:op          "replace_card"
-                                                             :dashcard_id dc-id
-                                                             :card_id     hidden-card}]}))
-                         tool-result
-                         :dropped_connections))]
-          (is (= [{:parameter_id "cat", :dashcard_id dc-id, :card_id hidden-card, :series false}]
-                 (call :crowberto true))
-              "a user who can read the new card is told its id")
-          (doseq [validate-only? [true false]]
-            (testing (if validate-only? "dry run" "save")
-              (is (= [{:parameter_id "cat", :dashcard_id dc-id, :card_id nil, :series false}]
-                     (call :rasta validate-only?))))))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[{open-id :id}] (collection/create-collections! [{:name (mt/random-name)}])
+            [{locked-id :id}] (collection/create-collections! [{:name (mt/random-name)}])]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:name          "Sales"
+                                                       :collection_id open-id
+                                                       :parameters    [{:id   "cat"
+                                                                        :name "Category"
+                                                                        :slug "category"
+                                                                        :type "category"}]}
+                       :model/Card {open-card :id} {:collection_id open-id
+                                                    :dataset_query (venues-query)}
+                       :model/Card {hidden-card :id} {:collection_id locked-id
+                                                      :dataset_query (venues-query)}
+                       :model/DashboardCard {dc-id :id} {:dashboard_id       dash-id
+                                                         :card_id            open-card
+                                                         :parameter_mappings [{:parameter_id "cat"
+                                                                               :card_id      open-card
+                                                                               :target       (category-target)}]}
+                       :model/DashboardCard _ {:dashboard_id dash-id
+                                               :card_id      hidden-card
+                                               :row          6}]
+          (mt/with-non-admin-groups-no-collection-perms locked-id
+            (let [call (fn [user validate-only?]
+                         (-> (call-tool! user v2.tu/all-scopes "dashboard_write"
+                                         (wire {:method        "update"
+                                                :id            dash-id
+                                                :validate_only validate-only?
+                                                :ops           [{:op          "replace_card"
+                                                                 :dashcard_id dc-id
+                                                                 :card_id     hidden-card}]}))
+                             tool-result
+                             :dropped_connections))]
+              (is (= [{:parameter_id "cat", :dashcard_id dc-id, :card_id hidden-card, :series false}]
+                     (call :crowberto true))
+                  "a user who can read the new card is told its id")
+              (doseq [validate-only? [true false]]
+                (testing (if validate-only? "dry run" "save")
+                  (is (= [{:parameter_id "cat", :dashcard_id dc-id, :card_id nil, :series false}]
+                         (call :rasta validate-only?))))))))))))
 
 (deftest dropped-connections-leave-out-promoted-unreadable-series-test
   (testing "a hidden series card's lost connection isn't reported when replace_card promotes that card"
-    (mt/with-temp [:model/Collection          {open-id :id}     {}
-                   :model/Collection          {locked-id :id}   {}
-                   :model/Dashboard           {dash-id :id}     {:name          "Sales"
-                                                                 :collection_id open-id
-                                                                 :parameters    [{:id   "cat"
-                                                                                  :name "Category"
-                                                                                  :slug "category"
-                                                                                  :type "category"}]}
-                   :model/Card                {open-card :id}   {:collection_id open-id
-                                                                 :dataset_query (venues-query)}
-                   :model/Card                {hidden-card :id} {:collection_id locked-id
-                                                                 :dataset_query (venues-query)}
-                   :model/DashboardCard       {dc-id :id}       {:dashboard_id dash-id
-                                                                 :card_id      open-card
-                                                                 ;; Only the series card is connected.
-                                                                 :parameter_mappings
-                                                                 [{:parameter_id "cat"
-                                                                   :card_id      hidden-card
-                                                                   :target       (category-target)}]}
-                   :model/DashboardCardSeries _                 {:dashboardcard_id dc-id
-                                                                 :card_id          hidden-card
-                                                                 :position         0}]
-      (mt/with-non-admin-groups-no-collection-perms locked-id
-        (let [call (fn [user]
-                     (tool-result (call-tool! user v2.tu/all-scopes "dashboard_write"
-                                              (wire {:method        "update"
-                                                     :id            dash-id
-                                                     :validate_only true
-                                                     :ops           [{:op          "replace_card"
-                                                                      :dashcard_id dc-id
-                                                                      :card_id     hidden-card}]}))))]
-          (is (=? [{:parameter_id "cat", :card_id hidden-card}] (:dropped_connections (call :crowberto)))
-              "a user who can read the series card is told")
-          (is (not (contains? (call :rasta) :dropped_connections))))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[{open-id :id}] (collection/create-collections! [{:name (mt/random-name)}])
+            [{locked-id :id}] (collection/create-collections! [{:name (mt/random-name)}])]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:name          "Sales"
+                                                       :collection_id open-id
+                                                       :parameters    [{:id   "cat"
+                                                                        :name "Category"
+                                                                        :slug "category"
+                                                                        :type "category"}]}
+                       :model/Card {open-card :id} {:collection_id open-id
+                                                    :dataset_query (venues-query)}
+                       :model/Card {hidden-card :id} {:collection_id locked-id
+                                                      :dataset_query (venues-query)}
+                       :model/DashboardCard {dc-id :id} {:dashboard_id dash-id
+                                                         :card_id      open-card
+                                                         ;; Only the series card is connected.
+                                                         :parameter_mappings
+                                                         [{:parameter_id "cat"
+                                                           :card_id      hidden-card
+                                                           :target       (category-target)}]}
+                       :model/DashboardCardSeries _ {:dashboardcard_id dc-id
+                                                     :card_id          hidden-card
+                                                     :position         0}]
+          (mt/with-non-admin-groups-no-collection-perms locked-id
+            (let [call (fn [user]
+                         (tool-result (call-tool! user v2.tu/all-scopes "dashboard_write"
+                                                  (wire {:method        "update"
+                                                         :id            dash-id
+                                                         :validate_only true
+                                                         :ops           [{:op          "replace_card"
+                                                                          :dashcard_id dc-id
+                                                                          :card_id     hidden-card}]}))))]
+              (is (=? [{:parameter_id "cat", :card_id hidden-card}] (:dropped_connections (call :crowberto)))
+                  "a user who can read the series card is told")
+              (is (not (contains? (call :rasta) :dropped_connections))))))))))
+
+(def ^:private gone-filter
+  "The dashboard filter the archived-subscription tests remove."
+  {:id   "gone"
+   :name "Gone"
+   :slug "gone"
+   :type "category"})
+
+(defn- remove-gone-filter!
+  "The `dashboard_write` result of `user`, holding `scopes`, removing the filter `gone` from `dash`."
+  [user scopes dash]
+  (tool-result (call-tool! user scopes "dashboard_write"
+                           (wire {:method "update"
+                                  :id     (:id dash)
+                                  :ops    [{:op "remove_parameter", :parameter_id "gone"}]}))))
 
 (deftest remove-parameter-reports-archived-subscriptions-test
   (mt/with-fake-inbox
     (mt/with-temp [:model/Dashboard             dash             {:name       "Sales"
-                                                                  :parameters [{:id   "gone"
-                                                                                :name "Gone"
-                                                                                :slug "gone"
-                                                                                :type "category"}]}
+                                                                  :parameters [gone-filter]}
                    :model/Pulse                 {pulse-id :id}   {:dashboard_id (:id dash)
                                                                   :creator_id   (mt/user->id :rasta)
                                                                   ;; Saved before the filter was renamed "Gone".
@@ -472,52 +486,50 @@
                  :creator         "Rasta Toucan"
                  :channels        ["email"]
                  :recipient_count 1}]
-               (-> (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
-                               (wire {:method "update"
-                                      :id     (:id dash)
-                                      :ops    [{:op "remove_parameter", :parameter_id "gone"}]}))
-                   tool-result
-                   :archived_subscriptions)))))))
+               (:archived_subscriptions (remove-gone-filter! :crowberto v2.tu/all-scopes dash))))))))
 
-(deftest unreadable-archived-subscription-row-test
-  (testing "a subscription the caller can't read is reported by its id and missing filters' ids only"
+(deftest unreadable-archived-subscription-is-only-counted-test
+  (testing "a subscription the caller can't read adds to the count and is left out of the list"
     (mt/with-fake-inbox
-      (mt/with-temp [:model/Dashboard    dash           {:name       "Sales"
-                                                         :parameters [{:id   "gone"
-                                                                       :name "Gone"
-                                                                       :slug "gone"
-                                                                       :type "category"}]}
-                     :model/Pulse        {pulse-id :id} {:dashboard_id (:id dash)
-                                                         :creator_id   (mt/user->id :crowberto)
-                                                         :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}
-                     :model/PulseChannel _              {:channel_type :slack
-                                                         :pulse_id     pulse-id
-                                                         :details      {:channel "#private"}
-                                                         :enabled      true}]
-        (is (= [{:id             pulse-id
-                 :filters        [{:id "gone"}]
-                 :already_broken false}]
-               (-> (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
-                               (wire {:method "update"
-                                      :id     (:id dash)
-                                      :ops    [{:op "remove_parameter", :parameter_id "gone"}]}))
-                   tool-result
-                   :archived_subscriptions)))))))
+      (mt/with-temp [:model/Dashboard    dash        {:name       "Sales"
+                                                      :parameters [gone-filter]}
+                     :model/Pulse        {own :id}   {:dashboard_id (:id dash)
+                                                      :creator_id   (mt/user->id :rasta)
+                                                      :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}
+                     :model/Pulse        {other :id} {:dashboard_id (:id dash)
+                                                      :creator_id   (mt/user->id :crowberto)
+                                                      :parameters   [{:id "gone", :name "Gone", :value ["b"]}]}
+                     :model/PulseChannel _           {:channel_type :slack
+                                                      :pulse_id     other
+                                                      :details      {:channel "#private"}
+                                                      :enabled      true}]
+        (is (=? {:archived_subscriptions      [{:id own, :creator "Rasta Toucan"}]
+                 :archived_subscription_count 2}
+                (remove-gone-filter! :rasta v2.tu/all-scopes dash)))))))
+
+(deftest only-unreadable-archived-subscriptions-test
+  (testing "when the caller can read none of the archived subscriptions, the result has only their count"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/Dashboard dash {:name       "Sales"
+                                            :parameters [gone-filter]}
+                     :model/Pulse     _    {:dashboard_id (:id dash)
+                                            :creator_id   (mt/user->id :crowberto)
+                                            :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}]
+        (is (= {:archived_subscription_count 1}
+               (select-keys (remove-gone-filter! :rasta v2.tu/all-scopes dash)
+                            [:archived_subscription_count :archived_subscriptions])))))))
 
 (deftest write-only-token-gets-archived-subscription-count-test
   (testing "a token that can't read the dashboard back learns how many subscriptions the save archived"
     (mt/with-fake-inbox
       (mt/with-temp [:model/Dashboard dash {:name       "Sales"
-                                            :parameters [{:id "gone", :name "Gone", :slug "gone", :type "category"}]}
+                                            :parameters [gone-filter]}
                      :model/Pulse     _    {:dashboard_id (:id dash)
                                             :creator_id   (mt/user->id :rasta)
                                             :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}]
-        (let [result (tool-result (call-tool! :crowberto #{"agent:content:write"} "dashboard_write"
-                                              (wire {:method "update"
-                                                     :id     (:id dash)
-                                                     :ops    [{:op "remove_parameter", :parameter_id "gone"}]})))]
-          (is (=? {:id (:id dash), :archived_subscription_count 1} result))
-          (is (not (contains? result :archived_subscriptions))))))))
+        (is (= {:id (:id dash), :archived_subscription_count 1}
+               (select-keys (remove-gone-filter! :crowberto #{"agent:content:write"} dash)
+                            [:id :archived_subscription_count :archived_subscriptions])))))))
 
 (deftest validate-only-reports-the-replacement-card-test
   (testing "a dry run of replace_card must name the NEW card: the projection prefers the hydrated `:card` over
@@ -588,49 +600,51 @@
   (testing "GHY-4219: the row a write reads back is redacted like a read. Writing a dashboard needs
             only its own collection, so a writer can hold a dashcard pointing at a card they cannot
             read — the readback must still collapse it to an id, never leak the name."
-    (mt/with-temp [:model/Collection    {open-id :id}     {}
-                   :model/Collection    {locked-id :id}   {}
-                   :model/Dashboard     {dash-id :id}     {:name "Sales" :collection_id open-id}
-                   :model/Card          {hidden-card :id} {:name "Hidden" :collection_id locked-id}
-                   :model/DashboardCard {hidden-dc :id}   {:dashboard_id dash-id
-                                                           :card_id      hidden-card
-                                                           :row          0 :col 0}]
-      (mt/with-non-admin-groups-no-collection-perms locked-id
-        (let [result (tool-result (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
-                                              (wire {:method "update" :id dash-id
-                                                     :name   "Renamed"})))
-              [dc]   (:dashcards result)]
-          (is (= "Renamed" (:name result))
-              "the write itself succeeds — rasta can write the dashboard's own collection")
-          (is (= hidden-dc (:id dc)))
-          (is (= {:id hidden-card} (:card dc))
-              "the unreadable card comes back as an id with no name"))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[{open-id :id}] (collection/create-collections! [{:name (mt/random-name)}])
+            [{locked-id :id}] (collection/create-collections! [{:name (mt/random-name)}])]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Sales" :collection_id open-id}
+                       :model/Card {hidden-card :id} {:name "Hidden" :collection_id locked-id}
+                       :model/DashboardCard {hidden-dc :id} {:dashboard_id dash-id
+                                                             :card_id      hidden-card
+                                                             :row          0 :col 0}]
+          (mt/with-non-admin-groups-no-collection-perms locked-id
+            (let [result (tool-result (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
+                                                  (wire {:method "update" :id dash-id
+                                                         :name   "Renamed"})))
+                  [dc]   (:dashcards result)]
+              (is (= "Renamed" (:name result))
+                  "the write itself succeeds — rasta can write the dashboard's own collection")
+              (is (= hidden-dc (:id dc)))
+              (is (= {:id hidden-card} (:card dc))
+                  "the unreadable card comes back as an id with no name"))))))))
 
 (deftest set-series-with-an-unreadable-stored-card-test
   ;; The save leaves stored card references alone, so a writer can overlay a card the dashboard already holds even
   ;; when they cannot read it. The dry run fetches no row for that card.
   (testing "a dry run overlays an unreadable stored card as an id, and the save goes through"
-    (mt/with-temp [:model/Collection    {open-id :id}     {}
-                   :model/Collection    {locked-id :id}   {}
-                   :model/Dashboard     {dash-id :id}     {:name "Sales" :collection_id open-id}
-                   :model/Card          {open-card :id}   {:name "Revenue" :collection_id open-id}
-                   :model/Card          {hidden-card :id} {:name "CONFIDENTIAL" :collection_id locked-id}
-                   :model/DashboardCard _                 {:dashboard_id dash-id :card_id hidden-card :row 0 :col 0}
-                   :model/DashboardCard {open-dc :id}     {:dashboard_id dash-id :card_id open-card :row 4 :col 0}]
-      (mt/with-non-admin-groups-no-collection-perms locked-id
-        (doseq [validate-only? [true false]]
-          (testing (str "validate_only " validate-only?)
-            (let [result (tool-result (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
-                                                  (wire {:method        "update"
-                                                         :id            dash-id
-                                                         :validate_only validate-only?
-                                                         :ops           [{:op          "set_series"
-                                                                          :dashcard_id open-dc
-                                                                          :card_ids    [hidden-card]}]})))]
-              (is (= [{:id hidden-card}]
-                     (:series (first (filter #(= open-dc (:id %)) (:dashcards result)))))))))
-        (is (= [hidden-card] (t2/select-fn-vec :card_id :model/DashboardCardSeries :dashboardcard_id open-dc))
-            "the save went through")))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[{open-id :id}] (collection/create-collections! [{:name (mt/random-name)}])
+            [{locked-id :id}] (collection/create-collections! [{:name (mt/random-name)}])]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Sales" :collection_id open-id}
+                       :model/Card {open-card :id} {:name "Revenue" :collection_id open-id}
+                       :model/Card {hidden-card :id} {:name "CONFIDENTIAL" :collection_id locked-id}
+                       :model/DashboardCard _ {:dashboard_id dash-id :card_id hidden-card :row 0 :col 0}
+                       :model/DashboardCard {open-dc :id} {:dashboard_id dash-id :card_id open-card :row 4 :col 0}]
+          (mt/with-non-admin-groups-no-collection-perms locked-id
+            (doseq [validate-only? [true false]]
+              (testing (str "validate_only " validate-only?)
+                (let [result (tool-result (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
+                                                      (wire {:method        "update"
+                                                             :id            dash-id
+                                                             :validate_only validate-only?
+                                                             :ops           [{:op          "set_series"
+                                                                              :dashcard_id open-dc
+                                                                              :card_ids    [hidden-card]}]})))]
+                  (is (= [{:id hidden-card}]
+                         (:series (first (filter #(= open-dc (:id %)) (:dashcards result)))))))))
+            (is (= [hidden-card] (t2/select-fn-vec :card_id :model/DashboardCardSeries :dashboardcard_id open-dc))
+                "the save went through")))))))
 
 (deftest parameter-ops-accept-json-shapes-test
   (testing "GHY-4147: a parameter's JSON-shaped properties are coerced to the shape the REST save stores"

@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.malli :as mu]
@@ -16,30 +17,30 @@
    started-before :- ms/TemporalInstant]
   (t2/select [:model/QueryExecution :hash [:%count.* :n]]
              {:where    [:and
-                         [:>= :started_at [:auto/param started-at]]
-                         [:<  :started_at [:auto/param started-before]]]
+                         [:>= :started_at started-at]
+                         [:<  :started_at started-before]]
               :group-by [:hash]}))
 
-(mu/defn raw-field-fingerprint
-  "The stored fingerprint of the Field with `field-id`, as it sits in the table, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fingerprint :metabase_field :id field-id))
+(mu/defn raw-field-fingerprints
+  "The stored fingerprints of the Fields with `field-ids`, as they sit in the table, by Field id."
+  [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
+  (app-db/select-batched-map #(t2/select-fn->fn :id :fingerprint (t2/table-name :model/Field) :id [:in %]) field-ids))
 
 (mu/defn queries-reducible
   "A reducible over `conn` of the hash and query of the Queries with `query-hashes`."
   [conn         :- (ms/InstanceOfClass java.sql.Connection)
    query-hashes :- [:sequential {:min 1} bytes?]]
-  (t2/reducible-select :conn conn [:model/Query :query_hash :query] :query_hash [:in [:auto/param query-hashes]]))
+  (app-db/select-batched-reducible #(t2/reducible-select :conn conn [:model/Query :query_hash :query] :query_hash [:in %]) query-hashes))
 
 (mu/defn delete-segment-rollups-before!
   "Delete the SourceSegmentDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceSegmentDaily :bucket_date [:< [:auto/param bucket-date]]))
+  (t2/delete! :model/SourceSegmentDaily :bucket_date [:< bucket-date]))
 
 (mu/defn delete-segment-rollups-for-day!
   "Delete the SourceSegmentDaily rollup rows bucketed on `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceSegmentDaily :bucket_date [:auto/param bucket-date]))
+  (t2/delete! :model/SourceSegmentDaily :bucket_date bucket-date))
 
 (mu/defn insert-segment-rollups!
   "Insert `rows` into SourceSegmentDaily."
@@ -50,94 +51,94 @@
 (mu/defn delete-segment-composite-rollups-before!
   "Delete the SourceSegmentCompositeDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date [:< [:auto/param bucket-date]]))
+  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date [:< bucket-date]))
 
 (mu/defn delete-segment-composite-rollups-for-day!
   "Delete the SourceSegmentCompositeDaily rollup rows bucketed on `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date [:auto/param bucket-date]))
+  (t2/delete! :model/SourceSegmentCompositeDaily :bucket_date bucket-date))
 
 (mu/defn insert-segment-composite-rollups!
   "Insert `rows` into SourceSegmentCompositeDaily."
   [rows :- [:sequential
-            ::usage-metadata.schema/source-segment-composite-daily.update]]
+            (mut/dissoc ::usage-metadata.schema/source-segment-composite-daily.update :id)]]
   (t2/insert! :model/SourceSegmentCompositeDaily rows))
 
 (mu/defn delete-metric-rollups-before!
   "Delete the SourceMetricDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceMetricDaily :bucket_date [:< [:auto/param bucket-date]]))
+  (t2/delete! :model/SourceMetricDaily :bucket_date [:< bucket-date]))
 
 (mu/defn delete-metric-rollups-for-day!
   "Delete the SourceMetricDaily rollup rows bucketed on `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceMetricDaily :bucket_date [:auto/param bucket-date]))
+  (t2/delete! :model/SourceMetricDaily :bucket_date bucket-date))
 
 (mu/defn insert-metric-rollups!
   "Insert `rows` into SourceMetricDaily."
   [rows :- [:sequential
-            ::usage-metadata.schema/source-metric-daily.update]]
+            (mut/dissoc ::usage-metadata.schema/source-metric-daily.update :id)]]
   (t2/insert! :model/SourceMetricDaily rows))
 
 (mu/defn delete-dimension-rollups-before!
   "Delete the SourceDimensionDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceDimensionDaily :bucket_date [:< [:auto/param bucket-date]]))
+  (t2/delete! :model/SourceDimensionDaily :bucket_date [:< bucket-date]))
 
 (mu/defn delete-dimension-rollups-for-day!
   "Delete the SourceDimensionDaily rollup rows bucketed on `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceDimensionDaily :bucket_date [:auto/param bucket-date]))
+  (t2/delete! :model/SourceDimensionDaily :bucket_date bucket-date))
 
 (mu/defn insert-dimension-rollups!
   "Insert `rows` into SourceDimensionDaily."
   [rows :- [:sequential
-            ::usage-metadata.schema/source-dimension-daily.update]]
+            (mut/dissoc ::usage-metadata.schema/source-dimension-daily.update :id)]]
   (t2/insert! :model/SourceDimensionDaily rows))
 
 (mu/defn delete-dimension-profile-rollups-before!
   "Delete the SourceDimensionProfileDaily rollup rows bucketed before `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceDimensionProfileDaily :bucket_date [:< [:auto/param bucket-date]]))
+  (t2/delete! :model/SourceDimensionProfileDaily :bucket_date [:< bucket-date]))
 
 (mu/defn delete-dimension-profile-rollups-for-day!
   "Delete the SourceDimensionProfileDaily rollup rows bucketed on `bucket-date`."
   [bucket-date :- ms/TemporalInstant]
-  (t2/delete! :model/SourceDimensionProfileDaily :bucket_date [:auto/param bucket-date]))
+  (t2/delete! :model/SourceDimensionProfileDaily :bucket_date bucket-date))
 
 (mu/defn insert-dimension-profile-rollups!
   "Insert `rows` into SourceDimensionProfileDaily."
   [rows :- [:sequential
-            ::usage-metadata.schema/source-dimension-profile-daily.update]]
+            (mut/dissoc ::usage-metadata.schema/source-dimension-profile-daily.update :id)]]
   (t2/insert! :model/SourceDimensionProfileDaily rows))
 
 (mu/defn field-names
   "The id, name, and display name of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :name :display_name] :id [:in (mapv long field-ids)]))
+  (app-db/select-batched #(t2/select [:model/Field :id :name :display_name] :id [:in (mapv long %)]) field-ids))
 
 (mu/defn table-names
   "The id, name, display name, Database id, and schema of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :display_name :db_id :schema] :id [:in (mapv long table-ids)]))
+  (app-db/select-batched #(t2/select [:model/Table :id :name :display_name :db_id :schema] :id [:in (mapv long %)]) table-ids))
 
 (mu/defn table-database-ids
   "The id and Database id of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id] :id [:in (mapv long table-ids)]))
+  (app-db/select-batched #(t2/select [:model/Table :id :db_id] :id [:in (mapv long %)]) table-ids))
 
 (mu/defn card-names
   "The id and name of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name] :id [:in (mapv long card-ids)]))
+  (app-db/select-batched #(t2/select [:model/Card :id :name] :id [:in (mapv long %)]) card-ids))
 
 (defn- grouped-rollup-where
   [source-type source-id bucket-start bucket-end]
   (cond-> [:and [:in :ownership_mode ["direct" "projected"]]]
     source-type  (conj [:= :source_type (name source-type)])
     source-id    (conj [:= :source_id (long source-id)])
-    bucket-start (conj [:>= :bucket_date [:auto/param bucket-start]])
-    bucket-end   (conj [:<= :bucket_date [:auto/param bucket-end]])))
+    bucket-start (conj [:>= :bucket_date bucket-start])
+    bucket-end   (conj [:<= :bucket_date bucket-end])))
 
 (mu/defn grouped-segment-rows
   "The summed `source_segment_daily` counts optionally narrowed to `source-type`, `source-id`, and bucketed between
@@ -229,8 +230,8 @@
              {:where    (cond-> [:and]
                           source-type  (conj [:= :source_type (name source-type)])
                           source-id    (conj [:= :source_id (long source-id)])
-                          bucket-start (conj [:>= :bucket_date [:auto/param bucket-start]])
-                          bucket-end   (conj [:<= :bucket_date [:auto/param bucket-end]]))
+                          bucket-start (conj [:>= :bucket_date bucket-start])
+                          bucket-end   (conj [:<= :bucket_date bucket-end]))
               :group-by [:source_type :source_id :field_id :source_basis :observation_type :observation_value]
               :order-by [[:total_count :desc]]}))
 

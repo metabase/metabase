@@ -243,14 +243,15 @@
           :let [schema (fn [suffix] (keyword "metabase-enterprise.data-testing.schema"
                                              (str (name test-type) suffix)))]]
     (testing (str test-type)
-      (testing "create takes the definition and the subject key, and no other subject's key"
-        (is (mr/validate (schema ".create") (assoc definition subject-key 1)))
-        (is (not (mr/validate (schema ".create") definition)))
-        (is (not (mr/validate (schema ".create") (assoc definition other-key 1)))))
-      (testing "update takes any subset of them"
-        (is (mr/validate (schema ".update") {}))
-        (is (mr/validate (schema ".update") {subject-key 2 :name "renamed"}))
-        (is (not (mr/validate (schema ".update") {other-key 2}))))
+      (testing "create takes the definition, the creator and the subject key, and no other subject's key"
+        (is (mr/validate (schema ".create") (assoc definition subject-key 1 :creator_id 1)))
+        (is (not (mr/validate (schema ".create") (assoc definition :creator_id 1))))
+        (is (not (mr/validate (schema ".create") (assoc definition other-key 1 :creator_id 1)))))
+      (testing "update takes the id and any subset of the columns"
+        (is (mr/validate (schema ".update") {:id 1}))
+        (is (mr/validate (schema ".update") {:id 1 subject-key 2 :name "renamed"}))
+        (is (not (mr/validate (schema ".update") {subject-key 2 :name "renamed"})))
+        (is (not (mr/validate (schema ".update") {:id 1 other-key 2}))))
       (testing "a saved test is the definition, the subject key and the row's own columns"
         (is (mr/validate (schema "") (merge saved definition {subject-key 1})))
         (is (not (mr/validate (schema "") (merge saved definition {other-key 1}))))))))

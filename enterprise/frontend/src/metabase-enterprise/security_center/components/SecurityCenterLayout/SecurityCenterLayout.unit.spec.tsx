@@ -8,7 +8,13 @@ import {
   setupSecurityAdvisoriesErrorEndpoint,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
-import { act, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { Route } from "metabase/router";
 import type { Advisory, HealthCheck } from "metabase-types/api";
 import {
@@ -73,10 +79,10 @@ describe("SecurityCenterLayout", () => {
     });
 
     expect(
-      await within(getNavLink(/Advisories/)).findByTestId("issue-dot"),
+      within(getNavLink(/Advisories/)).getByTestId("issue-dot"),
     ).toBeInTheDocument();
     expect(
-      await within(getNavLink(/Health checks/)).findByTestId("issue-dot"),
+      within(getNavLink(/Health checks/)).getByTestId("issue-dot"),
     ).toBeInTheDocument();
   });
 
@@ -86,9 +92,11 @@ describe("SecurityCenterLayout", () => {
       checks: [createMockHealthCheck({ status: "fail" })],
     });
 
-    expect(
-      await within(getNavLink(/Health checks/)).findByTestId("issue-dot"),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(getNavLink(/Health checks/)).getByTestId("issue-dot"),
+      ).toBeInTheDocument(),
+    );
     expect(
       within(getNavLink(/Advisories/)).queryByTestId("issue-dot"),
     ).not.toBeInTheDocument();
@@ -102,11 +110,13 @@ describe("SecurityCenterLayout", () => {
       hasAdvisoriesError: true,
     });
 
-    expect(
-      await within(screen.getByTestId("admin-layout-content")).findByText(
-        "Something went wrong loading security advisories.",
-      ),
-    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId("admin-layout-content")).getByText(
+          "Something went wrong loading security advisories.",
+        ),
+      ).toBeInTheDocument(),
+    );
     expect(getNavLink(/Advisories/)).toBeInTheDocument();
   });
 });

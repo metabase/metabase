@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
+   [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.db :as dependencies.db]
@@ -14,16 +15,27 @@
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
    [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase-enterprise.dependencies.test-util :as deps.test]
+   [metabase-enterprise.sandbox.models.sandbox :as sandbox]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase.actions.models :as action]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.documents.models.document :as document]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.measures.models.measure :as measure]
+   [metabase.native-query-snippets.models.native-query-snippet :as snippet]
+   [metabase.queries.models.card :as card]
+   [metabase.segments.models.segment :as segment]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.models.transform :as transform.model]
    [toucan2.core :as t2])
   (:import
    (org.quartz JobKey)))
@@ -160,8 +172,15 @@
   (testing "A snippet referencing another snippet produces a snippet->snippet dependency"
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
-      (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "inner_snip" :content "1 = 1"}
-                     :model/NativeQuerySnippet {outer-id :id} {:name "outer_snip" :content "SELECT * WHERE {{snippet: inner_snip}}"}]
+      (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "inner_snip" :content "1 = 1" :template_tags {}}
+                     :model/NativeQuerySnippet {outer-id :id} {:name          "outer_snip"
+                                                               :content       "SELECT * WHERE {{snippet: inner_snip}}"
+                                                               :template_tags {"snippet: inner_snip" {:id           (str (random-uuid))
+                                                                                                      :name         "snippet: inner_snip"
+                                                                                                      :display-name "Snippet: Inner Snip"
+                                                                                                      :type         :snippet
+                                                                                                      :snippet-name "inner_snip"
+                                                                                                      :snippet-id   inner-id}}}]
         (forget-status! :snippet inner-id)
         (forget-status! :snippet outer-id)
         (is (false? (t2/exists? :model/Dependency
@@ -179,8 +198,13 @@
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}
-                     :model/NativeQuerySnippet {snippet-id :id} {:name "card_ref_snip"
-                                                                 :content (format "SELECT * FROM {{#%d}}" card-id)}]
+                     :model/NativeQuerySnippet {snippet-id :id} {:name          "card_ref_snip"
+                                                                 :content       (format "SELECT * FROM {{#%d}}" card-id)
+                                                                 :template_tags {(str "#" card-id) {:id           (str (random-uuid))
+                                                                                                    :name         (str "#" card-id)
+                                                                                                    :display-name (str "#" card-id)
+                                                                                                    :type         :card
+                                                                                                    :card-id      card-id}}}]
         (forget-status! :card card-id)
         (forget-status! :snippet snippet-id)
         (is (false? (t2/exists? :model/Dependency
@@ -503,9 +527,9 @@
   (is (true? (dependencies.db/app-db-reachable?)))
   (testing "inside a transaction a failed statement aborted, the app DB still answers"
     (t2/with-transaction [^java.sql.Connection conn]
-      (is (thrown? Exception (t2/query conn ["SELECT * FROM no_such_table"])))
+      (is (thrown? Exception (t2/query conn {:select [:*] :from [:no_such_table]})))
       (when (= :postgres (mdb/db-type))
-        (is (thrown? Exception (t2/query conn ["SELECT 1"])) "test setup: the transaction is aborted"))
+        (is (thrown? Exception (t2/query conn {:select [[[:inline 1] :one]]})) "test setup: the transaction is aborted"))
       (is (true? (dependencies.db/app-db-reachable?)))
       (.rollback conn))))
 
@@ -596,13 +620,20 @@
            recomputes the cards whose SQL expands it"
     (backfill-all-existing-entities!)
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "birds inner" :content "VENUES"}
-                     :model/NativeQuerySnippet _ {:name "birds outer" :content "SELECT * FROM {{snippet: birds inner}}"}
+      (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "birds inner" :content "VENUES" :template_tags {}}
+                     :model/NativeQuerySnippet _ {:name          "birds outer"
+                                                  :content       "SELECT * FROM {{snippet: birds inner}}"
+                                                  :template_tags {"snippet: birds inner" {:id           (str (random-uuid))
+                                                                                          :name         "snippet: birds inner"
+                                                                                          :display-name "Snippet: Birds Inner"
+                                                                                          :type         :snippet
+                                                                                          :snippet-name "birds inner"
+                                                                                          :snippet-id   inner-id}}}
                      :model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
                                                                                  "{{snippet: birds outer}}")}]
         (backfill-all-existing-entities!)
         (is (= #{(mt/id :venues)} (table-dependency-ids :card card-id)))
-        (t2/update! :model/NativeQuerySnippet :id inner-id {:content "CHECKINS"})
+        (snippet/update-snippets! [{:id inner-id :content "CHECKINS"}] nil)
         (backfill-all-existing-entities!)
         (is (= #{(mt/id :checkins)} (table-dependency-ids :card card-id)))))))
 
@@ -616,7 +647,7 @@
                      :model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
                                                                                  "{{snippet: window outer}}")}]
         (backfill-all-existing-entities!)
-        (t2/update! :model/NativeQuerySnippet :id outer-id {:content "SELECT * FROM {{snippet: window inner}}"})
+        (snippet/update-snippets! [{:id outer-id :content "SELECT * FROM {{snippet: window inner}}"}] nil)
         (deps.test/record-analysis-finding-processed! :card card-id)
         (backfill-dependencies-single-trigger!)
         (is (deps.test/analysis-finding-pending? :card card-id))))))
@@ -675,46 +706,46 @@
                     :to_entity_id param-source-card-id}}
                  (into #{} (map #(dissoc % :id)
                                 (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))
-         (t2/delete! :model/DashboardCard :id basic-dashcard-id)
-         (t2/update! :model/Dashboard :id dashboard-id {:parameters []})
+         (dashboard/remove-dashcards! [basic-dashcard-id])
+         (dashboard/update-dashboards! [{:id dashboard-id :parameters []}])
          (mt/with-temp [:model/Card {scalar-card-id :id} {:dataset_query (-> (lib/query mp products)
                                                                              (lib/aggregate (lib/count)))
                                                           :display :scalar}
                         :model/Card {scalar-click-target-card-id :id} {:dataset_query (lib/query mp products)}
-                        :model/DashboardCard _ {:dashboard_id dashboard-id
-                                                :card_id scalar-card-id
-                                                :visualization_settings {:click_behavior {:type "link"
-                                                                                          :linkType "question"
-                                                                                          :targetId scalar-click-target-card-id}}}
                         :model/Card {scalar-card-2-id :id} {:dataset_query (-> (lib/query mp orders)
                                                                                (lib/aggregate (lib/count)))
                                                             :display :scalar}
                         :model/Dashboard {scalar-click-target-dashboard-id :id} {}
-                        :model/DashboardCard _ {:dashboard_id dashboard-id
-                                                :card_id scalar-card-2-id
-                                                :visualization_settings {:click_behavior {:type "link"
-                                                                                          :linkType "dashboard"
-                                                                                          :targetId scalar-click-target-dashboard-id}}}
                         :model/Card {table-card-id :id} {:dataset_query (-> (lib/query mp products)
                                                                             (lib/breakout category-field)
                                                                             (lib/aggregate (lib/count)))
                                                          :display :table}
                         :model/Card {column-click-target-card-id :id} {:dataset_query (lib/query mp products)}
-                        :model/DashboardCard _ {:dashboard_id dashboard-id
-                                                :card_id table-card-id
-                                                :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:click_behavior {:type "link"
-                                                                                                                                       :linkType "question"
-                                                                                                                                       :targetId column-click-target-card-id}}}}}
                         :model/Dashboard {column-click-target-dashboard-id :id} {}
                         :model/Card {table-card-2-id :id} {:dataset_query (-> (lib/query mp orders)
                                                                               (lib/breakout category-field)
                                                                               (lib/aggregate (lib/count)))
-                                                           :display :table}
-                        :model/DashboardCard _ {:dashboard_id dashboard-id
-                                                :card_id table-card-2-id
-                                                :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:click_behavior {:type "link"
-                                                                                                                                       :linkType "dashboard"
-                                                                                                                                       :targetId column-click-target-dashboard-id}}}}}]
+                                                           :display :table}]
+           (dashboard/add-dashcards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
+                                                                                  :card_id scalar-card-id
+                                                                                  :visualization_settings {:click_behavior {:type "link"
+                                                                                                                            :linkType "question"
+                                                                                                                            :targetId scalar-click-target-card-id}}})])
+           (dashboard/add-dashcards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
+                                                                                  :card_id scalar-card-2-id
+                                                                                  :visualization_settings {:click_behavior {:type "link"
+                                                                                                                            :linkType "dashboard"
+                                                                                                                            :targetId scalar-click-target-dashboard-id}}})])
+           (dashboard/add-dashcards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
+                                                                                  :card_id table-card-id
+                                                                                  :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:click_behavior {:type "link"
+                                                                                                                                                                         :linkType "question"
+                                                                                                                                                                         :targetId column-click-target-card-id}}}}})])
+           (dashboard/add-dashcards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
+                                                                                  :card_id table-card-2-id
+                                                                                  :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:click_behavior {:type "link"
+                                                                                                                                                                         :linkType "dashboard"
+                                                                                                                                                                         :targetId column-click-target-dashboard-id}}}}})])
            (deps.test/synchronously-run-dependency-job!)
            (is (=? #{{:from_entity_type :dashboard
                       :from_entity_id dashboard-id
@@ -750,7 +781,7 @@
                       :to_entity_id column-click-target-dashboard-id}}
                    (into #{} (map #(dissoc % :id)
                                   (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))
-           (t2/delete! :model/Dashboard :id dashboard-id)
+           (dashboard/delete-dashboards! [dashboard-id])
            (deps.test/synchronously-run-dependency-job!)
            (is (empty? (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))))))
 
@@ -763,14 +794,14 @@
          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
                         :model/Card {embedded-card-id :id} {:dataset_query (lib/query mp products)}
                         :model/Dashboard {dashboard-id :id} {}
-                        :model/Document {document-id :id :as document} {:content_type "application/json+vnd.prose-mirror"
-                                                                        :document {:type "doc"
-                                                                                   :content [{:type "paragraph"
-                                                                                              :content [{:type "smartLink"
-                                                                                                         :attrs {:entityId card-id
-                                                                                                                 :model "card"}}]}
-                                                                                             {:type "cardEmbed"
-                                                                                              :attrs {:id embedded-card-id}}]}}]
+                        :model/Document {document-id :id} {:content_type "application/json+vnd.prose-mirror"
+                                                           :document {:type "doc"
+                                                                      :content [{:type "paragraph"
+                                                                                 :content [{:type "smartLink"
+                                                                                            :attrs {:entityId card-id
+                                                                                                    :model "card"}}]}
+                                                                                {:type "cardEmbed"
+                                                                                 :attrs {:id embedded-card-id}}]}}]
            (assert-pending :document document-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (=? #{{:from_entity_type :document
@@ -783,15 +814,15 @@
                       :to_entity_id embedded-card-id}}
                    (into #{} (map #(dissoc % :id)
                                   (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document)))))
-           (let [updated-doc (assoc document :document {:type "doc"
-                                                        :content [{:type "paragraph"
-                                                                   :content [{:type "smartLink"
-                                                                              :attrs {:entityId dashboard-id
-                                                                                      :model "dashboard"}}
-                                                                             {:type "smartLink"
-                                                                              :attrs {:entityId products-id
-                                                                                      :model "table"}}]}]})]
-             (t2/update! :model/Document :id document-id updated-doc)
+           (let [updated-doc {:document {:type "doc"
+                                         :content [{:type "paragraph"
+                                                    :content [{:type "smartLink"
+                                                               :attrs {:entityId dashboard-id
+                                                                       :model "dashboard"}}
+                                                              {:type "smartLink"
+                                                               :attrs {:entityId products-id
+                                                                       :model "table"}}]}]}}]
+             (document/update-documents! [(assoc updated-doc :id document-id)])
              (deps.test/synchronously-run-dependency-job!)
              (is (=? #{{:from_entity_type :document
                         :from_entity_id document-id
@@ -803,7 +834,7 @@
                         :to_entity_id products-id}}
                      (into #{} (map #(dissoc % :id)
                                     (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document)))))
-             (t2/delete! :model/Document :id document-id)
+             (document/delete-documents! [document-id])
              (deps.test/synchronously-run-dependency-job!)
              (is (empty? (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document))))))))))
 
@@ -814,9 +845,9 @@
        (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "sandbox group"}
                       :model/Card {card1-id :id} {}
                       :model/Card {card2-id :id} {}
-                      :model/Sandbox {sandbox-id :id :as sandbox} {:group_id group-id
-                                                                   :table_id (mt/id :products)
-                                                                   :card_id card1-id}]
+                      :model/Sandbox {sandbox-id :id} {:group_id group-id
+                                                       :table_id (mt/id :products)
+                                                       :card_id card1-id}]
          (assert-pending :sandbox sandbox-id)
          (deps.test/synchronously-run-dependency-job!)
          (is (=? #{{:from_entity_type :sandbox
@@ -825,7 +856,7 @@
                     :to_entity_id card1-id}}
                  (into #{} (map #(dissoc % :id)
                                 (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox)))))
-         (t2/update! :model/Sandbox :id sandbox-id (assoc sandbox :card_id card2-id))
+         (sandbox/update-sandboxes! [{:id sandbox-id :card_id card2-id}])
          (deps.test/synchronously-run-dependency-job!)
          (is (=? #{{:from_entity_type :sandbox
                     :from_entity_id sandbox-id
@@ -833,7 +864,7 @@
                     :to_entity_id card2-id}}
                  (into #{} (map #(dissoc % :id)
                                 (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox)))))
-         (t2/delete! :model/Sandbox :id sandbox-id)
+         (sandbox/delete-sandboxes! [sandbox-id])
          (deps.test/synchronously-run-dependency-job!)
          (is (empty? (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox))))))))
 
@@ -849,7 +880,7 @@
            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                            :to_entity_type :table :to_entity_id (mt/id :products)))
            (is (not (pending? :card card-id)))
-           (t2/update! :model/Card :id card-id {:dataset_query (lib/query mp orders)})
+           (card/update-cards! [{:id card-id :dataset_query (lib/query mp orders)}])
            (assert-pending :card card-id)))))))
 
 (deftest metric-dimensions-update-marks-stale-and-includes-mapped-table-test
@@ -863,11 +894,10 @@
            ;; uncurated, so the after-insert dimension auto-sync would seed dimensions from the query and
            ;; overwrite mappings passed to with-temp. A plain update sticks — the after-update hook only
            ;; re-syncs when `:dataset_query` changes.
-           (t2/update! :model/Card :id card-id
-                       {:dimension_mappings [{:type         :table
-                                              :dimension-id "550e8400-e29b-41d4-a716-446655440000"
-                                              :table-id     (mt/id :categories)
-                                              :target       [:field {} (mt/id :categories :name)]}]})
+           (card/update-cards! [{:id card-id :dimension_mappings [{:type         :table
+                                                                   :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                                                   :table-id     (mt/id :categories)
+                                                                   :target       (lib/ref (lib.metadata/field mp (mt/id :categories :name)))}]}])
            (assert-pending :card card-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
@@ -886,7 +916,7 @@
          (assert-pending :snippet snippet-id)
          (deps.test/synchronously-run-dependency-job!)
          (is (not (pending? :snippet snippet-id)))
-         (t2/update! :model/NativeQuerySnippet :id snippet-id {:content "SELECT 2"})
+         (snippet/update-snippets! [{:id snippet-id :content "SELECT 2"}] nil)
          (assert-pending :snippet snippet-id))))))
 
 (deftest ^:synchronized native-transform-create-sets-dependencies-test
@@ -981,7 +1011,7 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "keeping target"
-             (t2/update! :model/Transform :id transform-id {:source (update source :body str "\n")})
+             (transform.model/update-transforms! [{:id transform-id :source (update source :body str "\n")}])
              (assert-pending :transform transform-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (=? [{:from_entity_type :table
@@ -990,7 +1020,7 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "changing target update"
-             (t2/update! :model/Transform :id transform-id {:target (assoc target :name "test_table2")})
+             (transform.model/update-transforms! [{:id transform-id :target (assoc target :name "test_table2")}])
              (deps.test/synchronously-run-dependency-job!)
              (is (empty?
                   (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
@@ -1013,7 +1043,7 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "keeping target"
-             (t2/update! :model/Transform :id transform-id {:source (assoc source :query (lib/native-query mp "select * from orders limit 10"))})
+             (transform.model/update-transforms! [{:id transform-id :source (assoc source :query (lib/native-query mp "select * from orders limit 10"))}])
              (assert-pending :transform transform-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (=? [{:from_entity_type :table
@@ -1022,7 +1052,7 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "changing target update"
-             (t2/update! :model/Transform :id transform-id {:target (assoc target :name "test_table2")})
+             (transform.model/update-transforms! [{:id transform-id :target (assoc target :name "test_table2")}])
              (deps.test/synchronously-run-dependency-job!)
              (is (empty?
                   (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
@@ -1044,9 +1074,9 @@
                   (into #{} (map #(dissoc % :id)
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "updating segment definition recalculates dependencies"
-           (t2/update! :model/Segment :id segment-id {:definition (let [mp (mt/metadata-provider)]
+           (segment/update-segments! [{:id segment-id :definition (let [mp (mt/metadata-provider)]
                                                                     (-> (lib/query mp (lib.metadata/table mp products-id))
-                                                                        (lib/filter (lib/= (lib.metadata/field mp category-field-id) "Widget"))))})
+                                                                        (lib/filter (lib/= (lib.metadata/field mp category-field-id) "Widget"))))}])
            (assert-pending :segment segment-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{{:from_entity_type :segment
@@ -1056,7 +1086,7 @@
                   (into #{} (map #(dissoc % :id)
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "deleting segment removes all dependencies"
-           (t2/delete! :model/Segment :id segment-id)
+           (segment/delete-segments! [segment-id])
            (deps.test/synchronously-run-dependency-job!)
            (is (empty? (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment)))))))))
 
@@ -1104,8 +1134,8 @@
                     (into #{} (map #(dissoc % :id)
                                    (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))
            (testing "updating measure definition recalculates dependencies"
-             (t2/update! :model/Measure :id measure-id {:definition (-> (lib/query mp orders)
-                                                                        (lib/aggregate (lib/sum subtotal)))})
+             (measure/update-measures! [{:id measure-id :definition (-> (lib/query mp orders)
+                                                                        (lib/aggregate (lib/sum subtotal)))}])
              (assert-pending :measure measure-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (= #{{:from_entity_type :measure
@@ -1115,7 +1145,7 @@
                     (into #{} (map #(dissoc % :id)
                                    (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))
            (testing "deleting measure removes all dependencies"
-             (t2/delete! :model/Measure :id measure-id)
+             (measure/delete-measures! [measure-id])
              (deps.test/synchronously-run-dependency-job!)
              (is (empty? (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))))))
 
@@ -1136,13 +1166,13 @@
            (is (= #{[:table (mt/id :venues)]}
                   (action-deps action-id))))
          (testing "updating an action's query recalculates its dependencies"
-           (t2/update! :model/QueryAction :action_id action-id {:dataset_query (sql-query "checkins")})
+           (action/update-action! action-id {:dataset_query (sql-query "checkins")} nil)
            (assert-pending :action action-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{[:table (mt/id :checkins)]}
                   (action-deps action-id))))
          (testing "deleting an action removes its dependencies and status"
-           (t2/delete! :model/Action :id action-id)
+           (action/delete-actions! [action-id])
            (deps.test/synchronously-run-dependency-job!)
            (is (empty? (action-deps action-id)))
            (is (not (t2/exists? :model/DependencyStatus :entity_type :action :entity_id action-id)))))))))
@@ -1171,7 +1201,7 @@
          (is (= {:dependencies #{implicit-id query-id}, :statuses #{implicit-id query-id}}
                 (action-dependency-rows [implicit-id query-id]))))
        (testing "deleting the model removes the dependency rows of its actions"
-         (t2/delete! :model/Card :id model-id)
+         (card/delete-cards! [model-id])
          (deps.test/synchronously-run-dependency-job!)
          (is (= {:dependencies #{}, :statuses #{}}
                 (action-dependency-rows [implicit-id query-id]))))))))
@@ -1265,7 +1295,7 @@
          (mt/with-temp [:model/Card {card-id :id}  {:dataset_query (query :products)}
                         :model/Card {other-id :id} {:dataset_query (query :products)}]
            (let [exported (ts/extract-one "Card" card-id)]
-             (t2/update! :model/Card :id card-id {:dataset_query (query :orders)})
+             (card/update-cards! [{:id card-id :dataset_query (query :orders)}])
              (deps.test/synchronously-run-dependency-job!)
              (is (= #{[:table (mt/id :orders)]} (card-deps card-id)))
              (load! [exported])
@@ -1283,7 +1313,7 @@
         (mt/with-temp [:model/Card {source-id :id} {:dataset_query (deps.test/table-query :orders)}
                        :model/Card {card-id :id}   {:dataset_query (deps.test/table-query :venues)}]
           (deps.test/synchronously-run-dependency-job!)
-          (t2/update! :model/Card :id card-id {:dataset_query (deps.test/card-query source-id)})
+          (card/update-cards! [{:id card-id :dataset_query (deps.test/card-query source-id)}])
           (deps.test/record-analysis-finding-processed! :card card-id)
           (deps.test/synchronously-run-dependency-job!)
           (is (deps.test/analysis-finding-pending? :card card-id)))))))
@@ -1299,50 +1329,55 @@
     (deps.test/run-with-dependencies-setup!
      (fn [mp]
        (let [venues-query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
-         (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                        {:slug "birds" :name "Birds" :bundle_path "birds.js"}
+         (mt/with-temp [:model/Collection {own-collection-id :id} {:namespace :data-apps}
+                        :model/DataApp {app-id :id collection-id :resource_collection_id}
+                        {:slug "birds" :name "Birds" :bundle_path "birds.js" :resource_collection_id own-collection-id}
                         :model/Collection {other-collection-id :id} {}
-                        :model/Card {card-id :id} {:dataset_query venues-query :collection_id collection-id}
                         :model/Action {action-id :id} {:type :implicit :name "Update venue" :collection_id collection-id}
                         :model/ImplicitAction _ {:action_id action-id :kind "row/update" :table_id (mt/id :venues)}]
-           (testing "an app depends on the cards and actions in its resource collection"
-             (assert-pending :data-app app-id)
-             (deps.test/synchronously-run-dependency-job!)
-             (is (= #{[:card card-id] [:action action-id]} (data-app-deps app-id))))
-           (mt/with-temp [:model/Card {added-id :id} {:dataset_query venues-query :collection_id collection-id}]
-             (testing "a card added to the collection becomes a dependency"
-               (assert-pending :data-app app-id)
-               (deps.test/synchronously-run-dependency-job!)
-               (is (= #{[:card card-id] [:card added-id] [:action action-id]} (data-app-deps app-id))))
-             (testing "a card moved out of the collection stops being one"
-               (t2/update! :model/Card :id added-id {:collection_id other-collection-id})
-               (assert-pending :data-app app-id)
-               (deps.test/synchronously-run-dependency-job!)
-               (is (= #{[:card card-id] [:action action-id]} (data-app-deps app-id)))))
-           (testing "a deleted action stops being one"
-             (t2/delete! :model/Action :id action-id)
-             (assert-pending :data-app app-id)
-             (deps.test/synchronously-run-dependency-job!)
-             (is (= #{[:card card-id]} (data-app-deps app-id))))
-           (testing "deleting the app removes its dependencies and status"
-             (t2/delete! :model/DataApp :id app-id)
-             (deps.test/synchronously-run-dependency-job!)
-             (is (empty? (data-app-deps app-id)))
-             (is (not (t2/exists? :model/DependencyStatus :entity_type :data-app :entity_id app-id))))))))))
+           (mt/with-model-cleanup [:model/Card]
+             (let [{card-id :id} (first (card/create-cards! [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :display :table :name (mt/random-name) :visualization_settings {}} {:dataset_query venues-query
+                                                                                                                                                                                               :collection_id collection-id})]))]
+               (testing "an app depends on the cards and actions in its resource collection"
+                 (assert-pending :data-app app-id)
+                 (deps.test/synchronously-run-dependency-job!)
+                 (is (= #{[:card card-id] [:action action-id]} (data-app-deps app-id))))
+               (let [{added-id :id} (first (card/create-cards! [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :display :table :name (mt/random-name) :visualization_settings {}} {:dataset_query venues-query
+                                                                                                                                                                                                  :collection_id collection-id})]))]
+                 (testing "a card added to the collection becomes a dependency"
+                   (assert-pending :data-app app-id)
+                   (deps.test/synchronously-run-dependency-job!)
+                   (is (= #{[:card card-id] [:card added-id] [:action action-id]} (data-app-deps app-id))))
+                 (testing "a card moved out of the collection stops being one"
+                   (card/update-cards! [{:id added-id :collection_id other-collection-id}])
+                   (assert-pending :data-app app-id)
+                   (deps.test/synchronously-run-dependency-job!)
+                   (is (= #{[:card card-id] [:action action-id]} (data-app-deps app-id)))))
+               (testing "a deleted action stops being one"
+                 (action/delete-actions! [action-id])
+                 (assert-pending :data-app app-id)
+                 (deps.test/synchronously-run-dependency-job!)
+                 (is (= #{[:card card-id]} (data-app-deps app-id))))
+               (testing "deleting the app removes its dependencies and status"
+                 (data-app/delete-data-apps! [app-id])
+                 (deps.test/synchronously-run-dependency-job!)
+                 (is (empty? (data-app-deps app-id)))
+                 (is (not (t2/exists? :model/DependencyStatus :entity_type :data-app :entity_id app-id))))))))))))
 
 (deftest ^:synchronized data-app-given-a-collection-depends-on-its-cards-test
   (testing "an app that lost its collection, given one that already holds a card, depends on that card"
     (data-apps.tu/with-published-tables! [(mt/id :venues)]
       (deps.test/run-with-dependencies-setup!
        (fn [mp]
-         (mt/with-temp [:model/DataApp    app        {}
+         (mt/with-temp [:model/Collection {own-collection-id :id} {:namespace "data-apps"}
+                        :model/DataApp    app        {:resource_collection_id own-collection-id}
                         :model/Collection collection {:namespace "data-apps"}
                         :model/Card       card       {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                                       :collection_id (:id collection)}]
-           (t2/delete! :model/Collection :id (:resource_collection_id app))
+           (collection/delete-collections! [(:resource_collection_id app)])
            (deps.test/synchronously-run-dependency-job!)
            (is (empty? (data-app-deps (:id app))))
-           (t2/update! :model/DataApp :id (:id app) {:resource_collection_id (:id collection)})
+           (data-app/update-data-apps! [{:id (:id app) :resource_collection_id (:id collection)}])
            (assert-pending :data-app (:id app))
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{[:card (:id card)]} (data-app-deps (:id app))))))))))
@@ -1375,13 +1410,39 @@
                (let [card (assoc (mt/with-temp-defaults :model/Card)
                                  :collection_id collection-id
                                  :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues))))]
-                 (is (= [] (deps.test/data-app-bundle-reads #(t2/insert! :model/Card card))))))
+                 (is (= [] (deps.test/data-app-bundle-reads #(card/create-cards! [card]))))))
              (let [card-id (t2/select-one-pk :model/Card :collection_id collection-id)]
                (testing "moving a card out"
                  (is (= [] (deps.test/data-app-bundle-reads
-                            #(t2/update! :model/Card :id card-id {:collection_id other-collection-id})))))
+                            #(card/update-cards! [{:id card-id :collection_id other-collection-id}])))))
                (testing "moving a card in"
                  (is (= [] (deps.test/data-app-bundle-reads
-                            #(t2/update! :model/Card :id card-id {:collection_id collection-id})))))
+                            #(card/update-cards! [{:id card-id :collection_id collection-id}])))))
                (testing "deleting a card"
-                 (is (= [] (deps.test/data-app-bundle-reads #(t2/delete! :model/Card :id card-id)))))))))))))
+                 (is (= [] (deps.test/data-app-bundle-reads #(card/delete-cards! [card-id])))))))))))))
+
+(deftest ^:synchronized update-entity-batch-statement-count-test
+  (testing "computing the dependencies of 10 pending cards runs as many statements as computing those of 40"
+    (backfill-all-existing-entities!)
+    (with-redefs [env/env (assoc env/env :mb-dependency-backfill-batch-size "100")]
+      (mt/with-premium-features #{:dependencies}
+        (let [mp    (mt/metadata-provider)
+              query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              run!  (fn [n]
+                      (backfill-all-existing-entities!)
+                      (let [ids (t2/insert-returning-pks!
+                                 :model/Card
+                                 (for [_ (range n)]
+                                   (merge (mt/with-temp-defaults :model/Card) {:dataset_query query})))]
+                        (try
+                          {:count (events.tu/real-statement-count! #(#'task.dependency/update-entity-batch! :card 100))
+                           :edges (t2/count :model/Dependency :from_entity_type "card" :from_entity_id [:in ids]
+                                            :to_entity_type "table" :to_entity_id (mt/id :orders))}
+                          (finally
+                            (t2/delete! :model/Dependency :from_entity_type "card" :from_entity_id [:in ids])
+                            (t2/delete! :model/Card :id [:in ids])))))]
+          (run! 2)
+          (let [small (run! 10)
+                large (run! 40)]
+            (is (= (:count small) (:count large)))
+            (is (= [10 40] [(:edges small) (:edges large)]))))))))

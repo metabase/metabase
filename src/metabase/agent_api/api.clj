@@ -21,6 +21,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
    [metabase.dashboards.autoplace :as autoplace]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.events.core :as events]
@@ -38,6 +39,7 @@
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.card :as qp.card]
@@ -121,10 +123,8 @@
    [:collection {:optional true} [:maybe :map]]
    ;; Present on collection results — the parent location path (e.g. "/12/34/").
    [:location {:optional true} [:maybe :string]]
-   ;; `[:maybe :any]` publishes as `oneOf [{}, {type:null}]`. Clients that enforce
-   ;; `oneOf` reject null timestamps because both branches match; TemporalInstant
-   ;; keeps the branches disjoint (`date-time` vs `null`). Collections can omit
-   ;; `updated_at` in search results.
+   ;; TemporalInstant publishes as a `date-time` string, so MCP clients see `{type: [string, null], format: date-time}`
+   ;; where `[:maybe :any]` would tell them nothing. Collections can omit `updated_at` in search results.
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
 
@@ -827,7 +827,7 @@
   `:display`), and optional `:validate-query!` (a metric-shape check run before the permission
   checks).
 
-  Mirror REST `POST /api/card/` pre-checks before calling `queries/create-card!`. `create-card!`
+  Mirror REST `POST /api/card/` pre-checks before calling `queries.card/create-cards!`. `create-cards!`
   itself does NOT run permissions checks; without these mirroring the REST endpoint, an LLM caller
   could (a) save a card whose query references data the user cannot run, and (b) plant the card in a
   collection they cannot write to.
@@ -846,7 +846,7 @@
                         (personal-collection-id))]
     (when validate-query!
       (validate-query! dataset-query))
-    (query-perms/check-run-permissions-for-query dataset-query)
+    (query-perms/check-run-permissions-for-queries [dataset-query])
     (let [card {:name                   card-name
                 :type                   card-type
                 :dataset_query          dataset-query
@@ -855,7 +855,11 @@
                 :collection_id          collection_id
                 :visualization_settings (or visualization_settings {})}]
       (api/create-check :model/Card card)
-      (create-card-response (queries/create-card! card {:id api/*current-user-id*})))))
+      (create-card-response
+       (t2/with-transaction [_conn]
+         (let [[created] (queries.card/create-cards! [(queries.card/new-card-row card api/*current-user-id*)])]
+           (queries.card/place-new-dashboard-questions! [created] [card])
+           created))))))
 
 (defn- apply-agent-card-patch!
   "Shared body for `update_question` / `update_metric`. `card-before-update` is the card the caller
@@ -906,13 +910,14 @@
     (api/update-check card-before-update card-updates)
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
-    ;; they cannot query. `queries/update-card!` does NOT run this check itself, so we run it here.
     (when (api/column-will-change? (:dataset_query card-before-update) (get card-updates :dataset_query ::api/not-provided))
-      (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))
-    (queries/update-card! {:card-before-update    card-before-update
-                           :card-updates          card-updates
-                           :actor                 @api/*current-user*
-                           :delete-old-dashcards? false})
+      (query-perms/check-run-permissions-for-queries [(:dataset_query card-updates)]))
+    (t2/with-transaction [_conn]
+      (collection/maybe-reconcile-collection-position!
+       (select-keys card-before-update [:collection_id :collection_position])
+       (select-keys card-updates [:collection_id :collection_position]))
+      (queries.card/place-updated-dashboard-question! card-before-update card-updates false)
+      (queries.card/update-cards! [(assoc (queries.card/card-changes card-updates) :id id)]))
     (update-card-response (agent-api.db/card id))))
 
 (mr/def ::create-question-request
@@ -1266,21 +1271,17 @@
                                                              :can_read))]
                     (mapv #(api/read-check (id->card %)) question_ids)))
           dash  (dashboards.write/create-dashboard!
-                 {:name          dashboard-name
-                  :description   description
-                  :collection_id collection_id}
-                 {:in-transaction
-                  (fn [dash]
-                    (when (seq cards)
-                      (reduce (fn [placed card]
-                                (let [display  (or (:display card) :table)
-                                      position (autoplaced-position placed display nil)]
-                                  (agent-api.db/insert-dashcard!
-                                   (merge position {:dashboard_id (:id dash)
-                                                    :card_id      (:id card)}))
-                                  (conj placed position)))
-                              []
-                              cards)))})]
+                 (cond-> {:name          dashboard-name
+                          :description   description
+                          :collection_id collection_id}
+                   (seq cards)
+                   (assoc :dashcards (:positioned (reduce (fn [{:keys [placed] :as acc} card]
+                                                            (let [position (autoplaced-position placed (or (:display card) :table) nil)]
+                                                              (-> acc
+                                                                  (update :placed conj position)
+                                                                  (update :positioned conj (assoc position :card_id (:id card))))))
+                                                          {:placed [] :positioned []}
+                                                          cards)))))]
       {:id              (:id dash)
        :name            (:name dash)
        :url             (frontend-url (channel.urls/dashboard-path (:id dash)))
@@ -1361,23 +1362,23 @@
    [:tabs            [:sequential ::dashboard-tab]]])
 
 (defn- insert-new-dashcard!
-  "Insert a new dashcard at `position-fields` on `tab-id` and record it in the mutation `state`.
-   Goes through [[dashboard-card/create-dashboard-cards!]] so model-level invariants (e.g. no
-   document-backed cards on dashboards) are enforced. The returned instance (with its :id) goes
-   into :placed so later mutations in the batch — notably a `move` to \"top\", which shifts every
-   other card by id — can address it."
-  [state dashboard-id tab-id position-fields columns]
-  (let [new-dashcard (first (dashboard-card/create-dashboard-cards!
-                             [(merge position-fields
-                                     {:dashboard_id     dashboard-id
-                                      :dashboard_tab_id tab-id}
-                                     columns)]))]
-    (swap! state #(-> %
-                      (update :placed conj new-dashcard)
-                      (update :added conj new-dashcard)))))
+  "Add a new dashcard at `position-fields` on `tab-id` to the mutation `state`, under a temporary negative id that
+  [[dashboard/update-dashboard!]] replaces when the batch is saved. It goes into :placed, so later mutations in the
+  batch, notably a `move` to \"top\", which shifts every other card, see it."
+  [state tab-id position-fields columns]
+  (swap! state (fn [{:keys [next-id] :as current}]
+                 (let [new-dashcard (merge position-fields
+                                           {:id next-id :dashboard_tab_id tab-id}
+                                           columns)]
+                   (-> current
+                       (update :placed conj new-dashcard)
+                       (update :added conj new-dashcard)
+                       (assoc :next-id (dec next-id)))))))
 
 (defn- apply-dashcard-mutations!
-  "Apply a sequence of LLM-friendly dashcard mutations. Returns {:added [...] :removed [...] :moved [...]}.
+  "Apply a sequence of LLM-friendly dashcard mutations to the dashcards of the Dashboard, in memory. Returns
+  {:dashcards [...] :added [...] :removed [...]}: the dashcards the Dashboard is to have, those added with temporary ids,
+  and those removed.
 
   Errors:
   - `card_id` that doesn't exist or the user can't read -> 404 / 403 via `api/read-check`.
@@ -1406,6 +1407,7 @@
         ;; collision/reflow purposes they count as first-tab cards.
         effective-tab  (fn [dashcard] (or (:dashboard_tab_id dashcard) default-tab-id))
         on-tab         (fn [placed tab-id] (filterv #(= (effective-tab %) tab-id) placed))
+        id->current    (u/index-by :id current)
         add-cards      (u/index-by :id (t2/hydrate (agent-api.db/cards-with-ids
                                                     (into [] (comp (filter (comp #{"add"} :action))
                                                                    (keep :card_id)
@@ -1415,17 +1417,17 @@
         state          (atom {:placed  (vec current)
                               :added   []
                               :removed []
-                              :moved   []})]
+                              :next-id -1})]
+    ;; A card placed on a shared dashboard exposes its selected timeline events, so the same read check the REST
+    ;; writer applies runs here too.
+    (queries/check-newly-exposed-dashcards-timeline-permissions!
+     dashboard current (into [] (comp (filter (comp #{"add"} :action)) (map #(select-keys % [:card_id]))) mutations))
     (doseq [[mutation-index {:keys [action card_id dashcard_id display_size position text tab_id] :as mutation}]
             (map-indexed vector mutations)]
       (try
         (case action
           "add"
           (let [card    (api/read-check (add-cards card_id))
-                ;; A card placed on a shared dashboard exposes its selected timeline events, so the
-                ;; same read check the REST writer applies runs here too.
-                _       (queries/check-newly-exposed-dashcards-timeline-permissions!
-                         dashboard current [{:card_id card_id}])
                 ;; A card internal to a different dashboard (a dashboard question) can't be added
                 ;; here — mirrors the REST dashcard-creation gate.
                 _       (api/check (or (nil? (:dashboard_id card))
@@ -1440,25 +1442,24 @@
                           (api/check-not-archived card))
                 display (or (:display card) :table)
                 tab-id  (target-tab-id tab_id)]
-            (insert-new-dashcard! state dashboard-id tab-id
+            (insert-new-dashcard! state tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) display display_size)
                                   {:card_id card_id}))
 
           "add_heading"
           (let [tab-id (target-tab-id tab_id)]
-            (insert-new-dashcard! state dashboard-id tab-id
+            (insert-new-dashcard! state tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) :heading nil)
                                   {:visualization_settings (dashboard-card/virtual-card-settings "heading" {:text text})}))
 
           "add_text"
           (let [tab-id (target-tab-id tab_id)]
-            (insert-new-dashcard! state dashboard-id tab-id
+            (insert-new-dashcard! state tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) :text display_size)
                                   {:visualization_settings (dashboard-card/virtual-card-settings "text" {:text text})}))
 
           "update_text"
-          (let [existing (api/check-404
-                          (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))
+          (let [existing (api/check-404 (id->current dashcard_id))
                 vs       (:visualization_settings existing)
                 display  (some-> (get-in vs [:virtual_card :display]) name)]
             (api/check (or (contains? #{"heading" "text"} display)
@@ -1469,20 +1470,19 @@
                                 (string? (:text vs))))
                        [400 "Only heading and text cards support update_text."])
             ;; In-place: position and size stay put, unlike a remove + add_* round-trip.
-            (agent-api.db/update-dashcard! dashcard_id {:visualization_settings (assoc vs :text text)}))
+            (swap! state update :placed (fn [cards]
+                                          (mapv #(cond-> % (= dashcard_id (:id %))
+                                                         (assoc :visualization_settings (assoc vs :text text)))
+                                                cards))))
 
           "remove"
-          (let [existing (api/check-404
-                          (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))]
-            ;; Model-level delete also cleans up orphaned inline parameters and pulse cards.
-            (dashboard-card/delete-dashboard-cards! [dashcard_id])
+          (let [existing (api/check-404 (id->current dashcard_id))]
             (swap! state #(-> %
                               (update :placed (fn [cards] (vec (remove (comp #{dashcard_id} :id) cards))))
                               (update :removed conj existing))))
 
           "move"
-          (let [existing  (api/check-404
-                           (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))
+          (let [existing  (api/check-404 (id->current dashcard_id))
                 ;; A move only makes sense relative to the moved card's own tab: collision checks
                 ;; and the move-to-top reflow must not touch cards on other tabs. Compared via
                 ;; `effective-tab` so nil-tab dashcards group with the first tab they render on.
@@ -1502,19 +1502,13 @@
                 shifted?   (fn [c] (and (= position "top") (same-tab? c)))]
             ;; "top" parks the card at row 0; everything else on its tab has to shift down by the
             ;; moved card's height or we get overlapping dashcards (review finding #2).
-            (when (= position "top")
-              (let [shift (:size_y existing)]
-                (doseq [{:keys [id row]} tab-placed]
-                  (agent-api.db/update-dashcard! id {:row (+ row shift)}))))
-            (agent-api.db/update-dashcard! dashcard_id (select-keys new-pos [:row :col]))
             (swap! state #(-> %
                               (assoc :placed
                                      (conj (mapv (fn [c]
                                                    (cond-> c
                                                      (shifted? c) (update :row + (:size_y existing))))
                                                  others)
-                                           (merge existing (select-keys new-pos [:row :col]))))
-                              (update :moved conj (merge existing new-pos))))))
+                                           (merge existing (select-keys new-pos [:row :col]))))))))
         (catch Exception e
           ;; Re-throw with the mutation index so the LLM can tell which entry failed when
           ;; submitting a batch. The whole batch rolls back via the surrounding transaction.
@@ -1524,12 +1518,9 @@
                                  :mutation-index mutation-index
                                  :mutation       mutation)
                           e)))))
-    ;; Adding/removing dashcards can orphan (or resurrect) dashboard questions — cards internal to
-    ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
-    (when (or (seq (:added @state)) (seq (:removed @state)))
-      (dashboard-card/archive-or-unarchive-internal-dashboard-questions!
-       dashboard-id (agent-api.db/dashcards dashboard-id)))
-    (select-keys @state [:added :removed :moved])))
+    (-> @state
+        (select-keys [:added :removed])
+        (assoc :dashcards (:placed @state)))))
 
 (api.macros/defendpoint :put "/v1/dashboard/:id" :- ::update-dashboard-response
   "Update a dashboard. Patch semantics - only fields you pass are changed.
@@ -1584,15 +1575,17 @@
         ;; a dashboard being archived by THIS request — otherwise the post-mutation
         ;; internal-question sync could unarchive dashboard questions on a just-archived dashboard.
         _            (when (seq mutations)
-                       ;; unless THIS request unarchives it first — restore-and-edit is one call,
-                       ;; and the update runs before the mutations inside the transaction
                        (when-not (false? (:archived updates))
                          (api/check-not-archived current-dash))
                        (api/check (not (true? (:archived updates)))
                                   [400 "Can't modify dashcards while archiving the dashboard."]))
-        _            (events/with-batched-events
-                       (when (seq updates)
-                         (agent-api.db/update-dashboard! id updates)
+        _            (t2/with-transaction [_conn]
+                       (let [changes   (when (seq mutations)
+                                         (apply-dashcard-mutations! id mutations))
+                             dashcards (:dashcards changes)]
+                         (when (or (seq updates) dashcards)
+                           (dashboard/update-dashboard! id (cond-> updates
+                                                             dashcards (assoc :dashcards dashcards))))
                          ;; Fire :event/collection-touch with the *target* collection id so the
                          ;; activity feed records the right collection. Note: the dashboards-rest
                          ;; PUT-dashboard endpoint passes the dashboard id here instead, which
@@ -1602,9 +1595,15 @@
                          (when (contains? updates :collection_id)
                            (events/publish-event! :event/collection-touch
                                                   {:collection-id (:collection_id updates)
-                                                   :user-id       api/*current-user-id*})))
-                       (when (seq mutations)
-                         (apply-dashcard-mutations! id mutations)))
+                                                   :user-id       api/*current-user-id*}))
+                         ;; Adding/removing dashcards can orphan (or resurrect) dashboard questions — cards internal to
+                         ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
+                         (when (or (seq (:added changes)) (seq (:removed changes)))
+                           (let [saved (agent-api.db/dashcards id)]
+                             (dashboard-card/check-unarchive-internal-dashboard-questions id saved)
+                             (dashboard-card/unarchive-internal-dashboard-questions! id saved)
+                             (dashboard-card/check-archive-internal-dashboard-questions id saved)
+                             (dashboard-card/archive-internal-dashboard-questions! id saved)))))
         updated      (agent-api.db/dashboard id)]
     {:id              (:id updated)
      :name            (:name updated)

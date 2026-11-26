@@ -7,14 +7,37 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
+- `GET /api/card/:id` no longer accepts the query parameter `legacy-mbql`. The endpoint ignores it, and always
+  returns the Card's `dataset_query` as MBQL 5. Before, `?legacy-mbql=true` returned the query as MBQL 4 (legacy
+  MBQL).
+
 - The Security Center advisory endpoints moved under `/api/ee/security-center/advisories`: `GET /api/ee/security-center`
   is now `GET /api/ee/security-center/advisories`, and `POST /api/ee/security-center/:advisory-id/acknowledge`,
   `POST /api/ee/security-center/acknowledge`, `POST /api/ee/security-center/sync` and
   `POST /api/ee/security-center/test-notification` take the same `/advisories` prefix. The old paths return
   `404 Not Found`. Request and response bodies are unchanged.
 
+- Tables no longer have `collection_id` and `is_published` in the responses of the endpoints that return them, such
+  as `GET /api/table`, `GET /api/table/:id`, `GET /api/table/:id/query_metadata` and
+  `GET /api/database/:id/schema/:schema`. A published table has the collection it is published into as `collection`,
+  and a table that isn't published has `collection: null`. Search results and collection items keep both fields.
+
+- Tables no longer have `transform_id` in the responses of the endpoints that return them, such as `GET /api/table`
+  and `GET /api/table/:id`. The transform that writes to a table is the hydrated `transform` of the table, and a
+  transform names its table as `target_table_id`.
+
+- `POST /api/transform/:id/run-dag`, `POST /api/transform/:id/cancel`, `POST /api/transform/:id/reset-checkpoint`,
+  `POST /api/transform-dag-run/:run-id/cancel`, `POST /api/transform-job/:job-id/run` and
+  `POST /api/transform-job/:job-id/runs/:run-id/cancel` need read access to the transform or job, as
+  `POST /api/transform/:id/run` does, instead of write access. They also work on an instance where remote sync keeps
+  synced content read-only.
+
 - `POST /api/database` and `PUT /api/database/:id` no longer accept `provider_name`. Metabase derives it from the
   engine and the host, and ignores a value in the request.
+
+- `POST /api/metabot/agent-streaming` ignores `context.first_day_of_week`. Metabot reads the first day of the week
+  from the `start-of-week` setting, which queries use to group by week. Before, Metabot used the value in the request,
+  or "Sunday" when the request did not have the key. The request still accepts the key.
 
 - `PUT /api/database/:id` on the Sample Database answers `403 Forbidden` instead of `400 Bad Request`.
 

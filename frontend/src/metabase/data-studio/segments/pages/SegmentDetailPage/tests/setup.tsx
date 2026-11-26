@@ -73,25 +73,23 @@ export const TEST_SEGMENT = createMockSegment({
   name: "High Value Orders",
   description: "Orders with total > 100",
   table_id: TEST_TABLE.id,
-  definition: Lib.toLegacyQuery(
-    Lib.createTestQuery(TEST_PROVIDER, {
-      stages: [
-        {
-          source: { type: "table", id: TEST_TABLE.id },
-          filters: [
-            {
-              type: "operator",
-              operator: ">",
-              args: [
-                { type: "column", fieldId: 2 },
-                { type: "literal", value: 100 },
-              ],
-            },
-          ],
-        },
-      ],
-    }),
-  ),
+  definition: Lib.createTestJsQuery(TEST_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: TEST_TABLE.id },
+        filters: [
+          {
+            type: "operator",
+            operator: ">",
+            args: [
+              { type: "column", fieldId: 2 },
+              { type: "literal", value: 100 },
+            ],
+          },
+        ],
+      },
+    ],
+  }),
 });
 
 type SetupOpts = {

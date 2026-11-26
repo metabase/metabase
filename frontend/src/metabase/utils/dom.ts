@@ -229,9 +229,7 @@ export function isReducedMotionPreferred(): boolean {
   return mediaQuery != null && mediaQuery.matches;
 }
 
-export function isFocusVisible(element: Element): boolean {
-  return element.matches(":focus-visible");
-}
+export { isFocusVisible } from "./focus-visible";
 
 export function isSmallScreen(): boolean {
   const mediaQuery = window.matchMedia("(max-width: 40em)");

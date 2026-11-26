@@ -25,7 +25,7 @@ export const SegmentItem = ({ segment, onRetire }: Props) => {
   const { data: table } = useGetTableQuery({ id: segment.table_id });
   // Treat a table that has not loaded as published, so the write actions stay
   // closed until the answer is known.
-  const isTablePublished = table?.is_published ?? true;
+  const isTablePublished = table == null || table.collection != null;
   const readOnly = isRemoteSyncReadOnly && isTablePublished;
 
   return (

@@ -8,109 +8,114 @@
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
    [metabase.util.match :as match]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 ;; `our-metadata` should match up with what we have in the DB
 (deftest does-metadata-match-test
   (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
-    (sync-metadata/sync-db-metadata! (:id db))
-    (is (= #{{:name              "id"
-              :database-type     "SERIAL"
-              :base-type         :type/Integer
-              :effective-type    :type/Integer
-              :semantic-type     :type/PK
-              :pk?               true
-              :database-required false
-              :database-is-auto-increment true
-              :json-unfolding    false
-              :preview-display   true}
-             {:name              "buyer"
-              :database-type     "OBJECT"
-              :base-type         :type/Dictionary
-              :effective-type    :type/Dictionary
-              :pk?               false
-              :database-required false
-              :database-is-auto-increment false
-              :json-unfolding    false
-              :preview-display   true
-              :nested-fields     #{{:name              "name"
-                                    :database-type     "VARCHAR"
-                                    :base-type         :type/Text
-                                    :effective-type    :type/Text
-                                    :pk?               false
-                                    :database-required false
-                                    :json-unfolding    false
-                                    :database-is-auto-increment false
-                                    :preview-display   true}
-                                   {:name              "cc"
-                                    :database-type     "VARCHAR"
-                                    :base-type         :type/Text
-                                    :effective-type    :type/Text
-                                    :pk?               false
-                                    :database-required false
-                                    :json-unfolding    false
-                                    :database-is-auto-increment false
-                                    :preview-display   true}}}
-             {:name              "ts"
-              :database-type     "BIGINT"
-              :base-type         :type/BigInteger
-              :effective-type    :type/DateTime
-              :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
-              :pk?               false
-              :database-is-auto-increment false
-              :json-unfolding    false
-              :database-required false
-              :preview-display   true}
-             {:name              "toucan"
-              :database-type     "OBJECT"
-              :base-type         :type/Dictionary
-              :effective-type    :type/Dictionary
-              :pk?               false
-              :database-required false
-              :database-is-auto-increment false
-              :json-unfolding    false
-              :preview-display   true
-              :nested-fields     #{{:name              "name"
-                                    :database-type     "VARCHAR"
-                                    :base-type         :type/Text
-                                    :effective-type    :type/Text
-                                    :pk?               false
-                                    :database-required false
-                                    :json-unfolding    false
-                                    :database-is-auto-increment false
-                                    :preview-display   true}
-                                   {:name              "details"
-                                    :database-type     "OBJECT"
-                                    :base-type         :type/Dictionary
-                                    :effective-type    :type/Dictionary
-                                    :pk?               false
-                                    :database-required false
-                                    :json-unfolding    false
-                                    :database-is-auto-increment false
-                                    :preview-display   true
-                                    :nested-fields     #{{:name              "weight"
-                                                          :database-type     "DECIMAL"
-                                                          :base-type         :type/Decimal
-                                                          :effective-type    :type/Decimal
-                                                          :semantic-type     :type/Category
-                                                          :pk?               false
-                                                          :database-required false
-                                                          :json-unfolding    false
-                                                          :database-is-auto-increment false
-                                                          :preview-display   true}
-                                                         {:name              "age"
-                                                          :database-type     "INT"
-                                                          :base-type         :type/Integer
-                                                          :effective-type    :type/Integer
-                                                          :pk?               false
-                                                          :database-required false
-                                                          :json-unfolding    false
-                                                          :database-is-auto-increment false
-                                                          :preview-display   true}}}}}}
-           (let [transactions-table-id   (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
-                 remove-ids-and-nil-vals #(match/replace-all %
-                                            ;; database-position isn't stable since they are
-                                            ;; defined in sets. changing keys will change the
-                                            ;; order in the set implementation. (and position depends on database-position)
-                                            #'map? (m/filter-vals some? (dissoc &match :id :database-position :position)))]
-             (remove-ids-and-nil-vals (#'fields.our-metadata/our-metadata (t2/select-one :model/Table :id transactions-table-id))))))))
+    (try
+      (sync-metadata/sync-db-metadata! (:id db))
+      (is (= #{{:name              "id"
+                :database-type     "SERIAL"
+                :base-type         :type/Integer
+                :effective-type    :type/Integer
+                :semantic-type     :type/PK
+                :pk?               true
+                :database-required false
+                :database-is-auto-increment true
+                :json-unfolding    false
+                :preview-display   true}
+               {:name              "buyer"
+                :database-type     "OBJECT"
+                :base-type         :type/Dictionary
+                :effective-type    :type/Dictionary
+                :pk?               false
+                :database-required false
+                :database-is-auto-increment false
+                :json-unfolding    false
+                :preview-display   true
+                :nested-fields     #{{:name              "name"
+                                      :database-type     "VARCHAR"
+                                      :base-type         :type/Text
+                                      :effective-type    :type/Text
+                                      :pk?               false
+                                      :database-required false
+                                      :json-unfolding    false
+                                      :database-is-auto-increment false
+                                      :preview-display   true}
+                                     {:name              "cc"
+                                      :database-type     "VARCHAR"
+                                      :base-type         :type/Text
+                                      :effective-type    :type/Text
+                                      :pk?               false
+                                      :database-required false
+                                      :json-unfolding    false
+                                      :database-is-auto-increment false
+                                      :preview-display   true}}}
+               {:name              "ts"
+                :database-type     "BIGINT"
+                :base-type         :type/BigInteger
+                :effective-type    :type/DateTime
+                :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
+                :pk?               false
+                :database-is-auto-increment false
+                :json-unfolding    false
+                :database-required false
+                :preview-display   true}
+               {:name              "toucan"
+                :database-type     "OBJECT"
+                :base-type         :type/Dictionary
+                :effective-type    :type/Dictionary
+                :pk?               false
+                :database-required false
+                :database-is-auto-increment false
+                :json-unfolding    false
+                :preview-display   true
+                :nested-fields     #{{:name              "name"
+                                      :database-type     "VARCHAR"
+                                      :base-type         :type/Text
+                                      :effective-type    :type/Text
+                                      :pk?               false
+                                      :database-required false
+                                      :json-unfolding    false
+                                      :database-is-auto-increment false
+                                      :preview-display   true}
+                                     {:name              "details"
+                                      :database-type     "OBJECT"
+                                      :base-type         :type/Dictionary
+                                      :effective-type    :type/Dictionary
+                                      :pk?               false
+                                      :database-required false
+                                      :json-unfolding    false
+                                      :database-is-auto-increment false
+                                      :preview-display   true
+                                      :nested-fields     #{{:name              "weight"
+                                                            :database-type     "DECIMAL"
+                                                            :base-type         :type/Decimal
+                                                            :effective-type    :type/Decimal
+                                                            :semantic-type     :type/Category
+                                                            :pk?               false
+                                                            :database-required false
+                                                            :json-unfolding    false
+                                                            :database-is-auto-increment false
+                                                            :preview-display   true}
+                                                           {:name              "age"
+                                                            :database-type     "INT"
+                                                            :base-type         :type/Integer
+                                                            :effective-type    :type/Integer
+                                                            :pk?               false
+                                                            :database-required false
+                                                            :json-unfolding    false
+                                                            :database-is-auto-increment false
+                                                            :preview-display   true}}}}}}
+             (let [transactions-table-id   (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
+                   remove-ids-and-nil-vals #(match/replace-all %
+                                              ;; database-position isn't stable since they are
+                                              ;; defined in sets. changing keys will change the
+                                              ;; order in the set implementation. (and position depends on database-position)
+                                              #'map? (m/filter-vals some? (dissoc &match :id :database-position :position)))]
+               (remove-ids-and-nil-vals (#'fields.our-metadata/our-metadata (t2/select-one :model/Table :id transactions-table-id))))))
+      (finally
+        (testing "removes the nested Fields it synced through delete-databases!, since on MySQL a plain delete cannot: their parent reference is ON DELETE RESTRICT"
+          (database/delete-databases! [(:id db)]))))))

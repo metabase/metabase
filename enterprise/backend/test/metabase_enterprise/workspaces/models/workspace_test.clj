@@ -5,6 +5,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (defn- ws-db-attrs
@@ -32,8 +33,8 @@
 
 (deftest create-workspace-with-databases-test
   (testing "create-workspace! stores nested workspace_database rows"
-    (mt/with-model-cleanup [:model/Workspace]
-      (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}]
+    (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}]
+      (mt/with-model-cleanup [:model/Workspace]
         (let [created (create-ws!
                        {:name      "With DBs"
                         :databases [(ws-db-attrs)
@@ -77,8 +78,8 @@
 
 (deftest update-workspace-replaces-databases-test
   (testing "update-workspace! replaces the set of workspace_databases"
-    (mt/with-model-cleanup [:model/Workspace]
-      (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}]
+    (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}]
+      (mt/with-model-cleanup [:model/Workspace]
         (let [{id :id} (create-ws!
                         {:name      "Before"
                          :databases [(ws-db-attrs {:output_namespace "keep_out"
@@ -140,7 +141,7 @@
         (testing "and the column persists as a string in the database"
           (is (= "provisioned"
                  (:status (t2/query-one {:select [:status]
-                                         :from   [:workspace_database]
+                                         :from   [(t2/table-name :model/WorkspaceDatabase)]
                                          :where  [:= :workspace_id (:id created)]})))))))))
 
 (deftest status-can-be-updated-test
@@ -223,7 +224,7 @@
                            {:name      "Linked"
                             :databases [(ws-db-attrs {:database_id db-id})]})]
           (is (t2/exists? :model/WorkspaceDatabase :workspace_id ws-id))
-          (t2/delete! :model/Database :id db-id)
+          (database/delete-databases! [db-id])
           (is (not (t2/exists? :model/WorkspaceDatabase :workspace_id ws-id))))))))
 
 ;;; ========================================= Permission predicates =========================================

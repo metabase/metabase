@@ -102,14 +102,32 @@
   flex: 0 0 auto;
 }
 
+/* Looks like the metabase/ui inputs at their default size (md). */
 .TriggerContainer {
-  padding: 0.6875rem;
-  border: 1px solid var(--mb-color-border-neutral);
-  border-radius: 0.25rem;
+  min-height: 2rem;
+  padding: 0 var(--mantine-spacing-sm);
+  border: 0.5px solid var(--mb-color-border-neutral-strongest);
+  border-radius: var(--mantine-radius-xs);
+  background-color: var(--mb-color-input-background);
+  font-size: var(--mantine-font-size-md);
   cursor: pointer;
 
-  &:hover,
-  &.hasValue {
-    border-color: var(--mb-color-core-brand);
+  &[aria-expanded="true"],
+  &:focus-visible {
+    border-color: var(--mb-color-border-highlight);
+    box-shadow: inset 0 0 0 0.5px var(--mb-color-border-highlight);
+    outline: none;
+  }
+
+  :global(.Icon) {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  /* Center the smaller clear and reset icons in their 24px hit area. */
+  .widgetStatus [role="button"] {
+    display: flex;
+    align-items: center;
+    padding-block: 0;
   }
 }

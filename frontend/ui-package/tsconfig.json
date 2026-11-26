@@ -1,0 +1,44 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": [],
+    "paths": {
+      "metabase/ui": ["../src/metabase/ui/index.ts"],
+      "metabase/ui/*": ["../src/metabase/ui/*"],
+      "metabase-types/api/color-settings": [
+        "../src/metabase-types/api/color-settings.ts"
+      ],
+      "metabase-types/api/icon": ["../src/metabase-types/api/icon.ts"],
+      "metabase/utils/color-scheme": ["../src/metabase/utils/color-scheme.ts"],
+      "metabase/utils/resize-observer": [
+        "../src/metabase/utils/resize-observer.ts"
+      ],
+      "metabase/utils/measure-container": [
+        "../src/metabase/utils/measure-container.ts"
+      ],
+      "metabase/utils/csp": ["../src/metabase/utils/csp.ts"],
+      "metabase/env": ["../src/metabase/env.ts"],
+      "metabase/dayjs": ["../src/metabase/dayjs/index.ts"],
+      "metabase/utils/deep-merge": ["../src/metabase/utils/deep-merge.ts"],
+      "metabase/utils/focus-visible": ["../src/metabase/utils/focus-visible.ts"],
+      "metabase/utils/key-labels": ["../src/metabase/utils/key-labels.ts"],
+      "metabase-types/utils/types": ["../src/metabase-types/utils/types.ts"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "../src/metabase/ui/mantine.d.ts",
+    "../src/types/dayjs.d.ts",
+    "../src/types/react.d.ts",
+    "../src/types/underscore.d.ts"
+  ],
+  "exclude": [
+    "src/**/*.unit.spec.*",
+    "../src/metabase/ui/**/*.spec.*",
+    "../src/metabase/ui/**/*.stories.*",
+    "../src/metabase/ui/stories/**",
+    "../src/metabase/ui/syntax/**"
+  ]
+}

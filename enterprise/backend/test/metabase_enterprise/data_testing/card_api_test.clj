@@ -271,10 +271,11 @@
                   (mt/user-http-request :rasta :get 403 path)
                   (mt/user-http-request :rasta :post 403 (str path "/run")))
                 (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
-                (testing "collection read: get and run, but not create, update or delete"
+                (testing "collection read and native queries: get, run and create, but not update or delete"
                   (is (= test-id (:id (mt/user-http-request :rasta :get 200 path))))
                   (is (= "passed" (:status (mt/user-http-request :rasta :post 200 (str path "/run")))))
-                  (mt/user-http-request :rasta :post 403 "ee/card-test" (body card-id))
+                  (let [created (mt/user-http-request :rasta :post 200 "ee/card-test" (body card-id))]
+                    (t2/delete! :model/CardTest :id (:id created)))
                   (mt/user-http-request :rasta :put 403 path {:name "nope"})
                   (mt/user-http-request :rasta :delete 403 path))
                 (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
@@ -476,12 +477,11 @@
       ;; Created through the model, which does not validate, so that its creation revision has no inputs. A revision is
       ;; recorded only under a current user.
       (let [test-id     (mt/with-current-user (mt/user->id :crowberto)
-                          (:id (data-testing.models.card-test/create-card-test!
-                                {:card_id      subject-id
-                                 :name         "No inputs"
-                                 :inputs       []
-                                 :expectations (mapv #(update % :type keyword) expectations)
-                                 :creator_id   (mt/user->id :crowberto)})))
+                          (:id (first (data-testing.models.card-test/create-card-tests! [{:card_id      subject-id
+                                                                                          :name         "No inputs"
+                                                                                          :inputs       []
+                                                                                          :expectations (mapv #(update % :type keyword) expectations)
+                                                                                          :creator_id   (mt/user->id :crowberto)}]))))
             path        (str "ee/card-test/" test-id)
             creation-id (->> (mt/user-http-request :crowberto :get 200 (str "revision/card-test/" test-id))
                              (m/find-first :is_creation)

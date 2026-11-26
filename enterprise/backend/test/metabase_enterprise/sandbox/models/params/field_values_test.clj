@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -349,3 +350,35 @@
           (is (seq (:values fv-1)))
           (is (seq (:values fv-2)))
           (is (not= (:values fv-1) (:values fv-2))))))))
+
+(deftest sandbox-tokens-for-tables-matches-one-table-calls-test
+  (testing "the sandbox tokens of many Tables read together are those of each Table read on its own"
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+                      :attributes {"cat" 50}}
+      (let [table-ids [(mt/id :venues) (mt/id :checkins) (mt/id :users)]
+            answers   (fn []
+                        [(into {} (map (juxt identity ee-params.field-values/sandbox-token-for-table)) table-ids)
+                         (ee-params.field-values/sandbox-tokens-for-tables table-ids)])]
+        (testing "sandboxed user"
+          (let [[alone together] (answers)]
+            (is (some? (get alone (mt/id :venues))))
+            (is (= alone together))))
+        (testing "superuser"
+          (request/with-current-user (mt/user->id :crowberto)
+            (let [[alone together] (answers)]
+              (is (= alone together)))))))))
+
+(deftest data-access-token-reader-binding-test
+  (testing "a reader created under one binding answers as the plain token under the binding it is used under"
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+                      :attributes {"cat" 50}}
+      (let [target  {:database-id (mt/id) :table-ids #{(mt/id :venues) (mt/id :checkins)}}
+            as-user (perms/data-access-token target)
+            admin   (request/as-admin (perms/data-access-token target))]
+        (is (seq (:sandbox as-user)))
+        (is (not= as-user admin))
+        (testing "created as admin, used as the sandboxed user"
+          (is (= as-user ((request/as-admin (perms/data-access-token-reader [target])) target))))
+        (testing "created as the sandboxed user, used as admin"
+          (let [reader (perms/data-access-token-reader [target])]
+            (is (= admin (request/as-admin (reader target))))))))))

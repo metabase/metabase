@@ -3,14 +3,16 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [instaparse.combinators :as insta.c]
+   [instaparse.core :as insta]
    [metabase.driver :as driver]
-   [metabase.driver-api.core :as driver-api]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.performance :refer [empty?]])
   (:import
    (java.sql Connection DatabaseMetaData)))
@@ -72,6 +74,9 @@
     ;; Tuple
     (str/starts-with? db-type "tuple")
     :type/*
+    ;; JSON, JSON(<typed paths>)
+    (or (= db-type "json") (str/starts-with? db-type "json("))
+    :type/JSON
     ;; SimpleAggregateFunction
     (str/starts-with? db-type "simpleaggregatefunction")
     (normalize-db-type (subs db-type (+ (str/index-of db-type ",") 2) (dec (count db-type))))
@@ -188,10 +193,59 @@
                           updated-field)]
     (merge table-metadata {:fields (set filtered-fields)})))
 
+(def ^:private primary-key-parser
+  "Parses a ClickHouse primary key, as `system.tables` reports it: expressions separated by commas, perhaps wrapped in
+  one pair of parentheses. An expression that is a bare column name is a `:column`; any other is an `:expression`, which
+  is parsed only far enough to find where it ends."
+  (insta/parser
+   (merge
+    (insta.c/ebnf
+     "primary-key = <'('> columns <')'> / columns
+      <columns>   = item (<','> item)*
+      <item>      = column / expression
+      column      = <space> (name / quoted-name) <space>
+      expression  = (text / group)+
+      <group>     = '(' (text / group / ',')* ')' | '[' (text / group / ',')* ']'
+      <text>      = other / string / quoted-name")
+    {:space       (insta.c/regexp #"\s*")
+     :name        (insta.c/hide-tag (insta.c/regexp #"[A-Za-z_][A-Za-z0-9_]*"))
+     :quoted-name (insta.c/regexp #"`(?:[^`\\]|\\.)*`")
+     :string      (insta.c/regexp #"'(?:[^'\\]|\\.)*'")
+     ;; everything up to the next comma, bracket, string or quoted name
+     :other       (insta.c/regexp #"[^,()\[\]'`]+")})
+   :start :primary-key))
+
+(defn- unquote-name
+  "The name that the backquoted identifier `quoted` stands for."
+  [quoted]
+  (str/replace (subs quoted 1 (dec (count quoted))) #"\\(.)" "$1"))
+
+(defn- primary-key-columns
+  "The columns of the ClickHouse primary key `primary-key`, as `system.tables` reports it, that are bare columns."
+  [primary-key]
+  (if (str/blank? primary-key)
+    []
+    (let [tree (insta/parse primary-key-parser primary-key)]
+      (if (insta/failure? tree)
+        (do
+          (log/warnf "Cannot parse the ClickHouse primary key %s; syncing the table without one" (pr-str primary-key))
+          [])
+        (insta/transform {:primary-key (fn [& columns]
+                                         (into [] (remove nil?) columns))
+                          :column      identity
+                          :quoted-name unquote-name
+                          :expression  (constantly nil)}
+                         tree)))))
+
 (defmethod sql-jdbc.describe-table/get-table-pks :clickhouse
-  [_driver ^java.sql.Connection conn db-name-or-nil table]
-  ;; JDBC v2 sets the PKs now, so that :metadata/key-constraints feature should be enabled;
-  ;; however, enabling :metadata/key-constraints will also enable left-join tests which are currently failing
-  (if (not driver-api/is-test?)
-    (sql-jdbc.describe-table/get-table-pks :sql-jdbc conn db-name-or-nil table)
-    []))
+  [_driver ^java.sql.Connection conn _db-name-or-nil table]
+  ;; Not `DatabaseMetaData.getPrimaryKeys`: it splits `system.tables.primary_key` on every comma, so it reports `(id)`
+  ;; for a table declared with `ORDER BY (id)` on recent ClickHouse versions, splits quoted names that contain a comma,
+  ;; and names the pieces of expressions like `cityHash64(a, b)`. None of those matches a column.
+  (with-open [stmt (.prepareStatement conn "SELECT primary_key FROM system.tables WHERE database = ? AND name = ?")]
+    (.setString stmt 1 (:schema table))
+    (.setString stmt 2 (:name table))
+    (with-open [rs (.executeQuery stmt)]
+      (if (.next rs)
+        (primary-key-columns (.getString rs 1))
+        []))))

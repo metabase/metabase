@@ -6,7 +6,9 @@
    [metabase.api.common :as api]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
-   [metabase.permissions.core :as perms]))
+   [metabase.permissions.core :as perms]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -86,13 +88,13 @@
                 [:= :namespace nil])
               (when (seq namespaces)
                 [:in :namespace namespaces])]
-             (perms/visible-collections-filter-clause :collection.id (api/current-user-info) {:include-archived-items    (if archived
-                                                                                                                           :only
-                                                                                                                           :exclude)
-                                                                                              :include-trash-collection? true
-                                                                                              :permission-level          :read
-                                                                                              :archive-operation-id      nil
-                                                                                              :root-namespace            nil})]
+             (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Collection) :id) (api/current-user-info) {:include-archived-items    (if archived
+                                                                                                                                                                    :only
+                                                                                                                                                                    :exclude)
+                                                                                                                                       :include-trash-collection? true
+                                                                                                                                       :permission-level          :read
+                                                                                                                                       :archive-operation-id      nil
+                                                                                                                                       :root-namespace            nil})]
      ;; Order NULL collection types first so that audit collections are last
      :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                 [[[:case
@@ -113,6 +115,14 @@
       collection/maybe-localize-tenant-collection-name
       collection/maybe-mark-collection-as-library-root))
 
+(defn prep-collections-for-export
+  "Bulk version of [[prep-collection-for-export]]."
+  [colls]
+  (->> colls
+       collection/personal-collections-with-ui-details
+       collection/maybe-localize-tenant-collection-names
+       (map collection/maybe-mark-collection-as-library-root)))
+
 (defn shallow-tree-from-collection-id
   "Returns only a shallow Collection in the provided collection-id, e.g.
 
@@ -129,6 +139,6 @@
   ```"
   [colls]
   (->> colls
-       (map prep-collection-for-export)
+       prep-collections-for-export
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))

@@ -17,7 +17,7 @@ type TableSegmentsProps = {
 
 export function TableSegments({ table }: TableSegmentsProps) {
   const canWriteSegments = useSelector((state) =>
-    getUserCanWriteSegments(state, table.is_published),
+    getUserCanWriteSegments(state, table.collection != null),
   );
   const segments = table.segments ?? [];
 

@@ -4,18 +4,27 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.data-apps.config :as data-app.config]
+   [metabase-enterprise.data-apps.generate.schema :as generate.schema]
+   [metabase-enterprise.data-apps.generate.schema.source :as schemas.source]
+   [metabase-enterprise.data-apps.generate.schema.table :as schemas.table]
    [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
+   [metabase.events.test-util :as events.tu]
+   [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.server.middleware.security :as security]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 ;;; ---------------------------------------------- Helpers ----------------------------------------------
 
@@ -40,13 +49,14 @@
   ;; a thread-local `binding`).
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp          app            {:bundle app-bundle}
+      (mt/with-temp [:model/Collection       {coll-id :id}  {:namespace :data-apps}
+                     :model/DataApp          app            {:bundle app-bundle :resource_collection_id coll-id}
                      :model/PermissionsGroup {group-id :id} {}]
         (testing "a user who cannot read the app's collection cannot open the app"
           (mt/user-http-request :rasta :get 403 (data-apps.tu/app-url app)))
         (testing "a member can open a data app"
           (group-access/add-groups! app [group-id])
-          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+          (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
           (is (str/includes? (str (mt/user-real-request :rasta :get 200 (data-apps.tu/app-url app "bundle")))
                              "BUNDLE")))
         (testing "a non-superuser is still forbidden from managing data apps"
@@ -58,7 +68,8 @@
 (deftest superuser-can-manage-and-view-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp app {:bundle app-bundle}]
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                     :model/DataApp    app           {:bundle app-bundle :resource_collection_id coll-id}]
         (is (not (some #(= (:resource_collection_id app) (:id %))
                        (mt/user-http-request :rasta :get 200 "collection"))))
         (testing "a superuser can list, read metadata, and serve the bundle"
@@ -69,29 +80,23 @@
           (is (str/includes? (str (mt/user-real-request :crowberto :get 200 (data-apps.tu/app-url app "bundle")))
                              "BUNDLE")))))))
 
-(deftest read-only-remote-sync-blocks-data-app-changes-test
+(deftest read-only-remote-sync-allows-enabling-and-disabling-test
   (mt/with-premium-features #{:data-apps :remote-sync}
-    (mt/with-temp [:model/DataApp app {:name "Demo app"}]
-      (let [url (data-apps.tu/app-url app)]
+    (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                   :model/DataApp    app           {:name "Demo app" :resource_collection_id coll-id}]
+      (let [url     (data-apps.tu/app-url app)
+            enabled #(t2/select-one-fn :enabled :model/DataApp :id (:id app))]
         (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
                                            remote-sync-type :read-only]
-          (testing "a read-only instance refuses to create, change, or delete an app"
-            (mt/user-http-request :crowberto :post 403 "ee/apps" {:slug "other"})
-            (is (not (t2/exists? :model/DataApp :slug "other")))
-            (mt/user-http-request :crowberto :put 403 url {:name "Renamed"})
-            (mt/user-http-request :crowberto :put 403 url {:enabled false :name "Renamed"})
-            (mt/user-http-request :crowberto :put 403 (data-apps.tu/app-url app "bundle") {:bundle "NEW"})
-            (mt/user-http-request :crowberto :delete 403 url)
-            (is (=? {:name "Demo app" :enabled true :bundle_hash (:bundle_hash app)}
-                    (t2/select-one :model/DataApp :id (:id app)))))
-          (testing "enabling and disabling stays allowed"
-            (is (=? {:enabled false}
-                    (mt/user-http-request :crowberto :put 200 url {:enabled false})))))
-        (mt/with-temporary-setting-values [remote-sync-url  "https://github.com/test/repo.git"
-                                           remote-sync-type :read-write]
-          (testing "a read-write instance allows changes"
-            (is (=? {:name "Renamed"}
-                    (mt/user-http-request :crowberto :put 200 url {:name "Renamed"})))))))))
+          (testing "a superuser disables and enables an app on a read-only instance"
+            (is (=? {:enabled false} (mt/user-http-request :crowberto :put 200 url {:enabled false})))
+            (is (false? (enabled)))
+            (is (=? {:enabled true} (mt/user-http-request :crowberto :put 200 url {:enabled true})))
+            (is (true? (enabled))))
+          (testing "non-superuser cannot disable app on read-only instance"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :put 403 url {:enabled false})))
+            (is (true? (enabled)))))))))
 
 (deftest data-app-write-endpoints-require-feature-token-test
   (mt/with-premium-features #{}
@@ -102,7 +107,8 @@
     (mt/with-premium-features #{:data-apps}
       (data-apps.tu/with-published-tables! [(mt/id :venues)]
         (mt/with-non-admin-groups-no-root-collection-perms
-          (mt/with-temp [:model/DataApp          {app-collection-id :resource_collection_id :as app} {}
+          (mt/with-temp [:model/Collection       {coll-id :id}                                       {:namespace :data-apps}
+                         :model/DataApp          {app-collection-id :resource_collection_id :as app} {:resource_collection_id coll-id}
                          :model/PermissionsGroup {group-id :id}                                      {}
                          :model/Collection       {source-collection-id :id}                          {:namespace :data-actions}
                          :model/Action           {source-id :id}                                     {:type          :implicit
@@ -116,7 +122,7 @@
                                                                                                       :kind      "row/update"
                                                                                                       :table_id  (mt/id :venues)}]
             (group-access/add-groups! app [group-id])
-            (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+            (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
             (testing "the group with access reads the action copied into the app collection"
               (is (=? {:id copied-id}
                       (mt/user-http-request :rasta :get 200 (str "action/" copied-id)))))
@@ -130,10 +136,12 @@
 (deftest outdated-apps-are-hidden-from-users-and-badged-for-admins-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp          old            {:version 1}
-                     :model/DataApp          current        {:bundle app-bundle :version 2}
+      (mt/with-temp [:model/Collection       {old-coll-id :id}     {:namespace :data-apps}
+                     :model/Collection       {current-coll-id :id} {:namespace :data-apps}
+                     :model/DataApp          old            {:version 1 :resource_collection_id old-coll-id}
+                     :model/DataApp          current        {:bundle app-bundle :version 2 :resource_collection_id current-coll-id}
                      :model/PermissionsGroup {group-id :id} {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group group-id}])
         (doseq [app [old current]]
           (group-access/add-groups! app [group-id]))
         (with-redefs [data-app.config/supported-app-version 2]
@@ -174,8 +182,11 @@
 
 (deftest list-includes-allowed-hosts-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp with-hosts    {:allowed_hosts ["https://api.example.com"]}
-                   :model/DataApp without-hosts {}]
+    (mt/with-temp [:model/Collection {with-coll-id :id}    {:namespace :data-apps}
+                   :model/Collection {without-coll-id :id} {:namespace :data-apps}
+                   :model/DataApp    with-hosts            {:allowed_hosts          ["https://api.example.com"]
+                                                            :resource_collection_id with-coll-id}
+                   :model/DataApp    without-hosts         {:resource_collection_id without-coll-id}]
       (testing "the list endpoint returns allowed_hosts, always a list, also for an app stored with NULL (→ [])"
         (let [by-name (->> (mt/user-http-request :crowberto :get 200 "ee/apps")
                            (into {} (map (juxt :slug identity))))]
@@ -187,146 +198,65 @@
 (deftest update-endpoint-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp app {:name "Demo app"}]
-        (let [url (data-apps.tu/app-url app)]
-          (testing "a non-superuser cannot update an app"
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                     :model/DataApp    app           {:name "Demo app" :bundle app-bundle :resource_collection_id coll-id}]
+        (let [url    (data-apps.tu/app-url app)
+              stored #(t2/select-one [:model/DataApp :name :slug :entity_id :bundle_path :enabled :bundle_hash]
+                                     :id (:id app))
+              before (stored)]
+          (testing "non-superuser cannot enable or disable app"
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :put 403 url {:enabled false}))))
-          (testing "a superuser enables and disables an app"
-            (is (=? {:enabled false} (mt/user-http-request :crowberto :put 200 url {:enabled false})))
-            (is (=? {:enabled true} (mt/user-http-request :crowberto :put 200 url {:enabled true}))))
-          (testing "a superuser updates manifest fields"
-            (is (=? {:name "Renamed" :description "What it does" :allowed_hosts []}
-                    (mt/user-http-request :crowberto :put 200 url {:name          "Renamed"
-                                                                   :description   "  What it does  "
-                                                                   :allowed_hosts []}))))
-          (testing "invalid manifest fields are refused"
-            (mt/user-http-request :crowberto :put 400 url {:bundle_path "/abs.js"})
-            (is (= "dist/index.js" (t2/select-one-fn :bundle_path :model/DataApp :id (:id app)))))
-          (testing "the bundle is ignored, since only PUT /:id/bundle replaces it"
-            (let [before (t2/select-one-fn :bundle_hash :model/DataApp :id (:id app))]
-              (mt/user-http-request :crowberto :put 200 url {:bundle "NEWBUNDLE"})
-              (is (= before (t2/select-one-fn :bundle_hash :model/DataApp :id (:id app))))))
-          (testing "the slug and entity ID are ignored"
-            (mt/user-http-request :crowberto :put 200 url {:slug "renamed" :entity_id "renamedEntityIdXxxxxx"})
-            (is (=? {:slug (:slug app) :entity_id (:entity_id app)}
-                    (t2/select-one :model/DataApp :id (:id app)))))
-          (testing "updating a missing app 404s"
+                   (mt/user-http-request :rasta :put 403 url {:enabled false})))
+            (is (= before (stored))))
+          (testing "superuser disables and enables app"
+            (is (=? {:slug (:slug app) :enabled false} (mt/user-http-request :crowberto :put 200 url {:enabled false})))
+            (is (false? (:enabled (stored))))
+            (is (=? {:slug (:slug app) :enabled true} (mt/user-http-request :crowberto :put 200 url {:enabled true})))
+            (is (true? (:enabled (stored)))))
+          (testing "body without enabled is refused"
+            (doseq [body [{:name "Renamed"}
+                          {:bundle_path "other.js"}
+                          {:bundle "NEWBUNDLE"}
+                          {:slug "renamed" :entity_id "renamedEntityIdXxxxxx"}
+                          {:enabled "no"}
+                          {}]]
+              (testing (pr-str body)
+                (mt/user-http-request :crowberto :put 400 url body)
+                (is (= before (stored))))))
+          (testing "keys other than enabled are dropped, so they change nothing"
+            (mt/user-http-request :crowberto :put 200 url {:enabled     false
+                                                           :name        "Renamed"
+                                                           :bundle_path "other.js"
+                                                           :bundle      "NEWBUNDLE"
+                                                           :slug        "renamed"})
+            (is (= (assoc before :enabled false) (stored)))
+            (mt/user-http-request :crowberto :put 200 url {:enabled true})
+            (is (= before (stored))))
+          (testing "updating unknown app returns 404"
             (mt/user-http-request :crowberto :put 404 "ee/apps/missing" {:enabled false})))))))
 
-;;; ---------------------------------------------------- Create ----------------------------------------------------
-
-(def ^:private app-request
-  {:slug          "demo"
-   :name          "Demo app"
-   :bundle_path   "dist/index.js"
-   :allowed_hosts ["https://api.example.com"]
-   :enabled       true})
-
-(deftest create-endpoint-test
+(deftest create-delete-and-bundle-replace-endpoints-do-not-exist-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection]
-      (testing "a non-superuser cannot create an app"
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403 "ee/apps" app-request))))
-      (testing "a superuser creates an app with its manifest fields"
-        (is (=? {:id                     pos-int?
-                 :slug                   "demo"
-                 :name                   "Demo app"
-                 :bundle_path            "dist/index.js"
-                 :allowed_hosts          ["https://api.example.com"]
-                 :version                1
-                 :enabled                true
-                 :resource_collection_id pos-int?}
-                (mt/user-http-request :crowberto :post 200 "ee/apps" (assoc app-request :bundle_path "./dist/index.js"))))
-        (testing "with an empty bundle"
-          (is (= 0 (alength ^bytes (t2/select-one-fn :bundle :model/DataApp :slug "demo")))))
-        (testing "with its own collection in the data-apps namespace, which no group but Administrators reads"
-          (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :slug "demo")]
-            (is (=? {:name "Data App: demo" :namespace :data-apps :location "/"}
-                    (t2/select-one :model/Collection :id collection-id)))
-            (is (= #{} (perms/collection-read-access-group-ids collection-id))))))
-      (testing "a taken slug is refused"
-        (is (= "A data app with this slug already exists."
-               (mt/user-http-request :crowberto :post 409 "ee/apps" app-request))))
-      (testing "invalid manifest fields are refused"
-        (doseq [bad [{:slug "Not A Slug"}
-                     {:bundle_path "../escape.js"}
-                     {:allowed_hosts ["ftp://example.com"]}
-                     {:version 0}]]
-          (mt/user-http-request :crowberto :post 400 "ee/apps" (merge app-request {:slug "other"} bad))
-          (is (not (t2/exists? :model/DataApp :slug "other")) (str "should refuse: " (pr-str bad))))))))
-
-(deftest create-defaults-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection]
-      (testing "an app created from its slug alone is enabled, with its slug as its name and an empty bundle"
-        (let [{:keys [id] :as app} (mt/user-http-request :crowberto :post 200 "ee/apps" {:slug "demo"})]
-          (is (=? {:slug "demo" :name "demo" :bundle_path "dist/index.js" :enabled true} app))
-          (is (=? {:id id :slug "demo"} (mt/user-http-request :crowberto :get 200 "ee/apps/demo")))))
-      (testing "an app created disabled stays disabled"
-        (is (=? {:slug "draft" :enabled false}
-                (mt/user-http-request :crowberto :post 200 "ee/apps" {:slug "draft" :enabled false})))))))
-
-;;; ---------------------------------------------------- Bundle ----------------------------------------------------
-
-(deftest replace-bundle-endpoint-test
-  (mt/test-helpers-set-global-values!
-    (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp app {:bundle app-bundle}]
-        (let [url (data-apps.tu/app-url app "bundle")]
-          (testing "a non-superuser cannot replace the bundle"
-            (mt/user-http-request :rasta :put 403 url {:bundle "MINE"}))
-          (testing "the new bundle is what the app serves"
-            (let [{:keys [bundle_hash]} (mt/user-http-request :crowberto :put 200 url {:bundle "V1"})]
-              (is (str/includes? (str (mt/user-real-request :crowberto :get 200 url)) "V1"))
-              (is (not= bundle_hash
-                        (:bundle_hash (mt/user-http-request :crowberto :put 200 url {:bundle "V2"}))))
-              (is (str/includes? (str (mt/user-real-request :crowberto :get 200 url)) "V2"))))
-          (testing "a missing app 404s"
-            (mt/user-http-request :crowberto :put 404 "ee/apps/missing/bundle" {:bundle "V1"})))))))
-
-;;; ---------------------------------------------------- Delete ----------------------------------------------------
-
-(deftest delete-endpoint-requires-superuser-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp                    app            {}
-                   :model/PermissionsGroup           {group-id :id} {}
-                   :model/PermissionsGroupMembership _              {:user_id  (mt/user->id :rasta)
-                                                                     :group_id group-id}]
-      (group-access/add-groups! app [group-id])
-      (testing "a user with access can open the app but cannot delete it"
-        (mt/user-http-request :rasta :get 200 (data-apps.tu/app-url app))
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :delete 403 (data-apps.tu/app-url app))))
-        (is (t2/exists? :model/DataApp :id (:id app)))))))
-
-(deftest delete-endpoint-404s-for-missing-app-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/user-http-request :crowberto :delete 404 "ee/apps/missing")))
-
-(deftest delete-endpoint-deletes-collection-and-keeps-groups-test
-  (mt/with-premium-features #{:data-apps}
-    (data-apps.tu/with-published-tables! [(mt/id :venues)]
-      (mt/with-temp [:model/DataApp          app            {}
-                     :model/PermissionsGroup {group-id :id} {}
-                     :model/Card             {card-id :id}  {:collection_id (:resource_collection_id app)
-                                                             :dataset_query (data-apps.tu/venues-query)}]
-        (group-access/add-groups! app [group-id])
-        (mt/user-http-request :crowberto :delete 204 (data-apps.tu/app-url app))
-        (is (not (t2/exists? :model/DataApp :id (:id app))))
-        (is (not (t2/exists? :model/Collection :id (:resource_collection_id app))))
-        (is (not (t2/exists? :model/Card :id card-id)))
-        (is (not (t2/exists? :model/Permissions :group_id group-id
-                             :object (perms/collection-read-path (:resource_collection_id app)))))
-        (is (t2/exists? :model/PermissionsGroup :id group-id))))))
+    (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                   :model/DataApp    app           {:bundle app-bundle :resource_collection_id coll-id}]
+      (let [before (t2/select-one [:model/DataApp :name :bundle_hash] :id (:id app))]
+        (testing "POST ee/apps"
+          (mt/user-http-request :crowberto :post 404 "ee/apps" {:slug "other"})
+          (is (not (t2/exists? :model/DataApp :slug "other"))))
+        (testing "DELETE ee/apps/:slug"
+          (mt/user-http-request :crowberto :delete 404 (data-apps.tu/app-url app))
+          (is (t2/exists? :model/DataApp :id (:id app))))
+        (testing "PUT ee/apps/:slug/bundle"
+          (mt/user-http-request :crowberto :put 404 (data-apps.tu/app-url app "bundle") {:bundle "NEW"})
+          (is (= before (t2/select-one [:model/DataApp :name :bundle_hash] :id (:id app)))))))))
 
 ;;; ----------------------------------------------------- API -----------------------------------------------------
 
 (deftest list-and-bundle-endpoints-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp _ demo-app]
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                     :model/DataApp    _             (assoc demo-app :resource_collection_id coll-id)]
         (testing "GET / lists the apps"
           (is (=? [{:slug "demo" :name "Demo app"
                     :bundle_path "dist/index.js" :enabled true}]
@@ -350,14 +280,18 @@
 (deftest enable-disable-endpoint-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp _ demo-app]
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                     :model/DataApp    _             (assoc demo-app :resource_collection_id coll-id)]
         (testing "PUT /:slug can disable an app"
           (is (=? {:slug "demo" :enabled false}
                   (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled false}))))
-        (testing "a disabled app is not served to a user with access"
+        (testing "a disabled app is not found by a user without access"
+          (mt/user-http-request :rasta :get 404 "ee/apps/demo")
+          (mt/user-real-request :rasta :get 404 "ee/apps/demo/bundle"))
+        (testing "a disabled app is not found by a user with access"
           (group-access/add-groups! (t2/select-one :model/DataApp :slug "demo") [(:id (perms/all-users-group))])
-          (mt/user-http-request :rasta :get 403 "ee/apps/demo")
-          (mt/user-real-request :rasta :get 403 "ee/apps/demo/bundle"))
+          (mt/user-http-request :rasta :get 404 "ee/apps/demo")
+          (mt/user-real-request :rasta :get 404 "ee/apps/demo/bundle"))
         (testing "a superuser still reads a disabled app's metadata and bundle"
           (is (=? {:slug "demo" :enabled false}
                   (mt/user-http-request :crowberto :get 200 "ee/apps/demo")))
@@ -372,7 +306,8 @@
     (data-apps.tu/with-published-tables! [(mt/id :venues)]
       (mt/with-actions-enabled
         (mt/with-model-cleanup [:model/Card :model/Action]
-          (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {}]
+          (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                         :model/DataApp    {collection-id :resource_collection_id} {:resource_collection_id coll-id}]
             (let [query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))]
               (testing "an admin creates a question in the app's collection"
                 (is (=? {:collection_id collection-id}
@@ -398,7 +333,8 @@
 
 (deftest disabled-apps-are-listed-only-to-superusers-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp app {:slug "demo" :enabled false}]
+    (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                   :model/DataApp    app           {:slug "demo" :enabled false :resource_collection_id coll-id}]
       (group-access/add-groups! app [(:id (perms/all-users-group))])
       (testing "a user with access doesn't see the disabled app"
         (is (not-any? #(= "demo" (:slug %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))
@@ -410,7 +346,8 @@
 
 (deftest apps-are-listed-only-to-users-who-can-read-their-collection-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp _ {:slug "demo"}]
+    (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                   :model/DataApp    _             {:slug "demo" :resource_collection_id coll-id}]
       (testing "a user without a grant on the app's collection doesn't see the app"
         (is (not-any? #(= "demo" (:slug %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))
       (testing "a user sees it once their group can read the collection"
@@ -423,7 +360,7 @@
 
 (deftest generate-schema-test
   (mt/with-premium-features #{:data-apps}
-    (data-apps.tu/with-published-tables! [(mt/id :venues)]
+    (data-apps.tu/with-published-tables! [(mt/id :venues) (mt/id :checkins)]
       (testing "a non-superuser cannot generate an app's files"
         (mt/user-http-request :rasta :get 403 "ee/apps/generate/schema"))
       (let [[{:keys [path contents]} :as files] (mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema")]
@@ -439,7 +376,138 @@
           (is (str/includes? contents "export const schema = {"))
           (is (re-find #"\n    venues[,\n]" contents)))
         (testing "and no actions"
-          (is (not (str/includes? contents "actions"))))))))
+          (is (not (str/includes? contents "actions")))))
+      (testing "`table-ids` narrows the published tables, and selects no table outside the Library"
+        (let [[{:keys [contents]}] (mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema"
+                                                         :table-ids (mt/id :checkins)
+                                                         :table-ids (mt/id :users))]
+          (is (str/includes? contents "export const checkins = {"))
+          (is (not (str/includes? contents "export const users = {")))
+          (is (not (str/includes? contents "export const venues = {"))))))))
+
+(deftest generate-schema-of-tables-read-together-test
+  (testing "the schema file of several tables is the one built from the schema of each table read alone"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-temp [:model/Segment _ {:table_id (mt/id :checkins)}
+                     :model/Measure _ {:table_id (mt/id :checkins)}]
+        (let [table-ids #{(mt/id :venues) (mt/id :checkins) (mt/id :users)}
+              file      (fn [tables-fn]
+                          (let [source (reify schemas.source/SchemaSource
+                                         (library-scope [_] {:data-collection-ids #{} :metric-collection-ids #{}})
+                                         (metrics [_ _ _] [])
+                                         (tables [_ ids] (tables-fn (schemas.table/select-tables ids)))
+                                         (library-tables [_ _ _] (map (fn [id] {:id id}) table-ids)))]
+                            (mt/with-current-user (mt/user->id :crowberto)
+                              (-> (generate.schema/fetch-items source {})
+                                  (generate.schema/create-schema {:generated-at "2026-01-01T00:00:00Z"
+                                                                  :instance-url "http://localhost:3000"})
+                                  generate.schema/render-typescript))))
+              together  (file schemas.table/table-schemas)]
+          (is (str/includes? together "export const checkins = {"))
+          (is (str/includes? together "Mock Measure"))
+          (is (= (file (fn [tables] (mapcat #(schemas.table/table-schemas [%]) tables)))
+                 together)))))))
+
+(deftest generate-schema-table-ids-statement-count-test
+  (testing "generating the schema of many tables takes as many statements as of few"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/Field :model/Table :model/Database]
+        (let [db-id    (t2/insert-returning-pk! :model/Database {:name    "data app schema tables"
+                                                                 :engine  :h2
+                                                                 :details {:db "mem:data-app-schema-tables"}})
+              tables!  (fn [n]
+                         (vec (for [i (range n)]
+                                (let [table-id (t2/insert-returning-pk! :model/Table {:db_id  db-id
+                                                                                      :name   (str "T" n "_" i)
+                                                                                      :schema "PUBLIC"
+                                                                                      :active true})]
+                                  (t2/insert! :model/Field (for [k (range 3)]
+                                                             {:table_id      table-id
+                                                              :name          (str "F" k)
+                                                              :position      k
+                                                              :base_type     (if (zero? k) :type/Integer :type/Text)
+                                                              :database_type (if (zero? k) "INTEGER" "VARCHAR")}))
+                                  table-id))))
+              generate (fn [table-ids]
+                         (data-apps.tu/with-published-tables! table-ids
+                           (t2/with-call-count [call-count]
+                             (let [[{:keys [contents]}] (apply mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema"
+                                                               (mapcat (fn [id] [:table-ids id]) table-ids))]
+                               (is (every? #(str/includes? contents (str "id: " %)) table-ids)))
+                             (call-count))))]
+          (generate (tables! 1))
+          (is (= (generate (tables! 2)) (generate (tables! 6)))))))))
+
+(deftest generate-schema-metric-ids-test
+  (mt/with-premium-features #{:data-apps}
+    (data-apps.tu/do-with-sources!
+     (fn [{venues-metric-id :metric-id}]
+       (let [mp            (mt/metadata-provider)
+             checkins      (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :checkins))) (lib/count))
+             metrics-id    (:collection_id (t2/select-one [:model/Card :collection_id] :id venues-metric-id))
+             schema-metric (fn [contents metric-id]
+                             (re-find (re-pattern (str "type: \"metric\",\n  id: " metric-id ",\n")) contents))]
+         (mt/with-temp [:model/Card {checkins-metric-id :id} {:name          "Checkin count"
+                                                              :type          :metric
+                                                              :collection_id metrics-id
+                                                              :database_id   (mt/id)
+                                                              :dataset_query checkins}
+                        :model/Card {outside-metric-id :id}  {:name          "Outside checkin count"
+                                                              :type          :metric
+                                                              :database_id   (mt/id)
+                                                              :dataset_query checkins}]
+           (testing "without `metric-ids` the schema holds the Library's metrics"
+             (let [[{:keys [contents]}] (mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema")]
+               (is (schema-metric contents venues-metric-id))
+               (is (schema-metric contents checkins-metric-id))
+               (is (not (schema-metric contents outside-metric-id)))))
+           (testing "`metric-ids` narrows them, with the tables they are backed by, and selects no metric outside the Library"
+             (let [[{:keys [contents]}] (mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema"
+                                                              :metric-ids checkins-metric-id
+                                                              :metric-ids outside-metric-id)]
+               (is (schema-metric contents checkins-metric-id))
+               (is (not (schema-metric contents venues-metric-id)))
+               (is (not (schema-metric contents outside-metric-id)))
+               (is (str/includes? contents "export const checkins = {"))))))))))
+
+(deftest generate-schema-metric-ids-statement-count-test
+  (testing "generating schema of many new metrics saves their dimensions with one write and reads them in as many statements as of few"
+    (mt/with-premium-features #{:data-apps}
+      (data-apps.tu/do-with-library!
+       (fn [{:keys [metrics-id]}]
+         (mt/with-model-cleanup [:model/Card]
+           (mt/with-dynamic-fn-redefs [lib-metric.dimension.jvm/enrich-columns-with-has-field-values identity]
+             (let [mp       (mt/metadata-provider)
+                   query    (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/count))
+                   metrics! (fn [n]
+                              (vec (t2/insert-returning-pks! :model/Card
+                                                             (for [i (range n)]
+                                                               (assoc (mt/with-temp-defaults :model/Card)
+                                                                      :name          (str "Venue count " n " " i)
+                                                                      :type          :metric
+                                                                      :collection_id metrics-id
+                                                                      :database_id   (mt/id)
+                                                                      :dataset_query query)))))
+                   generate (fn [metric-ids]
+                              (let [[{:keys [contents]}] (apply mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema"
+                                                                (mapcat (fn [id] [:metric-ids id]) metric-ids))]
+                                (is (every? #(str/includes? contents (str "id: " % ",")) metric-ids))))
+                   saved?   (fn [metric-ids]
+                              (every? (comp some? :dimensions)
+                                      (t2/query {:select [:dimensions]
+                                                 :from   [(t2/table-name :model/Card)]
+                                                 :where  [:in :id metric-ids]})))]
+               (generate (metrics! 1))
+               (let [small (metrics! 2)
+                     large (metrics! 6)]
+                 (testing "the consumers of the dimension writes run once"
+                   (is (= (events.tu/delivery-statement-count! #(generate small))
+                          (events.tu/delivery-statement-count! #(generate large))))
+                   (is (saved? small))
+                   (is (saved? large)))
+                 (testing "metrics with saved dimensions"
+                   (is (= (t2/with-call-count [call-count] (generate small) (call-count))
+                          (t2/with-call-count [call-count] (generate large) (call-count))))))))))))))
 
 (deftest generate-queries-test
   (mt/with-premium-features #{:data-apps}
@@ -485,6 +553,30 @@
                               {:collection collection-entity-id
                                :queries    {:venueList (venues-definition "VenueList123456789012" {})
                                             :VenueList (venues-definition "VenueList223456789012" {})}})))))
+
+(deftest generate-queries-statement-count-test
+  (testing "POST /api/ee/apps/generate/queries runs as many statements for 6 definitions on distinct Tables as for 2"
+    (mt/with-premium-features #{:data-apps}
+      (let [tables [:venues :checkins :users :categories :orders :people]]
+        (data-apps.tu/with-published-tables! (mapv mt/id tables)
+          (let [statements (fn [table-keys]
+                             (let [queries (into {}
+                                                 (map-indexed
+                                                  (fn [i table]
+                                                    [(keyword (str (name table) i))
+                                                     {:entityId (format "Table%016d" i)
+                                                      :query    {:stages [{:source {:type "table"
+                                                                                    :id   (mt/id table)
+                                                                                    :name (t2/select-one-fn :display_name :model/Table
+                                                                                                            :id (mt/id table))}}]}}]))
+                                                 table-keys)]
+                               (t2/with-call-count [call-count]
+                                 (mt/user-http-request :crowberto :post 200 "ee/apps/generate/queries"
+                                                       {:collection collection-entity-id
+                                                        :queries    queries})
+                                 (call-count))))]
+            (statements (take 2 tables))
+            (is (= (statements (take 2 tables)) (statements tables)))))))))
 
 (deftest generate-actions-refuses-invalid-definitions-test
   (mt/with-premium-features #{:data-apps}
@@ -560,8 +652,10 @@
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
       (mt/user->id :crowberto)
-      (mt/with-temp [:model/DataApp app {:slug "birds" :name "Birds" :bundle_path "birds.js"
-                                         :bundle (.getBytes "BUNDLE" "UTF-8")}
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace :data-apps}
+                     :model/DataApp app {:slug "birds" :name "Birds" :bundle_path "birds.js"
+                                         :bundle (.getBytes "BUNDLE" "UTF-8")
+                                         :resource_collection_id coll-id}
                      :model/PermissionsGroup group {}]
         (mt/with-model-cleanup [:model/ApiKey :model/User]
           (let [{api-key :unmasked_key key-id :id}

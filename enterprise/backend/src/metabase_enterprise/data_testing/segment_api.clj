@@ -12,6 +12,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -51,6 +52,14 @@
   (-> (api/read-check :model/SegmentTest id)
       (t2/hydrate :last_run)))
 
+(mr/def ::create-request
+  "What a client sends to create a test."
+  (data-testing.schema/test-create :segment_id ::lib.schema.id/segment))
+
+(mr/def ::update-request
+  "What a client sends to update a test. Omitted fields are left unchanged."
+  (data-testing.schema/test-update :segment_id ::lib.schema.id/segment))
+
 (api.macros/defendpoint :post "/" :- ::data-testing.schema/segment-test
   "Create a segment test. Its expectations read the output: the rows of the segment's table that match the segment's
   filter. Expectation SQL names the output `{{output}}`, spaces inside the braces allowed; any other `{{...}}` is
@@ -73,22 +82,22 @@
   exists is refused as one whose query cannot be compiled."
   [_route-params
    _query-params
-   {:keys [segment_id inputs expectations] :as body} :- ::data-testing.schema/segment-test.create]
+   {:keys [segment_id inputs expectations] :as body} :- ::create-request]
   (api/create-check :model/SegmentTest body)
   (validate-test! segment_id inputs expectations)
-  (data-testing.models.segment-test/create-segment-test! (assoc body :creator_id api/*current-user-id*)))
+  (first (data-testing.models.segment-test/create-segment-tests! [(assoc body :creator_id api/*current-user-id*)])))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/segment-test
   "Update a segment test. The update is refused when it leaves the test on an archived segment."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- ::data-testing.schema/segment-test.update]
+   body :- ::update-request]
   (let [segment-test (api/read-check :model/SegmentTest id)]
     (api/update-check segment-test body)
     (refusing #(data-testing.models.segment-test/check-edit (merge segment-test body) (vec (keys body))))
     (when (seq body)
-      (data-testing.models.segment-test/update-segment-test! id body)))
+      (data-testing.models.segment-test/update-segment-tests! [(assoc body :id id)])))
   (data-testing.db/segment-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -96,7 +105,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/SegmentTest id)
-  (data-testing.models.segment-test/delete-segment-test! id)
+  (data-testing.models.segment-test/delete-segment-tests! [id])
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result
@@ -117,7 +126,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [segment-test (api/read-check :model/SegmentTest id)]
-    (api/check-403 (data-testing.models.segment-test/can-run? segment-test))
+    (api/check-403 (mi/can-query? (t2/hydrate segment-test :can_query)))
     (refusing #(data-testing.runner/run-test! :segment
                                               (data-testing.models.segment-test/testable-segment
                                                (:segment_id segment-test))

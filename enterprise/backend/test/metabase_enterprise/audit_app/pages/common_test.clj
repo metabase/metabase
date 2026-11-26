@@ -3,10 +3,11 @@
    [clojure.test :refer :all]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [toucan2.core :as t2]))
 
 (defn- run-query
   [query-type & {:as additional-query-params}]
@@ -57,8 +58,8 @@
 (deftest ^:parallel add-search-clause-test
   (testing "add search clause"
     (is (= {:where [:or
-                    [:like [:lower :t.name] (h2x/like-substring "birds")]
-                    [:like [:lower :db.name] (h2x/like-substring "birds")]]}
+                    [:like [:lower :t.name] (funnysql.util/like-substring "birds")]
+                    [:like [:lower :db.name] (funnysql.util/like-substring "birds")]]}
            (#'common/add-search-clause {} "birds" :t.name :db.name)))))
 
 (deftest query-limit-and-offset-test
@@ -78,51 +79,51 @@
 
 (deftest ^:parallel CTES->subselects-test
   (testing "FROM substitution"
-    (is (= {:from [[{:from [[:view_log :vl]]} :mp]]}
+    (is (= {:from [[{:from [[(t2/table-name :model/ViewLog) :vl]]} :mp]]}
            (#'common/CTEs->subselects
-            {:with [[:most_popular {:from [[:view_log :vl]]}]]
+            {:with [[:most_popular {:from [[(t2/table-name :model/ViewLog) :vl]]}]]
              :from [[:most_popular :mp]]}))))
   (testing "JOIN substitution"
-    (is (= {:left-join [[{:from [[:query_execution :qe]]} :qe_count] [:= :qe_count.executor_id :u.id]]}
+    (is (= {:left-join [[{:from [[(t2/table-name :model/QueryExecution) :qe]]} :qe_count] [:= :qe_count.executor_id :u.id]]}
            (#'common/CTEs->subselects
-            {:with      [[:qe_count {:from [[:query_execution :qe]]}]]
+            {:with      [[:qe_count {:from [[(t2/table-name :model/QueryExecution) :qe]]}]]
              :left-join [:qe_count [:= :qe_count.executor_id :u.id]]}))))
   (testing "IN subselect substitution"
-    (is (= {:from [[{:from  [[:report_dashboardcard :dc]]
-                     :where [:in :d.id {:from [[{:from [[:view_log :vl]]} :most_popular]]}]} :dash_avg_running_time]]}
+    (is (= {:from [[{:from  [[(t2/table-name :model/DashboardCard) :dc]]
+                     :where [:in :d.id {:from [[{:from [[(t2/table-name :model/ViewLog) :vl]]} :most_popular]]}]} :dash_avg_running_time]]}
            (#'common/CTEs->subselects
-            {:with [[:most_popular {:from [[:view_log :vl]]}]
-                    [:dash_avg_running_time {:from  [[:report_dashboardcard :dc]]
+            {:with [[:most_popular {:from [[(t2/table-name :model/ViewLog) :vl]]}]
+                    [:dash_avg_running_time {:from  [[(t2/table-name :model/DashboardCard) :dc]]
                                              :where [:in :d.id {:from [:most_popular]}]}]]
              :from [:dash_avg_running_time]}))))
   (testing "putting it all together"
     (is (= {:select    [:mp.dashboard_id]
             :from      [[{:select    [[:d.id :dashboard_id]]
-                          :from      [[:view_log :vl]]
-                          :left-join [[:report_dashboard :d] [:= :vl.model_id :d.id]]} :mp]]
+                          :from      [[(t2/table-name :model/ViewLog) :vl]]
+                          :left-join [[(t2/table-name :model/Dashboard) :d] [:= :vl.model_id :d.id]]} :mp]]
             :left-join [[{:select    [[:d.id :dashboard_id]]
-                          :from      [[:report_dashboardcard :dc]]
+                          :from      [[(t2/table-name :model/DashboardCard) :dc]]
                           :left-join [[{:select [:qe.card_id]
-                                        :from   [[:query_execution :qe]]} :rt]
+                                        :from   [[(t2/table-name :model/QueryExecution) :qe]]} :rt]
                                       [:= :dc.card_id :rt.card_id]
-                                      [:report_dashboard :d]
+                                      [(t2/table-name :model/Dashboard) :d]
                                       [:= :dc.dashboard_id :d.id]]
                           :where [:in :d.id {:select [:dashboard_id]
                                              :from   [[{:select    [[:d.id :dashboard_id]]
-                                                        :from      [[:view_log :vl]]
-                                                        :left-join [[:report_dashboard :d]
+                                                        :from      [[(t2/table-name :model/ViewLog) :vl]]
+                                                        :left-join [[(t2/table-name :model/Dashboard) :d]
                                                                     [:= :vl.model_id :d.id]]} :most_popular]]}]} :rt]
                         [:= :mp.dashboard_id :rt.dashboard_id]]}
            (#'common/CTEs->subselects
             {:with      [[:most_popular {:select    [[:d.id :dashboard_id]]
-                                         :from      [[:view_log :vl]]
-                                         :left-join [[:report_dashboard :d] [:= :vl.model_id :d.id]]}]
+                                         :from      [[(t2/table-name :model/ViewLog) :vl]]
+                                         :left-join [[(t2/table-name :model/Dashboard) :d] [:= :vl.model_id :d.id]]}]
                          [:card_running_time {:select [:qe.card_id]
-                                              :from   [[:query_execution :qe]]}]
+                                              :from   [[(t2/table-name :model/QueryExecution) :qe]]}]
                          [:dash_avg_running_time {:select    [[:d.id :dashboard_id]]
-                                                  :from      [[:report_dashboardcard :dc]]
+                                                  :from      [[(t2/table-name :model/DashboardCard) :dc]]
                                                   :left-join [[:card_running_time :rt] [:= :dc.card_id :rt.card_id]
-                                                              [:report_dashboard :d]   [:= :dc.dashboard_id :d.id]]
+                                                              [(t2/table-name :model/Dashboard) :d]   [:= :dc.dashboard_id :d.id]]
                                                   :where     [:in :d.id {:select [:dashboard_id]
                                                                          :from   [:most_popular]}]}]]
              :select    [:mp.dashboard_id]

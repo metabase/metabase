@@ -6,6 +6,7 @@ import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type {
   AutocompleteSuggestion,
   Database,
+  DatabaseAnonymousReach,
   DatabaseId,
   DatabaseUsageInfo,
   Engine,
@@ -109,6 +110,13 @@ export function setupDatabaseUsageInfoEndpoint(
   usageInfo: DatabaseUsageInfo,
 ) {
   fetchMock.get(`path:/api/database/${db.id}/usage_info`, usageInfo);
+}
+
+export function setupDatabaseAnonymousReachEndpoint(
+  db: Database,
+  anonymousReach: DatabaseAnonymousReach | Promise<DatabaseAnonymousReach>,
+) {
+  fetchMock.get(`path:/api/database/${db.id}/anonymous-reach`, anonymousReach);
 }
 
 export function setupEnginesEndpoint(engines: Record<string, Engine>) {
