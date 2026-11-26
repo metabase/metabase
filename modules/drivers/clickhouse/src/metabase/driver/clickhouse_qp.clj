@@ -727,12 +727,12 @@
   "Return a function that converts a non-nil value of `database-type`, which is a `Tuple` or a type inside one. A tuple
   with named elements becomes a map, and a tuple with elements that have no names becomes a vector."
   [database-type]
-  (let [type-args        #(clickhouse-introspection/type-arguments % database-type)
-        nullable-type    (first (type-args "Nullable"))
-        array-type       (first (type-args "Array"))
-        map-value-type   (second (type-args "Map"))
-        named-elements   (clickhouse-introspection/tuple-elements database-type)
-        tuple-elem-types (if named-elements (map second named-elements) (type-args "Tuple"))]
+  (let [type-args                     #(clickhouse-introspection/type-arguments % database-type)
+        nullable-type                 (first (type-args "Nullable"))
+        array-type                    (first (type-args "Array"))
+        [map-key-type map-value-type] (type-args "Map")
+        named-elements                (clickhouse-introspection/tuple-elements database-type)
+        tuple-elem-types              (if named-elements (map second named-elements) (type-args "Tuple"))]
     (cond
       nullable-type
       (value-converter nullable-type)
@@ -743,9 +743,10 @@
           (mapv #(some-> % convert) value)))
 
       map-value-type
-      (let [convert (value-converter map-value-type)]
+      (let [convert-key   (value-converter map-key-type)
+            convert-value (value-converter map-value-type)]
         (fn [value]
-          (into (ordered-map/ordered-map) (map (fn [[k v]] [k (some-> v convert)])) value)))
+          (into (ordered-map/ordered-map) (map (fn [[k v]] [(convert-key k) (some-> v convert-value)])) value)))
 
       tuple-elem-types
       (let [converters (mapv value-converter tuple-elem-types)

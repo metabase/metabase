@@ -88,6 +88,13 @@
         (is (= ["x" {"a" 1} {"a" 1}]
                value
                (nippy/thaw (nippy/freeze value))))))
+    (testing "the results cache can serialize the keys of a map"
+      (let [value (tuple-value (str "(map(CAST('a', 'Enum8(''a'' = 1)'), 1),"
+                                    " map(toIPv4('1.2.3.4'), 2),"
+                                    " map(tuple(1, 'x'), 3))"))]
+        (is (= [{"a" 1} {"1.2.3.4" 2} {[1 "x"] 3}]
+               value
+               (nippy/thaw (nippy/freeze value))))))
     (testing "a tuple with named elements keeps their order in the results cache"
       (let [value (tuple-value "CAST((1, 2, 3, 4, 5, 6, 7, 8, 9, 10), 'Tuple(j Int8, i Int8, h Int8, g Int8, f Int8, e Int8, d Int8, c Int8, b Int8, a Int8)')")]
         (is (= ["j" "i" "h" "g" "f" "e" "d" "c" "b" "a"]
