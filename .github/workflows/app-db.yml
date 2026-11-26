@@ -31,7 +31,7 @@ jobs:
     name: Determine app DB versions
     outputs:
       mariadb: ${{ steps.versions.outputs.mariadb }}
-      mysql: ${{ steps.versions.outputs.mysql }}
+      mysql-jobs: ${{ steps.versions.outputs.mysql-jobs }}
       postgres: ${{ steps.versions.outputs.postgres }}
       shards: ${{ steps.versions.outputs.shards }}
       mariadb-extra: ${{ steps.versions.outputs.mariadb-extra }}
@@ -42,6 +42,7 @@ jobs:
         env:
           RUN_ALL: ${{ needs.gate.outputs.force-run }}
           MATCHED_FILTERS: ${{ needs.gate.outputs.matched }}
+          PROFILE_TARGETS: ${{ github.event.inputs.tests }}
         with:
           script: | # js
             const runAll = process.env.RUN_ALL === 'true';
@@ -102,13 +103,12 @@ jobs:
             };
 
 
-            for (const [db, dbVersions] of Object.entries(versions)) {
-              const selected = runAll ? dbVersions : dbVersions.filter((version) => version.latest);
-              core.info(`${db}: ${selected.map((version) => version.name).join(', ')}`);
-              core.setOutput(db, JSON.stringify(selected));
-            }
-
             const commonExcludes = ":mb/driver-tests :mb/transforms-python-test :mb/old-migrations-test";
+
+            const migrationTag = ":mb/app-db-migrations-test";
+            const heavyGroup = ":mb/mysql8-migration-group";
+            const migrationArgs = (include, exclude) =>
+              `:only '"test"' :only-tags '[${include}]' :exclude-tags '[${exclude}]'`;
 
             const shards = [
               {
@@ -120,7 +120,7 @@ jobs:
                 name: 'EE App DB Tests (Part 1)', // migrations shard
                 'build-static-viz': true,
                 'snapshot-drift': snapshotDrift ? 'true' : 'false',
-                'test-args': `:only '"test"' :only-tags '[:mb/app-db-migrations-test]' :exclude-tags '[${commonExcludes}]'`,
+                'test-args': migrationArgs(migrationTag, commonExcludes),
               },
               {
                 name: 'EE App DB Tests (Part 2)',
@@ -135,9 +135,28 @@ jobs:
             ];
             core.setOutput('shards', JSON.stringify(shards));
 
-            // MariaDB 10.6 is the only server that loads the mariadb_legacy_timestamp snapshot, so a PR that runs the
-            // drift comparison also runs the migrations shard there.
             const migrationsShard = shards.find((shard) => shard['snapshot-drift'] !== undefined);
+            for (const [db, dbVersions] of Object.entries(versions)) {
+              const selected = runAll ? dbVersions : dbVersions.filter((version) => version.latest);
+              core.info(`${db}: ${selected.map((version) => version.name).join(', ')}`);
+              if (db !== 'mysql') {
+                core.setOutput(db, JSON.stringify(selected));
+                continue;
+              }
+
+              // Schema migrations and data permissions accounted for 355s of a 707s MySQL 8 run.
+              const jobs = selected.flatMap(version => shards.flatMap(job =>
+                version.name === 'MySQL 8' && job === migrationsShard && !process.env.PROFILE_TARGETS
+                  ? [
+                      { version, job: { ...job, 'test-args': migrationArgs(`${migrationTag} ${heavyGroup}`, commonExcludes) } },
+                      { version, job: { ...job, name: 'EE App DB Tests (Part 1B)', 'test-args': migrationArgs(migrationTag, `${commonExcludes} ${heavyGroup}`) } },
+                    ]
+                  : [{ version, job }]
+              ));
+              core.setOutput('mysql-jobs', JSON.stringify(jobs));
+            }
+
+            // MariaDB 10.6 is the only server that loads the mariadb_legacy_timestamp snapshot.
             const legacyTimestampServer = versions.mariadb.find((version) => version.name === 'MariaDB 10.6');
             const mariadbExtra = snapshotDrift && !runAll
               ? [{ version: legacyTimestampServer, job: migrationsShard }]
@@ -216,8 +235,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ${{ fromJSON(needs.app-db-matrix.outputs.mysql) }}
-        job: ${{ fromJSON(needs.app-db-matrix.outputs.shards) }}
+        include: ${{ fromJSON(needs.app-db-matrix.outputs.mysql-jobs) }}
 
     services:
       mysql:
