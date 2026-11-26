@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.actions.error :as actions.error]
    [metabase.actions.models :as action]
@@ -34,6 +35,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.string-extracts-test :as string-extracts-test]
@@ -1479,3 +1481,162 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+(deftest table-random-sample-test
+  (mt/test-driver :mysql
+    ;; sync reads samples with no user; the namespace fixture may bind a user who is not an admin
+    (mt/with-test-user :crowberto
+      (let [table  (t2/select-one :model/Table :id (mt/id :venues))
+            fields (mapv #(t2/select-one :model/Field :id (mt/id :venues %)) [:id :name])
+            params (atom [])
+            sample (fn [table opts]
+                     (let [sqls    (atom [])
+                           execute qp.pipeline/*execute*]
+                       (binding [qp.pipeline/*execute* (fn [driver query respond]
+                                                         (swap! sqls conj (get-in query [:stages 0 :native]))
+                                                         (swap! params conj (get-in query [:stages 0 :params]))
+                                                         (execute driver query respond))]
+                         (assoc (driver/table-random-sample :mysql table fields (constantly conj) opts)
+                                :sqls @sqls))))]
+        (is (driver.u/supports? :mysql :table-random-sample (mt/db)))
+        (testing "key blocks: short runs over the primary key, read in two statements, the keys and then the rows"
+          (let [{:keys [method runs fraction result sqls]} (sample table {:rows 20 :runs 4 :row-count 100 :seed 1})
+                ids (set (map first result))]
+            (is (= :block method))
+            (is (= 4 runs))
+            (is (= 20 (count result)))
+            (is (= 0.2 fraction))
+            (testing "with the true first and last rows"
+              (is (contains? ids 1))
+              (is (contains? ids 100)))
+            (testing "with no row twice, and only rows of the table"
+              (is (= 20 (count ids)))
+              (is (every? #(<= 1 % 100) ids)))
+            (is (= 2 (count (filter #(str/includes? % "UNION ALL") sqls))))))
+        (testing "the same seed reads the same rows"
+          (is (= (:result (sample table {:rows 20 :runs 4 :row-count 100 :seed 1}))
+                 (:result (sample table {:rows 20 :runs 4 :row-count 100 :seed 1})))))
+        (testing "the driver declines, so that sync reads the first rows, when there is no row count estimate"
+          (is (= {:method :first-rows :sqls []} (sample table {:rows 20 :row-count nil}))))
+        (testing "the driver declines for a table with no InnoDB primary key, such as a view"
+          (let [spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
+            (jdbc/execute! spec ["CREATE OR REPLACE VIEW key_block_view AS SELECT * FROM venues"])
+            (try
+              (is (= {:method :first-rows :sqls []} (sample (assoc table :name "key_block_view") {:rows 20 :row-count 100})))
+              (finally
+                (jdbc/execute! spec ["DROP VIEW IF EXISTS key_block_view"])))))
+        (testing "each run is a range read of the primary key, so the sample query has no limit of its own"
+          (let [{:keys [sqls]} (sample table {:rows 20 :runs 4 :row-count 100 :seed 1})
+                runs-sql       (last (filter #(str/includes? % "UNION ALL") sqls))
+                spec           (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+                ;; the tabular plan: a MySQL server can default to another `explain_format`; MariaDB has no such option
+                explain        (if (mysql/mariadb? (mt/db)) "EXPLAIN " "EXPLAIN FORMAT=TRADITIONAL ")
+                plan           (jdbc/query spec (into [(str explain runs-sql)] (last @params)))
+                venue-rows     (filter #(= "venues" (:table %)) plan)]
+            (is (not (str/includes? runs-sql "1048575")))
+            (is (= 4 (count venue-rows)))
+            (is (every? #(= "PRIMARY" (:key %)) venue-rows))
+            (is (every? #(= "range" (:type %)) venue-rows))
+            (testing "with the derived table merged, and no sort"
+              (is (not-any? #(str/starts-with? (str (:table %)) "<derived") plan))
+              (is (not-any? #(str/includes? (str (:Extra %)) "filesort") venue-rows)))))))))
+
+(deftest table-random-sample-with-gaps-test
+  (mt/test-driver :mysql
+    (mt/with-test-user :crowberto
+      (let [spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
+        ;; 100 dense rows at the start of the key, then 31 rows 1,000 keys apart
+        (jdbc/execute! spec ["DROP TABLE IF EXISTS key_block_gaps"])
+        (jdbc/execute! spec ["CREATE TABLE key_block_gaps (id BIGINT PRIMARY KEY, kind VARCHAR(10)) ENGINE=InnoDB"])
+        (try
+          (jdbc/insert-multi! spec :key_block_gaps [:id :kind]
+                              (concat (for [id (range 1 101)] [id "dense"])
+                                      (for [id (range 10000 40001 1000)] [id "sparse"])))
+          (mt/with-temp [:model/Table table {:db_id (mt/id) :name "key_block_gaps" :schema nil}
+                         :model/Field id    {:table_id (:id table) :name "id" :base_type :type/BigInteger
+                                             :database_type "BIGINT" :semantic_type :type/PK}
+                         :model/Field kind  {:table_id (:id table) :name "kind" :base_type :type/Text
+                                             :database_type "VARCHAR"}]
+            (let [sqls    (atom [])
+                  execute qp.pipeline/*execute*
+                  {:keys [method result]}
+                  (binding [qp.pipeline/*execute* (fn [driver query respond]
+                                                    (swap! sqls conj (get-in query [:stages 0 :native]))
+                                                    (execute driver query respond))]
+                    (driver/table-random-sample :mysql table [id kind] (constantly conj)
+                                                {:rows 20 :runs 4 :row-count 131 :seed 1}))
+                  kinds   (frequencies (map second result))]
+              (is (= :block method))
+              (testing "the runs in the sparse part of the key keep few rows, so dense rows are most of the sample"
+                (is (< (get kinds "sparse" 0) (get kinds "dense" 0))))
+              (testing "the dense runs read longer, so all the runs together still read most of the sample size"
+                (is (= 2 (count (filter #(str/includes? % "UNION ALL") @sqls))))
+                (is (<= 10 (count result))))))
+          (finally
+            (jdbc/execute! spec ["DROP TABLE IF EXISTS key_block_gaps"])))))))
+
+(defn- do-with-key-block-table!
+  "Create the MySQL table `table-name` with the key type `key-type` and the rows `rows` of `[key kind]`, and call `f`
+  with its Table and its two Fields, `key` of `base-type` and `kind`."
+  [table-name key-type base-type rows f]
+  (let [spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
+    (jdbc/execute! spec [(str "DROP TABLE IF EXISTS " table-name)])
+    (jdbc/execute! spec [(format "CREATE TABLE %s (k %s PRIMARY KEY, kind VARCHAR(10)) ENGINE=InnoDB" table-name key-type)])
+    (try
+      (jdbc/insert-multi! spec (keyword table-name) [:k :kind] rows)
+      (mt/with-temp [:model/Table table {:db_id (mt/id) :name table-name :schema nil}
+                     :model/Field k     {:table_id (:id table) :name "k" :base_type base-type :semantic_type :type/PK}
+                     :model/Field kind  {:table_id (:id table) :name "kind" :base_type :type/Text}]
+        (f table k kind))
+      (finally
+        (jdbc/execute! spec [(str "DROP TABLE IF EXISTS " table-name)])))))
+
+(deftest table-random-sample-date-time-key-test
+  (mt/test-driver :mysql
+    (mt/with-test-user :crowberto
+      (testing "a key of dates and times: the runs start at times of the key's type"
+        (let [start #t "2026-01-01T00:00"]
+          (do-with-key-block-table!
+           "key_block_times" "DATETIME" :type/DateTime
+           (for [h (range 100)] [(t/plus start (t/hours h)) "hour"])
+           (fn [table k kind]
+             (let [{:keys [method result]} (driver/table-random-sample :mysql table [k kind] (constantly conj)
+                                                                       {:rows 20 :runs 4 :row-count 100 :seed 1})
+                   keys (map first result)]
+               (is (= :block method))
+               (is (<= 15 (count (distinct keys))))
+               (is (= (count keys) (count (distinct keys))))
+               (testing "with the true first and last rows"
+                 (is (some #{start} (map #(t/local-date-time %) keys)))
+                 (is (some #{(t/plus start (t/hours 99))} (map #(t/local-date-time %) keys))))))))))))
+
+(deftest table-random-sample-declines-for-a-key-with-clusters-test
+  (mt/test-driver :mysql
+    (mt/with-test-user :crowberto
+      (testing "a key whose rows are nearly all in one cluster would need a run much longer than the others, so it declines"
+        (do-with-key-block-table!
+         "key_block_clusters" "BIGINT" :type/BigInteger
+         (for [id (concat (range 1 31) [1000000000])] [id "x"])
+         (fn [table k kind]
+           (is (= {:method :first-rows}
+                  (driver/table-random-sample :mysql table [k kind] (constantly conj)
+                                              {:rows 20 :runs 10 :row-count 131 :seed 1})))))))))
+
+(deftest table-random-sample-declines-for-a-key-of-several-columns-test
+  (mt/test-driver :mysql
+    (mt/with-test-user :crowberto
+      (testing "a primary key of several columns gives no density, since a run can stay inside one value of its first"
+        (let [spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
+          (jdbc/execute! spec ["DROP TABLE IF EXISTS key_block_composite"])
+          (jdbc/execute! spec [(str "CREATE TABLE key_block_composite (tenant INT, seq INT, PRIMARY KEY (tenant, seq))"
+                                    " ENGINE=InnoDB")])
+          (try
+            (jdbc/insert-multi! spec :key_block_composite [:tenant :seq] (for [t (range 50) n (range 10)] [t n]))
+            (mt/with-temp [:model/Table table  {:db_id (mt/id) :name "key_block_composite" :schema nil}
+                           :model/Field tenant {:table_id (:id table) :name "tenant" :base_type :type/Integer}
+                           :model/Field n      {:table_id (:id table) :name "seq" :base_type :type/Integer}]
+              (is (= {:method :first-rows}
+                     (driver/table-random-sample :mysql table [tenant n] (constantly conj)
+                                                 {:rows 20 :runs 4 :row-count 500 :seed 1}))))
+            (finally
+              (jdbc/execute! spec ["DROP TABLE IF EXISTS key_block_composite"]))))))))

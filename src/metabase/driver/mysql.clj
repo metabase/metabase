@@ -24,6 +24,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.quoting :as quoting :refer [quote-columns]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.key-blocks :as key-blocks]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
@@ -861,6 +862,45 @@
 (defmethod sql-jdbc.sync/excluded-schemas :mysql
   [_]
   #{"INFORMATION_SCHEMA"})
+
+;;; ------------------------------------------------ Table samples -------------------------------------------------
+
+(def ^:private key-block-key-timeout-seconds
+  "The time limit of the catalog query for the key of a table."
+  15)
+
+(defn- key-block-key-name
+  "The name of the column of the primary key of `table`, when it is an InnoDB table with a primary key of one column,
+  or nil. InnoDB stores a table in the order of its primary key, so a run of rows from a start point on that column is
+  a short read of the index. A key of several columns is not used: a run of its first column can stay inside one value,
+  which gives the run no density. The query names the table in each catalog table, so that MariaDB does not read the
+  catalog of every database."
+  [table]
+  (-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:db_id table)))
+                  [(str "SELECT COLUMN_NAME AS column_name FROM information_schema.STATISTICS"
+                        " WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?"
+                        " AND INDEX_NAME = 'PRIMARY' AND SEQ_IN_INDEX = 1"
+                        " AND (SELECT ENGINE FROM information_schema.TABLES"
+                        "      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?) = 'InnoDB'"
+                        " AND (SELECT COUNT(*) FROM information_schema.STATISTICS"
+                        "      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = 'PRIMARY') = 1")
+                   (:name table) (:name table) (:name table)]
+                  {:timeout key-block-key-timeout-seconds})
+      first
+      :column_name))
+
+;; Only for `:mysql` itself, so that a child driver keeps its own `table-rows-sample`.
+(defmethod driver/database-supports? [:mysql :table-random-sample]
+  [driver _feature _db]
+  (= driver :mysql))
+
+;; Key blocks on the primary key of an InnoDB table, when it has one column. Other tables, such as views and tables of other
+;; storage engines, keep the first rows.
+(defmethod driver/table-random-sample :mysql
+  [driver table fields rff opts]
+  (if-let [key-name (and (:row-count opts) (key-block-key-name table))]
+    (key-blocks/sample driver table fields key-name rff opts)
+    {:method :first-rows}))
 
 (defmethod sql.qp/quote-style :mysql [_] :mysql)
 
