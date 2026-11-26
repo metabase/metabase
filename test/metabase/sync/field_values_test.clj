@@ -821,7 +821,7 @@
                      (fn [database]
                        (add-field-values! database)
                        (update-field-values! database)
-                       (t2/update! :model/Database (:id database) {:settings {:scan-only-used-field-values only-used?}})
+                       (t2/update! :model/Database :id (:id database) {:settings {:scan-only-used-field-values only-used?}})
                        ;; the lists of C0 and C4 were used since that scan, the others a day before it
                        (let [field-ids (fn [& conds]
                                          (apply t2/select-pks-vec :model/Field
