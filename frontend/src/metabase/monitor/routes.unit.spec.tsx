@@ -67,6 +67,25 @@ const { hasPremiumFeature } = jest.requireMock<{
   hasPremiumFeature: jest.Mock<boolean, [string]>;
 }>("metabase-enterprise/settings");
 
+jest.mock(
+  "metabase-enterprise/monitor/ai-auditing/mcp-analytics/components/McpAnalyticsSectionLayout",
+  () => {
+    const { Outlet } = jest.requireActual("metabase/router");
+    return {
+      McpAnalyticsSectionLayout: () => (
+        <div>
+          <h1>{"MCP analytics"}</h1>
+          <Outlet />
+        </div>
+      ),
+    };
+  },
+);
+jest.mock(
+  "metabase-enterprise/monitor/ai-auditing/mcp-analytics/components/McpUsagePage",
+  () => ({ McpUsagePage: () => <div>{"MCP usage page"}</div> }),
+);
+
 jest.mock("./components/MonitorLayout", () => {
   const { Outlet } = jest.requireActual("metabase/router");
   const { MonitorMain } = jest.requireActual(
@@ -503,6 +522,46 @@ describe("monitor routes", () => {
           screen.queryByTestId("unauthorized-marker"),
         ).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe("AI Auditing token gate", () => {
+    // The real audit_app plugin, initialized against the given audit_app feature, so the
+    // route registration it does (or skips) is what the test sees.
+    const setupAuditAppPlugin = (auditApp: boolean) => {
+      hasPremiumFeature.mockImplementation(
+        (feature) => auditApp || feature !== "audit_app",
+      );
+      setupEnterpriseOnlyPlugin("audit_app");
+    };
+
+    it("does not register MCP analytics without the audit_app feature", async () => {
+      setupAuditAppPlugin(false);
+
+      setup({
+        initialRoute: Urls.monitorAiAuditingMcp(),
+        tokenFeatures: { audit_app: false, ai_controls: true },
+      });
+
+      expect(await screen.findByLabelText("error page")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "MCP analytics" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("registers MCP analytics with the audit_app feature", async () => {
+      setupAuditAppPlugin(true);
+
+      setup({
+        initialRoute: Urls.monitorAiAuditingMcp(),
+        tokenFeatures: { audit_app: true, ai_controls: true },
+      });
+
+      expect(
+        await screen.findByRole("heading", { name: "MCP analytics" }),
+      ).toBeInTheDocument();
+      expect(await screen.findByText("MCP usage page")).toBeInTheDocument();
+      expect(screen.queryByLabelText("error page")).not.toBeInTheDocument();
     });
   });
 
