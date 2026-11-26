@@ -29,7 +29,7 @@
    (e.g. a workspace_database that was provisioned but never had a transform run).
 
    Scope rationale: each workspace has iso namespaces of its own, so deleting by
-   iso namespace, in every workspace that a request can name and in the
+   iso namespace, in every workspace of a worktree and in the
    instance's own, deletes this workspace's rows and no other workspace's.
 
    Returns the count of rows deleted."

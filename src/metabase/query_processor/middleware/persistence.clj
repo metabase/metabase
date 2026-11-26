@@ -7,8 +7,8 @@
 
 (defn substitute-persisted-query
   "Removes persisted information if user is sandboxed, uses connection impersonation, or is routed to a Destination
-  Database, and in a workspace that the request names, where the persisted table holds the rows that every workspace
-  shares, not the workspace's. `:persisted-info/native` is set in
+  Database, and in the workspace of the request's worktree, where the persisted table holds the rows that every
+  workspace shares, not the workspace's. `:persisted-info/native` is set in
   [[metabase.query-processor.middleware.fetch-source-query]].
 
   It may be be possible to use the persistence cache with sandboxing and/or impersonation at a later date with further

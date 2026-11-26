@@ -27,7 +27,7 @@
 
 (defn do-with-request-workspaces-enabled!
   "Calls `thunk` with [[ws.settings/request-workspaces-enabled]] on, and turns it off after, when the app DB can keep the
-  rows of workspaces apart ([[row-security-applies?]]). Otherwise does not call `thunk`: a request can't name a
+  rows of workspaces apart ([[row-security-applies?]]). Otherwise does not call `thunk`: a worktree can't work in a
   workspace there."
   [thunk]
   (when (row-security-applies?)

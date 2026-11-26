@@ -94,7 +94,7 @@
   synced: a canonical schema with a source table `src-name` holding `(1, a) (2, b)`, an output table `out-name`
   holding `(99, pre-existing)`, and two provisioned workspaces of the Database."
   [f]
-  ;; a request can name a workspace only where row-level security keeps the rows of workspaces apart
+  ;; a worktree can work in a workspace only where row-level security keeps the rows of workspaces apart
   (row-security-test/with-request-workspaces-enabled!
     (mt/test-driver :postgres
       (mt/with-premium-features #{:workspaces :transforms-basic :hosting :remote-sync}

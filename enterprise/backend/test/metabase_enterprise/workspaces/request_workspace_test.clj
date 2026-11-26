@@ -46,7 +46,7 @@
 (deftest current-workspace-of-a-request-test
   (do-with-request-workspace
    (fn [{:keys [workspace-id db-id]}]
-     (testing "a request that names no workspace works in none"
+     (testing "a request in no workspace works in none"
        (is (nil? (ws/current-workspace)))
        (is (false? (ws/workspace-mode?)))
        (is (false? (workspaces/workspace-bound?)))
@@ -112,7 +112,7 @@
       (do-with-request-workspace
        db-details
        (fn [{:keys [workspace-id db-id]}]
-         (testing "is refused when a request names its workspace"
+         (testing "is refused in the workspace of a worktree"
            (is (re-find expected (workspaces/request-workspace-problem workspace-id))))
          (testing "and never connects with the workspace's login"
            (workspaces/with-workspace-id workspace-id
@@ -151,15 +151,15 @@
   (do-with-request-workspace
    (fn [{:keys [workspace-id]}]
      (workspaces/with-workspace-id workspace-id
-       (testing "features that a workspace refuses are refused in a request that names one"
-         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Actions is not supported in a request that names a workspace\.$"
+       (testing "features that a workspace refuses are refused in the workspace of a worktree"
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Actions is not supported in the workspace of a worktree\.$"
                                (workspaces/check-not-in-workspace-mode! "Actions"))))))))
 
 (deftest request-workspace-queries-are-not-cached-test
   (let [query {:cache-strategy {:type :ttl :multiplier 10 :min_duration_ms 0}}]
     (is (true? (#'qp.cache/is-cacheable? query)))
     (mt/with-dynamic-fn-redefs [workspaces/workspace-bound? (constantly true)]
-      (testing "a query in a workspace that a request names is not cached: requests in other workspaces share the key"
+      (testing "a query in the workspace of a request's worktree is not cached: requests in other workspaces share the key"
         (is (false? (#'qp.cache/is-cacheable? query)))))))
 
 (deftest request-workspace-sync-skips-isolation-schemas-test
@@ -189,7 +189,7 @@
        (try
          (workspaces/with-workspace-id workspace-id
            (remap-orders! db-id "mb__isolation_test"))
-         (testing "a remapping made in a workspace that a request names belongs to that workspace"
+         (testing "a remapping made in the workspace of a request's worktree belongs to that workspace"
            (workspaces/with-workspace-id workspace-id
              (is (= "mb__isolation_test" (orders-target db-id)))
              (is (true? (ws.remapping/enabled-for-db? db-id)))
@@ -260,7 +260,7 @@
      ;; the test's writes are in a transaction, which the cache leaves alone
      (mt/with-dynamic-fn-redefs [app-db/in-transaction? (constantly false)]
        (ws.request-workspace/invalidate!)
-       (testing "a workspace that does not exist is not cached, so a request that names it later reads it"
+       (testing "a workspace that does not exist is not cached, so a request in it later reads it"
          (is (nil? (ws.request-workspace/request-workspace Integer/MAX_VALUE)))
          (is (not (contains? (cached-ids) Integer/MAX_VALUE))))
        (testing "a workspace is cached"

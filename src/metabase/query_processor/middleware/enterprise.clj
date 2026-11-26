@@ -78,8 +78,8 @@
   query)
 
 (defenterprise apply-workspace-copy-metadata
-  "**Workspace copy metadata — preprocess, before any middleware reads metadata.** In a workspace that the request
-   names, puts the workspace's copy rows over the metadata of the query's Database: the copy's columns and types, and
+  "**Workspace copy metadata — preprocess, before any middleware reads metadata.** In the workspace of the request's
+   worktree, puts the workspace's copy rows over the metadata of the query's Database: the copy's columns and types, and
    the Tables only the workspace has. See the EE impl namespace."
   metabase-enterprise.workspaces.query-processor.middleware
   [query]

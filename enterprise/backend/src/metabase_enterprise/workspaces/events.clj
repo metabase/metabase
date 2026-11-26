@@ -1,6 +1,6 @@
 (ns metabase-enterprise.workspaces.events
   "Keep table remappings consistent with database updates that change `database-workspace-schema`, and drop the cache
-  of the workspaces that requests name when a Database changes."
+  of the workspaces of worktrees when a Database changes."
   (:require
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.request-workspace :as ws.request-workspace]
@@ -13,7 +13,7 @@
 
 (methodical/defmethod events/publish-event! ::database-update
   "Delete the remap rows that point at the old `database-workspace-schema` of the databases whose update changes it.
-  Drop the cache of the workspaces that requests name: the Database's details decide whether a workspace can use its
+  Drop the cache of the workspaces of worktrees: the Database's details decide whether a workspace can use its
   login there ([[metabase-enterprise.workspaces.login/login-problem]])."
   [_topic {:keys [changes]}]
   (ws.request-workspace/invalidate!)

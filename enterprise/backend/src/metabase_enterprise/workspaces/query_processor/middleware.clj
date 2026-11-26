@@ -146,7 +146,7 @@
 ;;; --------------------------------------- Phase 1: Preprocessing (MBQL only) ------------------------------------
 
 (defn- request-workspace-id
-  "The id of the workspace that the request names, when the Database with `db-id` is one of its provisioned
+  "The id of the workspace of the request's worktree, when the Database with `db-id` is one of its provisioned
   databases, or nil."
   [db-id]
   (when-let [{:keys [mode workspace-id databases]} (ws.core/current-workspace)]
@@ -161,7 +161,7 @@
     (lib.metadata.protocols/cached-value mp [::copy-metadata-provider workspace-id db-id] nil)))
 
 (defenterprise apply-workspace-copy-metadata
-  "**Workspace copy metadata — preprocess.** In a workspace that the request names, wrap the query's metadata
+  "**Workspace copy metadata — preprocess.** In the workspace of the request's worktree, wrap the query's metadata
    provider with the workspace's type rows for the query's Database
    ([[ws.copy-metadata/copy-metadata-provider]]), in the QP store and on the query, so every later middleware, and
    the remapping of [[apply-workspace-remapping]], reads the types of the copy's columns. Row-level security already

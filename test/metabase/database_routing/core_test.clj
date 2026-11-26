@@ -5,7 +5,7 @@
    [metabase.workspaces.core :as workspaces]))
 
 (deftest anonymous-router-access-runs-in-no-workspace-test
-  (testing "work whose results every user shares reads the Databases as themselves, in no workspace that a request names"
+  (testing "work whose results every user shares reads the Databases as themselves, in no workspace of a worktree"
     (workspaces/with-workspace-id 7
       (is (= 7 (workspaces/current-workspace-id)))
       (is (nil? (database-routing/with-anonymous-router-access (workspaces/current-workspace-id))))

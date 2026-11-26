@@ -1,5 +1,5 @@
 (ns metabase.parameters.request-workspace-test
-  "Field values in a workspace that a request names: they are read from the workspace's copies, so they are stored
+  "Field values in the workspace of a request's worktree: they are read from the workspace's copies, so they are stored
   for that workspace only."
   (:require
    [clojure.test :refer :all]

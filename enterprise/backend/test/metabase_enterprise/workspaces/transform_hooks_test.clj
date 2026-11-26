@@ -43,11 +43,11 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database 42 has no workspace schema"
                             (ws.transform-hooks/workspace-transform-target
                              42 {:schema "public" :name "orders" :type :table}))))
-    (testing "in a workspace that the request names, the database is not one of the workspace's"
+    (testing "in the workspace of the request's worktree, the database is not one of the workspace's"
       (mt/with-dynamic-fn-redefs [ws/current-workspace      (constantly {:mode :bound})
                                   ws/db-workspace-namespace (constantly nil)]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Database 42 is not a provisioned database of the workspace that the request names"
+                              #"Database 42 is not a provisioned database of the workspace of the request's worktree"
                               (ws.transform-hooks/workspace-transform-target
                                42 {:schema "public" :name "orders" :type :table})))))
     (testing "control: outside workspace mode the canonical target passes through"

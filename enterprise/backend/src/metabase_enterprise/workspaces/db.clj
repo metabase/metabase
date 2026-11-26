@@ -287,11 +287,11 @@
 
 ;;; ---------------------------------------------- TableRemapping ----------------------------------------------
 ;;;
-;;; Each workspace that a request names has its own TableRemappings, with its id in `workspace_id`. The instance's own
+;;; Each workspace of a worktree has its own TableRemappings, with its id in `workspace_id`. The instance's own
 ;;; have 0 there, which these functions take as a nil `workspace-id`.
 
 (mr/def ::workspace-id
-  "The workspace that a request names, or nil for the instance's own TableRemappings."
+  "The workspace of a request's worktree, or nil for the instance's own TableRemappings."
   [:maybe ms/PositiveInt])
 
 (defn- remapping-workspace-id
@@ -416,7 +416,7 @@
   (t2/delete! :model/TableRemapping :database_id database-id :to_db to-db :to_schema to-schema))
 
 (mu/defn delete-instance-table-remappings!
-  "Delete the instance's own TableRemappings, and none of the workspaces that requests name."
+  "Delete the instance's own TableRemappings, and none of the workspaces of worktrees."
   []
   (t2/delete! :model/TableRemapping :workspace_id 0))
 

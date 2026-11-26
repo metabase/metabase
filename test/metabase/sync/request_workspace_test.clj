@@ -1,5 +1,5 @@
 (ns metabase.sync.request-workspace-test
-  "A sync writes the metadata that every workspace shares, so it runs in no workspace that a request names: with the
+  "A sync writes the metadata that every workspace shares, so it runs in no workspace of a worktree: with the
   Databases' own logins, and the instance's own table remappings."
   (:require
    [clojure.test :refer :all]

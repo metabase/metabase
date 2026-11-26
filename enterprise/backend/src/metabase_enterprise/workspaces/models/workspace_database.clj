@@ -80,8 +80,8 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 ;;;
-;;; A request that names a workspace reads its WorkspaceDatabases from a cache, which every write drops after the
-;;; commit, not at once: another thread that reads before the commit would cache the rows as they were before it.
+;;; A request in the workspace of its worktree reads its WorkspaceDatabases from a cache, which every write drops after
+;;; the commit, not at once: another thread that reads before the commit would cache the rows as they were before it.
 
 (defn- invalidate-request-workspaces! []
   (app-db/do-after-commit ws.request-workspace/invalidate!))

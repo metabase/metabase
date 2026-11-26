@@ -661,8 +661,8 @@
       target)))
 
 (defn- shared-table-in-workspace?
-  "Whether `table` is a shared Table that a run in a workspace that the request names wrote the workspace's copy of. A
-  run must not change such a Table; it may change a Table that the workspace owns."
+  "Whether `table` is a shared Table that a run in the workspace of the request's worktree wrote the workspace's copy
+  of. A run must not change such a Table; it may change a Table that the workspace owns."
   [table]
   (and (workspaces/workspace-bound?)
        (nil? (workspaces/owner-workspace-id :metabase_table table))))
@@ -676,7 +676,7 @@
     {:keys [create?]} :- [:maybe [:map {:closed true} [:create? {:optional true} :boolean]]]]
    (let [target (canonicalize-target (:id database) target)]
      (when-let [table (or (target-table (:id database) target)
-                          ;; In a workspace that the request names, a new Table is the workspace's own: the app DB
+                          ;; In the workspace of the request's worktree, a new Table is the workspace's own: the app DB
                           ;; puts it in the workspace of the connection that inserts it.
                           (when create?
                             (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
@@ -690,8 +690,9 @@
                                (t2/hydrate :db)))
                        table)
                      table)]
-         ;; In a workspace that the request names, the copy of a shared Table is recorded for the workspace, and the
-         ;; shared Table and Fields are not synced from it. A Table the workspace owns syncs as usual, in the workspace.
+         ;; In the workspace of the request's worktree, the copy of a shared Table is recorded for the workspace, and
+         ;; the shared Table and Fields are not synced from it. A Table the workspace owns syncs as usual, in the
+         ;; workspace.
          (when-not (workspaces/sync-copy-of-table! database table)
            (sync/sync-table! table))
          table)))))
@@ -705,7 +706,7 @@
                                                 :data_source :metabase-transform
                                                 :is_writable false)
                                 {:create? true})]
-    ;; A shared Table stays as production has it in a workspace that the request names.
+    ;; A shared Table stays as production has it in the workspace of the request's worktree.
     (when-not (or (:active table) (shared-table-in-workspace? table))
       (table/update-tables! [{:id (:id table) :active true}]))
     table))

@@ -1,7 +1,7 @@
 (ns metabase-enterprise.workspaces.models.copy
   "Toucan 2 models for how the copies that a workspace's transforms write differ from the Tables and Fields that every
    workspace shares: `workspace_table_copy`, whether a Table is active in the workspace, and `workspace_field_copy`, a
-   Field as the workspace's copy of its Table has it. A request that names the workspace reads them over the shared
+   Field as the workspace's copy of its Table has it. A request in the workspace reads them over the shared
    metadata."
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]

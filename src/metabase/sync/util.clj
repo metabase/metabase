@@ -346,7 +346,7 @@
   wrapped in the surrounding machinery (task-history, events, logging, duplicate-op prevention).
   Performs no eligibility gating itself — the public wrappers decide whether to call it.
 
-  Runs in no workspace that a request names ([[workspaces/without-workspace]]): a sync writes the metadata that every
+  Runs in no workspace of a worktree ([[workspaces/without-workspace]]): a sync writes the metadata that every
   workspace shares, so it reads the warehouse with the Database's own login."
   [operation :- :keyword                ; something like `:sync-metadata` or `:refingerprint`
    database  :- i/DatabaseInstance

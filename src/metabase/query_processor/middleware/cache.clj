@@ -397,7 +397,7 @@
                 (cond-> []
                   (not has-strat?)   (conj "no cache strategy provided")
                   (not not-nocache?) (conj "cache strategy is :nocache")
-                  bound?             (conj "the request names a workspace"))))))
+                  bound?             (conj "the request works in the workspace of its worktree"))))))
 
 (mu/defn maybe-return-cached-results :- ::qp.schema/qp
   "Middleware for caching results of a query if applicable.

@@ -78,10 +78,10 @@
     (if new-value
       (do
         (when-not (= :postgres (mdb/db-type))
-          (throw (ex-info (tru "Workspaces that a request names need a PostgreSQL application database.")
+          (throw (ex-info (tru "A worktree can work in a workspace only on a PostgreSQL application database.")
                           {:status-code 400})))
         (when (ws.db/row-security-bypassed?)
-          (throw (ex-info (tru "Workspaces that a request names need an application database user that row-level security applies to, not a superuser or a user with BYPASSRLS.")
+          (throw (ex-info (tru "A worktree can work in a workspace only with an application database user that row-level security applies to, not a superuser or a user with BYPASSRLS.")
                           {:status-code 400}))))
       (do
         (when (remote-sync/worktree-names-a-workspace?)

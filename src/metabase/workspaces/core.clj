@@ -11,8 +11,8 @@
 
    2. **Workspace-managed database** — a *database-scoped state*. True iff the
       thread is in workspace mode AND the database has a `database-workspace-schema`
-      database-local setting, or is a provisioned database of the workspace that the
-      request names. The `(ws/db-workspace-namespace db-id)` predicate (EE only).
+      database-local setting, or is a provisioned database of the workspace of the request's worktree. The
+      `(ws/db-workspace-namespace db-id)` predicate (EE only).
 
    3. **Table remapping engaged** — a *query-time data state*. True iff
       `:model/TableRemapping` rows exist for the database. The
@@ -25,11 +25,9 @@
 
    `check-not-in-workspace-mode!` uses concept (1). Features blocked here (DB
    routing, actions, editing table data, CSV upload, model persistence) are
-   refused on a child instance entirely, and in every request that names a
-   workspace, not per-database. Rationale: workspace children boot with empty everything
-   except content; per Dan in proj-workspaces 2026-04-30, those features can't
-   already be configured. The instance-level gate is simpler and defensive —
-   no escape hatch.
+   refused on a child instance entirely, and in every request in the workspace of a worktree, not per-database.
+   Rationale: workspace children boot with empty everything except content; per Dan in proj-workspaces 2026-04-30, those
+   features can't already be configured. The instance-level gate is simpler and defensive — no escape hatch.
 
    If a future use case requires running a feature against a non-workspace-
    managed database on a child, refine the call sites to per-database checks
@@ -37,10 +35,9 @@
 
    ## OSS vs EE
 
-   The OSS jar has no workspace mode (`workspace-mode?` returns false, and a
-   request can't name a workspace), so the gates are no-ops. The EE impl in
-   `metabase-enterprise.workspaces.core` reads the `workspaces-enabled` setting and
-   the workspace that the request names."
+   The OSS jar has no workspace mode (`workspace-mode?` returns false, and a worktree can't work in a workspace), so the
+   gates are no-ops. The EE impl in `metabase-enterprise.workspaces.core` reads the `workspaces-enabled` setting and the
+   workspace of the request's worktree."
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -48,7 +45,7 @@
 
 (defenterprise workspace-mode?
   "True if the current thread works in a workspace: the EE `workspaces-enabled` setting
-   is on, or the current request names a workspace ([[current-workspace-id]]).
+   is on, or the current request works in the workspace of its worktree ([[current-workspace-id]]).
 
    For the per-database check, use the EE function
    `metabase-enterprise.workspaces.core/db-workspace-namespace` (returns the
@@ -61,11 +58,11 @@
   false)
 
 (defenterprise workspace-bound?
-  "True when the current request works in a workspace that it names ([[current-workspace-id]]), while other requests
+  "True when the current request works in the workspace of its worktree ([[current-workspace-id]]), while other requests
    of this instance work in other workspaces or in none. Then the results of a query hold that workspace's data, so
    nothing that other requests read, such as the query cache, may keep them. False on a sidecar, whose every request
-   works in the instance's own workspace. Throws when the thread names a workspace that does not exist, so that it
-   does not go on as if it named none. The OSS fallback returns false."
+   works in the instance's own workspace. Throws when the thread works in a workspace that does not exist, so that it
+   does not go on as if it worked in none. The OSS fallback returns false."
   metabase-enterprise.workspaces.core
   []
   false)
@@ -80,7 +77,7 @@
   false)
 
 (defenterprise apply-copy-metadata
-  "`tables`, each with its hydrated `:fields`, as the workspace that the current request names ([[workspace-bound?]])
+  "`tables`, each with its hydrated `:fields`, as the workspace of the current request's worktree ([[workspace-bound?]])
    has them: with the columns and types of its copies, and the Tables only it has active. Hydrates a Field it adds
    with `hydrate-fields`, a fn of a sequence of Fields. Elsewhere `tables` as they are. The OSS fallback returns
    `tables`."
@@ -88,7 +85,7 @@
   [tables _hydrate-fields]
   tables)
 
-;;; ---------------------------------------- The workspace a request names -----------------------------------------
+;;; -------------------------------------- The workspace a request works in ---------------------------------------
 ;;;
 ;;; The binding is the app DB's ([[mdb/with-workspace-id]]): on Postgres, it puts the thread's app DB connections in the
 ;;; workspace too, so row-level security shows them the workspace's rows.
@@ -125,7 +122,7 @@
   `(with-workspace-id (owner-workspace-id ~table ~row) ~@body))
 
 (defmacro without-workspace
-  "Run `body` in no workspace that a request names: with the Databases' own logins, and the instance's own table
+  "Run `body` in no workspace of a worktree: with the Databases' own logins, and the instance's own table
    remappings. Use it around work whose results everyone shares, such as a sync of a Database."
   [& body]
   `(with-workspace-id nil ~@body))
@@ -164,13 +161,13 @@
    ([[workspace-mode?]]).
 
    Use at API entry points and at write points for features that must be refused
-   on a workspace child instance, and in a request that names a workspace (DB
+   on a workspace child instance, and in a request in the workspace of its worktree (DB
    routing, actions, editing table data, CSV upload, model persistence). The check
    is not per-database — see namespace docstring for the rationale."
   [feature-name]
   (when (workspace-mode?)
     (throw (ex-info (str feature-name (if (workspace-bound?)
-                                        " is not supported in a request that names a workspace."
+                                        " is not supported in the workspace of a worktree."
                                         " is not supported on a workspace instance."))
                     {:status-code 400
                      :feature feature-name

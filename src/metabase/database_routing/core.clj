@@ -27,7 +27,7 @@
 
 (defmacro with-anonymous-router-access
   "Runs body with no current user, so that work whose results every user shares, such as sync or a guest embed, always
-  hits the router database. For the same reason, it runs in no workspace that a request names
+  hits the router database. For the same reason, it runs in no workspace of a worktree
   ([[workspaces/without-workspace]]): it reads each Database as the Database itself, with its own login."
   [& body]
   `(do-as-shared-work (fn [] ~@body)))

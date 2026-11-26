@@ -146,7 +146,7 @@
     :model/UserKeyValue
     :model/Workspace
     :model/WorkspaceDatabase
-    ;; Keyed by the workspace that a request names, which is not a worktree.
+    ;; Keyed by a workspace, which is not a worktree.
     :model/WorkspaceFieldCopy
     :model/WorkspaceTableCopy})
 

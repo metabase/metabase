@@ -21,7 +21,7 @@
   engine do the same."
   [db]
   (when-not (isa? driver/hierarchy (keyword (:engine db)) :sql-jdbc)
-    (format (str "Database %s uses engine %s. A request can name a workspace only for engines that connect through a "
+    (format (str "Database %s uses engine %s. A worktree can work in a workspace only for engines that connect through a "
                  "JDBC connection pool.")
             (pr-str (:name db)) (name (:engine db)))))
 
@@ -90,7 +90,7 @@
         value
         (let [value (load-workspace workspace-id)]
           ;; A workspace that does not exist is not cached: one created later must be read at once. Entries past the
-          ;; maximum age go, so the cache holds only the workspaces that requests named recently.
+          ;; maximum age go, so the cache holds only the workspaces that requests worked in recently.
           (swap! cache (fn [entries]
                          (cond-> (into {}
                                        (filter (fn [[_ {:keys [read-at]}]] (< (- now (long read-at)) (long max-age-ns))))

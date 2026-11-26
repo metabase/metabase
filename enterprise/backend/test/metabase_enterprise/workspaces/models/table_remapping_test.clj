@@ -54,7 +54,7 @@
                  :model/Workspace {ws :id} {:name "ws"}]
     (table-remapping/upsert-table-remapping! db nil {:schema "s" :table "from"} {:schema "t" :table "to"})
     (table-remapping/upsert-table-remapping! db ws {:schema "s" :table "from"} {:schema "w" :table "to"})
-    (testing "an instance-level delete leaves the remappings of the workspaces that requests name"
+    (testing "an instance-level delete leaves the remappings of the workspaces of worktrees"
       (table-remapping/delete-instance-table-remappings!)
       (is (= [ws] (t2/select-fn-vec :workspace_id :model/TableRemapping :database_id db))))
     (testing "a delete of a schema change on the instance's databases leaves them too"

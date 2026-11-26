@@ -38,9 +38,9 @@
                :stages   [{:lib/type              :mbql.stage/native
                            :native                "SELECT 1"
                            :persisted-info/native "SELECT * FROM persisted"}]}]
-    (testing "the persisted table of a model is used outside a workspace that a request names"
+    (testing "the persisted table of a model is used outside the workspace of a request's worktree"
       (is (= query (qp.persistence/substitute-persisted-query query))))
-    (testing "a query in a workspace that a request names does not use the persisted table, which holds the shared rows"
+    (testing "a query in the workspace of a request's worktree does not use the persisted table, which holds the shared rows"
       (mt/with-dynamic-fn-redefs [workspaces/workspace-bound? (constantly true)]
         (binding [api/*current-user-id* nil]
           (let [stage (-> (qp.persistence/substitute-persisted-query query) :stages first)]

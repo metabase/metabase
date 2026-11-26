@@ -43,8 +43,8 @@
 
 (defn- database-hash-input
   "The part of the [[hash-input-for-field-values]] of a Field of the Database with `database-id` that depends only on
-  the Database and the request: its impersonation and routing context for the current user, and the workspace that
-  the request names, whose copies the values are read from."
+  the Database and the request: its impersonation and routing context for the current user, and the workspace of the
+  request's worktree, whose copies the values are read from."
   [database-id]
   (merge (field-values/hash-input-for-impersonation database-id)
          (field-values/hash-input-for-database-routing database-id)
@@ -74,7 +74,7 @@
     - impersonation context.
     - linked-filter constraints (optionally provided).
     - database routing context.
-    - the workspace that the request names, whose copies the values are read from.
+    - the workspace of the request's worktree, whose copies the values are read from.
     - `extra`, if any — a caller-supplied map whose entries affect query shape but aren't part of
       constraints (e.g. chain-filter's `:via-path`/`:fk-pairs` hints from the card's joins).
 

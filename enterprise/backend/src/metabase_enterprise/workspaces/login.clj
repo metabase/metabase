@@ -1,7 +1,7 @@
 (ns metabase-enterprise.workspaces.login
   "The warehouse login of a workspace. A workspace connects to each of its Databases with its own `:user` and
    `:password`, from its WorkspaceDatabase, in place of the parent's: a child instance's config carries them, and so
-   do the connections of a request that names the workspace. This namespace says which connection properties carry
+   do the connections of a request in the workspace. This namespace says which connection properties carry
    the parent's own login, and when a Database can't be used with the workspace's login at all."
   (:require
    [clojure.string :as str]

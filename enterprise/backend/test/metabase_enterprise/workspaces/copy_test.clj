@@ -42,7 +42,7 @@
 (defn do-with-orders!
   "Calls `f` with `{:workspace-id :db-id :table-id :field-ids}`: a workspace's Database with a Table `orders` whose
   shared Fields are `canonical-columns`, `created` coerced to a datetime, and `name` holding a nested Field `first`.
-  Only where requests can name a workspace ([[row-security-test/with-request-workspaces-enabled!]])."
+  Only where requests can work in a workspace ([[row-security-test/with-request-workspaces-enabled!]])."
   [f]
   (row-security-test/with-request-workspaces-enabled!
     (request-workspace-test/do-with-request-workspace

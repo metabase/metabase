@@ -80,7 +80,7 @@
       (contains? (table-remapping/database-ids-with-remappings) db-id)))
 
 (defrecord AppDBRemappingStore []
-  ;; Each workspace that a request names has its own remappings ([[ws/current-workspace-id]]).
+  ;; Each workspace of a worktree has its own remappings ([[ws/current-workspace-id]]).
   RemappingStore
   (enabled-for-db?* [_ db-id]
     (and (may-have-remappings? db-id)

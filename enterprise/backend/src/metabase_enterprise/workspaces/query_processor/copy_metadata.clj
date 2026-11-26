@@ -1,6 +1,6 @@
 (ns metabase-enterprise.workspaces.query-processor.copy-metadata
-  "The types that a query in a workspace that the request names reads for the shared Fields that the workspace's copy
-  gives another type ([[metabase-enterprise.workspaces.copy]]). Row-level security already gives the workspace the
+  "The types that a query in the workspace of the request's worktree reads for the shared Fields that the workspace's
+  copy gives another type ([[metabase-enterprise.workspaces.copy]]). Row-level security already gives the workspace the
   copy's Fields and Tables; only a changed type of a shared Field needs this. A column the copy gives another base type
   has that type, without the shared coercion."
   (:require

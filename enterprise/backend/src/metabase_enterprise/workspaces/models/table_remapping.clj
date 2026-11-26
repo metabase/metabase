@@ -162,7 +162,7 @@
         (invalidate! database-ids)))))
 
 (mu/defn delete-instance-table-remappings!
-  "Delete the instance's own TableRemappings, and none of the workspaces that requests name."
+  "Delete the instance's own TableRemappings, and none of the workspaces of worktrees."
   []
   (t2/with-transaction [_conn]
     (let [database-ids (ws.db/table-remapping-database-ids)]
