@@ -79,6 +79,14 @@
     (is (= "'you''re':*"
            (search-expr "you're")))))
 
+(deftest ^:parallel metabot-search-does-not-complete-the-last-word-test
+  (testing "Metabot sends whole keywords, so its last word matches only itself"
+    (is (= "'a' & 'b' | 'c'"
+           (search-expr "a b or c" {:context :metabot}))))
+  (testing "Other contexts still match the last word as a prefix"
+    (is (= "'a' & 'b' | 'c':*"
+           (search-expr "a b or c" {:context :search-app})))))
+
 (deftest available-tsv-languages-test
   (when (= :postgres (mdb/db-type))
     (let [available (#'search.util/available-tsv-languages)]

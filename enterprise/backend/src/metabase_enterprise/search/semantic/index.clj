@@ -716,7 +716,7 @@
 
 (defn- keyword-search-query [index search-context]
   (let [filters (search-filters search-context)
-        ts-search-expr (search/to-tsquery-expr (:search-string search-context))
+        ts-search-expr (search/to-tsquery-expr (:search-string search-context) search-context)
         tsv-lang (search/tsv-language)
         vector-column (if (:search-native-query search-context)
                         :text_search_with_native_query_vector

@@ -172,20 +172,25 @@
        (mapv vec)))
 
 (defn to-tsquery-expr
-  "Given the user input, construct a query in the Postgres tsvector query language."
-  [input]
-  (str
-   (when input
-     (let [trimmed        (str/trim input)
-           complete?      (not (str/ends-with? trimmed "\""))
-           ;; TODO also only complete if the :context is appropriate
-           maybe-complete (if complete? complete-last-word identity)]
-       (->> (str/replace trimmed "\\" "\\\\")
-            search-clauses
-            (map process-clause)
-            (remove str/blank?)
-            (str/join " | ")
-            maybe-complete)))))
+  "Given the user input, construct a query in the Postgres tsvector query language.
+  The last word matches as a prefix, unless it closes a quoted phrase or the search `context` is `:metabot`."
+  ([input]
+   (to-tsquery-expr input nil))
+  ([input {:keys [context]}]
+   (str
+    (when input
+      (let [trimmed        (str/trim input)
+            ;; Prefix matching serves search as you type. Metabot sends whole keywords, and a prefix on its last
+            ;; keyword query alone would match words that no query names.
+            complete?      (and (not= context :metabot)
+                                (not (str/ends-with? trimmed "\"")))
+            maybe-complete (if complete? complete-last-word identity)]
+        (->> (str/replace trimmed "\\" "\\\\")
+             search-clauses
+             (map process-clause)
+             (remove str/blank?)
+             (str/join " | ")
+             maybe-complete))))))
 
 (defn weighted-tsvector
   "Create a weighted tsvector for Postgres full-text search with the given weight and text."

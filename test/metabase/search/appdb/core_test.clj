@@ -8,6 +8,7 @@
    [metabase.search.appdb.index :as search.index]
    [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
+   [metabase.search.util :as search.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.connection :as t2.conn]
@@ -18,6 +19,16 @@
 (comment metabase.audit-app.events.audit-log/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
+
+(deftest metabot-keyword-queries-match-any-query-and-every-word-in-each-test
+  (when (= :postgres (mdb/db-type))
+    (testing "[\"orders\" \"monthly revenue\"] searches for orders, or monthly and revenue together, with no prefix"
+      (let [[folded] (search.engine/disjunction :search.engine/appdb ["orders" "monthly revenue"])
+            expr     (search.util/to-tsquery-expr folded {:context :metabot})
+            ;; The same form the appdb engine builds, so Postgres parses it as a search would.
+            parsed   (mdb/query {:select [[[:to_tsquery [:literal "simple"] [:lift expr]] :query]]})]
+        (is (= "'orders' | 'monthly' & 'revenue'"
+               (str (:query (first parsed)))))))))
 
 (deftest locale-change-reindexes-after-commit-test
   (when (contains? #{:mysql :postgres} (mdb/db-type))
