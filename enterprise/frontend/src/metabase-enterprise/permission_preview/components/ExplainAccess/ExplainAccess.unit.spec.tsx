@@ -35,6 +35,7 @@ import {
   createSqlCard,
   createTable,
 } from "./fixtures";
+import { getCollectionStatus } from "./labels";
 
 const SANDY: PreviewTarget = {
   kind: "user",
@@ -1378,6 +1379,40 @@ describe("ExplainAccess", () => {
         expect(
           screen.queryByText("Opening this collection"),
         ).not.toBeInTheDocument();
+      },
+    );
+
+    it("keeps the sentence and the group it comes from in one bordered card", async () => {
+      setupCollection(createCollection({ value: "view" }));
+
+      const card = await screen.findByTestId("collection-card");
+
+      expect(card).toContainElement(
+        await screen.findByText("Sandy Sales can view this collection."),
+      );
+      expect(card).toContainElement(screen.getByText("from Sales"));
+    });
+
+    it.each([
+      ["view", "View"],
+      ["curate", "Curate"],
+      ["none", "No access"],
+    ] as const)(
+      "puts the %s status's icon right before its word",
+      async (value, statusWord) => {
+        setupCollection(createCollection({ value }));
+
+        const statusButton = await screen.findByRole("button", {
+          name: `Sales reports, ${statusWord}`,
+        });
+        const statusIcon = within(statusButton).getAllByRole("img").at(0);
+
+        expect(statusIcon).toHaveAccessibleName(
+          `${getCollectionStatus(value).icon} icon`,
+        );
+        expect(
+          within(statusButton).getByTestId("status-label"),
+        ).toHaveTextContent(statusWord);
       },
     );
 

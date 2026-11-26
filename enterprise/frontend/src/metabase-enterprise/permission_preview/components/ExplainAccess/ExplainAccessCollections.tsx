@@ -44,20 +44,26 @@ export function CollectionSheet({
   return (
     <Stack gap="xl">
       {collection ? (
-        <Flex align="flex-start" justify="space-between" gap="sm" wrap="nowrap">
-          <Flex align="flex-start" gap="xs" wrap="nowrap" miw={0}>
-            <CollectionVerdict
-              collection={collection}
-              text={getCollectionVerdict(subject, collection)}
+        <SheetCard data-testid="collection-card">
+          <Flex
+            align="flex-start"
+            justify="space-between"
+            gap="sm"
+            wrap="nowrap"
+          >
+            <Flex align="flex-start" gap="xs" wrap="nowrap" miw={0}>
+              <CollectionVerdict
+                collection={collection}
+                text={getCollectionVerdict(subject, collection)}
+              />
+            </Flex>
+            <StatusButton
+              status={getCollectionStatus(collection.value)}
+              rowName={getCollectionName(collection, target)}
+              onClick={() => onOpenDetail({ kind: "collection", collection })}
             />
           </Flex>
-          <StatusButton
-            status={getCollectionStatus(collection.value)}
-            rowName={getCollectionName(collection, target)}
-            withIcon={false}
-            onClick={() => onOpenDetail({ kind: "collection", collection })}
-          />
-        </Flex>
+        </SheetCard>
       ) : (
         <Flex gap="sm" align="center" c="text-secondary">
           <Icon name="info" />
@@ -77,15 +83,9 @@ interface CollectionVerdictProps {
 }
 
 function CollectionVerdict({ collection, text }: CollectionVerdictProps) {
-  const status = getCollectionStatus(collection.value);
-
   return (
     <>
-      <VerdictLine
-        icon={status.icon}
-        color={status.color}
-        detail={getSourceText(collection.groups)}
-      >
+      <VerdictLine detail={getSourceText(collection.groups)}>
         {text}
       </VerdictLine>
       <Tooltip

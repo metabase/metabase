@@ -8,6 +8,7 @@ import {
   Ellipsified,
   Flex,
   Icon,
+  type PaperProps,
   Text,
   type TextProps,
   Tooltip,
@@ -35,14 +36,19 @@ export function SmallText(props: SheetTextProps) {
   return <Text fz="sm" lh="1rem" c="text-secondary" {...props} />;
 }
 
-interface SheetCardProps {
+interface SheetCardProps extends PaperProps {
   title?: string;
   /** The ⓘ beside the title: what the card's permission means */
   info?: { label: string; text: string };
   children: ReactNode;
 }
 
-export function SheetCard({ title, info, children }: SheetCardProps) {
+export function SheetCard({
+  title,
+  info,
+  children,
+  ...paperProps
+}: SheetCardProps) {
   return (
     <SidesheetCard
       title={
@@ -63,6 +69,7 @@ export function SheetCard({ title, info, children }: SheetCardProps) {
           </Flex>
         )
       }
+      {...paperProps}
     >
       <Box my="-sm">{children}</Box>
     </SidesheetCard>
@@ -154,26 +161,21 @@ interface StatusButtonProps {
   status: ValueStatus;
   /** What the button says to a screen reader, with the row's name */
   rowName: string;
-  /** Left out beside a verdict that already shows the icon */
-  withIcon?: boolean;
   onClick: () => void;
 }
 
 /** A value's icon, label and chevron: opens the value's reason. */
-export function StatusButton({
-  status,
-  rowName,
-  withIcon = true,
-  onClick,
-}: StatusButtonProps) {
+export function StatusButton({ status, rowName, onClick }: StatusButtonProps) {
   return (
     <UnstyledButton
       className={S.status}
       aria-label={`${rowName}, ${status.label}`}
       onClick={onClick}
     >
-      {withIcon && <Icon name={status.icon} c={status.color} />}
-      <span className={S.statusLabel}>{status.label}</span>
+      <Icon name={status.icon} c={status.color} />
+      <span className={S.statusLabel} data-testid="status-label">
+        {status.label}
+      </span>
       <Icon name="chevronright" c="text-secondary" />
     </UnstyledButton>
   );
@@ -241,14 +243,14 @@ const VERDICT_ICONS: Record<
 };
 
 interface VerdictLineProps {
-  icon: IconName;
-  color: ValueStatus["color"];
+  icon?: IconName;
+  color?: ValueStatus["color"];
   /** A dimmed line under the verdict: where the value comes from */
   detail?: string | null;
   children: ReactNode;
 }
 
-/** The sheet's verdict: an icon and one bold line that wraps. */
+/** The sheet's verdict: one bold line that wraps, with its icon when given. */
 export function VerdictLine({
   icon,
   color,
@@ -257,7 +259,7 @@ export function VerdictLine({
 }: VerdictLineProps) {
   return (
     <Flex gap="sm" align="flex-start" wrap="nowrap">
-      <Icon name={icon} c={color} mt="xs" flex="none" />
+      {icon && <Icon name={icon} c={color} mt="xs" flex="none" />}
       <div>
         <BodyText fw="bold">{children}</BodyText>
         {detail && <SmallText>{detail}</SmallText>}
