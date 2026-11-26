@@ -462,8 +462,8 @@ export const editingDashboardParametersContainer = () => {
   return cy.findByTestId("edit-dashboard-parameters-widget-container");
 };
 
-export const undoToast = () => {
-  return cy.findByTestId("toast-undo");
+export const undoToast = (options = {}) => {
+  return cy.findByTestId("toast-undo", options);
 };
 
 export const undoToastList = () => {

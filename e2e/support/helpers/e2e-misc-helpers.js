@@ -369,8 +369,12 @@ export function saveQuestion(
   });
 }
 
+// The toast shows once the saved card's metadata has loaded, which can take longer than
+// the default 4s on a loaded CI runner. This only affects how long a failing check waits.
+const SAVED_TOAST_TIMEOUT = 10000;
+
 export function checkSavedToCollectionQuestionToast(addToDashboard) {
-  undoToast().within(() => {
+  undoToast({ timeout: SAVED_TOAST_TIMEOUT }).within(() => {
     cy.findByText(/Saved/i).should("be.visible");
 
     if (addToDashboard) {

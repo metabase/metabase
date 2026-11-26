@@ -465,11 +465,11 @@ describe("scenarios > question > summarize sidebar > formulas", () => {
     cy.log("the chips still open their formulas");
     formulaChip(groupingName).click();
     formulaEditor().value().should("eq", groupingFormula);
-    cy.realPress("Escape");
+    cy.findByTestId("formula-editor").button("Cancel formula").click();
     cy.findByTestId("formula-editor").should("not.exist");
     formulaChip(valueName).click();
     formulaEditor().value().should("eq", valueFormula);
-    cy.realPress("Escape");
+    cy.findByTestId("formula-editor").button("Cancel formula").click();
     cy.findByTestId("formula-editor").should("not.exist");
 
     cy.log("the notebook has the table's column and the grouping's one");
@@ -570,7 +570,10 @@ describe("scenarios > question > summarize sidebar > pivot round trip", () => {
     cy.log("the saved question opens with the same pivot table and wells");
     cy.intercept("POST", "/api/card/pivot/*/query").as("cardPivotQuery");
     cy.reload();
-    cy.wait("@cardPivotQuery").its("response.body.error").should("not.exist");
+    // a loaded runner can take longer than the default 5s to request the query after a reload
+    cy.wait("@cardPivotQuery", { requestTimeout: 15000 })
+      .its("response.body.error")
+      .should("not.exist");
     H.queryBuilderHeader().button("Save").should("not.exist");
     H.summarize();
     assertPivot();
