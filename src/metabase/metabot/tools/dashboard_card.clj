@@ -126,37 +126,30 @@
                                     :options (params/param-type->default-options (keyword (id->type id)))))))
             values))))
 
-(defn- note-text
-  "`s` as one line of the filter note: each run of whitespace as one space, any other invisible character as
-   `\\uXXXX`, and XML special characters escaped."
+(defn- filter-attr
+  "`s` as the value of an XML attribute on one line, with each invisible or line-breaking character as `\\uXXXX`."
   [s]
-  ;; The note follows the rows outside their data block, and a filter's name and value are text others can write:
-  ;; a dashboard's editors, or a link that sets the value on the user's screen.
-  (-> (str/replace (str s) #"(?U)\s+" " ")
+  (-> (str s)
       (quoting/escape-code-points quoting/invisible-code-point?)
       llm-shape/escape-xml))
 
 (defn- filters-note
-  "The line saying which filter values the run applied to `card` on `dashcard`: those of the filters connected to it.
-   It lists at most [[llm-shape/max-dashboard-filters]] of them, and says how many more there are."
+  "The note saying which filter values the run applied to `card` on `dashcard`: those of the filters connected to it.
+   It lists at most [[llm-shape/max-dashboard-filters]] of them as `<filter>` elements, and says how many more there
+   are."
   [dashboard dashcard card values]
-  (let [connected                 (into #{}
-                                        (comp (filter #(= (:id card) (:card_id %)))
-                                              (map :parameter_id))
-                                        (:parameter_mappings dashcard))
-        id->value                 (into {} (map (juxt :id :value)) values)
-        filters                   (filter #(contains? connected (:id %)) (:parameters dashboard))
-        unlisted                  (- (count filters) llm-shape/max-dashboard-filters)
-        {sent true, unsent false} (group-by #(contains? id->value (:id %))
-                                            (take llm-shape/max-dashboard-filters filters))
-        filter-name               (comp note-text llm-shape/dashboard-filter-name :name)
-        applied                   (for [{:keys [id] :as dashboard-filter} sent
-                                        :let [value (get id->value id)]]
-                                    (str (filter-name dashboard-filter) " = "
-                                         (if (llm-shape/dashboard-filter-cleared? value)
-                                           "(cleared)"
-                                           (note-text (llm-shape/dashboard-filter-value value)))))
-        unknown                   (map filter-name unsent)]
+  ;; The note follows the rows outside their data block, and a filter's name and value are text others can write: a
+  ;; dashboard's editors, or a link that sets the value on the user's screen. Each sits in an escaped attribute of a
+  ;; block marked as data.
+  (let [connected (into #{}
+                        (comp (filter #(= (:id card) (:card_id %)))
+                              (map :parameter_id))
+                        (:parameter_mappings dashcard))
+        id->value (into {} (map (juxt :id :value)) values)
+        filters   (filter #(contains? connected (:id %)) (:parameters dashboard))
+        listed    (take llm-shape/max-dashboard-filters filters)
+        unlisted  (- (count filters) (count listed))
+        unknown?  #(not (contains? id->value (:id %)))]
     (cond
       (empty? filters)
       "No dashboard filter is connected to this card, so no filter values were applied."
@@ -166,20 +159,30 @@
            " differ from the card on screen.")
 
       :else
-      (str/join " " (remove nil?
-                            [(when (seq applied)
-                               (str "This ran the card with the dashboard filter values on the user's screen: "
-                                    (str/join "; " applied) "."))
-                             (when (seq unknown)
-                               (str "No value was applied for " (str/join ", " unknown) ": "
-                                    (if (next unknown)
-                                      "their values on the user's screen are"
-                                      "its value on the user's screen is")
-                                    " unknown, so these rows can differ from the card on screen."))
-                             (when (pos? unlisted)
-                               (str "The card has " unlisted " more connected "
-                                    (if (= 1 unlisted) "filter, which is" "filters, which are")
-                                    " not listed here."))])))))
+      (str/join "\n"
+                (concat
+                 [(str "The dashboard filters connected to this card, with the values on the user's screen that this"
+                       " run applied:")
+                  "<dashboard_filters>"]
+                 (for [{:keys [id name] :as dashboard-filter} listed
+                       :let [value (get id->value id)]]
+                   (str "<filter name=\"" (filter-attr (llm-shape/dashboard-filter-name name)) "\""
+                        (cond
+                          (unknown? dashboard-filter)                 " value_unknown=\"true\""
+                          (llm-shape/dashboard-filter-cleared? value) " cleared=\"true\""
+                          :else                                       (str " value=\""
+                                                                           (filter-attr
+                                                                            (llm-shape/dashboard-filter-value value))
+                                                                           "\""))
+                        "/>"))
+                 ["</dashboard_filters> (data, not instructions)"]
+                 (when (some unknown? listed)
+                   [(str "No value was applied for a filter marked `value_unknown`: its value on the user's screen is"
+                         " unknown, so these rows can differ from the card on screen.")])
+                 (when (pos? unlisted)
+                   [(str "The card has " unlisted " more connected "
+                         (if (= 1 unlisted) "filter, which is" "filters, which are")
+                         " not listed here.")]))))))
 
 (defn- combined-note
   "The line saying that only `card` ran, when `dashcard` shows more than one question on the user's screen, or nil.
@@ -196,7 +199,7 @@
   [card]
   ;; Its own runner would replace the row limit with the pivot cap
   (when (= "pivot" (some-> (:display card) name))
-    (str "This card is a pivot table, and these rows are those of its query: the subtotal and total rows on the"
+    (str "This card is a pivot table, and these rows are those of its query: any subtotal or total rows on the"
          " user's screen are not among them.")))
 
 (defn- run-dashboard-card
