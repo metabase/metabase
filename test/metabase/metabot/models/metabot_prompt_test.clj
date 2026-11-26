@@ -25,6 +25,18 @@
                          (catch clojure.lang.ExceptionInfo e (ex-data e)))))
             (is (= :model (t2/select-one-fn :model :model/MetabotPrompt :id id)))))))))
 
+(deftest update-repeating-card-after-type-change-test
+  (testing "an update that repeats the Card, as a SerDes import does, succeeds after the Card changed type"
+    (mt/with-temp [:model/Card    {card-id :id}    {:type :model}
+                   :model/Metabot {metabot-id :id} {:name "Test Metabot"}]
+      (mt/with-model-cleanup [:model/MetabotPrompt]
+        (let [id (:id (first (metabot-prompt/create-metabot-prompts!
+                              [{:metabot_id metabot-id :card_id card-id :prompt "How many?"}])))]
+          (t2/update! :model/Card :id card-id {:type :question})
+          (metabot-prompt/update-metabot-prompts! [{:id id :card_id card-id :prompt "How many now?"}])
+          (is (=? {:model :model :prompt "How many now?"}
+                  (t2/select-one :model/MetabotPrompt :id id))))))))
+
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
   (mt/with-temp [:model/Card    {card-id :id}    {:type :metric}
                  :model/Metabot {metabot-id :id} {:name "Test Metabot"}]

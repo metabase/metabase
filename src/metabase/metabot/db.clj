@@ -247,6 +247,13 @@
    changes         :- :map]
   (t2/update! :model/MetabotConversation :id conversation-id changes))
 
+(mu/defn set-title-of-titleless-conversation! :- :int
+  "Set `title` on the MetabotConversation with `conversation-id` if it still has none, in one statement, returning the
+  number of rows updated."
+  [conversation-id :- :string
+   title           :- :string]
+  (t2/update! :model/MetabotConversation {:id conversation-id :title nil} {:title title}))
+
 (mu/defn titleless-conversation
   "The MetabotConversation with `conversation-id` if it has no title, or nil."
   [conversation-id :- :string]
