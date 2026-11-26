@@ -6,7 +6,6 @@
    [metabase.bookmarks.schema :as bookmarks.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -219,8 +218,7 @@
   "The bookmarks of the User with `user-id`, joined against the Card, Dashboard, Collection, Document, and Exploration
   tables, excluding archived items, and filtered to items the target `user-scope` (a map of `:current-user-id`,
   `:is-superuser?` and `:is-data-analyst?`) can still read (re-checked at read time rather than trusted from when the
-  bookmark was created, see SEC-669). The `collection_id` join qualifies its columns with
-  [[u/qualified-key]]."
+  bookmark was created, see SEC-669)."
   [user-id    :- ::lib.schema.id/user
    user-scope :- [:map {:closed true}
                   [:current-user-id  ::lib.schema.id/user]
@@ -249,8 +247,9 @@
                           [:exploration.archived    :exploration.archived]]
         left-joins       [[(t2/table-name :model/Card) :card]               [:= :bookmark.card_id :card.id]
                           [(t2/table-name :model/Dashboard) :dashboard]     [:= :bookmark.dashboard_id :dashboard.id]
-                          [(t2/table-name :model/Collection) :collection]   [:in :collection.id [(u/qualified-key :bookmark :collection_id)
-                                                                                                 (u/qualified-key :dashboard :collection_id)]]
+                          [(t2/table-name :model/Collection) :collection]   [:or
+                                                                             [:= :collection.id :bookmark.collection_id]
+                                                                             [:= :collection.id :dashboard.collection_id]]
                           [(t2/table-name :model/BookmarkOrdering) :bookmark_ordering] [:and
                                                                                         [:= :bookmark_ordering.user_id user-id]
                                                                                         [:= :bookmark_ordering.type :bookmark.type]
