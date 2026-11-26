@@ -31,7 +31,9 @@ export const getDataStudioLibraryRoutes = (IsAdmin: ComponentType) => {
         libraryUpsellPage,
       )}
     >
-      <Route index lazy={libraryPage} />
+      {/* Gated too: the router resolves every matched route's lazy, so an
+          ungated index would fetch the licensed page under the upsell. */}
+      <Route index lazy={featureGatedRoute("library", libraryPage)} />
       {getDataStudioTableRoutes(IsAdmin)}
       {getDataStudioMetricRoutes()}
     </Route>
