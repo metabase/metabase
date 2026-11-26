@@ -54,6 +54,16 @@ describe("scenarios > question > summarize sidebar", () => {
       cy.findByLabelText("Binning strategy").should("be.visible");
     });
   });
+
+  it("should not show the run button overlay when the query fails (metabase#12586)", () => {
+    cy.intercept("POST", "/api/dataset", (req) => req.destroy());
+
+    H.rightSidebar().button("Done").click();
+    H.main()
+      .findByText("We're experiencing server issues")
+      .should("be.visible");
+    cy.findByTestId("query-builder-main").icon("play").should("not.be.visible");
+  });
 });
 
 describe("scenarios > question > offset", () => {
