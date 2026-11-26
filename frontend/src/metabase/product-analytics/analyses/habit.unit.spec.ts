@@ -13,6 +13,7 @@ const SETTINGS: HabitSettings = {
   date_range: "past90days",
   counting: "person",
   granularity: "day",
+  drill: null,
   "habit.active": null,
   "habit.values": "count",
 };
@@ -37,5 +38,49 @@ describe("HABIT_CONFIG.getVizSettings", () => {
     expect(vizSettings.column_settings?.[PEOPLE_KEY]).toEqual({
       number_style: "percent",
     });
+  });
+});
+
+describe("HABIT_CONFIG.describeDrill", () => {
+  const getDrill = (value: Lib.AnalysisDrillValue): Lib.AnalysisDrill => ({
+    type: "actors",
+    dimensions: [
+      {
+        column_ref: ["field", "periods", { "base-type": "type/Integer" }],
+        value,
+      },
+    ],
+  });
+
+  it.each([
+    { granularity: "day", periods: 1, label: "People active on 1 day" },
+    { granularity: "day", periods: 6, label: "People active on 6 days" },
+    { granularity: "week", periods: 1, label: "People active in 1 week" },
+    { granularity: "week", periods: 3, label: "People active in 3 weeks" },
+  ] as const)(
+    "describes people active in $periods periods by $granularity",
+    ({ granularity, periods, label }) => {
+      expect(
+        HABIT_CONFIG.describeDrill(
+          { ...SETTINGS, granularity },
+          getDrill(periods),
+        ),
+      ).toBe(label);
+    },
+  );
+
+  it("can't describe a cell without a number of periods", () => {
+    expect(HABIT_CONFIG.describeDrill(SETTINGS, getDrill(null))).toBeNull();
+    expect(
+      HABIT_CONFIG.describeDrill(SETTINGS, {
+        type: "actors",
+        dimensions: [
+          {
+            column_ref: ["field", "people", { "base-type": "type/Integer" }],
+            value: 6,
+          },
+        ],
+      }),
+    ).toBeNull();
   });
 });

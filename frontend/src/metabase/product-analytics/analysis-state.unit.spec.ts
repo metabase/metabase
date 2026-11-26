@@ -21,6 +21,7 @@ const SETTINGS: HabitSettings = {
   date_range: "past90days",
   counting: "person",
   granularity: "week",
+  drill: null,
   "habit.active": null,
   "habit.values": "count",
 };
@@ -102,6 +103,54 @@ describe("getAnalysisState", () => {
         (column) => Lib.displayInfo(query, -1, column).name,
       ),
     ).toEqual(["periods", "people"]);
+  });
+
+  it("gives the planner the drill, which lists the drilled cell's people", () => {
+    const query = Lib.buildProductAnalyticsQuery(
+      setup({
+        settings: {
+          ...SETTINGS,
+          drill: {
+            type: "actors",
+            dimensions: [
+              {
+                column_ref: [
+                  "field",
+                  "periods",
+                  { "base-type": "type/Integer" },
+                ],
+                value: 6,
+              },
+            ],
+          },
+        },
+      }),
+    );
+
+    // USER_ID is an FK to PEOPLE.ID, so the drill projects the People row alongside the FK.
+    expect(
+      Lib.returnedColumns(query, -1).map(
+        (column) => Lib.displayInfo(query, -1, column).name,
+      ),
+    ).toEqual([
+      "USER_ID",
+      "periods",
+      "ADDRESS",
+      "BIRTH_DATE",
+      "CITY",
+      "CREATED_AT",
+      "EMAIL",
+      "ID",
+      "LATITUDE",
+      "LONGITUDE",
+      "NAME",
+      "PASSWORD",
+      "SOURCE",
+      "STATE",
+      "ZIP",
+    ]);
+    expect(Lib.aggregations(query, -1)).toHaveLength(0);
+    expect(Lib.filters(query, -1)).toHaveLength(1);
   });
 
   it("filters events to the date range", () => {

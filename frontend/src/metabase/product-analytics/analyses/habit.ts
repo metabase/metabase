@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import type { SegmentedControlItem } from "metabase/ui";
 import { isOneOf } from "metabase-types/guards";
@@ -79,5 +79,25 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
         y: isPercent ? t`Percent of total` : t`People`,
       }),
     };
+  },
+  describeDrill: ({ granularity }, { dimensions }) => {
+    const periods = dimensions.find(
+      ({ column_ref }) =>
+        Array.isArray(column_ref) && column_ref[1] === PERIODS_COLUMN,
+    )?.value;
+    if (typeof periods !== "number") {
+      return null;
+    }
+    return granularity === "week"
+      ? ngettext(
+          msgid`People active in ${periods} week`,
+          `People active in ${periods} weeks`,
+          periods,
+        )
+      : ngettext(
+          msgid`People active on ${periods} day`,
+          `People active on ${periods} days`,
+          periods,
+        );
   },
 };

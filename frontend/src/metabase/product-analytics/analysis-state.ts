@@ -69,6 +69,7 @@ export function getAnalysisState<K extends ProductAnalyticsKind>({
     "columns.person": Lib.columnUniqueKey(personColumn),
     "columns.timestamp": Lib.columnUniqueKey(timestampColumn),
     granularity: settings.granularity,
+    drill: settings.drill,
     "habit.active": readEventDefinition(settings["habit.active"]),
     "habit.values": settings["habit.values"],
   };

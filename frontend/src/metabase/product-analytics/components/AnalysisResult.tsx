@@ -6,6 +6,7 @@ import { Alert, Box, Flex, Icon, Stack, Title } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
 import { getChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton";
+import type { ClickActionsMode } from "metabase/visualizations/types";
 import type { CardDisplayType, RawSeries } from "metabase-types/api";
 
 import S from "./AnalysisResult.module.css";
@@ -17,6 +18,8 @@ type AnalysisResultProps = {
   rawSeries: RawSeries | null;
   isRunning: boolean;
   error: string | undefined;
+  /** The chart's click actions. None when undefined. */
+  mode?: ClickActionsMode;
 };
 
 export const AnalysisResult = ({
@@ -25,6 +28,7 @@ export const AnalysisResult = ({
   rawSeries,
   isRunning,
   error,
+  mode,
 }: AnalysisResultProps) => {
   const [warnings, setWarnings] = useState<string[]>([]);
   // A rerun has no result until it finishes, so the last run's chart stays up
@@ -60,6 +64,7 @@ export const AnalysisResult = ({
           <Visualization
             rawSeries={shownRawSeries}
             isQueryBuilder={false}
+            mode={mode}
             onChangeCardAndRun={noop}
             onUpdateWarnings={setWarnings}
           />

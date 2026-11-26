@@ -1,6 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 import type {
   DateTimeAbsoluteUnit,
+  DimensionReference,
   ProductAnalyticsKind,
 } from "metabase-types/api";
 
@@ -16,9 +17,29 @@ export type AnalysisState = {
   /** The `columnUniqueKey` of the query's column with each event's time. */
   "columns.timestamp": string;
   granularity: DateTimeAbsoluteUnit;
+  /** What to show instead of the analysis's result. `null` shows the result. */
+  drill: AnalysisDrill | null;
   "habit.active": AnalysisEvent | null;
   "habit.values": "count" | "percent";
 };
+
+/** A clicked cell of an analysis's result, and what to show for it. */
+export type AnalysisDrill = {
+  /** `actors` lists the people, or sessions, in the cell. */
+  type: "actors";
+  /** The cell's values. At least one. */
+  dimensions: AnalysisDrillDimension[];
+};
+
+export type AnalysisDrillDimension = {
+  /**
+   * The clicked column's `field_ref` from the result dataset.
+   */
+  column_ref: DimensionReference;
+  value: AnalysisDrillValue;
+};
+
+export type AnalysisDrillValue = string | number | boolean | null;
 
 /**
  * An event the planner reads. Other keys, like the event's name, are ignored.

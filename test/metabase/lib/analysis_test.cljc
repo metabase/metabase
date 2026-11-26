@@ -122,3 +122,51 @@
                          :filters     (symbol "nil #_\"key is not present.\"")}
                         {}]}
               (analysis/->mbql (assoc analysis :habit.active nil)))))))
+
+(deftest ^:parallel habit-drill-test
+  (let [base         (orders-query)
+        columns      (m/index-by :name (lib/returned-columns base))
+        analysis     {:kind              :habit
+                      :base-query        base
+                      :columns.person    (column/column-unique-key (columns "USER_ID"))
+                      :columns.timestamp (column/column-unique-key (columns "CREATED_AT"))
+                      :habit.values      :count
+                      :granularity       :day}
+        ;; FE-side pattern: compile the chart, take the clicked column's ref from its returned columns.
+        result-cols  (m/index-by :name (lib/returned-columns (analysis/->mbql analysis)))
+        periods-ref  (lib/ref (result-cols "periods"))
+        drill        (fn [dimensions] (assoc analysis :drill {:type :actors, :dimensions dimensions}))]
+    (testing "an actors drill lists the people active on that many periods, instead of counting them"
+      (let [query (analysis/->mbql (drill [{:column-ref periods-ref, :value 6}]))]
+        (is (=? {:stages [{:aggregation [[:distinct {:name "periods"} some?]]}
+                          {:aggregation (symbol "nil #_\"key is not present.\"")
+                           :breakout    (symbol "nil #_\"key is not present.\"")
+                           :filters     [[:= {} [:field {} "periods"] 6]]}]}
+                query))
+        (testing "and includes the actor table's columns via the person FK, minus the FK's target"
+          ;; USER_ID is an FK to PEOPLE.ID, so the drill projects the People row. PEOPLE.ID duplicates
+          ;; USER_ID's value, so it's dropped.
+          (is (= ["USER_ID" "periods"
+                  "ADDRESS" "EMAIL" "PASSWORD" "NAME" "CITY" "LONGITUDE" "STATE"
+                  "SOURCE" "BIRTH_DATE" "ZIP" "LATITUDE" "CREATED_AT"]
+                 (map :name (lib/returned-columns query)))))))
+    (testing "the drill can come in as JSON, with a legacy ref — the shape `DatasetColumn.field_ref` has on the FE"
+      ;; Like `to-js-filter-clause`, then a JSON round trip.
+      (let [->json (fn [x] (walk/postwalk #(cond-> % (keyword? %) u/qualified-name) x))
+            state  (-> analysis
+                       (dissoc :base-query)
+                       (assoc :drill {:type :actors
+                                      :dimensions [{:column-ref [:field "periods" {:base-type :type/Integer}]
+                                                    :value 6}]})
+                       ->json
+                       (assoc "base_query" base))]
+        (is (=? {:stages [{} {:filters [[:= {} [:field {} "periods"] 6]]}]}
+                (analysis/->mbql (lib.normalize/normalize ::analysis/analysis-state state))))))
+    (testing "a drill whose column-ref doesn't resolve in the analysis"
+      ;; "people" only exists in the chart's final stage, not in the actors-query's.
+      (let [people-ref (lib/ref (result-cols "people"))]
+        (is (thrown-with-msg? #?(:clj Exception :cljs js/Error) #"names a column the analysis doesn't have"
+                              (analysis/->mbql (drill [{:column-ref people-ref, :value 6}]))))))
+    (testing "an unknown drill type"
+      (is (thrown-with-msg? #?(:clj Exception :cljs js/Error) #"unsupported drill type"
+                            (analysis/->mbql (assoc analysis :drill {:type :unknown, :dimensions []})))))))

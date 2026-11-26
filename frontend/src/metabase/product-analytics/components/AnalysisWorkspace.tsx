@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
@@ -14,6 +14,9 @@ import {
   getAnalysisSettingWidgets,
 } from "../analyses/config";
 import type { AnalysisSettingsByKind } from "../analyses/types";
+import { getSettingsChanges } from "../drills/drill";
+import { getDrillMode } from "../drills/drill-mode";
+import { getClickedActorsLabel } from "../drills/labels";
 import { useAnalysis } from "../use-analysis";
 import { useStoredSettings } from "../use-stored-settings";
 
@@ -26,6 +29,8 @@ import { SetupPanel } from "./SetupPanel";
 import { TableNotSetUp } from "./TableNotSetUp";
 
 const STAGE_INDEX = -1;
+
+type Settings = AnalysisSettingsByKind[ProductAnalyticsKind];
 
 type AnalysisWorkspaceProps = {
   kind: ProductAnalyticsKind;
@@ -54,8 +59,8 @@ export const AnalysisWorkspace = ({
   const [isSetupOpen, { close: closeSetup, toggle: toggleSetup }] =
     useDisclosure(true);
   const metadataProvider = useMetadataProvider(eventTable?.db_id ?? null);
-  const { storedSettings, onChangeSettings } =
-    useStoredSettings<AnalysisSettingsByKind[ProductAnalyticsKind]>();
+  const { storedSettings, onChangeSettings: onChangeStoredSettings } =
+    useStoredSettings<Settings>();
   const {
     settings,
     baseQuery,
@@ -65,6 +70,41 @@ export const AnalysisWorkspace = ({
     isRunning,
     error: analysisError,
   } = useAnalysis({ kind, table: eventTable, storedSettings });
+  const config = getAnalysisConfig(kind);
+
+  const onChangeSettings = useCallback(
+    (changes: Partial<Settings>) => {
+      const settingsChanges =
+        settings !== undefined
+          ? getSettingsChanges(settings, changes)
+          : changes;
+      if (settingsChanges !== null) {
+        onChangeStoredSettings(settingsChanges);
+      }
+    },
+    [settings, onChangeStoredSettings],
+  );
+
+  const drill = settings?.drill ?? null;
+  const drillLabel =
+    settings !== undefined && drill !== null
+      ? (config.describeDrill(settings, drill) ??
+        getClickedActorsLabel(settings.counting))
+      : undefined;
+
+  const mode = useMemo(
+    () =>
+      settings !== undefined && settings.drill === null
+        ? getDrillMode({
+            counting: settings.counting,
+            describeDrill: (clickedDrill) =>
+              config.describeDrill(settings, clickedDrill),
+            onDrill: (clickedDrill) =>
+              onChangeSettings({ drill: clickedDrill }),
+          })
+        : undefined,
+    [config, settings, onChangeSettings],
+  );
 
   const settingWidgets = useMemo(
     () =>
@@ -115,7 +155,8 @@ export const AnalysisWorkspace = ({
           isTableLoading={isLoading}
           isTablePickerInitiallyOpened={tableId === undefined}
           settings={settings}
-          options={getAnalysisConfig(kind).options}
+          options={config.options}
+          drillLabel={drillLabel}
           query={query}
           baseQuery={baseQuery}
           areFiltersExpanded={areFiltersExpanded}
@@ -158,6 +199,7 @@ export const AnalysisWorkspace = ({
                     rawSeries={rawSeries}
                     isRunning={isRunning}
                     error={analysisError}
+                    mode={mode}
                   />
                 ) : (
                   <TableNotSetUp table={table} />
