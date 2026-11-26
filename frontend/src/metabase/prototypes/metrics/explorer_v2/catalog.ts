@@ -205,3 +205,40 @@ export const MEASURE_COLUMNS: Record<string, string> = {
   Seats: "Seats",
   Payments: "Payment",
 };
+
+/** A named filter on one table. Anything worth filtering a metric by gets a name. */
+export type SegmentSpec = {
+  name: string;
+  table: string;
+  /** What it filters, read like a filter typed in the bar: "Quantity ≥ 5". */
+  filter: string;
+};
+
+export const SEGMENTS: SegmentSpec[] = [
+  { name: "Large orders", table: "Orders", filter: "Quantity ≥ 5" },
+  {
+    name: "Discounted orders",
+    table: "Orders",
+    filter: "Discount is not empty",
+  },
+  { name: "Gizmo orders", table: "Orders", filter: "Product category = Gizmo" },
+  { name: "From Google", table: "People", filter: "Source = Google" },
+  {
+    name: "Converted trials",
+    table: "Accounts",
+    filter: "Trial converted = true",
+  },
+  { name: "Business plan", table: "Accounts", filter: "Plan = Business" },
+  { name: "Good reviews", table: "Reviews", filter: "Rating ≥ 4" },
+];
+
+/** How a pill's filter list refers to a segment, next to filters typed out. */
+export const SEGMENT_PREFIX = "segment:";
+
+export const segmentNameOf = (filter: string) =>
+  filter.startsWith(SEGMENT_PREFIX)
+    ? filter.slice(SEGMENT_PREFIX.length)
+    : null;
+
+/** What a pill shows for a filter: the segment's name, or the filter itself. */
+export const filterLabel = (filter: string) => segmentNameOf(filter) ?? filter;

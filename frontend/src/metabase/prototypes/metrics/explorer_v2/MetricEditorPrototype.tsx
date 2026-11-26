@@ -55,7 +55,12 @@ import { EXAMPLE_PARAM_PREFIX, ExamplesBar } from "./ExamplesBar";
 import { MetricsList, useMetrics } from "./MetricExplorerPrototype";
 import { MissingMeasures } from "./MissingMeasures";
 import type { BarItem } from "./TokenBar";
-import { MEASURE_COLUMNS, MEASURE_TABLES } from "./catalog";
+import {
+  MEASURE_COLUMNS,
+  MEASURE_TABLES,
+  SEGMENTS,
+  type SegmentSpec,
+} from "./catalog";
 import {
   EMPTY_MAPPING,
   type MetricDimensions,
@@ -66,6 +71,7 @@ import {
   pillOf,
   pillsOf,
   tableDimensions,
+  tablesOf,
 } from "./dimensions";
 import {
   COMPOSITE_IDS,
@@ -109,7 +115,7 @@ const EMPTY_DRAFT: MetricDraft = {
 const COMPOSITES = EXAMPLES.filter(({ id }) => COMPOSITE_IDS.includes(id));
 
 /** Measures and metrics on this instance, as the bar's options. */
-function useSourceItems() {
+function useSourceItems(segments: SegmentSpec[]) {
   const { metrics, isLoading: isLoadingMetrics } = useMetrics();
   const { data: measures = [], isLoading: isLoadingMeasures } =
     useListMeasuresQuery();
@@ -196,6 +202,8 @@ function useSourceItems() {
       );
     };
     return {
+      segment: (name) =>
+        segments.find((segment) => segment.name === name) ?? null,
       inner: (id) => inner.get(id) ?? null,
       leaf: (id) => {
         const item = items.find((candidate) => candidate.id === id);
@@ -209,7 +217,7 @@ function useSourceItems() {
           : null;
       },
     };
-  }, [items, measures, metrics, idOf]);
+  }, [items, measures, metrics, idOf, segments]);
 
   return {
     metrics,
@@ -262,7 +270,9 @@ const signature = ({ name, formula, where, mapping }: MetricDraft) =>
  * filters included. "New metric" opens the same page, empty.
  */
 export function MetricEditorPrototype() {
-  const sources = useSourceItems();
+  // The catalog's segments, plus the filters named in this session.
+  const [segments, setSegments] = useState(SEGMENTS);
+  const sources = useSourceItems(segments);
   const { metrics, isLoading } = sources;
   const { pathname, search } = useLocation();
   const navigate = useNavigate();
@@ -357,6 +367,14 @@ export function MetricEditorPrototype() {
             items={sources.items}
             nameOf={sources.nameOf}
             resolver={sources.resolver}
+            segments={segments}
+            onCreateSegment={(segment) =>
+              setSegments((current) =>
+                current.some(({ name }) => name === segment.name)
+                  ? current
+                  : [...current, segment],
+              )
+            }
             onSave={(draft) =>
               param && setSaved((prev) => ({ ...prev, [param]: draft }))
             }
@@ -381,6 +399,8 @@ function MetricEditorPage({
   items,
   nameOf,
   resolver,
+  segments,
+  onCreateSegment,
   onSave,
   onCancelNew,
   pillActions,
@@ -393,6 +413,8 @@ function MetricEditorPage({
   items: BarItem[];
   nameOf: (id: string) => string;
   resolver: Resolver;
+  segments: SegmentSpec[];
+  onCreateSegment: (segment: SegmentSpec) => void;
   onSave: (draft: MetricDraft) => void;
   onCancelNew: () => void;
 }) {
@@ -509,6 +531,8 @@ function MetricEditorPage({
           items={items}
           nameOf={nameOf}
           resolver={resolver}
+          segments={segments}
+          onCreateSegment={onCreateSegment}
           filterProblem={filterProblem}
           pillActions={pillActions}
           onChange={setDraft}
@@ -593,6 +617,8 @@ function EmbeddedExplorer({
   items,
   nameOf,
   resolver,
+  segments,
+  onCreateSegment,
   filterProblem,
   pillActions,
   onChange,
@@ -602,6 +628,8 @@ function EmbeddedExplorer({
   items: BarItem[];
   nameOf: (id: string) => string;
   resolver: Resolver;
+  segments: SegmentSpec[];
+  onCreateSegment: (segment: SegmentSpec) => void;
   filterProblem: FormulaProblem | null;
   onChange: (draft: MetricDraft) => void;
 }) {
@@ -643,18 +671,31 @@ function EmbeddedExplorer({
       section: "Dimensions of this metric",
       unshared: namePills(dimensions),
     });
+  /** The one table a pill reads, if it reads just one: its segments fit. */
+  const tableOf = (id: string) => {
+    const pill = pillOf(id, resolver);
+    const tables = pill ? tablesOf(pill) : [];
+    return tables.length === 1 ? tables[0] : undefined;
+  };
   const filtersForTerm = (id: string, query: string, exclude: string[]) => {
     const inner = resolver.inner(id);
+    const table = tableOf(id);
     return suggestFilters(
       pillOf(id, resolver)?.dimensions ?? [],
       query,
       exclude,
-      inner
-        ? {
-            hint: "Only the dimensions its measures share. To filter one of them, add it to the formula on its own.",
-            unshared: namePills(metricDimensions(inner, resolver)),
-          }
-        : { first: MEASURE_COLUMNS[nameOf(id)], alias: nameOf(id) },
+      {
+        segments: segments.filter((segment) => segment.table === table),
+        ...(inner
+          ? {
+              hint:
+                table == null
+                  ? "Only the dimensions its measures share, and no segments: a segment is on one table. To filter one measure, add it to the formula on its own."
+                  : undefined,
+              unshared: namePills(metricDimensions(inner, resolver)),
+            }
+          : { first: MEASURE_COLUMNS[nameOf(id)], alias: nameOf(id) }),
+      },
     );
   };
 
@@ -713,6 +754,14 @@ function EmbeddedExplorer({
               filtersForTerm={filtersForTerm}
               extraProblem={filterProblem}
               pillActions={pillActions}
+              segmentFilter={(name) => resolver.segment(name)?.filter}
+              canNameFilter={(id) => tableOf(id) != null}
+              onNameFilter={(id, filter, name) => {
+                const table = tableOf(id);
+                if (table != null) {
+                  onCreateSegment({ name, table, filter });
+                }
+              }}
             />
           }
         </Box>

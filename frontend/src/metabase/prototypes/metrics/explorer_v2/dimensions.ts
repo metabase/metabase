@@ -1,4 +1,10 @@
-import { COLUMNS, type ColumnSpec, type Kind } from "./catalog";
+import {
+  COLUMNS,
+  type ColumnSpec,
+  type Kind,
+  type SegmentSpec,
+  segmentNameOf,
+} from "./catalog";
 import type { FormulaProblem, FormulaToken, MetricDraft } from "./formula";
 
 /** Why the columns of a dimension belong together, strongest first. */
@@ -36,6 +42,7 @@ export type Resolver = {
   leaf: (id: string) => Pill | null;
   /** The definition of a metric that is itself math over other pills. */
   inner: (id: string) => MetricDraft | null;
+  segment: (name: string) => SegmentSpec | null;
 };
 
 const TIERS: Tier[] = ["field", "name", "semantic"];
@@ -247,8 +254,21 @@ export const pillDimensionFor = (pill: Pill, dimension: Dimension) =>
     ),
   );
 
+/** The tables the pill reads. A segment fits a pill that reads only its table. */
+export const tablesOf = (pill: Pill) => [
+  ...new Set(
+    pill.dimensions.flatMap((dimension) =>
+      dimension.columns.map((column) => column.table),
+    ),
+  ),
+];
+
 /** The metric's filter, reading the pill's name for the same dimension. */
 function relabel(filter: string, dimensions: Dimension[], pill: Pill | null) {
+  // A segment belongs to the one table all of the pill's measures read.
+  if (segmentNameOf(filter) != null) {
+    return pill ? filter : null;
+  }
   const label = leadingLabel(filter, labelsOf(dimensions));
   const dimension = dimensions.find((candidate) => candidate.label === label);
   const own = dimension && pill && pillDimensionFor(pill, dimension);
@@ -280,7 +300,12 @@ export function flattenDraft(
     const filters = [...new Set([...token.filters, ...passed])];
     const inner = resolver.inner(token.measureId);
     if (!inner) {
-      return [{ ...token, key, filters }];
+      // The measure itself: segments become the filters they stand for.
+      const spelled = filters.flatMap((filter) => {
+        const name = segmentNameOf(filter);
+        return name == null ? [filter] : (resolver.segment(name)?.filter ?? []);
+      });
+      return [{ ...token, key, filters: spelled }];
     }
     const parts = flattenDraft(inner, resolver, filters, `${key}/`);
     return draft.formula.length === 1
@@ -306,9 +331,24 @@ export function findFilterProblem(
     if (token.kind !== "term" || !pill) {
       continue;
     }
+    const tables = tablesOf(pill);
+    for (const filter of token.filters) {
+      const name = segmentNameOf(filter);
+      const segment = name == null ? null : resolver.segment(name);
+      if (name == null || (segment && tables.join() === segment.table)) {
+        continue;
+      }
+      const message = !segment
+        ? `There’s no segment called ${name}.`
+        : tables.length > 1
+          ? `${name} is a segment on ${segment.table}, and ${pill.name} reads ${tables.join(" and ")}. Put it on the measure it belongs to.`
+          : `${name} is a segment on ${segment.table}, so it can’t filter ${pill.name}.`;
+      return { message, keys: [token.key] };
+    }
     const labels = labelsOf(pill.dimensions.filter(isFilterable));
     const filter = token.filters.find(
-      (candidate) => !leadingLabel(candidate, labels),
+      (candidate) =>
+        segmentNameOf(candidate) == null && !leadingLabel(candidate, labels),
     );
     if (filter != null) {
       const label = dimensionLabelOf(filter) ?? filter;
@@ -324,6 +364,13 @@ export function findFilterProblem(
   const { mapped, suggested } = metricDimensions(draft, resolver);
   const labels = labelsOf(mapped.filter(isFilterable));
   const where = draft.where.find(({ filter }) => !leadingLabel(filter, labels));
+  const whereSegment = where && segmentNameOf(where.filter);
+  if (where && whereSegment != null) {
+    return {
+      message: `${whereSegment} is a segment, and segments filter one measure. Add it to that measure’s pill.`,
+      keys: [where.key],
+    };
+  }
   if (where) {
     const label = dimensionLabelOf(where.filter) ?? where.filter;
     const fix = leadingLabel(where.filter, labelsOf(suggested))

@@ -7,7 +7,14 @@ import * as LibMetric from "metabase-lib/metric";
 import type { IconName } from "metabase-types/api";
 
 import { type BarItem, DRAFT_PREFIX, matchesItem } from "./TokenBar";
-import { COLUMNS, type ColumnSpec, type Kind, MEASURE_TABLES } from "./catalog";
+import {
+  COLUMNS,
+  type ColumnSpec,
+  type Kind,
+  MEASURE_TABLES,
+  SEGMENT_PREFIX,
+  type SegmentSpec,
+} from "./catalog";
 import { type Dimension, EMPTY_MAPPING } from "./dimensions";
 import {
   type FormulaToken,
@@ -165,6 +172,8 @@ type SuggestOptions = {
   hint?: string;
   /** Dimensions only some pills have: typing one says where to filter it. */
   unshared?: { label: string; pills: string[] }[];
+  /** The named filters of the pill's table, offered before its columns. */
+  segments?: SegmentSpec[];
 };
 
 /**
@@ -176,7 +185,14 @@ export function suggestFilters(
   dimensions: Dimension[],
   query: string,
   exclude: string[] = [],
-  { first, alias, section, hint, unshared = [] }: SuggestOptions = {},
+  {
+    first,
+    alias,
+    section,
+    hint,
+    unshared = [],
+    segments = [],
+  }: SuggestOptions = {},
 ): BarItem[] {
   const columns = dimensions.flatMap((dimension): FilterField[] =>
     dimension.kind === "date"
@@ -196,6 +212,22 @@ export function suggestFilters(
       ...columns.filter((c) => c.label === first),
       ...columns.filter((c) => c.label !== first),
     ];
+    const named = segments
+      .map(
+        (segment): BarItem => ({
+          id: `${SEGMENT_PREFIX}${segment.name}`,
+          label: segment.name,
+          icon: "segment",
+          description: segment.filter,
+          section: "Segments",
+          sectionIcon: "segment",
+        }),
+      )
+      .filter(
+        (item) =>
+          !exclude.includes(item.id) &&
+          matchesItem({ ...item, section: undefined }, rest),
+      );
     const items = ordered
       .map(
         (c): BarItem => ({
@@ -203,7 +235,8 @@ export function suggestFilters(
           label: c.label,
           icon: KIND_ICONS[c.kind],
           aliases: c.label === first && alias ? [alias] : [],
-          section,
+          section:
+            section ?? (segments.length > 0 ? "Or by a column" : undefined),
           sectionIcon: "table",
         }),
       )
@@ -226,7 +259,7 @@ export function suggestFilters(
     const why: BarItem[] = hint
       ? [{ id: "hint:dimensions", label: hint, disabled: true }]
       : [];
-    return [...items, ...elsewhere, ...why];
+    return [...named, ...items, ...elsewhere, ...why];
   }
 
   if (!op) {
@@ -408,9 +441,9 @@ export const EXAMPLES: MetricExample[] = [
   {
     id: "discounted-order-share",
     name: "Share of orders with a discount",
-    hint: "The same measure twice, one with its own filter.",
+    hint: "The same measure twice, one filtered by a segment.",
     formula: [
-      { measure: "Orders", filters: ["Discount is not empty"] },
+      { measure: "Orders", filters: ["segment:Discounted orders"] },
       "÷",
       "Orders",
     ],
@@ -421,7 +454,7 @@ export const EXAMPLES: MetricExample[] = [
     name: "Trial conversion rate",
     hint: "A rate: accounts that converted out of all new accounts.",
     formula: [
-      { measure: "New accounts", filters: ["Trial converted = true"] },
+      { measure: "New accounts", filters: ["segment:Converted trials"] },
       "÷",
       "New accounts",
     ],
@@ -430,11 +463,11 @@ export const EXAMPLES: MetricExample[] = [
   {
     id: "gizmo-average-order-value",
     name: "Gizmo average order value",
-    hint: "The same filter on each measure.",
+    hint: "The same segment on each measure.",
     formula: [
-      { measure: "Revenue", filters: ["Product category = Gizmo"] },
+      { measure: "Revenue", filters: ["segment:Gizmo orders"] },
       "÷",
-      { measure: "Orders", filters: ["Product category = Gizmo"] },
+      { measure: "Orders", filters: ["segment:Gizmo orders"] },
     ],
     where: [],
   },
@@ -448,11 +481,25 @@ export const EXAMPLES: MetricExample[] = [
   {
     id: "large-order-revenue-per-new-customer",
     name: "Large-order revenue per new customer",
-    hint: "Two tables, one side filtered: Quantity is only on Orders, so the filter sits on Revenue's own pill.",
+    hint: "Two tables, one side filtered: the segment is on Orders, so it sits on Revenue's own pill.",
     formula: [
-      { measure: "Revenue", filters: ["Quantity ≥ 5"] },
+      { measure: "Revenue", filters: ["segment:Large orders"] },
       "÷",
       "New customers",
+    ],
+    where: [],
+  },
+  {
+    id: "large-gizmo-revenue-share",
+    name: "Revenue share of large Gizmo orders",
+    hint: "Two segments on one pill: both have to hold.",
+    formula: [
+      {
+        measure: "Revenue",
+        filters: ["segment:Large orders", "segment:Gizmo orders"],
+      },
+      "÷",
+      "Revenue",
     ],
     where: [],
   },

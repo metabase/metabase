@@ -5,12 +5,15 @@ import { t } from "ttag";
 import {
   ActionIcon,
   Box,
+  Button,
   Group,
   HoverCard,
   Icon,
   Menu,
+  Popover,
   Stack,
   Text,
+  TextInput,
   Tooltip,
 } from "metabase/ui";
 
@@ -18,6 +21,7 @@ import { getMeasure } from "../data";
 
 import S from "./Explorer.module.css";
 import { type BarItem, InlineSuggest, TokenBar } from "./TokenBar";
+import { SEGMENT_PREFIX, filterLabel, segmentNameOf } from "./catalog";
 import {
   FILTER_ITEMS,
   type FormulaProblem,
@@ -59,6 +63,9 @@ export function DefinitionEditor({
   filtersForTerm = (_measureId, query, exclude) => whereFilters(query, exclude),
   extraProblem,
   pillActions = "menu",
+  segmentFilter,
+  canNameFilter,
+  onNameFilter,
 }: {
   draft: MetricDraft;
   onChange: (draft: MetricDraft) => void;
@@ -78,6 +85,12 @@ export function DefinitionEditor({
   /** A problem with the filters, shown once the formula itself is fine. */
   extraProblem?: FormulaProblem | null;
   pillActions?: PillActions;
+  /** What a segment filters, for its tooltip. */
+  segmentFilter?: (name: string) => string | undefined;
+  /** Whether a typed-out filter on this pill can be named as a segment. */
+  canNameFilter?: (measureId: string) => boolean;
+  /** Called with the new segment; the pill then shows its name. */
+  onNameFilter?: (measureId: string, filter: string, name: string) => void;
 }) {
   const { formula, where } = draft;
   const setFormula = (next: FormulaToken[]) =>
@@ -96,6 +109,10 @@ export function DefinitionEditor({
     }
   }, [isWhereOpen]);
   const [editing, setEditing] = useState<Editing | null>(null);
+  // The typed-out filter just added to a pill: its naming popup opens itself.
+  const [naming, setNaming] = useState<{ key: string; filter: string } | null>(
+    null,
+  );
 
   const problem = findProblem(formula, measureName) ?? extraProblem ?? null;
   const hasProblem = (key: string) => problem?.keys.includes(key) ?? false;
@@ -184,7 +201,9 @@ export function DefinitionEditor({
         id: `filter-term:${term.key}`,
         label: `Filter ${measureName(term.measureId)}`,
         description:
-          term.filters.length > 0 ? `| ${term.filters.join(", ")}` : undefined,
+          term.filters.length > 0
+            ? `| ${term.filters.map(filterLabel).join(", ")}`
+            : undefined,
         icon: "filter",
         aliases: ["|", "filter", "where"],
         section: "Filter",
@@ -246,6 +265,13 @@ export function DefinitionEditor({
     if (host != null) {
       updateTerm(host.key, (filters) => [...filters, item.id]);
       setFilterHost(null);
+      const canName =
+        host.kind === "term" &&
+        onNameFilter != null &&
+        (canNameFilter?.(host.measureId) ?? false);
+      if (canName && segmentNameOf(item.id) == null) {
+        setNaming({ key: host.key, filter: item.id });
+      }
       return caret;
     }
     const result = insertOperand(formula, caret, {
@@ -384,47 +410,76 @@ export function DefinitionEditor({
         )}
         {token.filters.map((filter) =>
           isEditing(token.key, `filter:${filter}`) ? (
-            <span key={filter} className={cx(S.seg, S.segEditing)}>
+            <span key={filter} className={S.filterPart}>
               <span className={S.pipe}>|</span>
-              <InlineSuggest
-                placeholder={filter}
-                initialQuery={filter}
-                title={t`Filter by`}
-                getItems={(query) =>
-                  filtersForTerm(
-                    token.measureId,
-                    query,
-                    token.filters.filter((f) => f !== filter),
-                  )
-                }
-                onPick={(item) => {
-                  updateTerm(token.key, (filters) =>
-                    filters.map((f) => (f === filter ? item.id : f)),
-                  );
-                  finish();
-                }}
-                onCancel={(isEscape) => cancel(isEscape)}
-                onBackspaceEmpty={() => {
-                  updateTerm(token.key, (filters) =>
-                    filters.filter((f) => f !== filter),
-                  );
-                  finish();
-                }}
-              />
+              <span className={cx(S.seg, S.segEditing)}>
+                <InlineSuggest
+                  placeholder={filterLabel(filter)}
+                  initialQuery={filterLabel(filter)}
+                  title={t`Filter by`}
+                  getItems={(query) =>
+                    filtersForTerm(
+                      token.measureId,
+                      query,
+                      token.filters.filter((f) => f !== filter),
+                    )
+                  }
+                  onPick={(item) => {
+                    updateTerm(token.key, (filters) =>
+                      filters.map((f) => (f === filter ? item.id : f)),
+                    );
+                    finish();
+                  }}
+                  onCancel={(isEscape) => cancel(isEscape)}
+                  onBackspaceEmpty={() => {
+                    updateTerm(token.key, (filters) =>
+                      filters.filter((f) => f !== filter),
+                    );
+                    finish();
+                  }}
+                />
+              </span>
             </span>
           ) : (
-            <button
-              key={filter}
-              className={cx(S.seg, S.segFilter, {
-                [S.partSelected]: selectedPart === `filter:${filter}`,
-              })}
-              onClick={() =>
-                setEditing({ key: token.key, part: `filter:${filter}` })
-              }
-            >
+            <span key={filter} className={S.filterPart}>
               <span className={S.pipe}>|</span>
-              {filter}
-            </button>
+              <Tooltip
+                label={segmentFilter?.(segmentNameOf(filter) ?? "")}
+                disabled={segmentNameOf(filter) == null}
+              >
+                <button
+                  className={cx(S.seg, S.segFilter, {
+                    [S.partSelected]: selectedPart === `filter:${filter}`,
+                  })}
+                  onClick={() =>
+                    setEditing({ key: token.key, part: `filter:${filter}` })
+                  }
+                >
+                  {segmentNameOf(filter) != null && (
+                    <Icon name="segment" size={12} />
+                  )}
+                  {filterLabel(filter)}
+                </button>
+              </Tooltip>
+              {segmentNameOf(filter) == null &&
+                onNameFilter &&
+                canNameFilter?.(token.measureId) && (
+                  <NameFilter
+                    defaultOpen={
+                      naming?.key === token.key && naming.filter === filter
+                    }
+                    onClose={() => setNaming(null)}
+                    onSave={(segmentName) => {
+                      onNameFilter(token.measureId, filter, segmentName);
+                      updateTerm(token.key, (filters) =>
+                        filters.map((f) =>
+                          f === filter ? `${SEGMENT_PREFIX}${segmentName}` : f,
+                        ),
+                      );
+                    }}
+                  />
+                )}
+            </span>
           ),
         )}
         <Icon
@@ -667,5 +722,82 @@ export function DefinitionEditor({
         {whereBar}
       </Stack>
     </Stack>
+  );
+}
+
+/**
+ * Gives a typed-out filter a name: it becomes a segment on the measure's
+ * table, and the pill reads "Revenue | Large orders".
+ */
+function NameFilter({
+  defaultOpen,
+  onClose,
+  onSave,
+}: {
+  /** Open from the start, for a filter that was just typed. */
+  defaultOpen: boolean;
+  onClose: () => void;
+  onSave: (name: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [name, setName] = useState("");
+  const trimmed = name.trim();
+  const toggle = (next: boolean) => {
+    setIsOpen(next);
+    if (!next) {
+      onClose();
+    }
+  };
+  const save = () => {
+    if (trimmed !== "") {
+      onSave(trimmed);
+      toggle(false);
+    }
+  };
+  return (
+    <Popover
+      opened={isOpen}
+      onChange={toggle}
+      position="bottom-start"
+      trapFocus
+    >
+      <Popover.Target>
+        <Tooltip label="Name this filter" disabled={isOpen}>
+          <button
+            className={S.nameFilter}
+            aria-label="Name this filter"
+            onClick={() => toggle(!isOpen)}
+          >
+            <Icon name="label" size={12} />
+          </button>
+        </Tooltip>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <Stack gap="sm" p="md" w="18rem">
+          <TextInput
+            data-autofocus
+            placeholder="Like Large orders"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            onKeyDown={(event) => {
+              event.stopPropagation();
+              if (event.key === "Enter") {
+                save();
+              }
+            }}
+          />
+          <Group justify="flex-end">
+            <Button
+              variant="filled"
+              size="compact-md"
+              disabled={trimmed === ""}
+              onClick={save}
+            >
+              Save segment
+            </Button>
+          </Group>
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
   );
 }
