@@ -22,7 +22,7 @@ summary: Changes to the Metabase driver interface, listed by release.
   `{:percent p}`. The compiler calls it for a query stage with `:table-sample`. The `:sql` default throws. A driver
   that implements it uses `metabase.driver.common.table-rows-sample/block-sample` as its
   `metabase.driver/table-random-sample`. A driver with its own `apply-top-level-clause` for `:source-table` must call
-  the new method itself. The Postgres driver is the first to use it.
+  the new method itself. The Postgres and SQL Server drivers use it.
 
 - A query stage's `:table-sample` can also be `{:positions {:ranges [[from to] ...] :every n :remainder r}}`: the
   rows at the same ranges of positions inside each storage part of the table, every `n`th of them. The schema takes
