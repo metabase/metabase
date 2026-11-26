@@ -186,6 +186,143 @@
    :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]]}
    :expected     "DELETE FROM mb_tmp WHERE id = 1"}
 
+  {:name         "a column qualified by the table an UPDATE writes takes the replacement's name, and other tables keep the alias rule"
+   :dialects     ["postgres" "redshift" "tsql"]
+   :sql          "UPDATE orders SET total = staging.total FROM staging WHERE orders.id = staging.id"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]
+                           [{:table "staging"} {:db nil :schema nil :table "mb_staging"}]]}
+   :expected     "UPDATE mb_tmp SET total = staging.total FROM mb_staging AS staging WHERE mb_tmp.id = staging.id"}
+
+  {:name         "a MySQL UPDATE with a join: the qualifiers of the table it writes"
+   :dialect      "mysql"
+   :sql          "UPDATE orders JOIN staging s ON orders.id = s.id SET orders.total = s.total"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]
+                           [{:table "staging"} {:db nil :schema nil :table "mb_staging"}]]}
+   :expected     "UPDATE mb_tmp JOIN mb_staging s ON mb_tmp.id = s.id SET mb_tmp.total = s.total"}
+
+  {:name         "a Postgres INSERT whose ON CONFLICT reads the table it writes by name"
+   :dialect      "postgres"
+   :sql          "INSERT INTO orders (id, total) VALUES (1, 2) ON CONFLICT (id) DO UPDATE SET total = orders.total + EXCLUDED.total"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]]}
+   :expected     "INSERT INTO mb_tmp (id, total) VALUES (1, 2) ON CONFLICT (id) DO UPDATE SET total = mb_tmp.total + EXCLUDED.total"}
+
+  {:name         "a MySQL INSERT whose ON DUPLICATE KEY UPDATE reads the table it writes by name"
+   :dialect      "mysql"
+   :sql          "INSERT INTO orders (id, total) VALUES (1, 2) ON DUPLICATE KEY UPDATE total = orders.total + VALUES(total)"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]]}
+   :expected     "INSERT INTO mb_tmp (id, total) VALUES (1, 2) ON DUPLICATE KEY UPDATE total = mb_tmp.total + VALUES(total)"}
+
+  {:name         "a DELETE whose WHERE qualifies a column by the table it writes"
+   :dialects     ["postgres" "mysql" "redshift" "tsql"]
+   :sql          "DELETE FROM orders WHERE orders.id = 1"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]]}
+   :expected     "DELETE FROM mb_tmp WHERE mb_tmp.id = 1"}
+
+  {:name         "a MySQL DELETE that names the table it writes before FROM"
+   :dialect      "mysql"
+   :sql          "DELETE orders FROM orders JOIN staging s ON orders.id = s.id WHERE s.gone = 1"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]
+                           [{:table "staging"} {:db nil :schema nil :table "mb_staging"}]]}
+   :expected     "DELETE mb_tmp FROM mb_tmp JOIN mb_staging s ON mb_tmp.id = s.id WHERE s.gone = 1"}
+
+  {:name         "a Postgres DELETE with RETURNING"
+   :dialect      "postgres"
+   :sql          "DELETE FROM orders WHERE id = 1 RETURNING orders.*"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]]}
+   :expected     "DELETE FROM mb_tmp WHERE id = 1 RETURNING mb_tmp.*"}
+
+  {:name         "a subquery that reads the written table by name takes no alias, so its qualifier still names the inner table"
+   :dialects     ["postgres" "redshift" "tsql"]
+   :sql          "UPDATE orders SET total = (SELECT max(orders.total) FROM orders)"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]]}
+   :expected     "UPDATE mb_tmp SET total = (SELECT max(mb_tmp.total) FROM mb_tmp)"}
+
+  {:name         "a written table with an alias: the alias rule holds for the other references to it"
+   :dialects     ["postgres" "mysql"]
+   :sql          "UPDATE orders o SET total = (SELECT max(orders.total) FROM orders) WHERE o.id = 1"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]]}
+   :expected     "UPDATE mb_tmp o SET total = (SELECT max(orders.total) FROM mb_tmp AS orders) WHERE o.id = 1"}
+
+  {:name         "a qualifier that names the written table with its schema takes the replacement's name"
+   :dialects     ["postgres" "mysql" "redshift" "tsql"]
+   :sql          "UPDATE public.orders SET total = 0 WHERE public.orders.id = 1 AND orders.total > 0"
+   :replacements {:tables [[{:schema "public" :table "orders"} {:db nil :schema nil :table "mb_tmp"}]
+                           [{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]]}
+   :expected     "UPDATE mb_tmp SET total = 0 WHERE mb_tmp.id = 1 AND mb_tmp.total > 0"}
+
+  {:name         "a quoted qualifier of the written table: the replacement is quoted"
+   :dialects     ["postgres" "redshift"]
+   :sql          "UPDATE \"Orders\" SET \"Total\" = 0 WHERE \"Orders\".\"Id\" = 1"
+   :replacements {:tables [[{:table "Orders"} {:db nil :schema nil :table "mb_tmp"}]]}
+   :expected     "UPDATE \"mb_tmp\" SET \"Total\" = 0 WHERE \"mb_tmp\".\"Id\" = 1"}
+
+  {:name         "a backtick-quoted qualifier of the written table"
+   :dialect      "mysql"
+   :sql          "UPDATE `Orders` SET `Orders`.`Total` = 0 WHERE `Orders`.`Id` = 1"
+   :replacements {:tables [[{:table "Orders"} {:db nil :schema nil :table "mb_tmp"}]]}
+   :expected     "UPDATE `mb_tmp` SET `mb_tmp`.`Total` = 0 WHERE `mb_tmp`.`Id` = 1"}
+
+  {:name         "a write from one table to another of the same name, with no qualifier to decide"
+   :dialects     ["postgres" "mysql" "redshift" "tsql"]
+   :sql          "INSERT INTO a.orders SELECT * FROM b.orders"
+   :replacements {:tables [[{:schema "a" :table "orders"} {:db nil :schema nil :table "mb_a"}]
+                           [{:schema "b" :table "orders"} {:db nil :schema nil :table "mb_b"}]]}
+   :expected     "INSERT INTO mb_a SELECT * FROM mb_b"}
+
+  {:name         "a qualifier that could name the written table or another of its name is refused"
+   :dialects     ["postgres" "redshift" "tsql"]
+   :sql          "UPDATE a.orders SET total = 0 FROM b.orders WHERE orders.id = 1"
+   :replacements {:tables [[{:schema "a" :table "orders"} {:db nil :schema nil :table "mb_a"}]
+                           [{:schema "b" :table "orders"} {:db nil :schema nil :table "mb_b"}]]}
+   :refused      {:reason "ambiguous-table-name" :detail "orders"}}
+
+  {:name         "a qualifier with the written table's name is refused when an alias has that name too"
+   :dialects     ["postgres" "redshift" "tsql"]
+   :sql          "UPDATE orders SET total = (SELECT max(orders.total) FROM staging AS orders)"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]
+                           [{:table "staging"} {:db nil :schema nil :table "mb_staging"}]]}
+   :refused      {:reason "unaliased-name-reused" :detail "orders"}}
+
+  {:name         "an alias with the written table's name, and no qualifier of that name"
+   :dialects     ["postgres" "redshift" "tsql"]
+   :sql          "UPDATE orders SET total = (SELECT max(total) FROM staging AS orders)"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]
+                           [{:table "staging"} {:db nil :schema nil :table "mb_staging"}]]}
+   :expected     "UPDATE mb_tmp SET total = (SELECT max(total) FROM mb_staging AS orders)"}
+
+  {:name         "a CTE does not shadow the table an INSERT writes, and does shadow the table it reads"
+   :dialects     ["postgres" "mysql" "redshift"]
+   :sql          "WITH orders AS (SELECT id FROM staging) INSERT INTO orders SELECT id FROM orders"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]
+                           [{:table "staging"} {:db nil :schema nil :table "mb_staging"}]]}
+   :expected     "WITH orders AS (SELECT id FROM mb_staging AS staging) INSERT INTO mb_tmp SELECT id FROM orders"}
+
+  {:name         "in T-SQL an INSERT writes through a CTE of the target's name, so the target is not replaced"
+   :dialect      "tsql"
+   :sql          "WITH orders AS (SELECT id FROM staging) INSERT INTO orders SELECT id FROM orders"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]
+                           [{:table "staging"} {:db nil :schema nil :table "mb_staging"}]]}
+   :expected     "WITH orders AS (SELECT id FROM mb_staging AS staging) INSERT INTO orders SELECT id FROM orders"}
+
+  {:name         "a qualifier of the written table is refused when a CTE has the table's name"
+   :dialects     ["postgres" "mysql" "redshift"]
+   :sql          "WITH orders AS (SELECT id FROM staging) UPDATE orders SET total = 0 WHERE orders.id IN (SELECT id FROM orders)"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]
+                           [{:table "staging"} {:db nil :schema nil :table "mb_staging"}]]}
+   :refused      {:reason "unaliased-name-reused" :detail "orders"}}
+
+  {:name         "T-SQL compares a quoted CTE name without case, so the CTE shadows the table"
+   :dialect      "tsql"
+   :sql          "WITH \"Orders\" AS (SELECT 1 AS id) SELECT id FROM orders"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]]}
+   :expected     "WITH \"Orders\" AS (SELECT 1 AS id) SELECT id FROM orders"}
+
+  {:name         "Postgres keeps the case of a quoted CTE name, so the CTE does not shadow the table"
+   :dialect      "postgres"
+   :sql          "WITH \"Orders\" AS (SELECT 1 AS id) SELECT id FROM orders"
+   :replacements {:tables [[{:table "orders"} {:db nil :schema nil :table "mb_tmp"}]]}
+   :expected     "WITH \"Orders\" AS (SELECT 1 AS id) SELECT id FROM mb_tmp AS orders"}
+
   {:name         "a comment between the parts of a name is refused"
    :dialects     ["postgres" "mysql" "redshift" "clickhouse" "tsql"]
    :sql          "SELECT * FROM public /* c */ . orders"

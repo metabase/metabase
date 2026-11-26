@@ -4,8 +4,9 @@
   (:require
    [metabase.sql-parsing.sqlglot-java.ast :as ast])
   (:import
-   (com.metabase.sqlglot.ast Expressions$Column Expressions$CTE Expressions$Identifier Expressions$Select
-                             Expressions$Star Expressions$Table Expressions$With)
+   (com.metabase.sqlglot.ast Expressions$Column Expressions$CTE Expressions$Delete Expressions$Identifier
+                             Expressions$Insert Expressions$Merge Expressions$Schema Expressions$Select
+                             Expressions$Star Expressions$Table Expressions$Update Expressions$With)
    (com.metabase.sqlglot.reference Scope)))
 
 (set! *warn-on-reflection* true)
@@ -30,28 +31,57 @@
        (not-empty (ast/text table "db"))
        (str (temp-table-prefix table) table-name)])))
 
-(defn shadowing-cte-names
-  "The CTE names, lower-cased, that shadow a table at `node`: those declared by a query `node` sits inside. A CTE does
-  not shadow the table its own body reads, unless it is recursive. Port of `shadowing_cte_names`."
+(defn- write-target?
+  "Whether the table `node` is the table an INSERT, UPDATE, DELETE or MERGE writes. Port of `write_target`."
   [node]
-  (loop [current node, names #{}, own #{}]
-    (if-not current
-      (reduce disj names own)
-      (let [declaration (ast/parent current)
-            own         (cond-> own
-                          (and (instance? Expressions$CTE current)
-                               (seq (ast/node-alias current))
-                               (not (and (instance? Expressions$With declaration)
-                                         (ast/arg declaration "recursive"))))
-                          (conj (ast/lower (ast/node-alias current))))
-            names       (into names
-                              (for [value (vals (ast/args current))
-                                    :when (instance? Expressions$With value)
-                                    cte   (ast/expressions value)
-                                    :let  [cte-alias (ast/node-alias cte)]
-                                    :when (seq cte-alias)]
-                                (ast/lower cte-alias)))]
-        (recur (ast/parent current) names own)))))
+  (let [parent (ast/parent node)
+        ;; An INSERT with a column list keeps its target inside a Schema node: `INSERT INTO t (a, b)`.
+        [node parent] (if (and (instance? Expressions$Schema parent) (identical? (ast/this parent) node))
+                        [parent (ast/parent parent)]
+                        [node parent])]
+    (and (ast/instance-of-any? [Expressions$Insert Expressions$Update Expressions$Delete Expressions$Merge] parent)
+         (identical? (ast/this parent) node))))
+
+(defn resolved-name
+  "The name the table or CTE `node` declares or refers to, as `dialect` resolves an identifier: in Postgres an unquoted
+  name is folded to lower case and a quoted one is kept as written, in Snowflake an unquoted name is folded to upper
+  case, and in T-SQL case is ignored. Two nodes name the same thing iff their resolved names are equal.
+  Port of `resolved_name`."
+  [node dialect]
+  (let [cte?       (instance? Expressions$CTE node)
+        identifier (if cte? (ast/this (ast/arg node "alias")) (ast/this node))
+        identifier (if (instance? Expressions$Identifier identifier)
+                     identifier
+                     (ast/to-identifier (if cte? (ast/node-alias node) (ast/node-name node))))]
+    (ast/node-name (ast/normalize-identifier (ast/copy identifier) dialect))))
+
+(defn shadowing-cte-names
+  "The CTE names that shadow a table at `node`: those declared by a query `node` sits inside, each as [[resolved-name]]
+  gives it. A CTE does not shadow the table its own body reads, unless it is recursive.
+
+  No CTE name shadows the table an INSERT, UPDATE, DELETE or MERGE writes, except in T-SQL: Postgres, MySQL and the
+  rest write the real table of that name, and T-SQL writes through the CTE to the table it reads.
+  Port of `shadowing_cte_names`."
+  [node dialect]
+  (if (and (not= dialect "tsql") (write-target? node))
+    #{}
+    (loop [current node, names #{}, own #{}]
+      (if-not current
+        (reduce disj names own)
+        (let [declaration (ast/parent current)
+              own         (cond-> own
+                            (and (instance? Expressions$CTE current)
+                                 (seq (ast/node-alias current))
+                                 (not (and (instance? Expressions$With declaration)
+                                           (ast/arg declaration "recursive"))))
+                            (conj (resolved-name current dialect)))
+              names       (into names
+                                (for [value (vals (ast/args current))
+                                      :when (instance? Expressions$With value)
+                                      cte   (ast/expressions value)
+                                      :when (seq (ast/node-alias cte))]
+                                  (resolved-name cte dialect)))]
+          (recur (ast/parent current) names own))))))
 
 (defn statements
   "Every statement in `sql`, without the empty ones a stray semicolon leaves behind. Port of `statements`."
@@ -60,14 +90,14 @@
 
 (defn table-references
   "Every Table node in the statement `stmt` that names a table: CTE references, derived tables and table functions
-  are left out, and the table a statement writes is kept. This is the walk the rewrites replace by.
-  Port of `table_references`."
-  [stmt]
+  are left out, and the table a statement writes is kept, even when a CTE of the statement has its name (see
+  [[shadowing-cte-names]]). This is the walk the rewrites replace by. Port of `table_references`."
+  [stmt dialect]
   (for [table (ast/find-all stmt Expressions$Table)
         :when (table-parts table)
         :when (not (and (empty? (ast/text table "db"))
                         (empty? (ast/text table "catalog"))
-                        (contains? (shadowing-cte-names table) (ast/lower (ast/node-name table)))))]
+                        (contains? (shadowing-cte-names table dialect) (resolved-name table dialect))))]
     table))
 
 (defn- sort-key [parts]
@@ -77,7 +107,7 @@
   "`[catalog schema table]` of every table `sql` reads, sorted. Port of `referenced_tables`."
   [dialect sql]
   (->> (for [stmt  (statements sql dialect)
-             table (table-references stmt)]
+             table (table-references stmt dialect)]
          (table-parts table))
        distinct
        (sort-by sort-key)

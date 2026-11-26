@@ -1,0 +1,467 @@
+(ns ^:mb/driver-tests metabase-enterprise.data-testing.write-runner-test
+  "Runs of a subject that modifies existing tables instead of returning rows. Each test gives a card a write plan in
+  place of its own, so the runner's write step is tested apart from any subject type."
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.executor :as data-testing.executor]
+   [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
+   [metabase-enterprise.data-testing.runner :as data-testing.runner]
+   [metabase-enterprise.data-testing.subject :as data-testing.subject]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase.driver.mysql :as mysql]
+   [metabase.lib.core :as lib]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(defn- drivers-that-write
+  "The test drivers that run tests and actions. Data tests refuse H2."
+  []
+  (disj (mt/normal-drivers-with-feature :transforms/testing :actions) :h2))
+
+(defn- people-rows
+  "An input standing in for the people table with two people, 1 and 2, each named `paid`."
+  []
+  {:table   (data-testing.test-util/table-ref :people)
+   :format  :rows
+   :columns (data-testing.test-util/id+name)
+   :rows    [{"id" 1 "name" "paid"} {"id" 2 "name" "paid"}]})
+
+(defn- write-plan
+  "A `::data-testing.subject/subject-plan` that runs `sql` with `params` on the Database with `database-id`."
+  [database-id sql params]
+  {:database (data-testing.subject/testable-database database-id)
+   :compiled {:query sql :params params}
+   :native?  true
+   :writes?  true})
+
+(defn- do-with-write-plan!
+  "Call `f` with a function returning the `:parameters` of each definition `subject-plan` was called with. While `f`
+  runs, `subject-plan` returns the write `sql` with `params`, on the Database with `database-id`, for any subject."
+  [database-id sql params f]
+  (let [asked (atom [])]
+    (with-redefs [data-testing.subject/subject-plan (fn [_subject-type _subject definition]
+                                                      (swap! asked conj (:parameters definition))
+                                                      (write-plan database-id sql params))]
+      (f #(deref asked)))))
+
+(defn- people-card
+  "The columns of a card whose query reads the people table. A write plan takes the place of its query."
+  []
+  {:dataset_query (lib/native-query (mt/metadata-provider)
+                                    (str "SELECT id FROM " (data-testing.test-util/qualified :people)))})
+
+(defn- do-with-write-subject!
+  "Call `f` with a saved [[people-card]] and a function returning the `:parameters` of each definition `subject-plan`
+  was called with. While `f` runs, `subject-plan` returns the write `sql` with `params` on the test database, for any
+  subject."
+  [sql params f]
+  (mt/with-temp [:model/Card card (people-card)]
+    (do-with-write-plan! (mt/id) sql params #(f card %))))
+
+(defn- run-write!
+  "Run a saved test of the write `sql` with `params`, over `inputs`, checking `expectations`, on the Database with
+  `database-id` (by default the test database), started by crowberto."
+  ([sql params inputs expectations]
+   (run-write! (mt/id) sql params inputs expectations))
+  ([database-id sql params inputs expectations]
+   (do-with-write-plan!
+    database-id sql params
+    (fn [_asked]
+      (data-testing.test-util/run-card-test! (people-card) inputs expectations)))))
+
+(defn- refusal!
+  "The `:error-type` of the refusal of a test of the write `sql` with `params`, or nil when it is not refused."
+  [sql params inputs expectations]
+  (:error-type (data-testing.test-util/refusal #(run-write! sql params inputs expectations))))
+
+(defn- refund-1
+  "The UPDATE of the people table that sets `name` to the first parameter where `id` is the second. Every test passes
+  `[\"refunded\" 1]`."
+  []
+  (str "UPDATE " (data-testing.test-util/qualified :people) " SET name = ? WHERE id = ?"))
+
+(def ^:private refunded-only-1
+  "An expectation that reads the people table after the write: 1 is `refunded`, 2 is `paid`, and there are no others."
+  {:type :empty
+   :name "only person 1 is refunded"
+   :sql  "SELECT * FROM %s WHERE (id = 1 AND name <> 'refunded') OR (id = 2 AND name <> 'paid') OR id NOT IN (1, 2)"})
+
+(defn- reading
+  "`expectation` with its SQL reading the people table."
+  [expectation]
+  (update expectation :sql format (data-testing.test-util/qualified :people)))
+
+(deftest write-plan-is-a-subject-plan-test
+  (mt/test-drivers (drivers-that-write)
+    (let [plan (write-plan (mt/id) (refund-1) ["refunded" 1])]
+      (testing "the plan these tests use in place of a subject's passes the write branch of the subject-plan schema"
+        (is (mr/validate ::data-testing.subject/subject-plan plan)))
+      (testing "control: the write branch refuses a write plan with an output label, which only a read plan has"
+        (is (not (mr/validate ::data-testing.subject/subject-plan (assoc plan :output-label "people"))))))))
+
+(deftest write-runs-on-the-inputs-test
+  (mt/test-drivers (drivers-that-write)
+    (testing "the write changes the input's rows, and the expectations read them after it"
+      (is (=? {:status       :passed
+               :expectations [{:name "only person 1 is refunded" :status :passed}]}
+              (run-write! (refund-1) ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))
+    (testing "an expectation that reads the rows as they were before the write fails"
+      (is (=? {:status       :failed
+               :expectations [{:name "person 1 is paid" :status :failed}]}
+              (run-write! (refund-1) ["refunded" 1] [(people-rows)]
+                          [(reading {:type :empty :name "person 1 is paid" :sql "SELECT * FROM %s WHERE name <> 'paid'"})]))))
+    (testing "the run reports the temp table of each input and no output table"
+      (is (= [(data-testing.test-util/qualified :people)]
+             (vals (:tables (run-write! (refund-1) ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))))
+    (testing "the write statement names the input's temp table, not the real table"
+      (let [executed (atom [])
+            execute! (mt/original-fn #'data-testing.executor/execute!)]
+        (mt/with-dynamic-fn-redefs [data-testing.executor/execute! (fn [driver conn query]
+                                                                     (swap! executed conj (:query query))
+                                                                     (execute! driver conn query))]
+          (let [[temp-table] (keys (:tables (run-write! (refund-1) ["refunded" 1] [(people-rows)]
+                                                        [(reading refunded-only-1)])))
+                [statement :as statements] @executed]
+            (is (= 1 (count statements)))
+            (is (str/includes? statement temp-table))
+            (is (not (str/includes? (u/lower-case-en statement) (u/lower-case-en (data-testing.test-util/qualified :people)))))))))))
+
+(deftest write-qualifying-columns-by-the-written-table-test
+  (let [passed {:status       :passed
+                :expectations [{:name "only person 1 is refunded" :status :passed}]}]
+    (mt/test-drivers (drivers-that-write)
+      (let [{people-schema :schema people-name :name} (data-testing.test-util/table-ref :people)
+            people                                    (data-testing.test-util/qualified :people)]
+        (testing "a column qualified by the name of the table the statement writes resolves to the input"
+          (is (=? passed
+                  (run-write! (str "UPDATE " people " SET name = ? WHERE " people-name ".id = ?")
+                              ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))
+        ;; A MySQL table has no schema: there this case would repeat the one above.
+        (when-not (str/blank? people-schema)
+          (testing "so does one qualified by the schema and the name"
+            (is (=? passed
+                    (run-write! (str "UPDATE " people " SET name = ? WHERE " people ".id = ?")
+                                ["refunded" 1] [(people-rows)] [(reading refunded-only-1)])))))))
+    ;; MySQL refuses a subquery that reads the table the statement writes.
+    (mt/test-driver :postgres
+      (let [people-name (:name (data-testing.test-util/table-ref :people))
+            people      (data-testing.test-util/qualified :people)]
+        (testing "a subquery that reads the written table by name: its qualifier names the table the subquery reads"
+          (is (=? passed
+                  (run-write! (str "UPDATE " people " SET name = ? WHERE " people-name ".id = "
+                                   "(SELECT min(" people-name ".id) FROM " people ")")
+                              ["refunded"] [(people-rows)] [(reading refunded-only-1)]))))))))
+
+(deftest write-to-an-undeclared-table-is-refused-test
+  (mt/test-drivers (drivers-that-write)
+    (testing "an INSERT whose target has no input is refused, naming the target"
+      (let [sql                          (str "INSERT INTO " (data-testing.test-util/qualified :orders)
+                                              " (id) SELECT id FROM " (data-testing.test-util/qualified :people)
+                                              " WHERE id = ?")
+            {:keys [error-type message]} (data-testing.test-util/refusal
+                                          #(run-write! sql [1] [(people-rows)] [(reading refunded-only-1)]))]
+        (is (= ::data-testing.errors/missing-inputs error-type))
+        (is (re-find (re-pattern (str "(?i)" (:name (data-testing.test-util/table-ref :orders)))) message))))))
+
+(deftest write-to-a-table-named-like-a-cte-is-refused-test
+  (mt/test-drivers (drivers-that-write)
+    (let [orders (:name (data-testing.test-util/table-ref :orders))
+          cte    (str "WITH " orders " AS (SELECT id FROM " (data-testing.test-util/qualified :people) ") ")
+          refuse (fn [sql params]
+                   (refusal! (str cte sql) params [(people-rows)] [(reading refunded-only-1)]))]
+      (testing "control: an UPDATE of the bare name with no CTE and no input is refused as a missing input"
+        (is (= ::data-testing.errors/missing-inputs
+               (refusal! (str "UPDATE " orders " SET quantity = quantity WHERE id = ?") [1]
+                         [(people-rows)] [(reading refunded-only-1)]))))
+      (testing "the target of an UPDATE is the table, not the CTE of its name, so it is refused as a missing input"
+        (is (= ::data-testing.errors/missing-inputs
+               (refuse (str "UPDATE " orders " SET quantity = quantity WHERE id = ?") [1]))))
+      (testing "the target of an INSERT, likewise"
+        (is (= ::data-testing.errors/missing-inputs
+               (refuse (str "INSERT INTO " orders " (id) SELECT id FROM " orders " WHERE id = ?") [-1]))))
+      (testing "the target of a DELETE, likewise"
+        (is (= ::data-testing.errors/missing-inputs
+               (refuse (str "DELETE FROM " orders " WHERE id = ?") [-1])))))))
+
+(deftest read-of-a-table-named-like-a-cte-in-another-case-test
+  (mt/test-driver :postgres
+    (let [orders (:name (data-testing.test-util/table-ref :orders))
+          update (str " UPDATE " (data-testing.test-util/qualified :people) " SET name = ? WHERE id IN (SELECT id FROM " orders ")")
+          refuse (fn [cte]
+                   (refusal! (str "WITH " cte " AS (SELECT 1 AS id)" update) ["refunded"]
+                             [(people-rows)] [(reading refunded-only-1)]))]
+      (testing "premise: the orders table's name is lower case, as Postgres folds an unquoted name"
+        (is (= "orders" orders)))
+      (testing "control: a CTE named in upper case, unquoted, is the CTE the subquery reads, so the write runs"
+        (is (nil? (refuse (u/upper-case-en orders)))))
+      (testing "a CTE named in upper case and quoted is another name, so the subquery reads the real table, which has no input"
+        (is (= ::data-testing.errors/missing-inputs
+               (refuse (str "\"" (u/upper-case-en orders) "\""))))))))
+
+(deftest write-to-a-table-named-like-a-cte-runs-on-its-input-test
+  (mt/test-drivers (drivers-that-write)
+    ;; MariaDB 10.6 takes a WITH clause only before a SELECT; MariaDB 13.0 also takes one before an UPDATE.
+    (when-not (and (mysql/mariadb? (mt/db))
+                   (some-> (mt/db) :dbms_version :semantic-version first (< 13)))
+      (let [people (:name (data-testing.test-util/table-ref :people))]
+        (testing "the target of an UPDATE named like a CTE is rewritten to its input's temp table, which the write changes"
+          (is (=? {:status       :passed
+                   :expectations [{:name "only person 1 is refunded" :status :passed}]}
+                  (run-write! (str "WITH " people " AS (SELECT 1 AS id) UPDATE " people " SET name = ? WHERE id = ?")
+                              ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))))))
+
+(defn- validation-refusal!
+  "The `:error-type` and message of the refusal [[data-testing.runner/validate-test]] throws for a test of the write
+  `sql` with `params`, or nil when it throws none."
+  [sql params]
+  (do-with-write-subject!
+   sql params
+   (fn [card _asked]
+     (data-testing.test-util/refusal
+      #(mt/with-test-user :crowberto
+         (data-testing.runner/validate-test :card card {:inputs       [(people-rows)]
+                                                        :expectations [(reading refunded-only-1)]}))))))
+
+(defn- run-refusal!
+  "The `:error-type` and message of the refusal of a test of the write `sql` with `params` over the people input, or
+  nil when it is not refused."
+  [sql params]
+  (data-testing.test-util/refusal #(run-write! sql params [(people-rows)] [(reading refunded-only-1)])))
+
+(deftest write-is-not-checked-by-the-parser-test
+  (mt/test-drivers (drivers-that-write)
+    (let [people (data-testing.test-util/qualified :people)]
+      (testing "control: one UPDATE runs"
+        (is (nil? (run-refusal! (refund-1) ["refunded" 1]))))
+      (testing "a statement that names no table is refused for the input it does not read, as any subject is"
+        (is (= ::data-testing.errors/unused-inputs
+               (:error-type (run-refusal! "CALL refund_order(?)" [1])))))
+      (testing "a SELECT is sent as written, and the database refuses a statement that returns rows where a write runs"
+        (is (= ::data-testing.errors/query-failed
+               (:error-type (run-refusal! (str "SELECT * FROM " people " WHERE id = ?") [1]))))))))
+
+(deftest write-returning-rows-fails-at-the-database-test
+  (mt/test-driver :postgres
+    (let [returning (str (refund-1) " RETURNING id")]
+      (testing "an UPDATE with RETURNING passes validation: no parser check reads the statement"
+        (is (nil? (validation-refusal! returning ["refunded" 1]))))
+      (testing "its run fails as the query under test, with the database's own message"
+        (let [{:keys [error-type message]} (run-refusal! returning ["refunded" 1])]
+          (is (= ::data-testing.errors/query-failed error-type))
+          (is (= 422 (data-testing.errors/status-code error-type)))
+          (is (re-find #"A result was returned when none was expected" (str message))))))))
+
+(deftest write-runs-as-written-test
+  (mt/test-drivers (drivers-that-write)
+    (testing "the write statement reaches the database as its author wrote it, apart from the table's name"
+      (let [executed (atom [])
+            execute! (mt/original-fn #'data-testing.executor/execute!)
+            ;; SQLGlot's rebuild would change the case of the keywords, the spacing and the comment.
+            sql      (str "update  " (data-testing.test-util/qualified :people) " /* refund */\nset name=?  where id=?")]
+        (mt/with-dynamic-fn-redefs [data-testing.executor/execute! (fn [driver conn query]
+                                                                     (swap! executed conj (:query query))
+                                                                     (execute! driver conn query))]
+          (let [[temp-table] (keys (:tables (run-write! sql ["refunded" 1] [(people-rows)]
+                                                        [(reading refunded-only-1)])))]
+            (is (= [(str/replace sql (data-testing.test-util/qualified :people) temp-table)]
+                   (mapv #(str/replace % #"[`\"]" "") @executed)))))))))
+
+(deftest equals-on-a-write-is-refused-test
+  (mt/test-drivers (drivers-that-write)
+    (testing "`equals` compares an output, and a write has none"
+      (let [{:keys [error-type message]}
+            (data-testing.test-util/refusal
+             #(run-write! (refund-1) ["refunded" 1] [(people-rows)]
+                          [{:type :equals :name "person 1 only" :format :rows
+                            :columns [{:name "id" :cast_type (first (data-testing.test-util/cast-types))}]
+                            :rows    [{"id" 1}]}]))]
+        (is (= ::data-testing.errors/no-output error-type))
+        (is (re-find #"\"person 1 only\"" message))
+        (is (re-find #"has no output" message))))))
+
+(deftest parameters-reach-the-subject-plan-test
+  (mt/test-drivers (drivers-that-write)
+    (do-with-write-subject!
+     (refund-1) ["refunded" 1]
+     (fn [card asked]
+       (testing "validating a test asks the subject for its plan with the test's parameter values"
+         (is (nil? (mt/with-test-user :crowberto
+                     (data-testing.runner/validate-test
+                      :card card
+                      {:inputs       [(people-rows)]
+                       :expectations [(reading refunded-only-1)]
+                       :parameters   {"id" 1 "status" "refunded"}}))))
+         (is (= [{"id" 1 "status" "refunded"}] (asked))))))))
+
+(defn- fail-to-write!
+  "Run a saved test of a write that the warehouse rejects: it reads a column of the people table, qualified by the
+  table's name, that the table does not have. Postgres and MySQL both name the table in the error."
+  []
+  (let [people (data-testing.test-util/qualified :people)]
+    (run-write! (str "UPDATE " people " SET name = ? WHERE " people ".no_such_column = ?") ["x" 1]
+                [(people-rows)] [(reading refunded-only-1)])))
+
+(deftest failed-write-is-refused-naming-the-input-test
+  (mt/test-drivers (drivers-that-write)
+    (testing "a write the warehouse rejects is refused as a failed query, naming the input, not its temp table"
+      (let [created     (atom [])
+            orig-create (mt/original-fn #'data-testing.executor/create-temp-table!)
+            {:keys [error-type message]}
+            (mt/with-dynamic-fn-redefs [data-testing.executor/create-temp-table! (fn [driver conn table query]
+                                                                                   (swap! created conj table)
+                                                                                   (orig-create driver conn table query))]
+              (data-testing.test-util/refusal fail-to-write!))
+            [temp-table] @created]
+        (is (= ::data-testing.errors/query-failed error-type))
+        (is (str/includes? (str message) (data-testing.test-util/qualified :people)))
+        (is (string? temp-table))
+        (is (not (str/includes? (u/lower-case-en (str message)) (u/lower-case-en temp-table))))))))
+
+(deftest temp-tables-are-dropped-after-a-failed-write-test
+  (mt/test-drivers (drivers-that-write)
+    (let [created     (atom [])
+          dropped     (atom [])
+          orig-create (mt/original-fn #'data-testing.executor/create-temp-table!)
+          orig-drop   (mt/original-fn #'data-testing.executor/drop-temp-table!)]
+      (mt/with-dynamic-fn-redefs [data-testing.executor/create-temp-table! (fn [driver conn table query]
+                                                                             (swap! created conj table)
+                                                                             (orig-create driver conn table query))
+                                  data-testing.executor/drop-temp-table!   (fn [driver conn table]
+                                                                             (swap! dropped conj table)
+                                                                             (orig-drop driver conn table))]
+        (testing "premise: the write is refused as a failed query"
+          (is (= ::data-testing.errors/query-failed
+                 (:error-type (data-testing.test-util/refusal fail-to-write!)))))
+        (testing "the run drops the temp table of its one input, and nothing else"
+          (is (= 1 (count @created)))
+          (is (= (set @created) (set @dropped))))))))
+
+(defn- string-setting
+  "`standard_conforming_strings` as a query on the Database with `database-id` sees it, outside any test run."
+  [database-id]
+  (ffirst (mt/rows (qp/process-query {:database database-id
+                                      :type     :native
+                                      :native   {:query "SHOW standard_conforming_strings"}}))))
+
+(deftest write-runs-with-standard-conforming-strings-on-test
+  (mt/test-driver :postgres
+    ;; Postgres 19 refuses a connection that turns standard_conforming_strings off.
+    (when (some-> (mt/db) :dbms_version :semantic-version first (< 19))
+      (testing "on a database whose connections turn standard_conforming_strings off"
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres
+                                                    :details (assoc (:details (mt/db))
+                                                                    :additional-options
+                                                                    "options=-c%20standard_conforming_strings%3Doff")}]
+          (testing "premise: a query on the database sees the setting off"
+            (is (= "off" (string-setting db-id))))
+          (testing "a run turns the setting on: the write records it, and the expectation reads it"
+            (is (=? {:status       :passed
+                     :expectations [{:name "the write saw the setting on" :status :passed}]}
+                    (run-write! db-id
+                                (str "UPDATE " (data-testing.test-util/qualified :people)
+                                     " SET name = current_setting('standard_conforming_strings') WHERE id = ?")
+                                [1]
+                                [(people-rows)]
+                                [(reading {:type :empty
+                                           :name "the write saw the setting on"
+                                           :sql  "SELECT * FROM %s WHERE id = 1 AND name <> 'on'"})]))))
+          (testing "a run leaves the setting as it found it"
+            (is (= "off" (string-setting db-id)))))))))
+
+(defn- write-name-1!
+  "Run a saved test of the UPDATE of the people table that sets person 1's name to the Postgres expression `value`,
+  with an expectation that the name is the Postgres expression `expected`."
+  [value expected]
+  (run-write! (str "UPDATE " (data-testing.test-util/qualified :people) " SET name = " value " WHERE id = ?") [1] [(people-rows)]
+              [(reading {:type :empty
+                         :name "person 1 has the name"
+                         :sql  (str "SELECT * FROM %s WHERE id = 1 AND name <> " expected)})]))
+
+(deftest write-with-a-backslash-in-an-e-string-test
+  (mt/test-driver :postgres
+    (testing "a write whose E'' string ends in a doubled backslash runs, and stores one backslash"
+      (is (=? {:status       :passed
+               :expectations [{:name "person 1 has the name" :status :passed}]}
+              (write-name-1! "E'a\\\\'" "'a' || chr(92)"))))
+    (testing "a doubled backslash before a letter stores a backslash and the letter, not a control character"
+      (is (=? {:status       :passed
+               :expectations [{:name "person 1 has the name" :status :passed}]}
+              (write-name-1! "E'a\\\\nb'" "'a' || chr(92) || 'nb'"))))))
+
+(deftest suite-run-of-a-writing-test-test
+  (mt/test-drivers (drivers-that-write)
+    (mt/with-premium-features #{:transforms-testing}
+      (mt/with-temp [:model/Card      {card-id :id}         (people-card)
+                     :model/CardTest  {pass-id  :id
+                                       pass-eid :entity_id} {:card_id      card-id
+                                                             :name         "Refunds 1"
+                                                             :inputs       [(people-rows)]
+                                                             :expectations [(reading refunded-only-1)]}
+                     :model/CardTest  {fail-id  :id
+                                       fail-eid :entity_id} {:card_id      card-id
+                                                             :name         "Refunds nobody"
+                                                             :inputs       [(people-rows)]
+                                                             :expectations [(reading {:type :empty
+                                                                                      :name "everybody is paid"
+                                                                                      :sql  "SELECT * FROM %s WHERE name <> 'paid'"})]}
+                     :model/TestSuite {suite-id :id}        {}]
+        (data-testing.test-util/add-members! suite-id [[:card pass-eid] [:card fail-eid]])
+        (do-with-write-plan!
+         (mt/id) (refund-1) ["refunded" 1]
+         (fn [_asked]
+           (testing "each member runs the write on its inputs, and its expectations read them after it"
+             (is (=? {:status  "failed"
+                      :members [{:status "passed" :test_id pass-id :data_test_run_id pos-int?}
+                                {:status "failed" :test_id fail-id :data_test_run_id pos-int?}]}
+                     (mt/user-http-request :crowberto :post 200 (str "ee/test-suite/" suite-id "/run")))))))))))
+
+(deftest revert-of-a-writing-test-is-validated-test
+  (mt/test-drivers (drivers-that-write)
+    (mt/with-premium-features #{:transforms-testing}
+      (mt/with-temp [:model/Card {card-id :id} (people-card)]
+        (do-with-write-plan!
+         (mt/id) (refund-1) ["refunded" 1]
+         (fn [_asked]
+           ;; Created through the model, which does not validate, so that its creation revision compares an output.
+           ;; A revision is recorded only under a current user.
+           (let [test-id   (mt/with-current-user (mt/user->id :crowberto)
+                             (:id (first (data-testing.models.card-test/create-card-tests!
+                                          [{:card_id      card-id
+                                            :name         "Refund"
+                                            :inputs       [(people-rows)]
+                                            :expectations [{:type    :equals
+                                                            :name    "person 1 only"
+                                                            :format  :rows
+                                                            :columns [{:name      "id"
+                                                                       :cast_type (first (data-testing.test-util/cast-types))}]
+                                                            :rows    [{"id" 1}]}]
+                                            :creator_id   (mt/user->id :crowberto)}]))))
+                 path      (str "ee/card-test/" test-id)
+                 revisions #(mt/user-http-request :crowberto :get 200 (str "revision/card-test/" test-id))
+                 revert!   (fn [status revision]
+                             (mt/user-http-request :crowberto :post status "revision/revert"
+                                                   {:entity "card-test" :id test-id :revision_id (:id revision)}))
+                 names     #(mapv :name (t2/select-one-fn :expectations :model/CardTest :id test-id))]
+             (try
+               (mt/user-http-request :crowberto :put 200 path {:expectations [(reading refunded-only-1)]})
+               (let [creation (last (revisions))
+                     reads    (first (revisions))]
+                 (testing "a revert to expectations that compare an output is refused, as the edit would be"
+                   (is (=? {:error-code "card-test.no-output"} (revert! 400 creation)))
+                   (is (= ["only person 1 is refunded"] (names))))
+                 (mt/user-http-request :crowberto :put 200 path
+                                       {:expectations [(reading {:type :empty
+                                                                 :name "person 2 is paid"
+                                                                 :sql  "SELECT * FROM %s WHERE id = 2 AND name <> 'paid'"})]})
+                 (testing "control: a revert to expectations that read the written table is done"
+                   (revert! 200 reads)
+                   (is (= ["only person 1 is refunded"] (names)))))
+               (finally
+                 (t2/delete! :model/CardTest :id test-id))))))))))

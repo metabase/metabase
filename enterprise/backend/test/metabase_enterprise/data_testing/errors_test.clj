@@ -43,6 +43,8 @@
    ::errors/unknown-placeholder        400
    ::errors/missing-input-columns      400
    ::errors/colliding-columns          400
+   ::errors/no-output                  400
+   ::errors/parameters-not-taken       400
    ::errors/impersonated-user          403
    ::errors/unsupported-transform      422
    ::errors/unsupported-driver         422
@@ -80,7 +82,9 @@
              ::errors/no-expectations
              ::errors/unknown-placeholder
              ::errors/missing-input-columns
-             ::errors/colliding-columns}
+             ::errors/colliding-columns
+             ::errors/no-output
+             ::errors/parameters-not-taken}
            (types-with-status 400))))
   (testing "permission refusals — the current user may not save or run the test — are 403"
     (is (= #{::errors/impersonated-user}
@@ -127,6 +131,8 @@
    ::errors/unknown-placeholder        "transform-test.unknown-placeholder"
    ::errors/missing-input-columns      "transform-test.missing-input-columns"
    ::errors/colliding-columns          "transform-test.colliding-columns"
+   ::errors/no-output                  "transform-test.no-output"
+   ::errors/parameters-not-taken       "transform-test.parameters-not-taken"
    ::errors/impersonated-user          "transform-test.impersonated-user"
    ::errors/archived-subject           "transform-test.archived-subject"
    ::errors/unsupported-transform      "transform-test.unsupported-transform"

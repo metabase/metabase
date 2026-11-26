@@ -14,9 +14,12 @@
     could not match), and running it would hit the real table or error at execution. This covers the query under test
     and every expectation that carries the author's own SQL.
 
+  The parser reports the table an INSERT, UPDATE or DELETE writes among the tables a query reads, so both guards cover
+  the tables a subject modifies.
+
   No guard reads what a statement does. An input's SQL runs as written, and the query under test and each
   expectation's SQL run as written apart from their table references: what they may do is up to the database
-  connection.
+  connection. The guards see no table inside a procedure, a function or SQL text in a string.
 
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require
@@ -214,6 +217,10 @@
               {:placeholders  (vec unknown)
                :response/keys #{:placeholders}})))))
 
+(def ^:private compares-output
+  "The expectation types that compare the output of the query under test."
+  #{:equals})
+
 (mr/def ::column-read
   "A column that SQL reads, with the schema and name of its table, all three spelled as Metabase's metadata spells
   them."
@@ -267,13 +274,14 @@
   `referenced-tables` are the tables the query under test reads, parsed before any replacement; `rewritten-query`
   is that query after it; `replacements` is the map both it and the expectations are rewritten with, whose values name
   the temp tables everything may read; `output-token`, when given, is the placeholder for the output that expectation
-  SQL may write; `default-schema` is the schema an unqualified reference resolves to in the database under test.
+  SQL may write; `default-schema` is the schema an unqualified reference resolves to in the database under test;
+  `writes?` says that the query under test modifies existing tables and has no output for an expectation to compare.
 
   `columns-read`, when given, are the columns of tables that the query under test reads; a rows input is refused when
   its table has a column among them that the input does not declare. `ignore-case?` says whether the database ignores
   case in column names."
   [driver :- :keyword
-   {:keys [inputs expectations referenced-tables rewritten-query replacements output-token default-schema
+   {:keys [inputs expectations referenced-tables rewritten-query replacements output-token default-schema writes?
            columns-read ignore-case?]}
    :- [:map {:closed true}
        [:inputs              ::data-testing.schema/inputs]
@@ -283,6 +291,7 @@
        [:replacements        ::data-testing.compile/table-replacements]
        [:output-token        {:optional true} [:maybe ::data-testing.compile/output-token]]
        [:default-schema      [:maybe :string]]
+       [:writes?             {:optional true} :boolean]
        [:columns-read        {:optional true} [:maybe [:set ::column-read]]]
        [:ignore-case?        {:optional true} :boolean]]]
   (when-let [missing (seq (missing-inputs inputs referenced-tables default-schema))]
@@ -306,6 +315,12 @@
                  (str/join ", " colliding))
             {:tables (vec colliding)
              :response/keys #{:tables}})))
+  (when-let [{expectation-name :name} (and writes? (first (filter (comp compares-output :type) expectations)))]
+    (throw (data-testing.errors/ex
+            ::data-testing.errors/no-output
+            (tru "Expectation {0} compares the output of the query under test, which modifies existing tables and has no output. Use an `empty` expectation whose SQL reads the tables the query under test modifies."
+                 (pr-str expectation-name))
+            {:expectation expectation-name})))
   (when-let [missing (seq (missing-input-columns inputs (or columns-read #{}) default-schema
                                                  (boolean ignore-case?)))]
     (throw (data-testing.errors/ex

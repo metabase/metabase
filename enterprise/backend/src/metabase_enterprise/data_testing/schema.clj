@@ -96,8 +96,8 @@
    [:rows [:merge [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case} [:table ::table]] ::rows-data]]])
 
 (mr/def ::inputs
-  "Test data for the tables the query under test reads. Every table it reads needs one, and an input for
-  a table it does not read is refused."
+  "Test data for the tables the query under test reads or modifies. Every such table needs one, and an input for
+  any other table is refused."
   [:sequential ::input])
 
 (mr/def ::expectation.equals
@@ -117,14 +117,15 @@
            ::rows-data]]])
 
 (mr/def ::expectation.empty
-  "A check that a SQL query over the output of the query under test returns no rows."
+  "A check that a SQL query over the output of the query under test, or over the tables the query under test
+  modifies, returns no rows."
   [:map {:closed true, :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :empty]]
    [:name ::lib.schema.common/non-blank-string]
    [:sql  ::lib.schema.common/non-blank-string]])
 
 (mr/def ::expectation
-  "A check on the output of the query under test."
+  "A check on the output of the query under test, or on the tables it modifies."
   [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
            :dispatch         (comp keyword :type)
            :error/fn         (unknown-dispatch :type)}
@@ -132,14 +133,19 @@
    [:empty  ::expectation.empty]])
 
 (mr/def ::expectations
-  "The checks run against the output of the query under test. Names must be unique within a test,
-  case-sensitively."
+  "The checks run against the output of the query under test, or against the tables it modifies. Names must be
+  unique within a test, case-sensitively."
   [:and
    [:sequential ::expectation]
    [:fn {:error/message "expectation names must be unique within a test"}
     (fn [expectations]
       (let [names (map :name expectations)]
         (or (empty? names) (apply distinct? names))))]])
+
+(mr/def ::parameters
+  "The value of each parameter of the subject, by the parameter's id or slug. No subject type takes parameters yet:
+  each refuses a test that sets a value."
+  (ms/string-keyed-map [:maybe [:or :string :boolean number?]]))
 
 (defn- ->offset-date-time
   "`x` as an OffsetDateTime when it is one, an ISO-8601 date-time string with an offset, an Instant or a
@@ -226,10 +232,6 @@
    [:description  {:optional true} [:maybe :string]]
    [:inputs       ::inputs]
    [:expectations ::expectations]])
-
-(mr/def ::test.definition
-  "A test as a client writes it, without the subject it covers. Without `now`, the subject reads the real clock."
-  (conj definition [:now {:optional true} [:maybe ::now]]))
 
 (defn test-create
   "What a client sends to create a test: the id of its subject under `subject-key`, of schema `subject-id-schema`, and

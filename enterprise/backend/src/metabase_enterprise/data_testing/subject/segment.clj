@@ -61,9 +61,10 @@
       (seq columns) (lib/with-fields columns))))
 
 (mu/defmethod data-testing.subject/subject-plan :segment :- ::data-testing.subject/subject-plan
-  [_subject-type
+  [subject-type
    {:keys [definition] segment-name :name} :- ::data-testing.subject/segment
-   inputs                                  :- ::data-testing.schema/inputs]
+   {:keys [inputs] :as test-definition}    :- ::data-testing.subject/definition]
+  (data-testing.subject/ensure-no-parameters subject-type test-definition)
   (let [database (data-testing.subject/testable-database (lib/database-id definition))]
     (data-testing.subject/query-output-plan
      database

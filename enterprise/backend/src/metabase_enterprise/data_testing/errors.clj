@@ -30,6 +30,8 @@
    ::unknown-placeholder        400  ; Expectation SQL writes a `{{...}}` that is not the output token.
    ::missing-input-columns      400  ; A rows input lacks a column the query under test reads.
    ::colliding-columns          400  ; An expectation compares one output column twice, or one the comparison names itself.
+   ::no-output                  400  ; An expectation compares the output of a subject that writes and has none.
+   ::parameters-not-taken       400  ; A test sets parameter values for a subject type that takes none.
 
    ;; 403 — the current user
    ::impersonated-user          403  ; The user's connection to the subject's database is impersonated.

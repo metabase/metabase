@@ -1,9 +1,11 @@
 (ns metabase-enterprise.data-testing.subject
   "What a test run needs from the entity it tests, its subject: [[subject-plan]], one method per subject type."
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.api.common :as api]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
@@ -49,16 +51,35 @@
   [:or ::transforms.schema/transform ::card ::segment])
 
 (mr/def ::subject-plan
-  "What a run needs from its subject: the database it runs on, its query compiled to SQL before any temp-table rewrite,
-  whether that SQL includes SQL written by hand, the tables whose names expectation SQL may use for the output, the token
-  expectation SQL may write for the output instead (nil when there is none), and how a message names the output."
+  "What a run needs from its subject: the database it runs on, its SQL before any temp-table rewrite, compiled with
+  the test's parameter values, and whether that SQL includes SQL written by hand.
+
+  A subject that returns rows also gives the tables whose names expectation SQL may use for its output, the token
+  expectation SQL may write for the output instead (nil when there is none), and how a message names the output. A
+  subject that modifies existing tables (`:writes? true`) has no output: expectations read the tables its SQL names."
+  [:multi {:dispatch #(boolean (:writes? %))}
+   [false [:map {:closed true}
+           [:database      ::lib.schema.metadata/database]
+           [:compiled      ::data-testing.compile/compiled-query]
+           [:native?       :boolean]
+           [:writes?       {:optional true} [:= false]]
+           [:output-tables [:sequential ::data-testing.compile/output-table]]
+           [:output-token  [:maybe ::data-testing.compile/output-token]]
+           [:output-label  :string]]]
+   [true  [:map {:closed true}
+           [:database ::lib.schema.metadata/database]
+           [:compiled ::data-testing.compile/compiled-query]
+           [:native?  :boolean]
+           [:writes?  [:= true]]]]])
+
+(mr/def ::definition
+  "The parts of a test that a run reads and a subject's plan may read: its inputs, its expectations, the moment its
+  subject reads as the current time, and the values of the subject's parameters."
   [:map {:closed true}
-   [:database      ::lib.schema.metadata/database]
-   [:compiled      ::data-testing.compile/compiled-query]
-   [:native?       :boolean]
-   [:output-tables [:sequential ::data-testing.compile/output-table]]
-   [:output-token  [:maybe ::data-testing.compile/output-token]]
-   [:output-label  :string]])
+   [:inputs       ::data-testing.schema/inputs]
+   [:expectations ::data-testing.schema/expectations]
+   [:now          {:optional true} [:maybe ::data-testing.schema/now]]
+   [:parameters   {:optional true} [:maybe ::data-testing.schema/parameters]]])
 
 (mr/def ::compiled-subject
   "A subject's query compiled to SQL, and whether that SQL includes SQL written by hand."
@@ -67,11 +88,24 @@
    [:native?  :boolean]])
 
 (defmulti subject-plan
-  "The [[::subject-plan]] of `subject`, a `subject-type`, for a test with `inputs`. Throws a typed refusal when
-  `subject` cannot be tested."
-  {:arglists '([subject-type subject inputs])}
-  (fn [subject-type _subject _inputs]
+  "The [[::subject-plan]] of `subject`, a `subject-type`, for a test with `definition`, a [[::definition]]. Throws a typed
+  refusal when `subject` cannot be tested."
+  {:arglists '([subject-type subject definition])}
+  (fn [subject-type _subject _definition]
     subject-type))
+
+(mu/defn ensure-no-parameters :- :nil
+  "Throw `::data-testing.errors/parameters-not-taken`, naming `subject-type` and the parameters, when `definition`
+  sets a parameter value."
+  [subject-type         :- ::subject-type
+   {:keys [parameters]} :- ::definition]
+  (when (seq parameters)
+    (let [names (vec (sort (keys parameters)))]
+      (throw (data-testing.errors/ex
+              ::data-testing.errors/parameters-not-taken
+              (tru "A {0} test cannot set parameter values. This one sets: {1}."
+                   (name subject-type) (str/join ", " names))
+              {:parameters names})))))
 
 (mu/defn check-not-archived :- :nil
   "Throws `::data-testing.errors/archived-subject` when `subject`, a `subject-type`, is archived."

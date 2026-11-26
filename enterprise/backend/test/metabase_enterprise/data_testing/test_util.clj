@@ -2,6 +2,7 @@
   "Helpers shared by the data-testing tests."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
@@ -29,11 +30,34 @@
     {:schema schema :name name}))
 
 (defn qualified
-  "`schema.name` for native SQL, or `name` alone when `schema` is blank (a MySQL table has none)."
-  [schema name]
-  (if (str/blank? schema)
-    name
-    (str schema "." name)))
+  "`schema.name` for native SQL, or `name` alone when `schema` is blank (a MySQL table has none). With a `table-key`
+  alone, of that test-data table."
+  ([table-key]
+   (let [{:keys [schema name]} (table-ref table-key)]
+     (qualified schema name)))
+  ([schema name]
+   (if (str/blank? schema)
+     name
+     (str schema "." name))))
+
+(defn table-query
+  "An MBQL query of the test-data table `table-key`."
+  [table-key]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table-key)))))
+
+(defn column
+  "The column of `query` for the field `table-key`.`field-key`, through an implicit join when it is on another table."
+  [query table-key field-key]
+  (let [field-id (mt/id table-key field-key)]
+    (m/find-first #(= field-id (:id %)) (lib/visible-columns query))))
+
+(defn id+name
+  "An `id` and a `name` column, typed as the current driver spells an integer and a text type."
+  []
+  (let [[int-type text-type] (cast-types)]
+    [{:name "id" :cast_type int-type}
+     {:name "name" :cast_type text-type}]))
 
 (defn data-test-drivers
   "The test drivers that run data tests: every driver with `:transforms/testing` but H2, which data tests refuse until
@@ -57,6 +81,25 @@
       (merge {:error-type (:error-type (ex-data e))
               :message    (ex-message e)}
              (select-keys (ex-data e) data-keys)))))
+
+(defn run-as-admin!
+  "Runs `saved-test` of `subject`, a subject of `subject-type`, as an admin. A run checks whether the current user's
+  connection is impersonated, so it needs a current user, as every API call has."
+  [subject-type subject saved-test]
+  (mt/with-test-user :crowberto
+    (data-testing.runner/run-test! subject-type subject saved-test)))
+
+(defn run-card-test!
+  "Save `card`, a map of Card columns, and a CardTest of it with `inputs` and `expectations`, and run the test, started
+  by crowberto."
+  [card inputs expectations]
+  (mt/with-temp [:model/Card     {card-id :id} card
+                 :model/CardTest {test-id :id} {:card_id      card-id
+                                                :inputs       inputs
+                                                :expectations expectations}]
+    (run-as-admin! :card
+                   (t2/select-one :model/Card :id card-id)
+                   (t2/select-one :model/CardTest :id test-id))))
 
 (defn people-rows-input
   "A rows input standing in for Postgres's `public.people`, declaring `column-names` as text, with no rows."
@@ -120,13 +163,6 @@
               :schema   "public"
               :name     (str (name table) "_summary")
               :database (mt/id)}}))
-
-(defn run-as-admin!
-  "Runs `saved-test` of `subject`, a subject of `subject-type`, as an admin. A run checks whether the current user's
-  connection is impersonated, so it needs a current user, as every API call has."
-  [subject-type subject saved-test]
-  (mt/with-test-user :crowberto
-    (data-testing.runner/run-test! subject-type subject saved-test)))
 
 (defn add-members!
   "Insert `refs`, `[test-type entity-id]` pairs, as members of the suite `suite-id` at positions 0, 1, ..."
