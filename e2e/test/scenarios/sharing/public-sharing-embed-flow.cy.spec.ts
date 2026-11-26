@@ -244,7 +244,7 @@ function createResource(
             [[AND price > {{price}}]]
             [[AND category = {{category}}]]`,
         "template-tags": {
-          date: {
+          created_at: {
             type: "date",
             name: "created_at",
             id: "b2517f32-d2e2-4f42-ab79-c91e07e820a0",
