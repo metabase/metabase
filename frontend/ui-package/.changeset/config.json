@@ -1,6 +1,0 @@
-{
-  "$schema": "https://unpkg.com/@changesets/config@3/schema.json",
-  "changelog": "@changesets/cli/changelog",
-  "commit": false,
-  "baseBranch": "master"
-}

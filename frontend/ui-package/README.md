@@ -65,20 +65,13 @@ From the repository root: `bun run build-ui-package` builds `dist/`, and `bun ru
 
 ## Releasing
 
-For a change that affects consumers of `@metabase/ui`, add a changeset to your PR:
+1. Run [UI Package Version Bump PR](https://github.com/metabase/metabase/actions/workflows/ui-package-version-bump-pr.yml) from `master`. Select the bump and enter a changelog note. To draft it, compare the last stable UI release with `master` (use the verified release commit if the tag is missing). An agent can summarize the consumer-facing changes and any migration steps for review.
+2. Review the generated version and changelog PR. In `0.x`, a patch must be compatible; breaking changes and Mantine upgrades need at least a minor bump.
+3. Merge the PR with its `ui-release-trigger` label. **Release UI Package** smoke-tests the tarball, publishes it to npm, and tags the merge commit. No second dispatch is needed.
 
-```sh
-cd frontend/ui-package
-bunx --bun @changesets/cli@3.0.3 add
-```
+If the bump workflow pushes a branch but cannot open the PR, open a PR from that branch to `master` and add `ui-release-trigger` rather than dispatching the bump again.
 
-Choose `patch`, `minor`, or `major` and write a summary for package consumers. In `0.x`, a minor release may break compatibility; a patch must not. A Mantine upgrade in Metabase is a minor release. Commit the generated file under `.changeset/`. Changes that don't affect consumers don't need a changeset.
-
-When changesets land on `master`, the **UI Package Changesets** workflow opens or updates a release PR with the next version and changelog. Merging that PR runs **Release UI Package** to smoke-test, publish, and tag the merge commit. Ordinary changeset PRs don't publish anything.
-
-You can still run **Release UI Package** manually from `master` to dry-run or publish the version already committed there. Stable `X.Y.Z` versions publish to `latest`; manually prepared `X.Y.Z-canary.N` versions publish to `canary`.
-
-If the release PR merges before Changesets accounts for a newly landed changeset, publishing stops. Wait for the next release PR (or run **UI Package Changesets** manually to refresh it) rather than manually publishing the stale version.
+Manual **Release UI Package** dispatches still support dry runs or publishing a version already committed on `master`. Stable versions publish to `latest`; manually prepared canaries publish to `canary`.
 
 Before enabling live publishing, create the GitHub environment `ui-package-release` and restrict deployments to the `master` branch only. In npm, register `metabase/metabase`, workflow `release-ui-package.yml`, and environment `ui-package-release` as the trusted publisher. Enable `npm publish` under **Allowed actions**; staged publish alone is not enough.
 

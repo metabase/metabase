@@ -1,4 +1,4 @@
-# Merging the Changesets release PR publishes the smoke-tested tarball and tags the merge commit.
+# Merging the labeled UI version-bump PR publishes the smoke-tested tarball and tags the merge commit.
 #
 # npm trusted publisher registration for @metabase/ui must match:
 #   repository: metabase/metabase, workflow: release-ui-package.yml, environment: ui-package-release
@@ -39,7 +39,7 @@ jobs:
           (github.event_name == 'workflow_dispatch' ||
            (github.event.pull_request.merged == true &&
             github.event.pull_request.head.repo.full_name == github.repository &&
-            github.event.pull_request.head.ref == 'changeset-release/master')) }}
+            contains(github.event.pull_request.labels.*.name, 'ui-release-trigger'))) }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
@@ -51,15 +51,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-
-      - name: Reject an out-of-date Changesets release
-        if: ${{ github.event_name == 'pull_request' }}
-        run: |
-          PENDING=$(git ls-files -- 'frontend/ui-package/.changeset/*.md' ':!frontend/ui-package/.changeset/README.md')
-          if [ -n "$PENDING" ]; then
-            echo '::error::The release PR did not consume all UI changesets. Merge the refreshed release PR to publish.'
-            exit 1
-          fi
 
       - name: Resolve release from package.json
         id: resolve

@@ -55,7 +55,7 @@ docs/usage-and-performance-tools/usage-analytics-reference.md # auto-generated
 frontend/ui-package @metabase/devex
 bin/ui-package @metabase/devex
 .github/workflows/release-ui-package.yml @metabase/devex
-.github/workflows/ui-package-changesets.yml @metabase/devex
+.github/workflows/ui-package-version-bump-pr.yml @metabase/devex
 
 # These files are left unowned on purpose.
 # They change in most backend PRs, so an owning team would review many changes for little benefit.
