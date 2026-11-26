@@ -31,7 +31,7 @@
                                      :row_count         1
                                      :data_access_token {}})]
     (when-not fresh?
-      (t2/query-one {:update :stored_result
+      (t2/query-one {:update (t2/table-name :model/StoredResult)
                      :set    {:created_at (t/minus (t/offset-date-time) (t/hours 6))}
                      :where  [:= :id id]}))
     id))

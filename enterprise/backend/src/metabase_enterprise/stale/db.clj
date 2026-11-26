@@ -2,15 +2,15 @@
   "Application database queries for the stale module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.staleness.core :as staleness]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id [:auto/param collection-id]))
+  (t2/select-one :model/Collection :id collection-id))
 
 (defn- stale-content-union
   "The union of `union-queries` (per-model SELECTs from the `:candidates` of the staleness specs),
@@ -22,7 +22,7 @@
   "A page of `select-columns` rows from the union of `union-queries`, sorted by `sort-column` (`:name` or
   `:last_used_at`) in `sort-direction`, skipping `offset` and returning up to `limit` (either may be nil for no
   restriction)."
-  [union-queries  :- [:sequential ::staleness/query]
+  [union-queries  :- [:sequential ::funnysql.schema/query.select]
    select-columns :- [:sequential :keyword]
    sort-column    :- [:enum :name :last_used_at]
    sort-direction :- [:enum :asc :desc]
@@ -39,6 +39,6 @@
 
 (mu/defn stale-content-count
   "The total count of rows across every page [[stale-content-rows]] would return for `union-queries`."
-  [union-queries :- [:sequential ::staleness/query]]
+  [union-queries :- [:sequential ::funnysql.schema/query.select]]
   (:count (t2/query-one {:select [[:%count.* :count]]
                          :from   (stale-content-union union-queries)})))

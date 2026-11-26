@@ -10,6 +10,7 @@
    [metabase.users.core :as users]
    [metabase.users.models.user :as user]
    [metabase.users.settings :as users.settings]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -91,7 +92,7 @@
    parent-comment-id :- [:maybe ms/PositiveInt]
    mention-ids       :- [:maybe [:sequential ms/PositiveInt]]]
   (let [recipients (if parent-comment-id
-                     [:in :id ^:allow-subquery {:from   [:comment]
+                     [:in :id ^:allow-subquery {:from   [(t2/table-name :model/Comment)]
                                                 :select [:creator_id]
                                                 :where  [:or
                                                          [:= :id parent-comment-id]
@@ -115,10 +116,10 @@
     (let [clauses (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])]
       (case (users.settings/user-visibility)
         :all   clauses
-        :group (sql.helpers/where clauses [:in :core_user.id (-> (user/same-groups-user-ids api/*current-user-id*)
-                                                                 set
-                                                                 (conj api/*current-user-id*))])
-        :none  (sql.helpers/where clauses [:= :core_user.id api/*current-user-id*])))))
+        :group (sql.helpers/where clauses [:in (u/qualified-key (t2/table-name :model/User) :id) (-> (user/same-groups-user-ids api/*current-user-id*)
+                                                                                                     set
+                                                                                                     (conj api/*current-user-id*))])
+        :none  (sql.helpers/where clauses [:= (u/qualified-key (t2/table-name :model/User) :id) api/*current-user-id*])))))
 
 (mu/defn mentionable-users
   "The id, first name, last name, and email of the active Users the current user may @mention, ordered by name
@@ -136,8 +137,8 @@
 (mu/defn mentionable-user-count
   "The `:count` of the active Users the current user may @mention."
   []
-  (t2/query-one (merge {:select [[[:count [:distinct :core_user.id]] :count]]
-                        :from   :core_user}
+  (t2/query-one (merge {:select [[[:count [:distinct (u/qualified-key (t2/table-name :model/User) :id)]] :count]]
+                        :from   (t2/table-name :model/User)}
                        (-> (user/filter-clauses {})
                            restrict-to-visible-users
                            users/filter-clauses-without-paging))))

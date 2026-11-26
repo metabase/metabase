@@ -258,7 +258,7 @@
             reaped    (atom nil)]
         (mt/with-dynamic-fn-redefs [data-testing.runner/run-test! (fn [& args]
                                                                     (when (= 2 (swap! calls inc))
-                                                                      (t2/query {:update :test_suite_run
+                                                                      (t2/query {:update (t2/table-name :model/TestSuiteRun)
                                                                                  :set    {:last_heartbeat (t/minus (t/offset-date-time) (t/minutes 10))}
                                                                                  :where  [:and [:= :suite_id suite-id] [:= :status "started"]]})
                                                                       (reset! reaped (mapv :id (data-testing.run-tracking/reap-orphaned-suite-runs! 5))))

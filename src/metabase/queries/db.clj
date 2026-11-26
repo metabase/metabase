@@ -10,6 +10,7 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.collections.schema :as collections.schema]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -22,7 +23,6 @@
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -102,7 +102,7 @@
   "The raw `:dimensions` row of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/query-one {:select [:dimensions]
-                 :from   [:report_card]
+                 :from   [(t2/table-name :model/Card)]
                  :where  [:= :id card-id]}))
 
 (mu/defn card-ids-with-raw-dimensions :- [:set ::lib.schema.id/card]
@@ -111,9 +111,9 @@
   (into #{}
         (map :id)
         (mdb/select-batched #(t2/query {:select [:id]
-                                        :from   [:report_card]
+                                        :from   [(t2/table-name :model/Card)]
                                         :where  [:and
-                                                 [:in :id [:auto/param %]]
+                                                 [:in :id %]
                                                  [:not= :dimensions nil]]})
                             card-ids)))
 
@@ -217,10 +217,10 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (mdb/select-batched #(t2/query {:select   [[:%count.* :count] :card_id]
                                   :from     [[^:allow-subquery {:union-all [^:allow-subquery {:select [:card_id]
-                                                                                              :from   [:report_dashboardcard]
+                                                                                              :from   [(t2/table-name :model/DashboardCard)]
                                                                                               :where  [:in :card_id %]}
                                                                             ^:allow-subquery {:select [:card_id]
-                                                                                              :from   [:dashboardcard_series]
+                                                                                              :from   [(t2/table-name :model/DashboardCardSeries)]
                                                                                               :where  [:in :card_id %]}]}
                                               :placements]]
                                   :group-by [:card_id]})
@@ -230,7 +230,7 @@
   "Rows of `:card_id` and `:count` of ParameterCards for each of `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (mdb/select-batched #(t2/query {:select   [[:%count.* :count] :card_id]
-                                  :from     [:parameter_card]
+                                  :from     [(t2/table-name :model/ParameterCard)]
                                   :where    [:in :card_id %]
                                   :group-by [:card_id]})
                       card-ids))
@@ -239,7 +239,7 @@
   "Rows of `:card_id` and average `:running_time` of uncached executions for each of `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (mdb/select-batched #(t2/query {:select   [[:%avg.running_time :running_time] :card_id]
-                                  :from     [:query_execution]
+                                  :from     [(t2/table-name :model/QueryExecution)]
                                   :where    [:and
                                              [:not= :running_time nil]
                                              [:not= :cache_hit true]
@@ -251,7 +251,7 @@
   "Rows of `:card_id` and latest `:started_at` of uncached executions for each of `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (mdb/select-batched #(t2/query {:select   [[:%max.started_at :started_at] :card_id]
-                                  :from     [:query_execution]
+                                  :from     [(t2/table-name :model/QueryExecution)]
                                   :where    [:and
                                              [:not= :running_time nil]
                                              [:not= :cache_hit true]
@@ -270,8 +270,8 @@
                                                                                              :d.id
                                                                                              :d.archived
                                                                                              :d.enable_embedding]
-                                                                                  :from     [[:report_dashboardcard :dc]]
-                                                                                  :join     [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
+                                                                                  :from     [[(t2/table-name :model/DashboardCard) :dc]]
+                                                                                  :join     [[(t2/table-name :model/Dashboard) :d] [:= :dc.dashboard_id :d.id]]
                                                                                   :where    [:in :dc.card_id %]
                                                                                   :order-by [[:d.id :asc]]}}
                                               ^:allow-subquery {:nest
@@ -282,9 +282,9 @@
                                                                                              :d.id
                                                                                              :d.archived
                                                                                              :d.enable_embedding]
-                                                                                  :from     [[:dashboardcard_series :dcs]]
-                                                                                  :join     [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
-                                                                                             [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
+                                                                                  :from     [[(t2/table-name :model/DashboardCardSeries) :dcs]]
+                                                                                  :join     [[(t2/table-name :model/DashboardCard) :dc] [:= :dc.id :dcs.dashboardcard_id]
+                                                                                             [(t2/table-name :model/Dashboard) :d] [:= :d.id :dc.dashboard_id]]
                                                                                   :where    [:in :dcs.card_id %]
                                                                                   :order-by [[:d.id :asc]]}}]})
                       card-ids))
@@ -308,7 +308,7 @@
                                               [:field.name :field-name]
                                               [:table.name :table-name]
                                               [:table.db_id :field-db-id]]
-                                  :from      [[:metabase_field :field]]
+                                  :from      [[(t2/table-name :model/Field) :field]]
                                   :left-join [[(t2/table-name :model/Table) :table]
                                               [:= :field.table_id :table.id]]
                                   :where     [:in :field.id %]})
@@ -364,27 +364,27 @@
   the Dashboard of the DashboardCard it belongs to."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (mdb/select-batched #(t2/query {:select [[:dcs.id :id] [:dcs.card_id :card_id] [:dc.dashboard_id :dashboard_id]]
-                                  :from   [[:dashboardcard_series :dcs]]
-                                  :join   [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]]
-                                  :where  [:in :dcs.card_id [:auto/param %]]})
+                                  :from   [[(t2/table-name :model/DashboardCardSeries) :dcs]]
+                                  :join   [[(t2/table-name :model/DashboardCard) :dc] [:= :dc.id :dcs.dashboardcard_id]]
+                                  :where  [:in :dcs.card_id %]})
                       card-ids))
 
 (mu/defn implicit-action-ids-for-model
   "The IDs of the implicit Actions of the model Card with `model-id`."
   [model-id :- ms/PositiveInt]
-  (t2/select-pks-set :model/Action {:select [:action.id]
-                                    :from   [:action]
-                                    :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
-                                    :where  [:= :action.model_id model-id]}))
+  (t2/select-pks-set :model/Action {:select [(u/qualified-key (t2/table-name :model/Action) :id)]
+                                    :from   [(t2/table-name :model/Action)]
+                                    :join   [(t2/table-name :model/ImplicitAction) [:= (u/qualified-key (t2/table-name :model/Action) :id) (u/qualified-key (t2/table-name :model/ImplicitAction) :action_id)]]
+                                    :where  [:= (u/qualified-key (t2/table-name :model/Action) :model_id) model-id]}))
 
 (mu/defn implicit-action-ids-for-models
   "The IDs of the implicit Actions of the model Cards with `model-ids`."
   [model-ids :- [:sequential ::lib.schema.id/card]]
   (if (seq model-ids)
-    (mdb/select-batched-set #(t2/select-pks-set :model/Action {:select [:action.id]
-                                                               :from   [:action]
-                                                               :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
-                                                               :where  [:in :action.model_id %]}) model-ids)
+    (mdb/select-batched-set #(t2/select-pks-set :model/Action {:select [(u/qualified-key (t2/table-name :model/Action) :id)]
+                                                               :from   [(t2/table-name :model/Action)]
+                                                               :join   [(t2/table-name :model/ImplicitAction) [:= (u/qualified-key (t2/table-name :model/Action) :id) (u/qualified-key (t2/table-name :model/ImplicitAction) :action_id)]]
+                                                               :where  [:in (u/qualified-key (t2/table-name :model/Action) :model_id) %]}) model-ids)
     #{}))
 
 (mu/defn card-notification-ids-for-cards
@@ -394,7 +394,7 @@
     (mdb/select-batched-set #(t2/select-pks-set :model/Notification
                                                 :payload_type :notification/card
                                                 :payload_id [:in ^:allow-subquery {:select [:id]
-                                                                                   :from   [:notification_card]
+                                                                                   :from   [(t2/table-name :model/NotificationCard)]
                                                                                    :where  [:in :card_id %]}]) card-ids)
     #{}))
 
@@ -470,10 +470,7 @@
 
 (defn- rolling-average-expr
   [c0 c1]
-  (h2x/cast (int-casting-type)
-            (h2x/round (h2x/+ (h2x/* c0 :average_execution_time)
-                              c1)
-                       [:inline 0])))
+  [:cast [:round [:+ [:* [:inline c0] :average_execution_time] [:inline c1]] [:inline 0]] (int-casting-type)])
 
 (mu/defn backfill-queries-and-average-execution-times!
   "Set the query text of each Query identified by the `[query-hash query-json c0 c1]` entries of `entries`, and its
@@ -565,7 +562,7 @@
               :data_access_token
               :resolved_source_ids]
              :id [:in ^:allow-subquery {:select [:stored_result_id]
-                                        :from   [:stored_result_use]
+                                        :from   [(t2/table-name :model/StoredResultUse)]
                                         :where  [:= :card_id card-id]}]))
 
 (mu/defn stored-result-gate-inputs-for-cards :- [:map-of ::lib.schema.id/card [:sequential :map]]
@@ -583,7 +580,7 @@
                                                    :stored_result.resolved_source_ids
                                                    [:stored_result_use.card_id :card_id]]
                                                   {:join  [:stored_result_use [:= :stored_result_use.stored_result_id :stored_result.id]]
-                                                   :where [:in :stored_result_use.card_id [:auto/param %]]})
+                                                   :where [:in :stored_result_use.card_id %]})
                                       card-ids))))
 
 (mu/defn synced-card-items :- [:sequential ::queries.schema/card]
@@ -594,38 +591,38 @@
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
 
-(mu/defn stale-card-candidates :- ::staleness/query
+(mu/defn stale-card-candidates :- ::funnysql.schema/query.select
   "The query of the Cards that are stale for `opts`, `{:collection-ids (:all | #{int|nil}), :cutoff-date local-date}`."
   [opts :- ::staleness/candidates-options]
-  ^:allow-subquery {:select [:report_card.id
-                             [(h2x/literal "Card") :model]
-                             [:report_card.name :name]
+  ^:allow-subquery {:select [:card.id
+                             [[:literal "Card"] :model]
+                             [:card.name :name]
                              :last_used_at
-                             :report_card.collection_id]
-                    :from :report_card
-                    :left-join [:moderation_review [:and
-                                                    [:= :moderation_review.moderated_item_id :report_card.id]
-                                                    [:= :moderation_review.moderated_item_type (h2x/literal "card")]
-                                                    [:= :moderation_review.most_recent true]
-                                                    [:= :moderation_review.status (h2x/literal "verified")]]
-                                :pulse_card [:= :pulse_card.card_id :report_card.id]
-                                :pulse [:and
-                                        [:= :pulse_card.pulse_id :pulse.id]
-                                        [:= :pulse.archived false]]
-                                :sandboxes [:= :sandboxes.card_id :report_card.id]
-                                :collection [:= :collection.id :report_card.collection_id]]
+                             :card.collection_id]
+                    :from [[(t2/table-name :model/Card) :card]]
+                    :left-join [[(t2/table-name :model/ModerationReview) :mr] [:and
+                                                                               [:= :mr.moderated_item_id :card.id]
+                                                                               [:= :mr.moderated_item_type [:literal "card"]]
+                                                                               [:= :mr.most_recent true]
+                                                                               [:= :mr.status [:literal "verified"]]]
+                                [(t2/table-name :model/PulseCard) :pulse_card] [:= :pulse_card.card_id :card.id]
+                                [(t2/table-name :model/Pulse) :pulse] [:and
+                                                                       [:= :pulse_card.pulse_id :pulse.id]
+                                                                       [:= :pulse.archived false]]
+                                :sandboxes [:= :sandboxes.card_id :card.id]
+                                [(t2/table-name :model/Collection) :collection] [:= :collection.id :card.collection_id]]
                     :where [:and
                             [:= :sandboxes.id nil]
                             [:= :pulse.id nil]
-                            [:= :moderation_review.id nil]
-                            [:= :report_card.archived false]
-                            [:<= :report_card.last_used_at (:cutoff-date opts)]
+                            [:= :mr.id nil]
+                            [:= :card.archived false]
+                            [:<= :card.last_used_at (:cutoff-date opts)]
                             [:= :collection.type nil]
                             (when (embed.settings/some-embedding-enabled?)
-                              [:= :report_card.enable_embedding false])
+                              [:= :card.enable_embedding false])
                             (when (setting/get :enable-public-sharing)
-                              [:= :report_card.public_uuid nil])
-                            (staleness/collection-filter :report_card.collection_id opts)]})
+                              [:= :card.public_uuid nil])
+                            (staleness/collection-filter :card.collection_id opts)]})
 
 (mu/defn stale-card-items
   "The listing columns of the Cards with `card-ids`, with the hydrations the stale content page shows. `:type` is read
@@ -655,10 +652,10 @@
                      :last_used_at
                      [^:allow-subquery
                       {:select   [:status]
-                       :from     [:moderation_review]
+                       :from     [(t2/table-name :model/ModerationReview)]
                        :where    [:and
                                   [:= :moderated_item_type "card"]
-                                  [:= :moderated_item_id :report_card.id]
+                                  [:= :moderated_item_id (u/qualified-key (t2/table-name :model/Card) :id)]
                                   [:= :most_recent true]]
                        :order-by [[:id :desc]]
                        :limit    1}
@@ -679,10 +676,10 @@
                   [:not= :card.document_id nil]  :document.name
                   :else                          (collections.listing/collection-location :collection nil)]]
     {:select    [[:card.id :entity_id] [:card.name :name] [location :location]]
-     :from      [[:report_card :card]]
-     :left-join [:collection                  [:= :card.collection_id :collection.id]
-                 [:report_dashboard :dashboard] [:= :card.dashboard_id :dashboard.id]
-                 :document                    [:= :card.document_id :document.id]]
+     :from      [[(t2/table-name :model/Card) :card]]
+     :left-join [[(t2/table-name :model/Collection) :collection] [:= :card.collection_id :collection.id]
+                 [(t2/table-name :model/Dashboard) :dashboard]   [:= :card.dashboard_id :dashboard.id]
+                 [(t2/table-name :model/Document) :document]     [:= :card.document_id :document.id]]
      :where     (into [:and]
                       (remove nil?)
                       [(collections.listing/visible-in-collections-clause :card opts include-archived nil)
@@ -705,10 +702,10 @@
                        :c.archived_directly
                        :c.archived
                        :c.dataset_query
-                       [(h2x/literal (case card-type
-                                       :model "dataset"
-                                       :metric  "metric"
-                                       "card"))
+                       [[:literal (case card-type
+                                    :model "dataset"
+                                    :metric  "metric"
+                                    "card")]
                         :model]
                        [:u.id :last_edit_user]
                        [:u.email :last_edit_email]
@@ -718,17 +715,17 @@
                        [:mr.status :moderated_status]]
                 (#{:question :model} card-type) (conj :c.database_id)
                 (= :model card-type)            (conj :c.table_id :t.is_upload :c.query_type))
-   :from      [[:report_card :c]]
-   :left-join (cond-> [[:revision :r] [:and
-                                       [:= :r.model_id :c.id]
-                                       [:= :r.model (h2x/literal "Card")]
-                                       (revisions.sql/newest-revision-clause :r "Card" :c.id)]
-                       [:moderation_review :mr] [:and
-                                                 [:= :mr.moderated_item_id :c.id]
-                                                 [:= :mr.most_recent true]
-                                                 [:= :mr.moderated_item_type (h2x/literal "card")]]
-                       [:core_user :u] [:= :u.id :r.user_id]]
-                (= :model card-type) (conj [:metabase_table :t] [:= :t.id :c.table_id]))
+   :from      [[(t2/table-name :model/Card) :c]]
+   :left-join (cond-> [[(t2/table-name :model/Revision) :r] [:and
+                                                             [:= :r.model_id :c.id]
+                                                             [:= :r.model [:literal "Card"]]
+                                                             (revisions.sql/newest-revision-clause :r "Card" :c.id)]
+                       [(t2/table-name :model/ModerationReview) :mr] [:and
+                                                                      [:= :mr.moderated_item_id :c.id]
+                                                                      [:= :mr.most_recent true]
+                                                                      [:= :mr.moderated_item_type [:literal "card"]]]
+                       [(t2/table-name :model/User) :u] [:= :u.id :r.user_id]]
+                (= :model card-type) (conj [(t2/table-name :model/Table) :t] [:= :t.id :c.table_id]))
    :where     [:and
                (collections.listing/visible-items-clause :c.collection_id archived? {:root-namespace nil})
                (if (collection/is-trash? collection)
@@ -744,12 +741,12 @@
                [:= :c.archived (boolean archived?)]
                (case card-type
                  :model
-                 [:= :c.type (h2x/literal "model")]
+                 [:= :c.type [:literal "model"]]
 
                  :metric
-                 [:= :c.type (h2x/literal "metric")]
+                 [:= :c.type [:literal "metric"]]
 
-                 [:= :c.type (h2x/literal "question")])
+                 [:= :c.type [:literal "question"]])
                (collections.listing/pinned-state->clause pinned-state)]})
 
 (mu/defn collection-question-items :- :map
@@ -796,21 +793,21 @@
                            [:dashboard.name :dashboard_name]
                            [:card.collection_id :entity-coll-id]
                            [:mr.status :moderated-status]
-                           [:collection.id :collection_id]
-                           [:collection.name :collection_name]
-                           [:collection.authority_level :collection_authority_level]]
-                  :from [[:report_card :card]]
+                           [(u/qualified-key (t2/table-name :model/Collection) :id) :collection_id]
+                           [(u/qualified-key (t2/table-name :model/Collection) :name) :collection_name]
+                           [(u/qualified-key (t2/table-name :model/Collection) :authority_level) :collection_authority_level]]
+                  :from [[(t2/table-name :model/Card) :card]]
                   :where [:in :card.id card-ids]
-                  :left-join [[:moderation_review :mr]
+                  :left-join [[(t2/table-name :model/ModerationReview) :mr]
                               [:and
                                [:= :mr.moderated_item_id :card.id]
                                [:= :mr.moderated_item_type "card"]
                                [:= :mr.most_recent true]]
-                              [:collection]
+                              [(t2/table-name :model/Collection)]
                               [:and
-                               [:= :collection.id :card.collection_id]
-                               [:= :collection.archived false]]
-                              [:report_dashboard :dashboard]
+                               [:= (u/qualified-key (t2/table-name :model/Collection) :id) :card.collection_id]
+                               [:= (u/qualified-key (t2/table-name :model/Collection) :archived) false]]
+                              [(t2/table-name :model/Dashboard) :dashboard]
                               [:= :dashboard.id :card.dashboard_id]]}))
     card-ids)
    :can_read :can_write))

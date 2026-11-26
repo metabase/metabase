@@ -9,7 +9,6 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.app-db.connection :as mdb.connection]
@@ -126,9 +125,8 @@
   "Test connection to a `data-source`. Returns truthy on success; throws an exception or returns falsey if unable to
   connect."
   [^javax.sql.DataSource data-source]
-  (let [[first-row] (jdbc/query {:datasource data-source} ["SELECT 1"])
-        [result]    (vals first-row)]
-    (= result 1)))
+  (with-open [conn (.getConnection data-source)]
+    (.isValid conn 0)))
 
 (defn- unpooled-data-source
   "The plain [[javax.sql.DataSource]] a c3p0 pool was built from, or `data-source` unchanged if it isn't a c3p0 pool.

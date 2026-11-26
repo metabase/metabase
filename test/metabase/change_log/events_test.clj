@@ -43,10 +43,10 @@
 (defn- logged-by
   "The `[table_name row_id action]` of the change log rows that `thunk` writes."
   [thunk]
-  (let [top (or (:id (t2/query-one ["SELECT MAX(id) AS id FROM change_log"])) 0)]
+  (let [top (or (:id (t2/query-one {:select [[[:max :id] :id]] :from [(t2/table-name :model/ChangeLog)]})) 0)]
     (thunk)
     (mapv (juxt :table_name :row_id :action)
-          (t2/query ["SELECT table_name, row_id, action FROM change_log WHERE id > ? ORDER BY id" top]))))
+          (t2/query {:select [:table_name :row_id :action] :from [(t2/table-name :model/ChangeLog)] :where [:> :id top] :order-by [:id]}))))
 
 (deftest log-test
   (when config/ee-available?
@@ -182,7 +182,7 @@
                        :model/Table    t  {:db_id (:id db)}
                        :model/Field    f1 {:table_id (:id t), :base_type :type/Text, :effective_type :type/Text}
                        :model/Field    f2 {:table_id (:id t), :base_type :type/Text, :effective_type :type/Text}]
-          (t2/update! :metabase_field :id (:id f2) {:effective_type "type/Integer"})
+          (t2/update! (t2/table-name :model/Field) :id (:id f2) {:effective_type "type/Integer"})
           (is (= [["metabase_field" (:id f1) "update"]
                   ["metabase_field" (:id f2) "update"]]
                  (sort (logged-by #(field/update-fields! (for [id [(:id f1) (:id f2)]] {:id id :description "x"})))))))))))
@@ -205,7 +205,7 @@
         (mt/with-temp [:model/User             user  {}
                        :model/PermissionsGroup group {}]
           (testing "without `log-rows!`, a write that bypasses the model is not logged"
-            (is (= [] (logged-by #(t2/update! :permissions_group :id (:id group) {:name "raw"})))))
+            (is (= [] (logged-by #(t2/update! (t2/table-name :model/PermissionsGroup) :id (:id group) {:name "raw"})))))
           (testing "a group membership added"
             (let [rows (logged-by #(perms-group-membership/add-users-to-groups! [{:user user :group group}]))]
               (is (= [["permissions_group_membership"
@@ -340,6 +340,7 @@
     :model/AnalysisFindingStatus
     :model/ApiKey
     :model/ApiKeyUsageLog
+    :model/ChangeLog
     :model/ApplicationPermissionsRevision
     :model/AuditLog
     :model/AuthIdentity
@@ -518,7 +519,7 @@
                      :model/Database          other   {}
                      :model/Table             other-t {:db_id (:id other)}
                      :model/Field             fk      {:table_id (:id other-t)}]
-        (t2/update! :metabase_field :id (:id fk) {:fk_target_field_id (:id f)})
+        (t2/update! (t2/table-name :model/Field) :id (:id fk) {:fk_target_field_id (:id f)})
         (testing "a delete logs the rows ON DELETE CASCADE deletes, at any depth, and those ON DELETE SET NULL updates"
           (let [logged (set (logged-by #(do (events/publish-event! :event/database-delete
                                                                    (events/delete-event

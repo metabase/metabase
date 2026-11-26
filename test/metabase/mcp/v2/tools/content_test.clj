@@ -1008,7 +1008,7 @@
    payloads. Those rows only ever arrive by migration, so this stands in for that history. The
    row must carry no payload_id, so the before-delete dispatch is never exercised at teardown."
   [notif-id]
-  (t2/query-one {:update :notification
+  (t2/query-one {:update (t2/table-name :model/Notification)
                  :set    {:payload_type "notification/dashboard"}
                  :where  [:= :id notif-id]}))
 

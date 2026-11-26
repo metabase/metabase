@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.encryption :as mdb.encryption]
@@ -23,6 +24,22 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- setting-value-sql
+  "The `[sql & params]` selecting the raw value of the setting `setting-key`, quoting the H2 keywords `VALUE` and `KEY`."
+  [setting-key]
+  (sql/format {:select [[[:raw "\"VALUE\""]]]
+               :from   [(t2/table-name :model/Setting)]
+               :where  [:= [:raw "\"KEY\""] setting-key]}
+              {:quoted false}))
+
+(defn- database-details-sql
+  "The `[sql & params]` selecting the raw details of the databases matching `where`."
+  [where]
+  (sql/format {:select [:details]
+               :from   [(t2/table-name :model/Database)]
+               :where  where}
+              {:quoted false}))
 
 (defsetting dump-to-h2-test-setting
   "Test setting -- a setting row to check is dumped decrypted or encrypted as asked."
@@ -93,26 +110,26 @@
                 (testing "decodes settings and dashboard.details"
                   (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-plaintext))]
                     (is (= "baz" (:value (first (jdbc/query {:connection target-conn}
-                                                            "select \"VALUE\" from SETTING where \"KEY\"='dump-to-h2-test-setting';")))))
+                                                            (setting-value-sql "dump-to-h2-test-setting"))))))
                     (is (= "{\"db\":\"/tmp/test.db\"}"
                            (:details (first (jdbc/query {:connection target-conn}
-                                                        "select details from metabase_database where id=1;")))))))
+                                                        (database-details-sql [:= :id 1]))))))))
                 (testing "when flag is set to false, encrypted settings and dashboard.details are still encrypted"
                   (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-enc))]
                     (is (not (= "baz"
                                 (:value (first (jdbc/query {:connection target-conn}
-                                                           "select \"VALUE\" from SETTING where \"KEY\"='dump-to-h2-test-setting';"))))))
+                                                           (setting-value-sql "dump-to-h2-test-setting")))))))
                     (is (not (= "{\"db\":\"/tmp/test.db\"}"
                                 (:details (first (jdbc/query {:connection target-conn}
-                                                             "select details from metabase_database where id=1;"))))))))
+                                                             (database-details-sql [:= :id 1])))))))))
                 (testing "defaults to not decrypting"
                   (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-default-enc))]
                     (is (not (= "baz"
                                 (:value (first (jdbc/query {:connection target-conn}
-                                                           "select \"VALUE\" from SETTING where \"KEY\"='dump-to-h2-test-setting';"))))))
+                                                           (setting-value-sql "dump-to-h2-test-setting")))))))
                     (is (not (= "{\"db\":\"/tmp/test.db\"}"
                                 (:details (first (jdbc/query {:connection target-conn}
-                                                             "select details from metabase_database where id=1;"))))))))))))))))
+                                                             (database-details-sql [:= :id 1])))))))))))))))))
 
 (deftest dump-to-h2-dump-is-attached-dwh-test
   (testing "dump-to-h2 --dump-plaintext with is_attached_dwh"
@@ -146,8 +163,8 @@
                   (testing "preserves details when is_attached_dwh is not set"
                     (is (= "{\"db\":\"/tmp/test.db\"}"
                            (:details (first (jdbc/query {:connection target-conn}
-                                                        "select details from metabase_database where name='normal-db';"))))))
+                                                        (database-details-sql [:= :name "normal-db"])))))))
                   (testing "preserves details when is_attached_dwh is not set"
                     (is (= "{}"
                            (:details (first (jdbc/query {:connection target-conn}
-                                                        "select details from metabase_database where name='attached-dwh';")))))))))))))))
+                                                        (database-details-sql [:= :name "attached-dwh"]))))))))))))))))

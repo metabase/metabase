@@ -622,7 +622,7 @@
         ;; read core_session directly: auth_identity_id is the column session listing joins the provider on
         (let [password-identity-id (t2/select-one-pk :model/AuthIdentity :user_id (:id user) :provider "password")
               sessions             (t2/query {:select [:id :auth_identity_id]
-                                              :from   [:core_session]
+                                              :from   [(t2/table-name :model/Session)]
                                               :where  [:and [:= :user_id (:id user)] [:= :ended_at nil]]})]
           (is (=? {:end_reason "password-change", :key_hashed nil}
                   (t2/select-one :model/Session :id (:id stale-session)))

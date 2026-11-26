@@ -28,7 +28,9 @@
 
 (deftest audit-db-view-names-test
   (testing "`audit-db-view-names` includes all views in the app DB prefixed with `v_`"
-    (let [view-query "SELECT table_name FROM information_schema.views WHERE table_name LIKE 'v\\_%';"]
+    (let [view-query {:select [:table_name]
+                      :from   [:information_schema.views]
+                      :where  [:like :table_name "v\\_%"]}]
       (is (set/superset?
            audit-app.permissions/audit-db-view-names
            (into #{}

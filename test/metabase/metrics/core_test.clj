@@ -105,12 +105,12 @@
                                        :database_id   (mt/id)
                                        :table_id      (mt/id :venues)
                                        :dataset_query (metric-query)}]
-      (t2/query-one {:update :report_card
+      (t2/query-one {:update (t2/table-name :model/Card)
                      :set    {:card_schema 23, :dimensions nil, :dimension_mappings nil}
                      :where  [:= :id (:id metric)]})
       (metrics/sync-dimensions! :metadata/metric [(:id metric)])
       (let [stored     (t2/query-one {:select [:dimensions :dimension_mappings]
-                                      :from   [:report_card]
+                                      :from   [(t2/table-name :model/Card)]
                                       :where  [:= :id (:id metric)]})
             first-ids (mapv :id (:dimensions (t2/select-one :model/Card :id (:id metric))))
             next-ids  (mapv :id (:dimensions (t2/select-one :model/Card :id (:id metric))))]
@@ -122,7 +122,7 @@
   "Return `card-id` to the state a metric created before curated dimensions shipped is in: no stored dimensions, and
   a `card_schema` old enough that the 23->24 backfill still runs on read."
   [card-id]
-  (t2/query-one {:update :report_card
+  (t2/query-one {:update (t2/table-name :model/Card)
                  :set    {:card_schema        23
                           :dimensions         nil
                           :dimension_mappings nil}
@@ -142,7 +142,7 @@
         (is (= (ids) (ids))
             "two reads agree")
         (is (nil? (:dimensions (t2/query-one {:select [:dimensions]
-                                              :from   [:report_card]
+                                              :from   [(t2/table-name :model/Card)]
                                               :where  [:= :id (:id metric)]})))
             "and neither read persisted anything")))))
 
@@ -586,7 +586,7 @@
                                        :table_id      (mt/id :orders)
                                        :dataset_query (metric-query)}]
       ;; Raw UPDATE, so the row looks like it was written before curated dimensions existed.
-      (t2/query-one {:update :report_card
+      (t2/query-one {:update (t2/table-name :model/Card)
                      :set    {:card_schema        23
                               :dimensions         nil
                               :dimension_mappings nil

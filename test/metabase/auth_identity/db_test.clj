@@ -19,7 +19,7 @@
                              "auth-identity-exists?"  auth-identity.db/auth-identity-exists?
                              "auth-identity-ids"      auth-identity.db/auth-identity-ids}]
           (testing fn-name
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Marked a whole operator form"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"provider must be a string"
                                   (f user-id [:like "%"])))))
         (is (t2/exists? :model/AuthIdentity :user_id user-id :provider "google"))))))
 

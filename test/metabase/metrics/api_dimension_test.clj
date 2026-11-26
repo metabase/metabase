@@ -699,7 +699,7 @@
       ;; Force the previous release's card_schema (23) and clear the dimensions the insert hook
       ;; seeded, so the row looks like a metric created before curated dimensions shipped.
       ;; Done with a raw UPDATE to bypass before-update, so nothing bumps the schema back up.
-      (t2/query-one {:update :report_card
+      (t2/query-one {:update (t2/table-name :model/Card)
                      :set    {:card_schema        23
                               :dimensions         nil
                               :dimension_mappings nil}
@@ -809,7 +809,7 @@
                                        :dataset_query orders-q}]
       (let [{:keys [dimensions dimension-mappings]} (legacy-dimension-set (:entity_id metric) orders-q)]
         ;; Raw UPDATE so nothing bumps the schema back up or re-modernizes on the way in.
-        (t2/query-one {:update :report_card
+        (t2/query-one {:update (t2/table-name :model/Card)
                        :set    {:card_schema        23
                                 :dimensions         (json/encode dimensions)
                                 :dimension_mappings (json/encode dimension-mappings)}
@@ -822,7 +822,7 @@
    would report the modernized value whether or not it ever reached the database."
   [card-id]
   (let [row (t2/query-one {:select [:card_schema :dimensions]
-                           :from   [:report_card]
+                           :from   [(t2/table-name :model/Card)]
                            :where  [:= :id card-id]})]
     (update row :dimensions #(some-> % (json/decode true)))))
 

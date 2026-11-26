@@ -13,7 +13,6 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -63,7 +62,7 @@
 (mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
   "The Database id of each of the Tables with `table-ids`, by Table id."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (app-db/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in [:auto/param %]]) table-ids))
+  (app-db/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in %]) table-ids))
 
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
@@ -88,13 +87,13 @@
 (mu/defn card-collection-ids :- [:map-of ::lib.schema.id/card [:maybe ::lib.schema.id/collection]]
   "The Collection id of each of the Cards with `card-ids` that exists, nil for the root, by Card id."
   [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
-  (app-db/select-batched-map #(t2/select-pk->fn :collection_id [:model/Card :id :collection_id] :id [:in [:auto/param %]])
+  (app-db/select-batched-map #(t2/select-pk->fn :collection_id [:model/Card :id :collection_id] :id [:in %])
                              card-ids))
 
 (mu/defn collections-by-id :- [:map-of ::lib.schema.id/collection (ms/InstanceOf :model/Collection)]
   "The Collections with `collection-ids` that exist, by id."
   [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
-  (app-db/select-batched-map #(t2/select-pk->fn identity :model/Collection :id [:in [:auto/param %]]) collection-ids))
+  (app-db/select-batched-map #(t2/select-pk->fn identity :model/Collection :id [:in %]) collection-ids))
 
 (mu/defn action
   "The Action with `action-id`, or nil."
@@ -130,7 +129,7 @@
 (mu/defn dashcard-dashboard-id
   "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :id [:auto/param dashcard-id]))
+  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :id dashcard-id))
 
 (mu/defn dashcard-action-id
   "The Action id of the DashboardCard with `dashcard-id`, or nil."
@@ -225,7 +224,7 @@
   (vec (into (set (app-db/select-batched #(t2/select-fn-set :action_id :model/QueryAction :database_id [:in %]) database-ids))
              (app-db/select-batched #(t2/select-fn-set :action_id :model/ImplicitAction
                                                        {:join  [[(t2/table-name :model/Table) :table]
-                                                                [:= :table.id :implicit_action.table_id]]
+                                                                [:= :table.id (u/qualified-key (t2/table-name :model/ImplicitAction) :table_id)]]
                                                         :where [:in :table.db_id %]})
                                     database-ids))))
 
@@ -330,7 +329,7 @@
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id [:auto/param dashboard-id]))
+  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id dashboard-id))
 
 (mu/defn writable-table-exists?
   "Whether the Database with `database-id` has a writable Table."
@@ -381,8 +380,8 @@
                    :else
                    (:name (collection.root/root-collection-with-ui-details nil))]]]
     {:select    [[:action.id :entity_id] [:action.name :name] [location :location]]
-     :from      [:action]
-     :left-join [:collection [:= :action.collection_id :collection.id]]
+     :from      [[(t2/table-name :model/Action) :action]]
+     :left-join [[(t2/table-name :model/Collection) :collection] [:= :action.collection_id :collection.id]]
      :where     (into [:and]
                       (remove nil?)
                       [[:or
@@ -405,8 +404,8 @@
   (when (and (contains? #{collection/data-actions-ns collection/data-apps-ns} (some-> (:namespace collection) keyword))
              (nil? created-by-id))
     {:select [:action.id :action.collection_id :action.name :action.description :action.entity_id
-              :action.archived :action.archived_directly [(h2x/literal "action") :model]]
-     :from   [[:action :action]]
+              :action.archived :action.archived_directly [[:literal "action"] :model]]
+     :from   [[(t2/table-name :model/Action) :action]]
      :where  [:and
               (collections.listing/poison-when-pinned-clause pinned-state)
               [:= :action.collection_id (:id collection)]

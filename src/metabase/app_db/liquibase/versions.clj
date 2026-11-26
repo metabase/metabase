@@ -29,10 +29,11 @@
   each migration run records as its own deployment even inside a long-lived process (a dev REPL). Development builds
   all record the same constant [[dev-version]], so for them the deployment is the only thing that tells runs apart."
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.db :as app-db.db]
    [metabase.config.core :as config]
+   [metabase.funnysql.core :as funnysql]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -62,13 +63,10 @@
 ;;; ------------------------------------------------- JDBC helpers --------------------------------------------------
 
 (defn table-exists?
-  "Check if a table exists."
+  "Whether the table `table-name` exists, read from the metadata of `conn`."
   [table-name ^Connection conn]
-  (-> (.getMetaData conn)
-      (.getTables nil nil table-name (u/varargs String ["TABLE"]))
-      jdbc/metadata-query
-      seq
-      boolean))
+  (with-open [rs (.getTables (.getMetaData conn) nil nil table-name (u/varargs String ["TABLE"]))]
+    (.next rs)))
 
 (defn versions-table-exists?
   "Whether the [[versions-table-name]] table exists, checked without creating it."
@@ -89,17 +87,26 @@
 (defn- changelog-table ^String [^Database database]
   (.getDatabaseChangeLogTableName database))
 
-(defn- query [^Connection conn sql-params]
-  (jdbc/query {:connection conn} sql-params))
+(defn table-key
+  "The keyword of the bookkeeping table `table-name`, cased as the application database stores it: lower case on
+  Postgres and upper case on H2 and MySQL, where Liquibase creates its tables upper case."
+  [table-name]
+  (keyword (if (postgres?) (u/lower-case-en table-name) (u/upper-case-en table-name))))
 
-(defn- execute-ddl!
-  "Run `ddl` on `conn` as it is, without the transaction `clojure.java.jdbc` wraps statements in: that transaction's
-  rollback on failure would also discard the caller's savepoint (see [[create-table-if-missing!]])."
-  [^Connection conn ^String ddl]
-  (jdbc/execute! {:connection conn} [ddl] {:transaction? false}))
+(defn- changelog-key
+  "The [[table-key]] of the changelog table of `database`."
+  [^Database database]
+  (table-key (changelog-table database)))
 
-(defn- execute! [^Connection conn sql-params]
-  (jdbc/execute! {:connection conn} sql-params))
+(defn- versions-key
+  "The [[table-key]] of the [[versions-table-name]] table."
+  []
+  (table-key (versions-table-name)))
+
+(defn- first-runs-key
+  "The [[table-key]] of the [[first-runs-table-name]] table."
+  []
+  (table-key (first-runs-table-name)))
 
 ;;; -------------------------------------------- the version being recorded ----------------------------------------
 
@@ -217,9 +224,7 @@
   [^Connection conn ^Database database]
   (let [changelog (changelog-table database)]
     (when (table-exists? changelog conn)
-      (let [changeset-id (-> (query conn [(format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY id DESC LIMIT 1" changelog)])
-                             first
-                             :id)]
+      (let [changeset-id (app-db.db/highest-versioned-changeset-id conn (table-key changelog))]
         (some-> changeset-id extract-numbers first)))))
 
 (def ^:private legacy-version-tracking-suffix "legacy-version-tracking")
@@ -261,7 +266,7 @@
   lower-version changeset (e.g. a `v44.` id) with a later `dateexecuted` than the highest-version changeset already
   applied, and the schema's real version is the highest one."
   [^Connection conn ^Database database]
-  (->> (query conn [(format "SELECT id FROM %s WHERE id LIKE 'v%%'" (changelog-table database))])
+  (->> (app-db.db/versioned-changelog-rows conn (changelog-key database))
        (keep (comp legacy-major :id))
        (reduce max 0)))
 
@@ -269,7 +274,7 @@
   "The highest legacy changeset major, ignoring synthetic version-tracking markers. Used only to detect work that an
   older binary really rolled back: a marker is unknown to that binary and therefore survives its rollback."
   [^Connection conn ^Database database]
-  (->> (query conn [(format "SELECT id, filename FROM %s WHERE id LIKE 'v%%'" (changelog-table database))])
+  (->> (app-db.db/versioned-changelog-rows conn (changelog-key database))
        (remove legacy-version-tracking-marker?)
        (keep (comp legacy-major :id))
        (reduce max 0)))
@@ -289,10 +294,7 @@
 (defn last-deployment-id
   "The `deployment_id` of the most-recently-applied changeset (in [[exec-pos]] order), or nil for an empty changelog."
   [^Connection conn ^Database database]
-  (-> (query conn [(format "SELECT deployment_id FROM %s ORDER BY dateexecuted DESC, orderexecuted DESC LIMIT 1"
-                           (changelog-table database))])
-      first
-      :deployment_id))
+  (:deployment_id (app-db.db/newest-changelog-row conn (changelog-key database))))
 
 (defn- ran-row? [{:keys [ran_migrations]}]
   ;; a MySQL table created before the column became bit(1) stores tinyint(1), which reads back as a number
@@ -301,11 +303,7 @@
 (defn- ran-version
   "The version recorded as having run `deployment-id`, or nil when it has no such row."
   [^Connection conn deployment-id]
-  (-> (query conn [(format "SELECT metabase_version FROM %s WHERE deployment_id = ? AND ran_migrations = TRUE ORDER BY id LIMIT 1"
-                           (versions-table-name))
-                   deployment-id])
-      first
-      :metabase_version))
+  (app-db.db/ran-version conn (versions-key) deployment-id))
 
 ;;; -------------------------------------------------- deployment reads ---------------------------------------------
 
@@ -322,8 +320,7 @@
   (if (table-exists? (first-runs-table-name) conn)
     (into {}
           (map (juxt (juxt :filename :author :changeset_id) #(select-keys % [:deployment_id :dateexecuted :orderexecuted])))
-          (query conn [(format "SELECT changeset_id, author, filename, deployment_id, dateexecuted, orderexecuted FROM %s"
-                               (first-runs-table-name))]))
+          (app-db.db/first-run-rows conn (first-runs-key)))
     {}))
 
 (defn recorded-deployments
@@ -341,8 +338,7 @@
   keeps its place this way. The first entry is the deployment the schema is currently at. Rows with no
   `deployment_id` (written by Liquibase versions from before it existed) are ignored."
   [^Connection conn ^Database database]
-  (let [rows       (query conn [(format "SELECT id, author, filename, deployment_id, dateexecuted, orderexecuted, exectype FROM %s"
-                                        (changelog-table database))])
+  (let [rows       (app-db.db/changelog-rows conn (changelog-key database))
         first-run  (first-runs conn)
         positions  (reduce (fn [positions {:keys [deployment_id] :as row}]
                              (let [pos (exec-pos row)]
@@ -359,9 +355,7 @@
                                          rows)))
         ;; `migrate print` reads this before the table exists: nothing is recorded yet
         by-dep    (if (versions-table-exists? conn)
-                    (group-by :deployment_id
-                              (query conn [(format "SELECT deployment_id, metabase_version, ran_migrations FROM %s ORDER BY id"
-                                                   (versions-table-name))]))
+                    (group-by :deployment_id (app-db.db/version-rows conn (versions-key)))
                     {})]
     (->> positions
          (sort-by val #(compare %2 %1))
@@ -431,21 +425,15 @@
   position. Version-prefixed ids are matched by the major in the id; version-less changesets carry no version in their
   id, so they are matched by the recorded ran-version major of their deployment (see [[recorded-deployments]])."
   [^Connection conn ^Database database latest-available latest-applied]
-  (let [changelog  (changelog-table database)
-        versions   (range (inc latest-available) (inc latest-applied))
+  (let [versions   (range (inc latest-available) (inc latest-applied))
         later-deps (->> (recorded-deployments conn database)
                         (filter #(when-let [major (some-> (:ran-version %) version->major)]
                                    (and (> major latest-available) (<= major latest-applied))))
-                        (mapv :deployment-id))
-        ;; RERAN rows are older changesets that merely re-executed under the later deployment (edited runOnChange
-        ;; changesets); they are not "from" the later version and would only confuse the listing
-        clauses    (concat (map #(format "id LIKE 'v%d.%%'" %) versions)
-                           (when (seq later-deps)
-                             [(format "(deployment_id IN (%s) AND exectype <> 'RERAN')"
-                                      (str/join ", " (repeat (count later-deps) "?")))]))
-        sql        (format "SELECT id FROM %s WHERE %s ORDER BY dateexecuted ASC, orderexecuted ASC"
-                           changelog (str/join " OR " clauses))]
-    (into [] (comp (map :id) (remove special-case-migrations)) (query conn (into [sql] later-deps)))))
+                        (mapv :deployment-id))]
+    ;; RERAN rows are older changesets that merely re-executed under the later deployment (edited runOnChange
+    ;; changesets); they are not "from" the later version and would only confuse the listing
+    (into [] (remove special-case-migrations)
+          (app-db.db/changelog-ids-of-majors-or-deployments conn (changelog-key database) versions later-deps))))
 
 ;;; ------------------------------------------------ writing version rows -------------------------------------------
 
@@ -458,9 +446,10 @@
     :else        (str x)))
 
 (defn- render-sql
-  "Render a `[sql & params]` statement as a single SQL string with the parameters inlined."
-  ^String [[sql & params]]
-  (reduce (fn [s param] (str/replace-first s "?" (sql-literal param))) sql params))
+  "Render a Honey SQL statement as a single SQL string with the parameters inlined."
+  ^String [honeysql]
+  (let [[sql & params] (funnysql/format honeysql (mdb.connection/db-type))]
+    (reduce (fn [s param] (str/replace-first s "?" (sql-literal param))) sql params)))
 
 (defn- ignores-duplicate-rows?
   "Whether [[version-row-statement]] can tell the application database to skip an already-present row itself. Postgres
@@ -470,16 +459,15 @@
   (contains? #{:postgres :mysql} (mdb.connection/db-type)))
 
 (defn- version-row-statement
-  "`[sql & params]` inserting a `databasechangelog_version` row, skipping an already-present
+  "The Honey SQL inserting a `databasechangelog_version` row, skipping an already-present
   `(deployment_id, metabase_version)` pair where the dialect can express that (see [[ignores-duplicate-rows?]])."
   [deployment-id version ran?]
-  (let [insert (format "INSERT INTO %s (deployment_id, metabase_version, ran_migrations, deployed_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)"
-                       (versions-table-name))
-        sql    (case (mdb.connection/db-type)
-                 :postgres (str insert " ON CONFLICT DO NOTHING")
-                 :mysql    (str/replace-first insert "INSERT INTO" "INSERT IGNORE INTO")
-                 insert)]
-    [sql deployment-id version ran?]))
+  (let [insert {:insert-into [(table-key (versions-table-name)) [:deployment_id :metabase_version :ran_migrations :deployed_at]]
+                :values      [[deployment-id version ran? [:current-timestamp]]]}]
+    (case (mdb.connection/db-type)
+      :postgres (assoc insert :on-conflict [] :do-nothing true)
+      :mysql    (assoc insert :on-duplicate-key-update {:deployment_id :deployment_id})
+      insert)))
 
 (defn record-deployment-version!
   "Record that `version` ran deployment `deployment-id` (`ran?` true) or booted against the schema at it (`ran?`
@@ -490,14 +478,12 @@
   [^Connection conn deployment-id version ran?]
   (when (and deployment-id version)
     (let [statement    (version-row-statement deployment-id version ran?)
-          pair-exists? #(seq (query conn [(format "SELECT 1 FROM %s WHERE deployment_id = ? AND metabase_version = ?"
-                                                  (versions-table-name))
-                                          deployment-id version]))]
+          pair-exists? #(app-db.db/version-row-exists? conn (versions-key) deployment-id version)]
       (if (ignores-duplicate-rows?)
-        (execute! conn statement)
+        (app-db.db/execute-statement! conn statement)
         (when-not (pair-exists?)
           (try
-            (execute! conn statement)
+            (app-db.db/execute-statement! conn statement)
             (catch SQLException e
               ;; lost the check-then-insert race with another instance; the unique constraint makes the loss benign
               (when-not (pair-exists?)
@@ -520,28 +506,23 @@
 ;;; `databasechangelog_first_run` first.
 
 (defn- first-run-statements
-  "`[sql & params]` statements that record where the changeset `[filename author id]` first ran, for a run that is
+  "Honey SQL statements that record where the changeset `[filename author id]` first ran, for a run that is
   about to re-run it. Its changelog row still holds that run unless it is already RERAN, in which case a recorded first run is
   kept. A record left from an earlier life of the changeset (see [[first-runs]]) is replaced. Nothing to do when the
   changeset has no changelog row, or when its first run is recorded already."
   [^Connection conn ^Database database [filename author id]]
-  (when-let [{:keys [exectype]} (first (query conn [(format "SELECT exectype FROM %s WHERE id = ? AND author = ? AND filename = ?"
-                                                            (changelog-table database))
-                                                    id author filename]))]
+  (when-let [{:keys [exectype]} (app-db.db/changelog-row-exectype conn (changelog-key database) filename author id)]
     (let [first-runs (first-runs-table-name)
           recorded?  (and (table-exists? first-runs conn)
-                          (seq (query conn [(format "SELECT 1 FROM %s WHERE changeset_id = ? AND author = ? AND filename = ?"
-                                                    first-runs)
-                                            id author filename])))
+                          (app-db.db/first-run-recorded? conn (table-key first-runs) filename author id))
           reran?     (= "RERAN" (some-> exectype u/upper-case-en))]
       (when-not (and reran? recorded?)
-        (cond->> [[(format (str "INSERT INTO %s (changeset_id, author, filename, deployment_id, dateexecuted, orderexecuted) "
-                                "SELECT id, author, filename, deployment_id, dateexecuted, orderexecuted FROM %s "
-                                "WHERE id = ? AND author = ? AND filename = ?")
-                           first-runs (changelog-table database))
-                   id author filename]]
-          recorded? (cons [(format "DELETE FROM %s WHERE changeset_id = ? AND author = ? AND filename = ?" first-runs)
-                           id author filename]))))))
+        (cond->> [{:insert-into [[(table-key first-runs) [:changeset_id :author :filename :deployment_id :dateexecuted :orderexecuted]]
+                                 ^:allow-subquery {:select [:id :author :filename :deployment_id :dateexecuted :orderexecuted]
+                                                   :from   [(table-key (changelog-table database))]
+                                                   :where  [:and [:= :id id] [:= :author author] [:= :filename filename]]}]}]
+          recorded? (cons {:delete-from (table-key first-runs)
+                           :where       [:and [:= :changeset_id id] [:= :author author] [:= :filename filename]]}))))))
 
 (defn- change-set-key
   "`[filename author id]` of `change-set`, with the filename Liquibase writes to its changelog row."
@@ -553,7 +534,7 @@
   [^Database database ^ChangeSet change-set]
   (let [conn (underlying-connection database)]
     (doseq [statement (first-run-statements conn database (change-set-key change-set))]
-      (execute! conn statement))))
+      (app-db.db/execute-statement! conn statement))))
 
 (defn forget-first-runs!
   "Delete the first-run records of the changesets `changeset-keys` (`[filename author id]`), for changesets a
@@ -561,22 +542,18 @@
   [^Connection conn changeset-keys]
   (when (and (seq changeset-keys) (table-exists? (first-runs-table-name) conn))
     (doseq [[filename author id] changeset-keys]
-      (execute! conn [(format "DELETE FROM %s WHERE changeset_id = ? AND author = ? AND filename = ?" (first-runs-table-name))
-                      id author filename]))))
+      (app-db.db/delete-first-run! conn (first-runs-key) filename author id))))
 
 (defn delete-versions-of-emptied-deployments!
   "Delete the `databasechangelog_version` rows of deployments that have no changelog row left and no first run (see
   [[first-runs]]): a run that re-runs changesets moves their rows out of the deployment that ran them, so a deployment
   that only re-ran changesets is emptied by the next one that re-runs them too, which leaves its version row behind."
   [^Connection conn ^Database database]
-  (execute! conn [(format (str "DELETE FROM %s WHERE deployment_id NOT IN "
-                               "(SELECT deployment_id FROM %s WHERE deployment_id IS NOT NULL)%s")
-                          (versions-table-name)
-                          (changelog-table database)
-                          (if (table-exists? (first-runs-table-name) conn)
-                            (format " AND deployment_id NOT IN (SELECT deployment_id FROM %s WHERE deployment_id IS NOT NULL)"
-                                    (first-runs-table-name))
-                            ""))]))
+  (app-db.db/delete-versions-of-emptied-deployments! conn
+                                                     (versions-key)
+                                                     (changelog-key database)
+                                                     (when (table-exists? (first-runs-table-name) conn)
+                                                       (first-runs-key))))
 
 (defn recording-exec-listener
   "A Liquibase `ChangeExecListener` that records the running Metabase version against the current `deployment_id` as
@@ -637,11 +614,11 @@
   (if (>= versioned-through major) position-marker-major major))
 
 (defn- marker-delete-statement [changelog major]
-  [(format "DELETE FROM %s WHERE id = ? AND author = ?" changelog)
-   (legacy-marker-id major) legacy-version-tracking-author])
+  {:delete-from (table-key changelog)
+   :where       [:and [:= :id (legacy-marker-id major)] [:= :author legacy-version-tracking-author]]})
 
 (defn- legacy-marker-statement
-  "`[sql & params]` inserting the `vNN.legacy-version-tracking` row for `major` as a row of deployment `deployment-id`,
+  "The Honey SQL inserting the `vNN.legacy-version-tracking` row for `major` as a row of deployment `deployment-id`,
   as the newest row of the changelog: at Liquibase's own next execution position (`MAX(orderexecuted) + 1`), and
   executed strictly after every other row. Binaries from before version-less support pick their changelog from the
   row with the newest `dateexecuted` alone, so a tie would be as bad as losing: MySQL stores Liquibase's sub-second
@@ -649,23 +626,27 @@
   the server, in the same clock Liquibase's rows use. Stamped with the Liquibase version like the rows Liquibase
   records itself."
   [changelog major deployment-id]
-  [(format (str "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, deployment_id, "
-                "description, comments, liquibase) "
-                "SELECT ?, ?, ?, "
-                "CASE WHEN MAX(dateexecuted) IS NULL OR CURRENT_TIMESTAMP > MAX(dateexecuted) THEN CURRENT_TIMESTAMP "
-                "ELSE MAX(dateexecuted) + INTERVAL '1' SECOND END, "
-                "COALESCE(MAX(orderexecuted), 0) + 1, 'EXECUTED', ?, ?, ?, ? FROM %s")
-           changelog changelog)
-   (legacy-marker-id major) legacy-version-tracking-author legacy-version-tracking-suffix
-   deployment-id (legacy-version-tracking-description major) legacy-version-tracking-comment (liquibase-build-version)])
+  {:insert-into [[(table-key changelog) [:id :author :filename :dateexecuted :orderexecuted :exectype :deployment_id
+                                         :description :comments :liquibase]]
+                 ^:allow-subquery {:select [[(legacy-marker-id major)]
+                                            [legacy-version-tracking-author]
+                                            [legacy-version-tracking-suffix]
+                                            [[:case [:or [:= [:max :dateexecuted] nil] [:> [:current-timestamp] [:max :dateexecuted]]]
+                                              [:current-timestamp]
+                                              :else [:date-add [:max :dateexecuted] 1 :second]]]
+                                            [[:+ [:coalesce [:max :orderexecuted] 0] 1]]
+                                            ["EXECUTED"]
+                                            [deployment-id]
+                                            [(legacy-version-tracking-description major)]
+                                            [legacy-version-tracking-comment]
+                                            [(liquibase-build-version)]]
+                                   :from   [(table-key changelog)]}]})
 
 (defn- newest-row-is?
   "Whether the single row with the newest `dateexecuted` is marker `id` of `deployment-id`."
   [^Connection conn changelog id deployment-id]
   (= [[id deployment-id]]
-     (mapv (juxt :id :deployment_id)
-           (query conn [(format "SELECT id, deployment_id FROM %s WHERE dateexecuted = (SELECT MAX(dateexecuted) FROM %s)"
-                                changelog changelog)]))))
+     (mapv (juxt :id :deployment_id) (app-db.db/changelog-rows-at-newest-date conn (table-key changelog)))))
 
 (defn record-legacy-version-tracking!
   "Make a synthetic `vNN.legacy-version-tracking` row the newest row of the changelog, as an ordinary row of
@@ -703,8 +684,8 @@
            id        (legacy-marker-id mmajor)]
        (when-not (newest-row-is? conn changelog id deployment-id)
          (try
-           (execute! conn (marker-delete-statement changelog mmajor))
-           (execute! conn (legacy-marker-statement changelog mmajor deployment-id))
+           (app-db.db/execute-statement! conn (marker-delete-statement changelog mmajor))
+           (app-db.db/execute-statement! conn (legacy-marker-statement changelog mmajor deployment-id))
            (catch Throwable e
              ;; This row only improves downgrade detection for *older* binaries -- it must never block a migration.
              (log/warnf e "Could not record %s in %s; older Metabase versions may not detect a downgrade from this schema"
@@ -794,8 +775,7 @@
   executed up to it -- what a binary that predates version tracking took the schema to be when it ran that
   deployment."
   [^Connection conn ^Database database]
-  (let [rows (->> (query conn [(format "SELECT id, filename, dateexecuted, orderexecuted FROM %s WHERE id LIKE 'v%%'"
-                                       (changelog-table database))])
+  (let [rows (->> (app-db.db/versioned-changelog-rows conn (changelog-key database))
                   (remove legacy-version-tracking-marker?)
                   (keep (fn [row] (when-let [major (legacy-major (:id row))] [(exec-pos row) major]))))]
     (fn [position]
@@ -840,8 +820,7 @@
   [^Connection conn ^Database database]
   (let [highest (highest-real-legacy-major conn database)]
     (when (pos? highest)
-      (let [markers        (query conn [(format "SELECT id, deployment_id FROM %s WHERE filename = ?" (changelog-table database))
-                                        legacy-version-tracking-suffix])
+      (let [markers        (app-db.db/changelog-rows-with-filename conn (changelog-key database) legacy-version-tracking-suffix)
             position-id    (legacy-marker-id position-marker-major)
             position-deps  (into #{} (comp (filter #(= position-id (:id %))) (map :deployment_id)) markers)
             major-markers  (into #{} (comp (remove #(= position-id (:id %))) (keep (comp legacy-major :id))) markers)
@@ -857,11 +836,9 @@
                 :when (versioned ran-major)]
           (log/warnf "Deployment %s was recorded as run by version %s, but an older Metabase version rolled back its changesets above %d; recording it as %s"
                      deployment-id ran-version highest (major->version highest))
-          (doseq [{:keys [id metabase_version]} (query conn [(format "SELECT id, metabase_version FROM %s WHERE deployment_id = ?"
-                                                                     (versions-table-name))
-                                                             deployment-id])
+          (doseq [{:keys [id metabase_version]} (app-db.db/deployment-version-rows conn (versions-key) deployment-id)
                   :when (> (version->major metabase_version) highest)]
-            (execute! conn [(format "DELETE FROM %s WHERE id = ?" (versions-table-name)) id]))
+            (app-db.db/delete-version-row! conn (versions-key) id))
           (record-deployment-version! conn deployment-id (major->version highest) true))))))
 
 (defn- newest-row-safe-for-old-binaries?
@@ -872,8 +849,7 @@
   [^Connection conn ^Database database]
   (let [changelog (changelog-table database)]
     (not-any? (comp version-less-id? :id)
-              (query conn [(format "SELECT id FROM %s WHERE dateexecuted = (SELECT MAX(dateexecuted) FROM %s)"
-                                   changelog changelog)]))))
+              (app-db.db/changelog-rows-at-newest-date conn (table-key changelog)))))
 
 (defn- create-table-if-missing!
   "Create `table-name` with `ddl` unless it exists. Checked first so an already-upgraded database runs no DDL at boot
@@ -885,7 +861,7 @@
     (let [savepoint (when (and (postgres?) (not (.getAutoCommit conn)))
                       (.setSavepoint conn))]
       (try
-        (execute-ddl! conn ddl)
+        (app-db.db/execute-ddl! conn ddl)
         (when-not (.getAutoCommit conn)
           (.commit conn))
         (catch SQLException e
@@ -931,9 +907,7 @@
     (let [ran                 (ran-version conn deployment-id)
           ran-major           (some-> ran version->major)
           major               (highest-real-legacy-major conn database)
-          deployment-rows     (query conn [(format "SELECT id, filename FROM %s WHERE deployment_id = ?"
-                                                   (changelog-table database))
-                                           deployment-id])
+          deployment-rows     (app-db.db/deployment-changelog-rows conn (changelog-key database) deployment-id)
           marker-majors       (into #{} (comp (filter legacy-version-tracking-marker?)
                                               (keep (comp legacy-major :id)))
                                     deployment-rows)
@@ -953,11 +927,9 @@
         (let [version (major->version major)]
           (log/warnf "Deployment %s was recorded as run by version %s, but an older Metabase version rolled back its changesets above %d; recording it as %s"
                      deployment-id ran major version)
-          (doseq [{:keys [id metabase_version]} (query conn [(format "SELECT id, metabase_version FROM %s WHERE deployment_id = ?"
-                                                                     (versions-table-name))
-                                                             deployment-id])
+          (doseq [{:keys [id metabase_version]} (app-db.db/deployment-version-rows conn (versions-key) deployment-id)
                   :when (> (version->major metabase_version) major)]
-            (execute! conn [(format "DELETE FROM %s WHERE id = ?" (versions-table-name)) id]))
+            (app-db.db/delete-version-row! conn (versions-key) id))
           (record-deployment-version! conn deployment-id version true))))))
 
 (defn first-runs-sql

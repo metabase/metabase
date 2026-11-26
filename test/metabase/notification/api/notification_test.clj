@@ -789,7 +789,7 @@
               change-notification-creator (fn [user-id]
                                             ;; :model/Notification prevents updating creator_id, so we need to use table
                                             ;; name
-                                            (t2/update! :notification :id (:id notification) {:creator_id user-id}))
+                                            (t2/update! (t2/table-name :model/Notification) :id (:id notification) {:creator_id user-id}))
               move-card-collection        (fn [user-id]
                                             (t2/update! :model/Card :id (-> notification :payload :card_id)
                                                         {:collection_id (personal-collection-id user-id)}))]

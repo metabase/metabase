@@ -6,12 +6,13 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.schema :as session.schema]
    [metabase.settings.core :as setting]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,23 +27,25 @@
   ;; null-safe: a null provider is a normal session (a password reset, or a row predating the v58
   ;; `auth_identity_id` column), and `provider <> 'mcp'` alone would drop those, since NULL <> 'mcp' is NULL
   [:or [:= :auth_identity.provider nil]
-   [:not= :auth_identity.provider (h2x/literal mcp-provider)]])
+   [:not= :auth_identity.provider [:literal mcp-provider]]])
 
-(def session-left-joins
+(defn session-left-joins
   "The `:left-join`s from a `core_session` row aliased `session` that [[live-session-conditions]] needs: they bind
   the aliases `user`, `tenant` and `auth_identity`. For a query that starts from another table and joins `session`
   itself; a query that starts from `core_session` uses [[session-from-and-joins]]."
   ;; all LEFT joins: a session whose user row, tenant, or auth identity is missing must still be *considered* (and
   ;; then rejected, or bucketed as `unknown`) rather than silently dropped by an inner join
-  [[:core_user :user] [:= :session.user_id :user.id]
-   [:tenant]          [:= :tenant.id :user.tenant_id]
-   [:auth_identity]   [:= :auth_identity.id :session.auth_identity_id]])
+  []
+  [[(t2/table-name :model/User) :user]                   [:= :session.user_id :user.id]
+   [:tenant :tenant]               [:= :tenant.id :user.tenant_id]
+   [(t2/table-name :model/AuthIdentity) :auth_identity] [:= :auth_identity.id :session.auth_identity_id]])
 
-(def session-from-and-joins
+(defn session-from-and-joins
   "The `:from`/`:left-join` a query must use for [[live-session-conditions]] to resolve. Binds the aliases `session`,
   `user`, `tenant` and `auth_identity`."
-  {:from      [[:core_session :session]]
-   :left-join session-left-joins})
+  []
+  {:from      [[(t2/table-name :model/Session) :session]]
+   :left-join (session-left-joins)})
 
 (mu/defn liveness-params :- ::session.schema/liveness-params
   "The [[live-session-conditions]] inputs for this instance right now."
@@ -59,9 +62,9 @@
   "The HoneySQL predicates a `core_session` row must satisfy to be *live*, keyed by what each one checks, so that a
   caller can name which one a row fails (the nightly sweep records that as the session's end reason). Pure, for the
   same reason as [[live-session-conditions]]."
-  [{:keys [db-type max-age-minutes enable-tenants? session-timeout-seconds]}
+  [{:keys [max-age-minutes enable-tenants? session-timeout-seconds]}
    :- ::session.schema/liveness-params]
-  (let [now (h2x/current-datetime-honeysql-form db-type)]
+  (let [now [:current-timestamp]]
     (cond-> {;; a recorded ending is final, whatever the predicates below would say now
              :not-ended     [:= :session.ended_at nil]
              ;; deactivating a user does not delete their session rows, but those rows are dead
@@ -74,11 +77,11 @@
              :not-expired   (cond-> [:and [:or [:= :session.expires_at nil] [:> :session.expires_at now]]]
                               max-age-minutes
                               (conj [:> :session.created_at
-                                     (h2x/add-interval-honeysql-form db-type now (- max-age-minutes) :minute)]))
+                                     [:date-add now (- max-age-minutes) :minute]]))
              :not-mcp       not-mcp-session}
       session-timeout-seconds
       (assoc :not-timed-out [:> [:coalesce :session.last_active_at :session.created_at]
-                             (h2x/add-interval-honeysql-form db-type now (- session-timeout-seconds) :second)]))))
+                             [:date-add now (- session-timeout-seconds) :second]]))))
 
 (mu/defn live-session-conditions :- [:sequential :any]
   "The HoneySQL predicates a `core_session` row must satisfy to be *live* — i.e. to still authenticate a request."
@@ -90,7 +93,7 @@
     ;; a fixed order, so the compiled SQL is the same for the same inputs
     (into [] (keep predicates) [:not-ended :user-active :tenant-active :not-expired :not-mcp :not-timed-out])))
 
-(mu/defn live-expr :- ::h2x/honeysql-expr
+(mu/defn live-expr :- ::funnysql.schema/expr
   "1 when the `core_session` row is live, 0 when it has ended, whether or not the ending has been recorded yet. 1/0
   rather than a boolean, since MySQL has no boolean type. For a query using [[session-from-and-joins]] or
   [[session-left-joins]]."

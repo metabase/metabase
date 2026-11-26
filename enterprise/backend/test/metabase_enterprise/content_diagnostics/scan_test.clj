@@ -516,10 +516,10 @@
                         :finding_type :stale
                         :details      {}}]
           (let [original-metadata (:result_metadata (t2/query-one {:select [:result_metadata]
-                                                                   :from   [:report_card]
+                                                                   :from   [(t2/table-name :model/Card)]
                                                                    :where  [:= :id card-id]}))]
             ;; Bypass Card's write transforms to reproduce stored metadata from older versions.
-            (t2/query {:update :report_card
+            (t2/query {:update (t2/table-name :model/Card)
                        :set    {:result_metadata (json/encode [{:name           "legacy_field"
                                                                 :display_name   "Legacy Field"
                                                                 :base_type      "type/Integer"
@@ -535,7 +535,7 @@
                          :can_write true}
                         (some #(when (= finding-id (:id %)) %) rows))))
               (finally
-                (t2/query {:update :report_card
+                (t2/query {:update (t2/table-name :model/Card)
                            :set    {:result_metadata original-metadata}
                            :where  [:= :id card-id]})))))))))
 
@@ -655,7 +655,7 @@
     ;; params and fail here, which `api-personal-collection-exclusion-spans-descendants-test` cannot do -
     ;; the old LIKE matcher handled any depth too, so that test is a semantic-equivalence guard only.
     (let [params   #(rest (mdb/compile {:select [:*]
-                                        :from   [:content_diagnostics_finding]
+                                        :from   [(t2/table-name :model/ContentDiagnosticsFinding)]
                                         :where  (api.common/exclude-personal-collections-clause true)}))
           baseline (params)]
       (mt/with-temp [:model/User {user-id :id} {}]
@@ -1047,7 +1047,7 @@
                            :model/Transform {xf-id :id} {:collection_id xf-folder}
                            :model/Collection {card-folder :id} {}
                            :model/Card {card-id :id} {:collection_id card-folder}]
-              (t2/update! :collection :id [:in [xf-folder card-folder]] {:archived true})
+              (t2/update! (t2/table-name :model/Collection) :id [:in [xf-folder card-folder]] {:archived true})
               (let [prefix   (scope-prefix)
                     insert!  (fn [etype eid]
                                (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding

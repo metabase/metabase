@@ -31,7 +31,7 @@
                                                         :fallback-type nil}]]
     (testing (format "Field with unknown %s in DB should fall back to %s" column fallback-type)
       (mt/with-temp [:model/Field field]
-        (t2/query-one {:update :metabase_field
+        (t2/query-one {:update (t2/table-name :model/Field)
                        :set    {column (u/qualified-name unknown-type)}
                        :where  [:= :id (u/the-id field)]})
         (is (= fallback-type
@@ -308,7 +308,7 @@
                                                                             :effective_type :type/Text
                                                                             :database_type "TEXT" :position 0 :database_position 0})))))
             counted (fn [ids]
-                      (t2/update! :metabase_field :id [:in (vec (take-nth 2 ids))] {:effective_type "type/Integer"})
+                      (t2/update! (t2/table-name :model/Field) :id [:in (vec (take-nth 2 ids))] {:effective_type "type/Integer"})
                       (events.tu/statement-count! #(field/update-fields! (for [id ids] {:id id :description "x"}))))
             six     (fields 6)]
         (counted (fields 1))
@@ -319,7 +319,7 @@
 (deftest data-sensitivity-transform-round-trip-test
   (testing "data_sensitivity is stored as the enum string and read back as a keyword"
     (mt/with-temp [:model/Field {field-id :id} {:data_sensitivity :PII}]
-      (is (= "PII" (t2/select-one-fn :data_sensitivity :metabase_field :id field-id)))
+      (is (= "PII" (t2/select-one-fn :data_sensitivity (t2/table-name :model/Field) :id field-id)))
       (is (= :PII (t2/select-one-fn :data_sensitivity :model/Field :id field-id)))))
   (testing "a field with no label reads nil and has no user-settings row"
     (mt/with-temp [:model/Field {field-id :id}]

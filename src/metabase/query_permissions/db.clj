@@ -10,7 +10,7 @@
 (mu/defn cards-with-collection-ids
   "The Cards with `card-ids`, each with its `:id` and `:collection_id`, by id."
   [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
-  (mdb/select-batched-map #(t2/select-pk->fn identity [:model/Card :id :collection_id] :id [:in [:auto/param %]])
+  (mdb/select-batched-map #(t2/select-pk->fn identity [:model/Card :id :collection_id] :id [:in %])
                           card-ids))
 
 (mu/defn card-not-in-database

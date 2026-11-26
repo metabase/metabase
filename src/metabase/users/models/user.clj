@@ -25,7 +25,6 @@
    [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -82,7 +81,7 @@
 
 (defmethod mi/non-internal-filter-clause :model/User
   [_model alias]
-  [:not= (h2x/identifier :field alias :type) "internal"])
+  [:not= (u/qualified-key alias :type) "internal"])
 
 (defn settings-map
   "Returns the user's `settings` as a map, defaulting to an empty map.

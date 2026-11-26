@@ -557,11 +557,8 @@
                       (assoc+ v idx el'))))
                 coll coll))))
 
-(defn walk
-  "Drop-in replacement for `clojure.walk/walk`. Optimized for efficiency and has the following behavior differences:
-  - Doesn't walk over map entries. When descending into a map, walks keys and values separately.
-  - Uses transients and reduce where possible and tries to return the same input `form` if no changes were made."
-  [inner outer form]
+(defn- walk*
+  [inner inner-val outer form]
   (cond
     ;; Records may implement their own reduce (e.g. toucan2's IdentityQuery reduces over its rows), so walk their
     ;; entries through `seq` instead of `reduce-kv`.
@@ -571,7 +568,7 @@
                     (let [k  (key e)
                           v  (val e)
                           k' (inner k)
-                          v' (inner v)]
+                          v' (if inner-val (inner-val k v) (inner v))]
                       (if (identical? k' k)
                         (if (identical? v' v)
                           r
@@ -588,7 +585,7 @@
     (let [new-keys (volatile! (transient #{}))]
       (-> (reduce-kv (fn [m k v]
                        (let [k' (inner k)
-                             v' (inner v)]
+                             v' (if inner-val (inner-val k v) (inner v))]
                          (if (identical? k' k)
                            (if (identical? v' v)
                              m
@@ -602,7 +599,7 @@
           (add-original-meta form)
           outer))
 
-    (and (vector? form) (not (map-entry? form)))
+    (vector? form) ;; Including map-entry
     (-> (mapv-mostly-unchanged inner form)
         (add-original-meta form)
         outer)
@@ -611,6 +608,19 @@
     (seq? form) (outer (add-original-meta (or (seq (mapv inner form)) ()) form))
     (coll? form) (outer (add-original-meta (into (empty form) (map inner) form) form))
     :else (outer form)))
+
+(defn walk
+  "Drop-in replacement for `clojure.walk/walk`. Optimized for efficiency and has the following behavior differences:
+  - Doesn't walk over map entries. When descending into a map, walks keys and values separately.
+  - Uses transients and reduce where possible and tries to return the same input `form` if no changes were made.
+
+  The 4-arity version takes an extra `inner-val` function that is called as `(inner-val k v)` on map values instead
+  of `inner`, for when the transformation of a value depends on its key. Map keys and all other elements are still
+  walked with `inner`."
+  ([inner outer form]
+   (walk* inner nil outer form))
+  ([inner inner-val outer form]
+   (walk* inner inner-val outer form)))
 
 (defn prewalk
   "Drop-in replacement for `clojure.walk/prewalk`.

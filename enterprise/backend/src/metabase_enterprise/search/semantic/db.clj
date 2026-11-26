@@ -65,7 +65,7 @@
 (mu/defn collection-locations
   "The ID and location of the raw collection rows with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (mdb/select-batched #(t2/select [:collection :id :location] :id [:in %]) collection-ids))
+  (mdb/select-batched #(t2/select [(t2/table-name :model/Collection) :id :location] :id [:in %]) collection-ids))
 
 (mu/defn instances
   "The instances of `modelable` with `ids`.
