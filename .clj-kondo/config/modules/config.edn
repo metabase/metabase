@@ -1779,6 +1779,7 @@
 
   metabot.agent-api
   {:team    "Metabot"
+   :codeowners true
    :module-exports #{metabot.agent-api.usage}
    :ns-prefix "metabase.agent-api"
    :api     #{metabase.agent-api.api
@@ -1826,6 +1827,7 @@
 
   metabot.llm
   {:team "Metabot"
+   :codeowners true
    :ns-prefix "metabase.llm"
    :api #{metabase.llm.api
           metabase.llm.init
@@ -1856,6 +1858,7 @@
 
   metabot.slackbot
   {:team    "Metabot"
+   :codeowners true
    :ns-prefix "metabase.slackbot"
    :api     #{metabase.slackbot.api
               metabase.slackbot.config
@@ -4474,7 +4477,7 @@
 
   enterprise/metabot
   {:team           "Metabot"
-   :codeowners true
+   :codeowners     true
    :module-exports #{enterprise/metabot.agent-api
                      enterprise/metabot.analytics
                      enterprise/metabot.data-complexity-score}
@@ -4495,6 +4498,7 @@
 
   enterprise/metabot.agent-api
   {:team "Metabot"
+   :codeowners true
    :ns-prefix "metabase-enterprise.agent-api"
    :api #{metabase-enterprise.agent-api.init}
    :uses #{analytics
@@ -4507,6 +4511,7 @@
 
   enterprise/metabot.analytics
   {:team "Metabot"
+   :codeowners true
    :ns-prefix "metabase-enterprise.metabot-analytics"
    :api #{metabase-enterprise.metabot-analytics.api}
    :uses #{api
@@ -4529,6 +4534,7 @@
 
   enterprise/metabot.data-complexity-score
   {:team "Metabot"
+   :codeowners true
    :ns-prefix "metabase-enterprise.data-complexity-score"
    :api #{metabase-enterprise.data-complexity-score.api metabase-enterprise.data-complexity-score.init}
    :uses #{analytics

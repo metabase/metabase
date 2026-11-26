@@ -122,11 +122,23 @@ e2e/embedding-sdk-host-apps/vite-6-data-app-host-app @metabase/data-apps
 # Exceptions inside these paths go below the END marker: lines above this block lose to it.
 #
 
+# enterprise/metabot.agent-api (Metabot)
+enterprise/backend/src/metabase_enterprise/agent_api @metabase/metabot
+enterprise/backend/src/metabase_enterprise/agent_api.* @metabase/metabot
+enterprise/backend/test/metabase_enterprise/agent_api @metabase/metabot
+enterprise/backend/test/metabase_enterprise/agent_api_test.* @metabase/metabot
+
 # enterprise/data-apps (Data Apps)
 enterprise/backend/src/metabase_enterprise/data_apps @metabase/data-apps
 enterprise/backend/src/metabase_enterprise/data_apps.* @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/data_apps @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/data_apps_test.* @metabase/data-apps
+
+# enterprise/metabot.data-complexity-score (Metabot)
+enterprise/backend/src/metabase_enterprise/data_complexity_score @metabase/metabot
+enterprise/backend/src/metabase_enterprise/data_complexity_score.* @metabase/metabot
+enterprise/backend/test/metabase_enterprise/data_complexity_score @metabase/metabot
+enterprise/backend/test/metabase_enterprise/data_complexity_score_test.* @metabase/metabot
 
 # enterprise/dependencies (Data Apps)
 enterprise/backend/src/metabase_enterprise/dependencies @metabase/data-apps
@@ -146,6 +158,12 @@ enterprise/backend/src/metabase_enterprise/metabot.* @metabase/metabot
 enterprise/backend/test/metabase_enterprise/metabot @metabase/metabot
 enterprise/backend/test/metabase_enterprise/metabot_test.* @metabase/metabot
 
+# enterprise/metabot.analytics (Metabot)
+enterprise/backend/src/metabase_enterprise/metabot_analytics @metabase/metabot
+enterprise/backend/src/metabase_enterprise/metabot_analytics.* @metabase/metabot
+enterprise/backend/test/metabase_enterprise/metabot_analytics @metabase/metabot
+enterprise/backend/test/metabase_enterprise/metabot_analytics_test.* @metabase/metabot
+
 # enterprise/remote-sync (Data Apps)
 enterprise/backend/src/metabase_enterprise/remote_sync @metabase/data-apps
 enterprise/backend/src/metabase_enterprise/remote_sync.* @metabase/data-apps
@@ -164,11 +182,23 @@ enterprise/backend/src/metabase_enterprise/serialization.* @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/serialization @metabase/data-apps
 enterprise/backend/test/metabase_enterprise/serialization_test.* @metabase/data-apps
 
+# metabot.agent-api (Metabot)
+src/metabase/agent_api @metabase/metabot
+src/metabase/agent_api.* @metabase/metabot
+test/metabase/agent_api @metabase/metabot
+test/metabase/agent_api_test.* @metabase/metabot
+
 # data-apps (Data Apps)
 src/metabase/data_apps @metabase/data-apps
 src/metabase/data_apps.* @metabase/data-apps
 test/metabase/data_apps @metabase/data-apps
 test/metabase/data_apps_test.* @metabase/data-apps
+
+# metabot.llm (Metabot)
+src/metabase/llm @metabase/metabot
+src/metabase/llm.* @metabase/metabot
+test/metabase/llm @metabase/metabot
+test/metabase/llm_test.* @metabase/metabot
 
 # metabot (Metabot)
 src/metabase/metabot @metabase/metabot
@@ -187,5 +217,11 @@ src/metabase/search @metabase/metabot
 src/metabase/search.* @metabase/metabot
 test/metabase/search @metabase/metabot
 test/metabase/search_test.* @metabase/metabot
+
+# metabot.slackbot (Metabot)
+src/metabase/slackbot @metabase/metabot
+src/metabase/slackbot.* @metabase/metabot
+test/metabase/slackbot @metabase/metabot
+test/metabase/slackbot_test.* @metabase/metabot
 
 # ===== END generated module ownership =====
