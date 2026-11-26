@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupDashboardPublicLinkEndpoints } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
 import type { CreateUserRequest, Dashboard } from "metabase-types/api";
 import {
+  createMockCard,
   createMockDashboardCard,
   createMockDashboardTab,
   createMockUser,
@@ -33,6 +35,45 @@ describe("DashboardSharingMenu", () => {
     });
 
     expect(screen.queryByTestId("sharing-menu-button")).not.toBeInTheDocument();
+  });
+
+  describe.each([
+    { description: "without cards", dashcards: [] },
+    {
+      description: "with only a text card",
+      dashcards: [
+        createMockDashboardCard({
+          card: createMockCard({ display: "text" }),
+        }),
+      ],
+    },
+  ])("dashboard $description (metabase#15077)", ({ dashcards }) => {
+    it("should still allow sharing with a public link", async () => {
+      setupDashboardPublicLinkEndpoints(1);
+      setupDashboardSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        isEmbeddingEnabled: true,
+        dashboard: { dashcards },
+      });
+
+      expect(screen.getByTestId("sharing-menu-button")).toBeVisible();
+      await openMenu();
+      expect(screen.getByText("Create a public link")).toBeVisible();
+      expect(screen.getByText("Embed")).toBeVisible();
+
+      await userEvent.click(screen.getByText("Create a public link"));
+      expect(
+        await screen.findByTestId("public-link-popover-content"),
+      ).toBeVisible();
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls("path:/api/dashboard/1/public_link", {
+            method: "POST",
+          }),
+        ).toHaveLength(1),
+      );
+    });
   });
 
   describe("pdf export", () => {

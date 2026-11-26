@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
@@ -100,10 +101,15 @@ export function setupDashboardSharingMenu({
   dashboard: dashboardOverrides = {},
   dashboardState,
   publicLinkRefusal,
+  siblings,
+  withRouter = false,
 }: {
   dashboard?: Partial<Dashboard>;
   hasPublicLink?: boolean;
   publicLinkRefusal?: PublicLinkRefusalResponse;
+  /** Rendered next to the menu, to exercise what the menu opens. */
+  siblings?: ReactNode;
+  withRouter?: boolean;
 } & SettingsProps) {
   const dashboard = createMockDashboard({
     name: "My Cool Dashboard",
@@ -142,9 +148,12 @@ export function setupDashboardSharingMenu({
     <div>
       <DashboardSharingMenu dashboard={dashboard} />
       <FakeSidebar />
+      {siblings}
     </div>,
-    { storeInitialState: state },
+    { storeInitialState: state, withRouter },
   );
+
+  return { dashboard };
 }
 
 export const openMenu = () => {
