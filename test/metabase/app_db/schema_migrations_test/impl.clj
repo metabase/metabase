@@ -183,7 +183,7 @@
 
 (defn- migrate-to-start!
   "Bring an empty app DB up to, but not including, `start-id`, without sample content.
-  It loads the checked-in snapshot first when `start-id` falls after the snapshot's boundary changeset."
+  It loads a checked-in snapshot first when `start-id` falls after a snapshot's boundary changeset."
   [^java.sql.Connection conn driver start-id]
   ;; Either way the whole range before `start-id` then runs with `:skip-ran?`, so a changeset that sits before the
   ;; boundary but is missing from the snapshot, such as a backport merged after the snapshot was cut, still runs after
@@ -191,9 +191,9 @@
   ;; is off on both paths because the snapshot is dumped without it, so whether a test gets it cannot depend on where
   ;; its start falls.
   (binding [custom-migrations/*create-sample-content* false]
-    (when (snapshot/usable-for-start? conn driver start-id)
-      (log/debugf "Loading app db snapshot %s before running migrations up to %s..." snapshot/snapshot-version start-id)
-      (snapshot/load-snapshot! conn driver))
+    (when-let [version (snapshot/version-for-start conn driver start-id)]
+      (log/debugf "Loading app db snapshot %s before running migrations up to %s..." version start-id)
+      (snapshot/load-snapshot! conn driver version))
     (log/debugf "Finding and running migrations before %s..." start-id)
     (run-migrations-in-range! conn ["v00.00-000" start-id] {:inclusive-end? false, :skip-ran? true})))
 

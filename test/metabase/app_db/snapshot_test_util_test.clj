@@ -84,16 +84,22 @@
                   {:message    (ex-message e)
                    :suppressed (mapv ex-message (.getSuppressed ^Throwable e))})))))))
 
-(deftest usable-for-start?-test
+(deftest version-for-start-test
   (impl/with-temp-empty-app-db [conn :h2]
-    (let [ids             (map first (snapshot/changesets conn))
+    (let [ids             (mapv first (snapshot/changesets conn))
           before-boundary (first ids)
-          after-boundary  (last ids)]
-      (testing "the snapshot can stand in for a start after its boundary, and not for one before it"
+          after-boundary  (last ids)
+          after           (fn [version]
+                            (get ids (inc (.indexOf ^java.util.List ids (snapshot/through-changeset-id version)))))]
+      (testing "a snapshot can stand in for a start after its boundary, and not for one before it"
         ;; without a key whatever the environment sets, since a key alone makes the snapshot unusable
         (encryption-test/with-secret-key nil
-          (is (true? (snapshot/usable-for-start? conn :h2 after-boundary)))
-          (is (not (snapshot/usable-for-start? conn :h2 before-boundary)))))
+          (is (= snapshot/snapshot-version (snapshot/version-for-start conn :h2 after-boundary)))
+          (is (nil? (snapshot/version-for-start conn :h2 before-boundary)))
+          (testing "the snapshot with the latest boundary before the start is the one used"
+            (doseq [version snapshot/snapshot-versions]
+              (is (= version (snapshot/version-for-start conn :h2 (after version))))
+              (is (not= version (snapshot/version-for-start conn :h2 (snapshot/through-changeset-id version))))))))
       (testing "it is never used with an encryption key, since it was generated without one"
         (encryption-test/with-secret-key "dont-tell-anyone-about-this"
-          (is (not (snapshot/usable-for-start? conn :h2 after-boundary))))))))
+          (is (nil? (snapshot/version-for-start conn :h2 after-boundary))))))))
