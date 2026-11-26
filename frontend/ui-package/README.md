@@ -69,7 +69,7 @@ For a change that affects consumers of `@metabase/ui`, add a changeset to your P
 
 ```sh
 cd frontend/ui-package
-mise exec -- bunx --bun @changesets/cli@3.0.3 add
+bunx --bun @changesets/cli@3.0.3 add
 ```
 
 Choose `patch`, `minor`, or `major` and write a summary for package consumers. In `0.x`, a minor release may break compatibility; a patch must not. A Mantine upgrade in Metabase is a minor release. Commit the generated file under `.changeset/`. Changes that don't affect consumers don't need a changeset.
