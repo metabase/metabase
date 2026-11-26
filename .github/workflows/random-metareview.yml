@@ -11,7 +11,8 @@ jobs:
     if: >-
       !github.event.pull_request.draft &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      !endsWith(github.event.pull_request.user.login, '[bot]')
+      !endsWith(github.event.pull_request.user.login, '[bot]') &&
+      github.event.pull_request.user.login != 'github-automation-metabase'
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
 
