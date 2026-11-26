@@ -1037,7 +1037,7 @@
   "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard
    dashcard-id  :- ::lib.schema.id/dashcard]
-  (t2/select-one :model/DashboardCard :id [:auto/param dashcard-id] :dashboard_id [:auto/param dashboard-id]))
+  (t2/select-one :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
 
 (mu/defn dashcard-has-series?
   "Whether the DashboardCard with `dashcard-id` shows other Cards as series beside its own."
