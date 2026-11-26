@@ -127,6 +127,43 @@
                                   (needs-fingerprint-update-clause refingerprint? version->base-types))
                          limit))
 
+(mu/defn grown-table-ids :- [:set ::lib.schema.id/table]
+  "The ids of the Tables among `table-ids` whose row count estimate is at least `factor` times the row count of their
+  newest fingerprints: the largest row count recorded in the fingerprint origins of the Fields that sync fingerprints.
+  A Field that sync no longer fingerprints, such as one that became a PK, does not count, since a new sample would not
+  update it. With `max-baseline`, only Tables whose newest fingerprints are from fewer rows than that count. A Table
+  with no estimate, or whose fingerprints recorded no row count, is not among them."
+  [table-ids    :- ::table-ids
+   factor       :- pos?
+   max-baseline :- [:maybe pos-int?]]
+  (let [estimates (into {}
+                        (map (juxt :id :estimated_row_count))
+                        (app-db/select-batched
+                         #(t2/select [:model/Table :id :estimated_row_count]
+                                     {:where [:and [:in :id [:auto/param %]] [:> :estimated_row_count 0]]})
+                         table-ids))
+        origins   (when (seq estimates)
+                    (app-db/select-batched
+                     #(t2/select [:model/Field :table_id :fingerprint_origin]
+                                 {:where [:and
+                                          [:in :table_id [:auto/param %]]
+                                          [:not= :fingerprint_origin nil]
+                                          fields-to-fingerprint-base-clause]})
+                     (vec (keys estimates))))
+        baselines (reduce (fn [acc {:keys [table_id fingerprint_origin]}]
+                            (if-let [row-count (:row-count fingerprint_origin)]
+                              (update acc table_id (fnil max 0) row-count)
+                              acc))
+                          {}
+                          origins)]
+    (into #{}
+          (keep (fn [[table-id then]]
+                  (when (and (pos? then)
+                             (>= (estimates table-id) (* factor then))
+                             (or (nil? max-baseline) (< then max-baseline)))
+                    table-id)))
+          baselines)))
+
 (mu/defn incomplete-analysis-fields :- [:sequential (ms/InstanceOf :model/Field)]
   "Up to `limit` active, visible Fields of the Tables with `table-ids` fingerprinted at `fingerprint-version` but not
   yet analyzed, lowest id first, after `after-id`."
