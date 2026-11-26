@@ -748,6 +748,19 @@
    [:create-table ::query.create-table]
    [:drop-table   ::query.drop-table]])
 
+(mr/def ::sandbox.row-filter
+  "The rows of a table a sandboxed query keeps: those whose `:column` holds `:value`."
+  [:map {:closed true}
+   [:column :keyword]
+   [:value  ::bindable]])
+
+(mr/def ::sandbox.options
+  "How [[metabase.funnysql.sandbox/sandbox-query]] rewrites a query: the tables it reads in place of others, and the
+  rows of each table it keeps."
+  [:map {:closed true}
+   [:table-substitutions {:optional true} [:map-of :keyword :keyword]]
+   [:row-filters         {:optional true} [:map-of :keyword ::sandbox.row-filter]]])
+
 (mr/def ::form
   "What [[metabase.funnysql.core/format]] compiles: a top-level [[::query]], or a single [[::expr]]."
   [:multi {:dispatch map?}

@@ -4,8 +4,11 @@
   (:refer-clojure :exclude [format])
   (:require
    [metabase.funnysql.format]
+   [metabase.funnysql.sandbox]
    [metabase.util.namespaces :as shared.ns]))
 
 (shared.ns/import-fns
  [metabase.funnysql.format
-  format])
+  format]
+ [metabase.funnysql.sandbox
+  sandbox-query])

@@ -839,7 +839,7 @@
   (let [table      (t2/table-name :model/AnalysisFinding)
         row-values (fn [now] (mapv (fn [[entity-id result]]
                                      {:entity_type (name entity-type) :entity_id entity-id :result result :analyzed_at now
-                                      :worktree_id mdb/default-worktree-id})
+                                      :worktree_id (:worktree-id (mdb/worktree-scope) mdb/default-worktree-id)})
                                    rows))]
     (case db-type
       :postgres
@@ -864,7 +864,7 @@
                                                       {:select [[[:cast (name entity-type) [:varchar 254]] :entity_type]
                                                                 [[:cast entity-id :integer] :entity_id]
                                                                 [[:cast result :boolean] :result]
-                                                                [[:cast mdb/default-worktree-id :integer] :worktree_id]]})
+                                                                [[:cast (:worktree-id (mdb/worktree-scope) mdb/default-worktree-id) :integer] :worktree_id]]})
                                                     rows)}
                                   {:allow-subquery true})
                                  :s]

@@ -59,7 +59,10 @@
  [mdb.env
   db-file]
  [mdb.worktree
-  default-worktree-id]
+  default-worktree-id
+  do-with-worktree-scope
+  with-worktree-scope
+  worktree-scope]
  [mdb.jdbc-protocols
   clob->str]
  [mdb.encryption
@@ -184,6 +187,7 @@
             (mdb.setup/setup-db! db-type data-source {:auto-migrate?            auto-migrate?
                                                       :create-sample-content?   create-sample-content?
                                                       :manage-encryption-state? manage-encryption-state?}))
+          (mdb.worktree/init-worktree-tables!)
           (finish-db-setup!)))))
   :done)
 

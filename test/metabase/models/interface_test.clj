@@ -4,11 +4,13 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.timeline.models.timeline :as timeline]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -394,3 +396,59 @@
       (is (< (second (hydrate (cards 5)))
              (second (mt/with-partition-size 2
                        (hydrate (cards 5)))))))))
+
+(def ^:private test-worktree-branch
+  "The branch of the worktree the worktree hook tests create."
+  "interface-test-worktree")
+
+(defn- stored-worktree-id
+  "The `worktree_id` stored for the Timeline with `timeline-id`, read across every worktree."
+  [timeline-id]
+  (mdb/with-worktree-scope {:type :all}
+    (t2/select-one-fn :worktree_id :timeline :id timeline-id)))
+
+(defn- do-with-test-worktree!
+  "Call `f` with the id of a worktree created for it, deleting the worktree and its rows afterwards."
+  [f]
+  (let [worktree-id (t2/insert-returning-pk! :remote_sync_worktree {:branch test-worktree-branch})]
+    (try
+      (f worktree-id)
+      (finally
+        (t2/delete! :remote_sync_worktree :id worktree-id)))))
+
+(defn- create-timeline!
+  "The id of a Timeline named `timeline-name` created through its write function in `scope`."
+  [scope timeline-name]
+  (mdb/with-worktree-scope scope
+    (:id (first (timeline/create-timelines! [{:name timeline-name :creator_id (mt/user->id :rasta)}])))))
+
+(deftest worktree-hook-sets-worktree-id-from-scope-test
+  (do-with-test-worktree!
+   (fn [worktree-id]
+     (doseq [[scope expected] [[{:type :main} mdb/default-worktree-id]
+                               [{:type :worktree :worktree-id worktree-id} worktree-id]
+                               [{:type :all} mdb/default-worktree-id]]]
+       (testing (str "insert in scope " (pr-str scope))
+         (let [timeline-id (create-timeline! scope "Worktree hook timeline")]
+           (try
+             (is (= expected (stored-worktree-id timeline-id)))
+             (finally
+               (mdb/with-worktree-scope {:type :all}
+                 (t2/delete! :timeline :id timeline-id))))))))))
+
+(deftest worktree-hook-refuses-worktree-id-change-test
+  (do-with-test-worktree!
+   (fn [worktree-id]
+     (let [timeline-id (create-timeline! {:type :main} "Worktree hook update timeline")]
+       (try
+         (testing "update changing worktree_id throws a 400"
+           (is (= 400 (:status-code (try
+                                      (t2/update! :model/Timeline :id timeline-id {:worktree_id worktree-id})
+                                      nil
+                                      (catch clojure.lang.ExceptionInfo e
+                                        (ex-data e)))))))
+         (testing "stored worktree_id is unchanged"
+           (is (= mdb/default-worktree-id (stored-worktree-id timeline-id))))
+         (finally
+           (mdb/with-worktree-scope {:type :all}
+             (t2/delete! :timeline :id timeline-id))))))))

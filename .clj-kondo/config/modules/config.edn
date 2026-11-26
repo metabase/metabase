@@ -391,6 +391,7 @@
            connection-pool
            funnysql
            global-system
+           models
            task.secure-delegate
            util
            util.classloader

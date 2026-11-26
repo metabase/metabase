@@ -618,9 +618,9 @@
     (methodical/prefer-method! #'t2.before-update/before-update hook trait)))
 
 (defn- add-worktree-id
-  "`row` in the worktree it is inserted in."
+  "`row` in the remote sync worktree this thread works in."
   [row]
-  (assoc row :worktree_id mdb/default-worktree-id))
+  (assoc row :worktree_id (:worktree-id (mdb/worktree-scope) mdb/default-worktree-id)))
 
 (t2/define-before-insert :hook/worktree-id
   [row]

@@ -473,8 +473,8 @@
                                             :where  [:and [:= :mp.group_id :pg.id] [:= :mp.perm_type perm-type]]}]]}]}
      {:quoted false})))
 
-(mu/defn copy!
-  "Copy data from a source application database into an empty destination application database."
+(mu/defn- copy-application-db!
+  "Impl for [[copy!]]."
   [source-db-type     :- [:enum :h2 :postgres :mysql]
    source-data-source :- (ms/InstanceOfClass javax.sql.DataSource)
    target-db-type     :- [:enum :h2 :postgres :mysql]
@@ -517,3 +517,13 @@
   (step (trs "Seeding metabot permissions for magic groups without any...")
     (doseq [statement (metabot-permissions-seed-queries)]
       (jdbc/execute! {:datasource target-data-source} statement))))
+
+(mu/defn copy!
+  "Copy data from a source application database into an empty destination application database, the rows of every
+  remote sync worktree included."
+  [source-db-type     :- [:enum :h2 :postgres :mysql]
+   source-data-source :- (ms/InstanceOfClass javax.sql.DataSource)
+   target-db-type     :- [:enum :h2 :postgres :mysql]
+   target-data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  (mdb/with-worktree-scope {:type :all}
+    (copy-application-db! source-db-type source-data-source target-db-type target-data-source)))
