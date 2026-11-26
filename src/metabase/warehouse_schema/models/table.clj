@@ -613,6 +613,14 @@
     (warehouse-schema.db/update-table-value-scan-tokens! table-id->token))
   nil)
 
+(mu/defn record-nested-fields-searches! :- :nil
+  "Record that sync searched the JSON columns of each Table in `table-id->token` for nested fields now, and the change
+  token the Table had. Sync's own record, so it publishes no update event."
+  [table-id->token :- [:map-of ::lib.schema.id/table [:maybe :string]]]
+  (when (seq table-id->token)
+    (warehouse-schema.db/update-table-nested-fields-searches! table-id->token))
+  nil)
+
 (mu/defn update-tables! :- :nil
   "Apply `updates`, each the `:id` of a Table and the columns to change, in one transaction, publishing their update
   event with the `:context` and `:writer` of `opts`; a new field order sets the positions of their Fields."
@@ -696,7 +704,8 @@
            :caveats :show_in_getting_started :field_order :is_upload :database_require_filter :estimated_row_count
            :deactivated_at :archived_at :is_writable :data_authority :data_source :data_layer :owner_email
            :owner_user_id :transform_target]
-   :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper :value_scan_token]})
+   :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper :value_scan_token :nested_fields_token
+           :nested_fields_searched_at]})
 
 (defmethod serialization/spec :model/Table [_]
   {:schema              ::warehouse-schema.schema/external-table
@@ -706,7 +715,8 @@
                          :database_require_filter :is_writable :data_authority :data_source :data_layer
                          :owner_email]
    :skip                [:estimated_row_count :initial_sync_status :view_count :transform_target
-                         :is_defective_duplicate :unique_table_helper :value_scan_token]
+                         :is_defective_duplicate :unique_table_helper :value_scan_token :nested_fields_token
+                         :nested_fields_searched_at]
    :transform           {:archived_at    serialization/date-transform
                          :deactivated_at serialization/date-transform
                          :db_id          serialization/database-transform
@@ -727,7 +737,8 @@
                     :is_upload :is_writable :owner_email :owner_user_id :points_of_interest :schema
                     :show_in_getting_started :transform_target :unique_table_helper
                     :visibility_type]
-   :skip           [:view_count :value_scan_token]
+   :skip           [:view_count :value_scan_token :nested_fields_token
+                    :nested_fields_searched_at]
    :topics         {}})
 
 (defmethod search/spec :model/Table

@@ -3179,3 +3179,62 @@
       (testing "an empty table with no writes has a token"
         (is (= "1:0:0:0:r" (#'postgres/change-token (assoc row :inserted 0 :reltuples 0.0))))
         (is (= "1:0:0:0:r" (#'postgres/change-token (assoc row :inserted 0 :reltuples -1.0))))))))
+
+(deftest ^:synchronized nested-field-search-only-when-the-table-changed-test
+  (mt/test-driver :postgres
+    (let [db-name "nested_fields_token_test"
+          details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
+          spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+      (tx/drop-if-exists-and-create-db! driver/*driver* db-name)
+      (exec! spec ["CREATE TABLE j (id INTEGER, doc JSONB);"
+                   "INSERT INTO j VALUES (1, '{\"a\": 1}');"])
+      (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname db-name)}]
+        (let [searches (atom 0)
+              search   sql-jdbc.sync/describe-nested-field-columns
+              table-id #(t2/select-one-pk :model/Table :db_id (:id database) :name "j")
+              token    #(get (driver/table-change-tokens :postgres (driver.u/lib-database (:id database))
+                                                         [(t2/select-one :model/Table :id (table-id))])
+                             (table-id))
+              settle!  #(let [last-token (atom ::none)]
+                          (poll token (fn [t] (let [same? (= t @last-token)] (reset! last-token t) same?))))
+              sync!    (fn []
+                         (reset! searches 0)
+                         (with-redefs [sql-jdbc.sync/describe-nested-field-columns (fn [& args]
+                                                                                     (swap! searches inc)
+                                                                                     (apply search args))]
+                           (sync/sync-database! (:id database) {:scan :schema}))
+                         @searches)
+              active?  #(t2/exists? :model/Field :table_id (table-id) :name % :active true)]
+          (sync!)
+          (is (active? "doc → a"))
+          (settle!)
+          (testing "a sync with a token that is not the stored one searches and stores it"
+            (t2/update! (t2/table-name :model/Table) {:id (table-id)} {:nested_fields_token nil})
+            (is (= 1 (sync!)))
+            (is (str/starts-with? (t2/select-one-fn :nested_fields_token :model/Table :id (table-id))
+                                  (str (token) "|"))))
+          (testing "no search while the table does not change, and the nested fields stay"
+            (is (= 0 (sync!)))
+            (is (active? "doc → a")))
+          (testing "a write changes the token, and the next sync searches and finds the new key"
+            (let [before (token)]
+              (exec! spec ["INSERT INTO j VALUES (2, '{\"b\": 2}');"])
+              (poll token #(not= before %)))
+            (is (= 1 (sync!)))
+            (is (active? "doc → b"))
+            (is (active? "doc → a")))
+          (testing "the search runs again once the full-pass period has passed"
+            (settle!)
+            (sync!)
+            (t2/update! (t2/table-name :model/Table) {:id (table-id)}
+                        {:nested_fields_searched_at (t/minus (t/offset-date-time) (t/days 8))})
+            (is (= 1 (sync!))))
+          (testing "turning JSON unfolding off and on again for the database, with no write, searches again"
+            (let [unfolding! #(t2/update! :model/Database :id (:id database)
+                                          {:details (assoc details :dbname db-name :json-unfolding %)})]
+              (unfolding! false)
+              (sync!)
+              (is (not (active? "doc → a")))
+              (unfolding! true)
+              (is (= 1 (sync!)))
+              (is (active? "doc → a")))))))))
