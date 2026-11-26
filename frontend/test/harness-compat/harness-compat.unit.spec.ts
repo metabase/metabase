@@ -197,6 +197,9 @@ function runJest(
     {
       cwd: ROOT,
       env: { ...cleanEnvironment(), ...environment },
+      // The results come from the output file. The printed output can pass
+      // spawnSync's buffer limit.
+      stdio: "ignore",
       timeout: RUN_TIMEOUT_MS,
     },
   );
