@@ -588,11 +588,17 @@
       (finally
         (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))))))
 
-(mt/defdataset pk-leak-a
-  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+(def ^:private pk-leak-a
+  (mt/dataset-definition
+   "pk-leak-a"
+   [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]]
+   {:static false}))
 
-(mt/defdataset pk-leak-b
-  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+(def ^:private pk-leak-b
+  (mt/dataset-definition
+   "pk-leak-b"
+   [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]]
+   {:static false}))
 
 (defn- exec!
   "Execute `statements` against the database whose spec is passed as the first param."
@@ -687,8 +693,11 @@
                                              (lib.metadata/database (mt/metadata-provider))
                                              :table-names ["both_pk" "diff_pk" "only_b_pk"]))))))))
 
-(mt/defdataset estimated-row-counts
-  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+(def ^:private estimated-row-counts
+  (mt/dataset-definition
+   "estimated-row-counts"
+   [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]]
+   {:static false}))
 
 (deftest describe-database-estimated-row-count-test
   (mt/test-driver :motherduck
@@ -708,8 +717,11 @@
                           (driver/describe-database :motherduck)
                           :tables))))))))
 
-(mt/defdataset schema-filters
-  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+(def ^:private schema-filters
+  (mt/dataset-definition
+   "schema-filters"
+   [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]]
+   {:static false}))
 
 (deftest schema-filters-test
   (mt/test-driver :motherduck
