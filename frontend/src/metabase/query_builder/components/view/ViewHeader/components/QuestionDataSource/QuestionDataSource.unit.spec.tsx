@@ -1,13 +1,20 @@
-import type { ComponentPropsWithoutRef, ErrorInfo, ReactNode } from "react";
 import { Component } from "react";
+import type { ComponentPropsWithoutRef, ErrorInfo, ReactNode } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardEndpoints,
+  setupCollectionByIdEndpoint,
   setupListDatabaseSchemasEndpoint,
   setupTableEndpoints,
 } from "__support__/server-mocks";
-import { getIcon, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  getIcon,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
@@ -21,6 +28,7 @@ import {
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
+  Collection,
   Table,
   TableId,
   TestJoinSpec,
@@ -28,6 +36,7 @@ import type {
 } from "metabase-types/api";
 import {
   createMockCard,
+  createMockCollection,
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
@@ -276,6 +285,8 @@ interface SetupOpts {
   subHead?: boolean;
   isObjectDetail?: boolean;
   hasPermissions?: boolean;
+  sourceCard?: Card;
+  collections?: Collection[];
 }
 
 function setup({
@@ -284,12 +295,15 @@ function setup({
   subHead = false,
   isObjectDetail = false,
   hasPermissions = true,
+  sourceCard = SOURCE_CARD,
+  collections = [],
 }: SetupOpts = {}) {
   const metadata = hasPermissions ? getMetadata() : createMockMetadata({});
   const question = card && new Question(card, metadata);
   const originalQuestion = originalCard && new Question(originalCard, metadata);
 
-  setupCardEndpoints(SOURCE_CARD);
+  setupCardEndpoints(sourceCard);
+  setupCollectionByIdEndpoint({ collections });
   setupListDatabaseSchemasEndpoint(SAMPLE_DB_ID, ["PUBLIC"]);
   setupListDatabaseSchemasEndpoint(MULTI_SCHEMA_DB_ID, [
     MULTI_SCHEMA_TABLE1.schema,
@@ -654,6 +668,63 @@ describe("QuestionDataSource", () => {
           );
           expect(node).not.toBeInTheDocument();
         });
+      });
+    });
+
+    describe("collection of the base question (metabase#47005)", () => {
+      const OTHER_COLLECTION = createMockCollection({
+        id: 8,
+        name: "Other collection",
+      });
+      const BASE_QUESTION_COLLECTION = createMockCollection({
+        id: 9,
+        name: "Base question collection",
+      });
+
+      it("shows the collection of the base question in the head breadcrumbs", async () => {
+        setup({
+          card: SAVED_NESTED_QUESTION,
+          sourceCard: {
+            ...SOURCE_CARD,
+            name: "Question A",
+            collection_id: BASE_QUESTION_COLLECTION.id,
+          },
+          collections: [OTHER_COLLECTION, BASE_QUESTION_COLLECTION],
+        });
+
+        const breadcrumbs = await screen.findByTestId("head-crumbs-container");
+        await waitFor(() =>
+          expect(breadcrumbs).toHaveTextContent("Question A"),
+        );
+        expect(
+          within(breadcrumbs).getByText("Base question collection"),
+        ).toBeInTheDocument();
+        expect(
+          within(breadcrumbs).queryByText("Other collection"),
+        ).not.toBeInTheDocument();
+        expect(
+          within(breadcrumbs).queryByText("Our analytics"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("shows the root collection when the base question is in Our analytics", async () => {
+        setup({
+          card: SAVED_NESTED_QUESTION,
+          sourceCard: {
+            ...SOURCE_CARD,
+            name: "Question A",
+            collection_id: null,
+          },
+          collections: [OTHER_COLLECTION],
+        });
+
+        const breadcrumbs = await screen.findByTestId("head-crumbs-container");
+        await waitFor(() =>
+          expect(breadcrumbs).toHaveTextContent("Question A"),
+        );
+        expect(
+          within(breadcrumbs).getByText("Our analytics"),
+        ).toBeInTheDocument();
       });
     });
   });

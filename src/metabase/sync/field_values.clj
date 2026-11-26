@@ -6,6 +6,7 @@
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.analyze.table-chunks :as table-chunks]
    [metabase.sync.db :as sync.db]
@@ -115,11 +116,14 @@
 (defn- table-field-values-changes
   "Fetch distinct values for `fields` from `table` and return `{:queries n :changes pairs}`: the number of warehouse
   queries and, for each of `fields`, a pair of the Field and what [[field-values/field-values-change]] returns for it,
-  or the Throwable fetching or comparing its values threw. Unless `:rescan?`, a list that is still too large is kept."
+  or the Throwable fetching or comparing its values threw. Unless `:rescan?`, a list that is still too large is kept.
+
+  Nested fields (with a `:parent_id`) and unfolded JSON fields (with an `:nfc_path`) do not go in the UNION batch query,
+  because it uses only the field name, which is not a column for these fields."
   [database table fields fvs-map {:keys [rescan?]}]
   (if (empty? fields)
     {:queries 0 :changes []}
-    (let [{nested true plain false}    (group-by #(boolean (:parent_id %)) fields)
+    (let [{nested true plain false}    (group-by (comp boolean (some-fn :parent_id :nfc_path)) fields)
           batch?                       (can-batch-distinct? database table)
           batch-fields                 (when batch? plain)
           per-field-fields             (concat nested (when-not batch? plain))
@@ -181,11 +185,12 @@
   `table-database`, and write their FieldValues at once, returning the counts of outcomes. `opts` as for
   [[table-field-values-changes]]."
   [tables table-database table-id->fields fvs-map opts]
-  (let [fetched (mapv (fn [table]
-                        (database-routing/with-anonymous-router-access
-                          (table-field-values-changes (table-database table) table (table-id->fields (:id table))
-                                                      fvs-map opts)))
-                      tables)]
+  (let [fetched (lib-be/with-metadata-provider-cache
+                  (mapv (fn [table]
+                          (database-routing/with-anonymous-router-access
+                            (table-field-values-changes (table-database table) table (table-id->fields (:id table))
+                                                        fvs-map opts)))
+                        tables))]
     (assoc (save-changes! (into [] (mapcat :changes) fetched))
            :queries (transduce (map :queries) + 0 fetched))))
 

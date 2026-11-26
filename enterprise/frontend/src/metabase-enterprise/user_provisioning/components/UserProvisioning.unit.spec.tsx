@@ -11,6 +11,7 @@ import { createMockSettingsState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import type { EnterpriseSettings } from "metabase-types/api";
@@ -166,7 +167,9 @@ describe("SCIM User Provisioning Settings", () => {
 
     await userEvent.click(await screen.findByLabelText("copy icon"));
 
-    expect(await screen.findByText("Copied!")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("Copied!"),
+    );
     expect(window.navigator.clipboard.writeText).toHaveBeenCalledWith(
       "https://example.com/api/ee/scim/v2",
     );

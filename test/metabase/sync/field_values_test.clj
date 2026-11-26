@@ -401,6 +401,40 @@
           (testing "Both nested-JSON children with the same name go to per-field, preserving each field's identity"
             (is (= [#{(:id nested-a) (:id nested-b)}] @calls-to-fetch-distinct-per-field))))))))
 
+(deftest ^:synchronized table-field-values-changes-routes-nfc-path-fields-to-per-field-test
+  (testing "Fields with an :nfc_path (unfolded JSON) go through the per-field path. They have no :parent_id, and the
+            batch query uses only the field name, which is not a column"
+    (let [calls-to-fetch-distinct-for-table (atom [])
+          calls-to-fetch-distinct-per-field (atom [])]
+      (mt/with-temp [:model/Database {db-id :id}            {:engine :h2}
+                     :model/Table    {tbl-id :id :as table} {:db_id                   db-id
+                                                             :name                    "t"
+                                                             :database_require_filter false}
+                     :model/Field    json-field             {:table_id         tbl-id
+                                                             :name             "payload → paid"
+                                                             :nfc_path         ["payload" "paid"]
+                                                             :base_type        :type/Text
+                                                             :has_field_values :list}
+                     :model/Field    plain                  {:table_id         tbl-id
+                                                             :name             "plain"
+                                                             :base_type        :type/Text
+                                                             :has_field_values :list}]
+        (mt/with-dynamic-fn-redefs [sync.field-values/fetch-distinct-for-table
+                                    (fn [_driver _table fields]
+                                      (swap! calls-to-fetch-distinct-for-table conj (set (map :id fields)))
+                                      {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
+                                       :queries 1
+                                       :failed-fields #{}})
+                                    sync.field-values/fetch-distinct-per-field
+                                    (fn [fields]
+                                      (swap! calls-to-fetch-distinct-per-field conj (set (map :id fields)))
+                                      {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
+                                       :queries (count fields)
+                                       :failed-fields #{}})]
+          (#'sync.field-values/table-field-values-changes (driver.u/lib-database db-id) table [json-field plain] {} {:rescan? false})
+          (is (= [#{(:id plain)}] @calls-to-fetch-distinct-for-table))
+          (is (= [#{(:id json-field)}] @calls-to-fetch-distinct-per-field)))))))
+
 ;;; ---------------------------------- sync-fields-grouped-by-table! ----------------------------------
 
 (deftest ^:mb/driver-tests ^:synchronized sync-fields-grouped-by-table!-test

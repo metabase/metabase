@@ -560,9 +560,15 @@
   "Maximum number of nested field columns."
   100)
 
-(def ^:private ^{:arglists '([s])} can-parse-datetime?
-  "Returns whether a string can be parsed to an ISO 8601 datetime or not."
+(def ^:private ^{:arglists '([s])} datetime-string?
   (mr/validator driver-api/schema.literal.string.datetime))
+
+(defn- can-parse-datetime?
+  "Returns whether a string can be parsed to an ISO 8601 datetime or not. Accepts up to 9 fractional digits of a second,
+  e.g. `2012-04-23 18:44:43.511000000`."
+  [s]
+  (or (datetime-string? s)
+      (datetime-string? (str/replace-first s #"(\.\d{6})\d{1,3}(?!\d)" "$1"))))
 
 (defn- type-by-parsing-string
   "Mostly just (type member) but with a bit to suss out strings which are ISO8601 and say that they are datetimes"
@@ -790,11 +796,18 @@
            (describe-table-fields-xf driver table))
           (table-fields-for-json-unfolding driver conn database table))))
 
-(defn- sample-json-row-honey-sql
-  "Return a honeysql query used to get row sample to describe json columns.
+(defmulti sample-json-row-honeysql
+  "Return a HoneySQL query that selects a sample of rows of `table-identifier`, to find the nested field columns of
+  the JSON fields `json-field-identifiers`. Each JSON value must come back as JSON text. `pk-identifiers` are the
+  identifiers of the table's PKs, or nil if it has none.
 
-  If the table has PKs, try to fetch both first and last rows (see #25744).
-  Else fetch the first n rows only."
+  The default fetches both the first and the last rows if the table has PKs (see #25744), and the first rows if not."
+  {:added    "0.66.0"
+   :arglists '([driver table-identifier json-field-identifiers pk-identifiers])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod sample-json-row-honeysql :sql-jdbc
   [driver table-identifier json-field-identifiers pk-identifiers]
   (let [pks-expr         (mapv vector pk-identifiers)
         table-expr       [table-identifier]
@@ -841,7 +854,7 @@
                            (mapv #(apply h2x/identifier :field (into table-identifier-info [%])) pks))
         sql-args         (sql.qp/format-honeysql
                           driver
-                          (sample-json-row-honey-sql driver table-identifier json-field-identifiers pk-identifiers))]
+                          (sample-json-row-honeysql driver table-identifier json-field-identifiers pk-identifiers))]
     (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity})))
 
 (defn- describe-json-fields
