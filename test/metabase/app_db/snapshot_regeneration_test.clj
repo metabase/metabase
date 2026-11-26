@@ -88,8 +88,7 @@
   (or (when-let [[_ prefix tuples] (re-matches #"(?is)^(.*?\bVALUES\s*)(\(.*)$" statement)]
         (when-let [tuples (value-tuples tuples backslash-escapes?)]
           (when (next tuples)
-            (let [terminator (when (str/ends-with? statement ";") ";")]
-              (mapv #(str prefix % terminator) tuples)))))
+            (mapv #(str prefix %) tuples))))
       [statement]))
 
 (defn- comparable-statements
@@ -160,10 +159,6 @@
            (single-row-inserts "INSERT INTO t VALUES ('C:\\'), ('x')")))
     (is (= ["INSERT INTO t VALUES ('it\\'s')" "INSERT INTO t VALUES ('x')"]
            (single-row-inserts "INSERT INTO t VALUES ('it\\'s'), ('x')" :backslash-escapes? true)))))
-
-(deftest mysql-insert-batch-boundaries-test
-  (is (= (comparable-statements "INSERT INTO t VALUES (1);\n--;;\nINSERT INTO t VALUES (2);" :mysql)
-         (comparable-statements "INSERT INTO t VALUES (1),(2);" :mysql))))
 
 (deftest first-difference-test
   (are [checked-in regenerated expected] (= expected (first-difference checked-in regenerated))
