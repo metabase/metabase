@@ -148,7 +148,7 @@
                                           :parameters [{:id "price", :value [1]}]}]
                                         {:dashcard_id dashcard-id})]
         (is (= 100 (count-shown output)))
-        (is (str/includes? output "No dashboard filter is connected to this card"))
+        (is (str/includes? output "No dashboard filter is connected to this card, so no filter values were applied."))
         (is (str/includes? output (str "these rows are only those of its main question, question " card-id ".")))))))
 
 (deftest visualizer-dashcard-test
