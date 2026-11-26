@@ -8,6 +8,7 @@ import type {
   FieldRefColumnSplitSetting,
   TestAggregationSpec,
   TestBreakoutSpec,
+  TestStageSpec,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
@@ -21,6 +22,7 @@ import {
   canPivotSummary,
   getPivotColumnSplit,
   getSummaryQuestion,
+  getSummaryStageIndex,
 } from "./pivot-question";
 
 registerVisualizations();
@@ -39,6 +41,38 @@ const PRODUCTS_CREATED_AT: TestBreakoutSpec = {
   name: "CREATED_AT",
   unit: "month",
 };
+
+const PRODUCTS_CATEGORY: TestBreakoutSpec = {
+  type: "column",
+  sourceFieldId: ORDERS.PRODUCT_ID,
+  name: "CATEGORY",
+};
+
+const COUNT_FILTER_STAGE: TestStageSpec = {
+  filters: [
+    {
+      type: "operator",
+      operator: ">",
+      args: [
+        { type: "column", name: "count" },
+        { type: "literal", value: 10 },
+      ],
+    },
+  ],
+};
+
+function createFilteredCountQuery(breakouts: TestBreakoutSpec[]) {
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count" }],
+        breakouts,
+      },
+      COUNT_FILTER_STAGE,
+    ],
+  });
+}
 
 function createQuestion(
   card: Parameters<typeof createMockCard>[0] = {},
@@ -66,11 +100,6 @@ function createQuestion(
 
 describe("getSummaryQuestion", () => {
   describe("adding a grouping to a saved chart", () => {
-    const category: TestBreakoutSpec = {
-      type: "column",
-      sourceFieldId: ORDERS.PRODUCT_ID,
-      name: "CATEGORY",
-    };
     const count: TestAggregationSpec = { type: "operator", operator: "count" };
     const sum: TestAggregationSpec = {
       type: "operator",
@@ -95,7 +124,7 @@ describe("getSummaryQuestion", () => {
       },
       {
         name: "keeps selected dimensions for a third grouping",
-        breakouts: [ORDERS_CREATED_AT, PRODUCTS_CREATED_AT, category],
+        breakouts: [ORDERS_CREATED_AT, PRODUCTS_CREATED_AT, PRODUCTS_CATEGORY],
         dimensions: ["CREATED_AT", "CREATED_AT_2"],
         expected: ["CREATED_AT", "CREATED_AT_2"],
       },
@@ -109,7 +138,7 @@ describe("getSummaryQuestion", () => {
       ({
         dimensions = ["CREATED_AT"],
         aggregations = [count],
-        breakouts = [ORDERS_CREATED_AT, category],
+        breakouts = [ORDERS_CREATED_AT, PRODUCTS_CATEGORY],
         singleDimension,
         expected,
       }) => {
@@ -142,6 +171,56 @@ describe("getSummaryQuestion", () => {
         expect(result.setting("graph.metrics")).toEqual(["count"]);
       },
     );
+  });
+
+  describe("a summary with a filter stage after it", () => {
+    it.each<{ name: string; breakout: TestBreakoutSpec; display: string }>([
+      {
+        name: "another unit of time",
+        breakout: { ...ORDERS_CREATED_AT, unit: "year" },
+        display: "line",
+      },
+      { name: "a category", breakout: PRODUCTS_CATEGORY, display: "bar" },
+    ])(
+      "takes the default display of the summary grouped by $name",
+      ({ breakout, display }) => {
+        const question = createQuestion({
+          display: "line",
+          dataset_query: Lib.toJsQuery(
+            createFilteredCountQuery([ORDERS_CREATED_AT]),
+          ),
+        });
+
+        const result = getSummaryQuestion(
+          question,
+          createFilteredCountQuery([breakout]),
+        );
+
+        expect(result.display()).toBe(display);
+      },
+    );
+
+    it("lets the chart choose dimensions for a second grouping", () => {
+      const question = createQuestion({
+        display: "line",
+        displayIsLocked: true,
+        dataset_query: Lib.toJsQuery(
+          createFilteredCountQuery([ORDERS_CREATED_AT]),
+        ),
+        visualization_settings: {
+          "graph.dimensions": ["CREATED_AT"],
+          "graph.metrics": ["count"],
+        },
+      });
+
+      const result = getSummaryQuestion(
+        question,
+        createFilteredCountQuery([ORDERS_CREATED_AT, PRODUCTS_CATEGORY]),
+      );
+
+      expect(result.setting("graph.dimensions")).toBeUndefined();
+      expect(result.setting("graph.metrics")).toEqual(["count"]);
+    });
   });
 
   it("shows a locked pivot table with the column split", () => {
@@ -284,6 +363,23 @@ describe("getSummaryQuestion", () => {
   });
 });
 
+describe("getSummaryStageIndex", () => {
+  it("gives the last stage with a summary", () => {
+    const query = createFilteredCountQuery([ORDERS_CREATED_AT]);
+
+    expect(getSummaryStageIndex(query)).toBe(0);
+    expect(getSummaryStageIndex(Lib.dropStage(query))).toBe(0);
+  });
+
+  it("gives the last stage of a query without a summary", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    });
+
+    expect(getSummaryStageIndex(query)).toBe(STAGE_INDEX);
+  });
+});
+
 describe("getPivotColumnSplit", () => {
   const columnSplit = {
     rows: ["CREATED_AT_2"],
@@ -376,27 +472,7 @@ describe("getPivotColumnSplit", () => {
 });
 
 describe("canPivotSummary", () => {
-  const twoStageQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
-    stages: [
-      {
-        source: { type: "table", id: ORDERS_ID },
-        aggregations: [{ type: "operator", operator: "count" }],
-        breakouts: [ORDERS_CREATED_AT],
-      },
-      {
-        filters: [
-          {
-            type: "operator",
-            operator: ">",
-            args: [
-              { type: "column", name: "count" },
-              { type: "literal", value: 10 },
-            ],
-          },
-        ],
-      },
-    ],
-  });
+  const twoStageQuery = createFilteredCountQuery([ORDERS_CREATED_AT]);
 
   it("is possible for a summary in the last stage", () => {
     const question = createQuestion();

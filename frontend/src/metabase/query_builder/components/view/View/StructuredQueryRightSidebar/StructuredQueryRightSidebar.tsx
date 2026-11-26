@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { match } from "ts-pattern";
 
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { QuestionInfoSidebar } from "../../sidebars/QuestionInfoSidebar";
@@ -11,6 +10,7 @@ import {
   canPivotSummary,
   getPivotColumnSplit,
   getSummaryQuestion,
+  getSummaryStageIndex,
 } from "../../sidebars/SummarySidebar";
 import { TimelineSidebar } from "../../sidebars/TimelineSidebar";
 
@@ -34,11 +34,7 @@ export const StructuredQueryRightSidebar = ({
   updateQuestion,
 }: StructuredQueryRightSidebarProps) => {
   const query = question.query();
-  const summaryStageIndex = Lib.stageIndexes(query).findLast(
-    (stageIndex) =>
-      Lib.aggregations(query, stageIndex).length > 0 ||
-      Lib.breakouts(query, stageIndex).length > 0,
-  );
+  const summaryStageIndex = getSummaryStageIndex(query);
   const pivotColumnSplit = useMemo(
     () => (isShowingSummarySidebar ? getPivotColumnSplit(question) : undefined),
     [question, isShowingSummarySidebar],
@@ -53,14 +49,14 @@ export const StructuredQueryRightSidebar = ({
     .with({ isShowingSummarySidebar: true }, () => (
       <SummarySidebar
         query={query}
-        canPivot={canPivotSummary(question, summaryStageIndex ?? -1)}
+        canPivot={canPivotSummary(question, summaryStageIndex)}
         pivotColumnSplit={pivotColumnSplit}
         onQueryChange={(nextQuery, pivotChange) =>
           updateQuestion(getSummaryQuestion(question, nextQuery, pivotChange), {
             run: true,
           })
         }
-        stageIndex={summaryStageIndex ?? -1}
+        stageIndex={summaryStageIndex}
       />
     ))
     .with({ isShowingTimelineSidebar: true }, () => <TimelineSidebar />)
