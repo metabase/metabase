@@ -463,7 +463,7 @@
   `(deployment_id, metabase_version)` pair where the dialect can express that (see [[ignores-duplicate-rows?]])."
   [deployment-id version ran?]
   (let [insert {:insert-into [(table-key (versions-table-name)) [:deployment_id :metabase_version :ran_migrations :deployed_at]]
-                :values      [[deployment-id version ran? [:current-timestamp]]]}]
+                :values      [[deployment-id version ran? :%now]]}]
     (case (mdb.connection/db-type)
       :postgres (assoc insert :on-conflict [] :do-nothing true)
       :mysql    (assoc insert :on-duplicate-key-update {:deployment_id :deployment_id})
@@ -631,8 +631,8 @@
                  ^:allow-subquery {:select [[(legacy-marker-id major)]
                                             [legacy-version-tracking-author]
                                             [legacy-version-tracking-suffix]
-                                            [[:case [:or [:= [:max :dateexecuted] nil] [:> [:current-timestamp] [:max :dateexecuted]]]
-                                              [:current-timestamp]
+                                            [[:case [:or [:= [:max :dateexecuted] nil] [:> :%now [:max :dateexecuted]]]
+                                              :%now
                                               :else [:date-add [:max :dateexecuted] 1 :second]]]
                                             [[:+ [:coalesce [:max :orderexecuted] 0] 1]]
                                             ["EXECUTED"]
