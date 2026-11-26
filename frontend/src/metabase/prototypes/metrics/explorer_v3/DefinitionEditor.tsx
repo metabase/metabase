@@ -221,7 +221,8 @@ export function DefinitionEditor({
     return [
       ...search(measureItems, query),
       ...search(logic, query),
-      ...search(filterOptions, query),
+      // Panel placement: segments are picked in the row under the bar.
+      ...(isPanel ? [] : search(filterOptions, query)),
     ];
   };
 

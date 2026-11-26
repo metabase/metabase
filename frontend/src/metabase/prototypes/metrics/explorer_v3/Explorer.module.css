@@ -502,3 +502,30 @@
   padding: 0;
   background: transparent;
 }
+
+/* The breakout is picked in the dimensions panel, so under the chart the
+   column picker is only a label, and there's nothing to pick with no breakout. */
+.staticBreakout :global(div:has(> button[aria-label="Change column"])) {
+  display: none;
+}
+
+.staticBreakout
+  :global(div:has(> div > div > button[aria-label="Change column"]))::before {
+  content: var(--breakout-label);
+  color: var(--mb-color-text-secondary);
+  font-weight: 400;
+}
+
+.staticBreakout
+  :global(div:has(> div > div > button[aria-label="No breakout"])) {
+  display: none;
+}
+
+.staticBreakout :global(div:has(> button[aria-label="Change column"]) + div) {
+  border-left: none;
+}
+
+/* Column labels stay off, so their options menu goes. */
+.staticBreakout :global(button[aria-label="Column label options"]) {
+  display: none;
+}

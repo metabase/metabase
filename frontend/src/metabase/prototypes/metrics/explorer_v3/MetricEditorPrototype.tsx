@@ -1,5 +1,13 @@
 /* eslint-disable boundaries/element-types -- throwaway prototype: embeds the real Metric Explorer's parts. */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import cx from "classnames";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { useListMeasuresQuery } from "metabase/api";
 import { PillTabNavigation } from "metabase/common/components/PillTabNavigation";
@@ -28,6 +36,7 @@ import type {
   MetricSourceId,
   MetricsViewerFormulaEntity,
 } from "metabase/metrics-viewer/types/viewer-state";
+import { getDimensionBreakoutLabel } from "metabase/metrics-viewer/utils/dimension-breakouts";
 import { stampMetricCounts } from "metabase/metrics-viewer/utils/expression";
 import { useLocation, useNavigate } from "metabase/router";
 import {
@@ -54,8 +63,14 @@ import {
 } from "../explorer_v2/MetricExplorerPrototype";
 
 import { DefinitionEditor, type SegmentPlacement } from "./DefinitionEditor";
+import {
+  type ColumnMapping,
+  DimensionsSidePanel,
+  EMPTY_COLUMN_MAPPING,
+} from "./DimensionsSidePanel";
 import { DimensionsTab } from "./DimensionsTab";
 import { EXAMPLE_PARAM_PREFIX, ExamplesBar } from "./ExamplesBar";
+import S from "./Explorer.module.css";
 import { MissingMeasures } from "./MissingMeasures";
 import { NewSegmentModal } from "./NewSegmentModal";
 import type { BarItem } from "./TokenBar";
@@ -282,10 +297,25 @@ export function PillFiltersPrototype() {
   return <SegmentsEditorPrototype placement="panel" />;
 }
 
+/** Variant: no Dimensions tab; the chart takes half and the dimensions, mapped per measure, the other half. */
+export function DimensionsSidePanelPrototype() {
+  return (
+    <SegmentsEditorPrototype
+      placement="panel"
+      withSidePanel
+      defaultExampleId="revenue-per-new-customer"
+    />
+  );
+}
+
 function SegmentsEditorPrototype({
   placement,
+  withSidePanel = false,
+  defaultExampleId = EXAMPLES[0].id,
 }: {
   placement: SegmentPlacement;
+  withSidePanel?: boolean;
+  defaultExampleId?: string;
 }) {
   const sources = useSourceItems();
   const { metrics, isLoading } = sources;
@@ -311,11 +341,11 @@ function SegmentsEditorPrototype({
 
   useEffect(() => {
     if (view === "metric" && !isNew && !selected && !example) {
-      navigate(`${pathname}?metric=${EXAMPLE}${EXAMPLES[0].id}`, {
+      navigate(`${pathname}?metric=${EXAMPLE}${defaultExampleId}`, {
         replace: true,
       });
     }
-  }, [view, isNew, selected, example, pathname, navigate]);
+  }, [view, isNew, selected, example, pathname, navigate, defaultExampleId]);
 
   const savedDraft = param ? saved[param] : undefined;
   const missingMeasures = example ? sources.missingFor(example) : [];
@@ -382,6 +412,7 @@ function SegmentsEditorPrototype({
             }
             onCancelNew={() => setView("list")}
             placement={placement}
+            withSidePanel={withSidePanel}
             segments={segments}
             onCreateSegment={(segment) =>
               setSegments((prev) => [...prev, segment])
@@ -408,10 +439,12 @@ function MetricEditorPage({
   onSave,
   onCancelNew,
   placement,
+  withSidePanel,
   segments,
   onCreateSegment,
 }: {
   placement: SegmentPlacement;
+  withSidePanel: boolean;
   segments: Segment[];
   onCreateSegment: (segment: Segment) => void;
   cardId: CardType["id"] | undefined;
@@ -429,6 +462,10 @@ function MetricEditorPage({
   // Remounts the name field and the bar on Cancel, so they show `base` again.
   const [revision, setRevision] = useState(0);
   const [tab, setTab] = useState("Definition");
+  const [columns, setColumns] = useState<ColumnMapping>(EMPTY_COLUMN_MAPPING);
+  const tabs = (isNew ? NEW_TABS : TABS).filter(
+    (label) => !withSidePanel || label !== "Dimensions",
+  );
 
   const isDirty = isNew || signature(draft) !== signature(base);
   const filterProblem = findFilterProblem(
@@ -487,7 +524,7 @@ function MetricEditorPage({
         }
         tabs={
           <PillTabNavigation
-            tabs={(isNew ? NEW_TABS : TABS).map((label) => ({
+            tabs={tabs.map((label) => ({
               label,
               onClick: () => setTab(label),
               isSelected: label === tab,
@@ -531,10 +568,24 @@ function MetricEditorPage({
         withBorder
         shadow="none"
         p={0}
-        h={680}
+        h={withSidePanel ? 720 : 680}
         display={tab === "Definition" ? undefined : "none"}
       >
         <EmbeddedExplorer
+          sidePanel={
+            withSidePanel ? (
+              <DimensionsSidePanel
+                pills={pillsOf(draft, resolver)}
+                dimensions={metricDimensions(draft, resolver)}
+                mapping={draft.mapping}
+                columns={columns}
+                onChangeMapping={(mapping) =>
+                  setDraft((d) => ({ ...d, mapping }))
+                }
+                onChangeColumns={setColumns}
+              />
+            ) : undefined
+          }
           key={revision}
           draft={draft}
           items={items}
@@ -631,7 +682,9 @@ function EmbeddedExplorer({
   segments,
   onCreateSegment,
   onChange,
+  sidePanel,
 }: {
+  sidePanel?: ReactNode;
   placement: SegmentPlacement;
   segments: Segment[];
   onCreateSegment: (segment: Segment) => void;
@@ -808,22 +861,55 @@ function EmbeddedExplorer({
             }}
           />
         )}
-        <ExplorerBody />
+        {sidePanel ? (
+          <Flex flex="1 1 auto" mih={0} mx="-3rem" mt="md">
+            <Flex w="66.67%" px="lg" miw={0} direction="column">
+              <ExplorerBody withoutSidebar />
+            </Flex>
+            <Box
+              w="33.33%"
+              miw={0}
+              style={{ borderLeft: "1px solid var(--mb-color-border-neutral)" }}
+            >
+              {sidePanel}
+            </Box>
+          </Flex>
+        ) : (
+          <ExplorerBody />
+        )}
       </Stack>
     </MetricsViewerProvider>
   );
 }
 
 /** MetricsViewerPage's body without its search panel. */
-function ExplorerBody() {
-  const { definitions, activeDimensionBreakout, isSidebarOpen } =
+function ExplorerBody({
+  withoutSidebar = false,
+}: {
+  withoutSidebar?: boolean;
+}) {
+  const { definitions, activeDimensionBreakout, isSidebarOpen, metricSlots } =
     useMetricsViewerContext();
+  // The breakout is set in the dimensions panel: under the chart it's a label.
+  const breakoutLabel =
+    activeDimensionBreakout && activeDimensionBreakout.type !== "scalar"
+      ? getDimensionBreakoutLabel(
+          activeDimensionBreakout,
+          definitions,
+          metricSlots,
+        )
+      : null;
+  // CSSProperties has no index signature for custom properties.
+  const labelStyle = {
+    "--breakout-label": JSON.stringify(breakoutLabel ?? ""),
+  } as CSSProperties;
 
   const hasDefinitions = Object.keys(definitions).length > 0;
   const hasLoadedDefinitions = Object.values(definitions).some(
     (entry) => entry.definition != null,
   );
-  const showDimensionPickerSidebar = isSidebarOpen && activeDimensionBreakout;
+  const showDimensionPickerSidebar =
+    !withoutSidebar && isSidebarOpen && activeDimensionBreakout;
   const showBreakoutLegend =
     !showDimensionPickerSidebar && activeDimensionBreakout?.type !== "scalar";
 
@@ -835,7 +921,8 @@ function ExplorerBody() {
         pb="xl"
         flex={1}
         miw={0}
-        className={PageS.content}
+        className={cx(PageS.content, { [S.staticBreakout]: withoutSidebar })}
+        style={withoutSidebar ? labelStyle : undefined}
       >
         {!hasDefinitions ? (
           <MetricsViewerEmptyState />

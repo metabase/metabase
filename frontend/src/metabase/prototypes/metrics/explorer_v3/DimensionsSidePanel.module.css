@@ -1,0 +1,29 @@
+/* Hover: a breakout-ready row hints at the selected fill; an incomplete one only outlines. */
+.validRow:hover,
+.invalidRow:hover {
+  border-color: var(--mb-color-core-brand);
+  background-color: transparent;
+}
+
+/* Half the selected fill: there's no fainter brand token. */
+.validRow {
+  position: relative;
+  isolation: isolate;
+}
+
+.validRow:hover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background-color: var(--mb-color-background_surface-brand-subtle);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.selectedRow,
+.selectedRow:hover {
+  border-color: var(--mb-color-core-brand);
+  background-color: var(--mb-color-background_surface-brand-subtle);
+}

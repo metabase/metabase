@@ -10,6 +10,7 @@ import {
 import { MetricExplorerPrototype } from "./explorer/MetricExplorerPrototype";
 import { MetricEditorPrototype as MetricEditorPrototypeV2 } from "./explorer_v2/MetricEditorPrototype";
 import {
+  DimensionsSidePanelPrototype,
   PillFiltersPrototype,
   SegmentsPrototype,
 } from "./explorer_v3/MetricEditorPrototype";
@@ -113,10 +114,11 @@ export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
   },
   {
     id: "dimension-mapping",
-    name: "Dimension mapping",
+    name: "Dimension mapping draft",
     description:
       "Revenue per active user, over two unrelated tables: pick which column of each term every dimension reads, with the Metric Explorer's per-term selects, and which dimensions the metric publishes.",
     group: "Iteration 2",
+    draft: true,
     Component: DimensionMappingPrototype,
   },
   {
@@ -135,6 +137,14 @@ export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
       "Select a pill and the panel below the bar shows its segments; the pill only shows a filter icon with a count. With nothing selected, the panel filters the whole metric.",
     group: "Iteration 2",
     Component: PillFiltersPrototype,
+  },
+  {
+    id: "dimension-mapping-v2",
+    name: "Dimension mapping",
+    description:
+      "Pill filters below the bar, with no Dimensions tab: the chart takes two thirds of the page and the dimensions the rest. Measures can come from different tables, so each dimension picks one column per measure. Click a breakout under the chart to open its dimension.",
+    group: "Iteration 2",
+    Component: DimensionsSidePanelPrototype,
   },
   // Last, so /prototypes opens it.
   {
