@@ -739,3 +739,58 @@
               (scanned 2)
               (rescan table)
               (is (read?)))))))))
+
+(deftest ^:synchronized scheduled-scan-reads-only-used-lists-test
+  (testing "with the Database setting, the scheduled scan reads only the lists used since their last scan"
+    (mt/dataset test-data
+      (let [table    (t2/select-one :model/Table :id (mt/id :venues))
+            fv-id    (:id (field-values/get-or-create-full-field-values!
+                           (t2/select-one :model/Field :id (mt/id :venues :price))))
+            ago      #(some->> % t/hours (t/minus (t/offset-date-time)))
+            ;; the list was last used `used` hours ago and last scanned `scanned` hours ago, or never when nil
+            state!   (fn [{:keys [used scanned]}]
+                       (t2/update! (t2/table-name :model/FieldValues) {:id fv-id}
+                                   {:values          "[\"XX\"]"
+                                    :last_used_at    (ago used)
+                                    :last_scanned_at (ago scanned)}))
+            read?    #(not= ["XX"] (t2/select-one-fn :values :model/FieldValues :id fv-id))
+            scan     sync.field-values/update-field-values-for-table!
+            rescan   sync.field-values/rescan-field-values-for-table!]
+        (mt/with-temp-vals-in-db :model/FieldValues fv-id {:values          ["XX"]
+                                                           :last_used_at    (t/offset-date-time)
+                                                           :last_scanned_at nil}
+          (testing "without the setting, a list not used since its last scan is read"
+            (state! {:used 48 :scanned 24})
+            (scan table)
+            (is (read?)))
+          (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:scan-only-used-field-values true}}
+            (testing "not used since its last scan: not read"
+              (state! {:used 48 :scanned 24})
+              (scan table)
+              (is (not (read?))))
+            (testing "used since its last scan: read, and the scan is recorded"
+              (state! {:used 2 :scanned 24})
+              (scan table)
+              (is (read?))
+              (is (t/after? (t2/select-one-fn :last_scanned_at :model/FieldValues :id fv-id) (ago 1))))
+            (testing "not used again after that scan: not read"
+              (t2/update! (t2/table-name :model/FieldValues) {:id fv-id} {:values "[\"XX\"]"})
+              (scan table)
+              (is (not (read?))))
+            (testing "never scanned: read"
+              (state! {:used 48 :scanned nil})
+              (scan table)
+              (is (read?)))
+            (testing "another list of the Field was used since the last scan: read"
+              (state! {:used 48 :scanned 24})
+              (mt/with-temp [:model/FieldValues _ {:field_id     (mt/id :venues :price)
+                                                   :type         :advanced
+                                                   :hash_key     "used-list"
+                                                   :values       ["1"]
+                                                   :last_used_at (t/offset-date-time)}]
+                (scan table)
+                (is (read?))))
+            (testing "a manual rescan reads a list not used since its last scan"
+              (state! {:used 48 :scanned 24})
+              (rescan table)
+              (is (read?)))))))))

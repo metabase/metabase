@@ -272,8 +272,9 @@
 (mu/defn- update-field-values-for-tables!
   "Update the FieldValues of the Fields of `tables` that need it, reading their Fields and FieldValues together, with
   one UNION ALL query per Table on SQL drivers and one DISTINCT query per Field elsewhere. The scheduled scan reads a
-  list that was too large at its last scan only once in [[too-large-scan-period]]. A manual rescan (`:rescan?`) reads
-  every list, and also stores again the lists that are still too large."
+  list that was too large at its last scan only once in [[too-large-scan-period]], and, for a Database with the
+  setting [[sync.settings/scan-only-used-field-values]], only the lists used since their last scan. A manual rescan
+  (`:rescan?`) reads every list, and also stores again the lists that are still too large."
   [database :- i/DatabaseInstance
    tables   :- [:sequential i/TableInstance]
    opts     :- ::scan-options]
@@ -292,10 +293,14 @@
         clear-counts      (clear-field-values! to-clear)
         fvs-map           (field-values/batched-get-latest-full-field-values (map u/the-id to-sync))
         last-used-at      (field-values/fields-last-used-at (vec (vals fvs-map)))
+        used              (when (and (not (:rescan? opts)) (sync.settings/scan-only-used-lists? database))
+                            (field-values/used-since-last-scan (vec (vals fvs-map))))
         due?              (fn [field]
                             (let [fv (get fvs-map (u/the-id field))]
                               (and (syncable? last-used-at field fv)
-                                   (or (:rescan? opts) (not (too-large-scanned-recently? fv))))))
+                                   (or (:rescan? opts)
+                                       (and (not (too-large-scanned-recently? fv))
+                                            (or (nil? used) (nil? fv) (contains? used (u/the-id field))))))))
         table-id->to-sync (group-by :table_id (filter due? to-sync))]
     (merge-with + clear-counts (sync-fields-of-tables! tables (constantly database) table-id->to-sync fvs-map opts))))
 

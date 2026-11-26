@@ -467,6 +467,22 @@
   (warehouse-schema.db/field-values-last-used-at-by-field
    (into [] (comp (remove (comp used-recently? :last_used_at)) (map :field_id)) field-values)))
 
+(mu/defn used-since-last-scan :- [:set ::lib.schema.id/field]
+  "The ids of the Fields of `field-values`, their full FieldValues, that have any FieldValues used after the last scan
+  of the full one, or whose full one has no recorded scan. Any FieldValues of the Field counts, as for [[inactive?]]."
+  [field-values :- [:sequential [:map [:field_id ::lib.schema.id/field]]]]
+  (let [used-after-scan? (fn [last-used-at {:keys [last_scanned_at]}]
+                           (boolean (some-> last-used-at (t/after? last_scanned_at))))
+        {known true
+         other false}    (group-by (fn [{:keys [last_scanned_at last_used_at] :as fv}]
+                                     (or (nil? last_scanned_at) (used-after-scan? last_used_at fv)))
+                                   field-values)
+        last-used-at     (warehouse-schema.db/field-values-last-used-at-by-field (mapv :field_id other))]
+    (into (into #{} (map :field_id) known)
+          (comp (filter #(used-after-scan? (get last-used-at (:field_id %)) %))
+                (map :field_id))
+          other)))
+
 (defn field-values-change
   "What persisting `raw-values`, the raw distinct values of one Field from the warehouse, changes against
   `existing-fv`, its full FieldValues or nil: `{:result r}` with `r` one of `::fv-skipped`, `::fv-updated`,
