@@ -150,6 +150,10 @@ export const TOOL_MESSAGES = {
             count,
           ),
   },
+  run_dashboard_card: {
+    active: () => t`Running a dashboard card`,
+    done: () => t`Ran a dashboard card`,
+  },
   run_query: { active: () => t`Running a query`, done: () => t`Ran a query` },
   save_entity: { active: () => t`Saving`, done: () => t`Saved` },
   search: { active: () => t`Searching`, done: () => t`Searched` },
