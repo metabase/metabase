@@ -221,7 +221,7 @@ export interface TreeTableProps<
 > extends TreeTableStylesProps {
   instance: TreeTableInstance<TData>;
 
-  showCheckboxes?: boolean;
+  showCheckboxes?: boolean | ((row: Row<TData>) => boolean);
   indentWidth?: number;
   headerVariant?: TreeTableHeaderVariant;
 
@@ -316,6 +316,7 @@ export interface TreeTableRowProps<
   table: Table<TData>;
   columnWidths: Record<string, number>;
   showCheckboxes: boolean;
+  showRowCheckbox?: boolean;
   showExpandButtons: boolean;
   indentWidth: number;
   activeRowId: string | null;
@@ -348,6 +349,7 @@ export interface TreeTableHeaderProps<
   table: Table<TData>;
   columnWidths: Record<string, number>;
   showCheckboxes: boolean;
+  showRowCheckbox?: (row: Row<TData>) => boolean;
   isMeasured?: boolean;
   totalContentWidth?: number;
   headerVariant?: TreeTableHeaderVariant;

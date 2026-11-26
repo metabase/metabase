@@ -147,7 +147,7 @@ export function LibraryTreePage({
                 ) : (
                   <TreeTable
                     instance={treeTableInstance}
-                    showCheckboxes={!isRemoteSyncReadOnly}
+                    showCheckboxes={!isRemoteSyncReadOnly && showRowCheckbox}
                     getSelectionState={getSelectionState}
                     isRowDisabled={getRowCovered}
                     onCheckboxClick={onCheckboxClick}
@@ -188,4 +188,8 @@ export function LibraryTreePage({
       )}
     </>
   );
+}
+
+function showRowCheckbox(row: Row<TreeItem>) {
+  return row.original.model !== "empty-state";
 }

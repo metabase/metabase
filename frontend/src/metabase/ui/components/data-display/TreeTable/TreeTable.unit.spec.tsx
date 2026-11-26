@@ -78,7 +78,9 @@ function setup({
   renderWithProviders(<Container />);
 }
 
-function setupSelection() {
+function setupSelection(
+  showCheckboxes: boolean | ((row: Row<TestNode>) => boolean) = true,
+) {
   mockGetBoundingClientRect({ width: 200, height: 40 });
 
   function SelectionContainer() {
@@ -97,7 +99,7 @@ function setupSelection() {
       <TreeTable
         instance={instance}
         hierarchical={false}
-        showCheckboxes
+        showCheckboxes={showCheckboxes}
         ariaLabel="Test table"
         onRowClick={handleRowClick}
         getRowProps={getRowProps}
@@ -214,5 +216,16 @@ describe("TreeTable row selection", () => {
     expect(
       within(screen.getByTestId("row-2")).getByRole("checkbox"),
     ).not.toBeChecked();
+  });
+
+  it("hides the checkbox on rows excluded by showCheckboxes", async () => {
+    setupSelection((row) => row.original.id === "1");
+
+    expect(
+      within(await screen.findByTestId("row-1")).getByRole("checkbox"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("row-2")).queryByRole("checkbox"),
+    ).not.toBeInTheDocument();
   });
 });

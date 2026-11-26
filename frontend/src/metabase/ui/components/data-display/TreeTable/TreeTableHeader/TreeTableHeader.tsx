@@ -19,6 +19,7 @@ export function TreeTableHeader<TData extends TreeNodeData>({
   table,
   columnWidths,
   showCheckboxes,
+  showRowCheckbox,
   classNames,
   styles,
   isMeasured = true,
@@ -29,13 +30,14 @@ export function TreeTableHeader<TData extends TreeNodeData>({
 }: TreeTableHeaderProps<TData>) {
   const headerGroups = table.getHeaderGroups();
   const rows = table.getRowModel().rows;
+  const selectableRows = showRowCheckbox ? rows.filter(showRowCheckbox) : rows;
 
   const headerSelectionState: SelectionState = (() => {
-    if (rows.length === 0) {
+    if (selectableRows.length === 0) {
       return "none";
     }
     if (getSelectionState) {
-      const states = rows.map(getSelectionState);
+      const states = selectableRows.map(getSelectionState);
       if (states.every((s) => s === "all")) {
         return "all";
       }
