@@ -109,6 +109,43 @@
    ::metabot.schema/client-message
    [:map [:parent_message_id [:maybe :string]]]])
 
+(def ^:private LlmCallTiming
+  "Schema for the timing of one LLM call attempt of a reply. `:duration_ms` is nil while the attempt runs."
+  [:map
+   [:iteration      [:maybe :int]]
+   [:attempt        ms/PositiveInt]
+   [:provider       [:maybe :string]]
+   [:model          [:maybe :string]]
+   [:status         ::metabot.schema/metabot-llm-call.status]
+   [:started_at     ms/TemporalInstant]
+   [:duration_ms    [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:error_class    [:maybe :string]]
+   [:retry_delay_ms [:maybe :int]]])
+
+(def ^:private ToolCallTiming
+  "Schema for the timing of one tool call of a reply. `:call_id` is the id of the tool call in the message parts.
+   `:wait_ms` is the time from the submit of the call to its start, `:duration_ms` the time it ran; both are nil for
+   a call that did not start."
+  [:map
+   [:call_id     :string]
+   [:tool_name   :string]
+   [:status      ::metabot.schema/metabot-tool-call.status]
+   [:created_at  ms/TemporalInstant]
+   [:wait_ms     [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:duration_ms [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:error_class [:maybe :string]]])
+
+(def ^:private MessageTiming
+  "Schema for the timing of one reply. `:message_id` is the `:id` of the reply in `:messages`. `:duration_ms` is the
+   time the server worked on the reply, nil while the turn runs."
+  [:map
+   [:message_id  :string]
+   [:started_at  ms/TemporalInstant]
+   [:finished_at [:maybe ms/TemporalInstant]]
+   [:duration_ms [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:llm_calls   [:sequential LlmCallTiming]]
+   [:tool_calls  [:sequential ToolCallTiming]]])
+
 (def ^:private ConversationDetail
   "Schema for full conversation detail response."
   [:map
@@ -133,7 +170,11 @@
    [:sanitized_user_agent        [:maybe :string]]
    [:forked_from_conversation_id [:maybe ms/UUIDString]]
    [:fork_boundary_message_id    [:maybe :string]]
-   [:feedback                    [:sequential ConversationFeedback]]])
+   [:feedback                    [:sequential ConversationFeedback]]
+   ;; the sum of the `:duration_ms` of `:timings`, nil when no reply has one
+   [:duration_ms                 [:maybe ms/IntGreaterThanOrEqualToZero]]
+   ;; only the replies with a recorded time: none for a reply from before the records existed or copied by a fork
+   [:timings                     [:sequential MessageTiming]]])
 
 (def ^:private ListConversationsResponse
   "Response schema for `GET /conversations`."

@@ -4,19 +4,39 @@ import { t } from "ttag";
 import { ToolCallDetailsContent } from "metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart";
 import type { MetabotDebugToolCallMessage } from "metabase/metabot/state";
 import { ActionIcon, Badge, Flex, Icon, Stack, Text } from "metabase/ui";
+import { formatDurationLong } from "metabase/utils/formatting/duration";
+import type { ToolCallTiming } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
 
 import S from "./ToolCallDetailsSidebar.module.css";
 
 type ToolCallDetailsSidebarProps = {
   message: MetabotDebugToolCallMessage;
+  timing?: ToolCallTiming;
   onClose: () => void;
 };
 
+function getTimingLabel(timing: ToolCallTiming): string | null {
+  if (timing.status === "skipped") {
+    return t`Skipped`;
+  }
+  if (timing.duration_ms == null) {
+    return timing.status === "aborted" ? t`Aborted` : null;
+  }
+  const duration = formatDurationLong(timing.duration_ms);
+  if (timing.wait_ms == null) {
+    return t`Ran for ${duration}`;
+  }
+  const wait = formatDurationLong(timing.wait_ms);
+  return t`Waited ${wait} · Ran for ${duration}`;
+}
+
 export function ToolCallDetailsSidebar({
   message,
+  timing,
   onClose,
 }: ToolCallDetailsSidebarProps) {
   const headingId = useId();
+  const timingLabel = timing ? getTimingLabel(timing) : null;
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   // Move focus into the newly-opened panel
@@ -53,6 +73,11 @@ export function ToolCallDetailsSidebar({
             {message.id}
           </Badge>
         </Flex>
+        {timingLabel && (
+          <Text size="sm" c="text-secondary" data-testid="tool-call-timing">
+            {timingLabel}
+          </Text>
+        )}
       </Stack>
       <ToolCallDetailsContent message={message} />
     </Stack>

@@ -14,6 +14,7 @@ import * as Urls from "metabase/urls";
 import type {
   ConversationDetail,
   ConversationFeedback,
+  LlmCallTiming,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/types";
 import type {
   GroupListQuery,
@@ -81,6 +82,21 @@ function toolCallPart(id: string): AgentMessagePart {
   });
 }
 
+function createLlmCallTiming(opts: Partial<LlmCallTiming>): LlmCallTiming {
+  return {
+    iteration: 1,
+    attempt: 1,
+    provider: "anthropic",
+    model: "claude",
+    status: "ok",
+    started_at: "2026-01-01T00:00:01Z",
+    duration_ms: null,
+    error_class: null,
+    retry_delay_ms: null,
+    ...opts,
+  };
+}
+
 function createConversation(
   messages: ConversationMessage[],
   feedback: ConversationFeedback[] = [],
@@ -108,6 +124,8 @@ function createConversation(
     forked_from_conversation_id: null,
     fork_boundary_message_id: null,
     feedback,
+    duration_ms: null,
+    timings: [],
   };
 }
 
@@ -399,6 +417,72 @@ describe("ConversationDetailPage", () => {
 
     expect(
       screen.queryByTestId("tool-call-details-sidebar"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the time the server worked, per reply and for the conversation", async () => {
+    setup({
+      ...createConversation([
+        userMessage("u1", null, "search orders"),
+        agentMessage("a1", "u1", toolCallPart("a1"), "found 3 orders"),
+      ]),
+      duration_ms: 10500,
+      timings: [
+        {
+          message_id: "a1",
+          started_at: "2026-01-01T00:00:01Z",
+          finished_at: "2026-01-01T00:00:11.5Z",
+          duration_ms: 10500,
+          llm_calls: [
+            createLlmCallTiming({ attempt: 1, duration_ms: 1000 }),
+            createLlmCallTiming({ attempt: 2, duration_ms: 4200 }),
+          ],
+          tool_calls: [
+            {
+              call_id: "a1-tool-call",
+              tool_name: "search",
+              status: "ok",
+              created_at: "2026-01-01T00:00:07Z",
+              wait_ms: 100,
+              duration_ms: 2000,
+              error_class: null,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(await screen.findByText("Time worked")).toBeInTheDocument();
+    expect(screen.getByText("10.5s")).toBeInTheDocument();
+    expect(screen.getByTestId("metabot-message-timing")).toHaveTextContent(
+      "Worked for 10.5s · 2 LLM calls (5.2s) · 1 tool call",
+    );
+
+    await userEvent.click(screen.getByText("search"));
+
+    const sidebar = await screen.findByTestId("tool-call-details-sidebar");
+    expect(within(sidebar).getByTestId("tool-call-timing")).toHaveTextContent(
+      "Waited 100ms · Ran for 2.0s",
+    );
+  });
+
+  it("shows no timing for a conversation with no recorded times", async () => {
+    setup(
+      createConversation([
+        userMessage("u1", null, "search orders"),
+        agentMessage("a1", "u1", toolCallPart("a1"), "found 3 orders"),
+      ]),
+    );
+
+    await userEvent.click(await screen.findByText("search"));
+
+    const sidebar = await screen.findByTestId("tool-call-details-sidebar");
+    expect(
+      within(sidebar).queryByTestId("tool-call-timing"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Time worked")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metabot-message-timing"),
     ).not.toBeInTheDocument();
   });
 
