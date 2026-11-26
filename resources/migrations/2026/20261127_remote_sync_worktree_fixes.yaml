@@ -1,0 +1,618 @@
+## Fixes of the remote sync worktree schema: what is in a Collection is deleted with it, so that deleting a worktree,
+## which cascades to both, works on H2 and MySQL; sandboxes and collection permissions are shared across worktrees,
+## like data permissions; the audit log and task history are of the main app only; the single-column worktree_id
+## indexes of the log tables go; and the Postgres planner gets statistics for worktree_id.
+
+databaseChangeLog:
+  - changeSet:
+      id: ccf72f
+      author: ranquild
+      comment: Drop fk_card_collection_id, to add it again with ON DELETE CASCADE
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_card
+            constraintName: fk_card_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_card_collection_id
+            onDelete: SET NULL
+  - changeSet:
+      id: ccfo9f
+      author: ranquild
+      comment: Delete the rows of report_card in a Collection with the Collection
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_card_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: ccfytl
+      author: ranquild
+      comment: Drop fk_dashboard_collection_id, to add it again with ON DELETE CASCADE
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: report_dashboard
+            constraintName: fk_dashboard_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboard
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_dashboard_collection_id
+            onDelete: SET NULL
+  - changeSet:
+      id: ccfi8e
+      author: ranquild
+      comment: Delete the rows of report_dashboard in a Collection with the Collection
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboard
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_dashboard_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: ccfs9q
+      author: ranquild
+      comment: Drop fk_document_ref_collection_id, to add it again with ON DELETE CASCADE
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: document
+            constraintName: fk_document_ref_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_document_ref_collection_id
+            onDelete: SET NULL
+  - changeSet:
+      id: ccf55p
+      author: ranquild
+      comment: Delete the rows of document in a Collection with the Collection
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_document_ref_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: ccfekf
+      author: ranquild
+      comment: Drop fk_exploration_collection_id, to add it again with ON DELETE CASCADE
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: exploration
+            constraintName: fk_exploration_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: exploration
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_exploration_collection_id
+            onDelete: SET NULL
+  - changeSet:
+      id: ccfmhv
+      author: ranquild
+      comment: Delete the rows of exploration in a Collection with the Collection
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_exploration_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: ccfg52
+      author: ranquild
+      comment: Drop fk_action_collection_id, to add it again with ON DELETE CASCADE
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: action
+            constraintName: fk_action_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_action_collection_id
+            onDelete: SET NULL
+  - changeSet:
+      id: ccfm5a
+      author: ranquild
+      comment: Delete the rows of action in a Collection with the Collection
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_action_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: ccfdxt
+      author: ranquild
+      comment: Drop fk_transform_collection_id, to add it again with ON DELETE CASCADE
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: transform
+            constraintName: fk_transform_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_transform_collection_id
+  - changeSet:
+      id: ccfegg
+      author: ranquild
+      comment: Delete the rows of transform in a Collection with the Collection
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_transform_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: ccfp59
+      author: ranquild
+      comment: Drop fk_snippet_collection_id, to add it again with ON DELETE CASCADE
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            constraintName: fk_snippet_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_snippet_collection_id
+            onDelete: SET NULL
+  - changeSet:
+      id: ccf63u
+      author: ranquild
+      comment: Delete the rows of native_query_snippet in a Collection with the Collection
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: native_query_snippet
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_snippet_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: ccfl1x
+      author: ranquild
+      comment: Drop fk_pulse_collection_id, to add it again with ON DELETE CASCADE
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: pulse
+            constraintName: fk_pulse_collection_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: pulse
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_pulse_collection_id
+            onDelete: SET NULL
+  - changeSet:
+      id: ccfo2f
+      author: ranquild
+      comment: Delete the rows of pulse in a Collection with the Collection
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_pulse_collection_id
+            onDelete: CASCADE
+  - changeSet:
+      id: usbx2uq
+      author: ranquild
+      comment: Make the unique key of sandboxes leave out worktree_id again
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE sandboxes DROP CONSTRAINT unique_gtap_table_id_group_id, ADD CONSTRAINT unique_gtap_table_id_group_id UNIQUE (table_id, group_id)
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE sandboxes DROP INDEX unique_gtap_table_id_group_id, ADD CONSTRAINT unique_gtap_table_id_group_id UNIQUE (table_id, group_id)
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE sandboxes DROP CONSTRAINT unique_gtap_table_id_group_id;
+              ALTER TABLE sandboxes ADD CONSTRAINT unique_gtap_table_id_group_id UNIQUE (table_id, group_id)
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE sandboxes DROP CONSTRAINT unique_gtap_table_id_group_id, ADD CONSTRAINT unique_gtap_table_id_group_id UNIQUE (table_id, group_id, worktree_id)
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE sandboxes DROP INDEX unique_gtap_table_id_group_id, ADD CONSTRAINT unique_gtap_table_id_group_id UNIQUE (table_id, group_id, worktree_id)
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE sandboxes DROP CONSTRAINT unique_gtap_table_id_group_id;
+              ALTER TABLE sandboxes ADD CONSTRAINT unique_gtap_table_id_group_id UNIQUE (table_id, group_id, worktree_id)
+  - changeSet:
+      id: usbx3fk
+      author: ranquild
+      comment: Drop the foreign key from sandboxes to remote_sync_worktree
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: sandboxes
+            constraintName: fk_sandboxes_worktree_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: sandboxes
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_sandboxes_worktree_id
+            onDelete: CASCADE
+  - changeSet:
+      id: usbx4ix
+      author: ranquild
+      comment: Drop the worktree_id index of sandboxes
+      changes:
+        - dropIndex:
+            tableName: sandboxes
+            indexName: idx_sandboxes_worktree_id
+      rollback:
+        - createIndex:
+            tableName: sandboxes
+            indexName: idx_sandboxes_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+  - changeSet:
+      id: usbx5co
+      author: ranquild
+      comment: Drop the worktree_id column of sandboxes
+      changes:
+        - dropColumn:
+            tableName: sandboxes
+            columnName: worktree_id
+      rollback:
+        - addColumn:
+            tableName: sandboxes
+            columns:
+              - column:
+                  name: worktree_id
+                  type: INTEGER
+                  defaultValueNumeric: 1
+                  remarks: The remote sync worktree of the row, 1 being the main app
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: uprm2uq
+      author: ranquild
+      comment: Make the unique key of permissions leave out worktree_id again
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE permissions DROP CONSTRAINT uq_permissions_group_id_object_worktree_id, ADD CONSTRAINT permissions_group_id_object_key UNIQUE (group_id, object)
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE permissions DROP INDEX uq_permissions_group_id_object_worktree_id, ADD CONSTRAINT group_id UNIQUE (group_id, object)
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE permissions DROP CONSTRAINT uq_permissions_group_id_object_worktree_id;
+              ALTER TABLE permissions ADD CONSTRAINT permissions_group_id_object_key UNIQUE (group_id, object)
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: ALTER TABLE permissions DROP CONSTRAINT permissions_group_id_object_key, ADD CONSTRAINT uq_permissions_group_id_object_worktree_id UNIQUE (group_id, object, worktree_id)
+        - sql:
+            dbms: mysql,mariadb
+            sql: ALTER TABLE permissions DROP INDEX group_id, ADD CONSTRAINT uq_permissions_group_id_object_worktree_id UNIQUE (group_id, object, worktree_id)
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE permissions DROP CONSTRAINT permissions_group_id_object_key;
+              ALTER TABLE permissions ADD CONSTRAINT uq_permissions_group_id_object_worktree_id UNIQUE (group_id, object, worktree_id)
+  - changeSet:
+      id: uprm3fk
+      author: ranquild
+      comment: Drop the foreign key from permissions to remote_sync_worktree
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: permissions
+            constraintName: fk_permissions_worktree_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: permissions
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_permissions_worktree_id
+            onDelete: CASCADE
+  - changeSet:
+      id: uprm4ix
+      author: ranquild
+      comment: Drop the worktree_id index of permissions
+      changes:
+        - dropIndex:
+            tableName: permissions
+            indexName: idx_permissions_worktree_id
+      rollback:
+        - createIndex:
+            tableName: permissions
+            indexName: idx_permissions_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+  - changeSet:
+      id: uprm5co
+      author: ranquild
+      comment: Drop the worktree_id column of permissions
+      changes:
+        - dropColumn:
+            tableName: permissions
+            columnName: worktree_id
+      rollback:
+        - addColumn:
+            tableName: permissions
+            columns:
+              - column:
+                  name: worktree_id
+                  type: INTEGER
+                  defaultValueNumeric: 1
+                  remarks: The remote sync worktree of the row, 1 being the main app
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: wix6ow
+      author: ranquild
+      comment: Drop idx_audit_log_worktree_id, which no foreign key or query uses
+      changes:
+        - dropIndex:
+            tableName: audit_log
+            indexName: idx_audit_log_worktree_id
+      rollback:
+        - createIndex:
+            tableName: audit_log
+            indexName: idx_audit_log_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: wixx6s
+      author: ranquild
+      comment: Drop idx_data_test_run_worktree_id, which no foreign key or query uses
+      changes:
+        - dropIndex:
+            tableName: data_test_run
+            indexName: idx_data_test_run_worktree_id
+      rollback:
+        - createIndex:
+            tableName: data_test_run
+            indexName: idx_data_test_run_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: wixkfa
+      author: ranquild
+      comment: Drop idx_query_execution_worktree_id, which no foreign key or query uses
+      changes:
+        - dropIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_worktree_id
+      rollback:
+        - createIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: wixjv1
+      author: ranquild
+      comment: Drop idx_source_replacement_run_worktree_id, which no foreign key or query uses
+      changes:
+        - dropIndex:
+            tableName: source_replacement_run
+            indexName: idx_source_replacement_run_worktree_id
+      rollback:
+        - createIndex:
+            tableName: source_replacement_run
+            indexName: idx_source_replacement_run_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: wixgmz
+      author: ranquild
+      comment: Drop idx_task_history_worktree_id, which no foreign key or query uses
+      changes:
+        - dropIndex:
+            tableName: task_history
+            indexName: idx_task_history_worktree_id
+      rollback:
+        - createIndex:
+            tableName: task_history
+            indexName: idx_task_history_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: wixufs
+      author: ranquild
+      comment: Drop idx_task_run_worktree_id, which no foreign key or query uses
+      changes:
+        - dropIndex:
+            tableName: task_run
+            indexName: idx_task_run_worktree_id
+      rollback:
+        - createIndex:
+            tableName: task_run
+            indexName: idx_task_run_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: wixa2e
+      author: ranquild
+      comment: Drop idx_test_suite_run_worktree_id, which no foreign key or query uses
+      changes:
+        - dropIndex:
+            tableName: test_suite_run
+            indexName: idx_test_suite_run_worktree_id
+      rollback:
+        - createIndex:
+            tableName: test_suite_run
+            indexName: idx_test_suite_run_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: wix3n2
+      author: ranquild
+      comment: Drop idx_transform_dag_run_worktree_id, which no foreign key or query uses
+      changes:
+        - dropIndex:
+            tableName: transform_dag_run
+            indexName: idx_transform_dag_run_worktree_id
+      rollback:
+        - createIndex:
+            tableName: transform_dag_run
+            indexName: idx_transform_dag_run_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: wixfi7
+      author: ranquild
+      comment: Drop idx_transform_run_worktree_id, which no foreign key or query uses
+      changes:
+        - dropIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_worktree_id
+      rollback:
+        - createIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: wix6du
+      author: ranquild
+      comment: Drop idx_view_log_worktree_id, which no foreign key or query uses
+      changes:
+        - dropIndex:
+            tableName: view_log
+            indexName: idx_view_log_worktree_id
+      rollback:
+        - createIndex:
+            tableName: view_log
+            indexName: idx_view_log_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: ualg5co
+      author: ranquild
+      comment: Drop the worktree_id column of audit_log, a log of the main app only
+      changes:
+        - dropColumn:
+            tableName: audit_log
+            columnName: worktree_id
+      rollback:
+        - addColumn:
+            tableName: audit_log
+            columns:
+              - column:
+                  name: worktree_id
+                  type: INTEGER
+                  defaultValueNumeric: 1
+                  remarks: The remote sync worktree of the row, 1 being the main app
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: utkh5co
+      author: ranquild
+      comment: Drop the worktree_id column of task_history, a log of the main app only
+      changes:
+        - dropColumn:
+            tableName: task_history
+            columnName: worktree_id
+      rollback:
+        - addColumn:
+            tableName: task_history
+            columns:
+              - column:
+                  name: worktree_id
+                  type: INTEGER
+                  defaultValueNumeric: 1
+                  remarks: The remote sync worktree of the row, 1 being the main app
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: utkr5co
+      author: ranquild
+      comment: Drop the worktree_id column of task_run, a log of the main app only
+      changes:
+        - dropColumn:
+            tableName: task_run
+            columnName: worktree_id
+      rollback:
+        - addColumn:
+            tableName: task_run
+            columns:
+              - column:
+                  name: worktree_id
+                  type: INTEGER
+                  defaultValueNumeric: 1
+                  remarks: The remote sync worktree of the row, 1 being the main app
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: wixct0
+      author: ranquild
+      comment: Analyze the app DB so the Postgres planner knows that worktree_id holds one value, rather than guess it selective
+      dbms: postgresql
+      changes:
+        - sql:
+            sql: ANALYZE
+      rollback: []

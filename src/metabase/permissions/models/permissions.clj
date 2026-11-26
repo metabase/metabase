@@ -240,8 +240,6 @@
 (methodical/defmethod t2/table-name :model/Permissions [_model] :permissions)
 
 (derive :model/Permissions :metabase/model)
-(derive :model/Permissions :hook/worktree-id)
-
 (defn- maybe-break-out-permission-data
   "Given a `Permissions` model, add `:collection_id`, `:perm_type`, and `:perm_value` iff we know how to break that out."
   [permissions]

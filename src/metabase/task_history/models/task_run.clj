@@ -21,8 +21,7 @@
 (methodical/defmethod t2/table-name :model/TaskRun [_model] :task_run)
 
 (doto :model/TaskRun
-  (derive :metabase/model)
-  (derive :hook/worktree-id))
+  (derive :metabase/model))
 
 ;;; Permissions to read or write TaskRun. Same as TaskHistory - requires superusers or monitoring permission.
 (defn- can-access?

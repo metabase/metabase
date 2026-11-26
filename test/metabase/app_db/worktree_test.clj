@@ -26,11 +26,11 @@
 (def ^:private referencing-table-allowlist
   "The models of tables reaching synced content through foreign keys without `worktree_id` and the hook; scope such a table unless a
   decision keeps it instance-wide."
-  #{;; Metabot tables stay unscoped; its card_id references report_card.
-    :model/MetabotPrompt
-    ;; Metabot tables stay unscoped; collection_id references collection.
+  #{;; They are of the main app only, shared across worktrees like data permissions.
     :model/Metabot
-    ;; tenants aren't scoped yet; tenant_collection_id references collection
+    :model/MetabotPrompt
+    :model/Permissions
+    :model/Sandbox
     :model/Tenant})
 
 (def ^:private scoped-tables
@@ -38,7 +38,6 @@
   content: logs of content activity, polymorphic references to content such as revisions, view logs, recent views and
   comments, and per-worktree caches."
   #{;; They point at content polymorphically, by model and id or entity id, without a foreign key.
-    :model/AuditLog
     :model/BookmarkOrdering
     :model/CacheConfig
     :model/ChangeLog
@@ -70,13 +69,15 @@
     ;; They are runs and logs of each worktree.
     :model/DataTestRun
     :model/QueryExecution
-    :model/RemoteSyncTask
-    :model/TaskHistory
-    :model/TaskRun})
+    :model/RemoteSyncTask})
 
 (def ^:private unscoped-tables
   "The models of other tables, without `worktree_id` or the hook; leave instance-wide data unscoped."
-  #{;; Instance-wide data: warehouse metadata, users, groups, sessions, settings, Metabot, tenants, transform jobs and
+  #{;; They are logs of the main app only.
+    :model/AuditLog
+    :model/TaskHistory
+    :model/TaskRun
+    ;; Instance-wide data: warehouse metadata, users, groups, sessions, settings, Metabot, tenants, transform jobs and
     ;; the like.
     :model/AgentApiCallLog
     :model/AiUsageLog
