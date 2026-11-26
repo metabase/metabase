@@ -19,7 +19,7 @@ defaults:
 
 jobs:
   docs-images:
-    if: vars.DOCS_IMAGE_POINTERS == 'true' && !github.event.pull_request.draft
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     env:
