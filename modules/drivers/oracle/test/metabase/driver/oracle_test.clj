@@ -43,6 +43,7 @@
    [metabase.util.log :as log]
    [metabase.util.log.capture :as log.capture]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import
@@ -979,3 +980,53 @@
         (is (= [[1345 "Alice Connelly"]]
                (mt/formatted-rows [int str] result)
                (mt/formatted-rows [int str] (qp/process-query native-query))))))))
+
+(defn- do-with-stats-table!
+  "Create the table `kb_stats` in the test schema with 1,000 rows, `a` with 9 values and NULL in a tenth of the rows and
+  `b` unique, gather its statistics when `gather?`, and call `f` with the Lib database, its Table and its Fields."
+  [gather? f]
+  (let [database (lib.metadata/database (mt/metadata-provider))
+        spec     (sql-jdbc.conn/db->pooled-connection-spec database)
+        schema   oracle.tx/session-schema
+        qname    (format "\"%s\".\"kb_stats\"" schema)]
+    (try (jdbc/execute! spec [(str "DROP TABLE " qname " PURGE")]) (catch Exception _))
+    (jdbc/execute! spec [(str "CREATE TABLE " qname " (\"a\" NUMBER, \"b\" NUMBER)")])
+    (try
+      (jdbc/execute! spec [(str "INSERT INTO " qname " SELECT CASE WHEN MOD(LEVEL, 10) = 0 THEN NULL ELSE MOD(LEVEL, 10) END,"
+                                " LEVEL FROM dual CONNECT BY LEVEL <= 1000")])
+      (when gather?
+        (jdbc/execute! spec [(str "BEGIN DBMS_STATS.GATHER_TABLE_STATS('\"" schema "\"', '\"kb_stats\"'); END;")]))
+      (mt/with-temp [:model/Table table {:db_id (mt/id) :name "kb_stats" :schema schema}
+                     :model/Field a     {:table_id (:id table) :name "a" :base_type :type/Decimal :database_type "NUMBER"}
+                     :model/Field b     {:table_id (:id table) :name "b" :base_type :type/Decimal :database_type "NUMBER"}]
+        (f database spec qname table [a b]))
+      (finally
+        (jdbc/execute! spec [(str "DROP TABLE " qname " PURGE")])))))
+
+(deftest table-statistics-test
+  (mt/test-driver :oracle
+    (is (driver.u/supports? :oracle :table-statistics (mt/db)))
+    (testing "the optimizer statistics: distinct counts and nil fractions"
+      (do-with-stats-table!
+       true
+       (fn [database _spec _qname table [a b]]
+         (let [answer (driver/table-statistics :oracle database table [a b] {:max-cost :metadata})]
+           (is (mr/validate ::driver/table-statistics.result answer))
+           (testing "a distinct count that counts NULL as a value, as a sample does"
+             (is (= 10 (get-in answer [:fields (:id a) :fingerprint :global :distinct-count]))))
+           (is (= 0.1 (get-in answer [:fields (:id a) :fingerprint :global :nil%])))
+           (is (= 1000 (get-in answer [:fields (:id b) :fingerprint :global :distinct-count])))
+           (is (= {:source :catalog :kind :estimate} (get-in answer [:fields (:id a) :origin])))
+           (is (= {:value 1000 :origin {:source :catalog :kind :estimate}} (:row-count answer)))))))
+    (testing "a table with no statistics: nothing"
+      (do-with-stats-table!
+       false
+       (fn [database _spec _qname table fields]
+         (is (= {} (driver/table-statistics :oracle database table fields {:max-cost :metadata}))))))
+    (testing "stale statistics: nothing"
+      (do-with-stats-table!
+       true
+       (fn [database spec qname table fields]
+         (jdbc/execute! spec [(str "INSERT INTO " qname " SELECT 1, LEVEL + 1000 FROM dual CONNECT BY LEVEL <= 500")])
+         (jdbc/execute! spec ["BEGIN DBMS_STATS.FLUSH_DATABASE_MONITORING_INFO; END;"])
+         (is (= {} (driver/table-statistics :oracle database table fields {:max-cost :metadata}))))))))
