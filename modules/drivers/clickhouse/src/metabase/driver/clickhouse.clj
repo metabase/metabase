@@ -222,34 +222,47 @@
   [_driver _feature db]
   (driver.common/json-unfolding-default db))
 
-(defmethod sql-jdbc.sync/sample-json-row-honeysql :clickhouse
-  [_driver table-identifier json-field-identifiers pk-identifiers]
-  ;; `db.table.column` fails when the database and the table have the same name, so use only the column names
-  (let [column    #(h2x/identifier :field (last (h2x/identifier->components %)))
-        json-text (fn [field]
-                    (let [field (column field)]
-                      ;; JDBC reads a `JSON` value as a map with dotted keys, but sync needs JSON text
-                      [[:case
-                        [:<
-                         [:inline (driver.settings/nested-field-columns-value-length-limit)]
-                         [:'length [:'toJSONString field]]]
-                        nil
-                        :else
-                        [:'toJSONString field]]
-                       (last (h2x/identifier->components field))]))
-        sample    (fn [limit]
-                    {:select (perf/mapv json-text json-field-identifiers)
+(defn- column-identifier
+  "Only the column name of `field-identifier`: `db.table.column` fails when the database and the table have the same
+  name."
+  [field-identifier]
+  (h2x/identifier :field (last (h2x/identifier->components field-identifier))))
+
+(defn- sample-rows-honeysql
+  "A query of `select` for a sample of the rows of `table-identifier`: the first and the last rows by
+  `pk-identifiers`, or the first rows if there are no PKs."
+  [table-identifier select pk-identifiers]
+  (let [sample    (fn [limit]
+                    {:select select
                      :from   [[table-identifier]]
                      :limit  [:inline limit]})
         edge-rows (fn [direction]
                     {:nest (assoc (sample (/ table-rows-sample/nested-field-sample-limit 2))
-                                  :order-by (perf/mapv #(vector (column %) direction) pk-identifiers))})]
+                                  :order-by (perf/mapv #(vector (column-identifier %) direction) pk-identifiers))})]
     ;; The default joins on the first and last PKs. ClickHouse reads the whole table for this join, and ClickHouse PKs
     ;; are not unique, so a join or an `IN` on them can return the whole table. Select the first and last rows directly.
     (if (seq pk-identifiers)
       {:select [:*]
        :from   [[{:union-all [(edge-rows :asc) (edge-rows :desc)]}]]}
       (sample table-rows-sample/nested-field-sample-limit))))
+
+(defmethod sql-jdbc.sync/sample-json-row-honeysql :clickhouse
+  [_driver table-identifier json-field-identifiers pk-identifiers]
+  (sample-rows-honeysql
+   table-identifier
+   (perf/mapv (fn [field-identifier]
+                (let [field (column-identifier field-identifier)]
+                  ;; JDBC reads a `JSON` value as a map with dotted keys, but sync needs JSON text
+                  [[:case
+                    [:<
+                     [:inline (driver.settings/nested-field-columns-value-length-limit)]
+                     [:'length [:'toJSONString field]]]
+                    nil
+                    :else
+                    [:'toJSONString field]]
+                   (last (h2x/identifier->components field))]))
+              json-field-identifiers)
+   pk-identifiers))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
   (let [{:keys [cloud single-node]} (clickhouse-version/dbms-version db)]
