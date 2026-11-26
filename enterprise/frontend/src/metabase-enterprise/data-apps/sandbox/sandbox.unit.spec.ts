@@ -1,6 +1,7 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
 
 import { DATA_APP_GLOBAL_NAMES } from "./globals";
+import { hostRealmElementGuard } from "./host-element-guard";
 import { createDataAppSandbox } from "./sandbox";
 
 jest.mock("@locker/near-membrane-dom");
@@ -27,12 +28,16 @@ type SetupOpts = {
   overrides?: Partial<Endowments>;
   runBundle?: () => void;
   realmHostUrl?: string;
+  targetWindow?: Window & typeof globalThis;
+  allowedHosts?: string[];
 };
 
 async function setup({
   overrides,
   runBundle = () => {},
   realmHostUrl,
+  targetWindow,
+  allowedHosts,
 }: SetupOpts = {}) {
   let endowments: EnvEndowments | undefined;
   let options: Parameters<typeof createVirtualEnvironment>[1] | undefined;
@@ -60,6 +65,8 @@ async function setup({
   const sandbox = await createDataAppSandbox({
     endowments: baseEndowments(overrides),
     realmHostUrl,
+    targetWindow,
+    allowedHosts,
   });
 
   if (!endowments) {
@@ -132,6 +139,56 @@ describe("createDataAppSandbox", () => {
         reactJsxDevRuntime,
       );
     });
+  });
+
+  describe("XMLHttpRequest", () => {
+    const ALLOWED_URL = "https://allowed.data-app.test/ping";
+    const BLOCKED_URL = "https://blocked.data-app.test/ping";
+
+    let frame: HTMLIFrameElement;
+
+    beforeEach(async () => {
+      // A realm of its own: the block redefines `XMLHttpRequest` non-configurably,
+      // so it must not land on the test runner's window. The sandboxes built by the
+      // earlier tests guard the runner's document against new iframes, so take a grant.
+      frame = await hostRealmElementGuard.withIframeGrant(async () =>
+        document.createElement("iframe"),
+      );
+      document.body.appendChild(frame);
+      // jsdom only polyfills `fetch` on the runner's window; the sandbox wraps it.
+      (frame.contentWindow as Window).fetch = window.fetch;
+    });
+
+    afterEach(() => {
+      frame.remove();
+    });
+
+    // XHR can't opt out of following a redirect back to the instance, so it is
+    // never allowlisted: a host listed in allowed_hosts is refused like any other.
+    it.each([ALLOWED_URL, BLOCKED_URL])(
+      "refuses an XHR to %s even when allowed_hosts lists the allowed host",
+      async (url) => {
+        // An attached iframe always has a window; `createDataAppSandbox` types its
+        // realm as `Window & typeof globalThis`, which DOM typings don't give it.
+        const targetWindow = frame.contentWindow as Window & typeof globalThis;
+        const { options } = await setup({
+          targetWindow,
+          allowedHosts: ["https://allowed.data-app.test"],
+        });
+
+        // What the membrane hands the guest for `XMLHttpRequest`. The callback is
+        // typed `object -> object`, erasing the constructor signature.
+        const GuestXHR = options?.distortionCallback?.(
+          targetWindow.XMLHttpRequest,
+        ) as typeof XMLHttpRequest;
+        const xhr = new GuestXHR();
+
+        expect(() => xhr.open("GET", url)).toThrow(
+          "[data-app] blocked XMLHttpRequest: data apps are fetch-only",
+        );
+        expect(() => xhr.send()).toThrow(/fetch-only/);
+      },
+    );
   });
 
   describe("realm hardening", () => {
