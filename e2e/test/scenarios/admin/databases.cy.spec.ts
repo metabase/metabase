@@ -10,20 +10,20 @@ const { H } = cy;
 const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 
 describe("admin > database > add", () => {
-  function toggleFieldWithDisplayName(displayName) {
+  function toggleFieldWithDisplayName(displayName: string) {
     cy.findByLabelText(new RegExp(displayName)).click({ force: true });
   }
 
-  function selectFieldOption(fieldName, option) {
+  function selectFieldOption(fieldName: string, option: string) {
     cy.findByLabelText(fieldName).click();
     H.popover().contains(option).click({ force: true });
   }
 
-  function chooseDatabase(database) {
+  function chooseDatabase(database: string) {
     selectFieldOption("Database type", database);
   }
 
-  function uploadServiceAccountJSON(fileContents) {
+  function uploadServiceAccountJSON(fileContents: string) {
     cy.get("input[type=file]")
       .selectFile(
         {
@@ -41,7 +41,7 @@ describe("admin > database > add", () => {
     }).as("createDatabase");
 
     cy.button("Save").click();
-    return cy.wait("@createDatabase");
+    return cy.wait<unknown, unknown>("@createDatabase");
   }
 
   beforeEach(() => {
@@ -117,7 +117,7 @@ describe("admin > database > add", () => {
           H.typeAndBlurUsingLabel(/Password/, "metasample123");
         });
 
-        const confirmSSLFields = (visible, hidden) => {
+        const confirmSSLFields = (visible: string[], hidden: string[]) => {
           visible.forEach((field) => cy.findByText(new RegExp(field)));
           hidden.forEach((field) =>
             cy.findByText(new RegExp(field)).should("not.exist"),
@@ -168,10 +168,19 @@ describe("admin > database > add", () => {
 
         cy.button("Save").should("not.be.disabled").click();
 
-        cy.wait("@createDatabase").then(({ request }) => {
-          expect(request.body.details.host).to.equal("localhost");
-          expect(request.body.details.dbname).to.equal("sample");
-          expect(request.body.details.user).to.equal("metabase");
+        cy.wait<unknown, unknown>("@createDatabase").then(({ request }) => {
+          expect(request.body).to.have.nested.property(
+            "details.host",
+            "localhost",
+          );
+          expect(request.body).to.have.nested.property(
+            "details.dbname",
+            "sample",
+          );
+          expect(request.body).to.have.nested.property(
+            "details.user",
+            "metabase",
+          );
         });
 
         cy.url().should("match", /\/admin\/databases\/\d/);
@@ -285,7 +294,7 @@ describe("admin > database > add", () => {
             .clear()
             .type(badPasswordString);
 
-          cy.button("Save", { timeout: 7000 })
+          cy.findByRole("button", { name: "Save", timeout: 7000 })
             .should("not.be.disabled")
             .click();
           cy.findByText(/Authentication failed/);
@@ -295,7 +304,7 @@ describe("admin > database > add", () => {
             .clear()
             .type(validConnectionString);
 
-          cy.button("Save", { timeout: 7000 })
+          cy.findByRole("button", { name: "Save", timeout: 7000 })
             .should("not.be.disabled")
             .click();
         });
@@ -379,7 +388,8 @@ describe("admin > database > add", () => {
 
       uploadServiceAccountJSON(serviceAccountJSON);
       mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
-        expect(body.details["service-account-json"]).to.equal(
+        expect(body).to.have.nested.property(
+          "details.service-account-json",
           serviceAccountJSON,
         );
       });
@@ -453,6 +463,24 @@ describe("database page > side panel", () => {
       cy.findByRole("button", { name: /Close panel/ }).click();
       cy.findByTestId("database-help-side-panel").should("not.exist");
     }
+  });
+});
+
+describe("scenarios > admin > databases > exceptions", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should handle non-existing databases (metabase#11037)", () => {
+    cy.intercept("GET", "/api/database/999").as("loadDatabase");
+    cy.visit("/admin/databases/999");
+    cy.wait("@loadDatabase").then(({ response }) => {
+      expect(response?.statusCode).to.eq(404);
+    });
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Not found.");
+    cy.findByRole("table").should("not.exist");
   });
 });
 

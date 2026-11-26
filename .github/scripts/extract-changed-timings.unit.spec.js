@@ -156,7 +156,7 @@ describe("extractChangedTimings", () => {
           duration: 1000,
         },
         {
-          spec: "../test/scenarios/admin/databases.cy.spec.js",
+          spec: "../test/scenarios/admin/databases.cy.spec.ts",
           duration: 2000,
         },
       ],
@@ -169,7 +169,7 @@ describe("extractChangedTimings", () => {
           duration: 1200,
         },
         {
-          spec: "e2e/test/scenarios/admin/databases.cy.spec.js",
+          spec: "e2e/test/scenarios/admin/databases.cy.spec.ts",
           duration: 2000,
         },
         {
