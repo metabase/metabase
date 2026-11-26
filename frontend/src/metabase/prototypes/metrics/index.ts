@@ -7,6 +7,7 @@ import {
   MetricEditorPrototype,
 } from "./explorer/MetricEditorPrototype";
 import { MetricExplorerPrototype } from "./explorer/MetricExplorerPrototype";
+import { MetricEditorPrototype as MetricEditorPrototypeV2 } from "./explorer_v2/MetricEditorPrototype";
 import { MetricDependencyTreePrototype } from "./tree/MetricDependencyTreePrototype";
 import { MetricTreeHiFiPrototype } from "./tree/MetricTreeHiFiPrototype";
 import { MetricTreePrototype } from "./tree/MetricTreePrototype";
@@ -85,5 +86,14 @@ export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
       "Dimensions in and not in the metric, in two sections on the left. Move them with the arrows, by dragging, or in bulk by checking several. A dimension is always selected, so its settings always fill the right.",
     group: "Iteration 1",
     Component: ImprovedDimensionsPrototype,
+  },
+  // Last, so /prototypes opens it.
+  {
+    id: "metric-editor-v2",
+    name: "Filters by dimension",
+    description:
+      "Filters follow dimensions. A pill is filtered by its own dimensions, the whole metric by the ones every pill has, mapped in the Dimensions tab. A metric that is math over measures can be a pill. Try the last three examples.",
+    group: "Iteration 2",
+    Component: MetricEditorPrototypeV2,
   },
 ];
