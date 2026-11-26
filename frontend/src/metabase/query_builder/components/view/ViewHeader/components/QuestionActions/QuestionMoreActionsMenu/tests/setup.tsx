@@ -5,6 +5,7 @@ import { useState } from "react";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import {
+  setupCollectionsEndpoints,
   setupGetUserKeyValueEndpoint,
   setupNotificationChannelsEndpoints,
 } from "__support__/server-mocks";
@@ -13,7 +14,7 @@ import { setupListNotificationEndpoints } from "__support__/server-mocks/notific
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { QuestionAlertListModal } from "metabase/notifications/modals";
+import type { QueryModalType } from "metabase/redux/store";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -32,6 +33,7 @@ import {
 } from "metabase-types/api/mocks";
 import { isObject } from "metabase-types/guards";
 
+import { QueryModals } from "../../../../../../QueryModals";
 import { QuestionMoreActionsMenu } from "../QuestionMoreActionsMenu";
 
 type SetupOpts = {
@@ -95,6 +97,7 @@ export function setup({
 
   fetchMock.get("path:/api/user/recipients", { data: [] });
   setupWebhookChannelsEndpoint();
+  setupCollectionsEndpoints({ collections: [] });
   setupNotificationChannelsEndpoints({
     email: { configured: isEmailSetup },
     slack: { configured: false },
@@ -145,22 +148,27 @@ interface Props {
 
 const TestComponent = ({ card }: Props) => {
   const question = new Question(card, createMockMetadata());
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modal, setModal] = useState<QueryModalType | null>(null);
 
   return (
     <>
       <QuestionMoreActionsMenu
         question={question}
-        onOpenModal={() => setIsModalOpen(true)}
+        onOpenModal={setModal}
         onSetQueryBuilderMode={jest.fn()}
       />
-
-      {isModalOpen && (
-        <QuestionAlertListModal
-          question={question}
-          onClose={() => setIsModalOpen(false)}
-        />
-      )}
+      <QueryModals
+        modal={modal}
+        question={question}
+        originalQuestion={question}
+        card={card}
+        onCreate={jest.fn()}
+        onSave={jest.fn()}
+        onCloseModal={() => setModal(null)}
+        onOpenModal={setModal}
+        onChangeLocation={jest.fn()}
+        setQueryBuilderMode={jest.fn()}
+      />
     </>
   );
 };
