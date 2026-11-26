@@ -4,7 +4,9 @@
    [clojure.test :refer :all]
    [metabase.driver.clickhouse-introspection :as clickhouse-introspection]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse]
@@ -52,7 +54,7 @@
               (str "INSERT INTO map_unfolding_test." table-name " VALUES "
                    "(1, {'plan': 'pro', 'os': 'mac'}, {'clicks': 3}, {'a': ['x']}, {'env': 'prod'}, {'s': 1.5}), "
                    "(2, {'plan': 'free'}, {'clicks': 5, 'views': 2}, {}, {'env': 'dev'}, {'s': NULL}), "
-                   "(3, {'plan': 'pro', 'it''s': 'q'}, {}, {}, {}, {})")])
+                   "(3, {'plan': 'pro', 'it''s': 'q', 'a\\\\''b': 'r'}, {}, {}, {}, {})")])
       (try
         (mt/with-temp-vals-in-db :model/Database (:id db) {:details (assoc (:details db) :json-unfolding unfold?)}
           (sync/sync-database! (:id db))
@@ -76,6 +78,7 @@
                  "attrs → plan"    [:type/Text :normal]
                  "attrs → os"      [:type/Text :normal]
                  "attrs → it's"    [:type/Text :normal]
+                 "attrs → a\\'b"   [:type/Text :normal]
                  "counts"          [:type/JSON :details-only]
                  "counts → clicks" [:type/BigInteger :normal]
                  "counts → views"  [:type/BigInteger :normal]
@@ -91,7 +94,68 @@
                 (->> (sql-jdbc.sync/describe-nested-field-columns
                       :clickhouse (lib.metadata/database (mt/metadata-provider)) table)
                      (filter #(= ["counts" "clicks"] (:nfc-path %)))
-                     (map :base-type))))))))
+                     (map :base-type)))))
+       (let [mp    (mt/metadata-provider)
+             field (fn [field-name]
+                     (lib.metadata/field mp (t2/select-one-pk :model/Field :table_id (:id table) :name field-name)))
+             query (lib/query mp (lib.metadata/table mp (:id table)))
+             rows  #(mt/rows (qp/process-query %))]
+         (testing "group by a key and sum another"
+           (is (= [["free" 5] ["pro" 3]]
+                  (mt/formatted-rows [str int]
+                                     (qp/process-query
+                                      (-> query
+                                          (lib/breakout (field "attrs → plan"))
+                                          (lib/aggregate (lib/sum (field "counts → clicks")))))))))
+         (testing "a row without the key gives NULL, not the default value of the type"
+           (is (= [[1] [3]]
+                  (rows (-> query
+                            (lib/with-fields [(field "id")])
+                            (lib/filter (lib/is-null (field "counts → views")))
+                            (lib/order-by (field "id")))))))
+         (testing "a map of LowCardinality values"
+           (is (= [[1]]
+                  (rows (-> query
+                            (lib/with-fields [(field "id")])
+                            (lib/filter (lib/= (field "labels → env") "prod")))))))
+         (testing "a map of Nullable values: a NULL value and a missing key both give NULL"
+           (is (= [[1 1.5] [2 nil] [3 nil]]
+                  (mt/formatted-rows [int identity]
+                                     (qp/process-query
+                                      (-> query
+                                          (lib/with-fields [(field "id") (field "scores → s")])
+                                          (lib/order-by (field "id"))))))))
+         (testing "a key with a quote"
+           (is (= [[3]]
+                  (rows (-> query
+                            (lib/with-fields [(field "id")])
+                            (lib/filter (lib/= (field "attrs → it's") "q")))))))
+         (testing "a key with a backslash and a quote"
+           (is (= [[1 nil] [2 nil] [3 "r"]]
+                  (rows (-> query
+                            (lib/with-fields [(field "id") (field "attrs → a\\'b")])
+                            (lib/order-by (field "id"))))))
+           (is (= [[3]]
+                  (rows (-> query
+                            (lib/with-fields [(field "id")])
+                            (lib/filter (lib/= (field "attrs → a\\'b") "r")))))))
+         (testing "in a nested query"
+           (is (= [["pro" 2]]
+                  (rows (-> query
+                            (lib/breakout (field "attrs → plan"))
+                            (lib/aggregate (lib/count))
+                            lib/append-stage
+                            (as-> q (lib/filter q (lib/= (first (lib/filterable-columns q)) "pro")))))))))
+       (testing "a key of a sensitive map"
+         (let [field-id #(t2/select-one-pk :model/Field :table_id (:id table) :name %)]
+           (mt/with-temp-vals-in-db :model/Field (field-id "attrs") {:visibility_type :sensitive}
+             (let [mp (mt/metadata-provider)]
+               (is (= [["free" 1] ["pro" 2]]
+                      (mt/formatted-rows [str int]
+                                         (qp/process-query
+                                          (-> (lib/query mp (lib.metadata/table mp (:id table)))
+                                              (lib/breakout (lib.metadata/field mp (field-id "attrs → plan")))
+                                              (lib/aggregate (lib/count))))))))))))))
   (testing "with JSON unfolding off, maps are not unfolded"
     (mt/test-driver :clickhouse
       (do-with-events-table!
@@ -132,7 +196,7 @@
                           (t2/update! :model/Database :id (:id db) {:details (assoc (:details db) :json-unfolding unfold?)})
                           (sync/sync-database! (:id db)))
                ids      (key-ids)]
-           (is (= 7 (count ids)))
+           (is (= 8 (count ids)))
            (sync-db! false)
            (is (empty? (key-ids)))
            (sync-db! true)
@@ -143,6 +207,7 @@
                    "attrs → plan"    [:type/Text :normal]
                    "attrs → os"      [:type/Text :normal]
                    "attrs → it's"    [:type/Text :normal]
+                   "attrs → a\\'b"   [:type/Text :normal]
                    "counts"          [:type/JSON :details-only]
                    "counts → clicks" [:type/BigInteger :normal]
                    "counts → views"  [:type/BigInteger :normal]
