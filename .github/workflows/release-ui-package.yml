@@ -1,5 +1,4 @@
-# Releases @metabase/ui from master: builds and smoke-tests one tarball, then (unless
-# dry_run) publishes that exact file to npm and tags the commit ui-v<version>.
+# Merging the labeled UI version-bump PR publishes the smoke-tested tarball and tags the merge commit.
 #
 # npm trusted publisher registration for @metabase/ui must match:
 #   repository: metabase/metabase, workflow: release-ui-package.yml, environment: ui-package-release
@@ -8,6 +7,11 @@ name: Release UI Package
 run-name: Release @metabase/ui from ${{ github.ref_name }}${{ inputs.dry_run && ' (dry run)' || '' }}
 
 on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+    paths:
+      - 'frontend/ui-package/package.json'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -30,7 +34,12 @@ defaults:
 
 jobs:
   determine-release:
-    if: ${{ github.repository == 'metabase/metabase' && github.ref == 'refs/heads/master' }}
+    if: >-
+      ${{ github.repository == 'metabase/metabase' && github.ref == 'refs/heads/master' &&
+          (github.event_name == 'workflow_dispatch' ||
+           (github.event.pull_request.merged == true &&
+            github.event.pull_request.head.repo.full_name == github.repository &&
+            contains(github.event.pull_request.labels.*.name, 'ui-release-trigger'))) }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
@@ -133,7 +142,7 @@ jobs:
           GIT_TAG: ${{ needs.determine-release.outputs.git_tag }}
           ARTIFACT: ${{ steps.artifact.outputs.name }}
           COMMIT: ${{ github.sha }}
-          DRY_RUN: ${{ inputs.dry_run }}
+          DRY_RUN: ${{ inputs.dry_run || false }}
         run: |
           {
             echo "## Release @metabase/ui"
