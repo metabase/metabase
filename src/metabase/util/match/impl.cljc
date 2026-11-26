@@ -13,7 +13,7 @@
 
 (defn sequential!
   "Return nil if `obj` is not a sequential collection (vector, list, seq), otherwise return `obj` unchanged.
-  A sequential value that isn't a collection, such as an eduction, gives nil, since Clojure can't count it."
+  A sequential value that isn't a collection, such as an eduction, gives nil."
   [obj]
   (when (and (coll? obj) (sequential? obj)) obj))
 
@@ -74,7 +74,8 @@
         (reduced match)))))
 
 (defn match-one-in-collection
-  "Internal impl for `match-one`. If `form` is a collection, call `match-fn` to recursively look for matches in it.
+  "Internal impl for `match-one`. If `form` is a collection or an eduction, call `match-fn` to recursively look for
+  matches in it.
   `clause-parents` is a sequence of keywords naming the parent top-level keys and clauses of the match."
   [match-fn form clause-parents]
   {:pre [(fn? match-fn)]}

@@ -85,7 +85,7 @@
 
 (defn- colls-only-clauses?
   "Return true if no pattern in `pairs` can match anything but a collection.
-  A recursive walk can then skip every value that isn't a collection, such as map keys and the keywords, strings and
+  A recursive walk can then skip every value it doesn't look inside, such as map keys and the keywords, strings and
   numbers in clauses, without calling the match function on it."
   [pairs]
   (every? (comp colls-only-pattern? first) pairs))
