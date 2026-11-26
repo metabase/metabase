@@ -33,6 +33,7 @@ const FIXTURES = path.join(__dirname, "fixtures");
 const DOM_FIXTURES = path.join(__dirname, "dom-fixtures");
 const JEST = path.join(ROOT, "node_modules/jest/bin/jest.js");
 const RUNNER = path.join(ROOT, "frontend/test/harness/jest-runner.ts");
+const SEQUENCER = path.join(__dirname, "given-order-sequencer.js");
 const RUN_TIMEOUT_MS = 120_000;
 
 // jest's own runner crashes its worker on these, so it reports only that the
@@ -72,22 +73,50 @@ describe("the node:test runner", () => {
     RUN_TIMEOUT_MS,
   );
 
-  it(
-    "ends a file that leaves React stuck, and runs the next file in a new worker",
-    () => {
-      const results = summarize(
-        runJest("harness", [
-          path.join(DOM_FIXTURES, FIXTURE_THAT_LEAVES_REACT_STUCK),
-          path.join(DOM_FIXTURES, "after-react-stuck.fixture.js"),
-        ]),
-      );
-
-      expect(results[FIXTURE_THAT_LEAVES_REACT_STUCK].tests).toEqual({
+  it.each([
+    {
+      fixture: FIXTURE_THAT_LEAVES_REACT_STUCK,
+      tests: {
         "leaves React inside a commit": "failed",
         "is skipped, because React cannot render": "pending",
         "a later block is skipped too": "pending",
-      });
-      expect(results["after-react-stuck.fixture.js"].status).toBe("passed");
+      },
+    },
+    {
+      fixture: "react-stuck-in-after-all.fixture.js",
+      tests: {
+        "passes before its afterAll hook leaves React stuck": "passed",
+      },
+    },
+  ])(
+    "runs the next file in a new worker after $fixture leaves React stuck",
+    ({ fixture, tests }) => {
+      const files = [fixture, "after-react-stuck.fixture.js"];
+      const paths = files.map((file) => path.join(DOM_FIXTURES, file));
+      const runLog = path.join(
+        os.tmpdir(),
+        `harness-compat-runs-${process.pid}-${Date.now()}.log`,
+      );
+      try {
+        const results = summarize(
+          runJest("harness", [`--testSequencer=${SEQUENCER}`, ...paths], {
+            HARNESS_COMPAT_ORDER: JSON.stringify(paths),
+            HARNESS_COMPAT_RUN_LOG: runLog,
+          }),
+        );
+        const runs = fs
+          .readFileSync(runLog, "utf8")
+          .trim()
+          .split("\n")
+          .map((line) => line.split(" "));
+
+        expect(results[fixture]).toEqual({ status: "failed", tests });
+        expect(results["after-react-stuck.fixture.js"].status).toBe("passed");
+        expect(runs.map(([file]) => file)).toEqual(files);
+        expect(runs[1][1]).not.toBe(runs[0][1]);
+      } finally {
+        fs.rmSync(runLog, { force: true });
+      }
     },
     RUN_TIMEOUT_MS,
   );
@@ -140,7 +169,11 @@ describe("the node:test runner", () => {
 // so it uses its workers. The node:test runner gets one worker for each
 // project, so that a file that changes shared state runs before the file that
 // checks it. jest runs the larger file first.
-function runJest(runner: Runner, args: string[]): JestJson {
+function runJest(
+  runner: Runner,
+  args: string[],
+  environment: NodeJS.ProcessEnv = {},
+): JestJson {
   const outputFile = path.join(
     os.tmpdir(),
     `harness-compat-${process.pid}-${runner}-${Date.now()}.json`,
@@ -161,7 +194,11 @@ function runJest(runner: Runner, args: string[]): JestJson {
       "--json",
       `--outputFile=${outputFile}`,
     ],
-    { cwd: ROOT, env: cleanEnvironment(), timeout: RUN_TIMEOUT_MS },
+    {
+      cwd: ROOT,
+      env: { ...cleanEnvironment(), ...environment },
+      timeout: RUN_TIMEOUT_MS,
+    },
   );
   if (error) {
     throw error;

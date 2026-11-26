@@ -1,10 +1,7 @@
-const { act, createElement } = require("react");
-const { createRoot } = require("react-dom/client");
+const { recordRun, renderParagraph } = require("./react-helpers");
 
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+recordRun(__filename);
 
 test("renders in a new worker", () => {
-  const container = document.createElement("div");
-  act(() => createRoot(container).render(createElement("p", null, "ok")));
-  expect(container.textContent).toBe("ok");
+  expect(renderParagraph()).toBe("ok");
 });
