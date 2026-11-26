@@ -21,6 +21,8 @@ import type {
   TransformTag,
 } from "metabase-types/api";
 
+import type { MockResponse } from "./types";
+
 export function setupListTransformRunsEndpoint(
   response: ListTransformRunsResponse,
 ) {
@@ -37,8 +39,11 @@ export function setupListTransformsEndpoint(transforms: Transform[]) {
   fetchMock.get(`path:/api/transform`, transforms);
 }
 
-export function setupGetTransformEndpoint(transform: Transform) {
-  fetchMock.get(`path:/api/transform/${transform.id}`, transform);
+export function setupGetTransformEndpoint(
+  transform: Transform,
+  response: MockResponse<Transform> = transform,
+) {
+  fetchMock.get(`path:/api/transform/${transform.id}`, response);
 }
 
 export function setupDeleteTransformEndpoint(transformId: TransformId) {
