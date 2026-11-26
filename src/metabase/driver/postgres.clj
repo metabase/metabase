@@ -191,16 +191,23 @@
   "The time limit of the catalog query for the key of a table."
   15)
 
-(defn- key-block-key-name
-  "The name of the column of the primary key of `table`, when it has one column of a number, date or timestamp type
+(def ^:private key-block-key-types
+  "The types of a primary key column that key blocks read: numbers, dates and timestamps, which compile to the plain
+  column."
+  #{"int2" "int4" "int8" "numeric" "float4" "float8" "date" "timestamp" "timestamptz"})
+
+(defn- key-block-key
+  "The `:name` and `:type` (the `pg_type` name) of the column of the primary key of `table`, when it has one column of a
+  number, date or timestamp type
   that compiles to the plain column, or nil. Its index reads a run of rows from a start point in order and stops. Not
   used: a key of several columns, since a run of its first column can stay inside one value, which gives the run no
   density; a key of another type, such as `money`, which compiles to a cast that no index reads; and the parent of
   inheritance or partitions, whose key does not cover the rows of its children."
-  [table]
-  (-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:db_id table)))
-                  [(str "SELECT a.attname AS column_name FROM pg_catalog.pg_index i"
+  [spec table]
+  (-> (jdbc/query spec
+                  [(str "SELECT a.attname AS name, t.typname AS type FROM pg_catalog.pg_index i"
                         " JOIN pg_catalog.pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = i.indkey[0]"
+                        " JOIN pg_catalog.pg_type t ON t.oid = a.atttypid"
                         " WHERE i.indrelid = to_regclass(quote_ident(?) || '.' || quote_ident(?))"
                         " AND i.indisprimary AND i.indnatts = 1"
                         " AND a.atttypid IN ('int2'::regtype, 'int4'::regtype, 'int8'::regtype, 'numeric'::regtype,"
@@ -210,17 +217,54 @@
                    (:schema table) (:name table)]
                   {:timeout key-block-key-timeout-seconds})
       first
-      :column_name))
+      (as-> $key (when (contains? key-block-key-types (:type $key)) $key))))
+
+(def ^:private max-histogram-modified-fraction
+  "The most of a table's rows that may have changed since its last `ANALYZE` for the runs to follow its histogram."
+  0.1)
+
+(defn- histogram-value
+  "A bound of a histogram as the JDBC driver gives it, as the value that the key's lowest and highest key have, so that
+  key blocks can compare them: a `java.sql.Date` as a date, a timestamp as a local date and time, and a timestamp with
+  a time zone as an instant."
+  [key-type v]
+  (cond
+    (instance? java.sql.Date v)      (.toLocalDate ^java.sql.Date v)
+    (instance? java.sql.Timestamp v) (if (= key-type "timestamptz")
+                                       (.toInstant ^java.sql.Timestamp v)
+                                       (.toLocalDateTime ^java.sql.Timestamp v))
+    :else                            v))
+
+(defn- fresh-key-histogram
+  "The bounds of the histogram of the key `key` of `table` in `pg_stats`, when at most
+  [[max-histogram-modified-fraction]] of its rows changed since the `ANALYZE` that made it, or nil. Each bucket of the
+  histogram has the same number of rows. `pg_stats` shows only the columns the user can read."
+  [spec table {key-name :name key-type :type}]
+  (let [{:keys [bounds n_live_tup n_mod_since_analyze]}
+        (first (jdbc/query spec
+                           [(str "SELECT (s.histogram_bounds::text)::" key-type "[] AS bounds,"
+                                 " t.n_live_tup, t.n_mod_since_analyze"
+                                 " FROM pg_catalog.pg_stats s"
+                                 " JOIN pg_catalog.pg_stat_user_tables t"
+                                 " ON t.schemaname = s.schemaname AND t.relname = s.tablename"
+                                 " WHERE s.schemaname = ? AND s.tablename = ? AND s.attname = ?")
+                            (:schema table) (:name table) key-name]
+                           {:timeout key-block-key-timeout-seconds}))]
+    (when (and bounds n_live_tup (pos? n_live_tup)
+               (<= (or n_mod_since_analyze 0) (* max-histogram-modified-fraction n_live_tup)))
+      (mapv (partial histogram-value key-type) (.getArray ^java.sql.Array bounds)))))
 
 ;; Key blocks for a table with a primary key of one column, which measured better than `TABLESAMPLE SYSTEM` on skewed
-;; data and on a key with gaps; they read more pages than a 1% block sample, still in milliseconds. Other tables, and
+;; data and on a key with gaps, following the key's histogram when it is fresh; they read more pages than a 1% block sample, still in milliseconds. Other tables, and
 ;; tables too small for key blocks, get the block sample. Sync gives a table a row count estimate only from
 ;; `pg_stat_user_tables` (see [[describe-syncable-tables]]), which has no rows for views and foreign tables, and 0 for
 ;; a partitioned parent, so those get no estimate and both samples decline for them.
 (defmethod driver/table-random-sample :postgres
   [driver table fields rff opts]
-  (let [runs (when-let [key-name (and (:row-count opts) (key-block-key-name table))]
-               (key-blocks/sample driver table fields key-name rff opts))]
+  (let [spec (when (:row-count opts) (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:db_id table))))
+        runs (when-let [{key-name :name :as key} (some-> spec (key-block-key table))]
+               (key-blocks/sample driver table fields key-name rff
+                                  (assoc opts :key-histogram (fresh-key-histogram spec table key))))]
     (if (and runs (not= :first-rows (:method runs)))
       runs
       (table-rows-sample/block-sample table fields rff opts))))

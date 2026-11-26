@@ -3217,3 +3217,25 @@
                (table-random-sample-of! "kb_money" "CREATE TABLE kb_money (k money PRIMARY KEY, v int)"
                                         "INSERT INTO kb_money SELECT g::numeric::money, g FROM generate_series(1, 300) g"
                                         {"k" :type/Decimal "v" :type/Integer} 300)))))))
+
+(deftest table-random-sample-follows-a-fresh-histogram-test
+  (mt/test-driver :postgres
+    (mt/with-test-user :crowberto
+      (testing "with fresh statistics, the runs follow the key's histogram: one read, with no read of the keys first"
+        (let [spec   (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+              table  (t2/select-one :model/Table :id (mt/id :venues))
+              fields (mapv #(t2/select-one :model/Field :id (mt/id :venues %)) [:id :name])
+              sqls   (atom [])]
+          (jdbc/execute! spec [(format "ANALYZE \"%s\".\"%s\"" (:schema table) (:name table))])
+          (let [execute qp.pipeline/*execute*
+                {:keys [method result]} (binding [qp.pipeline/*execute* (fn [driver query respond]
+                                                                          (swap! sqls conj (get-in query [:stages 0 :native]))
+                                                                          (execute driver query respond))]
+                                          (driver/table-random-sample :postgres table fields (constantly conj)
+                                                                      {:rows 20 :runs 4 :row-count 100 :seed 1}))
+                ids     (set (map first result))]
+            (is (= :block method))
+            (is (= 1 (count (filter #(str/includes? % "UNION ALL") @sqls))))
+            (is (<= 16 (count result) 24))
+            (is (contains? ids 1))
+            (is (contains? ids 100))))))))

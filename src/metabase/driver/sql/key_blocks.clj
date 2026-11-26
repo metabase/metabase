@@ -259,18 +259,16 @@
             col))
         (lib.metadata/fields mp table-id)))
 
-(defn- run-plan
-  "Where the runs of a sample of `runs` runs of the key from `lo` to `hi` start, or nil when the key cannot have
-  them: when it is of a type with no distance, or a key of whole numbers with fewer than 2 values for each run, such
-  as the first column of a key of several columns with few values."
-  [lo hi runs seed]
+(defn- plan-for-bounds
+  "Where the runs of the parts with `bounds`, numbers from the key's lowest value `lo` to its highest `hi`, start, or
+  nil for a key of whole numbers with fewer than 2 values for each part, such as the first column of a key of several
+  columns with few values."
+  [lo hi bounds seed]
   (let [lo-n (->number lo)
         hi-n (->number hi)]
-    (when (and lo-n hi-n (< lo-n hi-n)
-               (not (and (integral? lo) (< (- hi-n lo-n) (* 2 runs)))))
-      (let [bounds (part-bounds lo-n hi-n runs)
-            ;; the start points as sent: the true lowest key for the first run, the others rounded to the key's type
-            params (into [lo] (map #(number-> lo %)) (rest (run-starts bounds (if seed (Random. (long seed)) (Random.)))))]
+    (when-not (and (integral? lo) (< (- hi-n lo-n) (* 2 (dec (count bounds)))))
+      ;; the start points as sent: the true lowest key for the first run, the others rounded to the key's type
+      (let [params (into [lo] (map #(number-> lo %)) (rest (run-starts bounds (if seed (Random. (long seed)) (Random.)))))]
         {:bounds bounds
          :params params
          ;; the end of each ascending run's part, and the start of the last part, as keys of the key's type
@@ -280,29 +278,73 @@
          :hi     hi
          :step   (if (integral? lo) 1.0 (* 1e-9 (- hi-n lo-n)))}))))
 
+(defn- run-plan
+  "The plan of `runs` runs in equal parts of the key range from `lo` to `hi`, or nil when the key cannot have them:
+  when it is of a type with no distance, or see [[plan-for-bounds]]."
+  [lo hi runs seed]
+  (let [lo-n (->number lo)
+        hi-n (->number hi)]
+    (when (and lo-n hi-n (< lo-n hi-n))
+      (plan-for-bounds lo hi (part-bounds lo-n hi-n runs) seed))))
+
+(def ^:private min-histogram-bounds
+  "The fewest bounds inside the key range that a histogram must have for the runs to follow it."
+  20)
+
+(defn- histogram-plan
+  "The plan of about `runs` runs in parts of equal rows, from `histogram`, the bounds of a histogram of the key with
+  the same number of rows in each bucket, such as `pg_stats.histogram_bounds` on Postgres. Each bucket is two parts, cut
+  at its middle; buckets are merged when the histogram has more than `runs` / 2. The first and last bounds are the
+  true lowest and highest key `lo` and `hi`. Nil when the histogram has fewer than [[min-histogram-bounds]] bounds
+  inside the key range."
+  [lo hi histogram runs seed]
+  (let [lo-n (->number lo)
+        hi-n (->number hi)]
+    (when (and lo-n hi-n (< lo-n hi-n))
+      (let [inside (into [] (comp (keep ->number) (filter #(< lo-n % hi-n)) (distinct)) (sort-by ->number histogram))]
+        (when (>= (count inside) min-histogram-bounds)
+          (let [buckets (max 1 (quot runs 2))
+                every   (max 1 (long (Math/ceil (/ (inc (count inside)) (double buckets)))))
+                edges   (vec (concat [lo-n] (take-nth every (drop (dec every) inside)) [hi-n]))
+                edges   (vec (distinct edges))
+                bounds  (conj (into [] (mapcat (fn [[a b]] [a (/ (+ a b) 2.0)])) (partition 2 1 edges)) hi-n)]
+            (plan-for-bounds lo hi bounds seed)))))))
+
 (defn sample
   "The [[metabase.driver/table-random-sample]] of key blocks for `fields` of `table`, read on its column `key-name`,
   which must have an index that reads it in order and no repeated values: about `(:rows opts)` rows in
   `(:runs opts 200)` runs.
 
+  With `:key-histogram` in `opts`, the bounds of a fresh histogram of the key with the same rows in each bucket, the
+  runs follow it ([[histogram-plan]]): their parts have about the same rows, so each run reads the same number of rows,
+  in one read, with no read of the keys first. Otherwise the parts are equal ranges of the key and the runs are weighted
+  by a first read of their keys.
+
   Declines, so that sync reads the first rows, when the table has no row count estimate or fewer than
   [[min-row-count-factor]] times the sample size, when the key is not a number or a date or time, has no range to place
   the runs in, or is so uneven that the cap on the length of a run would cut more than [[max-clipped]] of the sample
   size. `:seed` in `opts` makes the start points repeatable."
-  [driver table fields key-name rff {:keys [rows row-count truncation-size runs seed] :or {runs default-run-count}}]
+  [driver table fields key-name rff {:keys [rows row-count truncation-size runs seed key-histogram]
+                                     :or   {runs default-run-count}}]
   (let [database-id (:db_id table)
         mp          (lib-be/application-database-metadata-provider database-id)
         table-md    (lib.metadata/table mp (:id table))
         key-col     (when (and row-count (>= row-count (* min-row-count-factor rows)))
                       (key-column mp (:id table) key-name))
-        plan        (when key-col
-                      (let [[lo hi] (key-range mp table-md key-col)]
-                        (run-plan lo hi runs seed)))]
+        [lo hi]     (when key-col (key-range mp table-md key-col))
+        by-rows     (when (and key-col (seq key-histogram)) (histogram-plan lo hi key-histogram runs seed))
+        plan        (or by-rows (when key-col (run-plan lo hi runs seed)))]
     (if-not plan
       {:method :first-rows}
-      (let [length (max 1 (long (Math/ceil (/ rows (double runs)))))
-            plan   (assoc plan :keys-compiled (qp.compile/compile (base-query mp table-md [key-col] key-col nil)))
-            {:keys [limits clipped]} (arm-limits (read-keys driver database-id plan length) length (:step plan) rows)]
+      (let [n-runs (dec (count (:bounds plan)))
+            length (max 1 (long (Math/ceil (/ rows (double n-runs)))))
+            {:keys [limits clipped]} (if by-rows
+                                       {:limits (vec (repeat n-runs length)) :clipped 0.0}
+                                       (arm-limits (read-keys driver database-id
+                                                              (assoc plan :keys-compiled
+                                                                     (qp.compile/compile (base-query mp table-md [key-col] key-col nil)))
+                                                              length)
+                                                   length (:step plan) rows))]
         (if (or (> clipped (* max-clipped rows)) (zero? (reduce + limits)))
           {:method :first-rows}
           (let [cols                   (mapv #(lib.metadata/field mp (:id %)) fields)

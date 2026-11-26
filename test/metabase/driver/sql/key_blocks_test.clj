@@ -88,3 +88,20 @@
       (is (= t (#'key-blocks/number-> t (#'key-blocks/->number t))))))
   (testing "a key of another type has no number, so the sample declines"
     (is (nil? (#'key-blocks/->number "abc")))))
+
+(deftest ^:parallel histogram-plan-test
+  (testing "two parts in each bucket of the histogram, between the true lowest and highest key"
+    (let [{:keys [bounds]} (#'key-blocks/histogram-plan 0 1000 (range 0 1001 10) 200 1)]
+      (is (= 201 (count bounds)))
+      (is (= [0.0 5.0 10.0] (take 3 bounds)))
+      (is (= 1000.0 (peek bounds)))))
+  (testing "parts that follow a skewed histogram: narrow where the rows are dense"
+    (let [histogram        (concat (range 0 100 2) (range 100 10001 200))
+          {:keys [bounds]} (#'key-blocks/histogram-plan 0 10000 histogram 200 1)
+          widths           (map - (rest bounds) bounds)]
+      (is (< (first widths) 2))
+      (is (<= 50 (last widths)))))
+  (testing "buckets merged when the histogram has more than half as many as the runs"
+    (is (= 5 (count (:bounds (#'key-blocks/histogram-plan 0 1000 (range 0 1001 10) 4 1))))))
+  (testing "no plan for a histogram with too few bounds inside the key range"
+    (is (nil? (#'key-blocks/histogram-plan 0 1000 [0 500 1000] 200 1)))))
