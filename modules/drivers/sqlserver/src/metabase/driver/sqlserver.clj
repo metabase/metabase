@@ -12,6 +12,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -1150,6 +1151,28 @@
     (cond-> {}
       (and row-count (want? :row-count)) (assoc :row-count {:value row-count :origin origin})
       (seq by-field)                     (assoc :fields by-field))))
+
+;;; ------------------------------------------------ Table samples -------------------------------------------------
+
+;; `TABLESAMPLE SYSTEM (p PERCENT)` reads a random set of pages of the table. A table alias goes before it, and the
+;; source table here has none.
+(defmethod sql.qp/table-sample->honeysql :sqlserver
+  [driver table-expr {:keys [percent] :as table-sample}]
+  (if percent
+    ;; a plain decimal, since Java prints a double below 0.001 as 1.0E-4
+    [:raw [table-expr " TABLESAMPLE SYSTEM (" (.toPlainString (.stripTrailingZeros ^BigDecimal (bigdec percent))) " PERCENT)"]]
+    ((get-method sql.qp/table-sample->honeysql :sql) driver table-expr table-sample)))
+
+;; Only for `:sqlserver` itself, so that a child driver keeps its own `table-rows-sample`.
+(defmethod driver/database-supports? [:sqlserver :table-random-sample]
+  [driver _feature _db]
+  (= driver :sqlserver))
+
+;; `TABLESAMPLE` can't be used with views. Sync gives a table a row count estimate only from `sys.tables`, which has no
+;; views, so the block sample declines for them.
+(defmethod driver/table-random-sample :sqlserver
+  [_driver table fields rff opts]
+  (table-rows-sample/block-sample table fields rff opts))
 
 ;; From the dox:
 ;;
