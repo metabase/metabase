@@ -618,19 +618,23 @@
     (methodical/prefer-method! #'t2.before-update/before-update hook trait)))
 
 (defn- add-worktree-id
-  "`row` in the remote sync worktree this thread works in."
+  "`row` in the remote sync worktree this thread works in, leaving the main app's id to the column default."
   [row]
-  (assoc row :worktree_id (:worktree-id (mdb/worktree-scope) mdb/default-worktree-id)))
+  (if-let [worktree-id (:worktree-id (mdb/worktree-scope))]
+    (assoc row :worktree_id worktree-id)
+    row))
 
 (t2/define-before-insert :hook/worktree-id
   [row]
   (add-worktree-id row))
 
-(t2/define-before-update :hook/worktree-id
-  [row]
-  (when (contains? (t2/changes row) :worktree_id)
+(methodical/defmethod t2.pipeline/build :before [:toucan.query-type/update.* :hook/worktree-id :default]
+  "Throws when an update of a model with `:hook/worktree-id` changes `worktree_id`, checking its changes map so the
+  update stays one UPDATE without a before-update hook."
+  [_query-type _model parsed-args resolved-query]
+  (when (contains? (:changes parsed-args) :worktree_id)
     (throw (ex-info (tru "A row cannot move to another worktree.") {:status-code 400})))
-  row)
+  resolved-query)
 
 (prefer-hook-trait! :hook/worktree-id)
 
