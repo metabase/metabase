@@ -285,7 +285,8 @@
         ([result part]
          (cond
            (not= :text (:type part))
-           ;; The DM path adds its own break after a tool's task update.
+           ;; The DM path adds its own break after a tool's task update, and the channel path at
+           ;; the tool's start.
            (do (when (= :tool-input (:type part))
                  (vreset! last-text-id nil))
                (rf result part))

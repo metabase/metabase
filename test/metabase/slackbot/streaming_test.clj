@@ -772,6 +772,36 @@
                        :timeout-ms 5000})
               (is (some #{"First point.\n\nSecond point."} (keep :text @post-calls))))))))))
 
+(deftest ^:synchronized slackbot-channel-separates-text-blocks-across-tool-test
+  (testing "the channel reply shows text before and after a tool call as two paragraphs"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-mention-event]
+        (tu/with-slackbot-mocks
+          {}
+          (fn [{:keys [post-calls]}]
+            (mt/with-dynamic-fn-redefs [agent/run-agent-loop
+                                        (fn [_opts]
+                                          (reify clojure.lang.IReduceInit
+                                            (reduce [_ rf init]
+                                              (reduce rf init [{:type :text :id "t1" :text "Let me check."}
+                                                               {:type :tool-input :id "call-1" :function "search"
+                                                                :arguments {:term_queries ["orders"]}}
+                                                               {:type :tool-output :id "call-1"
+                                                                :result {:output "No results."}}
+                                                               {:type :text :id "t2" :text "Done."}]))))
+                                        metabot.persistence/start-turn!
+                                        (fn [& _] {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                        metabot.persistence/finalize-assistant-turn!
+                                        (fn [& _] nil)]
+              (mt/client :post 200 "metabot/slack/events"
+                         (tu/slack-request-options event-body)
+                         event-body)
+              (u/poll {:thunk      #(pos? (count @post-calls))
+                       :done?      true?
+                       :timeout-ms 5000})
+              (is (= ["Let me check.\n\nDone."] (keep :text @post-calls))
+                  "one message, with a paragraph break where the tool ran"))))))))
+
 (defn- context-texts
   "The mrkdwn text of every `context` block in `blocks`."
   [blocks]
