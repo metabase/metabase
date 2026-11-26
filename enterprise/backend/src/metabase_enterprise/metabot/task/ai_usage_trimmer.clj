@@ -31,9 +31,11 @@
               ;; Tool calls first: the delete of an LLM call cascades to its tool calls, whatever their age.
               tool-call-ids (metabot.db/tool-call-ids-created-before cutoff)
               llm-call-ids  (metabot.db/llm-call-ids-started-before cutoff)]
-          (ai-usage-log/delete-ai-usage-logs! ids)
           (metabot-tool-call/delete-metabot-tool-calls! tool-call-ids)
           (metabot-llm-call/delete-metabot-llm-calls! llm-call-ids)
+          ;; Usage rows last: the delete of one clears `usage_log_id` on the LLM call that names it, and the old LLM
+          ;; calls are gone by now.
+          (ai-usage-log/delete-ai-usage-logs! ids)
           (log/infof "AI usage log cleanup complete. Deleted %d rows, %d LLM call records and %d tool call records."
                      (count ids) (count llm-call-ids) (count tool-call-ids)))))))
 

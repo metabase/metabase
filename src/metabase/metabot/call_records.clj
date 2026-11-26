@@ -31,7 +31,7 @@
   - `:error-class`, `:error-status`: the class and the HTTP status of a failure
   - `:retry-delay-ms`: the wait before the next attempt
   - `:finish-reason`: why the provider stopped
-  - `:usage`: the `:usage` of the call's usage part
+  - `:usage-log-id`: the id of the AiUsageLog that holds the tokens of the call's usage part
 
   In OSS, this is a no-op."
   metabase-enterprise.metabot.call-records

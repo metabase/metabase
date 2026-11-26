@@ -56,6 +56,11 @@
 (defn- tool-calls [{:keys [message-id]}]
   (t2/select :model/MetabotToolCall :message_id message-id {:order-by [[:id :asc]]}))
 
+(defn- usage-log
+  "The AiUsageLog that the MetabotLlmCall `llm-call` names."
+  [llm-call]
+  (t2/select-one :model/AiUsageLog :id (:usage_log_id llm-call)))
+
 (defn- call-llm!
   "Run one streaming LLM call whose provider answers with `response`, a function of no arguments that returns the
   reducible of an attempt. Returns the call's parts."
@@ -74,29 +79,35 @@
                 tracking-opts)
      (let [[llm-call :as all-llm-calls]   (llm-calls tracking-opts)
            [tool-call :as all-tool-calls] (tool-calls tracking-opts)]
-       (testing "the attempt has one row, with its end, its tokens and the provider's finish reason"
+       (testing "the attempt has one row, with its end and the provider's finish reason"
          (is (= 1 (count all-llm-calls)))
-         (is (=? {:message_id            message-id
-                  :conversation_id       session-id
-                  :user_id               (mt/user->id :rasta)
-                  :request_id            request-id
-                  :source                "metabot_agent"
-                  :profile_id            "internal"
-                  :provider              "openrouter"
-                  :model                 model
-                  :iteration             1
-                  :attempt               1
-                  :started_at            some?
-                  :finished_at           some?
-                  :status                "ok"
-                  :error_class           nil
-                  :retry_delay_ms        nil
-                  :finish_reason         "end_turn"
+         (is (=? {:message_id      message-id
+                  :conversation_id session-id
+                  :user_id         (mt/user->id :rasta)
+                  :request_id      request-id
+                  :source          "metabot_agent"
+                  :profile_id      "internal"
+                  :provider        "openrouter"
+                  :model           model
+                  :iteration       1
+                  :attempt         1
+                  :started_at      some?
+                  :finished_at     some?
+                  :status          "ok"
+                  :error_class     nil
+                  :retry_delay_ms  nil
+                  :finish_reason   "end_turn"
+                  :usage_log_id    pos-int?}
+                 llm-call)))
+       (testing "the attempt names the usage row that holds its tokens"
+         (is (= [(:usage_log_id llm-call)]
+                (t2/select-pks-vec :model/AiUsageLog :request_id request-id)))
+         (is (=? {:request_id            request-id
                   :prompt_tokens         10
                   :completion_tokens     5
                   :cache_creation_tokens 2
                   :cache_read_tokens     3}
-                 llm-call)))
+                 (usage-log llm-call))))
        (testing "the tool call has one row, tied to the attempt, with its input and its output"
          (is (= 1 (count all-tool-calls)))
          (is (=? {:llm_call_id  (:id llm-call)
@@ -115,7 +126,10 @@
          (metabot.persistence/finalize-assistant-turn! message-id [])
          (is (some? (t2/select-one-fn :finished_at :model/MetabotMessage :id message-id)))
          (is (= ["ok"] (map :status (llm-calls tracking-opts))))
-         (is (= ["ok"] (map :status (tool-calls tracking-opts)))))))))
+         (is (= ["ok"] (map :status (tool-calls tracking-opts)))))
+       (testing "the delete of the usage row leaves the attempt, with no usage row to name"
+         (t2/delete! :model/AiUsageLog :id (:usage_log_id llm-call))
+         (is (=? [{:status "ok" :usage_log_id nil}] (llm-calls tracking-opts))))))))
 
 (deftest retried-attempt-test
   (do-with-turn!
@@ -128,11 +142,16 @@
                          (test-util/mock-llm-response [{:type :text :id "t1" :text "Hello"} usage-part]))
                       {}
                       tracking-opts)))
-       (is (=? [{:attempt 1 :status "error" :error_class "ExceptionInfo" :error_status 429 :retry_delay_ms 7
-                 :finished_at some? :prompt_tokens nil}
-                {:attempt 2 :status "ok" :error_class nil :error_status nil :retry_delay_ms nil
-                 :finished_at some? :prompt_tokens 10}]
-               (llm-calls tracking-opts)))))))
+       (let [[failed succeeded :as all-llm-calls] (llm-calls tracking-opts)]
+         (is (=? [{:attempt 1 :status "error" :error_class "ExceptionInfo" :error_status 429 :retry_delay_ms 7
+                   :finished_at some? :usage_log_id nil}
+                  {:attempt 2 :status "ok" :error_class nil :error_status nil :retry_delay_ms nil
+                   :finished_at some? :usage_log_id pos-int?}]
+                 all-llm-calls))
+         (testing "the attempt that reported no tokens has no usage row, and the one that did names its own"
+           (is (nil? (:usage_log_id failed)))
+           (is (=? {:prompt_tokens 10 :completion_tokens 5} (usage-log succeeded)))
+           (is (= 1 (t2/count :model/AiUsageLog :request_id (:request-id tracking-opts))))))))))
 
 (deftest failed-attempt-test
   (do-with-turn!
@@ -251,11 +270,37 @@
                       :attempt         1
                       :status          "ok"
                       :finished_at     some?
-                      :prompt_tokens   10}]
+                      :usage_log_id    pos-int?}]
                     (llm-calls {:request-id request-id})))
+            (is (=? {:prompt_tokens 10 :completion_tokens 5}
+                    (usage-log (first (llm-calls {:request-id request-id})))))
             (finally
-              (t2/delete! :model/AiUsageLog :request_id request-id)
-              (t2/delete! :model/MetabotLlmCall :request_id request-id))))))))
+              (t2/delete! :model/MetabotLlmCall :request_id request-id)
+              (t2/delete! :model/AiUsageLog :request_id request-id)))))))
+  (testing "a structured call that fails after its usage part keeps the usage row of each failed attempt"
+    (let [request-id (str (random-uuid))]
+      (mt/with-temporary-setting-values [llm-openrouter-api-key "sk-or-v1-test-key"]
+        (mt/with-test-user :rasta
+          (try
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (test-util/mock-llm-response [usage-part]))
+                                        self/retry-delay-ms   (constantly 1)]
+              (mt/with-log-level [metabase.metabot.self :fatal]
+                (is (thrown? Exception
+                             (self/call-llm-structured model
+                                                       [{:role "user" :content "Name it"}]
+                                                       {:type "object" :properties {:title {:type "string"}}}
+                                                       0.3 100
+                                                       {:tag                 "conversation_title"
+                                                        :request-id          request-id
+                                                        :required-permission :permission/metabot})))))
+            (let [all-llm-calls (llm-calls {:request-id request-id})]
+              (is (seq all-llm-calls))
+              (is (every? #(= "error" (:status %)) all-llm-calls))
+              (is (= (t2/select-pks-vec :model/AiUsageLog :request_id request-id {:order-by [[:id :asc]]})
+                     (map :usage_log_id all-llm-calls))))
+            (finally
+              (t2/delete! :model/MetabotLlmCall :request_id request-id)
+              (t2/delete! :model/AiUsageLog :request_id request-id))))))))
 
 (def ^:private record-fns
   '[record-llm-call-start! record-llm-call-end! record-tool-call-submit! record-tool-call-end! abort-open-calls!])

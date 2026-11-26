@@ -49,20 +49,22 @@
     (testing "log-ai-usage! inserts a row into ai_usage_log"
       (let [user-id (mt/user->id :rasta)]
         (mt/with-test-user :rasta
-          (let [before-count (t2/count :model/AiUsageLog :user_id user-id :source "metabot_agent")]
-            (usage/log-ai-usage!
-             {:source            "metabot_agent"
-              :model             "openrouter-1/anthropic/claude-test"
-              :provider          "openrouter"
-              :model-name        "anthropic/claude-test"
-              :prompt-tokens     100
-              :completion-tokens 50
-              :ai-proxied        true})
+          (let [before-count (t2/count :model/AiUsageLog :user_id user-id :source "metabot_agent")
+                usage-log-id (usage/log-ai-usage!
+                              {:source            "metabot_agent"
+                               :model             "openrouter-1/anthropic/claude-test"
+                               :provider          "openrouter"
+                               :model-name        "anthropic/claude-test"
+                               :prompt-tokens     100
+                               :completion-tokens 50
+                               :ai-proxied        true})]
             (try
               (is (= (inc before-count)
                      (t2/count :model/AiUsageLog :user_id user-id :source "metabot_agent")))
               (let [row (t2/select-one :model/AiUsageLog :user_id user-id :source "metabot_agent"
                                        {:order-by [[:id :desc]]})]
+                (testing "it returns the id of the row"
+                  (is (= (:id row) usage-log-id)))
                 (is (= "openrouter-1/anthropic/claude-test" (:model row)))
                 (is (= "openrouter" (:provider row)))
                 (is (= "anthropic/claude-test" (:model_name row)))
@@ -81,11 +83,11 @@
         (mt/with-test-user :rasta
           (let [before-count (t2/count :model/AiUsageLog :user_id user-id
                                        :source "user-intent-classification")]
-            (usage/log-ai-usage!
-             {:source            "user-intent-classification"
-              :model             "anthropic/claude-test"
-              :prompt-tokens     10
-              :completion-tokens 5})
+            (is (nil? (usage/log-ai-usage!
+                       {:source            "user-intent-classification"
+                        :model             "anthropic/claude-test"
+                        :prompt-tokens     10
+                        :completion-tokens 5})))
             (is (= before-count
                    (t2/count :model/AiUsageLog :user_id user-id
                              :source "user-intent-classification")))))))))

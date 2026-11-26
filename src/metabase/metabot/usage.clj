@@ -33,7 +33,7 @@
    [:ai-proxied            {:optional true} [:maybe :boolean]]])
 
 (defenterprise-schema log-ai-usage! :- :any
-  "Record an LLM API call in the ai_usage_log table.
+  "Record an LLM API call in the ai_usage_log table. Returns the id of the AiUsageLog, or nil when none was recorded.
   In OSS, this is a no-op."
   metabase-enterprise.metabot.usage
   [_usage-map :- usage-map-schema]

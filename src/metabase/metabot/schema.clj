@@ -534,10 +534,7 @@
    [:error_status          {:optional true} [:maybe :int]]
    [:retry_delay_ms        {:optional true} [:maybe :int]]
    [:finish_reason         {:optional true} [:maybe :string]]
-   [:prompt_tokens         {:optional true} [:maybe :int]]
-   [:completion_tokens     {:optional true} [:maybe :int]]
-   [:cache_creation_tokens {:optional true} [:maybe :int]]
-   [:cache_read_tokens     {:optional true} [:maybe :int]]])
+   [:usage_log_id          {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::metabot-llm-call.update
   "What an update of a MetabotLlmCall takes: its `:id` and the columns that the end of the attempt sets."
@@ -549,10 +546,7 @@
    [:error_status          {:optional true} [:maybe :int]]
    [:retry_delay_ms        {:optional true} [:maybe :int]]
    [:finish_reason         {:optional true} [:maybe :string]]
-   [:prompt_tokens         {:optional true} [:maybe :int]]
-   [:completion_tokens     {:optional true} [:maybe :int]]
-   [:cache_creation_tokens {:optional true} [:maybe :int]]
-   [:cache_read_tokens     {:optional true} [:maybe :int]]])
+   [:usage_log_id          {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::metabot-tool-call.status
   "The state of a tool call. `running` from its submit until it ends; `skipped` when a stream error came before it

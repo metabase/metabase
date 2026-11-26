@@ -107,21 +107,9 @@ databaseChangeLog:
                   type: varchar(254)
                   remarks: Why the provider stopped generating
               - column:
-                  name: prompt_tokens
-                  type: int
-                  remarks: Prompt tokens the provider reported
-              - column:
-                  name: completion_tokens
-                  type: int
-                  remarks: Completion tokens the provider reported
-              - column:
-                  name: cache_creation_tokens
-                  type: int
-                  remarks: Tokens written to the prompt cache
-              - column:
-                  name: cache_read_tokens
-                  type: int
-                  remarks: Tokens read from the prompt cache
+                  name: usage_log_id
+                  type: bigint
+                  remarks: The ai_usage_log row with the tokens the provider reported for the attempt. NULL when it reported none.
 
   - changeSet:
       id: n8r2vx
@@ -184,6 +172,31 @@ databaseChangeLog:
             referencedTableName: metabot_conversation
             referencedColumnNames: id
             onDelete: CASCADE
+
+  - changeSet:
+      id: j6p3lt
+      author: lbrdnk
+      comment: Index on metabot_llm_call.usage_log_id for the reads and the FK to ai_usage_log
+      changes:
+        - createIndex:
+            tableName: metabot_llm_call
+            indexName: idx_metabot_llm_call_usage_log_id
+            columns:
+              - column:
+                  name: usage_log_id
+
+  - changeSet:
+      id: z2g8mk
+      author: lbrdnk
+      comment: FK from metabot_llm_call.usage_log_id to ai_usage_log
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_llm_call
+            baseColumnNames: usage_log_id
+            constraintName: fk_metabot_llm_call_usage_log_id
+            referencedTableName: ai_usage_log
+            referencedColumnNames: id
+            onDelete: SET NULL
 
   - changeSet:
       id: c9x4ha

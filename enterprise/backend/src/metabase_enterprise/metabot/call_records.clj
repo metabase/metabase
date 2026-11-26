@@ -50,7 +50,7 @@
 (defenterprise record-llm-call-end!
   "Record the end of the MetabotLlmCall with `llm-call-id`."
   :feature :none
-  [llm-call-id {:keys [status error-class error-status retry-delay-ms finish-reason usage]}]
+  [llm-call-id {:keys [status error-class error-status retry-delay-ms finish-reason usage-log-id]}]
   (when llm-call-id
     (logging-failure "record the end of an LLM call"
                      (metabot-llm-call/update-metabot-llm-calls!
@@ -61,10 +61,7 @@
                          error-status   (assoc :error_status error-status)
                          retry-delay-ms (assoc :retry_delay_ms retry-delay-ms)
                          finish-reason  (assoc :finish_reason (limited finish-reason 254))
-                         usage          (assoc :prompt_tokens         (:promptTokens usage)
-                                               :completion_tokens     (:completionTokens usage)
-                                               :cache_creation_tokens (:cacheCreationTokens usage)
-                                               :cache_read_tokens     (:cacheReadTokens usage)))]))))
+                         usage-log-id   (assoc :usage_log_id usage-log-id))]))))
 
 (defenterprise record-tool-call-submit!
   "Record a tool call at its submit to the tool executor. Returns the id of the MetabotToolCall, or nil when the

@@ -224,7 +224,8 @@
 (defn- report-token-usage-xf
   "Transducer that reports token_usage metrics for :usage parts in the aisdk stream.
 
-  Every field goes to [[metabase.metabot.usage/log-ai-usage!]], where `:tag` stands in for a missing `:source`.
+  Every field goes to [[metabase.metabot.usage/log-ai-usage!]], where `:tag` stands in for a missing `:source`. The id
+  of the AiUsageLog it records goes into `observed`, the volatile of the LLM call attempt, as `:usage-log-id`.
 
   Prometheus + Snowplow:
     - `:model`      - the model reference (e.g. `openrouter/anthropic/claude-haiku-4.5`)
@@ -239,7 +240,8 @@
     - `:session-id` - conversation UUID string
     - `:source`     - the source of the request (e.g., 'metabot_agent', 'document_generate_content').
                       Indicates which API endpoint or workflow initiated the LLM call."
-  [{:keys [model model-name provider profile-id request-id session-id source tag ai-proxy?] :as tracking-opts}]
+  [{:keys [model model-name provider profile-id request-id session-id source tag ai-proxy?] :as tracking-opts}
+   observed]
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
@@ -269,21 +271,24 @@
                  :session-id            session-id
                  :source                source
                  :tag                   tag})
-               (usage/log-ai-usage!
-                {:source                (or source tag "unknown")
-                 :model                 model
-                 :provider              provider
-                 :model-name            model-name
-                 :prompt-tokens         prompt
-                 :completion-tokens     completion
-                 :cache-creation-tokens cache-creation
-                 :cache-read-tokens     cache-read
-                 :conversation-id       session-id
-                 ;; ai_usage_log names only the profiles its analytics views label, so a profile outside that
-                 ;; list is logged without one rather than failing the turn.
-                 :profile-id            (usage/valid-usage-profile-id profile-id)
-                 :request-id            request-id
-                 :ai-proxied            (boolean ai-proxy?)})))
+               (let [usage-log-id (usage/log-ai-usage!
+                                   {:source                (or source tag "unknown")
+                                    :model                 model
+                                    :provider              provider
+                                    :model-name            model-name
+                                    :prompt-tokens         prompt
+                                    :completion-tokens     completion
+                                    :cache-creation-tokens cache-creation
+                                    :cache-read-tokens     cache-read
+                                    :conversation-id       session-id
+                                    ;; ai_usage_log names only the profiles its analytics views label, so a profile
+                                    ;; outside that list is logged without one rather than failing the turn.
+                                    :profile-id            (usage/valid-usage-profile-id profile-id)
+                                    :request-id            request-id
+                                    :ai-proxied            (boolean ai-proxy?)})]
+                 ;; The record of the attempt names the row that holds its tokens.
+                 (when (pos-int? usage-log-id)
+                   (vswap! observed assoc :usage-log-id usage-log-id)))))
            part))))
 
 (defn track-ai-service-event!
@@ -350,14 +355,14 @@
 
 (defn- observe-llm-call-xf
   "Transducer that keeps, in the volatile `observed` of one LLM call attempt, what the attempt's parts say about its
-  end: the `:usage` and the provider's finish reason of its `:usage` part, and the `:error` of an `:error` part.
-  [[llm-call-outcome]] reads it. Goes before [[streamed-error-xf]], which reduces the error to what Metabot shows."
+  end: the provider's finish reason of its `:usage` part, and the `:error` of an `:error` part.
+  [[llm-call-outcome]] reads it. Goes before [[streamed-error-xf]], which reduces the error to what Metabot shows.
+  [[report-token-usage-xf]] adds the `:usage-log-id` of the tokens it logs."
   [observed]
-  (map (fn [{:keys [usage raw-finish-reason finish-reason error] :as part}]
+  (map (fn [{:keys [raw-finish-reason finish-reason error] :as part}]
          (case (:type part)
-           :usage (vswap! observed #(cond-> (assoc % :usage usage)
-                                      (or raw-finish-reason finish-reason)
-                                      (assoc :finish-reason (or raw-finish-reason finish-reason))))
+           :usage (when-let [reason (or raw-finish-reason finish-reason)]
+                    (vswap! observed assoc :finish-reason reason))
            :error (vswap! observed assoc :error error)
            nil)
          part)))
@@ -366,12 +371,12 @@
   "What [[call-records/record-llm-call-end!]] takes for an LLM call attempt that returned, from what it `observed`.
 
   An attempt whose stream held an error ended with `error`, and one whose consumer stopped reading it with `aborted`."
-  [{:keys [usage finish-reason error consumer-stopped?]}]
+  [{:keys [usage-log-id finish-reason error consumer-stopped?]}]
   (cond-> {:status        (cond
                             error             "error"
                             consumer-stopped? "aborted"
                             :else             "ok")
-           :usage         usage
+           :usage-log-id  usage-log-id
            :finish-reason finish-reason}
     error (assoc :error-class  streamed-error-class
                  :error-status (streamed-status error))))
@@ -381,7 +386,8 @@
   waits `delay` ms for the next attempt, or makes none when `delay` is nil."
   [^Exception e {:keys [error] :as observed} delay]
   (let [status (:status (ex-data e))]
-    (assoc (select-keys observed [:usage :finish-reason])
+    ;; An attempt can fail after its usage part, so a failed attempt keeps the row of its tokens.
+    (assoc (select-keys observed [:usage-log-id :finish-reason])
            :status         "error"
            ;; The structured path throws for an error that the provider streamed; the record names that error.
            :error-class    (if error streamed-error-class (.getSimpleName (class e)))
@@ -844,7 +850,7 @@
                                                 (report-aisdk-errors-xf tracking-opts)
                                                 (observe-llm-call-xf (:observed call))
                                                 (streamed-error-xf provider)
-                                                (report-token-usage-xf tracking-opts)
+                                                (report-token-usage-xf tracking-opts (:observed call))
                                                 (report-tool-usage-xf tracking-opts tools))
                                           (stream-fn streaming-opts)))]
            (reify clojure.lang.IReduceInit
@@ -994,7 +1000,7 @@
                                      (report-aisdk-errors-xf tracking-opts)
                                      (observe-llm-call-xf (:observed call))
                                      (streamed-error-xf provider)
-                                     (report-token-usage-xf tracking-opts))
+                                     (report-token-usage-xf tracking-opts (:observed call)))
                                (stream-fn streaming-opts))
                 result   (some (fn [{:keys [type arguments]}]
                                  (when (= type :tool-input)
