@@ -26,6 +26,7 @@
    [metabase.driver.sql-jdbc.quoting :as sql-jdbc.quoting :refer [quote-columns quote-identifier with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql.key-blocks :as key-blocks]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
@@ -186,12 +187,43 @@
   [_driver table-expr {:keys [percent]}]
   [:raw [table-expr " TABLESAMPLE SYSTEM (" [:inline percent] ")"]])
 
-;; Only tables, partitioned tables and materialized views can be read with TABLESAMPLE. Sync gives a table a row count
-;; estimate only from `pg_stat_user_tables` (see [[describe-syncable-tables]]), which has no rows for views and
-;; foreign tables, so those get no estimate and the block sample declines for them.
+(def ^:private key-block-key-timeout-seconds
+  "The time limit of the catalog query for the key of a table."
+  15)
+
+(defn- key-block-key-name
+  "The name of the column of the primary key of `table`, when it has one column of a number, date or timestamp type
+  that compiles to the plain column, or nil. Its index reads a run of rows from a start point in order and stops. Not
+  used: a key of several columns, since a run of its first column can stay inside one value, which gives the run no
+  density; a key of another type, such as `money`, which compiles to a cast that no index reads; and the parent of
+  inheritance or partitions, whose key does not cover the rows of its children."
+  [table]
+  (-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (:db_id table)))
+                  [(str "SELECT a.attname AS column_name FROM pg_catalog.pg_index i"
+                        " JOIN pg_catalog.pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = i.indkey[0]"
+                        " WHERE i.indrelid = to_regclass(quote_ident(?) || '.' || quote_ident(?))"
+                        " AND i.indisprimary AND i.indnatts = 1"
+                        " AND a.atttypid IN ('int2'::regtype, 'int4'::regtype, 'int8'::regtype, 'numeric'::regtype,"
+                        "                    'float4'::regtype, 'float8'::regtype, 'date'::regtype,"
+                        "                    'timestamp'::regtype, 'timestamptz'::regtype)"
+                        " AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_inherits h WHERE h.inhparent = i.indrelid)")
+                   (:schema table) (:name table)]
+                  {:timeout key-block-key-timeout-seconds})
+      first
+      :column_name))
+
+;; Key blocks for a table with a primary key of one column, which measured better than `TABLESAMPLE SYSTEM` on skewed
+;; data and on a key with gaps; they read more pages than a 1% block sample, still in milliseconds. Other tables, and
+;; tables too small for key blocks, get the block sample. Sync gives a table a row count estimate only from
+;; `pg_stat_user_tables` (see [[describe-syncable-tables]]), which has no rows for views and foreign tables, and 0 for
+;; a partitioned parent, so those get no estimate and both samples decline for them.
 (defmethod driver/table-random-sample :postgres
-  [_driver table fields rff opts]
-  (table-rows-sample/block-sample table fields rff opts))
+  [driver table fields rff opts]
+  (let [runs (when-let [key-name (and (:row-count opts) (key-block-key-name table))]
+               (key-blocks/sample driver table fields key-name rff opts))]
+    (if (and runs (not= :first-rows (:method runs)))
+      runs
+      (table-rows-sample/block-sample table fields rff opts))))
 
 (defmethod driver/db-default-timezone :postgres
   [driver database]
