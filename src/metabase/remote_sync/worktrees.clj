@@ -2,6 +2,7 @@
   "Remote sync worktrees, which the enterprise remote sync module keeps."
   (:require
    [metabase.premium-features.defenterprise :refer [defenterprise]]
+   [metabase.remote-sync.spec :as remote-sync.spec]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -29,3 +30,12 @@
   "The worktree other than the default one the user checked out, or nil when they work in the main app."
   [_model k user]
   (assoc user k (some-> (user-worktree-id (:id user)) worktree-by-id)))
+
+(defn ensure-built-ins!
+  "Creates the built-in rows the remote sync worktree this thread works in lacks, of every model whose spec has
+  `:ensure-built-ins`."
+  []
+  (doseq [model (keys (dissoc (methods remote-sync.spec/spec) :default))
+          :let  [ensure! (:ensure-built-ins (remote-sync.spec/spec model))]
+          :when ensure!]
+    (ensure!)))

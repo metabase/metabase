@@ -9,6 +9,7 @@
   `::metabase.remote-sync.schema/synced-filter-opts` returning the HoneySQL where-clause over the columns of the
   model's table, so aliased, selecting the rows it syncs, all of them by default; and `:built-in-filter-clause`, the
   same for the rows every instance has with the same entity id, which synced content can depend on without syncing
-  them, none by default."
+  them, none by default; and `:ensure-built-ins`, a fn of no arguments creating those of the built-in rows, which the
+  main app's migrations create, that the remote sync worktree this thread works in lacks."
   {:arglists '([model])}
   identity)

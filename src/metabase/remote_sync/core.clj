@@ -21,6 +21,7 @@
   synced-models
   synced-name]
  [remote-sync.worktrees
+  ensure-built-ins!
   non-default-worktree-exists?
   user-worktree-id
   worktree-by-id])

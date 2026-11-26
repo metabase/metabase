@@ -119,6 +119,19 @@
   "Namespace for shared tenant collections"
   :shared-tenant-collection)
 
+(defn ensure-trash-collection!
+  "Create the Trash collection of the remote sync worktree this thread works in, as the migration that added it created
+  the main app's, unless it has one, retrying once after a concurrent call created it."
+  []
+  (mdb/with-conflict-retry
+    (t2/with-transaction [_conn]
+      (when-not (trash-collection*)
+        (collections.db/insert-collections! [{:name      "Trash"
+                                              :slug      "trash"
+                                              :entity_id "trashtrashtrashtrasht"
+                                              :type      trash-collection-type}]))))
+  nil)
+
 (defn trash-collection-id
   "The ID representing the Trash collection."
   [] (u/the-id (trash-collection)))
@@ -3175,7 +3188,8 @@
 (defmethod remote-sync/spec :model/Collection
   [_model]
   {:synced-items         collections.db/synced-collection-items
-   :synced-filter-clause (partial collections.db/synced-collections-clause (vec (sort remote-synced-namespaces)))})
+   :synced-filter-clause (partial collections.db/synced-collections-clause (vec (sort remote-synced-namespaces)))
+   :ensure-built-ins     ensure-trash-collection!})
 
 (defmethod search/spec :model/Collection
   [_model]
