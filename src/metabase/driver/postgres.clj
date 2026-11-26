@@ -236,23 +236,30 @@
     :else                            v))
 
 (defn- fresh-key-histogram
-  "The bounds of the histogram of the key `key` of `table` in `pg_stats`, when at most
-  [[max-histogram-modified-fraction]] of its rows changed since the `ANALYZE` that made it, or nil. Each bucket of the
-  histogram has the same number of rows. `pg_stats` shows only the columns the user can read."
+  "The bounds of the histogram of the key `key` of `table` in `pg_stats`, when an `ANALYZE` made it and at most
+  [[max-histogram-modified-fraction]] of the rows changed since, or nil, also when it cannot be read: a failure here
+  must not turn off the sample of the database. Each bucket of the histogram has the same number of rows. `pg_stats`
+  shows only the columns the user can read."
   [spec table {key-name :name key-type :type}]
-  (let [{:keys [bounds n_live_tup n_mod_since_analyze]}
-        (first (jdbc/query spec
-                           [(str "SELECT (s.histogram_bounds::text)::" key-type "[] AS bounds,"
-                                 " t.n_live_tup, t.n_mod_since_analyze"
-                                 " FROM pg_catalog.pg_stats s"
-                                 " JOIN pg_catalog.pg_stat_user_tables t"
-                                 " ON t.schemaname = s.schemaname AND t.relname = s.tablename"
-                                 " WHERE s.schemaname = ? AND s.tablename = ? AND s.attname = ?")
-                            (:schema table) (:name table) key-name]
-                           {:timeout key-block-key-timeout-seconds}))]
-    (when (and bounds n_live_tup (pos? n_live_tup)
-               (<= (or n_mod_since_analyze 0) (* max-histogram-modified-fraction n_live_tup)))
-      (mapv (partial histogram-value key-type) (.getArray ^java.sql.Array bounds)))))
+  (try
+    (let [row (first (jdbc/query spec
+                                 [(str "SELECT (s.histogram_bounds::text)::" key-type "[] AS bounds,"
+                                       " t.n_live_tup, t.n_mod_since_analyze"
+                                       " FROM pg_catalog.pg_stats s"
+                                       " JOIN pg_catalog.pg_stat_user_tables t"
+                                       " ON t.schemaname = s.schemaname AND t.relname = s.tablename"
+                                       " WHERE s.schemaname = ? AND s.tablename = ? AND s.attname = ? AND NOT s.inherited"
+                                       " AND COALESCE(t.last_analyze, t.last_autoanalyze) IS NOT NULL")
+                                  (:schema table) (:name table) key-name]
+                                 {:timeout key-block-key-timeout-seconds
+                                  :row-fn  #(update % :bounds (fn [^java.sql.Array a] (some-> a .getArray vec)))}))
+          {:keys [bounds n_live_tup n_mod_since_analyze]} row]
+      (when (and bounds n_live_tup (pos? n_live_tup)
+                 (<= (or n_mod_since_analyze 0) (* max-histogram-modified-fraction n_live_tup)))
+        (mapv (partial histogram-value key-type) bounds)))
+    (catch Exception e
+      (log/debugf e "Could not read the histogram of the key of %s" (:name table))
+      nil)))
 
 ;; Key blocks for a table with a primary key of one column, which measured better than `TABLESAMPLE SYSTEM` on skewed
 ;; data and on a key with gaps, following the key's histogram when it is fresh; they read more pages than a 1% block sample, still in milliseconds. Other tables, and

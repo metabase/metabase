@@ -288,27 +288,61 @@
       (plan-for-bounds lo hi (part-bounds lo-n hi-n runs) seed))))
 
 (def ^:private min-histogram-bounds
-  "The fewest bounds inside the key range that a histogram must have for the runs to follow it."
+  "The fewest bounds a histogram must have for the runs to follow it."
   20)
 
+(defn- histogram-edges
+  "The edges of the buckets of `histogram`, numbers, between the true lowest and highest key `lo-n` and `hi-n`: the
+  histogram's first and last bounds are those of the rows `ANALYZE` read, so the true keys replace them. Keys added
+  after the `ANALYZE` beyond its last bound get buckets as wide as the last one. Nil when that needs more buckets than
+  the histogram has, or the histogram has fewer than [[min-histogram-bounds]] bounds."
+  [lo-n hi-n histogram]
+  (let [hs (into [] (comp (keep ->number) (distinct)) (sort-by ->number histogram))
+        k  (dec (count hs))]
+    (when (>= (count hs) min-histogram-bounds)
+      (let [last-bound (peek hs)
+            width      (- last-bound (nth hs (dec k)))
+            appended   (if (and (pos? width) (> hi-n (+ last-bound width)))
+                         (long (Math/ceil (/ (- hi-n last-bound) width)))
+                         0)
+            top        (if (pos? appended) last-bound hi-n)]
+        (when (<= appended k)
+          (into [lo-n]
+                (comp (distinct) (filter #(< lo-n %)))
+                (concat (filter #(< lo-n % top) (subvec hs 1 k))
+                        [top]
+                        (map #(+ last-bound (* width %)) (range 1 appended))
+                        (when (pos? appended) [hi-n]))))))))
+
 (defn- histogram-plan
-  "The plan of about `runs` runs in parts of equal rows, from `histogram`, the bounds of a histogram of the key with
-  the same number of rows in each bucket, such as `pg_stats.histogram_bounds` on Postgres. Each bucket is two parts, cut
-  at its middle; buckets are merged when the histogram has more than `runs` / 2. The first and last bounds are the
-  true lowest and highest key `lo` and `hi`. Nil when the histogram has fewer than [[min-histogram-bounds]] bounds
-  inside the key range."
+  "The plan of about `runs` runs in parts of about equal rows, from `histogram`, the bounds of a histogram of the key
+  with the same number of rows in each bucket, such as `pg_stats.histogram_bounds` on Postgres (see
+  [[histogram-edges]]). Each bucket is two parts, cut at its middle. Buckets are merged when there are more than
+  `runs` / 2, and each part then has a `:weights` entry, the buckets it holds, for its share of the sample. Nil when
+  the histogram cannot be used."
   [lo hi histogram runs seed]
   (let [lo-n (->number lo)
         hi-n (->number hi)]
-    (when (and lo-n hi-n (< lo-n hi-n))
-      (let [inside (into [] (comp (keep ->number) (filter #(< lo-n % hi-n)) (distinct)) (sort-by ->number histogram))]
-        (when (>= (count inside) min-histogram-bounds)
-          (let [buckets (max 1 (quot runs 2))
-                every   (max 1 (long (Math/ceil (/ (inc (count inside)) (double buckets)))))
-                edges   (vec (concat [lo-n] (take-nth every (drop (dec every) inside)) [hi-n]))
-                edges   (vec (distinct edges))
-                bounds  (conj (into [] (mapcat (fn [[a b]] [a (/ (+ a b) 2.0)])) (partition 2 1 edges)) hi-n)]
-            (plan-for-bounds lo hi bounds seed)))))))
+    (when-let [edges (and lo-n hi-n (< lo-n hi-n) (histogram-edges lo-n hi-n histogram))]
+      (let [n-buckets (dec (count edges))
+            wanted    (max 1 (quot runs 2))
+            picks     (if (> n-buckets wanted)
+                        (into [] (comp (map #(Math/round (double (* % (/ n-buckets (double wanted)))))) (distinct)) (range (inc wanted)))
+                        (vec (range (inc n-buckets))))
+            buckets   (partition 2 1 picks)
+            bounds    (conj (into [] (mapcat (fn [[a b]]
+                                               (let [lower (nth edges a) upper (nth edges b)]
+                                                 [lower (/ (+ lower upper) 2.0)])))
+                                  buckets)
+                            hi-n)]
+        (some-> (plan-for-bounds lo hi bounds seed)
+                (assoc :weights (into [] (mapcat (fn [[a b]] [(- b a) (- b a)])) buckets)))))))
+
+(defn- weighted-limits
+  "The limit of each run, about `rows` in all, in proportion to the `weights` of their parts."
+  [weights rows]
+  (let [total (reduce + weights)]
+    (mapv #(max 1 (Math/round (double (/ (* rows %) total)))) weights)))
 
 (defn sample
   "The [[metabase.driver/table-random-sample]] of key blocks for `fields` of `table`, read on its column `key-name`,
@@ -339,7 +373,7 @@
       (let [n-runs (dec (count (:bounds plan)))
             length (max 1 (long (Math/ceil (/ rows (double n-runs)))))
             {:keys [limits clipped]} (if by-rows
-                                       {:limits (vec (repeat n-runs length)) :clipped 0.0}
+                                       {:limits (weighted-limits (:weights plan) rows) :clipped 0.0}
                                        (arm-limits (read-keys driver database-id
                                                               (assoc plan :keys-compiled
                                                                      (qp.compile/compile (base-query mp table-md [key-col] key-col nil)))

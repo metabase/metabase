@@ -103,5 +103,22 @@
       (is (<= 50 (last widths)))))
   (testing "buckets merged when the histogram has more than half as many as the runs"
     (is (= 5 (count (:bounds (#'key-blocks/histogram-plan 0 1000 (range 0 1001 10) 4 1))))))
-  (testing "no plan for a histogram with too few bounds inside the key range"
-    (is (nil? (#'key-blocks/histogram-plan 0 1000 [0 500 1000] 200 1)))))
+  (testing "no plan for a histogram with too few bounds"
+    (is (nil? (#'key-blocks/histogram-plan 0 1000 [0 500 1000] 200 1))))
+  (testing "the true lowest and highest key replace the histogram's outer bounds, which ANALYZE read from its rows"
+    (let [{:keys [bounds weights]} (#'key-blocks/histogram-plan 0 1000 (range 10 991 10) 200 1)]
+      (is (= 0.0 (first bounds)))
+      (is (= 1000.0 (peek bounds)))
+      (is (= (* 2 98) (dec (count bounds))))
+      (is (every? #{1} weights))))
+  (testing "keys added after the ANALYZE get buckets as wide as the last one"
+    (let [{:keys [bounds weights]} (#'key-blocks/histogram-plan 0 1200 (range 0 1001 10) 200 1)
+          new-share (/ (reduce + (map (fn [lower w] (if (>= lower 1000) w 0)) bounds weights))
+                       (double (reduce + weights)))]
+      (is (< 0.15 new-share 0.19))))
+  (testing "no plan when the keys go so far past the histogram that it says little"
+    (is (nil? (#'key-blocks/histogram-plan 0 1000000000 (range 0 1001 10) 200 1)))))
+
+(deftest ^:parallel weighted-limits-test
+  (testing "each run reads its share of the sample by the buckets of its part"
+    (is (= [25 25 50] (#'key-blocks/weighted-limits [1 1 2] 100)))))

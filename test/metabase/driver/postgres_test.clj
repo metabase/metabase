@@ -3239,3 +3239,12 @@
             (is (<= 16 (count result) 24))
             (is (contains? ids 1))
             (is (contains? ids 100))))))))
+
+(deftest ^:parallel histogram-value-test
+  (testing "the bounds of a histogram have the type of the key's lowest and highest value"
+    (is (= (java.time.LocalDate/of 2026 1 2) (#'postgres/histogram-value "date" (java.sql.Date/valueOf "2026-01-02"))))
+    (is (= (java.time.LocalDateTime/of 2026 1 2 3 4 5)
+           (#'postgres/histogram-value "timestamp" (java.sql.Timestamp/valueOf "2026-01-02 03:04:05"))))
+    (is (instance? java.time.Instant
+                   (#'postgres/histogram-value "timestamptz" (java.sql.Timestamp/valueOf "2026-01-02 03:04:05"))))
+    (is (= 5 (#'postgres/histogram-value "int4" 5)))))
