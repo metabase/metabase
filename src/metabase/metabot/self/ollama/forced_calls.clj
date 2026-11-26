@@ -268,9 +268,9 @@
                      ;; exists to keep it off.
                      ;;
                      ;; the call carries the message `id` and `model` because it goes first: `:start` is
-                     ;; built from the first chunk that has an id, and takes the message's model from it.
-                     ;; Without them the call would open before the message it belongs to, and a one-chunk
-                     ;; answer would report usage without a model. Two chunks from one, so the first `rf`
+                     ;; built from the first chunk, and takes the message's id and model from it.
+                     ;; Without them the message would get a minted id, and a one-chunk answer would
+                     ;; report usage without a model. Two chunks from one, so the first `rf`
                      ;; may already have ended the reduction — a client that hung up mid-stream does
                      ;; exactly that.
                      (u/reduce-preserving-reduced

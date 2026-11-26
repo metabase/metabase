@@ -27,7 +27,6 @@
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -106,7 +105,7 @@
 
 (defmethod mi/non-internal-filter-clause :model/Database
   [_model alias]
-  (let [maybe-alias #(h2x/identifier :field alias %)]
+  (let [maybe-alias #(u/qualified-key alias %)]
     [:not [:or (maybe-alias :is_sample) (maybe-alias :is_audit)]]))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------

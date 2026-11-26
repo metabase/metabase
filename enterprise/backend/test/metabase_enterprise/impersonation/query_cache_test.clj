@@ -69,7 +69,7 @@
   (mt/with-model-cleanup [:model/ImpersonationQueryCache]
     (let [native (mt/random-name)]
       (query-cache/validated-query :postgres false false native (constantly "SELECT 1"))
-      (t2/update! :impersonation_query_cache :input_query native {:input_query "SELECT 'colliding'"})
+      (t2/update! (t2/table-name :model/ImpersonationQueryCache) :input_query native {:input_query "SELECT 'colliding'"})
       (testing "row whose input_query differs is not used, and replacing it keeps surrounding transaction usable"
         (t2/with-transaction [_conn]
           (is (= "SELECT 2" (query-cache/validated-query :postgres false false native (constantly "SELECT 2"))))

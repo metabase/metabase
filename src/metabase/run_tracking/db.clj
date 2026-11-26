@@ -3,7 +3,6 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.app-db.core :as mdb]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -32,7 +31,7 @@
 (defn- cutoff
   "Honey SQL form for `(now - age unit)` in the app-db dialect."
   [age unit]
-  (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit))
+  [:date-add :%now (- age) unit])
 
 (defn- stale-clause
   "ORs together the `[:< column (cutoff age unit)]` predicate for each spec in `stale-specs`."

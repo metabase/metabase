@@ -65,11 +65,11 @@
   tables the user queries, located by their table."
   [{:keys [include-archived] :as opts} :- :metabase.dependencies.items/items-opts]
   {:select    [[:measure.id :entity_id] [:measure.name :name] [:table.display_name :location]]
-   :from      [:measure]
-   :left-join [[:metabase_table :table] [:= :measure.table_id :table.id]]
+   :from      [[(t2/table-name :model/Measure) :measure]]
+   :left-join [[(t2/table-name :model/Table) :table] [:= :measure.table_id :table.id]]
    :where     (into [:and]
                     (remove nil?)
-                    [[:in :measure.table_id ^:allow-subquery {:select [:metabase_table.id]
-                                                              :from   [:metabase_table]
-                                                              :where  (collections.listing/visible-tables-clause :metabase_table.id opts)}]
+                    [[:in :measure.table_id ^:allow-subquery {:select [(u/qualified-key (t2/table-name :model/Table) :id)]
+                                                              :from   [(t2/table-name :model/Table)]
+                                                              :where  (collections.listing/visible-tables-clause (u/qualified-key (t2/table-name :model/Table) :id) opts)}]
                      (collections.listing/archived-clause :measure include-archived)])})

@@ -30,8 +30,8 @@
   "The `:count` of distinct Users matching `filters` (see [[metabase.users.schema/user-filters]]), ignoring any
   `:sort`, `:limit`, or `:offset` in `filters`."
   [filters :- ::users.schema/user-filters]
-  (t2/query (merge {:select [[[:count [:distinct :core_user.id]] :count]]
-                    :from   :core_user}
+  (t2/query (merge {:select [[[:count [:distinct (u/qualified-key (t2/table-name :model/User) :id)]] :count]]
+                    :from   (t2/table-name :model/User)}
                    (users/filter-clauses-without-paging (user/filter-clauses filters)))))
 
 (mu/defn user-sso-source
@@ -47,8 +47,8 @@
   (t2/exists? :model/Card
               {:where (into [:and
                              [:= :archived false]
-                             (perms/visible-collections-filter-clause :report_card.collection_id user-info {:root-namespace nil})
-                             (mi/non-internal-filter-clause :model/Card :report_card)]
+                             (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Card) :collection_id) user-info {:root-namespace nil})
+                             (mi/non-internal-filter-clause :model/Card (t2/table-name :model/Card))]
                             (when card-type [[:= :type card-type]]))}))
 
 (mu/defn has-visible-dashboard?
@@ -57,8 +57,8 @@
   (t2/exists? :model/Dashboard
               {:where [:and
                        [:= :archived false]
-                       (perms/visible-collections-filter-clause :report_dashboard.collection_id user-info {:root-namespace nil})
-                       (mi/non-internal-filter-clause :model/Dashboard :report_dashboard)]}))
+                       (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Dashboard) :collection_id) user-info {:root-namespace nil})
+                       (mi/non-internal-filter-clause :model/Dashboard (t2/table-name :model/Dashboard))]}))
 
 (mu/defn first-login
   "The timestamp of the earliest LoginHistory of the User with `user-id`, or nil."

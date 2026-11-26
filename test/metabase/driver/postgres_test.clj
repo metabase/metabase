@@ -2531,11 +2531,11 @@
                                            :dataset_query (mt/native-query {:query query})
                                            :database_id (mt/id)})]
           ;; update cards such that base_type is missing, similuating existing data
-          (t2/query ["update report_card set result_metadata = ? where id = ?"
-                     (json/encode [(first (:result_metadata model))
-                                   (assoc (second (:result_metadata model))
-                                          :base_type nil)])
-                     (:id model)])
+          (t2/query {:update (t2/table-name :model/Card)
+                     :set    {:result_metadata (json/encode [(first (:result_metadata model))
+                                                             (assoc (second (:result_metadata model))
+                                                                    :base_type nil)])}
+                     :where  [:= :id (:id model)]})
           (let [response (mt/user-http-request :crowberto :put 200
                                                (format "card/%d" (:id model))
                                                {:dataset_query

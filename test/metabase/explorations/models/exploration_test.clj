@@ -324,24 +324,24 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) open)
         (mt/with-model-cleanup [:model/Exploration]
           (let [user-id      (mt/user->id :crowberto)
-                explorations (t2/insert-returning-instances! :model/Exploration
-                                                             (for [i (range 6)]
-                                                               {:name          (str "x" i)
-                                                                :creator_id    user-id
-                                                                :collection_id (:id (if (even? i) open closed))}))
-                threads      (t2/insert-returning-instances! :model/ExplorationThread
-                                                             (for [e explorations] {:exploration_id (:id e)}))
-                blocks       (t2/insert-returning-instances! :model/ExplorationBlock
-                                                             (for [t threads] {:exploration_thread_id (:id t)}))
-                pages        (t2/insert-returning-instances! :model/ExplorationPage
-                                                             (for [b blocks]
-                                                               {:exploration_block_id (:id b), :card_id (:id metric)
-                                                                :dimension_id "d1", :query_type "default"}))
-                queries      (t2/insert-returning-instances! :model/ExplorationQuery
-                                                             (for [[t p] (map vector threads pages)]
-                                                               {:exploration_thread_id (:id t), :page_id (:id p)
-                                                                :card_id (:id metric), :dimension_id "d1", :database_id (mt/id)
-                                                                :dataset_query (venues-count-query)}))]
+                explorations (sort-by :id (t2/insert-returning-instances! :model/Exploration
+                                                                          (for [i (range 6)]
+                                                                            {:name          (str "x" i)
+                                                                             :creator_id    user-id
+                                                                             :collection_id (:id (if (even? i) open closed))})))
+                threads      (sort-by :id (t2/insert-returning-instances! :model/ExplorationThread
+                                                                          (for [e explorations] {:exploration_id (:id e)})))
+                blocks       (sort-by :id (t2/insert-returning-instances! :model/ExplorationBlock
+                                                                          (for [t threads] {:exploration_thread_id (:id t)})))
+                pages        (sort-by :id (t2/insert-returning-instances! :model/ExplorationPage
+                                                                          (for [b blocks]
+                                                                            {:exploration_block_id (:id b), :card_id (:id metric)
+                                                                             :dimension_id "d1", :query_type "default"})))
+                queries      (sort-by :id (t2/insert-returning-instances! :model/ExplorationQuery
+                                                                          (for [[t p] (map vector threads pages)]
+                                                                            {:exploration_thread_id (:id t), :page_id (:id p)
+                                                                             :card_id (:id metric), :dimension_id "d1", :database_id (mt/id)
+                                                                             :dataset_query (venues-count-query)})))]
             (mt/with-test-user :rasta
               (doseq [[model rows parent-model parent-key] [[:model/ExplorationThread threads :model/Exploration :exploration_id]
                                                             [:model/ExplorationBlock blocks :model/ExplorationThread :exploration_thread_id]

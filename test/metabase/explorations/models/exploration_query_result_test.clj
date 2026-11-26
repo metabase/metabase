@@ -100,7 +100,7 @@
 (defn- raw-chart-stats
   [id]
   (:chart_stats (t2/query-one {:select [:chart_stats]
-                               :from   [:exploration_query_result]
+                               :from   [(t2/table-name :model/ExplorationQueryResult)]
                                :where  [:= :id id]})))
 
 (deftest chart-stats-is-stored-as-json-test
@@ -152,7 +152,7 @@
         (let [id (query-result-row! stats-with-warehouse-values)]
           (is (= stats-with-warehouse-values
                  (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id)))
-          (t2/query-one {:update :exploration_query_result
+          (t2/query-one {:update (t2/table-name :model/ExplorationQueryResult)
                          :set    {:chart_stats (json/encode stats-with-warehouse-values)}
                          :where  [:= :id id]})
           (is (thrown? clojure.lang.ExceptionInfo
@@ -165,7 +165,7 @@
     (testing "with no key set there is nothing to decrypt with, so plaintext chart_stats reads back as-is"
       (encryption-test/with-secret-key nil
         (let [id (query-result-row! nil)]
-          (t2/query-one {:update :exploration_query_result
+          (t2/query-one {:update (t2/table-name :model/ExplorationQueryResult)
                          :set    {:chart_stats (json/encode stats-with-warehouse-values)}
                          :where  [:= :id id]})
           (is (= stats-with-warehouse-values
@@ -178,7 +178,7 @@
     (testing "an unparseable blob is logged and read as nil rather than breaking the whole select"
       (encryption-test/with-secret-key nil
         (let [id (query-result-row! nil)]
-          (t2/query-one {:update :exploration_query_result
+          (t2/query-one {:update (t2/table-name :model/ExplorationQueryResult)
                          :set    {:chart_stats "{not json ]["}
                          :where  [:= :id id]})
           (is (nil? (t2/select-one-fn :chart_stats :model/ExplorationQueryResult :id id))))))))

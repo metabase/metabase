@@ -24,10 +24,11 @@
 (mu/defn lock-databases! :- :nil
   "Lock the Database rows with `database-ids` for update until the transaction ends."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/query {:select [:id]
-             :from   [(t2/table-name :model/Database)]
-             :where  [:in :id [:auto/param database-ids]]
-             :for    [:update]})
+  (run! #(t2/query {:select [:id]
+                    :from   [(t2/table-name :model/Database)]
+                    :where  [:in :id %]
+                    :for    [:update]})
+        (mdb/select-partitions database-ids))
   nil)
 
 (mu/defn database
@@ -38,7 +39,7 @@
 (mu/defn database-settings-by-name :- [:map-of :string [:maybe ::warehouses.schema/database.settings]]
   "The `:settings` of the Databases named one of `database-names`, by name, with no other column read."
   [database-names :- [:sequential :string]]
-  (mdb/select-batched-map #(t2/select-fn->fn :name :settings [:model/Database :name :settings] :name [:in [:auto/param %]])
+  (mdb/select-batched-map #(t2/select-fn->fn :name :settings [:model/Database :name :settings] :name [:in %])
                           (distinct database-names)))
 
 (mu/defn non-destination-database

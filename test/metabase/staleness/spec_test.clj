@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.staleness.core :as staleness]
    [metabase.staleness.spec :as staleness.spec]
    [metabase.util.malli.registry :as mr]
@@ -33,7 +34,7 @@
     (testing model
       (let [query ((staleness/candidates-fn model) {:collection-ids :all
                                                     :cutoff-date    (java.time.LocalDate/now)})]
-        (is (mr/validate ::staleness/query query))
+        (is (mr/validate ::funnysql.schema/query.select query))
         (is (= [:id :model :name :last_used_at :collection_id]
                (map #(if (vector? %) (last %) (keyword (last (str/split (name %) #"\.")))) (:select query))))
         (is (sequential? (t2/query query)))))))

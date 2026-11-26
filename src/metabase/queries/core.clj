@@ -81,7 +81,7 @@
  [metabase.queries.cached-result
   allowed-chart-sorts
   assert-can-view-cached-result!
-  viewer-can-view-cached-result?
+  cached-result-view-answers
   cached-dataset]
  [metabase.queries.models.stored-result-use
   assert-can-view-card-snapshots!

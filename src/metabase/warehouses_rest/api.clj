@@ -14,6 +14,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -30,7 +31,6 @@
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -559,7 +559,7 @@
                            (str " " semantic_type)))]))))
 
 (defn- autocomplete-suggestions
-  "`like-pattern` is a `LIKE` right-hand side (see [[h2x/like-substring]] and [[h2x/like-prefix]]) matched against
+  "`like-pattern` is a `LIKE` right-hand side (see [[funnysql.util/like-substring]] and [[funnysql.util/like-prefix]]) matched against
   lowercased table and field names."
   [db-id like-pattern]
   (let [limit  50
@@ -601,8 +601,8 @@
      :headers {"Cache-Control" "public, max-age=60"
                "Vary"          "Cookie"}
      :body    (cond
-                substring (autocomplete-suggestions id (h2x/like-substring substring))
-                prefix    (autocomplete-suggestions id (h2x/like-prefix prefix)))}
+                substring (autocomplete-suggestions id (funnysql.util/like-substring substring))
+                prefix    (autocomplete-suggestions id (funnysql.util/like-prefix prefix)))}
     (catch Throwable e
       (log/warnf "Error with autocomplete: %s" (ex-message e)))))
 

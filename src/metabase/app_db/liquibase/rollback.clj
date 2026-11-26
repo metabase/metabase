@@ -9,9 +9,9 @@
   since every dev deployment records the same version. See [[metabase.app-db.liquibase.versions]] for how versions
   are recorded."
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.db :as app-db.db]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.liquibase.versions :as versions]
    [metabase.util :as u]
@@ -104,8 +104,7 @@
   version-less id is retained, which keeps a version-less changeset first introduced *after* the target as an orphan
   that a later re-upgrade adopts again."
   [^Connection conn changelog-table boundary-deps target-major]
-  (let [all-rows     (jdbc/query {:connection conn}
-                                 [(format "SELECT id, author, filename, deployment_id, dateexecuted, orderexecuted, exectype FROM %s" changelog-table)])
+  (let [all-rows     (app-db.db/changelog-rows conn (versions/table-key changelog-table))
         first-runs   (versions/first-runs conn)
         first-run    (fn [{:keys [exectype] :as row}]
                        (when (= "RERAN" (some-> exectype u/upper-case-en))
@@ -196,9 +195,7 @@
   survive [[delete-deployment-rows!]] and stay attached to a deployment with a recorded version."
   [^Connection conn changelog-table changeset-keys deployment-id]
   (doseq [[filename author id] changeset-keys]
-    (jdbc/execute! {:connection conn}
-                   [(format "UPDATE %s SET deployment_id = ? WHERE filename = ? AND author = ? AND id = ?" changelog-table)
-                    deployment-id filename author id])))
+    (app-db.db/reassign-changelog-row! conn (versions/table-key changelog-table) filename author id deployment-id)))
 
 (defn- delete-deployment-rows!
   "Delete every `databasechangelog` and `databasechangelog_version` row for the fully-rolled-back `deployment-ids`. This
@@ -207,11 +204,7 @@
   [^Connection conn changelog-table deployment-ids]
   (when (seq deployment-ids)
     (doseq [table [changelog-table (versions/versions-table-name)]]
-      (jdbc/execute! {:connection conn}
-                     (into [(format "DELETE FROM %s WHERE deployment_id IN (%s)"
-                                    table
-                                    (str/join ", " (repeat (count deployment-ids) "?")))]
-                           deployment-ids)))))
+      (app-db.db/delete-deployment-rows! conn (versions/table-key table) deployment-ids))))
 
 (defn- rollback-failure-message
   "Error message for a rollback that could not reverse some changesets. Only claims the database was left unchanged

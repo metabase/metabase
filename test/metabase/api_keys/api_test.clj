@@ -198,12 +198,12 @@
   [raw-key]
   (when (str/starts-with? raw-key "mb_")
     (when-let [{stored :key, user-id :user_id}
-               (t2/query-one {:select    [:api_key.key :api_key.user_id]
-                              :from      [:api_key]
-                              :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
+               (t2/query-one {:select    [:k.key :k.user_id]
+                              :from      [[(t2/table-name :model/ApiKey) :k]]
+                              :left-join [[(t2/table-name :model/User) :user] [:= :k.user_id :user.id]]
                               :where     [:and
                                           [:= :user.is_active true]
-                                          [:= :api_key.key_prefix (subs raw-key 0 7)]]
+                                          [:= :k.key_prefix (subs raw-key 0 7)]]
                               :limit     [:inline 1]})]
       (when (u.password/verify-password raw-key "" (encryption/maybe-decrypt stored))
         user-id))))

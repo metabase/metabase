@@ -8,6 +8,7 @@
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing-rest.api-test :as public-test]
@@ -185,6 +186,37 @@
               (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/create-queries :no)
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
               (is (= false (:has_access (latest-view (u/id user) (u/id table))))))))))))
+
+(deftest table-read-external-remap-access-test
+  (testing "has_access of a table read is false when the Table joins an unqueryable Table for an external remap"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-model-cleanup [:model/User]
+        (let [[user] (user/create-users! [{:email (mt/random-email)}])
+              table  (t2/select-one :model/Table :id (mt/id :checkins))]
+          (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :checkins :venue_id)
+                                             :name                    "Venue"
+                                             :type                    :external
+                                             :human_readable_field_id (mt/id :venues :name)}]
+            (mt/with-full-data-perms-for-all-users!
+              (mt/with-current-user (u/id user)
+                (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
+                (is (true? (:has_access (latest-view (u/id user) (u/id table))))))
+              (mt/with-current-user (u/id user)
+                (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
+                (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
+                (is (false? (:has_access (latest-view (u/id user) (u/id table)))))))))))))
+
+(deftest table-read-access-failure-test
+  (testing "a table read whose access cannot be worked out is recorded without access"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-model-cleanup [:model/User]
+        (let [[user] (user/create-users! [{:email (mt/random-email)}])
+              table  (t2/select-one :model/Table :id (mt/id :venues))]
+          (mt/with-full-data-perms-for-all-users!
+            (mt/with-current-user (u/id user)
+              (mt/with-dynamic-fn-redefs [mi/can-query? (fn [_] (throw (ex-info "boom" {})))]
+                (events/publish-event! :event/table-read {:object table :user-id (u/id user)}))
+              (is (false? (:has_access (latest-view (u/id user) (u/id table))))))))))))
 
 (deftest dashboard-read-ee-test
   (mt/with-premium-features #{:audit-app}
@@ -672,12 +704,12 @@
 (defn- latest-v-view-log
   "Returns the most recent row from the v_view_log view for a given entity_id."
   [entity-id]
-  (first (t2/query ["SELECT * FROM v_view_log WHERE entity_id = ? ORDER BY id DESC LIMIT 1" entity-id])))
+  (first (t2/query {:select [:*] :from [:v_view_log] :where [:= :entity_id entity-id] :order-by [[:id :desc]] :limit [:inline 1]})))
 
 (defn- latest-v-query-log
   "Returns the most recent row from the v_query_log view for a given card_id."
   [card-id]
-  (first (t2/query ["SELECT * FROM v_query_log WHERE card_id = ? ORDER BY entity_id DESC LIMIT 1" card-id])))
+  (first (t2/query {:select [:*] :from [:v_query_log] :where [:= :card_id card-id] :order-by [[:entity_id :desc]] :limit [:inline 1]})))
 
 (deftest end-to-end-analytics-views-pii-true-test
   (mt/with-premium-features #{:audit-app}

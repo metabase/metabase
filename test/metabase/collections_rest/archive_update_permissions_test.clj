@@ -175,7 +175,7 @@
                      :model/Collection target {}
                      :model/Card       card   {:collection_id (:id top)}]
         (mt/user-http-request :crowberto :put 200 (str "collection/" (:id top)) {:archived true})
-        (t2/query-one {:update :collection :set {:archive_operation_id nil} :where [:= :id (:id top)]})
+        (t2/query-one {:update (t2/table-name :model/Collection) :set {:archive_operation_id nil} :where [:= :id (:id top)]})
         (mt/user-http-request :crowberto :put 200 (str "collection/" (:id top))
                               (cond-> request (:parent_id request) (assoc :parent_id (:id target))))
         (is (= {(:id top) false} (archived-flags :model/Collection [top])))

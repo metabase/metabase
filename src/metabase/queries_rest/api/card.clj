@@ -10,6 +10,7 @@
    [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -39,7 +40,6 @@
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -345,7 +345,7 @@
                          supported-series-display-type
                          last-cursor
                          exclude-ids
-                         (when query (h2x/like-substring query))
+                         (when query (funnysql.util/like-substring query))
                          ;; add a little buffer to the page to account for cards that are not
                          ;; compatible + do not have permissions to read
                          ;; this is just a heuristic, but it should be good enough
@@ -739,9 +739,8 @@
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
 
 (defn- collection-position-updates
-  "The updates that add the Cards that had a position in their previous Collection to the end of the new one, in the
-  order of their old positions, ties between Cards of several old Collections falling in the order the database
-  returned them."
+  "The updates that move `sorted-cards` into the Collection `new-collection-id-or-nil`, or the root when nil.
+  They take the positions after the Collection's highest, in the order given."
   [new-collection-id-or-nil sorted-cards]
   (let [max-position      (:max_position (queries-rest.db/max-collection-position new-collection-id-or-nil))
         ;; collection_position for the next card in the collection
@@ -772,9 +771,10 @@
       ;; get duplicates
       (t2/with-transaction [_conn]
         (t2/with-transaction [_conn]
-          ;; If any of the cards have a `:collection_position`, we'll need to fixup the old collection now that the cards
-          ;; are gone and update the position in the new collection
-          (let [with-position (sort-by :collection_position (filter :collection_position cards))]
+          ;; Cards with a `:collection_position` go to the end of the new Collection, and the positions they leave
+          ;; behind are closed. They arrive in no fixed order and Cards from several old Collections can share a
+          ;; position, so the id breaks ties.
+          (let [with-position (sort-by (juxt :collection_position :id) (filter :collection_position cards))]
             (queries.card/update-cards! (into (collection-position-updates new-collection-id-or-nil with-position)
                                               (comp (remove :collection_position)
                                                     (map (fn [card] {:id (u/the-id card) :collection_id new-collection-id-or-nil})))

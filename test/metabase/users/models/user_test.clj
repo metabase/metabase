@@ -786,7 +786,7 @@
   `MB_ENCRYPTION_SECRET_KEY` is set, never reaching the code under test. What is left after decryption is not JSON, so
   the transform falls back to returning the raw column value (a String) instead of a map."
   [user-id]
-  (t2/query {:update :core_user
+  (t2/query {:update (t2/table-name :model/User)
              :set    {:settings (encryption/maybe-encrypt unparseable-settings-plaintext)}
              :where  [:= :id user-id]}))
 
@@ -1072,7 +1072,7 @@
 
 (deftest user-update-event-holds-only-columns-it-may-carry-test
   (mt/with-temp [:model/User {user-id :id} {}]
-    (t2/update! :core_user :id user-id {:password "stored-value" :password_salt "stored-value" :reset_token "stored-value"})
+    (t2/update! (t2/table-name :model/User) :id user-id {:password "stored-value" :password_salt "stored-value" :reset_token "stored-value"})
     (let [events  (events.tu/published-events! #(user/update-users! [{:id user-id :first_name "Test"}]))
           objects (for [[topic event] events
                         :when         (= :event/user-update topic)

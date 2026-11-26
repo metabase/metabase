@@ -107,20 +107,18 @@
   (log/info "Adjusted Audit DB for loading Analytics Content"))
 
 (defn- fix-h2-card-metadata! [audit-db-id]
-  (t2/with-connection [^java.sql.Connection conn]
-    (with-open [stmt (.prepareStatement conn "UPDATE \"REPORT_CARD\" SET \"RESULT_METADATA\" = ? WHERE \"ID\" = ?;")]
-      (reduce
-       (fn [_ card]
-         (when-let [result-metadata (not-empty (some-> (:result_metadata card) (json/decode true)))]
-           (let [fixed-metadata (for [col result-metadata]
-                                  (update col :name u/upper-case-en))
-                 json-metadata  (json/encode fixed-metadata)]
-             (.setString stmt 1 json-metadata)
-             (.setInt stmt 2 (:id card))
-             (.addBatch stmt))))
-       nil
-       (audit-app.db/card-result-metadata-reducible audit-db-id))
-      (.executeBatch stmt))))
+  (when-let [updates (not-empty
+                      (into []
+                            (keep (fn [card]
+                                    (when-let [result-metadata (not-empty (some-> (:result_metadata card)
+                                                                                  (json/decode true)))]
+                                      {:id              (:id card)
+                                       :result_metadata (mapv #(update % :name u/upper-case-en)
+                                                              (lib/normalize :metabase.queries.schema/card.result-metadata
+                                                                             result-metadata))
+                                       :updated_at      :updated_at})))
+                            (audit-app.db/card-result-metadata-reducible audit-db-id)))]
+    (queries.card/update-cards! updates {:writer :sync})))
 
 (defn- adjust-audit-db-to-host!
   [{audit-db-id :id :keys [engine] :as audit-db}]

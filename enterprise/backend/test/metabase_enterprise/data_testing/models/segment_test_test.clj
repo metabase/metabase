@@ -56,7 +56,7 @@
                                                  :name         "a test"
                                                  :inputs       []
                                                  :expectations [{:type "empty" :name "no sql"}]})))
-    (is (zero? (t2/count :segment_test :segment_id segment-id)))))
+    (is (zero? (t2/count (t2/table-name :model/SegmentTest) :segment_id segment-id)))))
 
 (deftest last-run-hydration-finds-only-segment-runs-test
   (mt/with-temp [:model/Segment     {segment-id :id}                  (data-testing.test-util/from-google-segment)
@@ -229,7 +229,7 @@
         (is (= (conj (segment-path) {:label "A test" :key test-eid}) (test-path))))
       (testing "the definition's table places the test, as it places the segment, when `table_id` names another table"
         ;; A raw write: the Segment model sets `table_id` from the definition.
-        (t2/query-one {:update :segment :set {:table_id (mt/id :orders)} :where [:= :id segment-id]})
+        (t2/query-one {:update (t2/table-name :model/Segment) :set {:table_id (mt/id :orders)} :where [:= :id segment-id]})
         (is (=? [{:label "databases"} {:label string?} {:label "schemas"} {:label string?}
                  {:label "tables"} {:label #"(?i)people"} {:label "segments"} {:key segment-eid}
                  {:label "A test" :key test-eid}]

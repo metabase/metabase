@@ -48,7 +48,7 @@
         (lib/breakout (lib/with-temporal-bucket created-at :month)))))
 
 (defn- set-default-metric-dimension! [metric-id display-name]
-  (metrics/sync-dimensions! :metadata/metric metric-id)
+  (metrics/sync-dimensions! :metadata/metric [metric-id])
   (let [metric    (t2/select-one :model/Card :id metric-id)
         dimension (some #(when (= display-name (:display-name %)) %) (:dimensions metric))
         dimensions (mapv #(if (= (:id dimension) (:id %))
