@@ -544,24 +544,25 @@ describe("QueryBuilder > waterfall chart", () => {
       await waitFor(() =>
         expect(within(chart).getByText("Total")).toBeInTheDocument(),
       );
-      expect(within(chart).getByText("Created At: Year")).toBeInTheDocument();
-      expect(within(chart).getByText("Count")).toBeInTheDocument();
-      expect(within(chart).queryByText("Sum of Total")).not.toBeInTheDocument();
-      for (const label of ["2025", "2026", "2029"]) {
-        expect(within(chart).getByText(label)).toBeInTheDocument();
-      }
-      for (const label of ["0", "3,000", "6,000", "18,000", "21,000"]) {
-        expect(within(chart).getByText(label)).toBeInTheDocument();
-      }
-
+      // only the first metric is drawn and offered
       const sidebar = getSettingsSidebar();
-      expect(within(sidebar).getByDisplayValue("Count")).toBeInTheDocument();
+      expect(within(chart).queryByText("Sum of Total")).not.toBeInTheDocument();
       expect(
         within(sidebar).queryByDisplayValue("Sum of Total"),
       ).not.toBeInTheDocument();
       expect(
         within(sidebar).queryByText(/Add another/),
       ).not.toBeInTheDocument();
+
+      expect(within(chart).getByText("Created At: Year")).toBeInTheDocument();
+      expect(within(chart).getByText("Count")).toBeInTheDocument();
+      for (const label of ["2025", "2026", "2029"]) {
+        expect(within(chart).getByText(label)).toBeInTheDocument();
+      }
+      for (const label of ["0", "3,000", "6,000", "18,000", "21,000"]) {
+        expect(within(chart).getByText(label)).toBeInTheDocument();
+      }
+      expect(within(sidebar).getByDisplayValue("Count")).toBeInTheDocument();
 
       await userEvent.click(within(sidebar).getByDisplayValue("Count"));
       await userEvent.click(
