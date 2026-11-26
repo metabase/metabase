@@ -1,5 +1,5 @@
 (ns metabase.driver.oracle
-  (:refer-clojure :exclude [mapv not-empty select-keys])
+  (:refer-clojure :exclude [empty? mapv not-empty select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -29,7 +29,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv not-empty select-keys]])
+   [metabase.util.performance :refer [empty? mapv not-empty select-keys]])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (java.security KeyStore)
@@ -813,6 +813,71 @@
     "WMSYS"
     "XDB"
     "XS$NULL"})
+
+;;; ------------------------------------------------ Table statistics -----------------------------------------------
+
+;; Only for `:oracle` itself, so that a child driver keeps its own catalog.
+(defmethod driver/database-supports? [:oracle :table-statistics]
+  [driver _feature _db]
+  (= driver :oracle))
+
+(def ^:private table-statistics-timeout-seconds
+  "The time limit of the catalog query for the statistics of a table."
+  15)
+
+(defn- statistics-rows
+  "The optimizer statistics of the columns of `table` with the table's row count, when they are not stale: Oracle sets
+  `STALE_STATS` to `YES` when more rows changed than the table preference `STALE_PERCENT` allows (10% by default),
+  as its change monitoring last flushed them."
+  [database table]
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+              [(str "SELECT c.column_name, c.num_distinct, c.num_nulls, t.num_rows"
+                    " FROM all_tab_col_statistics c"
+                    " JOIN all_tab_statistics t ON t.owner = c.owner AND t.table_name = c.table_name"
+                    " AND t.partition_name IS NULL AND t.object_type = 'TABLE'"
+                    " WHERE c.owner = ? AND c.table_name = ? AND t.stale_stats = 'NO' AND t.num_rows IS NOT NULL"
+                    " AND t.global_stats = 'YES'"
+                    ;; a gather of some columns writes a new row count and keeps the old statistics of the others
+                    " AND c.last_analyzed >= t.last_analyzed"
+                    ;; real-time statistics add a second row for a column, of the changes since the gather
+                    " AND (c.notes IS NULL OR c.notes NOT LIKE '%STATS_ON_CONVENTIONAL_DML%')")
+               (:schema table) (:name table)]
+              {:timeout table-statistics-timeout-seconds}))
+
+(defn- column-fingerprint
+  "The partial fingerprint of a column from its statistics: `NUM_DISTINCT` does not count NULL, and a fingerprint does,
+  so a column with NULLs gets one more; 0 means no distinct count."
+  [{:keys [num_distinct num_nulls num_rows]}]
+  (let [nulls (some-> num_nulls long)
+        rows  (some-> num_rows long)]
+    {:global (cond-> {}
+               (and nulls rows (pos? rows))
+               (assoc :nil% (min 1.0 (/ nulls (double rows))))
+
+               (some-> num_distinct pos?)
+               (assoc :distinct-count (+ (long num_distinct) (if (some-> nulls pos?) 1 0))))}))
+
+;; `LAST_ANALYZED` is a `DATE` in the time of the database server, with no time zone, so the origin has no time.
+;; With the default sample size, Oracle reads all the rows and estimates the distinct count, so it is an estimate.
+(defmethod driver/table-statistics :oracle
+  [_driver database table fields {:keys [want]}]
+  (let [want?    #(or (empty? want) (contains? want %))
+        rows     (when (or (want? :fingerprint) (want? :row-count))
+                   (statistics-rows database table))
+        origin   {:source :catalog :kind :estimate}
+        by-name  (into {} (map (juxt :column_name identity)) rows)
+        by-field (when (want? :fingerprint)
+                   (into {}
+                         (keep (fn [{:keys [id] field-name :name}]
+                                 (when-let [stats (by-name field-name)]
+                                   (let [fingerprint (column-fingerprint stats)]
+                                     (when (seq (:global fingerprint))
+                                       [id {:fingerprint fingerprint :origin origin}])))))
+                         fields))
+        row-count (some-> (first rows) :num_rows long)]
+    (cond-> {}
+      (and row-count (want? :row-count)) (assoc :row-count {:value row-count :origin origin})
+      (seq by-field)                     (assoc :fields by-field))))
 
 (defmethod driver/escape-entity-name-for-metadata :oracle
   [_ entity-name]
