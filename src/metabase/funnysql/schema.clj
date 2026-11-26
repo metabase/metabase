@@ -10,11 +10,13 @@
   [:enum :h2 :postgres :mysql])
 
 (mr/def ::bound-value
-  "A non-numeric, non-boolean value Funny SQL binds as a `?` parameter: a string, a UUID, a date or time, or bytes."
+  "A non-numeric, non-boolean value Funny SQL binds as a `?` parameter: a string, a UUID, a date or time (`java.time` or
+  `java.util.Date`), or bytes."
   [:or
    :string
    :uuid
    ms/TemporalInstant
+   (ms/InstanceOfClass java.util.Date)
    [:fn {:error/message "a byte array"} bytes?]])
 
 (mr/def ::bindable
