@@ -7,11 +7,14 @@ import type {
   DatabaseData,
   DatabaseFieldGroup,
   DatabaseFieldOrGroup,
+  DatabaseSettings,
   Engine,
   EngineField,
 } from "metabase-types/api";
 
 import { ADVANCED_FIELDS, FIELD_OVERRIDES } from "../constants";
+
+import { SCAN_ONLY_USED_FIELD_VALUES_SETTING } from "./settings";
 
 const SCHEDULE_SCHEMA = Yup.object({
   schedule_type: Yup.mixed().nullable(),
@@ -47,6 +50,14 @@ export const getValidationSchema = (
     is_on_demand: Yup.boolean().default(false),
     "connection-string": Yup.string().default(""),
     provider_name: Yup.string().nullable().default(null),
+    // The form edits only this setting. The cast strips the other keys, so a save cannot send stale values for them.
+    settings: Yup.object({
+      [SCAN_ONLY_USED_FIELD_VALUES_SETTING]: Yup.mixed<boolean>().transform(
+        (value: unknown) => (typeof value === "boolean" ? value : undefined),
+      ),
+    })
+      .nullable()
+      .default(undefined),
   });
 };
 
@@ -106,14 +117,30 @@ export const getSubmitValues = (
 
   // "connection-string" is a FE only field. It's used to prefill the database form and we're not sending it to or storing it in the BE.
   const submitValues = Object.entries(values).filter(
-    ([key]) => key !== "connection-string",
+    ([key]) => key !== "connection-string" && key !== "settings",
   );
+  const settings = getSubmitSettings(values.settings);
 
   return {
     // Unjustified type cast. FIXME
     ...(Object.fromEntries(submitValues) as DatabaseData),
     details: Object.fromEntries(entries),
+    ...(settings && { settings }),
   };
+};
+
+/**
+ * The settings to send on save: only the setting this form edits, and only when it has a value.
+ * The backend merges the keys it gets, and a `null` value there would unset a setting.
+ */
+const getSubmitSettings = (
+  settings: DatabaseData["settings"],
+): DatabaseSettings | undefined => {
+  const isScanOnlyUsed = settings?.[SCAN_ONLY_USED_FIELD_VALUES_SETTING];
+
+  return typeof isScanOnlyUsed === "boolean"
+    ? { [SCAN_ONLY_USED_FIELD_VALUES_SETTING]: isScanOnlyUsed }
+    : undefined;
 };
 
 const getFieldSchema = (field: EngineField) => {

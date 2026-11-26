@@ -51,4 +51,32 @@ describe("checkFormIsDirty", () => {
 
     expect(checkFormIsDirty(initialValues, currentValues)).toBe(false);
   });
+
+  it("should treat a missing scan-only-used-field-values setting as false", () => {
+    const currentValues = createMockDatabaseData({
+      settings: { "scan-only-used-field-values": false },
+    });
+
+    expect(
+      checkFormIsDirty(
+        createMockDatabaseData({ settings: null }),
+        currentValues,
+      ),
+    ).toBe(false);
+    expect(
+      checkFormIsDirty(createMockDatabaseData({ settings: {} }), currentValues),
+    ).toBe(false);
+    expect(checkFormIsDirty(createMockDatabaseData(), currentValues)).toBe(
+      false,
+    );
+  });
+
+  it("should be dirty when the scan-only-used-field-values setting changes", () => {
+    const initialValues = createMockDatabaseData({ settings: null });
+    const currentValues = createMockDatabaseData({
+      settings: { "scan-only-used-field-values": true },
+    });
+
+    expect(checkFormIsDirty(initialValues, currentValues)).toBe(true);
+  });
 });

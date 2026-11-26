@@ -11,6 +11,8 @@ export type InitialSyncStatus = LongTaskStatus;
 export type DatabaseSettings = {
   [key: string]: any;
   "database-enable-actions"?: boolean;
+  /** With `is_full_sync`, the scheduled scan reads only the value lists people used since their last scan */
+  "scan-only-used-field-values"?: boolean;
 };
 
 export type DatabaseFeature =
