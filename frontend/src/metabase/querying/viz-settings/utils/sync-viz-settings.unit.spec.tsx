@@ -551,6 +551,71 @@ describe("syncVizSettings", () => {
 });
 
 describe("syncVizSettingsWithQuery", () => {
+  describe("column_settings", () => {
+    function createQuery(factors: number[]) {
+      return Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: factors.map((factor) => ({
+              name: `Sum(Total * ${factor})`,
+              value: {
+                type: "operator",
+                operator: "sum",
+                args: [
+                  {
+                    type: "operator",
+                    operator: "*",
+                    args: [
+                      { type: "column", name: "TOTAL" },
+                      { type: "literal", value: factor },
+                    ],
+                  },
+                ],
+              },
+            })),
+          },
+        ],
+      });
+    }
+
+    it.each([
+      { stage: "the summary stage", appendStage: false },
+      { stage: "a later stage", appendStage: true },
+    ])(
+      "keeps each column's formatting in $stage when an edited formula takes its sibling's name",
+      ({ appendStage }) => {
+        const summaryQuery = createQuery([5, 6]);
+        const oldQuery = appendStage
+          ? Lib.appendStage(summaryQuery)
+          : summaryQuery;
+        const [original] = Lib.aggregations(oldQuery, 0);
+        const [replacement] = Lib.aggregations(createQuery([6]), -1);
+        const newQuery = Lib.replaceClause(oldQuery, 0, original, replacement);
+        const settings = createMockVisualizationSettings({
+          column_settings: {
+            '["name","Sum(Total * 5)"]': { number_style: "currency" },
+            '["name","Sum(Total * 6)"]': { decimals: 3 },
+          },
+        });
+
+        const newSettings = syncVizSettingsWithQuery(
+          settings,
+          newQuery,
+          oldQuery,
+          {
+            editedFormula: "aggregation",
+          },
+        );
+
+        expect(newSettings.column_settings).toEqual({
+          '["name","Sum(Total * 6)"]': { number_style: "currency" },
+          '["name","Sum(Total * 6)_2"]': { decimals: 3 },
+        });
+      },
+    );
+  });
+
   describe("table.columns", () => {
     it("should not duplicate a hidden breakout column when it is removed and added again (metabase#22382)", () => {
       const createQuery = (breakouts: TestBreakoutSpec[]) =>

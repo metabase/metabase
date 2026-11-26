@@ -29,6 +29,7 @@ export function syncVizSettingsWithQuery(
   settings: VisualizationSettings,
   newQuery: Lib.Query,
   oldQuery: Lib.Query,
+  options: Pick<SyncVizSettingsOpts, "editedFormula"> = {},
 ): VisualizationSettings {
   if (isNativeQuery(newQuery) || isNativeQuery(oldQuery)) {
     return settings;
@@ -36,7 +37,7 @@ export function syncVizSettingsWithQuery(
 
   const newColumns = getReturnedColumns(newQuery);
   const oldColumns = getReturnedColumns(oldQuery);
-  return syncVizSettings(settings, newColumns, oldColumns);
+  return syncVizSettings(settings, newColumns, oldColumns, options);
 }
 
 export function syncVizSettingsWithSeries(
@@ -62,7 +63,10 @@ export function syncVizSettingsWithSeries(
   });
 }
 
+export type EditedFormula = "aggregation" | "expression";
+
 export type SyncVizSettingsOpts = {
+  editedFormula?: EditedFormula;
   placeNewColumnsInQueryOrder?: boolean;
 };
 
@@ -79,7 +83,12 @@ export function syncVizSettings(
     oldColumns,
     options,
   );
-  nextSettings = syncColumnSettings(nextSettings, newColumns, oldColumns);
+  nextSettings = syncColumnSettings(
+    nextSettings,
+    newColumns,
+    oldColumns,
+    options,
+  );
   nextSettings = syncGraphMetrics(nextSettings, newColumns, oldColumns);
   nextSettings = syncPivotColumnSplit(nextSettings, newColumns, oldColumns);
   nextSettings = syncPivotCollapsedRows(nextSettings, newColumns, oldColumns);
@@ -226,10 +235,53 @@ function syncTableColumns(
   };
 }
 
+function matchColumnsByPosition(
+  newColumns: ColumnInfo[],
+  oldColumns: ColumnInfo[],
+) {
+  if (oldColumns.length !== newColumns.length) {
+    return newColumns;
+  }
+  return newColumns.map((column, index) => ({
+    ...column,
+    key: oldColumns[index].key,
+  }));
+}
+
+/** Replacing a formula can rename both its result column and a sibling with the same name. */
+function matchFormulaEditColumns(
+  newColumns: ColumnInfo[],
+  oldColumns: ColumnInfo[],
+  editedFormula: EditedFormula,
+) {
+  if (editedFormula === "aggregation") {
+    return matchColumnsByPosition(newColumns, oldColumns);
+  }
+
+  const newDimensions = newColumns.filter((column) => !column.isAggregation);
+  const oldDimensions = oldColumns.filter((column) => !column.isAggregation);
+  const oldKeys = new Set(oldDimensions.map((column) => column.key));
+  const newKeys = new Set(newDimensions.map((column) => column.key));
+  const renamed = newDimensions.filter((column) => !oldKeys.has(column.key));
+  const replaced = oldDimensions.filter((column) => !newKeys.has(column.key));
+
+  return [
+    // Rebuilding a formula's breakouts can move other groupings. Match those by key first.
+    ...newDimensions.filter((column) => oldKeys.has(column.key)),
+    // Breakouts that collapse into one retain the first grouping.
+    ...matchColumnsByPosition(renamed, replaced.slice(0, renamed.length)),
+    ...matchColumnsByPosition(
+      newColumns.filter((column) => column.isAggregation),
+      oldColumns.filter((column) => column.isAggregation),
+    ),
+  ];
+}
+
 function syncColumnSettings(
   settings: VisualizationSettings,
   newColumns: ColumnInfo[],
   oldColumns: ColumnInfo[],
+  { editedFormula }: SyncVizSettingsOpts,
 ): VisualizationSettings {
   const columnSettings = settings["column_settings"];
   if (!columnSettings) {
@@ -238,7 +290,9 @@ function syncColumnSettings(
 
   const columnEntries = syncColumns<[string, ColumnSettings]>({
     settings: Object.entries(columnSettings),
-    newColumns,
+    newColumns: editedFormula
+      ? matchFormulaEditColumns(newColumns, oldColumns, editedFormula)
+      : newColumns,
     oldColumns,
     getColumnName: ([key]) => getColumnNameFromKey(key),
     setColumnName: ([_key, setting], name) => [getColumnKey({ name }), setting],

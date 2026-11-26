@@ -1,3 +1,4 @@
+import type { EditedFormula } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import type * as Lib from "metabase-lib";
 import type {
   ColumnNameColumnSplitSetting,
@@ -18,7 +19,7 @@ export type SummaryQueryChangeOptions = {
   isFormulaCreated?: boolean;
   renamedFormula?: { name: string; nextName: string };
   /** A formula of the stage changed its definition. */
-  editedFormula?: boolean;
+  editedFormula?: EditedFormula;
 };
 
 export type SummaryField =

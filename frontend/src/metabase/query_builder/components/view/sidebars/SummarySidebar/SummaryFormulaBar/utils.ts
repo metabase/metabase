@@ -271,7 +271,7 @@ export function editSummaryFormula(
       formula.clause,
       Lib.withExpressionName(expression.clause, name),
     );
-    return { query: nextQuery, options: { editedFormula: true } };
+    return { query: nextQuery, options: { editedFormula: "aggregation" } };
   }
   const { query: nextQuery, name: nextName } = editExpression(
     query,
@@ -290,6 +290,6 @@ export function editSummaryFormula(
       formula.name,
       nextName,
     ),
-    options: { editedFormula: true, renamedFormula },
+    options: { editedFormula: "expression", renamedFormula },
   };
 }

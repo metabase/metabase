@@ -23,6 +23,10 @@ import {
 } from "metabase/common/utils/card";
 import { format } from "metabase/querying/expressions";
 import * as formatter from "metabase/querying/expressions/formatter/formatter";
+import {
+  type EditedFormula,
+  syncVizSettingsWithQuery,
+} from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import type {
@@ -183,7 +187,10 @@ async function setup({
   }
   setupUserMetabotPermissionsEndpoint();
 
-  const onQueryChange = jest.fn<void, [Lib.Query, SummaryPivotChange?]>();
+  const onQueryChange = jest.fn<
+    void,
+    [Lib.Query, SummaryPivotChange?, EditedFormula?]
+  >();
   const metadata = createMockMetadata({
     databases: [database],
     questions: metrics,
@@ -220,7 +227,7 @@ async function setup({
             query={query}
             stageIndex={stageIndex}
             pivotColumnSplit={pivotColumnSplit}
-            onQueryChange={(nextQuery, pivotChange) => {
+            onQueryChange={(nextQuery, pivotChange, editedFormula) => {
               savedCard = question.setQuery(nextQuery).card();
               setCard(savedCard);
               if (pivotChange?.type === "show") {
@@ -229,7 +236,7 @@ async function setup({
               if (pivotChange?.type === "hide") {
                 setPivotColumnSplit(undefined);
               }
-              onQueryChange(nextQuery, pivotChange);
+              onQueryChange(nextQuery, pivotChange, editedFormula);
             }}
           />
         )}
@@ -1269,6 +1276,49 @@ describe("editing a formula chip", () => {
     expect(Lib.expressions(nextQuery, -1)).toHaveLength(1);
     expect(getFormulaChip("Order date: Year")).toBeInTheDocument();
     expect(getFormulaChip("Order date: Month")).toBeInTheDocument();
+  });
+
+  it("keeps the first grouping's format when an edited formula can no longer group by year and month", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          expressions: [
+            { name: "now()", value: { type: "operator", operator: "now" } },
+          ],
+          breakouts: [
+            { type: "column", name: "now()", unit: "year" },
+            { type: "column", name: "now()", unit: "month" },
+            { type: "column", name: "QUANTITY" },
+          ],
+          aggregations: [{ type: "operator", operator: "count" }],
+        },
+      ],
+    });
+    const { onQueryChange } = await setup({ query });
+
+    await openFormula("now(): Month");
+    await changeFormula("[Total] * 2");
+    await userEvent.keyboard("{Enter}");
+    await expectClosed();
+
+    const [nextQuery, , editedFormula] = onQueryChange.mock.calls[0];
+    const settings = syncVizSettingsWithQuery(
+      {
+        column_settings: {
+          '["name","now()"]': { column_title: "Annual totals" },
+          '["name","now()_2"]': { column_title: "Monthly totals" },
+          '["name","QUANTITY"]': { decimals: 3 },
+        },
+      },
+      nextQuery,
+      query,
+      { editedFormula },
+    );
+    expect(settings.column_settings).toEqual({
+      '["name","Total * 2"]': { column_title: "Annual totals" },
+      '["name","QUANTITY"]': { decimals: 3 },
+    });
   });
 
   it("closes the bar when the removed chip's column name passes to another formula", async () => {

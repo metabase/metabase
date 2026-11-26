@@ -40,7 +40,7 @@ export function updateSummaryFormula({
     stageIndex < 0 ? Lib.stageCount(query) + stageIndex : stageIndex;
   const owned = reconcileSummaryFormulas(query, generatedExpressions).map(
     (formula) => {
-      const isRewrite = isNotNull(renamedFormula) || editedFormula === true;
+      const isRewrite = isNotNull(renamedFormula) || isNotNull(editedFormula);
       if (!isRewrite || formula.stageIndex !== index) {
         return formula;
       }
