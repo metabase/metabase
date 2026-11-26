@@ -26,14 +26,14 @@
   [model   :- :keyword
    pks     :- [:sequential {:min 1} [:or :int :string]]
    columns :- ::columns]
-  (app-db/select-batched #(t2/select (selected model columns) :toucan/pk [:in [:auto/param %]]) pks))
+  (app-db/select-batched #(t2/select (selected model columns) :toucan/pk [:in %]) pks))
 
 (mu/defn rows-by-entity-ids :- [:sequential ::row]
   "The `model` rows, with only `columns` unless nil, whose entity id is one of `eids`."
   [model   :- :keyword
    eids    :- [:sequential {:min 1} :string]
    columns :- ::columns]
-  (app-db/select-batched #(t2/select (selected model columns) :entity_id [:in [:auto/param %]]) eids))
+  (app-db/select-batched #(t2/select (selected model columns) :entity_id [:in %]) eids))
 
 (mu/defn rows-by-column-values :- [:sequential ::row]
   "The `model` rows, with only `columns` unless nil, whose `column` holds one of `values`."
@@ -41,19 +41,19 @@
    column  :- :keyword
    values  :- [:sequential {:min 1} [:or :int :string]]
    columns :- ::columns]
-  (app-db/select-batched #(t2/select (selected model columns) column [:in [:auto/param %]]) values))
+  (app-db/select-batched #(t2/select (selected model columns) column [:in %]) values))
 
 (mu/defn users-by-emails :- [:sequential ::row]
   "The Users, with only `columns` unless nil, whose email is one of `emails`."
   [emails  :- [:sequential {:min 1} :string]
    columns :- ::columns]
-  (app-db/select-batched #(t2/select (selected :model/User columns) :email [:in [:auto/param %]]) emails))
+  (app-db/select-batched #(t2/select (selected :model/User columns) :email [:in %]) emails))
 
 (mu/defn databases-by-names :- [:sequential ::row]
   "The Databases, with only `columns` unless nil, whose name is one of `db-names`."
   [db-names :- [:sequential {:min 1} :string]
    columns  :- ::columns]
-  (app-db/select-batched #(t2/select (selected :model/Database columns) :name [:in [:auto/param %]]) db-names))
+  (app-db/select-batched #(t2/select (selected :model/Database columns) :name [:in %]) db-names))
 
 (mu/defn tables-by-names :- [:sequential ::row]
   "The Tables, with only `columns` unless nil, of the Databases with `db-ids` whose name is one of `table-names`."
@@ -61,8 +61,8 @@
    table-names :- [:sequential {:min 1} :string]
    columns     :- ::columns]
   (app-db/select-batched #(t2/select (selected :model/Table columns)
-                                     :db_id [:in [:auto/param (vec db-ids)]]
-                                     :name  [:in [:auto/param %]])
+                                     :db_id [:in (vec db-ids)]
+                                     :name  [:in %])
                          table-names))
 
 (mu/defn top-level-fields-by-names :- [:sequential ::row]
@@ -73,9 +73,9 @@
    columns     :- ::columns]
   (app-db/select-batched (fn [table-ids]
                            (app-db/select-batched #(t2/select (selected :model/Field columns)
-                                                              :table_id  [:in [:auto/param table-ids]]
+                                                              :table_id  [:in table-ids]
                                                               :parent_id nil
-                                                              :name      [:in [:auto/param %]])
+                                                              :name      [:in %])
                                                   field-names))
                          table-ids))
 
@@ -87,8 +87,8 @@
    columns     :- ::columns]
   (app-db/select-batched (fn [parent-ids]
                            (app-db/select-batched #(t2/select (selected :model/Field columns)
-                                                              :parent_id [:in [:auto/param parent-ids]]
-                                                              :name      [:in [:auto/param %]])
+                                                              :parent_id [:in parent-ids]
+                                                              :name      [:in %])
                                                   field-names))
                          parent-ids))
 
@@ -96,38 +96,38 @@
   "The Settings whose key is one of `setting-keys`, with only `columns` unless nil."
   [setting-keys :- [:sequential {:min 1} :string]
    columns      :- ::columns]
-  (t2/select (selected :model/Setting columns) :key [:in [:auto/param (vec setting-keys)]]))
+  (t2/select (selected :model/Setting columns) :key [:in (vec setting-keys)]))
 
 (mu/defn channels-by-names :- [:sequential ::row]
   "The Channels whose name is one of `channel-names`, with only `columns` unless nil."
   [channel-names :- [:sequential {:min 1} :string]
    columns       :- ::columns]
-  (app-db/select-batched #(t2/select (selected :model/Channel columns) :name [:in [:auto/param %]]) channel-names))
+  (app-db/select-batched #(t2/select (selected :model/Channel columns) :name [:in %]) channel-names))
 
 (mu/defn field-values-by-field-ids :- [:sequential ::row]
   "The FieldValues of the Fields with `field-ids`, with only `columns` unless nil."
   [field-ids :- [:sequential {:min 1} :int]
    columns   :- ::columns]
-  (app-db/select-batched #(t2/select (selected :model/FieldValues columns) :field_id [:in [:auto/param %]]) field-ids))
+  (app-db/select-batched #(t2/select (selected :model/FieldValues columns) :field_id [:in %]) field-ids))
 
 (mu/defn dimensions-by-field-ids :- [:sequential ::row]
   "The Dimensions of the Fields with `field-ids`, with only `columns` unless nil."
   [field-ids :- [:sequential {:min 1} :int]
    columns   :- ::columns]
-  (app-db/select-batched #(t2/select (selected :model/Dimension columns) :field_id [:in [:auto/param %]]) field-ids))
+  (app-db/select-batched #(t2/select (selected :model/Dimension columns) :field_id [:in %]) field-ids))
 
 (mu/defn field-user-settings-by-field-ids :- [:sequential ::row]
   "The FieldUserSettings of the Fields with `field-ids`, with only `columns` unless nil."
   [field-ids :- [:sequential {:min 1} :int]
    columns   :- ::columns]
-  (app-db/select-batched #(t2/select (selected :model/FieldUserSettings columns) :field_id [:in [:auto/param %]])
+  (app-db/select-batched #(t2/select (selected :model/FieldUserSettings columns) :field_id [:in %])
                          field-ids))
 
 (mu/defn table-user-settings-by-table-ids :- [:sequential ::row]
   "The TableUserSettings of the Tables with `table-ids`, with only `columns` unless nil."
   [table-ids :- [:sequential {:min 1} :int]
    columns   :- ::columns]
-  (app-db/select-batched #(t2/select (selected :model/TableUserSettings columns) :table_id [:in [:auto/param %]])
+  (app-db/select-batched #(t2/select (selected :model/TableUserSettings columns) :table_id [:in %])
                          table-ids))
 
 (mu/defn osi-ai-contexts-by-local-ids :- [:sequential ::row]
@@ -136,8 +136,8 @@
    local-ids   :- [:sequential {:min 1} :int]
    columns     :- ::columns]
   (app-db/select-batched #(t2/select (selected :model/OsiAiContext columns)
-                                     :entity_type     [:auto/param entity-type]
-                                     :entity_local_id [:in [:auto/param %]])
+                                     :entity_type     entity-type
+                                     :entity_local_id [:in %])
                          local-ids))
 
 (mu/defn insert-rows! :- [:sequential ::row]
@@ -165,7 +165,7 @@
   [model :- :keyword
    pk    :- :keyword
    ids   :- [:sequential [:or :int :string]]]
-  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! model pk [:in [:auto/param %]]) ids))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! model pk [:in %]) ids))
 
 (defn do-in-transaction
   "Calls `thunk` in a transaction of the app DB, or in a savepoint of the one already open, in a batch of events that

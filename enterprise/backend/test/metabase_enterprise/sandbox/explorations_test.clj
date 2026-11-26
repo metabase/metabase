@@ -629,7 +629,7 @@
         (testing user
           (mt/with-test-user user
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"missing its dataset_query"
-                                  (queries/viewer-can-view-cached-result? snapshot)))))))))
+                                  (first (queries/cached-result-view-answers [snapshot]))))))))))
 
 (deftest impersonation-and-routing-token-edn-round-trip-test
   (testing "a real token survives the stored_result.data_access_token EDN round-trip. Its per-target

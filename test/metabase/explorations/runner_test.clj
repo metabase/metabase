@@ -147,7 +147,7 @@
       (testing "the cached-result gate uses them rather than preprocessing the stored query"
         (is (= [true 0]
                (request/with-current-user (mt/user->id :rasta)
-                 (preprocess-count #(queries/viewer-can-view-cached-result? sr)))))))))
+                 (preprocess-count #(first (queries/cached-result-view-answers [sr]))))))))))
 
 (deftest run-one-iteration-records-stored-result-use-test
   (testing "Running a query records a stored_result_use row tying the snapshot to the exploration"

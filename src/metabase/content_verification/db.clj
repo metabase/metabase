@@ -47,8 +47,8 @@
   (into [:or]
         (map (fn [[item-type group]]
                [:and
-                [:= :moderated_item_type [:auto/param (name item-type)]]
-                [:in :moderated_item_id [:auto/param (mapv second group)]]]))
+                [:= :moderated_item_type (name item-type)]
+                [:in :moderated_item_id (mapv second group)]]))
         (group-by first items)))
 
 (mu/defn moderation-reviews-beyond-newest
@@ -65,7 +65,7 @@
                                                                             ^:allow-subquery {:partition-by [:moderated_item_type :moderated_item_id]
                                                                                               :order-by     [[:id :desc]]}]]
                                                                     :rn]]
-                                                          :from   [:moderation_review]
+                                                          :from   [(t2/table-name :model/ModerationReview)]
                                                           :where  (items-clause %)}
                                                          :ranked]]
                                                :where  [:> :rn n]}]})

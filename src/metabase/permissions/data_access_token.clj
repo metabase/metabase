@@ -37,6 +37,7 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -48,6 +49,12 @@
   metabase-enterprise.sandbox.models.params.field-values
   [_table-id]
   nil)
+
+(defenterprise sandbox-tokens-for-tables
+  "[[sandbox-token-for-table]] of each of `table-ids`, by id, read together."
+  metabase-enterprise.sandbox.models.params.field-values
+  [table-ids]
+  (zipmap table-ids (repeat nil)))
 
 (defenterprise impersonation-token-for-db
   "Connection-impersonation fingerprint for the current user on `db-id`, or nil when not
@@ -110,21 +117,43 @@
   [target]
   (token-with (fn [_k f] (f)) target))
 
+(defn- memo-key
+  "The key under which a memoizing reader holds what contributor `k` answers for the current user, as a superuser or
+  not."
+  [k]
+  [api/*current-user-id* api/*is-superuser?* k])
+
+(defn- read-sandbox-tokens
+  "The memo entries of the sandbox tokens of the current user on each Table of `targets`, read together, or none when
+  reading them throws, so that each is read on its own."
+  [targets]
+  (let [table-ids (into [] (comp (mapcat :table-ids) (distinct)) targets)]
+    (when (seq table-ids)
+      (try
+        (let [tokens (sandbox-tokens-for-tables table-ids)]
+          (into {} (map (fn [table-id] [(memo-key [:sandbox table-id]) (get tokens table-id)])) table-ids))
+        (catch Exception e
+          (log/debugf "Could not read the sandbox tokens of %d Tables together: %s" (count table-ids) (ex-message e))
+          nil)))))
+
 (defn data-access-token-reader
-  "Memoizing [[data-access-token]]: shares contributor reads across its calls. Build one per batch of checks; its
-  reads go stale when routing or the viewer's permissions change."
-  []
-  (let [memo (atom {})]
-    (fn [target]
-      (token-with (fn [k f]
-                    (let [k [api/*current-user-id* k]]
-                      (if-let [[_ v] (find @memo k)]
-                        v
-                        ;; a throw is not memoized: a later call throws again rather than reading as a value
-                        (let [v (f)]
-                          (swap! memo assoc k v)
-                          v))))
-                  target))))
+  "Memoizing [[data-access-token]] for one batch of checks, to be created and used under one binding of the current
+  user, sharing contributor reads across its calls and, given the `targets` it will be asked for, starting from the
+  sandbox tokens of all their Tables read together."
+  ([]
+   (data-access-token-reader nil))
+  ([targets]
+   (let [memo (atom (or (read-sandbox-tokens targets) {}))]
+     (fn [target]
+       (token-with (fn [k f]
+                     (let [k (memo-key k)]
+                       (if-let [[_ v] (find @memo k)]
+                         v
+                         ;; a throw is not memoized: a later call throws again rather than reading as a value
+                         (let [v (f)]
+                           (swap! memo assoc k v)
+                           v))))
+                   target)))))
 
 (defn data-access-compatible?
   "True when a viewer holding `viewer-token` may be served a blob computed under `creator-token`:

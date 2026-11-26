@@ -1,8 +1,8 @@
 (ns metabase.dashboards.db-test
   (:require
    [clojure.test :refer :all]
-   [honey.sql :as sql]
    [metabase.dashboards.db :as dashboards.db]
+   [metabase.funnysql.core :as funnysql]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -12,11 +12,11 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"must be an integer"
          (#'dashboards.db/link-card-info-query-for-model "card" {:raw "x"}))))
-  (testing "single-id and collection forms both pass a legitimate id as a bind parameter"
+  (testing "single-id and collection forms both pass a legitimate id, which Funny SQL splices as an integer"
     (doseq [ids [42 #{42} [42]]]
-      (let [[query & params] (sql/format (#'dashboards.db/link-card-info-query-for-model "card" ids))]
-        (is (re-find #"\?" query) "the id appears as a bind parameter")
-        (is (= [42] params))))))
+      (let [[query & params] (funnysql/format (#'dashboards.db/link-card-info-query-for-model "card" ids) :postgres)]
+        (is (re-find #"\b42\b" query) "the id appears as an integer literal")
+        (is (empty? params))))))
 
 (deftest partitioned-reads-match-whole-reads-test
   (mt/with-temp [:model/Dashboard    {d1 :id} {}

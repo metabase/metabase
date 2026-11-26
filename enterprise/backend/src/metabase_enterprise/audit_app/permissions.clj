@@ -66,20 +66,33 @@
           (throw (ex-info (tru "Audit queries are only allowed on audit views")
                           {:type qp.error-type/invalid-query, :query query})))))))
 
+(defn- set-view-tables-create-queries!
+  "Set `:perms/create-queries` to `value` for the group with `group-id` on each of `view-tables`, the last in a call of
+  its own so that the Database-level coalescing sees the other Tables already set."
+  [group-id view-tables value]
+  (when-let [last-table (peek view-tables)]
+    (when-let [other-tables (seq (pop view-tables))]
+      (perms/set-table-permissions! group-id :perms/create-queries (zipmap other-tables (repeat value))))
+    (perms/set-table-permission! group-id last-table :perms/create-queries value)))
+
 (defenterprise update-audit-collection-permissions!
-  "Updates audit db (AppDB) permissions when the instance analytics collection permissions change, and downgrades
-  :write to :read for the audit collection (it must never be writable). Returns the (possibly modified) changes map."
+  "Set the create-queries permission on the audit views for each group of `changes`, a map of group id to its
+  Collection changes, that changes its access to the instance analytics Collection, and return `changes` with write
+  access to that Collection downgraded to read."
   :feature :audit-app
-  [group-id changes]
+  [changes]
   (let [audit-collection-id (:id (audit/default-audit-collection))
-        [change-id tyype] (first (filter #(= (first %) audit-collection-id) changes))]
-    (if change-id
-      (let [create-queries-value (case tyype
-                                   (:read :write) :query-builder
-                                   :none  :no)
-            view-tables         (audit-app.db/tables-of-database-named audit/audit-db-id audit-db-view-names)]
-        (doseq [table view-tables]
-          (perms/set-table-permission! group-id table :perms/create-queries create-queries-value))
-        (cond-> changes
-          (= tyype :write) (assoc audit-collection-id :read)))
-      changes)))
+        audit-accesses      (into [] (keep (fn [[group-id group-changes]]
+                                             (when-let [access (get group-changes audit-collection-id)]
+                                               [group-id access])))
+                                  changes)
+        view-tables         (when (seq audit-accesses)
+                              (vec (audit-app.db/tables-of-database-named audit/audit-db-id audit-db-view-names)))]
+    (reduce (fn [changes [group-id access]]
+              (set-view-tables-create-queries! group-id view-tables (case access
+                                                                      (:read :write) :query-builder
+                                                                      :none          :no))
+              (cond-> changes
+                (= access :write) (assoc-in [group-id audit-collection-id] :read)))
+            changes
+            audit-accesses)))

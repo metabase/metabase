@@ -70,3 +70,35 @@
                                              (some (comp nil? :collection_id) (keys %))
                                              (<= 6 (count %)))}
                   single)))))))
+
+(deftest partitioned-group-reads-match-single-statement-test
+  (mt/with-temp [:model/PermissionsGroup           {e :id} {:name "Partitioned Group E"}
+                 :model/PermissionsGroup           {b :id} {:name "partitioned group b"}
+                 :model/PermissionsGroup           {d :id} {:name "Partitioned Group D"}
+                 :model/PermissionsGroup           {a :id} {:name "partitioned group a"}
+                 :model/PermissionsGroup           {c :id} {:name "partitioned group c"}
+                 :model/User                       {zed :id} {:first_name "Zed" :last_name "Partitioned"}
+                 :model/User                       {amy :id} {:first_name "amy" :last_name "Partitioned"}
+                 :model/User                       {bob :id} {:first_name "Bob" :last_name "Partitioned"}
+                 :model/PermissionsGroupMembership _ {:user_id zed :group_id e}
+                 :model/PermissionsGroupMembership _ {:user_id amy :group_id e}
+                 :model/PermissionsGroupMembership _ {:user_id bob :group_id e}
+                 :model/PermissionsGroupMembership _ {:user_id bob :group_id a}
+                 :model/PermissionsGroupMembership _ {:user_id zed :group_id c}
+                 :model/PermissionsGroupMembership _ {:user_id amy :group_id c}]
+    (let [group-ids   [e b d a c]
+          reads       (fn []
+                        {:groups  (mapv :id (permissions.db/groups-by-ids (set group-ids)))
+                         :members (update-vals (group-by :group_id (permissions.db/group-members group-ids false))
+                                               #(mapv :id %))})
+          single      (reads)
+          partitioned (mt/with-partition-size 2
+                        (reads))]
+      (testing "members are read in same order with partitions of 2 as with one statement"
+        (is (= (:members single) (:members partitioned))))
+      (testing "groups are read with partitions of 2 as with one statement"
+        (is (= (set (:groups single)) (set (:groups partitioned)))))
+      (testing "reads are ordered by name"
+        (is (= {:groups  [a b c d e]
+                :members {e [amy bob zed], a [bob], c [amy zed]}}
+               single))))))

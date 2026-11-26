@@ -39,7 +39,7 @@
    [clojure.string :as str]
    [dev.add-load :as add-load]
    [metabase.api.common :as api]
-   [metabase.app-db.query :as mdb.query]
+   [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.logger.core :as logger]
    [metabase.permissions.core :as perms]
@@ -985,7 +985,7 @@
 
    Options:
      :model              - model to benchmark (default 'card')
-     :query-fn           - fn from HoneySQL map -> reducible (default mdb.query/streaming-reducible-query)
+     :query-fn           - fn from HoneySQL map -> reducible (default mdb/streaming-reducible-query)
      :compare-streaming? - when true, run layers 1 and 4 with BOTH streaming and t2/reducible-query
                            so you can see the streaming impact through ->document (default false)
 
@@ -993,14 +993,14 @@
    via the metadata provider. They require a running Metabase backend."
   ([] (bench-pipeline-layers! {}))
   ([{:keys [model query-fn compare-streaming?]
-     :or   {model "card" query-fn mdb.query/streaming-reducible-query}}]
+     :or   {model "card" query-fn mdb/streaming-reducible-query}}]
    (println "\n============================================================")
    (println "  Pipeline Layer Memory Isolation")
    (println (format "  Model: %s" model))
    (println (format "  Query fn: %s" (if compare-streaming? "streaming vs non-streaming" query-fn)))
    (println "============================================================")
    (let [query     (#'search.ingestion/spec-index-query model)
-         streaming mdb.query/streaming-reducible-query
+         streaming mdb/streaming-reducible-query
          non-streaming t2/reducible-query
 
          doc-eduction (fn [qfn]

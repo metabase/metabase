@@ -16,35 +16,42 @@ const DASHCARD_SELECTOR = `[data-dashcard-key].${GlobalDashboardS.Card}`;
  * The export renderer clips text vertically when a custom theme changes the
  * line height, so the SDK captures with overflow visible.
  */
-const getTextOverflowStyles = () => `
-  ${DASHCARD_SELECTOR} * {
+const getTextOverflowStyles = (root: string) => `
+  ${root} ${DASHCARD_SELECTOR} * {
     overflow: visible !important;
   }
 `;
 
-// Plain CSS text; the global style sheets that embed it resolve the nesting
-export const getSaveDomImageStyles = (allowTextOverflow: boolean) => `
-  .${SAVING_DOM_IMAGE_CLASS} {
-    .${SAVING_DOM_IMAGE_HIDDEN_CLASS} {
-      visibility: hidden;
-    }
-    .${SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS} {
-      display: none;
-    }
-    .${SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS} {
-      overflow: visible;
-    }
+// Flat CSS rules, so they parse without nesting support; `scope` prefixes every selector
+export const getSaveDomImageStyles = (
+  allowTextOverflow: boolean,
+  scope?: string,
+) => {
+  const root = scope
+    ? `${scope} .${SAVING_DOM_IMAGE_CLASS}`
+    : `.${SAVING_DOM_IMAGE_CLASS}`;
 
-    ${DASHCARD_SELECTOR} {
-      /* the renderer we use for saving to image/pdf doesn't support box-shadow
-        so we replace it with a border */
-      box-shadow: none;
-      border: 1px solid var(--mb-color-border-neutral);
-    }
-
-    ${allowTextOverflow ? getTextOverflowStyles() : ""}
+  return `
+  ${root} .${SAVING_DOM_IMAGE_HIDDEN_CLASS} {
+    visibility: hidden;
   }
+  ${root} .${SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS} {
+    display: none;
+  }
+  ${root} .${SAVING_DOM_IMAGE_OVERFLOW_VISIBLE_CLASS} {
+    overflow: visible;
+  }
+
+  ${root} ${DASHCARD_SELECTOR} {
+    /* the renderer we use for saving to image/pdf doesn't support box-shadow
+      so we replace it with a border */
+    box-shadow: none;
+    border: 1px solid var(--mb-color-border-neutral);
+  }
+
+  ${allowTextOverflow ? getTextOverflowStyles(root) : ""}
 `;
+};
 
 const SVG_VAR_PAINT_ATTRIBUTES = [
   "fill",

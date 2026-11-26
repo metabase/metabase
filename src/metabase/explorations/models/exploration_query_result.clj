@@ -164,10 +164,11 @@
         composite-qp  (composite/combine eq-results (or visualization-settings {}))
         dataset-query (:dataset_query first-eq)
         creator-id    (:id creator)]
-    (doseq [dq (distinct (map (fn [{:keys [eq sr]}]
-                                (or (:dataset_query eq) (:dataset_query sr)))
-                              eq-results))]
-      (query-perms/check-run-permissions-for-query dq))
+    (query-perms/check-run-permissions-for-queries (into []
+                                                         (comp (map (fn [{:keys [eq sr]}]
+                                                                      (or (:dataset_query eq) (:dataset_query sr))))
+                                                               (distinct))
+                                                         eq-results))
     ;; Single-query embeds reuse the source snapshot as-is — `composite/combine` returned it
     ;; unchanged, so copying its bytes into a fresh stored_result would just duplicate them.
     ;; Only a genuine multi-snapshot combine produces new cols/rows that need their own row.

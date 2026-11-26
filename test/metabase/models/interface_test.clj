@@ -325,7 +325,7 @@
     (t2/delete! ::clean-hooks :key guard-test-key)
     (is (nil? (t2/select-one ::clean-hooks :key guard-test-key)))
     (finally
-      (t2/delete! :setting :key guard-test-key))))
+      (t2/delete! (t2/table-name :model/Setting) :key guard-test-key))))
 
 (deftest hook-running-statement-throws-test
   (try
@@ -333,23 +333,23 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"before-insert hook of .*reading-before-insert ran 1 app-DB statement"
                             (t2/insert! ::reading-before-insert {:key guard-test-key, :value "v"})))
-      (is (nil? (t2/select-one :setting :key guard-test-key))))
+      (is (nil? (t2/select-one (t2/table-name :model/Setting) :key guard-test-key))))
     (testing "before-update and before-delete"
-      (t2/insert! :setting {:key guard-test-key, :value "v"})
+      (t2/insert! (t2/table-name :model/Setting) {:key guard-test-key, :value "v"})
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"before-update hook of .*reading-before-update"
                             (t2/update! ::reading-before-update :key guard-test-key {:value "w"})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"before-delete hook of .*reading-before-delete"
                             (t2/delete! ::reading-before-delete :key guard-test-key)))
-      (is (= "v" (t2/select-one-fn :value :setting :key guard-test-key)))
-      (t2/delete! :setting :key guard-test-key))
+      (is (= "v" (t2/select-one-fn :value (t2/table-name :model/Setting) :key guard-test-key)))
+      (t2/delete! (t2/table-name :model/Setting) :key guard-test-key))
     (testing "after-insert"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"after-insert hook of .*reading-after-insert"
                             (t2/insert! ::reading-after-insert {:key guard-test-key, :value "v"}))))
     (finally
-      (t2/delete! :setting :key guard-test-key))))
+      (t2/delete! (t2/table-name :model/Setting) :key guard-test-key))))
 
 (deftest hook-reading-setting-while-cache-refreshes-passes-statement-guard-test
   (try
@@ -357,27 +357,27 @@
     (testing "hook read its setting from refreshed cache"
       (is (some? (setting.cache/cache)))
       (is (= (str (setting/get :site-locale))
-             (t2/select-one-fn :value :setting :key guard-test-key))))
+             (t2/select-one-fn :value (t2/table-name :model/Setting) :key guard-test-key))))
     (finally
-      (t2/delete! :setting :key guard-test-key))))
+      (t2/delete! (t2/table-name :model/Setting) :key guard-test-key))))
 
 (deftest before-update-with-different-changes-per-row-throws-test
   (let [other-key (str guard-test-key "-other")]
     (try
-      (t2/insert! :setting [{:key guard-test-key, :value "v"} {:key other-key, :value "v"}])
+      (t2/insert! (t2/table-name :model/Setting) [{:key guard-test-key, :value "v"} {:key other-key, :value "v"}])
       (testing "a multi-row update whose hook derives a different value for each row"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"before-update hook of .*key-deriving-before-update returned different changes for the rows of one update \(keys: :value\)"
                               (t2/update! ::key-deriving-before-update :key [:in [guard-test-key other-key]] {:value "w"})))
-        (is (= #{"v"} (t2/select-fn-set :value :setting :key [:in [guard-test-key other-key]]))))
+        (is (= #{"v"} (t2/select-fn-set :value (t2/table-name :model/Setting) :key [:in [guard-test-key other-key]]))))
       (testing "a single-row update of the same hook"
         (t2/update! ::key-deriving-before-update :key guard-test-key {:value "w"})
-        (is (= (str guard-test-key "-derived") (t2/select-one-fn :value :setting :key guard-test-key))))
+        (is (= (str guard-test-key "-derived") (t2/select-one-fn :value (t2/table-name :model/Setting) :key guard-test-key))))
       (testing "a multi-row update whose hook gives every row the same changes"
         (t2/update! ::clean-hooks :key [:in [guard-test-key other-key]] {:value "x"})
-        (is (= #{"x?"} (t2/select-fn-set :value :setting :key [:in [guard-test-key other-key]]))))
+        (is (= #{"x?"} (t2/select-fn-set :value (t2/table-name :model/Setting) :key [:in [guard-test-key other-key]]))))
       (finally
-        (t2/delete! :setting :key [:in [guard-test-key other-key]])))))
+        (t2/delete! (t2/table-name :model/Setting) :key [:in [guard-test-key other-key]])))))
 
 (deftest ^:synchronized automagic-hydration-partitions-test
   (let [user-ids (mapv mt/user->id [:rasta :crowberto :lucky :trashbird :rasta])

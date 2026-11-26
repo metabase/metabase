@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.app-db.db :as app-db.db]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.test-util :as mdb.test-util]
@@ -10,7 +11,8 @@
    [metabase.driver :as driver]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [toucan2.core :as t2])
   (:import
    (liquibase Liquibase)
    (liquibase.changelog ChangeSet)
@@ -27,8 +29,9 @@
   (mapv (fn [{:keys [deployment_id metabase_version ran_migrations]}]
           [deployment_id metabase_version (or (true? ran_migrations) (= 1 ran_migrations))])
         (jdbc/query {:connection conn}
-                    [(format "SELECT deployment_id, metabase_version, ran_migrations FROM %s ORDER BY id"
-                             (versions/versions-table-name))])))
+                    (mdb.test-util/format-sql {:select   [:deployment_id :metabase_version :ran_migrations]
+                                               :from     [(keyword (versions/versions-table-name))]
+                                               :order-by [:id]}))))
 
 (defn- highest-versioned-major
   "The highest `vNN.` major in the changelog file: the major the one-time backfill records once these migrations have
@@ -157,7 +160,7 @@
           ;; migrate as a pre-tracking binary would have, attributing the changesets to a *previous* process so the
           ;; deployment differs from this JVM's Liquibase deployment id
           (migrate-without-recording! liquibase)
-          (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'priorrun'" changelog-table)])
+          (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:update (keyword changelog-table) :set {:deployment_id "priorrun"}}))
           (versions/ensure-version-tracking! conn db)
           (is (= [["priorrun" backfilled true]] (version-rows conn))
               "ensure-version-tracking! backfills the version the vNN. ids imply as the deployment's ran version")
@@ -200,20 +203,21 @@
           (migrate-without-recording! liquibase)
           ;; an existing instance with no recorded versions, split across two deployments by execution position (not
           ;; by id: the most recent changesets may be version-less, which carry no major in their id)
-          (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'older'" changelog-table)])
+          (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:update (keyword changelog-table) :set {:deployment_id "older"}}))
           ;; MySQL can't UPDATE a table that a subquery of the same statement reads, so find the boundary first
-          (let [boundary (-> (jdbc/query {:connection conn} [(format "SELECT MAX(orderexecuted) - 10 AS boundary FROM %s" changelog-table)])
+          (let [boundary (-> (jdbc/query {:connection conn} (mdb.test-util/format-sql {:select [[[:- [:max :orderexecuted] 10] :boundary]] :from [(keyword changelog-table)]}))
                              first
                              :boundary)]
-            (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'newer' WHERE orderexecuted > ?" changelog-table)
-                                               boundary]))
+            (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:update (keyword changelog-table)
+                                                                         :set    {:deployment_id "newer"}
+                                                                         :where  [:> :orderexecuted boundary]})))
           (versions/ensure-version-tracking! conn db)
           (testing "the current deployment gets a ran row with the highest vNN. major, and the older one the major its
                     own rows put the schema at"
             (is (= [["newer" latest true] ["older" latest true]] (version-rows conn))))
           (testing "deployed_at is populated for the backfilled row"
             (is (every? :deployed_at (jdbc/query {:connection conn}
-                                                 [(format "SELECT deployed_at FROM %s" (versions/versions-table-name))]))))
+                                                 (mdb.test-util/format-sql {:select [:deployed_at] :from [(keyword (versions/versions-table-name))]})))))
           (testing "ensure is idempotent"
             (versions/ensure-version-tracking! conn db)
             (is (= 2 (count (version-rows conn)))))
@@ -229,7 +233,7 @@
                 changelog-table (liquibase/changelog-table-name liquibase)
                 latest          (versions/major->version (highest-versioned-major liquibase))]
             (migrate-without-recording! liquibase)
-            (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'main'" changelog-table)])
+            (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:update (keyword changelog-table) :set {:deployment_id "main"}}))
             ;; a back-ported patch: a much lower-version changeset that EXECUTED LAST, in its own deployment
             (mdb.test-util/fabricate-history! conn changelog-table
                                               [{:deployment "patch" :changesets ["v44.patch-backport"]}])
@@ -326,11 +330,11 @@
 (defn- ddl-statements!
   "Run `f` with [[versions/ensure-version-tracking!]]'s statements spied on; returns the CREATE TABLE statements run."
   [f]
-  (let [orig       (dynamic-redefs/original-fn #'versions/execute-ddl!)
+  (let [orig       (dynamic-redefs/original-fn #'app-db.db/execute-ddl!)
         statements (atom [])]
-    (mt/with-dynamic-fn-redefs [versions/execute-ddl! (fn [conn ddl]
-                                                        (swap! statements conj ddl)
-                                                        (orig conn ddl))]
+    (mt/with-dynamic-fn-redefs [app-db.db/execute-ddl! (fn [conn ddl]
+                                                         (swap! statements conj ddl)
+                                                         (orig conn ddl))]
       (f))
     @statements))
 
@@ -351,19 +355,19 @@
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (liquibase/with-liquibase [liquibase conn]
           (let [db     (.getDatabase liquibase)
-                orig   (dynamic-redefs/original-fn #'versions/execute!)
+                orig   (dynamic-redefs/original-fn #'app-db.db/execute-ddl!)
                 checks (atom {})]
             ;; the other instance's CREATEs land between our existence checks and our own CREATEs
-            (orig conn [(#'versions/table-ddl)])
-            (orig conn [(#'versions/first-runs-table-ddl)])
+            (orig conn (#'versions/table-ddl))
+            (orig conn (#'versions/first-runs-table-ddl))
             (mt/with-dynamic-fn-redefs [versions/table-exists? (fn [table-name _conn] ; stale on each table's first check only
                                                                  (> (get (swap! checks update table-name (fnil inc 0)) table-name) 1))
-                                        versions/execute-ddl!  (fn [_conn _ddl]
+                                        app-db.db/execute-ddl! (fn [_conn _ddl]
                                                                  (throw (java.sql.SQLException. "duplicate key value violates unique constraint \"pg_type_typname_nsp_index\"")))]
               (is (nil? (versions/ensure-version-tracking! conn db))))
             (testing "but a CREATE failure with no table behind it still propagates"
               (mt/with-dynamic-fn-redefs [versions/table-exists? (constantly false)
-                                          versions/execute-ddl!  (fn [_conn _ddl]
+                                          app-db.db/execute-ddl! (fn [_conn _ddl]
                                                                    (throw (java.sql.SQLException. "permission denied for schema public")))]
                 (is (thrown-with-msg? java.sql.SQLException #"permission denied"
                                       (versions/ensure-version-tracking! conn db)))))))))))
@@ -550,8 +554,8 @@
             (versions/record-deployment-version! conn "d63" "x.64.0" false)
             (is (= 63 (versions/previous-recorded-major (deployments) false))))
           (jdbc/execute! {:connection conn}
-                         [(format "DELETE FROM %s WHERE metabase_version = 'x.64.0'"
-                                  (versions/versions-table-name))])
+                         (mdb.test-util/format-sql {:delete-from (keyword (versions/versions-table-name))
+                                                    :where       [:= :metabase_version "x.64.0"]}))
           ;; the instance then upgraded directly to 65 -- 64 was never a recorded deployment
           (mdb.test-util/fabricate-history! conn changelog-table
                                             [{:deployment "d65" :ran "x.65.0" :changesets ["c65"]}])
@@ -581,9 +585,9 @@
           (let [db      (.getDatabase liquibase)
                 ct      (liquibase/changelog-table-name liquibase)
                 markers (fn [] (mapv :id (jdbc/query {:connection conn}
-                                                     [(format "SELECT id FROM %s WHERE id LIKE 'v%%.legacy-version-tracking' ORDER BY id" ct)])))
+                                                     (mdb.test-util/format-sql {:select [:id] :from [(keyword ct)] :where [:like :id "v%.legacy-version-tracking"] :order-by [:id]}))))
                 row-of  (fn [id] (first (jdbc/query {:connection conn}
-                                                    [(format "SELECT deployment_id, orderexecuted, liquibase, description FROM %s WHERE id = ?" ct) id])))]
+                                                    (mdb.test-util/format-sql {:select [:deployment_id :orderexecuted :liquibase :description] :from [(keyword ct)] :where [:= :id id]}))))]
             (versions/ensure-version-tracking! conn db)
             (mdb.test-util/fabricate-history! conn ct [{:deployment "d66" :changesets ["c66"]}])
             (testing "records the row against the deployment that ran, and latest-applied-major-version reads it"
@@ -640,7 +644,7 @@
           (mdb/migrate! (mdb/data-source) :force))
         (let [ct     (liquibase/changelog-table-name conn)
               row    (fn [id] (first (jdbc/query {:datasource (mdb/data-source)}
-                                                 [(format "SELECT deployment_id, orderexecuted FROM %s WHERE id = ?" ct) id])))
+                                                 (mdb.test-util/format-sql {:select [:deployment_id :orderexecuted] :from [(keyword ct)] :where [:= :id id]}))))
               marker (row "v66.legacy-version-tracking")]
           (is (some? marker) "force must leave the same old-binary downgrade signal as a normal upgrade")
           (is (= (:deployment_id (row "dev_run_a")) (:deployment_id marker))
@@ -657,7 +661,7 @@
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (let [ct       (liquibase/changelog-table-name conn)
               spec     {:datasource (mdb/data-source)}
-              row-of   (fn [id] (first (jdbc/query spec [(format "SELECT deployment_id, dateexecuted, orderexecuted FROM %s WHERE id = ?" ct) id])))
+              row-of   (fn [id] (into {} (t2/query-one {:select [:deployment_id :dateexecuted :orderexecuted] :from [(keyword ct)] :where [:= :id id]})))
               first-of (fn [] (with-open [c (.getConnection ^javax.sql.DataSource (mdb/data-source))]
                                 (get (versions/first-runs c) ["migrations/2026/versionless_roc.yaml" "test" "roc_view"])))
               migrate! (fn [changelog]
@@ -682,7 +686,7 @@
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (let [ct       (liquibase/changelog-table-name conn)
               spec     {:datasource (mdb/data-source)}
-              row-of   (fn [id] (first (jdbc/query spec [(format "SELECT deployment_id, dateexecuted, orderexecuted FROM %s WHERE id = ?" ct) id])))
+              row-of   (fn [id] (into {} (t2/query-one {:select [:deployment_id :dateexecuted :orderexecuted] :from [(keyword ct)] :where [:= :id id]})))
               first-of (fn [] (with-open [c (.getConnection ^javax.sql.DataSource (mdb/data-source))]
                                 (get (versions/first-runs c) ["migrations/2026/versionless_always.yaml" "test" "always_view"])))
               migrate! (fn []
@@ -722,15 +726,19 @@
   with no tiebreak. A tie for newest is returned as `::tie`, since the database may then return either row."
   [conn changelog-table]
   (let [newest (jdbc/query {:connection conn}
-                           [(format "SELECT id FROM %s WHERE dateexecuted = (SELECT MAX(dateexecuted) FROM %s)"
-                                    changelog-table changelog-table)])]
+                           (mdb.test-util/format-sql {:select [:id]
+                                                      :from   [(keyword changelog-table)]
+                                                      :where  [:= :dateexecuted {:select [[[:max :dateexecuted]]]
+                                                                                 :from   [(keyword changelog-table)]}]}))]
     (if (= 1 (count newest)) (:id (first newest)) ::tie)))
 
 (defn- marker-rows [conn changelog-table]
   (mapv (juxt :id :deployment_id)
         (jdbc/query {:connection conn}
-                    [(format "SELECT id, deployment_id FROM %s WHERE filename = 'legacy-version-tracking' ORDER BY id"
-                             changelog-table)])))
+                    (mdb.test-util/format-sql {:select   [:id :deployment_id]
+                                               :from     [(keyword changelog-table)]
+                                               :where    [:= :filename "legacy-version-tracking"]
+                                               :order-by [:id]}))))
 
 (deftest tail-marker-keeps-old-binaries-on-the-current-changelog-test
   (testing "old binaries take a version-less newest row for a pre-4.2 install, so every run ends with a marker they read safely"
@@ -753,7 +761,7 @@
               (is (= [["v56.legacy-version-tracking" "d58b"]] (marker-rows conn ct))))
             (testing "the marker lands strictly after a row stored in the future (MySQL rounds sub-second timestamps up)"
               (mdb.test-util/fabricate-history! conn ct [{:deployment "d58c" :ran "x.58.11" :changesets ["thing_three"]}])
-              (jdbc/execute! {:connection conn} [(format "UPDATE %s SET dateexecuted = CURRENT_TIMESTAMP + INTERVAL '1' SECOND WHERE id = 'thing_three'" ct)])
+              (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:update (keyword ct) :set {:dateexecuted [:+ [:raw "CURRENT_TIMESTAMP"] [:raw "INTERVAL '1' SECOND"]]} :where [:= :id "thing_three"]}))
               (versions/record-legacy-version-tracking! db 58 "d58c")
               (is (= "v56.legacy-version-tracking" (old-binary-latest-row conn ct)))
               (is (= ["d58c"] (map :deployment-id (take 1 (versions/recorded-deployments conn db))))
@@ -830,7 +838,7 @@
             (versions/ensure-version-tracking! conn db)
             (mdb.test-util/fabricate-history! conn ct [{:deployment "d58" :ran "x.58.0" :changesets ["v58.2025-01-01T00:00:00"]}
                                                        {:deployment "d59" :ran "x.59.0" :changesets ["v59.2025-01-01T00:00:00"]}])
-            (jdbc/execute! {:connection conn} [(format "UPDATE %s SET orderexecuted = 0 WHERE deployment_id = 'd59'" ct)])
+            (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:update (keyword ct) :set {:orderexecuted 0} :where [:= :deployment_id "d59"]}))
             (is (= ["d59" "d58"] (map :deployment-id (versions/recorded-deployments conn db))))
             (is (= "d59" (versions/last-deployment-id conn db)))
             (is (= 59 (versions/current-schema-major conn db)))))))))
@@ -867,7 +875,7 @@
               (is (= [["v56.legacy-version-tracking" "d66"]] (marker-rows conn ct)))
               (is (= 66 (versions/latest-applied-major-version conn db))))
             (testing "an old 66 binary's `migrate down` removed v66.def456: the deployment is repaired to 65"
-              (jdbc/execute! {:connection conn} [(format "DELETE FROM %s WHERE id = 'v66.def456'" ct)])
+              (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:delete-from (keyword ct) :where [:= :id "v66.def456"]}))
               (versions/ensure-version-tracking! conn db)
               (is (= [["d65" "x.65.0" true] ["d66" "x.65.0.0" true]] (sort (version-rows conn))))
               (is (= 65 (versions/current-schema-major conn db))))))))))

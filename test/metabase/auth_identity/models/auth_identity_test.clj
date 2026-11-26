@@ -153,7 +153,7 @@
           (is (= "legit"
                  (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "google")
                          [:credentials :secret])))
-          (t2/update! :auth_identity {:user_id user-id :provider "google"}
+          (t2/update! (t2/table-name :model/AuthIdentity) {:user_id user-id :provider "google"}
                       {:credentials "{\"secret\":\"injected\"}"})
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not encrypted"
                                 (t2/select-one :model/AuthIdentity :user_id user-id :provider "google"))))))))
@@ -166,7 +166,7 @@
       (encryption-test/with-secret-key nil
         (mt/with-temp [:model/User {user-id :id}]
           (t2/insert! :model/AuthIdentity {:user_id user-id :provider "google" :credentials {}})
-          (t2/update! :auth_identity {:user_id user-id :provider "google"}
+          (t2/update! (t2/table-name :model/AuthIdentity) {:user_id user-id :provider "google"}
                       {:credentials "{\"secret\":\"plain\"}"})
           (is (= "plain"
                  (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "google")

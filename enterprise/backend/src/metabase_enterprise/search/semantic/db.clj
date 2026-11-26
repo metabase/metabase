@@ -9,7 +9,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as search.scoring]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -65,7 +64,7 @@
 (mu/defn collection-locations
   "The ID and location of the raw collection rows with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (mdb/select-batched #(t2/select [:collection :id :location] :id [:in %]) collection-ids))
+  (mdb/select-batched #(t2/select [(t2/table-name :model/Collection) :id :location] :id [:in %]) collection-ids))
 
 (mu/defn instances
   "The instances of `modelable` with `ids`.
@@ -79,7 +78,7 @@
   ;; these have to be real SQL literals rather than plain strings: a string compiles to a `?` parameter, and H2 cannot
   ;; work out the type of a parameter in the select list of a CTE (`Unknown data type: "?, ?"`)
   ^:allow-subquery
-  {:select [[(h2x/literal (str id))] [(h2x/literal model)]]})
+  {:select [[[:literal (str id)]] [[:literal model]]]})
 
 (defn- search-index-select
   "A `search_index` CTE selecting the `:id` and `:model` of each of `search-results` (each `{:id :model}`)."
@@ -90,7 +89,7 @@
              ;; which works with all supported appdbs. https://dev.mysql.com/doc/refman/8.4/en/values.html
              ^:allow-subquery
              {:union (map search-doc-select search-results)}]]
-   :select [[[:cast :search_index.model_id (if (= :mysql (mdb/db-type)) :unsigned :int)] :id]
+   :select [[[:cast :search_index.model_id (if (= :mysql (mdb/db-type)) :unsigned :integer)] :id]
             [:search_index.model :model]]
    :from   [:search_index]})
 

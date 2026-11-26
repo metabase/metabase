@@ -105,10 +105,14 @@
                              ;; failure — the table that was missing, the argument to repair — on
                              ;; every replay. One field, two audiences; the model wins, because the
                              ;; live SSE channel has its own and the whole point of the text is that
-                             ;; the agent can act on it. A failure that no tool declared is stored as
-                             ;; the neutral sentence `tools.runtime/replay-text` gives it, because its
-                             ;; live text tells the model what to do in a turn that will have ended.
-                             (assoc :errorText (str (tools.runtime/replay-text (:result output))))))
+                             ;; the agent can act on it. It is the text that the adapters send (see
+                             ;; `self.core/tool-result-text`). A failure that no tool declared is the
+                             ;; exception. It is stored as the neutral sentence of
+                             ;; `tools.runtime/replay-text`. Its live text tells the model what to do,
+                             ;; but that turn will have ended.
+                             (assoc :errorText (tools.runtime/replay-text
+                                                (assoc (:result output)
+                                                       :output (self.core/tool-result-text (:result output)))))))
                          :data {:type (str "data-" (or (:data-type part) "data"))
                                 :data (:data part)}
                          (do (log/warn "Dropping internal part with no v2 storage representation"
@@ -390,8 +394,9 @@
   streamed parts.
 
   `parts` should be the post-[[streaming/combine-text-parts-xf]] parts vector. Stream metadata
-  (`:start`/`:usage`/`:finish`/`:error`) is filtered out and the rest is converted to
-  the v2 at-rest format (see [[parts->storable-content]]) before storage; usage is
+  (`:usage`/`:finish`/`:error`) is filtered out and the rest is converted to
+  the v2 at-rest format (see [[parts->storable-content]]) before storage, where each
+  `:start` becomes a `step-start` part that history replay splits steps at; usage is
   accumulated separately into the `usage` column; the error part body, if any,
   is captured into the `error` column via the `:error` kwarg; why the turn
   stopped early, if it did, is derived from those same parts into the
@@ -493,7 +498,17 @@
   stays replayable rather than being silently dropped. Pass
   `:on-unresolved :skip` to drop it instead (Slack replays only completed tool
   calls and gets assistant text from its own thread copy).
-  While query execution is off, a stored query result is replaced with a note that it is hidden."
+  The result of a failed (`output-error`) call has `:is_error true`. A blank `errorText` replays as
+  [[metabase.metabot.self.core/failed-tool-result-text]], which is the text that the adapters send for it.
+
+  The result text is the text that the adapters sent in the turn that stored the part (see
+  [[metabase.metabot.self.core/tool-result-text]]), so the next turn's request starts with the same bytes. There are
+  three exceptions:
+  - While query execution is off, a stored query result is replaced with a note that it is hidden.
+  - A failure that no tool declared replays as the neutral sentence of [[metabase.metabot.tools.runtime/replay-text]].
+  - A successful result whose `:output` (or the result itself, when it is not a map) is not a string replays as the
+    text of its JSON round trip, because the part is stored as JSON. For example, `:ok` is sent as `\":ok\"` and
+    replayed as `\"ok\"`."
   ([part] (tool-part->llm-messages part nil))
   ([part {:keys [on-unresolved]}]
    (when (schema.v2/tool-part? part)
@@ -501,8 +516,10 @@
            content (case state
                      "output-available" (if (hidden-query-results? part)
                                           hidden-query-results
-                                          (str (if (map? output) (:output output) output)))
-                     "output-error"     (or errorText "Tool execution failed")
+                                          (self.core/tool-result-text output))
+                     "output-error"     (if (str/blank? errorText)
+                                          self.core/failed-tool-result-text
+                                          errorText)
                      "input-available"  (when-not (= on-unresolved :skip)
                                           "Tool execution interrupted by user")
                      nil)]
@@ -513,9 +530,13 @@
                          :arguments (if (string? input)
                                       input
                                       (json/encode (or input {})))}]}
-          {:role         :tool
-           :tool_call_id toolCallId
-           :content      content}])))))
+          (cond-> {:role         :tool
+                   :tool_call_id toolCallId
+                   :content      content}
+            ;; The Claude and Gemini adapters mark a failed result as they marked it in the turn that
+            ;; failed, so the next turn's request starts with the bytes that this turn sent. The other
+            ;; adapters send only the text, with no mark in either turn.
+            (= "output-error" state) (assoc :is_error true))])))))
 
 (defn- message-text
   [{:keys [data]}]
@@ -530,18 +551,90 @@
   {:role    :user
    :content (str (:block (stored-context reply)) (message-text message))})
 
-(defn- assistant-row->llm-messages
-  [{:keys [data]}]
-  (into []
-        (mapcat (fn [part]
-                  (cond
-                    (schema.v2/text-part? part)
-                    (when-not (str/blank? (:text part))
-                      [{:role :assistant :content (:text part)}])
+(defn- row-steps
+  "The parts of the assistant row `data`, split into steps (vectors of parts) at each `step-start` part.
 
-                    (schema.v2/tool-part? part)
-                    (tool-part->llm-messages part))))
-        data))
+  Each LLM call of the turn starts at a `step-start` part, so each step after the first holds the parts of one call.
+  The first step holds the parts before the first `step-start`, such as the `<context>` data part. It is empty when
+  there are no such parts. A row migrated from v1 has no `step-start` parts, so it does not record which parts each
+  call made: there, each part is a step of its own."
+  [data]
+  (if (some #(= "step-start" (:type %)) data)
+    (reduce (fn [steps part]
+              (if (= "step-start" (:type part))
+                (conj steps [])
+                (conj (pop steps) (conj (peek steps) part))))
+            [[]]
+            data)
+    (map vector data)))
+
+(defn- part->llm-messages
+  "The LLM history messages for one stored `part`: a text message, a tool call and its result, or nil."
+  [part]
+  (cond
+    (schema.v2/text-part? part)
+    (when-not (str/blank? (:text part))
+      [{:role :assistant :content (:text part)}])
+
+    (schema.v2/tool-part? part)
+    (tool-part->llm-messages part)))
+
+(defn- step->llm-messages
+  "The LLM history messages for one step's `parts`: text and tool calls in order, then results in call order."
+  [parts]
+  ;; The agent loop sends a step in this order, because [[metabase.metabot.self.core/tool-executor-xf]] adds the
+  ;; results after the LLM call ends. Any other order changes the start of the next turn's request, and the prompt
+  ;; cache misses.
+  (let [messages (mapcat part->llm-messages parts)
+        result?  #(= :tool (:role %))]
+    (concat (remove result? messages)
+            (filter result? messages))))
+
+(defn- agent-text-after-results?
+  "Whether the assistant `row` can hold text that the agent added after the results of its last step, `last-step`.
+
+  [[metabase.metabot.agent.core/ended-loop-state]] adds such text in two cases. For a terminal error it adds the error
+  message, and `last-step` holds a failed call. At the step limit, a profile that requires a tool call can add a
+  notice, and the row stores the finish reason `tool-calls`, unless the last call was cut short.
+
+  The test is true for more rows than these two cases. A failed call can also be a recoverable one, in a step that a
+  successful terminal tool ended. Every profile stores `tool-calls` at the step limit, and a profile that does not
+  require a tool call adds no notice there. In these rows, the text after the results can be the model's own."
+  [row last-step]
+  (boolean (or (= "tool-calls" (:finish_reason row))
+               (some #(= "output-error" (:state %)) last-step))))
+
+(defn- last-step->llm-messages
+  "The LLM history messages for `parts`, the last step of the assistant `row`.
+
+  The step replays as [[step->llm-messages]] replays it. When [[agent-text-after-results?]] is true, the last text part
+  that follows the last tool part replays after the results instead. Usually this part is the text that the agent
+  added. No request of the turn sent that text, so the move keeps the prefix that the turn sent.
+
+  The part can also be text that the model wrote after a call, before it saw the results (see
+  [[agent-text-after-results?]]). No request of the turn sent that step, so the prefix still holds. Only the order that
+  the model reads in the next turn changes: its own text comes after results that it had not seen. The stored row has
+  no mark that tells the two kinds of text apart. A later change adds that mark; it is tracked in Linear."
+  [row parts]
+  (let [index-of   (fn [pred] (last (keep-indexed #(when (pred %2) %1) parts)))
+        text-index (index-of schema.v2/text-part?)
+        tool-index (index-of schema.v2/tool-part?)]
+    (if (and text-index tool-index (< tool-index text-index) (agent-text-after-results? row parts))
+      (concat (step->llm-messages (concat (take text-index parts) (drop (inc text-index) parts)))
+              (part->llm-messages (nth parts text-index)))
+      (step->llm-messages parts))))
+
+(defn- assistant-row->llm-messages
+  "The LLM history messages for the assistant `row`, step by step.
+
+  Each step before the last replays as [[step->llm-messages]] replays it, and the last as [[last-step->llm-messages]]
+  replays it."
+  [{:keys [data] :as row}]
+  (let [steps (row-steps data)]
+    (into []
+          cat
+          [(mapcat step->llm-messages (butlast steps))
+           (last-step->llm-messages row (vec (last steps)))])))
 
 (defn- rows->turns
   [rows]

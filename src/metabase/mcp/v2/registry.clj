@@ -23,6 +23,7 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
+   [metabase.lib-be.core :as lib-be]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
@@ -462,7 +463,8 @@
                        :ip-address    (get-in options [:request-context :ip-address])}))]
        (try
          (let [{:keys [error result] :as outcome}
-               (dispatch-tool-call token-scopes session-id tool-name arguments options)
+               (lib-be/with-metadata-provider-cache
+                 (dispatch-tool-call token-scopes session-id tool-name arguments options))
                result-error-code
                (::common/error-code result)]
            (if error

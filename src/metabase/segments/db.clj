@@ -63,11 +63,11 @@
   tables the user queries, located by their table."
   [{:keys [include-archived] :as opts} :- :metabase.dependencies.items/items-opts]
   {:select    [[:segment.id :entity_id] [:segment.name :name] [:table.display_name :location]]
-   :from      [:segment]
-   :left-join [[:metabase_table :table] [:= :segment.table_id :table.id]]
+   :from      [[(t2/table-name :model/Segment) :segment]]
+   :left-join [[(t2/table-name :model/Table) :table] [:= :segment.table_id :table.id]]
    :where     (into [:and]
                     (remove nil?)
-                    [[:in :segment.table_id ^:allow-subquery {:select [:metabase_table.id]
-                                                              :from   [:metabase_table]
-                                                              :where  (collections.listing/visible-tables-clause :metabase_table.id opts)}]
+                    [[:in :segment.table_id ^:allow-subquery {:select [(u/qualified-key (t2/table-name :model/Table) :id)]
+                                                              :from   [(t2/table-name :model/Table)]
+                                                              :where  (collections.listing/visible-tables-clause (u/qualified-key (t2/table-name :model/Table) :id) opts)}]
                      (collections.listing/archived-clause :segment include-archived)])})

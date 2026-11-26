@@ -166,7 +166,7 @@
 (defn- table-entry
   "The `table` of the column group `table-metadata` with its `:db-metadata`, including nested field columns and limited
   by [[limit-fields-to-sync]], or nil when reading them from the warehouse fails, which is logged."
-  [database table table-metadata]
+  [database remap-table table table-metadata]
   (try
     ;; TODO: decouple nested field columns sync from field sync. This will allow
     ;; describe-fields to be used for field sync for databases with nested field columns
@@ -174,7 +174,8 @@
     {:table       table
      :db-metadata (limit-fields-to-sync table (fetch-metadata/include-nested-fields-for-table (set table-metadata)
                                                                                               database
-                                                                                              table))}
+                                                                                              table
+                                                                                              remap-table))}
     (catch Exception e
       (log-table-failure table e)
       nil)))
@@ -205,16 +206,17 @@
        (sync-metadata/update-metadata-of-tables! database (if (pos? synced) (add-our-metadata) entries)))))
 
 (defn- sync-chunk!
-  "Sync the Fields of the Tables of `chunk`, the column groups of up to [[chunk-max-tables]] Tables of `database`:
-  their Tables are read together, Tables with nested Fields (all of them when `nested?`) synced one at a time, and the
-  others together, or one at a time when that fails."
-  [database nested? chunk]
+  "Sync the Fields of the Tables of `chunk`, the column groups of up to [[chunk-max-tables]] Tables of `database`,
+  locating each Table in the warehouse with the [[fetch-metadata/table-remapper]] `remap-table`, reading the Tables
+  together and syncing Tables with nested Fields (all of them when `nested?`) one at a time and the others together,
+  or one at a time when that fails."
+  [database remap-table nested? chunk]
   (let [resolve-table (table-resolver database chunk)
         entries       (into []
                             (keep (fn [table-metadata]
                                     (let [{:keys [table-name table-schema]} (first table-metadata)]
                                       (when-let [table (resolve-table table-name table-schema)]
-                                        (table-entry database table table-metadata)))))
+                                        (table-entry database remap-table table table-metadata)))))
                             chunk)
         {nested true flat false} (group-by #(boolean (or nested? (some :nested-fields (:db-metadata %)))) entries)]
     {:total-fields   (transduce (map count) + 0 chunk)
@@ -245,14 +247,15 @@
   still logged on its own and leaves the others synced."
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
-    (let [driver   (driver.u/database->driver database)
-          schemas? (driver.u/supports? driver :schemas database)
-          nested?  (driver.u/supports? driver :nested-fields database)]
+    (let [driver      (driver.u/database->driver database)
+          schemas?    (driver.u/supports? driver :schemas database)
+          nested?     (driver.u/supports? driver :nested-fields database)
+          remap-table (fetch-metadata/table-remapper database)]
       (letfn [(sync! [fields-metadata]
                 (transduce (comp
                             (partition-by (juxt :table-name :table-schema))
                             (partition-by (chunk-key-fn))
-                            (map (partial sync-chunk! database nested?)))
+                            (map (partial sync-chunk! database remap-table nested?)))
                            (partial merge-with +)
                            {:total-fields   0
                             :updated-fields 0}
@@ -270,17 +273,23 @@
           (sync! (fetch-metadata/fields-metadata database)))))))
 
 (mu/defn sync-fields-for-table!
-  "Sync the Fields in the Metabase application database for a specific `table`."
+  "Sync the Fields of `table` into the application database, reading them from the warehouse location that
+  `remap-table` gives, by default the [[fetch-metadata/table-remapper]] of `database`."
   ([table :- i/TableInstance]
    (sync-fields-for-table! (driver.u/lib-database (:db_id table)) table))
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
+   (sync-fields-for-table! database table (fetch-metadata/table-remapper database)))
+
+  ([database    :- i/DatabaseInstance
+    table       :- i/TableInstance
+    remap-table :- ifn?]
    (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
-     (let [db-metadata (fetch-metadata/table-fields-metadata database table)
+     (let [db-metadata (fetch-metadata/table-fields-metadata database table remap-table)
            ;; TODO: decouple nested field columns sync from field sync. This will allow
            ;; describe-fields to be used for field sync for databases with nested field columns
            ;; Also this should be a driver method, not a sql-jdbc.sync method
-           db-metadata (fetch-metadata/include-nested-fields-for-table db-metadata database table)]
+           db-metadata (fetch-metadata/include-nested-fields-for-table db-metadata database table remap-table)]
        {:total-fields   (count db-metadata)
         :updated-fields (sync-and-update! database table db-metadata)}))))

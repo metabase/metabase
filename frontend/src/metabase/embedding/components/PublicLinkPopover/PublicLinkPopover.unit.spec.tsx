@@ -217,7 +217,9 @@ describe("PublicLinkPopover", () => {
 
       await userEvent.click(screen.getByLabelText("copy icon"));
 
-      expect(await screen.findByText("Copied!")).toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.getByRole("status")).toHaveTextContent("Copied!"),
+      );
     });
 
     it("should allow non-admins to copy the link to the clipboard", async () => {
@@ -229,7 +231,9 @@ describe("PublicLinkPopover", () => {
 
       await userEvent.click(screen.getByLabelText("copy icon"));
 
-      expect(await screen.findByText("Copied!")).toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.getByRole("status")).toHaveTextContent("Copied!"),
+      );
     });
   });
 

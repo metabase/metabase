@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
+   [metabase.lib-be.core :as lib-be]
    [metabase.mcp.usage :as mcp.usage]
    ;; Required for its side effect: loading it loads every tool namespace, which registers itself.
    [metabase.mcp.v2.api]
@@ -99,6 +100,15 @@
       (is (= {:ok true :message "pong"} (:structuredContent result)))
       (testing "the internal error-code marker never reaches the client"
         (is (not (contains? result ::common/error-code)))))))
+
+(deftest ^:parallel call-tool-has-metadata-provider-cache-test
+  (testing "a tool runs with one metadata provider cache for its whole call"
+    (is (nil? (lib-be/metadata-provider-cache)))
+    (mt/with-dynamic-fn-redefs [v2.tu/test-echo (fn [_ _]
+                                                  (let [payload {:ok true :message (str "cache: " (some? (lib-be/metadata-provider-cache)))}]
+                                                    (common/success-content payload payload)))]
+      (is (= {:ok true :message "cache: true"}
+             (:structuredContent (:result (registry/call-tool #{"agent:content:read"} nil "test_echo" {}))))))))
 
 (deftest ^:parallel call-tool-validation-test
   (testing "malli validation failures surface as JSON-RPC invalid-params errors"

@@ -22,7 +22,7 @@
 (mu/defn collection-ids-by-entity-id :- [:map-of :string ::lib.schema.id/collection]
   "The ids of the Collections with `entity-ids`, by entity id."
   [entity-ids :- [:sequential :string]]
-  (app-db/select-batched-map #(t2/select-fn->pk :entity_id :model/Collection :entity_id [:in [:auto/param %]]) entity-ids))
+  (app-db/select-batched-map #(t2/select-fn->pk :entity_id :model/Collection :entity_id [:in %]) entity-ids))
 
 (mu/defn dashboard-with-entity-id
   "The Dashboard with `entity-id`, or nil."
@@ -56,6 +56,27 @@
   [time-column :- :keyword
    cutoff      :- ms/TemporalInstant
    batch-size  :- ms/PositiveInt]
-  (vec (t2/select-pks-vec :model/AuditLog {:where    [:<= time-column [:auto/param cutoff]]
+  (vec (t2/select-pks-vec :model/AuditLog {:where    [:<= time-column cutoff]
                                            :order-by [[:id :asc]]
                                            :limit    batch-size})))
+
+(mu/defn query-execution-partitions :- [:sequential :string]
+  "The names of the partitions of `query_execution` attached in the current schema, read on the connection `conn`."
+  [conn :- (ms/InstanceOfClass java.sql.Connection)]
+  ;; the regclass::oid cast resolves to only the table in the current schema.
+  ;; appdb with a non-default schema is not supported for new installs, but
+  ;; there are users who have upgraded from ancient installs who have it.
+  (mapv :relname (t2/query conn {:select [:c.relname]
+                                 :from   [[:pg_inherits :i]]
+                                 :join   [[:pg_class :p] [:= :i.inhparent :p.oid]
+                                          [:pg_class :c] [:= :i.inhrelid :c.oid]]
+                                 :where  [:= :p.oid [:cast [:cast (name (t2/table-name :model/QueryExecution)) :regclass]
+                                                     :oid]]})))
+
+(mu/defn earliest-started-at :- [:maybe [:or
+                                         (ms/InstanceOfClass java.time.temporal.Temporal)
+                                         (ms/InstanceOfClass java.util.Date)]]
+  "The earliest `started_at` in the `query_execution` partition named `partition`, read on the connection `conn`."
+  [conn      :- (ms/InstanceOfClass java.sql.Connection)
+   partition :- :string]
+  (:min (t2/query-one conn {:select [[[:min :started_at] :min]] :from [(keyword partition)]})))

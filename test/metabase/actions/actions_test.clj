@@ -158,7 +158,7 @@
                                                    :engine   ::feature-flag-test-driver
                                                    :settings {}}
                    :model/Table    {table-id :id} {:db_id db-id}]
-      (t2/query-one {:update :metabase_database
+      (t2/query-one {:update (t2/table-name :model/Database)
                      :set    {:settings (json/encode {:database-enable-actions true})}
                      :where  [:= :id db-id]})
       (is (thrown-with-msg? Exception (re-pattern

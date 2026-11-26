@@ -162,6 +162,18 @@
             (chat-completions/parts->cc-messages
              [{:type :tool-output :id "call-1" :result {:output "Found 42 results"}}])))))
 
+(deftest ^:parallel parts->cc-messages-tool-result-without-output-test
+  (testing "a result without :output sends empty text and none of its other keys"
+    (is (= [{:role "tool" :tool_call_id "call-1" :content ""}]
+           (chat-completions/parts->cc-messages
+            [{:type :tool-output :id "call-1" :result {:rows [1 2]}}])))))
+
+(deftest ^:parallel parts->cc-messages-error-result-test
+  (testing "a failed call without :output sends the fallback text"
+    (is (= [{:role "tool" :tool_call_id "call-1" :content "Tool execution failed"}]
+           (chat-completions/parts->cc-messages
+            [{:type :tool-output :id "call-1" :result {:error {:class :recoverable :code :x}}}])))))
+
 (deftest ^:parallel parts->cc-messages-multiple-tool-results-test
   (testing "multiple tool outputs become separate tool messages"
     (is (=? [{:role "tool" :tool_call_id "call-1" :content "Result 1"}
@@ -811,6 +823,25 @@
                   ;; the empty fragment some servers send between meaningful ones
                   {:choices [{:index 0 :delta {:tool_calls [{:index 0 :function {:arguments ""}}]}}]}
                   {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}])))))
+
+(deftest ^:parallel chunks-xf-start-without-a-chunk-id-test
+  (testing "a stream whose chunks have no `id` still opens with one `:start`, so persistence stores a
+           `step-start` for this LLM call and history replays the call as a step of its own"
+    (let [chunks (into [] (chat-completions/chat-completions->aisdk-chunks-xf)
+                       [{:choices [{:index 0 :delta {:role "assistant" :content "Hi"}}]}
+                        {:choices [{:index 0 :delta {} :finish_reason "stop"}]}])]
+      (is (=? [{:type :start :messageId string?}
+               {:type :text-start}
+               {:type :text-delta :delta "Hi"}
+               {:type :text-end}]
+              chunks))
+      (is (= 1 (count (filter #(= :start (:type %)) chunks))))))
+  (testing "a chunk `id` that comes after the first chunk does not open a second `:start`"
+    (is (= [:start :text-start :text-delta :text-delta :text-end]
+           (map :type (into [] (chat-completions/chat-completions->aisdk-chunks-xf)
+                            [{:choices [{:index 0 :delta {:content "A"}}]}
+                             {:id "chatcmpl-late" :choices [{:index 0 :delta {:content "B"}}]}
+                             {:choices [{:index 0 :delta {} :finish_reason "stop"}]}]))))))
 
 (deftest ^:parallel chunks-xf-arguments-without-an-open-call-are-dropped-test
   (testing "arguments that belong to no open call emit no delta, so aggregation never sees a delta without a toolCallId"

@@ -285,10 +285,13 @@
         (testing "PUT /:slug can disable an app"
           (is (=? {:slug "demo" :enabled false}
                   (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled false}))))
-        (testing "a disabled app is not served to a user with access"
+        (testing "a disabled app is not found by a user without access"
+          (mt/user-http-request :rasta :get 404 "ee/apps/demo")
+          (mt/user-real-request :rasta :get 404 "ee/apps/demo/bundle"))
+        (testing "a disabled app is not found by a user with access"
           (group-access/add-groups! (t2/select-one :model/DataApp :slug "demo") [(:id (perms/all-users-group))])
-          (mt/user-http-request :rasta :get 403 "ee/apps/demo")
-          (mt/user-real-request :rasta :get 403 "ee/apps/demo/bundle"))
+          (mt/user-http-request :rasta :get 404 "ee/apps/demo")
+          (mt/user-real-request :rasta :get 404 "ee/apps/demo/bundle"))
         (testing "a superuser still reads a disabled app's metadata and bundle"
           (is (=? {:slug "demo" :enabled false}
                   (mt/user-http-request :crowberto :get 200 "ee/apps/demo")))
@@ -492,7 +495,7 @@
                    saved?   (fn [metric-ids]
                               (every? (comp some? :dimensions)
                                       (t2/query {:select [:dimensions]
-                                                 :from   [:report_card]
+                                                 :from   [(t2/table-name :model/Card)]
                                                  :where  [:in :id metric-ids]})))]
                (generate (metrics! 1))
                (let [small (metrics! 2)
@@ -550,6 +553,30 @@
                               {:collection collection-entity-id
                                :queries    {:venueList (venues-definition "VenueList123456789012" {})
                                             :VenueList (venues-definition "VenueList223456789012" {})}})))))
+
+(deftest generate-queries-statement-count-test
+  (testing "POST /api/ee/apps/generate/queries runs as many statements for 6 definitions on distinct Tables as for 2"
+    (mt/with-premium-features #{:data-apps}
+      (let [tables [:venues :checkins :users :categories :orders :people]]
+        (data-apps.tu/with-published-tables! (mapv mt/id tables)
+          (let [statements (fn [table-keys]
+                             (let [queries (into {}
+                                                 (map-indexed
+                                                  (fn [i table]
+                                                    [(keyword (str (name table) i))
+                                                     {:entityId (format "Table%016d" i)
+                                                      :query    {:stages [{:source {:type "table"
+                                                                                    :id   (mt/id table)
+                                                                                    :name (t2/select-one-fn :display_name :model/Table
+                                                                                                            :id (mt/id table))}}]}}]))
+                                                 table-keys)]
+                               (t2/with-call-count [call-count]
+                                 (mt/user-http-request :crowberto :post 200 "ee/apps/generate/queries"
+                                                       {:collection collection-entity-id
+                                                        :queries    queries})
+                                 (call-count))))]
+            (statements (take 2 tables))
+            (is (= (statements (take 2 tables)) (statements tables)))))))))
 
 (deftest generate-actions-refuses-invalid-definitions-test
   (mt/with-premium-features #{:data-apps}

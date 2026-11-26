@@ -60,7 +60,7 @@
           (run! transforms.schedule/initialize-job! [active-job inactive-job])
           (is (some? (transforms.schedule/existing-trigger inactive-id)))
           (is (nil? (transforms.schedule/existing-trigger untriggered-id)))
-          (t2/update! :transform_job {:id inactive-id} {:active false})
+          (t2/update! (t2/table-name :model/TransformJob) {:id inactive-id} {:active false})
           (task/init! ::transforms.schedule/RunTransform)
           (is (nil? (transforms.schedule/existing-trigger inactive-id)))
           (is (nil? (transforms.schedule/existing-trigger untriggered-id)))

@@ -44,7 +44,8 @@
     (mt/with-temp [:model/Database db    {:engine ::not-support-index-test}
                    :model/Table    table {:db_id (:id db)}]
       (is (= @#'sync.indexes/empty-stats (sync.indexes/maybe-sync-indexes! (driver.u/lib-database (:id db)))))
-      (is (= @#'sync.indexes/empty-stats (sync.indexes/maybe-sync-indexes-for-table! (driver.u/lib-database (:id db)) table))))))
+      (is (= @#'sync.indexes/empty-stats
+             (sync.indexes/maybe-sync-indexes-for-table! (driver.u/lib-database (:id db)) table (constantly nil)))))))
 
 (deftest all-indexes->fields-ids-many-indexes-test
   (testing "no exception is thrown when there are very many indexes"

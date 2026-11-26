@@ -2,6 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.liquibase.rollback :as rollback]
@@ -26,36 +27,36 @@
   (into []
         (comp (remove versions/legacy-version-tracking-marker?) (map :id))
         (jdbc/query {:connection conn}
-                    [(format "SELECT id, filename FROM %s ORDER BY dateexecuted, orderexecuted" changelog-table)])))
+                    (mdb.test-util/format-sql {:select [:id :filename] :from [(keyword changelog-table)] :order-by [:dateexecuted :orderexecuted]}))))
 
 (defn- marker-ids
   "The `vNN.legacy-version-tracking` marker ids in the changelog, in id order."
   [conn changelog-table]
   (mapv :id (jdbc/query {:connection conn}
-                        [(format "SELECT id FROM %s WHERE filename = 'legacy-version-tracking' ORDER BY id" changelog-table)])))
+                        (mdb.test-util/format-sql {:select [:id] :from [(keyword changelog-table)] :where [:= :filename "legacy-version-tracking"] :order-by [:id]}))))
 
 (defn- has-changeset? [conn changelog-table id]
-  (boolean (seq (jdbc/query {:connection conn} [(format "SELECT 1 FROM %s WHERE id = ?" changelog-table) id]))))
+  (boolean (seq (jdbc/query {:connection conn} (mdb.test-util/format-sql {:select [1] :from [(keyword changelog-table)] :where [:= :id id]})))))
 
 (defn- deployment-of [spec changelog-table id]
-  (:deployment_id (first (jdbc/query spec [(format "SELECT deployment_id FROM %s WHERE id = ?" changelog-table) id]))))
+  (:deployment_id (first (jdbc/query spec (mdb.test-util/format-sql {:select [:deployment_id] :from [(keyword changelog-table)] :where [:= :id id]})))))
 
 (defn- changelog-deployments
   "The set of deployment_ids with any changelog row."
   [conn changelog-table]
-  (set (map :deployment_id (jdbc/query {:connection conn} [(format "SELECT DISTINCT deployment_id FROM %s" changelog-table)]))))
+  (set (map :deployment_id (jdbc/query {:connection conn} (mdb.test-util/format-sql {:select-distinct [:deployment_id] :from [(keyword changelog-table)]})))))
 
 (defn- version-deployments
   "The set of deployment_ids with any version row."
   [conn]
   (set (map :deployment_id (jdbc/query {:connection conn}
-                                       [(format "SELECT DISTINCT deployment_id FROM %s" (versions/versions-table-name))]))))
+                                       (mdb.test-util/format-sql {:select-distinct [:deployment_id] :from [(keyword (versions/versions-table-name))]})))))
 
 (defn- versions-recorded
   "Every recorded version string, in insertion order, read on a fresh connection."
   []
   (mapv :metabase_version (jdbc/query {:datasource (mdb/data-source)}
-                                      [(format "SELECT metabase_version FROM %s ORDER BY id" (versions/versions-table-name))])))
+                                      (mdb.test-util/format-sql {:select [:metabase_version] :from [(keyword (versions/versions-table-name))] :order-by [:id]}))))
 
 (defn- rollback-last-deployment!
   "What `dev.migrate/rollback! :last-deployment` does: roll back everything after the second-newest deployment, in
@@ -354,7 +355,7 @@
             ;; ... which had no version rows at all. The DELETE and all later reads use fresh autocommit connections:
             ;; on MySQL the shared non-autocommit `conn` would leave the DELETE invisible to the migration's own
             ;; connection and serve later reads from a stale REPEATABLE READ snapshot.
-            (jdbc/execute! {:datasource (mdb/data-source)} [(format "DELETE FROM %s" (versions/versions-table-name))])
+            (jdbc/execute! {:datasource (mdb/data-source)} (mdb.test-util/format-sql {:delete-from (keyword (versions/versions-table-name))}))
             (let [pre-major (versions/latest-applied-major-version conn db)]
               (with-redefs [config/mb-version-info (tag (format "v0.%d.0" (inc pre-major)))]
                 (testing "migrate up records both the backfilled pre-upgrade version and the upgrade's own version"
@@ -363,7 +364,7 @@
                   (is (= (format "x.%d.0" (inc pre-major)) (last (versions-recorded)))))
                 (testing "migrate down (default) rolls the upgrade back"
                   (mdb/migrate! (mdb/data-source) :down)
-                  (is (empty? (jdbc/query {:datasource (mdb/data-source)} [(format "SELECT 1 FROM %s WHERE id = ?" ct) last-id]))
+                  (is (empty? (jdbc/query {:datasource (mdb/data-source)} (mdb.test-util/format-sql {:select [1] :from [(keyword ct)] :where [:= :id last-id]})))
                       "the upgrade's changeset was rolled back")
                   (is (= (versions/major->version pre-major) (first (versions-recorded))))
                   (is (not-any? #{(format "x.%d.0" (inc pre-major))} (versions-recorded))
@@ -551,10 +552,10 @@
               ;; an earlier dev deployment to roll back to, then the dev changeset itself
               (mdb.test-util/fabricate-history! conn ct [{:deployment "dev1" :ran versions/dev-version :changesets ["boundary_row"]}])
               (liquibase/with-scope-locked liquibase (.update liquibase ""))
-              (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'dev2' WHERE id = 'dev_run_a'" ct)])
+              (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:update (keyword ct) :set {:deployment_id "dev2"} :where [:= :id "dev_run_a"]}))
               (versions/record-deployment-version! conn "dev2" versions/dev-version true)
               ;; what an old binary's consolidation leaves behind
-              (jdbc/execute! {:connection conn} [(format "UPDATE %s SET filename = 'migrations/000_legacy_migrations.yaml' WHERE id = 'dev_run_a'" ct)])
+              (jdbc/execute! {:connection conn} (mdb.test-util/format-sql {:update (keyword ct) :set {:filename "migrations/000_legacy_migrations.yaml"} :where [:= :id "dev_run_a"]}))
               (mt/with-log-messages-for-level [messages [metabase.app-db.liquibase :info]]
                 (rollback/rollback-to-deployment! conn liquibase "dev1")
                 (is (some #(re-find #"Restoring the changelog filename of version-less changeset dev_run_a" (:message %)) (messages)))
@@ -574,7 +575,7 @@
           ;; after the second migration from a stale REPEATABLE READ snapshot
           (let [ct       (liquibase/changelog-table-name conn)
                 spec     {:datasource (mdb/data-source)}
-                applied? (fn [id] (boolean (seq (jdbc/query spec [(format "SELECT 1 FROM %s WHERE id = ?" ct) id]))))]
+                applied? (fn [id] (boolean (seq (jdbc/query spec (mdb.test-util/format-sql {:select [1] :from [(keyword ct)] :where [:= :id id]})))))]
             (with-redefs [liquibase/changelog-file "versionless-dev-run1.yaml"]
               (mdb/migrate! (mdb/data-source) :up))
             (is (true? (applied? "dev_run_a")))
@@ -612,8 +613,8 @@
         ;; open transaction whose lock on v_roc deadlocks the next migration's CREATE OR REPLACE VIEW on Postgres
         (let [ct     (liquibase/changelog-table-name conn)
               spec   {:datasource (mdb/data-source)}
-              row-of (fn [id] (first (jdbc/query spec [(format "SELECT deployment_id, exectype FROM %s WHERE id = ?" ct) id])))
-              view-x (fn [] (:x (first (jdbc/query spec ["SELECT x FROM v_roc"]))))]
+              row-of (fn [id] (first (jdbc/query spec (mdb.test-util/format-sql {:select [:deployment_id :exectype] :from [(keyword ct)] :where [:= :id id]}))))
+              view-x (fn [] (:x (first (jdbc/query spec (mdb.test-util/format-sql {:select [:x] :from [:v_roc]})))))]
           (with-redefs [config/mb-version-info (tag "v0.65.0")
                         liquibase/changelog-file "versionless-roc-run1.yaml"]
             (mdb/migrate! (mdb/data-source) :up))
@@ -629,7 +630,7 @@
             (mdb/migrate! (mdb/data-source) :down)
             (testing "the newer release's own changeset is reversed"
               (is (nil? (row-of "roc_new")))
-              (is (thrown? Exception (jdbc/query spec ["SELECT 1 FROM roc_new_table"]))))
+              (is (thrown? Exception (jdbc/query spec (mdb.test-util/format-sql {:select [1] :from [:roc_new_table]})))))
             (testing "the re-run changeset is NOT reversed"
               (is (= 2 (view-x)) "the view survives (the rollback-target binary's own runOnChange update will restore its content)")
               (is (some? (row-of "roc_view")) "its changelog row is retained"))
@@ -651,8 +652,8 @@
         ;; reads use fresh autocommit connections -- see rollback-does-not-reverse-reran-changesets-test
         (let [ct     (liquibase/changelog-table-name conn)
               spec   {:datasource (mdb/data-source)}
-              row-of (fn [id] (first (jdbc/query spec [(format "SELECT deployment_id, exectype FROM %s WHERE id = ?" ct) id])))
-              view?  (fn [] (try (jdbc/query spec ["SELECT x FROM v_vroc"]) true (catch Exception _ false)))]
+              row-of (fn [id] (first (jdbc/query spec (mdb.test-util/format-sql {:select [:deployment_id :exectype] :from [(keyword ct)] :where [:= :id id]}))))
+              view?  (fn [] (try (jdbc/query spec (mdb.test-util/format-sql {:select [:x] :from [:v_vroc]})) true (catch Exception _ false)))]
           ;; the 64 install that 65.0 upgrades
           (with-redefs [liquibase/changelog-file "versioned-roc-run1.yaml"]
             (with-open [c (.getConnection ^javax.sql.DataSource (mdb/data-source))]
@@ -711,8 +712,8 @@
     (with-redefs [config/mb-version-info   (tag second-tag)
                   liquibase/changelog-file "versionless-late-roc-run2.yaml"]
       (mdb/migrate! (mdb/data-source) :up))
-    {:row-of (fn [id] (first (jdbc/query spec [(format "SELECT deployment_id, exectype FROM %s WHERE id = ?" ct) id])))
-     :view?  (fn [] (try (jdbc/query spec ["SELECT x FROM v_lroc"]) true (catch Exception _ false)))}))
+    {:row-of (fn [id] (first (jdbc/query spec (mdb.test-util/format-sql {:select [:deployment_id :exectype] :from [(keyword ct)] :where [:= :id id]}))))
+     :view?  (fn [] (try (jdbc/query spec (mdb.test-util/format-sql {:select [:x] :from [:v_lroc]})) true (catch Exception _ false)))}))
 
 (deftest rollback-reverses-version-less-reran-changesets-newer-than-the-target-test
   (testing "a version-less re-run changeset that first ran after the rollback target is reversed: where it first ran is
@@ -758,8 +759,8 @@
       (mt/with-temp-empty-app-db [conn driver/*driver*]
         (let [ct     (liquibase/changelog-table-name conn)
               spec   {:datasource (mdb/data-source)}
-              row-of (fn [id] (first (jdbc/query spec [(format "SELECT deployment_id, exectype FROM %s WHERE id = ?" ct) id])))
-              view?  (fn [] (try (jdbc/query spec ["SELECT x FROM v_always"]) true (catch Exception _ false)))]
+              row-of (fn [id] (first (jdbc/query spec (mdb.test-util/format-sql {:select [:deployment_id :exectype] :from [(keyword ct)] :where [:= :id id]}))))
+              view?  (fn [] (try (jdbc/query spec (mdb.test-util/format-sql {:select [:x] :from [:v_always]})) true (catch Exception _ false)))]
           (with-redefs [liquibase/changelog-file "versionless-always.yaml"]
             (with-open [c (.getConnection ^javax.sql.DataSource (mdb/data-source))]
               (liquibase/with-liquibase [liquibase c]
@@ -783,10 +784,16 @@
   UPDATE changes."
   [conn changelog-table id deployment-id]
   (jdbc/execute! {:connection conn}
-                 [(format (str "UPDATE %s SET exectype = 'RERAN', deployment_id = ?, orderexecuted = orderexecuted + 100, "
-                               "dateexecuted = (SELECT m FROM (SELECT MAX(dateexecuted) AS m FROM %s) newest) WHERE id = ?")
-                          changelog-table changelog-table)
-                  deployment-id id]))
+                 (mdb.test-util/format-sql
+                  {:update (keyword changelog-table)
+                   :set    {:exectype      "RERAN"
+                            :deployment_id deployment-id
+                            :orderexecuted [:+ :orderexecuted 100]
+                            :dateexecuted  {:select [:m]
+                                            :from   [[{:select [[[:max :dateexecuted] :m]]
+                                                       :from   [(keyword changelog-table)]}
+                                                      :newest]]}}
+                   :where  [:= :id id]})))
 
 (deftest rollback-keeps-re-runs-first-run-by-an-emptied-deployment-test
   (testing "a deployment whose only changeset re-ran later still holds where it first ran: an old 64 binary that re-ran
@@ -800,7 +807,7 @@
             (mdb.test-util/fabricate-history! conn ct [{:deployment "d64"  :ran "x.64.0.0" :changesets ["base64"]}
                                                        {:deployment "d64b" :ran "x.64.0.0" :changesets ["view64"]}])
             (doseq [statement (#'versions/first-run-statements conn db ["synthetic.yaml" "test" "view64"])]
-              (jdbc/execute! {:connection conn} statement))
+              (jdbc/execute! {:connection conn} (sql/format statement {:quoted false})))
             (mdb.test-util/fabricate-history! conn ct [{:deployment "d67" :ran "x.67.1" :changesets ["c67"]}])
             (re-run-into! conn ct "view64" "d67")
             (is (= #{"d64" "d67"} (changelog-deployments conn ct)) "sanity: d64b has no changelog rows left")
@@ -838,15 +845,16 @@
                 view-in (fn [filename] {:id "same_view" :filename filename})
                 row-in  (fn [filename]
                           (first (jdbc/query {:connection conn}
-                                             [(format "SELECT deployment_id FROM %s WHERE id = 'same_view' AND filename = ?" ct)
-                                              filename])))]
+                                             (mdb.test-util/format-sql {:select [:deployment_id]
+                                                                        :from   [(keyword ct)]
+                                                                        :where  [:and [:= :id "same_view"] [:= :filename filename]]}))))]
             (versions/ensure-version-tracking! conn db)
             (mdb.test-util/fabricate-history! conn ct [{:deployment "d64" :ran "x.64.0" :changesets ["base64" (view-in "a.yaml")]}
                                                        {:deployment "d65" :ran "x.65.0" :changesets ["new65" (view-in "b.yaml")]}])
             ;; 65.1 re-runs both: record where each first ran, then move them as Liquibase does
             (doseq [filename ["a.yaml" "b.yaml"]
                     statement (#'versions/first-run-statements conn db [filename "test" "same_view"])]
-              (jdbc/execute! {:connection conn} statement))
+              (jdbc/execute! {:connection conn} (sql/format statement {:quoted false})))
             (mdb.test-util/fabricate-history! conn ct [{:deployment "d651" :ran "x.65.1" :changesets ["new651"]}])
             (re-run-into! conn ct "same_view" "d651")
             (with-redefs [config/mb-version-info (tag "v0.65.1")]
@@ -864,8 +872,8 @@
         ;; reads use fresh autocommit connections -- see rollback-does-not-reverse-reran-changesets-test
         (let [ct     (liquibase/changelog-table-name conn)
               spec   {:datasource (mdb/data-source)}
-              row-of (fn [id] (first (jdbc/query spec [(format "SELECT deployment_id, exectype FROM %s WHERE id = ?" ct) id])))
-              view-x (fn [] (:x (first (jdbc/query spec ["SELECT x FROM v_roc"]))))]
+              row-of (fn [id] (first (jdbc/query spec (mdb.test-util/format-sql {:select [:deployment_id :exectype] :from [(keyword ct)] :where [:= :id id]}))))
+              view-x (fn [] (:x (first (jdbc/query spec (mdb.test-util/format-sql {:select [:x] :from [:v_roc]})))))]
           (with-redefs [config/mb-version-info (tag "vLOCAL_DEV")]
             (with-redefs [liquibase/changelog-file "versionless-roc-run1.yaml"]
               (mdb/migrate! (mdb/data-source) :up))
@@ -891,7 +899,10 @@
           (let [db     (.getDatabase liquibase)
                 ct     (liquibase/changelog-table-name liquibase)
                 newest #(mapv :id (jdbc/query {:connection conn}
-                                              [(format "SELECT id FROM %s WHERE dateexecuted = (SELECT MAX(dateexecuted) FROM %s)" ct ct)]))]
+                                              (mdb.test-util/format-sql {:select [:id]
+                                                                         :from   [(keyword ct)]
+                                                                         :where  [:= :dateexecuted {:select [[[:max :dateexecuted]]]
+                                                                                                    :from   [(keyword ct)]}]})))]
             (versions/ensure-version-tracking! conn db)
             (mdb.test-util/fabricate-history! conn ct [{:deployment "d58" :ran "x.58.9" :changesets ["v58.2025-01-01T00:00:00" "thing_one"]}])
             (versions/record-legacy-version-tracking! db 58 "d58")

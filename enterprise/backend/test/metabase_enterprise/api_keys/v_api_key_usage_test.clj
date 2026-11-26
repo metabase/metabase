@@ -176,8 +176,10 @@
     ;; metabase-lib silently excludes unknown-typed columns from the FE's sortable columns —
     ;; the view's own `CAST(... AS VARCHAR)` is what keeps this column a plain, sortable string.
     (when (= (mdb/db-type) :h2)
-      (let [column-type (-> (t2/query "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS
-                                        WHERE TABLE_NAME = 'V_API_KEY_USAGE'
-                                          AND COLUMN_NAME = 'CREATOR_DISPLAY_NAME'")
+      (let [column-type (-> (t2/query {:select [:data_type]
+                                       :from   [:information_schema.columns]
+                                       :where  [:and
+                                                [:= :table_name "V_API_KEY_USAGE"]
+                                                [:= :column_name "CREATOR_DISPLAY_NAME"]]})
                             first :data_type)]
         (is (not= "VARCHAR_IGNORECASE" column-type))))))

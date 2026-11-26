@@ -67,4 +67,4 @@
      ;; this is a smoke test against runaway ref expansion (see `max-depth` in [[umd]]), which used to make this take
      ;; literal minutes -- it is not a performance budget. The timeout is generous because this test is `^:parallel`
      ;; and so competes for the thread pool with everything else; actual cost is ~175ms.
-     (is (string? (u/with-timeout 5000 (umd/describe :metabase.lib.schema/query))))))
+     (is (string? (u/with-timeout 30000 (umd/describe :metabase.lib.schema/query))))))

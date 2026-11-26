@@ -171,14 +171,38 @@
   (-> (get-notification id)
       api/read-check))
 
-(defn- all-email-recipients [notification]
+(defn- email-recipients
+  "The user and raw-value recipients of the email handlers of `notification`."
+  [notification]
   (->> (:handlers notification)
        (filter #(= :channel/email ((comp keyword :channel_type) %)))
        (mapcat :recipients)
-       (filter #(#{:notification-recipient/user :notification-recipient/raw-value} ((comp keyword :type) %)))
+       (filter #(#{:notification-recipient/user :notification-recipient/raw-value} ((comp keyword :type) %)))))
+
+(defn- user-recipient? [recipient]
+  (= :notification-recipient/user ((comp keyword :type) recipient)))
+
+(defn- deactivated-recipient-emails
+  "A map of user ID to email of the user recipients of `notifications` whose hydrated `:user` has no email (a
+  deactivated user), read at once."
+  [notifications]
+  (let [user-ids (into #{}
+                       (comp (mapcat email-recipients)
+                             (filter user-recipient?)
+                             (remove (comp :email :user))
+                             (keep :user_id))
+                       notifications)]
+    (when (seq user-ids)
+      (notification.db/user-emails user-ids))))
+
+(defn- all-email-recipients
+  "The email addresses of the email recipients of `notification`,
+  with `user-emails` from [[deactivated-recipient-emails]]."
+  [notification user-emails]
+  (->> (email-recipients notification)
        (map (fn [recipient]
-              (if (= :notification-recipient/user ((comp keyword :type) recipient))
-                (or (-> recipient :user :email) (notification.db/user-email (:user_id recipient)))
+              (if (user-recipient? recipient)
+                (or (-> recipient :user :email) (get user-emails (:user_id recipient)))
                 (-> recipient :details :value))))
        (remove nil?)
        set))
@@ -186,7 +210,8 @@
 (defn- send-you-were-added-card-notification-email! [notification]
   (when (channel.settings/email-configured?)
     (let [current-user? #{(:email @api/*current-user*)}]
-      (when-let [recipients-except-creator (->> (all-email-recipients notification)
+      (when-let [recipients-except-creator (->> (all-email-recipients notification
+                                                                      (deactivated-recipient-emails [notification]))
                                                 (remove current-user?)
                                                 seq)]
         (messages/send-you-were-added-card-notification-email!
@@ -216,13 +241,13 @@
 
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"
-  [updated-notification existing-notification]
+  [updated-notification existing-notification user-emails]
   (when (channel.settings/email-configured?)
     (let [was-active?  (:active existing-notification)
           is-active?   (:active updated-notification)
           current-user @api/*current-user*
-          old-emails   (all-email-recipients existing-notification)
-          new-emails   (all-email-recipients updated-notification)
+          old-emails   (all-email-recipients existing-notification user-emails)
+          new-emails   (all-email-recipients updated-notification user-emails)
           notification (update existing-notification :payload #(t2/hydrate % :card))]
       (cond
         ;; Notification was just archived - notify all users they were unsubscribed
@@ -245,9 +270,11 @@
   of hydrated notifications in `pairs`, then publish one `:event/notification-update` for all of them, for the PUT
   endpoint and the admin bulk endpoint alike."
   [pairs]
-  (doseq [[updated existing] pairs
-          :when (card-notification? existing)]
-    (notify-notification-updates! updated existing))
+  (let [card-pairs  (filter (comp card-notification? second) pairs)
+        user-emails (when (and (seq card-pairs) (channel.settings/email-configured?))
+                      (deactivated-recipient-emails (mapcat identity card-pairs)))]
+    (doseq [[updated existing] card-pairs]
+      (notify-notification-updates! updated existing user-emails)))
   (when (seq pairs)
     (events/publish-event! :event/notification-update
                            {:objects (mapv (fn [[updated existing]]

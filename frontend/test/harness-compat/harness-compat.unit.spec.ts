@@ -75,6 +75,22 @@ describe("the node:test runner", () => {
   );
 
   it(
+    "prints a file's console output unless the run is silent",
+    () => {
+      const spec = fixture("console-output.fixture.js");
+      for (const runner of ["jest", "harness"] as const) {
+        const printed = runJestOutput(runner, [spec]);
+        expect(printed).toContain("console output while the file loads");
+        expect(printed).toContain("console output of a passing test");
+        const silent = runJestOutput(runner, ["--silent", spec]);
+        expect(silent).not.toContain("console output");
+        expect(silent).not.toContain("● Console");
+      }
+    },
+    RUN_TIMEOUT_MS,
+  );
+
+  it(
     "keeps the snapshots of the tests that -t skips",
     () => {
       const args = ["--ci", "-t", "first", fixture("snapshots.fixture.js")];
@@ -143,6 +159,33 @@ function runJest(runner: Runner, args: string[]): JestJson {
   } finally {
     fs.rmSync(outputFile, { force: true });
   }
+}
+
+function runJestOutput(runner: Runner, args: string[]): string {
+  const runnerArgs =
+    runner === "jest" ? ["--no-cache"] : [`--runner=${RUNNER}`];
+  const { error, stdout, stderr } = spawnSync(
+    process.execPath,
+    [
+      JEST,
+      "--selectProjects",
+      "harness-compat",
+      "harness-compat-dom",
+      "--maxWorkers=2",
+      ...runnerArgs,
+      ...args,
+    ],
+    {
+      cwd: ROOT,
+      encoding: "utf8",
+      env: cleanEnvironment(),
+      timeout: RUN_TIMEOUT_MS,
+    },
+  );
+  if (error) {
+    throw error;
+  }
+  return stdout + stderr;
 }
 
 // The run of this spec sets variables for its own workers, such as the time

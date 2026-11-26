@@ -24,7 +24,7 @@
 (mu/defn database-is-attached-dwh?
   "Whether the Database with `database-id` is an attached data warehouse."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :is_attached_dwh :model/Database :id [:auto/param database-id]))
+  (t2/select-one-fn :is_attached_dwh :model/Database :id database-id))
 
 (mu/defn active-fields-for-table
   "The active Fields of the Table with `table-id`."
