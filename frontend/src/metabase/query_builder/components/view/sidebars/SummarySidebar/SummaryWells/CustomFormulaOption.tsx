@@ -9,12 +9,16 @@ export const CUSTOM_FORMULA_OPTION_VALUE = "custom-formula";
 
 type CustomFormulaOptionProps = {
   wellId: SummaryWellId;
+  disabled?: boolean;
 };
 
-export function CustomFormulaOption({ wellId }: CustomFormulaOptionProps) {
+export function CustomFormulaOption({
+  wellId,
+  disabled = false,
+}: CustomFormulaOptionProps) {
   return (
     <Combobox.Group label={t`Formula`}>
-      <Combobox.Option value={CUSTOM_FORMULA_OPTION_VALUE}>
+      <Combobox.Option value={CUSTOM_FORMULA_OPTION_VALUE} disabled={disabled}>
         <Icon name="function" className={S.searchOptionIcon} aria-hidden />
         <Box className={S.searchOptionText}>
           {wellId === "values" ? t`Custom aggregation` : t`Custom column`}

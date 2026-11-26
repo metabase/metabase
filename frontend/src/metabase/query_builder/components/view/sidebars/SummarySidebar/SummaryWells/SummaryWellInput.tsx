@@ -308,7 +308,9 @@ export function SummaryWellInput({
               ))}
             </Combobox.Group>
           ))}
-          {formulaInput && <CustomFormulaOption wellId={wellId} />}
+          {formulaInput && (
+            <CustomFormulaOption wellId={wellId} disabled={isGenerating} />
+          )}
         </Combobox.Options>
       </Combobox.Dropdown>
     </Combobox>

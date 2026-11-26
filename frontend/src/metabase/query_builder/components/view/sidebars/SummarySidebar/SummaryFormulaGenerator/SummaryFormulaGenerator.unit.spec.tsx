@@ -349,6 +349,36 @@ describe("summary formula generator", () => {
     );
   });
 
+  it("doesn't open a formula from the well that is generating one", async () => {
+    const response = defer<GenerateCustomExpressionResponse>();
+    const { getLastQuery } = await setup({ response: response.promise });
+
+    await userEvent.type(getInput("values"), "revenue per customer");
+    await userEvent.keyboard("{Enter}");
+    expect(
+      await screen.findByRole("option", {
+        name: /Generating “revenue per customer”…/,
+      }),
+    ).toBeInTheDocument();
+
+    const customOption = screen.getByRole("option", {
+      name: /Custom aggregation/,
+    });
+    expect(customOption).toHaveAttribute("data-combobox-disabled", "true");
+    await userEvent.click(customOption);
+    expect(screen.queryByTestId("formula-editor")).not.toBeInTheDocument();
+
+    await userEvent.type(getInput("columns"), "the day after the order");
+    expect(
+      await screen.findByRole("option", { name: /Custom column/ }),
+    ).not.toHaveAttribute("data-combobox-disabled");
+
+    response.resolve({ expression: "Average([Total])", name: "Average total" });
+    await waitFor(() =>
+      expect(getLastQuery().values).toEqual(["Average total"]),
+    );
+  });
+
   it("doesn't change the query when the sidebar closes before the formula is generated", async () => {
     const response = defer<GenerateCustomExpressionResponse>();
     const { onQueryChange } = await setup({ response: response.promise });
