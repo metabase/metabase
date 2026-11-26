@@ -1164,6 +1164,10 @@
     ;; Only applies to queries compiled with `:stage-ctes`.
     :stage-ctes/nest-single-row-aggregation
     ;;
+    ;; Does this driver give statistics of a table from its database's catalog with [[table-statistics]]? Declare it for
+    ;; the driver itself only, as `(= driver :my-driver)`.
+    :table-statistics
+    ;;
     ;; Added in 66; this can be removed in 69 when we make this the default and only supported option.
     ;;
     ;; Does this driver supporting executing native queries in the MBQL 5 shape directly, as opposed to the legacy
@@ -1805,6 +1809,57 @@
   {:arglists '([driver table fields rff opts]), :added "0.46.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(mr/def ::table-statistics.options
+  "The options of [[table-statistics]]. `:max-cost` is the cost the caller accepts: `:metadata`, catalog reads only, with
+  no read of the data, which sync can ask on each run; or `:scan`, which also allows one aggregate query of the table.
+  `:want` names the parts the caller wants; with none named, it wants all."
+  [:map
+   [:max-cost [:enum :metadata :scan]]
+   [:want {:optional true} [:set [:enum :row-count :fingerprint :values]]]])
+
+(mr/def ::table-statistics.origin
+  "Where a part of an answer of [[table-statistics]] came from. `:source` is `:catalog` or `:query`. `:kind` is how
+  exact it is: `:exact`, `:sampled` (the database computed it from a sample, as `ANALYZE` does), or `:estimate`.
+  `:collected-at` is when the database collected it, when it says, as an ISO-8601 instant in UTC."
+  [:map
+   [:source [:enum :catalog :query]]
+   [:kind [:enum :exact :sampled :estimate]]
+   [:collected-at {:optional true} [:maybe [:re #"^\d{4}-\d{2}-\d{2}T.*Z$"]]]])
+
+(mr/def ::table-statistics.result
+  "An answer of [[table-statistics]]: only what the driver knows, so `{}` when it knows nothing.
+  `:row-count` is the table's row count and how exact it is. `:fields` is by Field id: a partial `:fingerprint` in the
+  shape of a fingerprint, `:values`, the field's distinct values, with `:complete? true` only when the database is sure
+  that they are all of them, and the `:origin` of the field's parts."
+  [:map
+   [:row-count {:optional true} [:map
+                                 [:value :int]
+                                 [:kind [:enum :exact :sampled :estimate]]]]
+   [:fields {:optional true} [:map-of :int [:map
+                                            [:fingerprint {:optional true} :map]
+                                            [:values {:optional true} [:map
+                                                                       [:complete? :boolean]
+                                                                       [:values [:sequential :any]]]]
+                                            [:origin [:ref ::table-statistics.origin]]]]]])
+
+(defmulti table-statistics
+  "What the database of `driver` knows about `table` and its `fields`, at a cost no higher than `(:max-cost opts)`; see
+  `::table-statistics.options` and `::table-statistics.result`. The driver returns the parts it has and omits the
+  rest, and sync fills the gaps from a sample. Each answer states its origin.
+
+  A driver fills each part from the source that is cheapest for its engine, for example `pg_stats` on Postgres. Declared
+  value lists, such as the labels of an enum type, come as `:values` with `:complete? true`, which must be the truth.
+
+  The default knows nothing and returns `{}`. Sync calls this only for a driver that supports `:table-statistics` for
+  itself. No sync code uses an answer yet."
+  {:arglists '([driver database table fields opts]), :added "0.66.0"}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod table-statistics ::driver
+  [_driver _database _table _fields _opts]
+  {})
 
 ;;; TODO (Cam 2026-05-04) -- this is JDBC-specific, should be moved to [[metabase.driver.sql-jdbc]] or one of its
 ;;; sub-namespaces

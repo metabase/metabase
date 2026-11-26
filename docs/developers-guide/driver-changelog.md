@@ -7,6 +7,14 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- New multimethod `metabase.driver/table-statistics` and feature flag `:table-statistics`, false by default. A driver
+  that supports the flag gives what its database's catalog knows about a table and its fields, at a cost no higher
+  than `:max-cost` (`:metadata`, catalog reads only, or `:scan`, one aggregate query): `{:row-count {:value n :kind
+  k}, :fields {field-id {:fingerprint <partial>, :values {:complete? b :values [...]}, :origin {...}}}}`, with only
+  the parts it has. The schemas are `:metabase.driver/table-statistics.options` and
+  `:metabase.driver/table-statistics.result`. The default returns `{}`. Declare the flag for the driver itself only,
+  as `(= driver :my-driver)`. No sync code uses an answer yet.
+
 - `metabase.driver.sql-jdbc.sync/sample-json-row-honeysql` `[driver table-identifier json-field-identifiers
   pk-identifiers]` -- new multimethod that returns the query sync uses to sample rows of JSON columns, to find their
   nested field columns. Each JSON value must come back as JSON text. Override it if the driver reads JSON values as
