@@ -136,14 +136,8 @@ describe("MigrateModelsPage", () => {
       await screen.findByText("Pick a model to convert"),
     ).toBeInTheDocument();
 
-    const sampleSidebar = await selectModel("Sample DB model");
-    expect(
-      await within(sampleSidebar).findByRole("button", {
-        name: /Convert to a transform/,
-      }),
-    ).toBeDisabled();
-
-    // positive control: a model in a database with transforms
+    // positive control first: the button is also disabled while the list of
+    // active replacement runs loads, so wait for it to be enabled
     const targetSidebar = await selectModel("Target model");
     await waitFor(() => {
       expect(
@@ -152,17 +146,26 @@ describe("MigrateModelsPage", () => {
         }),
       ).toBeEnabled();
     });
+
+    // the runs have loaded, so only the Sample Database can disable it now
+    const sampleSidebar = await selectModel("Sample DB model");
+    expect(
+      await within(sampleSidebar).findByRole("button", {
+        name: /Convert to a transform/,
+      }),
+    ).toBeDisabled();
   });
 
   it("converts a model to a transform with the table name the user typed", async () => {
     setup();
 
     const sidebar = await selectModel("Target model");
-    await userEvent.click(
-      await within(sidebar).findByRole("button", {
-        name: /Convert to a transform/,
-      }),
-    );
+    const convertButton = await within(sidebar).findByRole("button", {
+      name: /Convert to a transform/,
+    });
+    // disabled until the list of active replacement runs loads
+    await waitFor(() => expect(convertButton).toBeEnabled());
+    await userEvent.click(convertButton);
     const modal = await screen.findByRole("dialog", {
       name: "Convert this model to a transform?",
     });

@@ -429,9 +429,12 @@ describe("TableActionsMenu > find and replace", () => {
 
   async function openReplacementModal() {
     await userEvent.click(screen.getByRole("button", { name: "More actions" }));
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: /Find and replace/ }),
-    );
+    const findAndReplaceItem = await screen.findByRole("menuitem", {
+      name: /Find and replace/,
+    });
+    // disabled until the list of active replacement runs loads
+    await waitFor(() => expect(findAndReplaceItem).toBeEnabled());
+    await userEvent.click(findAndReplaceItem);
     const modal = await screen.findByRole("dialog");
     expect(
       within(modal).getByText("Find and replace a data source"),

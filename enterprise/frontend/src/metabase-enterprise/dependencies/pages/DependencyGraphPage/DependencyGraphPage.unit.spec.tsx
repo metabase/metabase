@@ -1421,11 +1421,12 @@ describe("DependencyGraphPage", () => {
       // user-event does not provide in jsdom
       fireEvent.click(within(tableNode).getByText("Scoreboard Actions"));
       const infoPanel = await screen.findByTestId("graph-info-panel");
-      await userEvent.click(
-        await within(infoPanel).findByRole("button", {
-          name: "Replace data source",
-        }),
-      );
+      const replaceButton = await within(infoPanel).findByRole("button", {
+        name: "Replace data source",
+      });
+      // disabled until the list of active replacement runs loads
+      await waitFor(() => expect(replaceButton).toBeEnabled());
+      await userEvent.click(replaceButton);
 
       const modal = await screen.findByRole("dialog");
       expect(
