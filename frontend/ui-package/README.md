@@ -73,6 +73,8 @@ If the bump workflow pushes a branch but cannot open the PR, open a PR from that
 
 Manual **Release UI Package** dispatches still support dry runs or publishing a version already committed on `master`. Stable versions publish to `latest`; manually prepared canaries publish to `canary`.
 
+The bump workflow starts from a stable version. If `master` is on a canary, open a PR to `master` that sets `frontend/ui-package/package.json` to the intended unpublished stable version (for example, `0.2.0-canary.1` → `0.2.0`) and adds its entry to `frontend/ui-package/CHANGELOG.md`. Apply `ui-release-trigger` before merging to publish that stable version. Subsequent releases can use the bump workflow again.
+
 Before enabling live publishing, create the GitHub environment `ui-package-release` and restrict deployments to the `master` branch only. In npm, register `metabase/metabase`, workflow `release-ui-package.yml`, and environment `ui-package-release` as the trusted publisher. Enable `npm publish` under **Allowed actions**; staged publish alone is not enough.
 
 A dry run resolves the version, checks that the `ui-v<version>` tag and the npm version don't exist yet, builds the package, and smoke-tests the packed archive in Chromium. It doesn't prove that npm authentication works, so the first real run can still fail at the publish step.
