@@ -1674,6 +1674,7 @@
 
   metabot
   {:team    "Metabot"
+   :codeowners true
    :api     #{metabase.metabot.api
               metabase.metabot.config
               metabase.metabot.core
@@ -4473,6 +4474,7 @@
 
   enterprise/metabot
   {:team           "Metabot"
+   :codeowners true
    :module-exports #{enterprise/metabot.agent-api
                      enterprise/metabot.analytics
                      enterprise/metabot.data-complexity-score}

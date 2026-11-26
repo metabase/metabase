@@ -140,6 +140,12 @@ enterprise/backend/src/metabase_enterprise/lint.* @metabase/verification
 enterprise/backend/test/metabase_enterprise/lint @metabase/verification
 enterprise/backend/test/metabase_enterprise/lint_test.* @metabase/verification
 
+# enterprise/metabot (Metabot)
+enterprise/backend/src/metabase_enterprise/metabot @metabase/metabot
+enterprise/backend/src/metabase_enterprise/metabot.* @metabase/metabot
+enterprise/backend/test/metabase_enterprise/metabot @metabase/metabot
+enterprise/backend/test/metabase_enterprise/metabot_test.* @metabase/metabot
+
 # enterprise/remote-sync (Data Apps)
 enterprise/backend/src/metabase_enterprise/remote_sync @metabase/data-apps
 enterprise/backend/src/metabase_enterprise/remote_sync.* @metabase/data-apps
@@ -163,6 +169,12 @@ src/metabase/data_apps @metabase/data-apps
 src/metabase/data_apps.* @metabase/data-apps
 test/metabase/data_apps @metabase/data-apps
 test/metabase/data_apps_test.* @metabase/data-apps
+
+# metabot (Metabot)
+src/metabase/metabot @metabase/metabot
+src/metabase/metabot.* @metabase/metabot
+test/metabase/metabot @metabase/metabot
+test/metabase/metabot_test.* @metabase/metabot
 
 # remote-sync (Data Apps)
 src/metabase/remote_sync @metabase/data-apps
