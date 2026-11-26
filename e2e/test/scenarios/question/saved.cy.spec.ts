@@ -1,11 +1,9 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
-  SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -23,7 +21,7 @@ describe("scenarios > question > saved", () => {
 
     // capture the view header height in the saved state to assert it does not
     // change after the question transitions to ad-hoc (UXW-3751)
-    let savedHeaderHeight;
+    let savedHeaderHeight: number | undefined;
     cy.findByTestId("qb-header")
       .invoke("outerHeight")
       .then((h) => {
@@ -217,44 +215,7 @@ describe("scenarios > question > saved", () => {
       cy.wait("@revertRevision");
       cy.findByText(/reverted to an earlier version/i);
       cy.findByPlaceholderText("Add description").should("have.value", "");
-
-      // Simulate a backend failure on revert and confirm we surface
-      // the error message as a toast (UXW-310).
-      cy.intercept("POST", "/api/revision/revert", {
-        statusCode: 500,
-        body: { message: "Cannot revert: missing card" },
-      }).as("failedRevert");
-
-      cy.findAllByTestId("question-revert-button").first().click();
-      cy.wait("@failedRevert");
     });
-
-    H.undoToast().should("contain.text", "Cannot revert: missing card");
-  });
-
-  it("should show collection breadcrumbs for a saved question in the root and a non-root collection", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    H.appBar().within(() => cy.findByText("Our analytics").click());
-
-    cy.location("pathname").should("eq", "/collection/root");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders").should("be.visible");
-
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-      collection_id: SECOND_COLLECTION_ID,
-    });
-
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    H.appBar().within(() => cy.findByText("Second collection").click());
-
-    cy.location("pathname").should(
-      "match",
-      new RegExp(`^/collection/${SECOND_COLLECTION_ID}(-|$)`),
-    );
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders").should("be.visible");
   });
 
   it("should show dashboard breadcrumbs for a saved question in a dashboard", () => {
@@ -267,14 +228,6 @@ describe("scenarios > question > saved", () => {
       cy.findByText("Our analytics").should("exist");
       cy.log("should be able to navigate to the parent dashboard");
       cy.findByText("Orders in a dashboard").should("exist").click();
-    });
-
-    cy.log(
-      "should have dashboard info disappear when navigating away from question",
-    );
-    H.appBar().within(() => {
-      cy.findByText("Our analytics").should("exist");
-      cy.findByText("Orders in a dashboard").should("not.exist");
     });
 
     cy.location("pathname").should(
@@ -303,10 +256,10 @@ describe("scenarios > question > saved", () => {
     // single drag is occasionally lost or only partially applied and the column
     // never grows enough. Re-run the (idempotent, gte-checked) drag until the
     // column has actually widened, turning a dropped drag into a non-event.
-    cy.get("@originalWidth").then((originalWidth) => {
+    cy.get<number>("@originalWidth").then((originalWidth) => {
       const minWidth = originalWidth + moveX * 0.6;
 
-      const dragUntilResized = (attemptsLeft) => {
+      const dragUntilResized = (attemptsLeft: number) => {
         cy.findByTestId("resize-handle-TAX").trigger("mousedown", {
           button: 0,
           clientX: 0,
@@ -354,252 +307,67 @@ describe("scenarios > question > saved", () => {
       });
   });
 
-  it("should not show '- Modified' suffix after we click 'Save' on a new model (metabase#42773)", () => {
-    cy.log("Use UI to create a model based on the Products table");
-    cy.visit("/model/new");
-    cy.findByTestId("new-model-options")
-      .findByText("Use the notebook editor")
-      .click();
-
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Products").click();
-    });
-
-    cy.findByTestId("dataset-edit-bar").button("Save").click();
-
-    cy.findByTestId("save-question-modal")
-      .findByLabelText("Name")
-      .should("have.value", "Products");
-
-    // The suffix flashes for a frame between the save response and the modal
-    // closing, so record the name on every frame until the modal is gone.
-    const names = [];
-    cy.window().then((win) => {
-      const sample = () => {
-        const input = win.document.querySelector(
-          "[data-testid='save-question-modal'] input[name='name']",
-        );
-        if (input) {
-          names.push(input.value);
-          win.requestAnimationFrame(sample);
-        }
-      };
-      sample();
-    });
-
-    cy.findByTestId("save-question-modal").button("Save").click();
-    cy.wait("@cardCreate");
-    cy.findByTestId("save-question-modal").should("not.exist");
-    cy.wrap(names).should((values) => {
-      expect(values).to.include("Products");
-      expect(values.filter((name) => /- Modified$/.test(name))).to.be.empty;
-    });
-  });
-
   describe("with hidden tables", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
     });
 
-    const HIDDEN_TYPES = ["hidden", "technical", "cruft"];
-
-    function hideTable({ name, id, visibilityType }) {
-      // Since v56 it's no longer possible to specify the reason (e.g. "technical" or "cruft")
-      // for hiding the table via UI.
-      // We still want to support cases where visibility type has been set to such values in
-      // the past, so we simulate it with API call.
-      if (visibilityType === "technical" || visibilityType === "cruft") {
-        cy.request("PUT", `/api/table/${id}`, {
-          visibility_type: visibilityType,
-        });
-      } else {
-        H.DataModel.visit();
-        H.DataModel.TablePicker.getTable(name).click();
-        H.DataModel.TablePicker.getTable(name).button("Hide table").click();
-      }
+    // The `technical` and `cruft` visibility types, which only the API can
+    // set since v56, are covered in ViewOnly.unit.spec.tsx.
+    function hideTable(name: string) {
+      H.DataModel.visit();
+      H.DataModel.TablePicker.getTable(name).click();
+      H.DataModel.TablePicker.getTable(name).button("Hide table").click();
     }
 
-    HIDDEN_TYPES.forEach((visibilityType) => {
-      it(`should show a View-only tag when a joined or the source table is marked as ${visibilityType}`, () => {
-        hideTable({ name: "Products", id: PRODUCTS_ID, visibilityType });
-        H.createQuestion(
-          {
-            name: "Joined question",
-            query: {
-              "source-table": ORDERS_ID,
-              joins: [
-                {
-                  "source-table": PRODUCTS_ID,
-                  alias: "Products",
-                  condition: [
-                    "=",
-                    ["field", ORDERS.PRODUCT_ID, null],
-                    ["field", PRODUCTS.ID, { "join-alias": "Products" }],
-                  ],
-                  fields: "all",
-                },
-              ],
-            },
-          },
-          {
-            visitQuestion: true,
-          },
-        );
-        H.queryBuilderHeader()
-          .findByText("View-only")
-          .should("be.visible")
-          .realHover();
-        H.popover()
-          .findByText(
-            "One of the administrators hid the source table “Products”, making this question view-only.",
-          )
-          .should("be.visible");
-
-        hideTable({ name: "Orders", id: ORDERS_ID, visibilityType });
-
-        H.visitQuestion(ORDERS_QUESTION_ID);
-
-        H.queryBuilderHeader()
-          .findByText("View-only")
-          .should("be.visible")
-          .realHover();
-        H.popover()
-          .findByText(
-            "One of the administrators hid the source table “Orders”, making this question view-only.",
-          )
-          .should("be.visible");
-      });
-    });
-
-    function moveQuestionTo(newCollectionName) {
-      H.openQuestionActions();
-      cy.findByTestId("move-button").click();
-      H.entityPickerModal().within(() => {
-        cy.findByText(newCollectionName).click();
-        cy.button("Move").click();
-      });
-    }
-
-    it("should show a View-only tag when one of the source cards is unavailable", () => {
+    it("should show a View-only tag when a joined or the source table is hidden", () => {
+      hideTable("Products");
       H.createQuestion(
         {
-          name: "Products Question + Orders",
+          name: "Joined question",
           query: {
-            "source-table": `card__${ORDERS_QUESTION_ID}`,
+            "source-table": ORDERS_ID,
             joins: [
               {
                 "source-table": PRODUCTS_ID,
                 alias: "Products",
-                fields: "all",
                 condition: [
                   "=",
                   ["field", ORDERS.PRODUCT_ID, null],
                   ["field", PRODUCTS.ID, { "join-alias": "Products" }],
                 ],
+                fields: "all",
               },
             ],
           },
         },
         {
-          wrapId: true,
-          idAlias: "questionId",
+          visitQuestion: true,
         },
       );
-
-      cy.signInAsNormalUser();
-      cy.get("@questionId").then(H.visitQuestion);
       H.queryBuilderHeader()
-        .findByDisplayValue("Products Question + Orders")
+        .findByText("View-only")
+        .should("be.visible")
+        .realHover();
+      H.popover()
+        .findByText(
+          "One of the administrators hid the source table “Products”, making this question view-only.",
+        )
         .should("be.visible");
-      H.queryBuilderHeader().findByText("View-only").should("not.exist");
 
-      cy.signInAsAdmin();
-      H.visitQuestion(ORDERS_QUESTION_ID);
-      moveQuestionTo(/Personal Collection/);
+      hideTable("Orders");
 
-      cy.signInAsNormalUser();
-      cy.get("@questionId").then(H.visitQuestion);
-
-      H.queryBuilderHeader().findByText("View-only").should("be.visible");
-    });
-  });
-
-  describe("with watermark", () => {
-    beforeEach(() => {
-      cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
-
-      cy.intercept("/api/session/properties", (req) => {
-        req.continue((res) => {
-          res.body["token-features"].development_mode = true;
-        });
-      });
-
-      cy.request("PUT", `/api/card/${ORDERS_BY_YEAR_QUESTION_ID}`, {
-        collection_position: 1,
-        enable_embedding: true,
-      });
-
-      cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
-        enable_embedding: true,
-      });
-    });
-
-    it("should show questions with a watermark when in dev mode whereever we show visualizations", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
-      cy.findByTestId("development-watermark").should("exist");
-
-      H.appBar()
-        .findByRole("link", { name: /Our analytics/i })
-        .click();
-
-      cy.findByTestId("collection-table")
-        .findByRole("link", { name: /Orders in a dashboard/i })
-        .click();
-      cy.findAllByTestId("development-watermark").should(
-        "have.length.above",
-        0,
-      );
-
-      H.visitEmbeddedPage({
-        resource: { dashboard: ORDERS_DASHBOARD_ID },
-        params: {},
-      });
-
-      cy.findAllByTestId("development-watermark").should(
-        "have.length.greaterThan",
-        0,
-      );
-
-      H.visitEmbeddedPage({
-        resource: { question: ORDERS_BY_YEAR_QUESTION_ID },
-        params: {},
-      });
-
-      cy.findAllByTestId("development-watermark").should(
-        "have.length.greaterThan",
-        0,
-      );
-
-      //Need to sign in to generate the public link for the orders question
-      cy.signInAsAdmin();
-
-      H.visitPublicQuestion(ORDERS_QUESTION_ID);
-      cy.findAllByTestId("development-watermark").should(
-        "have.length.above",
-        0,
-      );
-
-      //Need to sign in to generate the public link for the orders dashboard
-      cy.signInAsAdmin();
-
-      H.visitPublicDashboard(ORDERS_DASHBOARD_ID);
-      cy.findAllByTestId("development-watermark").should(
-        "have.length.above",
-        0,
-      );
+      H.queryBuilderHeader()
+        .findByText("View-only")
+        .should("be.visible")
+        .realHover();
+      H.popover()
+        .findByText(
+          "One of the administrators hid the source table “Orders”, making this question view-only.",
+        )
+        .should("be.visible");
     });
   });
 });

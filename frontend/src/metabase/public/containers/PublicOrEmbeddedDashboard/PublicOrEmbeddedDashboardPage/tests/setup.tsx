@@ -167,9 +167,7 @@ export async function setup(
       />
     </>,
     {
-      storeInitialState: createMockState(
-        hasEmbedBranding !== undefined ? { settings } : {},
-      ),
+      storeInitialState: createMockState({ settings }),
       withRouter: true,
       initialRoute: href,
     },
