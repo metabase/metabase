@@ -641,6 +641,32 @@
                           group))))
         parts))
 
+(def failed-tool-result-text
+  "The text of a failed tool call whose result text is missing, empty or only whitespace."
+  "Tool execution failed")
+
+(defn tool-result-text
+  "The text that a provider adapter sends to the model for the `:result` of a `:tool-output` part.
+
+  History replays the same text (see [[metabase.metabot.persistence/history]]), so the next turn's request starts
+  with the bytes that this turn sent. [[metabase.metabot.persistence/tool-part->llm-messages]] names the cases that
+  replay other text.
+
+  The text is the `str` of the `:output` of a map result, and the `str` of any other result. So a successful map
+  without `:output` gets `\"\"`. The other keys of a map, such as `:structured-output` and `:data-parts`, do not go
+  to the model. `ToolResult` requires a map with a string `:output`, but `mu/defn` checks its schemas only in dev and
+  test.
+
+  A failed call whose text is blank (empty or only whitespace) gets [[failed-tool-result-text]]. The model must read
+  that the call failed, and whitespace does not tell it that. Also, the Anthropic API rejects a failed result with
+  empty content: it answers HTTP 400 \"content cannot be empty if `is_error` is true\". It accepts whitespace-only
+  content. No Anthropic doc page states this rule; we observed it on the live API on 2026-11-24."
+  [result]
+  (let [text (str (if (map? result) (:output result) result))]
+    (if (and (str/blank? text) (:error result))
+      failed-tool-result-text
+      text)))
+
 (defn stamp-tool-titles-xf
   "Stamp a client-facing `:title` onto `:tool-input` parts via each tool's
   optional `:title-fn`. Stringified JSON is coerced first, so the title describes the arguments the

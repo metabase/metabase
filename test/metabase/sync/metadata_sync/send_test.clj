@@ -233,7 +233,7 @@
   (mt/with-temp [:model/Database {db-id :id db-name :name} {:initial_sync_status "complete"}]
     (let [{twin "orders_twin"} (add-tables! db-id [["PUBLIC" "orders" ["id"]] ["PUBLIC" "orders_twin" ["id"]]])]
       ;; a legacy duplicate has the key of another Table; H2's unique index refuses that, so only the flag is set here
-      (t2/query-one {:update :metabase_table :set {:is_defective_duplicate true} :where [:= :id twin]})
+      (t2/query-one {:update (t2/table-name :model/Table) :set {:is_defective_duplicate true} :where [:= :id twin]})
       (testing "a Table marked as a defective duplicate is not sent, so a key is sent once"
         (is (= [["PUBLIC" "orders"]] (batch-keys "tables" (answers db-name))))))))
 

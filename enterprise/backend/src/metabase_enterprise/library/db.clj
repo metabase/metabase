@@ -7,6 +7,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -40,11 +41,11 @@
   (t2/select :model/Collection
              {:where    [:and
                          [:in :type (vec collection/library-collection-types)]
-                         (perms/visible-collections-filter-clause :collection.id (api/current-user-info) {:include-archived-items    :exclude
-                                                                                                          :include-trash-collection? false
-                                                                                                          :permission-level          :read
-                                                                                                          :archive-operation-id      nil
-                                                                                                          :root-namespace            nil})]
+                         (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Collection) :id) (api/current-user-info) {:include-archived-items    :exclude
+                                                                                                                                                   :include-trash-collection? false
+                                                                                                                                                   :permission-level          :read
+                                                                                                                                                   :archive-operation-id      nil
+                                                                                                                                                   :root-namespace            nil})]
               :order-by [[:%lower.name :asc]]}))
 
 (mu/defn collection-type
@@ -56,5 +57,5 @@
   "Reducible distinct Collection ID and Card type pairs of the unarchived Cards."
   []
   (t2/reducible-query {:select-distinct [:collection_id :type]
-                       :from            [:report_card]
+                       :from            [(t2/table-name :model/Card)]
                        :where           [:= :archived false]}))

@@ -356,8 +356,8 @@
                   ;; biggest table in (mt/db).
                   (+ @#'sync.fingerprint/max-refingerprint-field-count
                      (:count (t2/query-one {:select [[:%count.* :count]]
-                                            :from :metabase_field
-                                            :join [[:metabase_table :table] [:= :table.id :table_id]]
+                                            :from (t2/table-name :model/Field)
+                                            :join [[(t2/table-name :model/Table) :table] [:= :table.id :table_id]]
                                             :where [:= :table.db_id (mt/id)]
                                             :group-by [:table_id]
                                             :order-by [[:count :desc]]

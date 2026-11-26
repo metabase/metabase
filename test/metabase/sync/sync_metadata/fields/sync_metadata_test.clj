@@ -13,11 +13,10 @@
    [toucan2.core :as t2]))
 
 (defn- updated-ids
-  "The ids an update by primary key writes: `pk`, a single id, or the ids of `[:in [:auto/param ids]]`."
+  "The ids an update by primary key writes: `pk`, a single id, or the ids of `[:in ids]`."
   [pk]
   (if (and (vector? pk) (= :in (first pk)))
-    (let [ids (second pk)]
-      (if (and (vector? ids) (= :auto/param (first ids))) (second ids) ids))
+    (second pk)
     [pk]))
 
 (defn- updates-that-will-be-performed!

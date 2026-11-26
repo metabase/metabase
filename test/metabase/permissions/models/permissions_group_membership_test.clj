@@ -1,6 +1,7 @@
 (ns metabase.permissions.models.permissions-group-membership-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.db :as app-db.db]
    [metabase.app-db.query :as app-db.query]
    [metabase.events.test-util :as events.tu]
    [metabase.permissions.core :as perms]
@@ -391,7 +392,7 @@
       (mt/with-partition-size 1
         (testing "an addition of three users with constants lowered adds all three in three inserts and publishes one event"
           (let [calls (atom 0)]
-            (mt/with-dynamic-fn-redefs [app-db.query/insert-returning-instances! (let [f (mt/original-fn #'app-db.query/insert-returning-instances!)] (fn [& args] (swap! calls inc) (apply f args)))]
+            (mt/with-dynamic-fn-redefs [app-db.db/insert-returning-instances! (let [f (mt/original-fn #'app-db.db/insert-returning-instances!)] (fn [& args] (swap! calls inc) (apply f args)))]
               (is (= [:event/group-membership-create]
                      (events.tu/published-topics!
                       #(perms-group-membership/add-users-to-groups! (for [user-id user-ids] {:user user-id :group group-id}))))))

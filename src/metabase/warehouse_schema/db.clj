@@ -16,7 +16,6 @@
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.types.core :as types]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
@@ -239,7 +238,7 @@
         (m/distinct-by :id)
         (app-db/select-batched #(t2/select :model/Field {:where (into [:or]
                                                                       (map (fn [[table-id pattern]]
-                                                                             [:and [:= :table_id [:auto/param table-id]] [:like :nfc_path [:auto/param pattern]]]))
+                                                                             [:and [:= :table_id table-id] [:like :nfc_path pattern]]))
                                                                       %)})
                                table-id+patterns)))
 
@@ -248,7 +247,7 @@
   [database-id :- ::lib.schema.id/database]
   (set (t2/select-pks-set :model/Field :table_id [:in ^:allow-subquery {:select [:id]
                                                                         :from   [(t2/table-name :model/Table)]
-                                                                        :where  [:= :db_id [:auto/param database-id]]}])))
+                                                                        :where  [:= :db_id database-id]}])))
 
 (mu/defn change-fields-case!
   "Set each of `columns` of the Fields with `field-ids` to its value in `kase`, `:lower` or `:upper` case, returning the
@@ -582,11 +581,11 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (app-db/select-batched #(t2/select [:model/FieldValues :field_id :values :field.table_id]
                                      {:join  [[(t2/table-name :model/Field) :field]
-                                              [:= :metabase_fieldvalues.field_id :field.id]]
+                                              [:= (u/qualified-key (t2/table-name :model/FieldValues) :field_id) :field.id]]
                                       :where [:and
                                               [:in :field.table_id %]
                                               [:= :field.visibility_type "normal"]
-                                              [:= :metabase_fieldvalues.type "full"]]})
+                                              [:= (u/qualified-key (t2/table-name :model/FieldValues) :type) "full"]]})
                          table-ids))
 
 (mu/defn full-field-values-with-human-readable-values
@@ -611,7 +610,7 @@
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (app-db/select-batched-map
    #(t2/select-fn->fn :field_id :max-last-used-at [:model/FieldValues :field_id [[:max :last_used_at] :max-last-used-at]]
-                      {:where    [:in :field_id [:auto/param %]]
+                      {:where    [:in :field_id %]
                        :group-by [:field_id]})
    field-ids))
 
@@ -630,7 +629,7 @@
   "The `dimension-type` Dimensions of the Field with `field-id`."
   [field-id       :- ::lib.schema.id/field
    dimension-type :- ::warehouse-schema.schema/dimension.type]
-  (t2/select :model/Dimension :field_id [:auto/param field-id] :type dimension-type))
+  (t2/select :model/Dimension :field_id field-id :type dimension-type))
 
 (mu/defn dimensions-reading-fields
   "The Dimensions whose human-readable values come from the Fields with `field-ids`."
@@ -680,13 +679,13 @@
 (mu/defn full-field-values
   "The full FieldValues of the ::warehouse-schema.schema/field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/FieldValues :field_id [:auto/param field-id] :type :full))
+  (t2/select-one :model/FieldValues :field_id field-id :type :full))
 
 (mu/defn advanced-field-values
   "The advanced FieldValues of the ::warehouse-schema.schema/field with `field-id` and `hash-key`, or nil."
   [field-id :- ::lib.schema.id/field
    hash-key :- :string]
-  (t2/select-one :model/FieldValues :field_id [:auto/param field-id] :type :advanced :hash_key [:auto/param hash-key]))
+  (t2/select-one :model/FieldValues :field_id field-id :type :advanced :hash_key hash-key))
 
 (mu/defn insert-field-values-row! :- ::warehouse-schema.schema/field-values
   "Insert the FieldValues `row` in a savepoint, so that a duplicate key leaves the enclosing transaction usable, returning the inserted instance."
@@ -720,9 +719,9 @@
   "The conditions on FieldValues of every Field of the Database with `database-id`."
   [database-id]
   [:field_id [:in ^:allow-subquery {:select     [:f.id]
-                                    :from       [[:metabase_field :f]]
-                                    :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
-                                    :where      [:= :t.db_id [:auto/param database-id]]}]])
+                                    :from       [[(t2/table-name :model/Field) :f]]
+                                    :right-join [[(t2/table-name :model/Table) :t] [:= :f.table_id :t.id]]
+                                    :where      [:= :t.db_id database-id]}]])
 
 (mu/defn field-values-ids-of-fields :- [:sequential ms/PositiveInt]
   "The ids of every FieldValues of the Fields with `field-ids`."
@@ -748,7 +747,7 @@
 (mu/defn field-values-ids-and-field-ids :- [:sequential [:map [:id ms/PositiveInt] [:field_id ::lib.schema.id/field]]]
   "The id and Field id of every FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
-  (app-db/select-batched #(t2/select [:model/FieldValues :id :field_id] :field_id [:in [:auto/param %]]) field-ids))
+  (app-db/select-batched #(t2/select [:model/FieldValues :id :field_id] :field_id [:in %]) field-ids))
 
 (mu/defn expired-field-values-ids-of-database :- [:sequential ms/PositiveInt]
   "The ids of the FieldValues of `types` of the active, normal-visibility Fields of the synced Tables of the Database
@@ -759,17 +758,17 @@
   (vec (t2/select-pks-vec :model/FieldValues
                           :type [:in types]
                           {:where [:and
-                                   [:< :metabase_fieldvalues.created_at
-                                    (h2x/add-interval-honeysql-form (app-db/db-type) :%now (- max-age-days) :day)]
+                                   [:< (u/qualified-key (t2/table-name :model/FieldValues) :created_at)
+                                    [:date-add :%now (- max-age-days) :day]]
                                    [:exists ^:allow-subquery
                                     {:select [[[:inline 1] :one]]
                                      :from   [[(t2/table-name :model/Field) :f]]
                                      :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
                                      :where  [:and
-                                              [:= :f.id :metabase_fieldvalues.field_id]
+                                              [:= :f.id (u/qualified-key (t2/table-name :model/FieldValues) :field_id)]
                                               [:= :f.active true]
                                               [:= :f.visibility_type "normal"]
-                                              [:= :t.db_id [:auto/param database-id]]
+                                              [:= :t.db_id database-id]
                                               [:= :t.active true]
                                               [:= :t.visibility_type nil]]}]]})))
 
@@ -803,7 +802,7 @@
 (mu/defn table-ids-of-database :- [:set ::lib.schema.id/table]
   "The ids of the Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (set (t2/select-pks-set :model/Table :db_id [:auto/param database-id])))
+  (set (t2/select-pks-set :model/Table :db_id database-id)))
 
 (mu/defn change-tables-case!
   "Set each of `columns` of the Tables with `table-ids` to its value in `kase`, `:lower` or `:upper` case, returning the
@@ -979,12 +978,12 @@
   user queries, active or not, so that dependencies broken by a dropped or hidden table stay visible, without those of
   the sample and audit databases unless `:include-sample-databases?`, located by their database."
   [{:keys [include-sample-databases?] :as opts} :- :metabase.dependencies.items/items-opts]
-  {:select    [[:metabase_table.id :entity_id] [:metabase_table.display_name :name] [:database.name :location]]
-   :from      [:metabase_table]
-   :left-join [[:metabase_database :database] [:= :metabase_table.db_id :database.id]]
+  {:select    [[(u/qualified-key (t2/table-name :model/Table) :id) :entity_id] [(u/qualified-key (t2/table-name :model/Table) :display_name) :name] [:database.name :location]]
+   :from      [(t2/table-name :model/Table)]
+   :left-join [[(t2/table-name :model/Database) :database] [:= (u/qualified-key (t2/table-name :model/Table) :db_id) :database.id]]
    :where     (into [:and]
                     (remove nil?)
-                    [(collections.listing/visible-tables-clause :metabase_table.id opts)
+                    [(collections.listing/visible-tables-clause (u/qualified-key (t2/table-name :model/Table) :id) opts)
                      (when-not include-sample-databases?
                        [:and [:not :database.is_sample] [:not :database.is_audit]])])})
 
@@ -1004,7 +1003,7 @@
               :s.collection_id
               [:t.db_id :database_id]
               [[:!= :t.archived_at nil] :archived]
-              [(h2x/literal "table") :model]]
+              [[:literal "table"] :model]]
      :from   [[(t2/table-name :model/Table) :t]]
      :join   [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
      :where  [:and
@@ -1039,7 +1038,7 @@
                           [:= :visibility_type nil]
                           [:!= :visibility_type "hidden"]]
                          [:in :t.id %]]
-                 :left-join [[:metabase_database :db]
+                 :left-join [[(t2/table-name :model/Database) :db]
                              [:= :db.id :t.db_id]]})
     table-ids)
    :can_read :can_write))
@@ -1075,7 +1074,7 @@
                                                                    :parent_fields]]}]
                           [:not [:exists ^:allow-subquery {:select [1]
                                                            :from   [[(t2/table-name :model/Field) :child_field]]
-                                                           :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+                                                           :where  [:= :child_field.parent_id (u/qualified-key (t2/table-name :model/Field) :id)]}]])]
     ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
     #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
     (t2/query-one {:delete-from (t2/table-name :model/Field)

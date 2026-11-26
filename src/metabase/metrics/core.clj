@@ -338,51 +338,51 @@
           (nil? persisted-dims) (seed-metric-dimensions computed-pairs)
           :else                 [(lib-metric/extract-persisted-dimensions persisted-dims) persisted-mappings])))))
 
-(defn sync-dimensions!
-  "Sync an entity's dimensions to the database. Behaviour differs by entity type:
-
-   - `:metadata/measure`: fully synced on every load (see [[measure-dimension-changes]]).
-   - `:metadata/metric` (v2 Cards): curated, seeded once via [[seed-metric-dimensions]] and then kept
-     authoritative via [[refresh-metric-dimensions]].
-
-   Arguments:
-   - `metadata-type` - `:metadata/metric` or `:metadata/measure`
-   - `id` - the entity ID
-
-   Side-effecting only; does not return the updated entity."
-  [metadata-type id]
-  (when-let [entity (first (lib.metadata.protocols/metadatas
-                            (lib-metric/metadata-provider)
-                            {:lib/type metadata-type :id #{id}}))]
-    (when-let [[dimensions dimension-mappings] (dimension-changes (lib-metric/metadata-provider) entity dimensions-initialized?)]
-      (save-dimensions! entity dimensions dimension-mappings))))
-
-(defn sync-all-dimensions!
-  "[[sync-dimensions!]] of the entities of `metadata-type` with `ids`, read at once, whose changes are saved with one
+(defn- sync-dimensions-together!
+  "Sync the dimensions of the entities of `metadata-type` with `ids`, read at once and saved with one
    [[save-all-dimensions!]]."
   [metadata-type ids]
-  (when (seq ids)
-    (let [mp          (lib-metric/metadata-provider)
-          entities    (lib.metadata.protocols/metadatas mp {:lib/type metadata-type :id (set ids)})
-          initialized (initialized-dimension-ids metadata-type entities)
-          changes     (into []
-                            (keep (fn [entity]
-                                    (when-let [[dimensions dimension-mappings]
-                                               (dimension-changes mp entity #(contains? initialized (:id %)))]
-                                      [entity dimensions dimension-mappings])))
-                            entities)]
-      (when (seq changes)
-        (save-all-dimensions! metadata-type changes)))))
+  (let [mp          (lib-metric/metadata-provider)
+        entities    (lib.metadata.protocols/metadatas mp {:lib/type metadata-type :id (set ids)})
+        initialized (initialized-dimension-ids metadata-type entities)
+        changes     (into []
+                          (keep (fn [entity]
+                                  (when-let [[dimensions dimension-mappings]
+                                             (dimension-changes mp entity #(contains? initialized (:id %)))]
+                                    [entity dimensions dimension-mappings])))
+                          entities)]
+    (when (seq changes)
+      (save-all-dimensions! metadata-type changes))))
+
+(defn sync-dimensions!
+  "Sync to the database the dimensions of the entities of `metadata-type`, `:metadata/metric` or `:metadata/measure`,
+   with `ids`, all together: measures are fully synced on every load (see [[measure-dimension-changes]]), metrics are
+   seeded once via [[seed-metric-dimensions]] and then kept authoritative via [[refresh-metric-dimensions]]; with
+   `:skip-failures?` in `opts`, a sync that throws is repeated one entity at a time, logging and skipping each entity
+   whose own sync throws."
+  ([metadata-type ids]
+   (sync-dimensions! metadata-type ids nil))
+  ([metadata-type ids {:keys [skip-failures?]}]
+   (when (seq ids)
+     (try
+       (sync-dimensions-together! metadata-type ids)
+       (catch Throwable e
+         (when-not skip-failures?
+           (throw e))
+         (doseq [id ids]
+           (try
+             (sync-dimensions-together! metadata-type [id])
+             (catch Throwable e
+               (log/warnf "Failed to sync dimensions for %s %d: %s" (name metadata-type) id (ex-message e))))))))))
 
 (defn sync-metric-dimensions-for-database!
   "Compute and persist dimensions for every metric Card in `database-id` that doesn't have any yet."
   [database-id]
-  (doseq [{:keys [id dimensions]} (metrics.db/raw-metric-cards-for-database database-id)
-          :when (empty? dimensions)]
-    (try
-      (sync-dimensions! :metadata/metric id)
-      (catch Throwable e
-        (log/warnf e "Failed to sync dimensions for metric card %d" id)))))
+  (sync-dimensions! :metadata/metric
+                    (into []
+                          (comp (filter (comp empty? :dimensions)) (map :id))
+                          (metrics.db/raw-metric-cards-for-database database-id))
+                    {:skip-failures? true}))
 
 (defn without-orphaned-dimensions
   "Remove orphaned dimensions and their mappings from an API response without changing persistence."

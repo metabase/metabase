@@ -10,8 +10,7 @@
 (set! *warn-on-reflection* true)
 
 ;; internal dev-reload state, not an API
-#_{:clj-kondo/ignore [:missing-docstring]}
-(defonce *reload-timestamps (atom {}))
+(defonce ^:private *reload-timestamps (atom {}))
 
 (defn system-classpath
   "Returns a sequence of File paths from the 'java.class.path' system

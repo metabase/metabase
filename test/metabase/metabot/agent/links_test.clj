@@ -14,7 +14,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (defn- decode-question-url
   "Decode a `/question#<base64>` URL into its JSON-decoded pseudo-card map."
@@ -298,6 +299,69 @@
                (links/resolve-metabase-uri (str "metabase://segment/" segment-id) {} {}))))))
   (testing "returns nil for non-existent segment"
     (is (nil? (links/resolve-metabase-uri "metabase://segment/999999999" {} {})))))
+
+(defn- insert-measures-and-segments!
+  "Insert `n` measures and `n` segments over the venues and checkins tables and return their IDs."
+  [n]
+  (let [mp     (mt/metadata-provider)
+        tables (take n (cycle [(mt/id :venues) (mt/id :checkins)]))
+        query  #(lib/query mp (lib.metadata/table mp %))]
+    {:measure-ids (vec (for [table-id tables]
+                         (first (t2/insert-returning-pks! :model/Measure
+                                                          {:name       "Count"
+                                                           :creator_id (mt/user->id :rasta)
+                                                           :definition (lib/aggregate (query table-id) (lib/count))}))))
+     :segment-ids (vec (for [table-id tables]
+                         (first (t2/insert-returning-pks! :model/Segment
+                                                          {:name       "All"
+                                                           :creator_id (mt/user->id :rasta)
+                                                           :definition (lib/filter (query table-id) (lib/= 1 1))}))))}))
+
+(defn- measure-and-segment-links-text
+  "A markdown text with a link to each of `measure-ids` and `segment-ids`."
+  [measure-ids segment-ids]
+  (str/join " " (concat (map #(str "[m" % "](metabase://measure/" % ")") measure-ids)
+                        (map #(str "[s" % "](metabase://segment/" % ")") segment-ids))))
+
+(deftest resolve-links-reads-measures-and-segments-once-test
+  (mt/with-model-cleanup [:model/Measure :model/Segment]
+    (let [{:keys [measure-ids segment-ids]} (insert-measures-and-segments! 6)
+          text-count  (fn [n]
+                        (let [text (measure-and-segment-links-text (take n measure-ids) (take n segment-ids))]
+                          (t2/with-call-count [calls]
+                            (links/resolve-links text {} {} (atom {}))
+                            (links/resolve-slack-links (str/replace text #"\[([^\]]*)\]\(([^)]*)\)" "<$2|$1>")
+                                                       {} {} (atom {}))
+                            (calls))))]
+      (text-count 2)
+      (let [two-count (text-count 2)]
+        (is (pos? two-count))
+        (is (= two-count (text-count 6)))))))
+
+(deftest resolve-links-measure-and-segment-urls-test
+  (mt/with-model-cleanup [:model/Measure :model/Segment]
+    (let [{[m1 m2] :measure-ids [s1 s2] :segment-ids} (insert-measures-and-segments! 2)
+          links [[(str "metabase://measure/" m1) (str "/data-studio/library/tables/" (mt/id :venues) "/measures/" m1)]
+                 [(str "metabase://measure/" m2) (str "/data-studio/library/tables/" (mt/id :checkins) "/measures/" m2)]
+                 [(str "metabase://segment/" s1) (str "/question#?db=" (mt/id) "&table=" (mt/id :venues) "&segment=" s1)]
+                 [(str "metabase://segment/" s2) (str "/question#?db=" (mt/id) "&table=" (mt/id :checkins) "&segment=" s2)]
+                 ["metabase://measure/999999999" nil]
+                 ["metabase://segment/999999999" nil]
+                 ["metabase://measure/abc" nil]
+                 [(str "metabase://measure/" m1 "-count") nil]
+                 [(str "metabase://table/" (mt/id :venues)) (str "/table/" (mt/id :venues))]
+                 ["metabase://question/12" "/question/12"]]]
+      (testing "markdown links"
+        (is (= (str/join "\n" (concat (map-indexed (fn [i [_ url]] (if url (str "[l" i "](" url ")") (str "l" i))) links)
+                                      ["[x](https://example.com)"]))
+               (links/resolve-links (str/join "\n" (concat (map-indexed (fn [i [uri]] (str "[l" i "](" uri ")")) links)
+                                                           ["[x](https://example.com)"]))
+                                    {} {} (atom {})))))
+      (testing "Slack links"
+        (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+          (is (= (str/join " " (map (fn [[_ url]] (if url (str "<https://metabase.example.com" url "|x>") "x")) links))
+                 (links/resolve-slack-links (str/join " " (map (fn [[uri]] (str "<" uri "|x>")) links))
+                                            {} {} (atom {})))))))))
 
 (deftest ^:parallel resolve-metabase-uri-unknown-entity-type-test
   (testing "returns nil for unknown entity types"

@@ -10,47 +10,63 @@
 (mu/defn unarchived-card-ids-and-public-uuids-by-prefix
   "The `:id` and `:public_uuid` of the unarchived Cards whose public uuid prefix is `prefix`."
   [prefix :- :string]
-  (t2/select [:model/Card :id :public_uuid] :public_uuid_prefix [:auto/param prefix] :archived false))
+  (when-not (string? prefix)
+    (throw (ex-info "prefix must be a string" {:prefix prefix})))
+  (t2/select [:model/Card :id :public_uuid] :public_uuid_prefix prefix :archived false))
 
 (mu/defn unarchived-dashboard-ids-and-public-uuids-by-prefix
   "The `:id` and `:public_uuid` of the unarchived Dashboards whose public uuid prefix is `prefix`."
   [prefix :- :string]
-  (t2/select [:model/Dashboard :id :public_uuid] :public_uuid_prefix [:auto/param prefix] :archived false))
+  (when-not (string? prefix)
+    (throw (ex-info "prefix must be a string" {:prefix prefix})))
+  (t2/select [:model/Dashboard :id :public_uuid] :public_uuid_prefix prefix :archived false))
 
 (mu/defn unarchived-action-ids-and-public-uuids-by-prefix
   "The `:id` and `:public_uuid` of the unarchived Actions whose public uuid prefix is `prefix`."
   [prefix :- :string]
-  (t2/select [:model/Action :id :public_uuid] :public_uuid_prefix [:auto/param prefix] :archived false))
+  (when-not (string? prefix)
+    (throw (ex-info "prefix must be a string" {:prefix prefix})))
+  (t2/select [:model/Action :id :public_uuid] :public_uuid_prefix prefix :archived false))
 
 (mu/defn unarchived-document-ids-and-public-uuids-by-prefix
   "The `:id` and `:public_uuid` of the unarchived Documents whose public uuid prefix is `prefix`."
   [prefix :- :string]
-  (t2/select [:model/Document :id :public_uuid] :public_uuid_prefix [:auto/param prefix] :archived false))
+  (when-not (string? prefix)
+    (throw (ex-info "prefix must be a string" {:prefix prefix})))
+  (t2/select [:model/Document :id :public_uuid] :public_uuid_prefix prefix :archived false))
 
 (mu/defn unarchived-cards-by-public-uuid-prefix
   "The unarchived Cards whose public uuid prefix is `prefix`."
   [prefix :- :string]
-  (t2/select :model/Card :public_uuid_prefix [:auto/param prefix] :archived false))
+  (when-not (string? prefix)
+    (throw (ex-info "prefix must be a string" {:prefix prefix})))
+  (t2/select :model/Card :public_uuid_prefix prefix :archived false))
 
 (mu/defn unarchived-dashboards-by-public-uuid-prefix
   "The unarchived Dashboards whose public uuid prefix is `prefix`."
   [prefix :- :string]
-  (t2/select :model/Dashboard :public_uuid_prefix [:auto/param prefix] :archived false))
+  (when-not (string? prefix)
+    (throw (ex-info "prefix must be a string" {:prefix prefix})))
+  (t2/select :model/Dashboard :public_uuid_prefix prefix :archived false))
 
 (mu/defn unarchived-actions-by-public-uuid-prefix
   "The unarchived Actions whose public uuid prefix is `prefix`."
   [prefix :- :string]
-  (t2/select :model/Action :public_uuid_prefix [:auto/param prefix] :archived false))
+  (when-not (string? prefix)
+    (throw (ex-info "prefix must be a string" {:prefix prefix})))
+  (t2/select :model/Action :public_uuid_prefix prefix :archived false))
 
 (mu/defn unarchived-documents-by-public-uuid-prefix
   "The unarchived Documents whose public uuid prefix is `prefix`."
   [prefix :- :string]
-  (t2/select :model/Document :public_uuid_prefix [:auto/param prefix] :archived false))
+  (when-not (string? prefix)
+    (throw (ex-info "prefix must be a string" {:prefix prefix})))
+  (t2/select :model/Document :public_uuid_prefix prefix :archived false))
 
 (mu/defn database-name
   "The name of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :name :model/Database :id [:auto/param database-id]))
+  (t2/select-one-fn :name :model/Database :id database-id))
 
 (mu/defn publicly-shared-card-ids :- [:maybe [:set ::lib.schema.id/card]]
   "The ids of the unarchived Cards carrying a public link, or nil when there are none."
@@ -83,20 +99,20 @@
   [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
   (t2/select-fn->fn :id :database_id [:model/Card :id :database_id]
                     {:where [:and
-                             [:in :id [:auto/param card-ids]]
+                             [:in :id card-ids]
                              [:= :archived false]]}))
 
 (mu/defn card-names-and-types
   "The `:id`, `:name` and `:type` of the Cards with `card-ids`. `card-ids` must be non-empty."
   [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name :type] {:where [:in :id [:auto/param card-ids]]}))
+  (t2/select [:model/Card :id :name :type] {:where [:in :id card-ids]}))
 
 (mu/defn dashboard-names
   "The `:id` and `:name` of the Dashboards with `dashboard-ids`. `dashboard-ids` must be non-empty."
   [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
-  (t2/select [:model/Dashboard :id :name] {:where [:in :id [:auto/param dashboard-ids]]}))
+  (t2/select [:model/Dashboard :id :name] {:where [:in :id dashboard-ids]}))
 
 (mu/defn document-names
   "The `:id` and `:name` of the Documents with `document-ids`. `document-ids` must be non-empty."
   [document-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select [:model/Document :id :name] {:where [:in :id [:auto/param document-ids]]}))
+  (t2/select [:model/Document :id :name] {:where [:in :id document-ids]}))

@@ -13,18 +13,22 @@
 
 ### JavaScript/TypeScript Tests
 
-These reuse existing compiled ClojureScript output:
+These reuse existing compiled ClojureScript output and run through jest on the runner in `frontend/test/harness`:
 
-- **Test specific files:** `bun run test-unit-keep-cljs --runInBand --runTestsByPath path/to/file.unit.spec.tsx`
-  - Use explicit Jest path flags. A bare positional path can be consumed by `--ignoreProjects` in this script and launch an unintended broad run.
-- **Test by name within specific files:** `bun run test-unit-keep-cljs --runInBand --runTestsByPath path/to/file.unit.spec.tsx -t "pattern"`
-  - Runs matching test names only within the specified files.
+- **Test specific files:** `bun run test-unit-keep-cljs path/or/pattern [more patterns]`
+- **Test by name within specific files:** `bun run test-unit-keep-cljs path/or/pattern -t "pattern"`
 
-### Faster runner for the same specs
+### jest's own runner
 
-`bun run test-unit-agent-keep-cljs` runs the same unit specs through jest on a second runner that is about twice
-as fast as jest's own. Prefer it while you work. CI runs the same runner on pull requests and jest's own runner on
-master, so if the two disagree, trust jest.
+`bun run test-unit-jest-keep-cljs --runInBand --runTestsByPath path/to/file.unit.spec.tsx` runs a spec on jest's own
+runner. Use explicit Jest path flags. A bare positional path can be consumed by `--ignoreProjects` in this script and
+launch an unintended broad run. Coverage needs this runner.
+
+### Short output for agents
+
+`bun run test-unit-agent-keep-cljs` runs the specs on the same runner as `test-unit-keep-cljs`, about twice as fast as
+jest's own, with short output. Prefer it while you work. CI runs this runner on pull requests, and both runners on
+pushes to master and release branches. If the two disagree, trust jest.
 
 - **Test specific files:** `bun run test-unit-agent-keep-cljs path/or/pattern [more patterns]`
   - Each argument is a regular expression matched against the spec's path

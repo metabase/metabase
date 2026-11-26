@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.example-question-generator :as native-generator]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -52,8 +53,8 @@
                                             (format "metabot/metabot/%d/prompt-suggestions/regenerate" metabot-id)))))
             (let [prompts (t2/select [:model/MetabotPrompt :prompt :model [:card.name :model_name]]
                                      :metabot_id metabot-id
-                                     {:join     [[:report_card :card] [:= :card.id :card_id]]
-                                      :order-by [:metabot_prompt.id]})]
+                                     {:join     [[(t2/table-name :model/Card) :card] [:= :card.id :card_id]]
+                                      :order-by [(u/qualified-key (t2/table-name :model/MetabotPrompt) :id)]})]
               (is (= 10 (count prompts)))
               (is (= (set (mapcat val prompts-by-name))
                      (set (map :prompt prompts))))

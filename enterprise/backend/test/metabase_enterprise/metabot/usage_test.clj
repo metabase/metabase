@@ -326,6 +326,39 @@
               (finally
                 (cleanup-test-usage! user-id)))))))))
 
+(deftest token-limit-leaves-cache-read-tokens-out-test
+  (mt/with-premium-features #{:ai-controls}
+    (mt/with-temporary-setting-values [metabot-quota-reached-message "test limit reached"]
+      (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 100}]
+        (let [user-id (mt/user->id :rasta)
+              insert! (fn [cache-columns]
+                        (t2/insert! :model/AiUsageLog
+                                    (merge {:source            "test"
+                                            :model             "test/model"
+                                            :prompt_tokens     140000000
+                                            :completion_tokens 10000000
+                                            :total_tokens      150000000
+                                            :user_id           user-id}
+                                           cache-columns)))
+              check   (fn []
+                        (ee.usage/clear-limit-cache!)
+                        (mt/with-test-user :rasta
+                          (usage/check-usage-limits!)))]
+          (try
+            (testing "tokens read from the cache do not count against a token limit"
+              (insert! {:cache_read_tokens 100000000})
+              (is (nil? (check))))
+            (testing "tokens written to the cache count"
+              (cleanup-test-usage! user-id)
+              (insert! {:cache_creation_tokens 100000000 :cache_read_tokens 0})
+              (is (= "test limit reached" (check))))
+            (testing "a row without cache counts is counted in full"
+              (cleanup-test-usage! user-id)
+              (insert! {})
+              (is (= "test limit reached" (check))))
+            (finally
+              (cleanup-test-usage! user-id))))))))
+
 ;;; ------------------------------------------ Tenant limit tests ------------------------------------------
 
 (deftest tenant-limit-exceeded-returns-message-test

@@ -67,6 +67,7 @@
     {:role :assistant, :content \"...\", :tool_calls [...]}
     {:role :assistant, :content [{:type \"tool_use\" ...}]}
     {:role :tool,      :tool_call_id \"...\", :content \"...\"}
+    {:role :tool,      :tool_call_id \"...\", :content \"...\", :is_error true}
 
   Returns a sequence of AISDK parts (may be >1 for messages with tool calls)."
   [{:keys [content tool_calls] :as msg}]
@@ -125,7 +126,12 @@
       :tool
       [{:type   :tool-output
         :id     (:tool_call_id msg)
-        :result {:output (tool-result-content content)}}]
+        :result (cond-> {:output (tool-result-content content)}
+                  ;; The Claude and Gemini adapters mark a result with `:error` as failed. The OpenAI
+                  ;; Responses and Chat Completions adapters send only its text. History keeps only that
+                  ;; the call failed, not the class and code of the failure. In a later turn the model can
+                  ;; try again, so the failure is recoverable.
+                  (:is_error msg) (assoc :error {:class :recoverable :code ::replayed-failure}))}]
 
       ;; system — pass through as-is (not really an AISDK part, but adapters
       ;; handle it separately via the :system option anyway)

@@ -16,7 +16,7 @@
       (finally
         (t2/delete! :model/McpGroupPermission)
         (when (seq snapshot)
-          (t2/insert! :mcp_group_permission
+          (t2/insert! (t2/table-name :model/McpGroupPermission)
                       (map #(-> (select-keys % [:group_id :mcp_enabled :tool_access :created_at :updated_at])
                                 (update :tool_access json/encode))
                            snapshot)))))))
@@ -37,4 +37,4 @@
   "Give the row of the group with `group-id` the `tool-access` of a row saved before some of its tools were removed,
   writing past the model's check that every name is a registered tool."
   [group-id tool-access]
-  (t2/update! :mcp_group_permission {:group_id group-id} {:tool_access (json/encode tool-access)}))
+  (t2/update! (t2/table-name :model/McpGroupPermission) {:group_id group-id} {:tool_access (json/encode tool-access)}))

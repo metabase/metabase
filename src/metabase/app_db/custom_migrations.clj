@@ -33,7 +33,6 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.match :as match]
@@ -174,9 +173,9 @@
                            (juxt :object :group_id)
                            :permissions
                            {:where [:or
-                                    [:like :object (h2x/literal "/db/%")]
-                                    [:like :object (h2x/literal "/data/db/%")]
-                                    [:like :object (h2x/literal "/query/db/%")]]})
+                                    [:like :object [:literal "/db/%"]]
+                                    [:like :object [:literal "/data/db/%"]]
+                                    [:like :object [:literal "/query/db/%"]]]})
         v2-perms-set      (into #{} (mapcat
                                      (fn [[v1-path group-id]]
                                        (for [v2-path (->v2-paths v1-path)]
@@ -188,8 +187,8 @@
                              :columns     [:object :group_id]
                              :values      new-v2-perms})))
   (t2.execute/query-one {:delete-from :permissions
-                         :where [:or [:like :object (h2x/literal "/data/db/%")]
-                                 [:like :object (h2x/literal "/query/db/%")]]}))
+                         :where [:or [:like :object [:literal "/data/db/%"]]
+                                 [:like :object [:literal "/query/db/%"]]]}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Quartz Scheduler Helpers                                             |
@@ -1008,85 +1007,43 @@
   (unify-time-column-type! :up)
   (unify-time-column-type! :down))
 
+(defn- partition-by-size
+  "The `[id json]` pairs `revisions` in consecutive groups whose JSON adds up to at most two million characters, or a
+  single pair whose JSON alone is larger, so that no UPDATE outgrows MySQL's and MariaDB's `max_allowed_packet`."
+  [revisions]
+  (lazy-seq
+   (when (seq revisions)
+     (let [sizes (reductions + (map (comp count second) revisions))
+           n     (max 1 (count (take-while #(<= % 2000000) sizes)))]
+       (cons (take n revisions) (partition-by-size (drop n revisions)))))))
+
+(defn- update-card-revision-objects!
+  "Replace the object of every Card revision whose JSON holds a non-null `json-key` with `f` applied to it, reading and
+  updating the candidate revisions in batches, so that no cursor stays open while one is written and no statement grows
+  too large."
+  [json-key f]
+  (doseq [ids (partition-all 1000 (map :id (t2/query {:select   [:id]
+                                                      :from     [:revision]
+                                                      :where    [:and
+                                                                 [:= :model "Card"]
+                                                                 [:like :object (str "%\"" (name json-key) "\"%")]]
+                                                      :order-by [:id]})))
+          revisions (partition-by-size
+                     (for [{:keys [id object]} (t2/query {:select [:id :object] :from [:revision] :where [:in :id ids]})
+                           :let [object (json/decode+kw object)]
+                           :when (some? (get object json-key))]
+                       [id (json/encode (f object))]))]
+    (t2/query {:update :revision
+               :set    {:object (into [:case] (mapcat (fn [[id object]] [[:= :id id] object])) revisions)}
+               :where  [:in :id (mapv first revisions)]})))
+
 (define-reversible-migration CardRevisionAddType
-  (case (db-type*)
-    :postgres
-    ;; postgres doesn't allow `\u0000` in text when converting to jsonb, so we need to remove them before we can
-    ;; parse the json. We use negative look behind to avoid matching `\\u0000` (metabase#40835)
-    (t2/query ["UPDATE revision
-               SET object = replace(jsonb_set(
-                  (regexp_replace(object, '(?<!\\\\)\\\\u0000', '286b707c-e895-4cd3-acfc-569147f54371', 'g'))::jsonb, '{type}',
-                  to_jsonb(CASE
-                              WHEN ((regexp_replace(object, '(?<!\\\\)\\\\u0000', '286b707c-e895-4cd3-acfc-569147f54371', 'g'))::jsonb->>'dataset')::boolean THEN 'model'
-                              ELSE 'question'
-                           END)::jsonb, true)::text, '286b707c-e895-4cd3-acfc-569147f54371', '\\u0000')
-               WHERE model = 'Card' AND ((regexp_replace(object, '(?<!\\\\)\\\\u0000', '286b707c-e895-4cd3-acfc-569147f54371', 'g'))::jsonb->>'dataset') IS NOT NULL;"])
-
-    :mysql
-    (t2/query ["UPDATE revision
-               SET object = JSON_SET(
-                   object,
-                   '$.type',
-                   CASE
-                       WHEN JSON_UNQUOTE(JSON_EXTRACT(object, '$.dataset')) = 'true' THEN 'model'
-                       ELSE 'question'
-                   END)
-               WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.dataset')) IS NOT NULL;;"])
-
-    ;; json_extract on mariadb throws an error if the json is more than 32 levels nested. See #41924
-    ;; So we do this in clojure land for mariadb
-    (:h2 :mariadb)
-    (let [migrate! (fn [revision]
-                     (let [object     (json/decode+kw (:object revision))
-                           new-object (assoc object :type (if (:dataset object)
-                                                            "model"
-                                                            "question"))]
-                       (t2/query {:update :revision
-                                  :set    {:object (json/encode new-object)}
-                                  :where  [:= :id (:id revision)]})))]
-      (run! migrate! (t2/reducible-query {:select [:*]
-                                          :from   [:revision]
-                                          :where  [:= :model "Card"]}))))
-  (case (db-type*)
-    :postgres
-    (t2/query ["UPDATE revision
-                SET object = jsonb_set(
-                    object::jsonb - 'type',
-                    '{dataset}',
-                    to_jsonb(CASE
-                                 WHEN (object::jsonb->>'type') = 'model'
-                                 THEN true ELSE false
-                             END)
-                )
-                WHERE model = 'Card' AND (object::jsonb->>'type') IS NOT NULL;"])
-
-    :mysql
-    (do
-      (t2/query ["UPDATE revision
-                 SET object = JSON_SET(
-                     object,
-                     '$.dataset',
-                     CASE
-                         WHEN JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) = 'model'
-                         THEN true ELSE false
-                     END)
-                 WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"])
-      (t2/query ["UPDATE revision
-                 SET object = JSON_REMOVE(object, '$.type')
-                 WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"]))
-
-    (:h2 :mariadb)
-    (let [rollback! (fn [revision]
-                      (let [object     (json/decode+kw (:object revision))
-                            new-object (-> object
-                                           (assoc :dataset (= (:type object) "model"))
-                                           (dissoc :type))]
-                        (t2/query {:update :revision
-                                   :set    {:object (json/encode new-object)}
-                                   :where  [:= :id (:id revision)]})))]
-      (run! rollback! (t2/reducible-query {:select [:*]
-                                           :from   [:revision]
-                                           :where  [:= :model "Card"]})))))
+  (update-card-revision-objects! :dataset (fn [object]
+                                            (assoc object :type (if (:dataset object) "model" "question"))))
+  (update-card-revision-objects! :type (fn [object]
+                                         (-> object
+                                             (assoc :dataset (= (:type object) "model"))
+                                             (dissoc :type)))))
 
 (define-migration DeleteScanFieldValuesTriggerForDBThatTurnItOff
   ;; If you config scan field values for a DB to either "Only when adding a new filter widget" or "Never, I’ll do this manually if I need to"

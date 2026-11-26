@@ -8,4 +8,4 @@
 (mu/defn cards :- [:sequential :map]
   "The cards whose ids are in `ids`."
   [ids :- [:set {:min 1} :int]]
-  (mdb/select-batched #(t2/select :model/Card :id [:in [:auto/param %]]) ids))
+  (mdb/select-batched #(t2/select :model/Card :id [:in %]) ids))

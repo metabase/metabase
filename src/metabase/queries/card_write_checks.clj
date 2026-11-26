@@ -64,7 +64,7 @@
   [card-before-updates :- ::queries.schema/card
    card-updates        :- ::queries.schema/card]
   (when (api/column-will-change? (:dataset_query card-before-updates) (get card-updates :dataset_query ::api/not-provided))
-    (query-perms/check-run-permissions-for-query (dissoc (:dataset_query card-updates) :query-permissions/perms))))
+    (query-perms/check-run-permissions-for-queries [(dissoc (:dataset_query card-updates) :query-permissions/perms)])))
 
 (defn- check-embedding-enabled-to-change-embedding
   "Embedding must be enabled to change the value of `enable_embedding`, `embedding_type` or `embedding_params`."
@@ -87,7 +87,7 @@
   [query]
   ;; Strip :query-permissions/perms first -- it is populated internally by the QP middleware, so
   ;; any value already on the incoming query is dropped here.
-  (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms)))
+  (query-perms/check-run-permissions-for-queries [(dissoc query :query-permissions/perms)]))
 
 (defn check-allowed-to-create-card!
   "Throws unless `card` can be saved as `card-type` and the current user may create it and run its query."

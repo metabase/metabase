@@ -144,7 +144,8 @@
   [:map {:closed true}
    [:role [:= :tool]]
    [:tool_call_id :string]
-   [:content :string]])
+   [:content :string]
+   [:is_error {:optional true} :boolean]])
 
 (mr/def ::message
   "A single message in the conversation history.

@@ -34,7 +34,7 @@
 (defn- set-stored-definition!
   "Overwrites the stored definition of the Segment with `id` with the JSON of `definition`, written to the table without the model hooks."
   [id definition]
-  (t2/query-one {:update :segment
+  (t2/query-one {:update (t2/table-name :model/Segment)
                  :set    {:definition (json/encode definition)}
                  :where  [:= :id id]}))
 

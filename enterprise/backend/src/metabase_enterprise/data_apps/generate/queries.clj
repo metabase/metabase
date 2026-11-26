@@ -13,18 +13,23 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- build-query
-  "The query Lib builds from the query definition `query`."
+(defn- source-table-id
+  "The id of the Table the query definition `query` starts from."
   [query]
-  (let [table-id (get-in query [:stages 0 :source :id])
-        mp       (lib-be/application-database-metadata-provider (:db_id (api/check-404 (data-apps.db/table table-id))))]
-    (lib/test-query mp query)))
+  (get-in query [:stages 0 :source :id]))
+
+(defn- build-query
+  "The query Lib builds from the query definition `query` on the Database that `table-id->db-id` maps its source
+  Table to."
+  [table-id->db-id query]
+  (lib/test-query (lib-be/application-database-metadata-provider (api/check-404 (table-id->db-id (source-table-id query))))
+                  query))
 
 (defn- card
   "The question named `card-name` with entity ID `entity-id`, holding the query `query` builds, as the Card row an export
   takes."
-  [card-name entity-id query]
-  (let [query (build-query query)]
+  [table-id->db-id card-name entity-id query]
+  (let [query (build-query table-id->db-id query)]
     {:entity_id              entity-id
      :name                   card-name
      :card_schema            queries/current-card-schema-version
@@ -41,10 +46,22 @@
   "The files of the questions in `definitions`, a map of export name to `{:entityId .. :query ..}`, in the data app's
   collection with entity ID `collection-entity-id`, each at its path in the collection's directory."
   [collection-entity-id definitions]
-  (let [names    (mapv (comp u/qualified-name key) definitions)
-        cards    (mapv (fn [card-name {:keys [entityId query]}] (card card-name entityId query))
-                       names (vals definitions))
-        exported (serialization/export-batch :model/Card cards)]
+  (let [names           (mapv (comp u/qualified-name key) definitions)
+        table-id->db-id (into {}
+                              (map (juxt :id :db_id))
+                              (data-apps.db/table-names (into [] (comp (keep (comp source-table-id :query)) (distinct))
+                                                              (vals definitions))))
+        _               (doseq [[db-id table-ids] (group-by table-id->db-id (keys table-id->db-id))]
+                          (lib-be/bulk-load-query-metadata! (lib-be/application-database-metadata-provider db-id)
+                                                            {:table   (set table-ids)
+                                                             :card    #{}
+                                                             :metric  #{}
+                                                             :measure #{}
+                                                             :segment #{}
+                                                             :snippet #{}}))
+        cards           (mapv (fn [card-name {:keys [entityId query]}] (card table-id->db-id card-name entityId query))
+                              names (vals definitions))
+        exported        (serialization/export-batch :model/Card cards)]
     (mapv (fn [card-name exported]
             (when (instance? Exception exported)
               (throw exported))

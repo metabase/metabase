@@ -99,7 +99,7 @@
                                   collection-readable?
                                   table-is-published?
                                   (not= view-data :blocked))
-                             (query-perms/can-run-query? mbql-query))))))))))))))
+                             (first (query-perms/query-run-answers [mbql-query])))))))))))))))
 
 (deftest published-table-does-not-grant-view-data-test
   (mt/with-premium-features #{:library}

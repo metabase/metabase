@@ -35,12 +35,12 @@
 (mu/defn database-engine
   "The engine of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :engine :model/Database :id [:auto/param database-id]))
+  (t2/select-one-fn :engine :model/Database :id database-id))
 
 (mu/defn python-library
   "The PythonLibrary with `library-id`, or nil."
   [library-id :- ms/PositiveInt]
-  (t2/select-one :model/PythonLibrary :id [:auto/param library-id]))
+  (t2/select-one :model/PythonLibrary :id library-id))
 
 (mu/defn python-library-by-path
   "The PythonLibrary at `path`, or nil."

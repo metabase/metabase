@@ -158,10 +158,7 @@
                                                                         (json/encode (or args {}))))}}]}
                   :tool-output {:role         "tool"
                                 :tool_call_id (:id part)
-                                :content      (or (get-in part [:result :output])
-                                                  (when-let [err (:error part)]
-                                                    (str "Error: " (:message err)))
-                                                  (pr-str (:result part)))}
+                                :content      (core/tool-result-text (:result part))}
                   ;; User messages pass through
                   {:role    (name (or (:role part) "user"))
                    :content (or (:content part) "")})))
@@ -356,11 +353,10 @@
                                      (delta-reasoning delta)) :reasoning
                                 :else                         nil)]
             (cond-> result
-              ;; Emit :start on first chunk
-              (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
-                                                                   (u/prog1
-                                                                     (vreset! message-id id)
-                                                                     (vreset! model-name model)))
+              ;; Emit :start on the first chunk, with a minted id when the chunk has none. Persistence stores each
+              ;; :start as the `step-start` that history replay splits a turn's LLM calls at.
+              (not @message-id)                                (-> (rf {:type :start :messageId (vreset! message-id (or id (core/mkid)))})
+                                                                   (u/prog1 (vreset! model-name model)))
               ;; Close the open text or reasoning block when the content type changes
               (and @current-type
                    chunk-type

@@ -24,11 +24,11 @@
     {:audit     (into #{}
                       (comp (filter #(contains? entities [(:model %) (:model_id %)]))
                             (map (juxt :topic :model :model_id)))
-                      (t2/query {:select [:topic :model :model_id] :from [:audit_log] :where [:> :id audit]}))
+                      (t2/query {:select [:topic :model :model_id] :from [(t2/table-name :model/AuditLog)] :where [:> :id audit]}))
      :revisions (into #{}
                       (comp (filter #(contains? entities [(:model %) (:model_id %)]))
                             (map (juxt :model :model_id)))
-                      (t2/query {:select [:model :model_id] :from [:revision] :where [:> :id revision]}))}))
+                      (t2/query {:select [:model :model_id] :from [(t2/table-name :model/Revision)] :where [:> :id revision]}))}))
 
 (defn- archived-states
   "The `:archived` of each `[model id]` of `rows`, as booleans."

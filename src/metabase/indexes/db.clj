@@ -39,7 +39,7 @@
   pending deletion."
   [transform-ids :- [:sequential {:min 1} ::lib.schema.id/transform]]
   (app-db/select-batched #(t2/select [:model/TableIndex :id :status :error_message]
-                                     :transform_id [:in [:auto/param %]]
+                                     :transform_id [:in %]
                                      :status [:not= :delete-pending])
                          transform-ids))
 
@@ -83,7 +83,7 @@
 (mu/defn table-index-statuses
   "The id, status and error message of each of the TableIndexes with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (app-db/select-batched #(t2/select [:model/TableIndex :id :status :error_message] :id [:in [:auto/param %]]) ids))
+  (app-db/select-batched #(t2/select [:model/TableIndex :id :status :error_message] :id [:in %]) ids))
 
 (defn- update-by-changes!
   "Apply `changes` to the TableIndexes of `rows` with one plain update through the model per partition, `where`

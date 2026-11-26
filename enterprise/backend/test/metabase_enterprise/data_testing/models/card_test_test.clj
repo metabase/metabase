@@ -54,7 +54,7 @@
                                               :name         "a test"
                                               :inputs       []
                                               :expectations [{:type "empty" :name "no sql"}]})))
-    (is (zero? (t2/count :card_test :card_id card-id)))))
+    (is (zero? (t2/count (t2/table-name :model/CardTest) :card_id card-id)))))
 
 (deftest last-run-hydration-finds-only-card-runs-test
   (mt/with-temp [:model/Card        {card-id :id} {}
@@ -181,7 +181,7 @@
         (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :unrestricted
                                                                       :perms/create-queries :query-builder-and-native}
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll-id)
-          (t2/query-one {:update :report_card :set {:database_id other-db} :where [:= :id card-id]})
+          (t2/query-one {:update (t2/table-name :model/Card) :set {:database_id other-db} :where [:= :id card-id]})
           (testing "premise: the card's database_id names a database other than its query's"
             (is (= other-db (t2/select-one-fn :database_id :model/Card :id card-id))))
           (testing "native queries on the query's database are enough to run and save the test"
