@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.app-db.core :as mdb]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -647,20 +648,21 @@
   ([database          :- ::lib.schema.metadata/database
     target            :- ::transforms-base.schema/synced-target
     {:keys [create?]} :- [:maybe [:map {:closed true} [:create? {:optional true} :boolean]]]]
-   (when-let [table (or (target-table (:id database) target)
-                        (when create?
-                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
-     ;; If the table has nil schema, check if the physical table actually lives under
-     ;; the driver's default schema. If so, fix the Table record before syncing.
-     (let [table (if (nil? (:schema table))
-                   (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
-                     (do (table/update-tables! [{:id (:id table) :schema actual-schema}])
-                         (-> (transforms-base.db/table (:id table))
-                             (t2/hydrate :db)))
-                     table)
-                   table)]
-       (sync/sync-table! table)
-       table))))
+   (mdb/with-worktree-scope {:type :all}
+     (when-let [table (or (target-table (:id database) target)
+                          (when create?
+                            (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
+       ;; If the table has nil schema, check if the physical table actually lives under
+       ;; the driver's default schema. If so, fix the Table record before syncing.
+       (let [table (if (nil? (:schema table))
+                     (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
+                       (do (table/update-tables! [{:id (:id table) :schema actual-schema}])
+                           (-> (transforms-base.db/table (:id table))
+                               (t2/hydrate :db)))
+                       table)
+                     table)]
+         (sync/sync-table! table)
+         table)))))
 
 (mu/defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
@@ -915,10 +917,12 @@
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
         database (driver.u/lib-database db-id)
-        table (sync-target! target database)]
-    ;; Sync target table and set target_table_id on transform
-    (when table
-      (update-transform! (:id transform) {:target_table_id (:id table)}))
+        table (sync-target! target database)
+        shown (when table
+                (or (target-table db-id (or (:workspace-canonical-target transform) target)) table))]
+    ;; Sync target table and set target_table_id on transform to the Table the transform's worktree shows for it
+    (when shown
+      (update-transform! (:id transform) {:target_table_id (:id shown)}))
     ;; ANALYZE the target before the run is observable, so dependents don't plan on stale stats.
     ;; Best-effort: a stats failure shouldn't fail an otherwise-successful run.
     (try

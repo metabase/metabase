@@ -1,6 +1,6 @@
 (ns metabase-enterprise.workspaces.no-remappings-test
   "On a database without table remappings the workspace hooks must cost no app-DB statements: they run on every
-  query, every synced table and every transform of every EE instance.
+  query and every transform of every EE instance.
 
   These tests avoid `mt/with-temp`: it opens an app-DB transaction, and inside one the remapping store bypasses its
   cache, so a statement count would measure the uncached path."
@@ -15,14 +15,11 @@
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.settings.core :as setting]
-   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.test :as mt]
-   [metabase.util.malli.fn :as mu.fn]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -63,16 +60,6 @@
         (is (zero? (call-count #((ws.middleware/apply-workspace-sql-remapping (fn [_query _rff] :ok))
                                  {:database (mt/id) :qp/compiled {:query "SELECT 1"}}
                                  identity))))))))
-
-(deftest fk-sync-streams-test
-  (testing "without remappings, FK sync hands back the driver's reducible as is, unrealized"
-    (with-no-remappings!
-      (fn []
-        (let [reducible (reify clojure.lang.IReduceInit
-                          (reduce [_ _f init] init))]
-          (with-redefs [driver/describe-fks      (constantly reducible)
-                        mu.fn/instrument-ns?     (constantly false)]
-            (is (identical? reducible (fetch-metadata/fk-metadata (driver.u/lib-database (mt/id)))))))))))
 
 (deftest remap-added-after-first-query-takes-effect-test
   (testing "a remap added after a query has run applies to the next query"

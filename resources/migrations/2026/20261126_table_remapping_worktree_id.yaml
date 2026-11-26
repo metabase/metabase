@@ -96,15 +96,10 @@ databaseChangeLog:
   - changeSet:
       id: trw6vt
       author: ranquild
-      comment: Replace v_worktree_table with one that applies each worktree's table remappings, showing a workspace copy under the name of the table it shadows
+      comment: Replace v_worktree_table with one that applies each worktree's table remappings, reading a synced workspace copy through the id and metadata of the table it shadows
       changes:
         - sqlFile:
-            dbms: postgresql,h2
             path: ../worktree_views/table/v2/worktree_table.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: mysql,mariadb
-            path: ../worktree_views/table/v2/worktree_table_mysql.sql
             relativeToChangelogFile: true
       rollback:
         - sql:
@@ -116,7 +111,7 @@ databaseChangeLog:
   - changeSet:
       id: trw7vf
       author: ranquild
-      comment: Replace v_worktree_field with one that keeps only the fields of the tables v_worktree_table shows to each worktree
+      comment: Replace v_worktree_field with one that reads a synced workspace copy's fields through the ids of the shadowed table's fields of the same name
       changes:
         - sqlFile:
             path: ../worktree_views/field/v2/worktree_field.sql

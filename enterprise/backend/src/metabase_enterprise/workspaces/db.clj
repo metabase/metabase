@@ -288,7 +288,7 @@
 ;;; ---------------------------------------------- TableRemapping ----------------------------------------------
 
 (mu/defn table-remappings
-  "Every TableRemapping, ordered by id."
+  "The TableRemappings of the worktree this thread works in, ordered by id."
   []
   (t2/select :model/TableRemapping {:order-by [[:id :asc]]}))
 
@@ -300,12 +300,12 @@
     (set (t2/select-fn-set :database_id :model/TableRemapping))))
 
 (mu/defn table-remappings-exist?
-  "Whether the Database with `database-id` has a TableRemapping."
+  "Whether the Database with `database-id` has a TableRemapping in the worktree this thread works in."
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/TableRemapping :database_id database-id))
 
 (mu/defn table-remappings-of-database
-  "The TableRemappings of the Database with `database-id`."
+  "The TableRemappings of the Database with `database-id` in the worktree this thread works in."
   [database-id :- ::lib.schema.id/database]
   (t2/select :model/TableRemapping :database_id database-id))
 
@@ -352,24 +352,29 @@
               :from_table_name (:table from-spec)))
 
 (mu/defn delete-table-remappings-of-database!
-  "Delete the TableRemappings of the Database with `database-id`. Returns the number of rows deleted."
+  "Delete the TableRemappings of the Database with `database-id` in every worktree. Returns the number of rows deleted."
   [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/TableRemapping :database_id database-id))
+  (app-db/with-worktree-scope {:type :all}
+    (t2/delete! :model/TableRemapping :database_id database-id)))
 
 (mu/defn delete-table-remappings-of-databases!
-  "Delete the TableRemappings of the Databases with `database-ids`, returning the number of rows deleted."
+  "Delete the TableRemappings of the Databases with `database-ids` in every worktree, returning the number of rows
+  deleted."
   [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
-  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/TableRemapping :database_id [:in %]) database-ids))
+  (app-db/with-worktree-scope {:type :all}
+    (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/TableRemapping :database_id [:in %]) database-ids)))
 
 (mu/defn delete-table-remappings-into!
-  "Delete the TableRemappings of the Database with `database-id` whose target is in the `(to-db, to-schema)`
-  namespace. Returns the number of rows deleted."
+  "Delete the TableRemappings, in every worktree, of the Database with `database-id` whose target is in the
+  `(to-db, to-schema)` namespace. Returns the number of rows deleted."
   [database-id :- ::lib.schema.id/database
    to-db       :- :string
    to-schema   :- :string]
-  (t2/delete! :model/TableRemapping :database_id database-id :to_db to-db :to_schema to-schema))
+  (app-db/with-worktree-scope {:type :all}
+    (t2/delete! :model/TableRemapping :database_id database-id :to_db to-db :to_schema to-schema)))
 
 (mu/defn delete-all-table-remappings!
-  "Delete every TableRemapping."
+  "Delete every TableRemapping, in every worktree."
   []
-  (t2/delete! :model/TableRemapping))
+  (app-db/with-worktree-scope {:type :all}
+    (t2/delete! :model/TableRemapping)))

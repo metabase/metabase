@@ -7,6 +7,7 @@
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
+   [metabase.app-db.core :as mdb]
    [metabase.workspaces.core :as ws]))
 
 (set! *warn-on-reflection* true)
@@ -21,7 +22,7 @@
    empty-string sentinel before invoking the store. The convenience writers in
    [[metabase-enterprise.workspaces.table-remapping]] do this normalization.
 
-   Writes are idempotent on the `(database_id, from_db, from_schema, from_table_name)`
+   Writes are idempotent on the `(database_id, from_db, from_schema, from_table_name, worktree_id)`
    unique key: duplicate inserts no-op, missing removes return 0."
   ;; reads
   (enabled-for-db?* [store db-id]
@@ -35,8 +36,8 @@
   (get-mapping* [store db-id from-spec]
     "Targeted lookup: return the to-side `::table-spec` for `from-spec`, or nil if no
      matching remap exists. AppDB impl uses an indexed select-one (matches the unique
-     constraint on `(database_id, from_db, from_schema, from_table_name)`); MapStore
-     does a hash-map get. Hot path -- called per-table during sync, so stays O(1) per call.")
+     constraint on `(database_id, from_db, from_schema, from_table_name, worktree_id)`); MapStore
+     does a hash-map get.")
   ;; writes
   (insert-mapping!* [store db-id from-spec to-spec]
     "Idempotently ensure the remapping from `from-spec` points at `to-spec`, replacing one that
@@ -62,7 +63,7 @@
 
 (defn- may-have-remappings?
   "False when `db-id` has no TableRemapping as far as this process's cache of the Database ids with remappings
-  knows. Every QP run and every synced table asks, so on an instance without remappings the answer must usually cost
+  knows. Every QP run and every transform asks, so on an instance without remappings the answer must usually cost
   no query; see [[table-remapping/database-ids-with-remappings]] for when it queries.
 
   In workspace mode the answer is always true and the caller queries: transforms on any node insert rows, and a
@@ -171,10 +172,11 @@
 ;;; ------------------------------------------------ Public API ---------------------------------------------------
 
 (defn enabled-for-db?
-  "Returns true if database `db-id` has any active workspace remappings.
-   Returns false when [[*skip-remapping?*]] is true."
+  "Returns true if database `db-id` has any active workspace remappings. Returns false when [[*skip-remapping?*]] is
+  true, and across every worktree, where sync and the like read each table as itself."
   [db-id]
   (and (not *skip-remapping?*)
+       (not= :all (:type (mdb/worktree-scope)))
        (enabled-for-db?* *remapping-store* db-id)))
 
 (defn remappings-for-db
@@ -191,7 +193,7 @@
 
 (defn get-mapping
   "Targeted lookup: return the to-side `::table-spec` for `from-spec`, or nil if no
-   matching remap exists. Hot path during sync -- O(1) per call."
+   matching remap exists."
   [db-id from-spec]
   (get-mapping* *remapping-store* db-id from-spec))
 

@@ -8,6 +8,14 @@ databaseChangeLog:
       value: timestamp(6)
       dbms: mysql,mariadb
   - property:
+      name: schema.column
+      value: "`schema`"
+      dbms: mysql,mariadb
+  - property:
+      name: schema.column
+      value: schema
+      dbms: postgresql,h2
+  - property:
       name: blob.type
       value: blob
       dbms: mysql,h2,mariadb

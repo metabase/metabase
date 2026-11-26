@@ -8,6 +8,7 @@
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase-enterprise.workspaces.transform-hooks :as ws.transform-hooks]
+   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.core :as lib]
@@ -87,6 +88,18 @@
                     "executor target and row agree byte-for-byte"))))
           (finally
             (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
+
+(deftest worktree-transform-target-gets-own-copy-test
+  (testing "transform in worktree writes copy whose name carries worktree, so worktrees never share copy"
+    (with-instance-workspace-for-db! "ws_test_schema"
+      (fn []
+        (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "worktree-copy-test"}]
+          (let [target {:schema "PUBLIC" :name "ORDERS" :type :table}]
+            (is (= "PUBLIC__ORDERS"
+                   (:name (ws.transform-hooks/workspace-transform-target (mt/id) target))))
+            (is (= (str "w" worktree-id "_PUBLIC__ORDERS")
+                   (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+                     (:name (ws.transform-hooks/workspace-transform-target (mt/id) target)))))))))))
 
 (defn- recorded-copy
   "The `[schema table]` that the test database's remapping of `canonical` points at, or nil."
@@ -374,7 +387,7 @@
                 (is (exists? "public" "ws_drop_failed")
                     "the canonical table is untouched")
                 (is (true? (t2/select-one-fn :active :model/Table :db_id (mt/id) :schema "public" :name "ws_drop_failed"))
-                    "the canonical Table row stays active: no remapping makes it stand in for the dropped copy")))
+                    "the canonical Table row stays active: only the dropped copy's row is deactivated")))
             (finally
               (t2/delete! :model/Table :db_id (mt/id) :schema "public" :name "ws_drop_failed")
               (jdbc/execute! spec ["DROP TABLE IF EXISTS public.ws_drop_failed"]))))))))

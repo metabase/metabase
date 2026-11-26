@@ -317,7 +317,7 @@
                (expand-output-namespace database)))))
 
 (defn list-remappings
-  "Return all TableRemapping rows, ordered by id."
+  "The TableRemapping rows of the worktree the request works in, ordered by id."
   []
   (ws.db/table-remappings))
 

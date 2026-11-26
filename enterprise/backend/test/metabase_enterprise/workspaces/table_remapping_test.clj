@@ -1,9 +1,8 @@
 (ns metabase-enterprise.workspaces.table-remapping-test
   "Tests for the public writer API in `metabase-enterprise.workspaces.table-remapping`.
-   Exercises the round-trip between `add-mapping!`, `remap-table`, `remove-mapping!`,
+   Exercises the round-trip between `add-mapping!`, `workspace-remap-schema+name`, `remove-mapping!`,
    `all-mappings-for-db`, `clear-mappings-for-db!`, and `add-transform-target-mapping!`."
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.workspaces.core :as ws]
@@ -12,9 +11,6 @@
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events.test-util :as events.tu]
-   [metabase.sync.sync-metadata :as sync-metadata]
-   [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
@@ -40,13 +36,13 @@
   (mt/with-premium-features #{:workspaces}
     (workspaces.tu/with-workspace-db! db-id output-schema f)))
 
-(deftest remap-table-returns-nil-when-no-mapping-test
+(deftest workspace-remap-returns-nil-when-no-mapping-test
   (clean-db-fixture!
    (mt/id)
    (fn []
-     (is (nil? (ws.table-remapping/remap-table (mt/id) {:schema "nope_schema" :name "nope_table"}))))))
+     (is (nil? (ws.table-remapping/workspace-remap-schema+name (mt/id) {:schema "nope_schema" :name "nope_table"}))))))
 
-(deftest add-then-remap-table-test
+(deftest add-then-workspace-remap-test
   (clean-db-fixture!
    (mt/id)
    (fn []
@@ -55,7 +51,7 @@
       {:schema "PUBLIC" :table "ORDERS"}
       {:schema "ws_schema" :table "orders_copy"})
      (is (= {:db nil :schema "ws_schema" :name "orders_copy"}
-            (ws.table-remapping/remap-table (mt/id) {:schema "PUBLIC" :name "ORDERS"}))))))
+            (ws.table-remapping/workspace-remap-schema+name (mt/id) {:schema "PUBLIC" :name "ORDERS"}))))))
 
 (deftest all-mappings-for-db-test
   (clean-db-fixture!
@@ -76,7 +72,7 @@
      (ws.table-remapping/add-mapping!
       (mt/id) {:schema "PUBLIC" :table "ORDERS"} {:schema "ws_schema" :table "orders_copy"})
      (ws.table-remapping/remove-mapping! (mt/id) {:schema "PUBLIC" :table "ORDERS"})
-     (is (nil? (ws.table-remapping/remap-table (mt/id) {:schema "PUBLIC" :name "ORDERS"}))))))
+     (is (nil? (ws.table-remapping/workspace-remap-schema+name (mt/id) {:schema "PUBLIC" :name "ORDERS"}))))))
 
 (deftest clear-mappings-for-db!-test
   (clean-db-fixture!
@@ -116,7 +112,7 @@
            (ws.table-remapping/add-transform-target-mapping!
             (mt/id) {:schema "PUBLIC" :name "ORDERS" :type :table})
            (is (= {:db nil :schema "ws_fresh" :name "PUBLIC__ORDERS"}
-                  (ws.table-remapping/remap-table (mt/id) {:schema "PUBLIC" :name "ORDERS"}))
+                  (ws.table-remapping/workspace-remap-schema+name (mt/id) {:schema "PUBLIC" :name "ORDERS"}))
                "to-side is rewritten to <from-schema>__<from-name> so cross-schema collisions are avoided")))))))
 
 (deftest add-transform-target-mapping!-is-idempotent-test
@@ -168,53 +164,23 @@
                           (ws.table-remapping/all-mappings-for-db (mt/id)))
                        "from_db and to_db are both AnalyticsDB (Database.details on :sqlserver)")))))))))))
 
-(deftest workspace-remap-schema+name-redirects-sync-fetch-test
-  (testing "sync's fetch-metadata hook returns [to-schema to-table-name] when a TableRemapping exists"
+(deftest workspace-remap-schema+name-returns-copy-test
+  (testing "returns workspace copy when TableRemapping exists"
     (let [db-id (mt/id)]
       (clean-db-fixture!
        db-id
        (fn []
          (is (nil? (ws.table-remapping/workspace-remap-schema+name db-id {:schema "PUBLIC" :name "ORDERS"}))
-             "without a remapping, the hook returns nil so sync queries the logical table")
+             "without remapping, nil")
          (ws.table-remapping/add-mapping! db-id
                                           {:schema "PUBLIC"     :table "ORDERS"}
                                           {:schema "mb_iso_ws"  :table "orders_copy"})
          (is (= {:db nil :schema "mb_iso_ws" :name "orders_copy"}
                 (ws.table-remapping/workspace-remap-schema+name db-id {:schema "PUBLIC" :name "ORDERS"}))
-             "with a remapping, the hook returns the isolated warehouse location so sync asks the driver there"))))))
-
-(defn- sync-fields-statement-count!
-  "The number of app-DB statements of a Fields sync, the lower of two, over a fresh H2 warehouse of `n` Tables whose
-  Database has one TableRemapping row."
-  [n]
-  (let [warehouse (str "ws_remap_sync_fields_" n)
-        details   {:db (str "mem:" warehouse ";DB_CLOSE_DELAY=-1")}
-        spec      {:classname "org.h2.Driver" :subprotocol "h2" :subname (:db details)}]
-    (jdbc/execute! spec ["DROP ALL OBJECTS"])
-    (doseq [i (range n)]
-      (jdbc/execute! spec [(format "CREATE TABLE T%d (ID INT PRIMARY KEY, A VARCHAR)" i)]))
-    (mt/with-model-cleanup [:model/Database]
-      (let [db-id (t2/insert-returning-pk! :model/Database {:name warehouse :engine :h2 :details details})]
-        (try
-          (ws.table-remapping/add-mapping! db-id {:schema "PUBLIC" :table "T0"} {:schema "mb_iso_ws" :table "t0_copy"})
-          (sync-metadata/sync-db-metadata! db-id)
-          (let [database (driver.u/lib-database db-id)
-                measure  #(events.tu/real-statement-count! (fn [] (sync-fields/sync-fields! database)))]
-            (min (measure) (measure)))
-          (finally
-            (ws.table-remapping/clear-mappings-for-db! db-id)))))))
-
-(deftest sync-fields-remapping-statement-count-test
-  (mt/test-driver :h2
-    (testing "Fields sync of Database with remapping row issues as many statements for 16 Tables as for 4"
-      (sync-fields-statement-count! 2)
-      (is (= (sync-fields-statement-count! 4)
-             (sync-fields-statement-count! 16))))))
+             "with remapping, workspace copy"))))))
 
 (deftest workspace-remap-schema+name-mysql-fills-db-slot-test
-  (testing "MySQL: hook receives `{:schema nil :name X}` from sync but must still match a remap row
-            whose canonical from-spec carries `:db <bound-db>`. The hook enriches the from-spec from
-            the database row's `:details :db` before matching, so the lookup succeeds."
+  (testing "MySQL: from-spec without :db still matches remap row whose from-spec carries bound :db"
     ;; Insert raw via t2 so `mt/with-temp`'s post-create sync hook does not try
     ;; to connect to MySQL on the test host.
     (mt/with-model-cleanup [:model/Database]
@@ -228,7 +194,7 @@
           (ws.table-remapping/add-mapping! db-id
                                            {:db "appdata" :schema nil :table "orders"}
                                            {:db "appdata_ws" :schema nil :table "orders_copy"})
-          (testing "from-spec without :db (the sync caller's shape) still resolves"
+          (testing "from-spec without :db resolves"
             (is (= {:db "appdata_ws" :schema nil :name "orders_copy"}
                    (ws.table-remapping/workspace-remap-schema+name db-id {:schema nil :name "orders"}))))
           (finally
@@ -248,7 +214,7 @@
          (is (re-find #"not workspaced" (ex-message ex)))
          (is (= (mt/id) (:db-id (ex-data ex)))))
        (testing "no app-db row was written"
-         (is (nil? (ws.table-remapping/remap-table (mt/id) {:schema "PUBLIC" :name "ORDERS"}))))))))
+         (is (nil? (ws.table-remapping/workspace-remap-schema+name (mt/id) {:schema "PUBLIC" :name "ORDERS"}))))))))
 
 ;;; ------------------------------------------------- remapped-table-name -------------------------------------------------
 ;;;
@@ -401,10 +367,10 @@
                (is (= "schemaB__ORDERS" (:name b-spec))))
              (testing "both rows are present and resolve to distinct warehouse names"
                (is (= {:db nil :schema "ws_collide" :name "schemaA__ORDERS"}
-                      (ws.table-remapping/remap-table (mt/id) {:schema "schemaA" :name "ORDERS"}))
+                      (ws.table-remapping/workspace-remap-schema+name (mt/id) {:schema "schemaA" :name "ORDERS"}))
                    "schemaA.ORDERS resolves to a unique warehouse identifier")
                (is (= {:db nil :schema "ws_collide" :name "schemaB__ORDERS"}
-                      (ws.table-remapping/remap-table (mt/id) {:schema "schemaB" :name "ORDERS"}))
+                      (ws.table-remapping/workspace-remap-schema+name (mt/id) {:schema "schemaB" :name "ORDERS"}))
                    "schemaB.ORDERS resolves to a different warehouse identifier")))))))))
 
 ;;; --------------------------- Pre-sync ordering: to-side has no :model/Table yet -------------------------------
@@ -415,8 +381,8 @@
 ;;; `:model/Table` for the to-side. These tests pin that contract so a future change that adds `:model/Table`
 ;;; lookup on the to-side surfaces immediately.
 
-(deftest remap-table-works-without-to-side-model-table-test
-  (testing "remap-table returns the [to-schema to-table-name] pair even when no :model/Table exists for it"
+(deftest workspace-remap-works-without-to-side-model-table-test
+  (testing "workspace-remap-schema+name returns the [to-schema to-table-name] pair even when no :model/Table exists for it"
     (clean-db-fixture!
      (mt/id)
      (fn []
@@ -428,8 +394,8 @@
                                           {:schema "PUBLIC"   :table "ORDERS"}
                                           {:schema to-schema  :table to-table})
          (is (= {:db nil :schema to-schema :name to-table}
-                (ws.table-remapping/remap-table (mt/id) {:schema "PUBLIC" :name "ORDERS"}))
-             "remap-table operates on strings only — no :model/Table lookup on the to-side"))))))
+                (ws.table-remapping/workspace-remap-schema+name (mt/id) {:schema "PUBLIC" :name "ORDERS"}))
+             "workspace-remap-schema+name operates on strings only — no :model/Table lookup on the to-side"))))))
 
 (deftest workspace-remap-schema+name-works-without-to-side-model-table-test
   (testing "the sync hook returns [to-schema to-table-name] even when no :model/Table exists for it"

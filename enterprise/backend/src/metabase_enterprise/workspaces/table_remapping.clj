@@ -45,11 +45,11 @@
    [[spec-for-table]] uses [[metabase.driver/qualified-name-components]] to fill the
    right slots from a `:model/Database` and `:model/Table` row."
   (:require
-   [clojure.set :as set]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.table-remapping]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
+   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -195,14 +195,6 @@
         driver-remappings (update-keys remappings #(select-keys % target-keys))]
     (get driver-remappings (select-keys table target-keys))))
 
-(mu/defn isolated->canonical :- [:maybe ::table-spec]
-  "Inverse of [[canonical->isolated]]: look up the canonical `::table-spec` for an
-   isolated `table` in `remappings`."
-  [driver     :- :keyword
-   remappings :- [:map-of ::table-spec ::table-spec]
-   table      :- ::table-spec]
-  (canonical->isolated driver (set/map-invert remappings) table))
-
 ;;; -------------------------------------------- Read API --------------------------------------------
 ;;;
 ;;; All reads route through the active store ([[ws.remapping/*remapping-store*]]) so tests
@@ -295,7 +287,7 @@
   "Project a storage `::table-spec` (`{:db :schema :table}` with `\"\"` sentinels) into
    the consumer-shaped `{:db :schema :name}` map (with `nil` for absent slots). The
    storage sentinel stays below this line; consumers (`:model/Table` predicates,
-   transform targets, sync's describe-fields lookups) work with `nil`."
+   transform targets) work with `nil`."
   [{:keys [db schema table]}]
   {:db     (denormalize-level db)
    :schema (denormalize-level schema)
@@ -310,14 +302,8 @@
    :table  name})
 
 (defn- enrich-from-spec
-  "Fill identifier slots the driver emits but the caller omitted from `from-spec`.
-
-   Callers in `metabase.sync.fetch-metadata` only carry the `:schema` and `:name`
-   they read off the `:model/Table` row — they don't know how to compute `:db`
-   for drivers like MySQL (whose canonical namespace is the connection's bound
-   database, not the Table's `:schema` column). Use `engine-namespace-positions`
-   to derive any missing slot from the `database`, so the driver-aware match in
-   `canonical->isolated` doesn't false-miss on a populated remap row."
+  "`from-spec` with the identifier slots the driver emits but the caller omitted filled from `database`, since a
+  Table row carries no `:db` (MySQL's namespace is the connection's bound database)."
   [database from-spec]
   (let [positions (ws/engine-namespace-positions database {:name   (:name from-spec)
                                                            :schema (:schema from-spec)})]
@@ -325,35 +311,16 @@
       (nil? (:db from-spec))     (assoc :db     (:db positions))
       (nil? (:schema from-spec)) (assoc :schema (:schema positions)))))
 
-(defn table-remapper
-  "A function of a canonical `from-spec` to the `{:db :schema :name}` of its workspace destination, or nil, built from
-  the remappings of `database-id` and, when there are any, its Database, each read once."
-  [database-id]
-  (let [remappings (ws.remapping/remappings-for-db database-id)
-        database   (when (seq remappings)
-                     (ws.db/database database-id))]
-    (if database
-      (let [driver (keyword (:engine database))]
-        (fn [from-spec]
-          (some-> (canonical->isolated driver remappings (consumer-shape->spec (enrich-from-spec database from-spec)))
-                  spec->consumer-shape)))
-      (constantly nil))))
-
-(defn remap-table
-  "Returns `{:db :schema :name}` for the workspace destination of canonical `from-spec` on the Database with
-  `database-id`, or nil if no remapping exists, as [[table-remapper]] does for one Table."
-  [database-id from-spec]
-  ((table-remapper database-id) from-spec))
-
 (defenterprise workspace-remap-schema+name
-  "Enterprise impl of the sync hook. Returns `{:db :schema :name}` for the
-   isolated warehouse table when a `TableRemapping` row exists — sync asks the
-   driver there, while app-db rows keep their logical identity. Deliberately
-   ungated on premium features: if rows exist they must be respected, regardless
-   of current token state."
+  "The `{:db :schema :name}` of the workspace copy a TableRemapping records for the canonical `from-spec` on the
+  Database with `db-id`, or nil, ungated on premium features since recorded rows hold whatever the token."
   :feature :none
   [db-id from-spec]
-  (remap-table db-id from-spec))
+  (let [remappings (ws.remapping/remappings-for-db db-id)]
+    (when-let [database (when (seq remappings) (ws.db/database db-id))]
+      (some-> (canonical->isolated (keyword (:engine database)) remappings
+                                   (consumer-shape->spec (enrich-from-spec database from-spec)))
+              spec->consumer-shape))))
 
 (defn all-mappings-for-db
   "Return all remappings for a given database as a map of `from-spec` to `to-spec`,
@@ -431,8 +398,9 @@
 
 (defn- transform-target-specs
   "The `{:from-spec :to-spec}` storage specs for remapping transform `target` on workspaced
-   database `db-id`. Reads the workspace config and the database row; records nothing.
-   Throws when the database is not workspaced."
+   database `db-id`, the copy's name carrying the id of a worktree other than the main app so worktrees never share
+   a copy. Reads the workspace config and the database row; records nothing. Throws when the database is not
+   workspaced."
   [db-id target]
   (let [workspace-ns (ws/db-workspace-namespace db-id)]
     (when-not workspace-ns
@@ -453,13 +421,16 @@
           ;; (SQL Server / BigQuery) get full namespace remapping. Slots not
           ;; populated by the workspace config are normalized to "" via `normalize-level`
           ;; so the storage row's unique constraint stays enforceable.
-          to-spec      (-> (remapped-table-name (:engine database) from-spec)
+          worktree-id  (:worktree-id (mdb/worktree-scope))
+          to-spec      (-> (remapped-table-name (:engine database)
+                                                (cond-> from-spec
+                                                  worktree-id (update :schema #(str "w" worktree-id "_" %))))
                            (assoc :db     (normalize-level (:db workspace-ns))
                                   :schema (normalize-level (:schema workspace-ns))))]
       {:from-spec from-spec :to-spec to-spec})))
 
 (defn- check-copy-not-taken!
-  "Throw a 409 when a remapping from a different source already points at `to-spec`.
+  "Throw a 409 when a remapping from a different source, in any worktree, already points at `to-spec`.
 
    The copy's name is `schema__table` with no escaping, so two sources can share it: `a__b.c` and
    `a.b__c` both become `a__b__c`. This guards the sequential case only. Two colliding transforms
@@ -473,7 +444,8 @@
                           (when (and (= (table-key other-to) to)
                                      (not= (table-key other-from) from))
                             (table-key other-from)))
-                        (ws.remapping/remappings-for-db db-id))]
+                        (mdb/with-worktree-scope {:type :all}
+                          (ws.remapping/remappings-for-db db-id)))]
     (when other
       (throw (ex-info (tru "Another table''s workspace copy already uses the name {0}." (:table to))
                       {:status-code 409

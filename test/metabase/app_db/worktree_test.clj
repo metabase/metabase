@@ -466,27 +466,32 @@
             (map (fn [{:keys [id schema name]}] [(id->key id) schema name]))
             (t2/select :model/Table :id [:in (vec (vals table-ids))])))))
 
-(defn- field-tables-seen
-  "The keys of the Tables `table-ids`, a map of keys to ids, whose Fields a thread in `scope` selects."
+(defn- fields-seen
+  "The `[table-key field-id base-type]` of each Field of the Tables `table-ids`, a map of keys to ids, that a thread in
+  `scope` selects."
   [scope table-ids]
   (let [id->key (set/map-invert table-ids)]
     (mdb/with-worktree-scope scope
-      (t2/select-fn-set (comp id->key :table_id) :model/Field :table_id [:in (vec (vals table-ids))]))))
+      (into #{}
+            (map (fn [{:keys [table_id id base_type]}] [(id->key table_id) id base_type]))
+            (t2/select :model/Field :table_id [:in (vec (vals table-ids))])))))
 
 (deftest worktree-views-apply-table-remappings-test
   (when config/ee-available?
-    (testing "each worktree sees its own copies under the names of the tables they shadow, and no other worktree's"
-      (mt/with-temp [:model/Database {db-id :id}       {}
-                     :model/Table    {orders :id}      {:db_id db-id :schema "zzv" :name "orders"}
-                     :model/Table    {orders-copy :id} {:db_id db-id :schema "ws_w" :name "zzv__orders"}
-                     :model/Table    {new-copy :id}    {:db_id db-id :schema "ws_w" :name "zzv__new"}
-                     :model/Table    {items :id}       {:db_id db-id :schema "zzv" :name "items"}
-                     :model/Table    {items-copy :id}  {:db_id db-id :schema "ws_main" :name "zzv__items"}
-                     :model/Field    _                 {:table_id orders :name "id"}
-                     :model/Field    _                 {:table_id orders-copy :name "id"}
-                     :model/Field    _                 {:table_id new-copy :name "id"}
-                     :model/Field    _                 {:table_id items :name "id"}
-                     :model/Field    _                 {:table_id items-copy :name "id"}
+    (testing "each worktree reads its own synced copies through the ids of the tables they shadow, and no other worktree's"
+      (mt/with-temp [:model/Database {db-id :id}          {}
+                     :model/Table    {orders :id}         {:db_id db-id :schema "zzv" :name "orders"}
+                     :model/Table    {orders-copy :id}    {:db_id db-id :schema "ws_w" :name "zzv__orders"}
+                     :model/Table    {new-copy :id}       {:db_id db-id :schema "ws_w" :name "zzv__new"}
+                     :model/Table    {items :id}          {:db_id db-id :schema "zzv" :name "items"}
+                     :model/Table    {items-copy :id}     {:db_id db-id :schema "ws_main" :name "zzv__items"}
+                     :model/Field    {orders-id :id}      {:table_id orders :name "id" :base_type :type/Integer}
+                     :model/Field    _                    {:table_id orders-copy :name "id" :base_type :type/BigInteger}
+                     :model/Field    {orders-added :id}   {:table_id orders-copy :name "added" :base_type :type/Text}
+                     :model/Field    _                    {:table_id orders :name "dropped" :base_type :type/Text}
+                     :model/Field    {new-id :id}         {:table_id new-copy :name "id" :base_type :type/Integer}
+                     :model/Field    {items-id :id}       {:table_id items :name "id" :base_type :type/Integer}
+                     :model/Field    _                    {:table_id items-copy :name "id" :base_type :type/BigInteger}
                      :model/RemoteSyncWorktree {worktree-id :id} {:branch "worktree-views-test"}]
         (let [worktree  {:type :worktree :worktree-id worktree-id}
               table-ids {:orders orders :orders-copy orders-copy :new-copy new-copy :items items
@@ -499,13 +504,14 @@
                            :model/TableRemapping _ (remapping "new" "ws_w" "zzv__new")]
               (mdb/with-worktree-scope {:type :main}
                 (mt/with-temp [:model/TableRemapping _ (remapping "items" "ws_main" "zzv__items")]
-                  (testing "in the worktree, its copies replace orders and add new, and the main app's copy stays hidden"
-                    (is (= #{[:orders-copy "zzv" "orders"] [:new-copy "zzv" "new"] [:items "zzv" "items"]}
+                  (testing "in the worktree, orders reads its copy's columns and new appears under its canonical name"
+                    (is (= #{[:orders "zzv" "orders"] [:new-copy "zzv" "new"] [:items "zzv" "items"]}
                            (tables-seen worktree table-ids)))
-                    (is (= #{:orders-copy :new-copy :items}
-                           (field-tables-seen worktree table-ids))))
-                  (testing "in the main app, its copy replaces items, and the worktree's copies stay hidden"
-                    (is (= #{[:orders "zzv" "orders"] [:items-copy "zzv" "items"]}
+                    (is (= #{[:orders orders-id :type/BigInteger] [:orders orders-added :type/Text]
+                             [:new-copy new-id :type/Integer] [:items items-id :type/Integer]}
+                           (fields-seen worktree table-ids))))
+                  (testing "in the main app, items reads its copy's columns, and the worktree's copies stay hidden"
+                    (is (= #{[:orders "zzv" "orders"] [:items "zzv" "items"]}
                            (tables-seen {:type :main} table-ids)))
-                    (is (= #{:orders :items-copy}
-                           (field-tables-seen {:type :main} table-ids)))))))))))))
+                    (is (= #{[:items items-id :type/BigInteger]}
+                           (into #{} (filter (comp #{:items} first)) (fields-seen {:type :main} table-ids))))))))))))))

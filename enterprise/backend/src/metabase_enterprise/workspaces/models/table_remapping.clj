@@ -4,7 +4,7 @@
    `from_db` / `from_schema` / `to_db` / `to_schema` use `\"\"` as a storage
    sentinel for an absent AST level — Postgres/MySQL/H2 treat NULL as
    not-equal-to-NULL in unique indexes, so the constraint
-   `(database_id, from_db, from_schema, from_table_name)` needs non-null
+   `(database_id, from_db, from_schema, from_table_name, worktree_id)` needs non-null
    values. The model coerces nil (and, on writes, missing keys) to `\"\"` so
    app code can pass nil or omit the column. Reads return rows verbatim
    (`\"\"` shows up); callers wanting nil semantics translate locally.

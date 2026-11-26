@@ -1,9 +1,12 @@
 (ns metabase.sync.fetch-metadata-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.fetch-metadata :as fetch-metadata]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util.malli.fn :as mu.fn])
   (:import
    (com.mchange.v2.resourcepool CannotAcquireResourceException)
    (java.sql SQLException)))
@@ -56,3 +59,11 @@
                (mt/with-log-messages-for-level [messages [metabase.sync.fetch-metadata-test :debug]]
                  (is (thrown? Throwable (fetch-metadata/log-if-error "test" (throw e))))
                  (mapv :level (messages)))))))))
+
+(deftest fk-metadata-streams-test
+  (testing "FK sync hands back driver's reducible as is, unrealized"
+    (let [reducible (reify clojure.lang.IReduceInit
+                      (reduce [_ _f init] init))]
+      (with-redefs [driver/describe-fks  (constantly reducible)
+                    mu.fn/instrument-ns? (constantly false)]
+        (is (identical? reducible (fetch-metadata/fk-metadata (driver.u/lib-database (mt/id)))))))))

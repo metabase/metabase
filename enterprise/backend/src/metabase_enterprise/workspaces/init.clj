@@ -1,14 +1,7 @@
 (ns metabase-enterprise.workspaces.init
-  "Loader for the workspaces EE module. Requires namespaces that register
-   `defenterprise` overrides so the EE behavior is wired up before sync,
-   QP middleware, or model lifecycle hooks run.
-
-   Without this eager load, the OSS `defenterprise` declarations in
-   `metabase.workspaces.table-remapping` resolve to identity fallbacks on
-   cold-boot sync (the lazy `classloader/require` inside `defenterprise`
-   races the registry consult), and isolation-schema tables leak into
-   app-db. See `metabase-enterprise.core.init` docstring for the broader
-   pattern."
+  "Loader for the workspaces EE module, which requires the namespaces that register `defenterprise` overrides and
+  model hooks so they are wired up before the QP middleware, transforms or model lifecycle hooks run; see
+  `metabase-enterprise.core.init`."
   (:require
    [metabase-enterprise.workspaces.events]
    [metabase-enterprise.workspaces.models.table-remapping]

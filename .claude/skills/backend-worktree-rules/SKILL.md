@@ -76,8 +76,9 @@ default one exists and the instance is not a workspace. Setup, migrations, the a
 Every Honey SQL query a model compiles goes through `sandbox-worktree-query` (`metabase.app-db.query`), which never
 queries: it gives `funnysql/sandbox-query` a `worktree_id` row filter for each hooked table, plus, in the main app and
 every worktree, `v_worktree_table`/`v_worktree_field` in place of `metabase_table`/`metabase_field`. The views apply
-the worktree's user settings and its workspace table remappings: a copy shows under the name of the table it shadows,
-which it hides, and another worktree's copies are hidden. Writes go to the stored tables. The sandbox
+the worktree's user settings and its workspace table remappings: a shadowed table keeps its id, name and metadata and
+reads its synced copy's columns, each copy field under the id of the shadowed field of the same name; a copy with no
+canonical table shows under the canonical name, and other copies are hidden. Writes go to the stored tables. The sandbox
 filters reads (FROM, joins, subqueries, CTEs, unions), UPDATE and DELETE, and MERGE ON/KEY, and writes the value into
 inserted rows. It throws for `[:param ...]` values, a CTE named like a filtered table, an INSERT without a column list
 or selecting `*`, and an upsert with RETURNING. The hooked-table list is built once by `init-worktree-tables!` in

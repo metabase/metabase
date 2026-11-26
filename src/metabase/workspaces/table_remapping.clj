@@ -4,18 +4,8 @@
    [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise workspace-remap-schema+name
-  "In workspace mode, a Table at the canonical identity `from-spec` may be backed
-  by a physically-different warehouse table recorded in `table_remapping`. Returns
-  a `{:db :schema :name}` map for the workspace destination when a remapping
-  exists so sync asks the driver about the isolated warehouse location; returns
-  nil otherwise (OSS fallback) so the driver is queried at the logical identity.
-
-  Both input and output are the same `{:db :schema :name}` shape — symmetric so
-  call sites don't have to translate between vector tuples and maps. Slot values
-  are normalized to the form `:model/Table` rows actually carry: a string for
-  engines that emit that AST position; `nil` for engines that don't. For MySQL,
-  both `:db` and `:schema` are `nil` on a Table row (the connection's bound DB
-  serves as the implicit catalog; MySQL has no schemas)."
+  "The `{:db :schema :name}` of the workspace copy a TableRemapping records for the canonical `from-spec` on the
+  Database with `db-id`, with nil for a level the driver does not emit, or nil; the OSS fallback is always nil."
   metabase-enterprise.workspaces.table-remapping
   [_db-id _from-spec]
   nil)
