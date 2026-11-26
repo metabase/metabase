@@ -167,7 +167,7 @@
   (let [query            (assoc-in query path first-stage)
         first-stage-cols (lib.walk/apply-f-for-stage-at-path lib/returned-columns query path)]
     (-> stage
-        (dissoc :joins :source-table :source-card :lib/stage-metadata :filters)
+        (dissoc :joins :source-table :source-card :lib/stage-metadata :filters :table-sample)
         (update-second-stage-refs first-stage-cols)
         (dissoc :expressions)
         add-implicit-breakout-order-bys)))

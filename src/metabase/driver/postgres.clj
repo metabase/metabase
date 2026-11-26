@@ -14,6 +14,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.postgres.ddl :as postgres.ddl]
@@ -132,7 +133,8 @@
                  ;; Index sync is turned off across the application as it is not used ATM.
                  #_:index-info
                  :database-replication
-                 :stage-ctes/nest-single-row-aggregation]]
+                 :stage-ctes/nest-single-row-aggregation
+                 :table-random-sample]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
@@ -268,6 +270,19 @@
         (cond-> {}
           (and row-count (want? :row-count)) (assoc :row-count {:value row-count :origin (assoc origin :kind :estimate)})
           (seq field-info)                   (assoc :fields field-info))))))
+
+;;; ------------------------------------------------ Table samples -------------------------------------------------
+
+(defmethod sql.qp/table-sample->honeysql :postgres
+  [_driver table-expr {:keys [percent]}]
+  [:raw [table-expr " TABLESAMPLE SYSTEM (" [:inline percent] ")"]])
+
+;; Only tables, partitioned tables and materialized views can be read with TABLESAMPLE. Sync gives a table a row count
+;; estimate only from `pg_stat_user_tables` (see [[describe-syncable-tables]]), which has no rows for views and
+;; foreign tables, so those get no estimate and the block sample declines for them.
+(defmethod driver/table-random-sample :postgres
+  [_driver table fields rff opts]
+  (table-rows-sample/block-sample table fields rff opts))
 
 (defmethod driver/db-default-timezone :postgres
   [driver database]

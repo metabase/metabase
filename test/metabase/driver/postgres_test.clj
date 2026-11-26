@@ -3223,3 +3223,43 @@
           (is (= {} (stats "kb_stale"))))
         (finally
           (drop!))))))
+
+(deftest table-sample-compile-test
+  (mt/test-driver :postgres
+    (testing "a stage with :table-sample reads the source table with TABLESAMPLE SYSTEM"
+      (let [query (-> (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
+                      (lib/limit 10)
+                      (assoc-in [:stages 0 :table-sample] {:percent 2.5}))]
+        (is (re-find #"FROM \"public\".\"venues\" TABLESAMPLE SYSTEM \(2\.5\)"
+                     (:query (qp.compile/compile query))))))
+    (testing "the sample query of sync, with its text expressions, keeps the clause"
+      (let [mp    (mt/metadata-provider)
+            table (lib.metadata/table mp (mt/id :venues))
+            query (#'table-rows-sample/table-rows-sample-query mp table (lib.metadata/fields mp (mt/id :venues))
+                                                               {:truncation-size 50 :table-sample {:percent 2.5}})
+            sql   (:query (qp.compile/compile query))]
+        (is (re-find #"TABLESAMPLE SYSTEM \(2\.5\)" sql))
+        (is (re-find #"(?i)substring" sql))))))
+
+(deftest table-random-sample-test
+  (mt/test-driver :postgres
+    ;; sync reads samples with no user; the namespace fixture binds a user who is not an admin
+    (mt/with-test-user :crowberto
+      (let [table  (t2/select-one :model/Table :id (mt/id :venues))
+            fields [(t2/select-one :model/Field :id (mt/id :venues :name))]
+            sample (fn [opts]
+                     (let [sqls    (atom [])
+                           execute qp.pipeline/*execute*]
+                       (binding [qp.pipeline/*execute* (fn [driver query respond]
+                                                         (swap! sqls conj (get-in query [:stages 0 :native]))
+                                                         (execute driver query respond))]
+                         (assoc (driver/table-random-sample :postgres table fields (constantly conj) opts)
+                                :sqls @sqls))))]
+        (testing "the driver reads a block sample of about the sample size, with a limit it does not usually reach"
+          (is (driver.u/supports? :postgres :table-random-sample (mt/db)))
+          (let [{:keys [method fraction sqls]} (sample {:rows 100 :row-count 1000})]
+            (is (= :block method))
+            (is (= 0.1 fraction))
+            (is (=? [#".*TABLESAMPLE SYSTEM \(10\.0\) LIMIT 200"] sqls))))
+        (testing "the driver declines, so that sync reads the first rows, when there is no row count estimate"
+          (is (= {:method :first-rows :sqls []} (sample {:rows 100 :row-count nil}))))))))
