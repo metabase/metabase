@@ -20,8 +20,19 @@
 ;; reaches it through several calls that do not pass state.
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *databases-without-better-sample*
-  "An atom of the ids of the Databases whose better sample failed in this sync run, or nil outside a run."
+  "An atom of the ids of the Databases whose better sample failed in this sync run, and of `[:catalog id]` for those
+  whose catalog statistics failed, or nil outside a run."
   nil)
+
+(defn catalog-off?
+  "Whether the catalog statistics of the Database `database-id` failed earlier in this sync run."
+  [database-id]
+  (boolean (some-> *databases-without-better-sample* deref (contains? [:catalog database-id]))))
+
+(defn turn-off-catalog!
+  "Stop asking for the catalog statistics of the Database `database-id` for the rest of this sync run."
+  [database-id]
+  (some-> *databases-without-better-sample* (swap! conj [:catalog database-id])))
 
 (defn do-with-better-sample-run
   "Run `thunk` as one sync run for [[*databases-without-better-sample*]], unless one is running already."

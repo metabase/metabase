@@ -74,7 +74,7 @@
     [:table                      {:optional true} [:maybe [:ref ::table]]]]])
 
 (mr/def ::field.fingerprint-origin
-  "Where the fingerprint of a Field came from, for the whole fingerprint. `:source` is `:sample` for a fingerprint
+  "Where the fingerprint of a Field came from. `:source` is `:sample` for a fingerprint
   from a sample of rows. `:method` is how the sample was read: `:unspecified` when the driver's `table-rows-sample`
   read it, since sync cannot know how. `:row-count` is the row count estimate of the Table at that time (nil when the
   driver gives none), and `:collected-at` the time, as an ISO-8601 instant in UTC.
@@ -93,7 +93,8 @@
    [:parts        {:optional true} [:maybe [:sequential [:map
                                                          [:part :string]
                                                          [:source :keyword]
-                                                         [:kind {:optional true} [:maybe :keyword]]]]]]])
+                                                         [:kind {:optional true} [:maybe :keyword]]
+                                                         [:collected-at {:optional true} [:maybe :string]]]]]]])
 
 (mr/def ::field.update
   "What an update of a Field takes: its `:id` and the columns of `:metabase_field` to change, each optional."

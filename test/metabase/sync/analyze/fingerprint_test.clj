@@ -10,6 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
+   [metabase.sync.analyze.sample :as sample]
    [metabase.sync.analyze.test-util :as analyze.tu]
    [metabase.sync.interface :as i]
    [metabase.test :as mt]
@@ -523,8 +524,13 @@
   [driver _feature _database]
   (= driver ::catalog-failing))
 
+(def ^:private failing-calls
+  "How many times the `::catalog-failing` driver's `table-statistics` was called."
+  (atom 0))
+
 (defmethod driver/table-statistics ::catalog-failing
   [_driver _database _table _fields _opts]
+  (swap! failing-calls inc)
   (throw (ex-info "no catalog" {})))
 
 (driver/register! ::catalog-bad-shape, :parent :h2)
@@ -571,3 +577,54 @@
         (let [{:keys [fingerprint fingerprint_origin]} (fingerprint-venues-with! driver)]
           (is (not= 9999 (get-in fingerprint [:global :distinct-count])))
           (is (nil? (:parts fingerprint_origin))))))))
+
+(def ^:private sample-fingerprint
+  {:global {:distinct-count 40 :nil% 0.1}
+   :type   {:type/Number {:min 5.0 :max 10.0 :avg 7.0}}})
+
+(defn- merge-catalog
+  [catalog-fingerprint kind]
+  (#'sync.fingerprint/with-catalog-parts sample-fingerprint {:source :sample}
+                                         {:fingerprint catalog-fingerprint
+                                          :origin      {:source :catalog :kind kind}}))
+
+(deftest ^:parallel with-catalog-parts-test
+  (testing "the catalog's distinct count and nil fraction describe the whole table, so they replace the sample's"
+    (let [[fingerprint origin] (merge-catalog {:global {:distinct-count 51 :nil% 0.0}} :sampled)]
+      (is (= {:distinct-count 51 :nil% 0.0} (:global fingerprint)))
+      (is (= #{"global.distinct-count" "global.nil%"} (set (map :part (:parts origin)))))))
+  (testing "a distinct count of 0, which a catalog gives when it does not count NULL, is not used"
+    (is (= sample-fingerprint (first (merge-catalog {:global {:distinct-count 0}} :sampled)))))
+  (testing "a range from a catalog that is not exact only widens the sample's"
+    (is (= {:min 1.0 :max 10.0 :avg 7.0}
+           (get-in (first (merge-catalog {:type {:type/Number {:min 1.0 :max 8.0 :avg 3.0}}} :sampled))
+                   [:type :type/Number]))))
+  (testing "an exact catalog gives every part it has"
+    (is (= {:min 1.0 :max 8.0 :avg 3.0}
+           (get-in (first (merge-catalog {:type {:type/Number {:min 1.0 :max 8.0 :avg 3.0}}} :exact))
+                   [:type :type/Number]))))
+  (testing "only the type part that the sample has, so the fingerprint stays valid"
+    (let [[fingerprint origin] (merge-catalog {:type {:type/Text {:average-length 3.0}}} :exact)]
+      (is (= sample-fingerprint fingerprint))
+      (is (nil? (:parts origin)))))
+  (testing "a nil in the answer is no value"
+    (is (= sample-fingerprint (first (merge-catalog {:global {:nil% nil}} :exact)))))
+  (testing "a field the sample has no rows for is not changed"
+    (let [no-data {:global {:distinct-count 0 :nil% nil}}]
+      (is (= [no-data {:source :sample}]
+             (#'sync.fingerprint/with-catalog-parts no-data {:source :sample}
+                                                    {:fingerprint {:global {:distinct-count 51}}
+                                                     :origin      {:source :catalog :kind :exact}}))))))
+
+(deftest catalog-that-fails-is-asked-once-in-a-run-test
+  (mt/test-driver :h2
+    (testing "a catalog that fails is not asked again for its database in the same run"
+      (reset! failing-calls 0)
+      (mt/with-temp-copy-of-db
+        (t2/update! :model/Database :id (mt/id) {:engine ::catalog-failing})
+        (sample/do-with-better-sample-run
+         (fn []
+           (binding [sync.fingerprint/*refingerprint?* true]
+             (doseq [table-key [:venues :checkins]]
+               (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (mt/id table-key))))))))
+      (is (= 1 @failing-calls)))))
