@@ -941,6 +941,12 @@ describe("ExpressionWidget > custom aggregations", () => {
 });
 
 describe("ExpressionWidget > offset", () => {
+  function getRenderedSuggestionLabels(suggestions: HTMLElement) {
+    return within(suggestions)
+      .queryAllByRole("option")
+      .map((option) => option.textContent);
+  }
+
   const DATABASE_WITH_OFFSET = createSampleDatabase({
     features: [...COMMON_DATABASE_FEATURES, "window-functions/offset"],
   });
@@ -954,6 +960,10 @@ describe("ExpressionWidget > offset", () => {
     });
 
     await typeText("Off");
+    const suggestions = await screen.findByTestId(
+      "custom-expression-editor-suggestions",
+    );
+    expect(getRenderedSuggestionLabels(suggestions)).not.toContain("Offset");
     expect(getCompletionLabels()).not.toContain("Offset");
 
     await replaceSource("Offset([Total], -1) > 0");
@@ -972,6 +982,10 @@ describe("ExpressionWidget > offset", () => {
     });
 
     await typeText("Off");
+    const suggestions = await screen.findByTestId(
+      "custom-expression-editor-suggestions",
+    );
+    expect(getRenderedSuggestionLabels(suggestions)).not.toContain("Offset");
     expect(getCompletionLabels()).not.toContain("Offset");
 
     await replaceSource("Offset([Total], -1)");
@@ -992,6 +1006,11 @@ describe("ExpressionWidget > offset", () => {
 
     await typeText("Off");
     expect(await waitForCompletions()).toContain("Offset");
+    expect(
+      getRenderedSuggestionLabels(
+        screen.getByTestId("custom-expression-editor-suggestions"),
+      ),
+    ).toContain("Offset");
 
     await replaceSource("Offset(Sum([Total]), -1)");
     await blurEditor();
