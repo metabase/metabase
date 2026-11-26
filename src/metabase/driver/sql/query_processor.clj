@@ -2404,8 +2404,7 @@
       driver-api/nest-expressions
       ;; Put a single-row aggregation in its own stage CTE, see [[driver-api/nest-single-row-aggregation]].
       (cond-> (nest-single-row-aggregation? driver mbql5-query) driver-api/nest-single-row-aggregation)
-      driver-api/add-alias-info
-      :stages))
+      driver-api/add-alias-info))
 
 (defn- desired-col-alias-ident [col]
   (h2x/identifier :field (:lib/desired-column-alias col)))
