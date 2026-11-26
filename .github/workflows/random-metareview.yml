@@ -45,6 +45,10 @@ jobs:
                 repo: context.repo.repo,
                 pull_number: pullRequestNumber,
               });
+              if (pullRequest.draft || pullRequest.state !== 'open') {
+                console.log('Skipping, the pull request is a draft or is not open');
+                return;
+              }
               mergeable = pullRequest.mergeable;
             }
 
