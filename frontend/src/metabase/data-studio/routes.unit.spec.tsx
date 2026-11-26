@@ -23,7 +23,7 @@ describe("data-studio routes", () => {
 
     // Includes the transform, data model, glossary, settings, snippet and
     // action routes, which this tree nests.
-    expect(loaders).toHaveLength(57);
+    expect(loaders).toHaveLength(58);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();
