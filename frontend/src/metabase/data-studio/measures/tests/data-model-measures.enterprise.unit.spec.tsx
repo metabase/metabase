@@ -356,6 +356,26 @@ describe("measures in the data model (enterprise)", () => {
         await screen.findByText("created this measure"),
       ).toBeInTheDocument();
     });
+
+    // Known bug: `MeasureRevisionHistoryPage` does not pass `readOnly` to
+    // `MeasureHeader`, so the name is editable on this tab. Turn this into
+    // `it` when the bug is fixed.
+    it.failing(
+      "see the measure name read-only on the revision history tab",
+      async () => {
+        setup({
+          isAdmin: false,
+          measures: [KEPT_MEASURE, TOTAL_REVENUE],
+          revisions: { 3: [createMockRevision({ id: 1, is_creation: true })] },
+          initialRoute: `${DATA_MODEL_ORDERS_URL}/measures/3/revisions`,
+        });
+
+        expect(
+          await screen.findByText("created this measure"),
+        ).toBeInTheDocument();
+        expect(screen.getByDisplayValue("Total Revenue")).toBeDisabled();
+      },
+    );
   });
 });
 
