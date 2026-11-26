@@ -67,6 +67,7 @@
   #{:custom-viz-plugin-create :custom-viz-plugin-update :custom-viz-plugin-delete
     :transform-test-create :transform-test-update :transform-test-delete
     :card-test-create :card-test-update :card-test-delete
+    :action-test-create :action-test-update :action-test-delete
     :segment-test-create :segment-test-update :segment-test-delete
     :test-suite-create :test-suite-update :test-suite-delete})
 
@@ -104,7 +105,8 @@
 
 (def ^:private ee-topics
   "The topics that the audit specs of the models of the enterprise edition store."
-  #{:card-test-create :card-test-delete :card-test-update
+  #{:action-test-create :action-test-delete :action-test-update
+    :card-test-create :card-test-delete :card-test-update
     :custom-viz-plugin-create :custom-viz-plugin-delete :custom-viz-plugin-update
     :segment-test-create :segment-test-delete :segment-test-update
     :tenant-create :tenant-update

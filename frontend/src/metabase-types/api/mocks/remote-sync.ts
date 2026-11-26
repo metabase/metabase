@@ -6,6 +6,7 @@ import type {
   HasRemoteChangesResponse,
   ImportChangesResponse,
   RemoteSyncActionData,
+  RemoteSyncActionTestData,
   RemoteSyncCardData,
   RemoteSyncCardTestData,
   RemoteSyncChangesResponse,
@@ -51,6 +52,12 @@ export function createMockRemoteSyncActionData(
     collection_id: null,
     ...opts,
   };
+}
+
+export function createMockRemoteSyncActionTestData(
+  opts?: Partial<RemoteSyncActionTestData>,
+): RemoteSyncActionTestData {
+  return { id: 1, name: "Action test", action_id: 1, ...opts };
 }
 
 export function createMockRemoteSyncCardData(

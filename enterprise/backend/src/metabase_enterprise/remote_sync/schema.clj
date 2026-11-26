@@ -54,6 +54,7 @@
 (def ^:private item-data
   "The schema of the `:data` of an item of each model: a row of the model, with what remote sync hydrates of it."
   {"action"             ::actions.schema/action
+   "actiontest"         ::data-testing.schema/action-test
    "card"               ::queries.schema/card
    "cardtest"           ::data-testing.schema/card-test
    "collection"         ::collections.schema/collection

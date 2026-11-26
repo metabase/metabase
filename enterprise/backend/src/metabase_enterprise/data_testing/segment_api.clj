@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.models.segment-test :as data-testing.models.segment-test]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
@@ -95,7 +96,7 @@
    body :- ::update-request]
   (let [segment-test (api/read-check :model/SegmentTest id)]
     (api/update-check segment-test body)
-    (refusing #(data-testing.models.segment-test/check-edit (merge segment-test body) (vec (keys body))))
+    (refusing #(data-testing.models/check-edit :model/SegmentTest (merge segment-test body) (vec (keys body))))
     (when (seq body)
       (data-testing.models.segment-test/update-segment-tests! [(assoc body :id id)])))
   (data-testing.db/segment-test id))

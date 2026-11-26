@@ -133,13 +133,14 @@
   metabase-enterprise.serialization.v2.osi-ai-context-test. The models below stay out of the baseline until
   @metabase/representations publishes a schema for them, as the baseline is validated against that package, which
   refuses a model it does not know:
+  - ActionTest: metabase-enterprise.data-testing.action-serialization-test;
   - TransformTest: transform-test-round-trip-test and transform-test-expectations-round-trip-test, in
     metabase-enterprise.serialization.v2.e2e-test;
   - CardTest: the card-test round-trip tests, in metabase-enterprise.serialization.v2.e2e-test;
   - SegmentTest: segment-test-round-trip-test, in metabase-enterprise.serialization.v2.e2e-test;
   - DataApp: metabase-enterprise.data-apps.serialization-test;
   - TestSuite: the push and pull tests of metabase-enterprise.data-testing.suite-remote-sync-test."
-  #{:model/CardTest :model/DataApp :model/OsiAiContext :model/SegmentTest :model/TestSuite :model/TransformTest})
+  #{:model/ActionTest :model/CardTest :model/DataApp :model/OsiAiContext :model/SegmentTest :model/TestSuite :model/TransformTest})
 
 (defn add-to-baseline!
   "Use this within v2.extract-test where relevant to add their fixtures to the baseline."

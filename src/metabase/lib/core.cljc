@@ -1671,6 +1671,7 @@
   uses-metric?
   uses-segment?
   with-different-table
+  with-parameters
   with-wrapped-native-query
   wrap-native-query-with-mbql]
  [lib.query.test-spec

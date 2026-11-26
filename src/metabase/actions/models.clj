@@ -21,6 +21,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.models.query :as query]
    [metabase.remote-sync.core :as remote-sync]
@@ -1015,12 +1016,23 @@
   (update-actions! [(assoc changes :id id)] opts)
   nil)
 
+(defenterprise delete-action-tests-for-actions!
+  "Delete the tests of the actions with `action-ids`. No-op in OSS."
+  metabase-enterprise.data-testing.models.action-test
+  [_action-ids]
+  nil)
+
 (mu/defn delete-actions! :- :nil
-  "Delete the Actions with `ids`, and their QueryActions and ImplicitActions with them, in one transaction, publishing
-  their delete event right before the first statement."
+  "Delete the Actions with `ids`, and their QueryActions, ImplicitActions and tests with them, in one transaction,
+  publishing their delete event right before the first statement."
   [ids :- [:sequential ::lib.schema.id/action]]
   (mdb/delete-batched! :model/Action ids
-                       {:before-delete #(events/publish-event! :event/action-delete (events/delete-event %))}))
+                       {:before-delete (fn [actions]
+                                         (events/publish-event! :event/action-delete (events/delete-event actions))
+                                         ;; The `action_test.action_id` foreign key cascades, but a cascade neither
+                                         ;; sets the test id of the tests' runs to null nor takes the tests out of
+                                         ;; their suites.
+                                         (delete-action-tests-for-actions! (mapv :id actions)))}))
 
 (mu/defn update-actions-for-models!
   "Move the Actions of the model Cards, the keys of `model-id->collection-id`, to the Collection each maps to, nil for

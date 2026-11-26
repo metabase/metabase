@@ -143,8 +143,7 @@
         (or (empty? names) (apply distinct? names))))]])
 
 (mr/def ::parameters
-  "The value of each parameter of the subject, by the parameter's id or slug. No subject type takes parameters yet:
-  each refuses a test that sets a value."
+  "The value of each parameter of the subject, by the parameter's id or slug."
   (ms/string-keyed-map [:maybe [:or :string :boolean number?]]))
 
 (defn- ->offset-date-time
@@ -247,7 +246,7 @@
 (defn- saved-test
   "A saved test: the id of its subject under `subject-key`, of schema `subject-id-schema`, the subject itself when
   hydrated under `subject`, of schema `subject-schema`, the inputs that stand in for the tables the subject reads, the
-  expectations checked against its output, and its `now` when its test type has one."
+  expectations checked after the subject runs, and its `now` when its test type has one."
   [subject-key subject-id-schema subject subject-schema]
   (with-now [:map {:closed true}
              [:id           ms/PositiveInt]
@@ -285,6 +284,17 @@
   "A saved card test."
   (saved-test :card_id ::lib.schema.id/card :card :metabase.queries.schema/card))
 
+(mr/def ::action-test.parameters
+  "The parameter values an action test gives its action, by the parameter's id or slug."
+  [:map {:closed true}
+   [:parameters {:optional true} [:maybe ::parameters]]])
+
+(mr/def ::action-test
+  "A saved action test."
+  [:merge
+   (saved-test :action_id ::lib.schema.id/action :action :metabase.actions.schema/action)
+   ::action-test.parameters])
+
 (mr/def ::segment-test
   "A saved segment test."
   (saved-test :segment_id ::lib.schema.id/segment :segment :metabase.segments.schema/segment))
@@ -307,6 +317,10 @@
 (mr/def ::segment-test.revision
   "A segment test as a Revision stores it: its tracked columns."
   (test-update :segment_id ::lib.schema.id/segment))
+
+(mr/def ::action-test.revision
+  "An action test as a Revision stores it: its tracked columns."
+  [:merge (test-update :action_id ::lib.schema.id/action) ::action-test.parameters])
 
 (def ^:private row-now
   "The `now` of a row a write takes, as an import reads it, before the column transform normalizes it: a moment or its
@@ -359,17 +373,25 @@
   "What creating a segment test takes."
   (write-create :segment_id ::lib.schema.id/segment))
 
+(mr/def ::action-test.update
+  "What an update of an action test takes: its `:id` and the columns to change."
+  [:merge (write-update :action_id ::lib.schema.id/action) ::action-test.parameters])
+
+(mr/def ::action-test.create
+  "What creating an action test takes."
+  [:merge (write-create :action_id ::lib.schema.id/action) ::action-test.parameters])
+
 (mr/def ::saved-test.create
   "What creating a saved test of any subject type takes."
-  [:or ::transform-test.create ::card-test.create ::segment-test.create])
+  [:or ::transform-test.create ::card-test.create ::action-test.create ::segment-test.create])
 
 (mr/def ::saved-test.update
   "What an update of a saved test of any subject type takes."
-  [:or ::transform-test.update ::card-test.update ::segment-test.update])
+  [:or ::transform-test.update ::card-test.update ::action-test.update ::segment-test.update])
 
 (mr/def ::saved-test
   "A saved test of any subject type."
-  [:or ::transform-test ::card-test ::segment-test])
+  [:or ::transform-test ::card-test ::action-test ::segment-test])
 
 (mr/def ::run-status
   "The persisted lifecycle state of a test run."
@@ -379,7 +401,7 @@
 (mr/def ::test-type
   "The kind of test a run ran. It selects the table that `test_id` points into."
   [:enum {:decode/normalize lib.schema.common/normalize-keyword}
-   :transform :card :segment])
+   :transform :card :action :segment])
 
 (mr/def ::data-test-run
   "A persisted execution of a test of any type. Deleting the test through its model sets `:test_id` to nil. A delete
@@ -437,6 +459,13 @@
   "A card test as the read endpoints return it, with its newest run."
   [:merge
    ::card-test
+   [:map {:closed true}
+    [:last_run [:maybe ::data-test-run]]]])
+
+(mr/def ::action-test.response
+  "An action test as the read endpoints return it, with its newest run."
+  [:merge
+   ::action-test
    [:map {:closed true}
     [:last_run [:maybe ::data-test-run]]]])
 
@@ -662,11 +691,13 @@
 
 (defn- external-test
   "A saved test of schema `saved-test-schema` as serialization writes it, with references in place of ids: its subject
-  under `subject-key`, and its `now` as an ISO-8601 string when its test type has one."
-  [saved-test-schema subject-key]
+  under `subject-key`, the `extra-keys` of `saved-test-schema` its subject type adds, and its `now` as an ISO-8601
+  string when its test type has one."
+  [saved-test-schema subject-key & extra-keys]
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
-    [:select-keys saved-test-schema [:entity_id :name :description :inputs :expectations subject-key :creator_id]]
+    [:select-keys saved-test-schema (into [:entity_id :name :description :inputs :expectations subject-key :creator_id]
+                                          extra-keys)]
     (with-now [:map {:closed true}
                [:serdes/meta {:optional true} ::models.schema/external-meta]]
       subject-key ::now-string)]])
@@ -715,6 +746,10 @@
 (mr/def ::external-card-test
   "A CardTest as serialization writes it, with references in place of ids."
   (external-test ::card-test :card_id))
+
+(mr/def ::external-action-test
+  "An ActionTest as serialization writes it, with references in place of ids."
+  (external-test ::action-test :action_id :parameters))
 
 (mr/def ::external-segment-test
   "A SegmentTest as serialization writes it, with references in place of ids."

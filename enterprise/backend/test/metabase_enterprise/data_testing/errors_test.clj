@@ -44,6 +44,7 @@
    ::errors/missing-input-columns      400
    ::errors/colliding-columns          400
    ::errors/no-output                  400
+   ::errors/invalid-parameters         400
    ::errors/parameters-not-taken       400
    ::errors/impersonated-user          403
    ::errors/unsupported-transform      422
@@ -54,6 +55,8 @@
    ::errors/duplicate-output-columns   422
    ::errors/setup-failed               422
    ::errors/expectation-failed         422
+   ::errors/unsupported-action         422
+   ::errors/actions-disabled           422
    ::errors/unsupported-format         501
    ::errors/now-on-native-sql          501})
 
@@ -84,6 +87,7 @@
              ::errors/missing-input-columns
              ::errors/colliding-columns
              ::errors/no-output
+             ::errors/invalid-parameters
              ::errors/parameters-not-taken}
            (types-with-status 400))))
   (testing "permission refusals — the current user may not save or run the test — are 403"
@@ -97,7 +101,9 @@
              ::errors/query-failed
              ::errors/duplicate-output-columns
              ::errors/setup-failed
-             ::errors/expectation-failed}
+             ::errors/expectation-failed
+             ::errors/unsupported-action
+             ::errors/actions-disabled}
            (types-with-status 422))))
   (testing "what is not built yet is 501"
     (is (= #{::errors/unsupported-format ::errors/now-on-native-sql}
@@ -133,6 +139,9 @@
    ::errors/colliding-columns          "transform-test.colliding-columns"
    ::errors/no-output                  "transform-test.no-output"
    ::errors/parameters-not-taken       "transform-test.parameters-not-taken"
+   ::errors/invalid-parameters         "transform-test.invalid-parameters"
+   ::errors/unsupported-action         "transform-test.unsupported-action"
+   ::errors/actions-disabled           "transform-test.actions-disabled"
    ::errors/impersonated-user          "transform-test.impersonated-user"
    ::errors/archived-subject           "transform-test.archived-subject"
    ::errors/unsupported-transform      "transform-test.unsupported-transform"

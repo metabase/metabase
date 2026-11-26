@@ -5,12 +5,15 @@
    [malli.util :as mut]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
+   [metabase.actions.core :as actions]
+   [metabase.actions.schema :as actions.schema]
    [metabase.app-db.core :as app-db]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.run-tracking.core :as rt]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -180,7 +183,7 @@
 
 (def ^:private saved-test-model
   "The models of the saved tests."
-  [:enum :model/TransformTest :model/CardTest :model/SegmentTest])
+  [:enum :model/TransformTest :model/CardTest :model/ActionTest :model/SegmentTest])
 
 (mu/defn saved-test-ids-of-subjects :- [:sequential ms/PositiveInt]
   "The ids of the tests of `model` whose `subject-column` holds one of `subject-ids`."
@@ -356,6 +359,47 @@
                                            [:card-id           {:optional true} [:maybe ::lib.schema.id/card]]
                                            [:include-archived? {:optional true} [:maybe :boolean]]]]
   (tests-of-subjects :model/CardTest :card_id :model/Card card-id include-archived?))
+
+(mu/defn synced-action-tests-clause :- [:fn vector?]
+  "The clause over the ActionTest table aliased `alias` selecting the tests of the actions remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :action_id :model/Action opts))
+
+(mu/defn action :- [:maybe ::actions.schema/action]
+  "The Action with `action-id`, with the columns of its type, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (actions/select-action :id action-id))
+
+(mu/defn actions-by-ids :- [:sequential ::actions.schema/action]
+  "The Actions with `action-ids`."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (if (seq action-ids)
+    (t2/select :model/Action :id [:in action-ids])
+    []))
+
+(mu/defn action-test :- [:maybe ::data-testing.schema/action-test]
+  "The ActionTest with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/ActionTest :id id))
+
+(mu/defn action-tests :- [:sequential ::data-testing.schema/action-test]
+  "The ActionTests in name order: only those of the Action with `:action-id` when it is given, and those of archived
+  Actions only when `:include-archived?`."
+  [{:keys [action-id include-archived?]} :- [:map {:closed true}
+                                             [:action-id         {:optional true} [:maybe ::lib.schema.id/action]]
+                                             [:include-archived? {:optional true} [:maybe :boolean]]]]
+  (tests-of-subjects :model/ActionTest :action_id :model/Action action-id include-archived?))
+
+(mu/defn synced-action-test-items :- [:sequential ::data-testing.schema/action-test]
+  "The ActionTests with `ids`, as remote sync lists them: each with its Action, in the shape remote sync lists Actions
+  in."
+  [ids :- [:sequential pos-int?]]
+  (let [rows    (t2/select [:model/ActionTest :id :name :action_id] :id [:in ids])
+        actions (when (seq rows)
+                  (u/index-by :id ((:synced-items (remote-sync/spec :model/Action))
+                                   (into [] (comp (map :action_id) (distinct)) rows))))]
+    (mapv (fn [row] (assoc row :action (get actions (:action_id row)))) rows)))
 
 (mu/defn segment
   "The Segment with `segment-id`, or nil."

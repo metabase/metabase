@@ -5097,6 +5097,55 @@
         (testing "rollback drops card_test"
           (is (thrown? Exception (t2/select :card_test))))))))
 
+(deftest action-test-table-test
+  (testing "emkt4b..lpbxqj: action_test holds the tests of an action, and the rollback drops it"
+    (impl/test-migrations ["emkt4b" "lpbxqj"] [migrate!]
+      (let [user-id     (t2/insert-returning-pk! :core_user {:first_name    "Test"
+                                                             :last_name     "Owner"
+                                                             :email         "action-test-owner@test.com"
+                                                             :entity_id     (u/generate-nano-id)
+                                                             :date_joined   :%now
+                                                             :password      "password"
+                                                             :password_salt "salt"})
+            action-id   (t2/insert-returning-pk! :action {:name       "Refund"
+                                                          :type       "query"
+                                                          :entity_id  (u/generate-nano-id)
+                                                          :created_at :%now
+                                                          :updated_at :%now})
+            boundary    (with-open [conn (.getConnection (mdb/data-source))]
+                          (liquibase/with-liquibase [liquibase conn]
+                            (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))
+            action-test (fn [entity-id]
+                          {:entity_id    entity-id
+                           :action_id    action-id
+                           :creator_id   user-id
+                           :name         "Refunds one order"
+                           :parameters   "{\"id\":1}"
+                           :inputs       "[]"
+                           :expectations "[]"})]
+        (migrate!)
+        (let [entity-id (u/generate-nano-id)
+              test-id   (t2/insert-returning-pk! :action_test (action-test entity-id))]
+          (testing "an action test is stored with its parameter values and timestamps"
+            (is (=? {:action_id action-id :creator_id user-id :entity_id entity-id :parameters "{\"id\":1}"
+                     :created_at some? :updated_at some?}
+                    (t2/select-one :action_test :id test-id))))
+          (testing "an action test may give no parameter values"
+            (is (pos-int? (t2/insert-returning-pk! :action_test (dissoc (action-test (u/generate-nano-id)) :parameters)))))
+          (testing "entity_id is unique"
+            (is (thrown? Exception (t2/insert! :action_test (action-test entity-id)))))
+          (testing "an action test must name an action that exists"
+            (is (thrown? Exception (t2/insert! :action_test (assoc (action-test (u/generate-nano-id))
+                                                                   :action_id Integer/MAX_VALUE)))))
+          (testing "deleting the action deletes its tests"
+            (t2/delete! :action :id action-id)
+            (is (zero? (t2/count :action_test :action_id action-id)))))
+        (with-open [conn (.getConnection (mdb/data-source))]
+          (liquibase/with-liquibase [liquibase conn]
+            (rollback/rollback-to-deployment! conn liquibase boundary)))
+        (testing "rollback drops action_test"
+          (is (thrown? Exception (t2/select :action_test))))))))
+
 (deftest workspace-idempotency-key-test
   (testing "wk6itt..kbq7xz: workspace.idempotency_key is unique per creator, and the rollback drops it"
     ;; No end id: kbq7xz is in the changelog on MySQL and MariaDB only, so it cannot end the range on every app DB.

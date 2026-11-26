@@ -8,6 +8,7 @@
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase-enterprise.data-testing.util :as data-testing.util]
    [metabase.app-db.copy-spec :as app-db-copy]
@@ -25,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -80,11 +82,6 @@
                         (data-testing.db/latest-test-runs test-type (into #{} (map :id) tests)))]
       (for [saved-test tests]
         (assoc saved-test :last_run (get id->run (:id saved-test)))))))
-
-(methodical/defmethod t2/batched-hydrate [:model/TransformTest :last_run]
-  "Add the newest run, or nil, to each transform test."
-  [_model _k transform-tests]
-  (with-last-runs :transform transform-tests))
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -178,49 +175,110 @@
       (when saved-test
         (vary-meta saved-test assoc k (boolean (some-> (get id->subject (subject-key saved-test)) mi/can-read?)))))))
 
-(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_read]
-  "Add whether the current user can read the transform of each transform test, loading the transforms at once."
-  [_model k transform-tests]
-  (with-readable-subjects k transform-tests :transform_id
-    (data-testing.db/transforms (into [] (comp (keep :transform_id) (distinct)) transform-tests))))
+;;; ------------------------------------------------- Saved tests --------------------------------------------------
 
-(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_write]
-  "Add whether the current user can write each transform test: they may edit its transform, on an instance where remote
-  sync does not keep synced content read-only, loading the transforms at once."
-  [_model k transform-tests]
-  (let [read-only? (remote-sync/read-only?)]
-    (assoc-subject-answers transform-tests k
-                           {:subject-key   :transform_id
-                            :subjects      (data-testing.db/transforms
-                                            (into [] (comp (keep :transform_id) (distinct)) transform-tests))
-                            :subject-k     :can_write
-                            :subject-check #(and (not read-only?) (mi/can-write? %))})))
+(mr/def ::saved-test-spec
+  "What the methods and functions shared by the saved-test models need to know about one model."
+  [:map {:closed true}
+   [:test-type
+    {:description "The test type its runs record."}
+    ::data-testing.schema/test-type]
+   [:subject-key
+    {:description "The column that holds the subject's id."}
+    :keyword]
+   [:subject
+    {:description "A function from a subject id to the subject, or nil when there is none."}
+    ifn?]
+   [:subjects
+    {:description "A function from subject ids to the subjects that exist."}
+    ifn?]
+   [:database-id
+    {:description "A function from a subject to the id of the Database a run of its tests sends SQL to, or nil."}
+    ifn?]
+   [:validate-test
+    {:description (str "A function of a subject id and a test definition that throws the typed refusal of a test "
+                       "that could not run.")}
+    ifn?]
+   [:check-testable
+    {:optional    true
+     :description (str "A function of a subject that throws the typed refusal of a subject no test could run, such "
+                       "as a card with no query.")}
+    ifn?]
+   [:refuses-archived?
+    {:optional    true
+     :description "True when an edit that leaves the test on an archived subject is refused, whatever it sets."}
+    :boolean]
+   [:remote-sync-guard?
+    {:optional    true
+     :description (str "True when, on an instance where remote sync keeps synced content read-only, the test's "
+                       "`:can_write` is false for every user, and an update needs that it changes no column remote "
+                       "sync exports and that the user may edit the subject.")}
+    :boolean]])
 
-(methodical/defmethod t2/batched-hydrate [:model/TransformTest :can_query]
-  "Add whether the current user may run each transform test: they read it and may run its transform, as its
-  `:can_query` says, loading the transforms at once."
-  [_model k transform-tests]
-  (assoc-can-query transform-tests k :transform_id
-                   (data-testing.db/transforms (into [] (comp (keep :transform_id) (distinct)) transform-tests))))
+(defmulti saved-test-spec
+  "The `::saved-test-spec` of the saved-test `model`. Every saved-test model derives from `::saved-test` and gives its
+  spec once. The methods on `::saved-test` (the `:last_run`, `:can_read`, `:can_write` and `:can_query` hydrations,
+  `mi/can-create?` and `mi/can-update?`) and the functions [[check-edit]] and [[check-revert]] read from it what
+  differs between the models. A model whose rule is not the shared one defines its own method for that rule."
+  {:arglists '([model])}
+  keyword)
 
-(defmethod mi/can-create? :model/TransformTest
-  [_model instance]
-  (can-create-test? (some-> (:transform_id instance) data-testing.db/transform) transforms-base.i/source-db-id))
+(defn- subjects-of
+  "The subjects of `saved-tests`, tests of `model`, loaded at once."
+  [model saved-tests]
+  (let [{:keys [subject-key subjects]} (saved-test-spec model)]
+    (subjects (into [] (comp (keep subject-key) (distinct)) saved-tests))))
 
-(defn- transform-writable?
-  "Whether the current user may edit the Transform `transform-id`."
-  [transform-id]
-  (boolean (some-> transform-id data-testing.db/transform (t2/hydrate :can_write) mi/can-write?)))
+(methodical/defmethod t2/batched-hydrate [::saved-test :last_run]
+  "Add the newest run, or nil, to each saved test."
+  [model _k saved-tests]
+  (with-last-runs (:test-type (saved-test-spec model)) saved-tests))
 
-(defmethod mi/can-update? :model/TransformTest
+(methodical/defmethod t2/batched-hydrate [::saved-test :can_read]
+  "Add whether the current user can read the subject of each saved test, loading the subjects at once."
+  [model k saved-tests]
+  (with-readable-subjects k saved-tests (:subject-key (saved-test-spec model)) (subjects-of model saved-tests)))
+
+(methodical/defmethod t2/batched-hydrate [::saved-test :can_write]
+  "Add whether the current user may edit each saved test: they may edit its subject, and the model's remote-sync guard
+  does not refuse the write, loading the subjects at once."
+  [model k saved-tests]
+  (let [{:keys [subject-key remote-sync-guard?]} (saved-test-spec model)
+        refused?                                 (boolean (and remote-sync-guard? (remote-sync/read-only?)))]
+    (vec (assoc-subject-answers saved-tests k
+                                {:subject-key   subject-key
+                                 :subjects      (subjects-of model saved-tests)
+                                 :subject-k     :can_write
+                                 :subject-check #(and (not refused?) (mi/can-write? %))}))))
+
+(methodical/defmethod t2/batched-hydrate [::saved-test :can_query]
+  "Add whether the current user may run each saved test: they read it and may run its subject, as the subject's
+  `:can_query` says, loading the subjects at once."
+  [model k saved-tests]
+  (vec (assoc-can-query saved-tests k (:subject-key (saved-test-spec model)) (subjects-of model saved-tests))))
+
+(defmethod mi/can-create? ::saved-test
+  [model instance]
+  (let [{:keys [subject-key subject database-id]} (saved-test-spec model)]
+    (can-create-test? (some-> (subject-key instance) subject) database-id)))
+
+(defn- subject-writable?
+  "Whether the current user may edit `subject`, false when there is none."
+  [subject]
+  (boolean (some-> subject (t2/hydrate :can_write) mi/can-write?)))
+
+(defmethod mi/can-update? ::saved-test
   [instance changes]
-  (can-update-test? instance changes
-                    {:subject-key  :transform_id
-                     :load-subject data-testing.db/transform
-                     :db-id        transforms-base.i/source-db-id
-                     :writable?    (or (mi/can-write? instance)
-                                       (and (not (remote-sync/synced-changes? :model/TransformTest instance changes))
-                                            (transform-writable? (:transform_id instance))))}))
+  (let [model                                                        (t2/model instance)
+        {:keys [subject-key subject database-id remote-sync-guard?]} (saved-test-spec model)]
+    (can-update-test? instance changes
+                      {:subject-key  subject-key
+                       :load-subject subject
+                       :db-id        database-id
+                       :writable?    (or (mi/can-write? instance)
+                                         (and remote-sync-guard?
+                                              (not (remote-sync/synced-changes? model instance changes))
+                                              (subject-writable? (some-> (subject-key instance) subject))))})))
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
@@ -232,6 +290,9 @@
    :model/CardTest      {:create :event/card-test-create
                          :update :event/card-test-update
                          :delete :event/card-test-delete}
+   :model/ActionTest    {:create :event/action-test-create
+                         :update :event/action-test-update
+                         :delete :event/action-test-delete}
    :model/SegmentTest   {:create :event/segment-test-create
                          :update :event/segment-test-update
                          :delete :event/segment-test-delete}})
@@ -337,23 +398,54 @@
         (remove #(= (comparable (get current %)) (comparable (get snapshot %))))
         (keys snapshot)))
 
+(mu/defn check-edit :- :nil
+  "Throws the typed refusal of an edit that sets the keys `edited-keys` of a saved test of `model` and leaves it as
+  `edited`. An edit that sets the subject or what a run reads is refused as a new test like `edited` would be. Any
+  other edit is refused when the subject is archived, for a model that refuses tests of an archived subject."
+  [model       :- :keyword
+   edited      :- :map
+   edited-keys :- [:sequential :keyword]]
+  (let [{:keys [test-type subject-key subject validate-test check-testable refuses-archived?]} (saved-test-spec model)]
+    (cond
+      (validates-edit? subject-key edited-keys)
+      (validate-test (subject-key edited) (data-testing.runner/test-definition edited))
+
+      refuses-archived?
+      (let [kept (subject (subject-key edited))]
+        ;; A new test of an archived subject with no query is refused for having no query; so is this edit.
+        (when (and check-testable (:archived kept))
+          (check-testable kept))
+        (data-testing.subject/check-not-archived test-type kept)))))
+
+(defn check-revert
+  "Returns `snapshot`, after refusing a revert of the saved test `id` of `model` to it as an edit to the same state
+  would be refused."
+  [model id _user-id snapshot]
+  (check-revert-available)
+  (data-testing.errors/refusing
+   (str (name (:test-type (saved-test-spec model))) "-test")
+   #(check-edit model snapshot (reverted-keys (first (data-testing.db/saved-tests-where model :id [id])) snapshot)))
+  snapshot)
+
 (defn- revert-transform-test!
   [id _user-id snapshot]
   (update-transform-tests! [(assoc snapshot :id id)] {:writer :revert}))
 
-(defn- check-revert
-  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
-  [id _user-id snapshot]
-  (check-revert-available)
-  (when (validates-edit? :transform_id (reverted-keys (data-testing.db/transform-test id) snapshot))
-    (data-testing.errors/refusing
-     "transform-test"
-     #(data-testing.runner/validate-test :transform
-                                         (data-testing.db/transform (:transform_id snapshot))
-                                         (data-testing.runner/test-definition snapshot))))
-  snapshot)
-
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defn- validate-test
+  "Throws the typed refusal of a test of the Transform `transform-id` with `definition` that could not run."
+  [transform-id definition]
+  (data-testing.runner/validate-test :transform (data-testing.db/transform transform-id) definition))
+
+(defmethod saved-test-spec :model/TransformTest [_model]
+  {:test-type          :transform
+   :subject-key        :transform_id
+   :subject            data-testing.db/transform
+   :subjects           data-testing.db/transforms
+   :database-id        transforms-base.i/source-db-id
+   :validate-test      validate-test
+   :remote-sync-guard? true})
 
 (defmethod app-db-copy/spec :model/TransformTest [_model]
   {:skip? false})
@@ -380,7 +472,7 @@
    :skip          [:creator_id :entity_id]
    :schema        ::data-testing.schema/transform-test.revision
    :authorize     :snapshot
-   :before-revert check-revert
+   :before-revert #(check-revert :model/TransformTest %1 %2 %3)
    :revert!       revert-transform-test!})
 
 (defmethod audit/spec :model/TransformTest [_model]

@@ -31,6 +31,7 @@
    ::missing-input-columns      400  ; A rows input lacks a column the query under test reads.
    ::colliding-columns          400  ; An expectation compares one output column twice, or one the comparison names itself.
    ::no-output                  400  ; An expectation compares the output of a subject that writes and has none.
+   ::invalid-parameters         400  ; The test's parameter values do not fit the action: a hidden or unknown parameter.
    ::parameters-not-taken       400  ; A test sets parameter values for a subject type that takes none.
 
    ;; 403 — the current user
@@ -45,6 +46,8 @@
    ::duplicate-output-columns   422  ; The output of the query under test has two columns of one name.
    ::setup-failed               422  ; A test input could not be materialized.
    ::expectation-failed         422  ; An expectation's own query failed to execute.
+   ::unsupported-action         422  ; Not a query action (an implicit action, say).
+   ::actions-disabled           422  ; The action's database does not support actions, or has them turned off.
 
    ;; 501 — not built yet
    ::unsupported-format         501  ; The expectation is of a type the schema knows and no `build` method handles.

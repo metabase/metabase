@@ -14,6 +14,7 @@
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
+   [metabase.actions.models :as actions.models]
    [metabase.driver :as driver]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -364,6 +365,91 @@
                  (finally
                    (t2/delete! :model/DataTestRun :test_type "card" :test_id test-id)
                    (t2/delete! :model/CardTest :id test-id)))))))))))
+
+(deftest impersonated-user-cannot-save-or-run-an-action-test-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-testing}
+    (do-with-unreachable-postgres
+     (fn [db-id]
+       (t2/update! :model/Database :id db-id
+                   {:settings (assoc (t2/select-one-fn :settings :model/Database :id db-id) :database-enable-actions true)})
+       (mt/with-db (t2/select-one :model/Database :id db-id)
+         (mt/with-temp [:model/Card      {model-id :id} {:type          :model
+                                                         :dataset_query (lib/native-query
+                                                                         (lib-be/application-database-metadata-provider db-id)
+                                                                         card-sql)}
+                        :model/TestSuite {suite-id :id} {}]
+           (let [action-id (:id (first (actions.models/create-actions!
+                                        [{:type          :query
+                                          :name          "Bump the ids"
+                                          :model_id      model-id
+                                          :database_id   db-id
+                                          :creator_id    (mt/user->id :crowberto)
+                                          :parameters    []
+                                          :dataset_query (lib/native-query
+                                                          (lib-be/application-database-metadata-provider db-id)
+                                                          "UPDATE public.orders SET id = id + 1 WHERE id > 0")}])))
+                 body      {:action_id    action-id
+                            :name         "impersonated"
+                            :inputs       [{:table orders :format "sql" :sql "SELECT 1 AS id"}]
+                            :expectations [{:type "empty" :name "check" :sql "SELECT * FROM public.orders WHERE id < 0"}]}
+                 created   (atom [])
+                 ;; Sends the request with the warehouse replaced by a recorder, and keeps the id of a test it creates.
+                 request!  (fn [user method path & [request-body]]
+                             (let [recorded (with-recorder! #(apply mt/user-http-request user method path
+                                                                    (when request-body [request-body])))]
+                               (when-let [id (and (= "ee/action-test" path) (:id (:result recorded)))]
+                                 (swap! created conj id))
+                               recorded))]
+             (try
+               (let [{test-id :id eid :entity_id} (:result (request! :crowberto :post "ee/action-test" body))
+                     path                         (str "ee/action-test/" test-id)
+                     run-path                     (str path "/run")
+                     suite-path                   (str "ee/test-suite/" suite-id "/run")]
+                 (is (pos-int? test-id) "premise: an admin saves the action test")
+                 (data-testing.test-util/add-members! suite-id [[:action eid]])
+                 ;; As in `impersonated-user-cannot-save-or-run-a-data-test-test`, rasta's group is impersonated on the
+                 ;; Database, with unrestricted view-data and native query permission.
+                 (impersonation.util-test/with-impersonations! {:impersonations [{:db-id db-id :attribute "role_attr"}]
+                                                                :attributes     {"role_attr" "limited_role"}}
+                   (mt/with-data-analyst-role! (mt/user->id :rasta)
+                     (testing "premise: rasta reads the action test"
+                       (is (= test-id (:id (mt/user-http-request :rasta :get 200 path)))))
+                     (testing "a run by rasta is refused as impersonated, and nothing reaches the warehouse"
+                       (let [{:keys [result sent roles]} (request! :rasta :post run-path)]
+                         (is (= "action-test.impersonated-user" (:error-code result)) (pr-str result))
+                         (is (= [] sent))
+                         (is (= [] roles))
+                         (is (zero? (t2/count :model/DataTestRun :test_type "action" :test_id test-id)))))
+                     (testing "a suite run by rasta refuses the member as its own run endpoint does"
+                       (let [{:keys [result sent roles]} (request! :rasta :post suite-path)]
+                         (is (=? {:status  "failed"
+                                  :members [{:status "refused" :error {:error_code "action-test.impersonated-user"}}]}
+                                 result)
+                             (pr-str result))
+                         (is (= [] sent))
+                         (is (= [] roles))))
+                     ;; Only a superuser may edit an action, and saving a test of an action needs that, so the
+                     ;; permission check refuses rasta before the impersonation check is reached.
+                     (testing "rasta saves no action test: 403, and nothing reaches the warehouse"
+                       (doseq [[method request-path request-body] [[:post "ee/action-test" body]
+                                                                   [:put path {:expectations [(assoc (first (:expectations body))
+                                                                                                     :name "changed")]}]]]
+                         (let [{:keys [result sent]} (with-recorder! #(mt/user-http-request :rasta method 403 request-path
+                                                                                           request-body))]
+                           (is (= "You don't have permissions to do that." result) (pr-str result))
+                           (is (= [] sent))))
+                       (is (= ["check"] (map :name (t2/select-one-fn :expectations :model/ActionTest :id test-id)))))))
+                 (testing "control: an admin's run of the same test passes, and its SQL reaches the warehouse"
+                   (let [{:keys [result sent]} (request! :crowberto :post run-path)]
+                     (is (= "passed" (:status result)) (pr-str result))
+                     (is (some #(str/starts-with? % "UPDATE ") sent) (pr-str sent))))
+                 (testing "control: an admin's run of the same suite passes"
+                   (let [{:keys [result sent]} (request! :crowberto :post suite-path)]
+                     (is (=? {:status "passed" :members [{:status "passed"}]} result) (pr-str result))
+                     (is (seq sent)))))
+               (finally
+                 (t2/delete! :model/DataTestRun :test_type "action" :test_id [:in (conj @created 0)])
+                 (actions.models/delete-actions! [action-id]))))))))))
 
 (deftest data-test-run-with-no-current-user-is-refused-test
   (mt/with-premium-features #{:transforms-testing :transforms-basic}

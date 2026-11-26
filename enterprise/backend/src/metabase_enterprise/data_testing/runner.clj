@@ -35,6 +35,7 @@
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
+   [metabase-enterprise.data-testing.subject.action]
    [metabase-enterprise.data-testing.subject.card]
    [metabase-enterprise.data-testing.subject.segment]
    [metabase-enterprise.data-testing.subject.transform]
@@ -46,7 +47,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.permissions.core :as perms]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.core :as sql-tools]
@@ -62,6 +62,7 @@
 (comment
   metabase-enterprise.data-testing.expectations.empty/keep-me
   metabase-enterprise.data-testing.expectations.equals/keep-me
+  metabase-enterprise.data-testing.subject.action/keep-me
   metabase-enterprise.data-testing.subject.card/keep-me
   metabase-enterprise.data-testing.subject.segment/keep-me
   metabase-enterprise.data-testing.subject.transform/keep-me)
@@ -327,18 +328,6 @@
                                (expectations.protocol/build expectation) labels))
           expectations)))
 
-(mu/defn- check-not-impersonated :- :nil
-  "Throw `::data-testing.errors/impersonated-user` when the current user's connection to `database` is impersonated.
-  Throws a 403 when no current user is bound."
-  [database :- ::lib.schema.metadata/database]
-  ;; A run executes its statements on a connection of its own, outside the query processor, which checks an
-  ;; impersonated user's native SQL statement by statement.
-  (when (perms/impersonation-enforced-for-db? (:id database))
-    (throw (data-testing.errors/ex
-            ::data-testing.errors/impersonated-user
-            (tru "A user whose connection to this database is impersonated can''t create or run data tests, or change what they test.")
-            {}))))
-
 (mu/defn- subject-plan :- ::data-testing.subject/subject-plan
   "The [[data-testing.subject/subject-plan]] of `subject` for a test with `definition`, compiled with its `now` standing
   for the current time when it is given. Throws `::data-testing.errors/now-on-native-sql` when `now` is given and the
@@ -372,7 +361,7 @@
   (data-testing.subject/check-not-archived subject-type subject)
   (let [{:keys [database compiled writes? output-tables output-token output-label]}
         (subject-plan subject-type subject definition)
-        _              (check-not-impersonated database)
+        _              (data-testing.subject/check-not-impersonated database)
         writes?        (boolean writes?)
         driver         (keyword (:engine database))
         source-tables  (source-tables driver (:query compiled))

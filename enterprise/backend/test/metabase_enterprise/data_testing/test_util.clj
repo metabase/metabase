@@ -164,6 +164,29 @@
               :name     (str (name table) "_summary")
               :database (mt/id)}}))
 
+(defn renamed-categories
+  "The rows of the real `categories` table named `category-name`. An action test that wrote the real table leaves one."
+  [category-name]
+  (mt/rows (mt/process-query (mt/native-query {:query  "SELECT id FROM categories WHERE name = ?"
+                                               :params [category-name]}))))
+
+(defn categories-input
+  "An input standing in for the `categories` table with categories 1 `Toy` and 2 `Food`."
+  []
+  {:table   (table-ref :categories)
+   :format  "rows"
+   :columns (id+name)
+   :rows    [{"id" 1 "name" "Toy"} {"id" 2 "name" "Food"}]})
+
+(defn categories-named
+  "An `empty` expectation that categories 1 and 2 are named `name-1` and `name-2`, and that there are no others."
+  [name-1 name-2]
+  {:type "empty"
+   :name (str "1 is " name-1 " and 2 is " name-2)
+   :sql  (format (str "SELECT * FROM %s WHERE (id = 1 AND name <> '%s') OR (id = 2 AND name <> '%s')"
+                      " OR id NOT IN (1, 2)")
+                 (qualified :categories) name-1 name-2)})
+
 (defn add-members!
   "Insert `refs`, `[test-type entity-id]` pairs, as members of the suite `suite-id` at positions 0, 1, ..."
   [suite-id refs]

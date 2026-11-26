@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [malli.core :as mc]
    [metabase-enterprise.data-testing.models]
+   [metabase-enterprise.data-testing.models.action-test]
    [metabase-enterprise.data-testing.models.card-test]
    [metabase-enterprise.data-testing.models.segment-test]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
@@ -26,7 +27,11 @@
         (is (every? qualified-keyword? (vals run-topics))))
       (testing "names how to load a test's subject, and its model answers whether the current user may run a test"
         (is (ifn? subject))
-        (is (some? (methodical/primary-method t2/batched-hydrate [model :can_query])))))))
+        ;; Every model has a `:can_query` hydration by default. A saved-test model answers with its own, or with the
+        ;; one the saved-test models share.
+        (is (not= [:default :can_query]
+                  (:dispatch-value (meta (methodical/effective-primary-method t2/batched-hydrate
+                                                                              [model :can_query])))))))))
 
 (deftest unknown-test-type-has-no-spec-test
   (is (nil? (data-testing.test-type/spec :no-such-test-type))))

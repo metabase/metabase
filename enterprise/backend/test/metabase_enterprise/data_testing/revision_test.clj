@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase-enterprise.data-testing.models :as data-testing.models]
+   [metabase-enterprise.data-testing.models.action-test :as data-testing.models.action-test]
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.models.segment-test :as data-testing.models.segment-test]
@@ -188,6 +189,16 @@
                           (messages))))))))))))
 
 ;;; ------------------------------------------------- Card tests -------------------------------------------------
+
+(defn- action-test!
+  "An action test with `props` created through its write function, by rasta unless `props` says otherwise."
+  [props]
+  (first (data-testing.models.action-test/create-action-tests! [(merge saved-test-defaults {:creator_id (mt/user->id :rasta)} props)])))
+
+(defn- update-action-test!
+  "Apply `changes` to the action test `id` through its write function."
+  [id changes]
+  (data-testing.models.action-test/update-action-tests! [(assoc changes :id id)]))
 
 (deftest card-test-revision-serialization-test
   (let [card-test (t2/instance :model/CardTest
@@ -554,6 +565,99 @@
                    {:is_creation true}]
                   (revisions/revisions :model/CardTest card-test-id))))))))
 
+;;; ------------------------------------------------ Action tests ------------------------------------------------
+
+(deftest action-test-revision-serialization-test
+  (let [action-test (t2/instance :model/ActionTest
+                                 {:id           1
+                                  :entity_id    "test-entity-id"
+                                  :action_id    2
+                                  :creator_id   3
+                                  :name         "Refunds one order"
+                                  :description  "Checks the table"
+                                  :parameters   {"id" 1}
+                                  :inputs       []
+                                  :expectations []
+                                  :created_at   :not-revisioned
+                                  :updated_at   :not-revisioned})]
+    (is (= {:action_id    2
+            :name         "Refunds one order"
+            :description  "Checks the table"
+            :parameters   {"id" 1}
+            :inputs       []
+            :expectations []}
+           (revisions/snapshot :model/ActionTest action-test)))))
+
+(deftest action-test-revisions-test
+  (mt/test-driver :postgres
+    (mt/with-premium-features #{:transforms-testing}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-actions-test-data-and-actions-enabled
+          (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/table-query :categories)}
+                            {:keys [action-id]} {}]
+            ;; A revert that changes the parameter values is checked as an edit is, so the test is one that could run.
+            (let [{action-test-id :id} (action-test! {:action_id    action-id
+                                                      :creator_id   (mt/user->id :crowberto)
+                                                      :name         "Original"
+                                                      :parameters   {"id" 1 "name" "Wood"}
+                                                      :inputs       [(update (data-testing.test-util/categories-input) :format keyword)]
+                                                      :expectations [(update (data-testing.test-util/categories-named "Wood Shop" "Food")
+                                                                             :type keyword)]})]
+              (testing "creation records the initial revision"
+                (is (=? [{:is_creation true
+                          :object      {:action_id action-id :name "Original" :parameters {"id" 1 "name" "Wood"}}}]
+                        (revisions/revisions :model/ActionTest action-test-id))))
+              (update-action-test! action-test-id {:name "Renamed" :parameters {"id" 2 "name" "Wood"}})
+              (testing "an update records the changed fields, and the history API describes it"
+                (is (=? [{:is_creation false
+                          :description "changed the parameter values and renamed it from \"Original\" to \"Renamed\"."}
+                         {:is_creation true :description "created this."}]
+                        (mt/user-http-request :crowberto :get 200 (str "revision/action-test/" action-test-id)))))
+              (testing "reverting restores the name and the parameter values"
+                (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                      {:entity      "action-test"
+                                       :id          action-test-id
+                                       :revision_id (:id (last (revisions/revisions :model/ActionTest action-test-id)))})
+                (is (=? {:name "Original" :parameters {"id" 1 "name" "Wood"}}
+                        (t2/select-one :model/ActionTest :id action-test-id)))))))))))
+
+(deftest action-test-revision-history-hides-revisions-about-unreadable-actions-test
+  (mt/with-premium-features #{:transforms-testing}
+    (testing "A non-admin who may read the test's current action does not see a revision about an older action they may not read"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {readable :id} {}
+                       :model/Collection {hidden :id}   {}]
+          (mt/with-actions [_                     {:type :model :dataset_query (data-testing.test-util/table-query :categories)
+                                                   :collection_id hidden}
+                            {hidden-action :action-id} {}]
+            (mt/with-actions [_                      {:type :model :dataset_query (data-testing.test-util/table-query :categories)
+                                                      :collection_id readable}
+                              {visible-action :action-id} {}]
+              (perms/grant-collection-read-permissions! (perms-group/all-users) readable)
+              (mt/with-current-user (mt/user->id :crowberto)
+                (let [{action-test-id :id} (action-test! {:action_id hidden-action :name "Hidden name"})]
+                  (update-action-test! action-test-id {:action_id visible-action :name "Visible name"})
+                  (testing "control: an admin sees both revisions"
+                    (let [history (mt/user-http-request :crowberto :get 200 (str "revision/action-test/" action-test-id))]
+                      (is (= 2 (count history)))
+                      (is (re-find #"Hidden name" (pr-str history)))))
+                  (let [history (mt/user-http-request :rasta :get 200 (str "revision/action-test/" action-test-id))]
+                    (is (=? [{:is_creation false :diff nil}] history))
+                    (is (= 1 (count history)))
+                    (is (not (re-find #"Hidden name" (pr-str history)))))
+                  (testing "a user who cannot read the test's action cannot read the history"
+                    (update-action-test! action-test-id {:action_id hidden-action})
+                    (is (= "You don't have permissions to do that."
+                           (mt/user-http-request :rasta :get 403 "revision" :entity "action-test" :id action-test-id)))))))))))))
+
+(deftest action-test-revert-requires-feature-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-actions [_                   {:type :model :dataset_query (data-testing.test-util/table-query :categories)}
+                      {:keys [action-id]} {}]
+      (let [{action-test-id :id} (action-test! {:action_id action-id :name "Original"})]
+        (update-action-test! action-test-id {:name "Renamed"})
+        (check-revert-requires-the-feature :model/ActionTest "action-test" action-test-id #{} #{:transforms-testing})))))
+
 ;;; ---------------------------------------------- Revision descriptions ----------------------------------------------
 
 (deftest test-revisions-describe-changes-to-inputs-expectations-and-subject-test
@@ -590,6 +694,21 @@
               (testing "control: a rename names the old and new names"
                 (is (= [(str "renamed this " (#'revision.diff/model-str->i18n-str model) " from \"t\" to \"u\"")]
                        (strings {:name "u"})))))))))))
+
+(deftest action-test-revisions-describe-a-change-of-action-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-actions [_                 {:type :model :dataset_query (data-testing.test-util/table-query :categories)}
+                      {from :action-id} {:name "Rename category"}
+                      {to :action-id}   {:name "Reprice category"}]
+      (let [before  {:action_id from :name "t" :description nil :parameters nil :inputs [] :expectations []}
+            strings #(let [after (merge before %)]
+                       (mapv str (revision.diff/diff-strings* "ActionTest" before after
+                                                              (revision/readable-names [before after]))))]
+        (testing "a change of the action names both actions"
+          (is (= ["moved this Action test from Rename category to Reprice category"]
+                 (strings {:action_id to}))))
+        (testing "control: a change of the parameter values"
+          (is (= ["changed the parameter values"] (strings {:parameters {"id" 1}}))))))))
 
 (deftest a-moved-test-names-only-the-subjects-the-reader-may-read-test
   (let [moved (fn [from to]

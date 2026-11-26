@@ -57,6 +57,9 @@
 (defmethod where :model/CardTest [_ {:keys [card-ids]}]
   (when card-ids (in-ids :card_id card-ids)))
 
+(defmethod where :model/ActionTest [_ {:keys [action-ids]}]
+  (when action-ids (in-ids :action_id action-ids)))
+
 (defmethod where :model/Document [_ {:keys [collection-set]}]
   [:and (when (seq collection-set) (in-collections collection-set)) [:= :exploration_id nil]])
 
@@ -133,8 +136,9 @@
 
 (defn select-rows
   "A reducible of the realized rows of `model` an export of `opts` takes, in stable export order: the ones with the
-  primary keys `:ids` when given, the ones [[where]] picks for the `:collection-set`, `:table-ids` or `:card-ids`
-  given, and unarchived ones with `:skip-archived`. SegmentTests follow the Segments the same options pick."
+  primary keys `:ids` when given, the ones [[where]] picks for the `:collection-set`, `:table-ids`, `:card-ids` or
+  `:action-ids` given, and unarchived ones with `:skip-archived`. SegmentTests follow the Segments the same options
+  pick."
   [model opts]
   (if (= model :model/Setting)
     (setting/exportable-settings)

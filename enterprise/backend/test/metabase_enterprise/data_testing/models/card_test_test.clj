@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-testing.models.card-test-test
-  "CardTest model behavior: JSON columns, the newest run, what deleting a test or its card does, and permissions."
+  "CardTest model behavior: JSON columns, what deleting a test or its card does, and permissions."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.db :as data-testing.db]
@@ -55,18 +55,6 @@
                                               :inputs       []
                                               :expectations [{:type "empty" :name "no sql"}]})))
     (is (zero? (t2/count :card_test :card_id card-id)))))
-
-(deftest last-run-hydration-finds-only-card-runs-test
-  (mt/with-temp [:model/Card        {card-id :id} {}
-                 :model/CardTest    {test-id :id :as card-test} {:card_id card-id}
-                 :model/DataTestRun _                           {:test_type :card, :test_id test-id}
-                 :model/DataTestRun {card-run :id}              {:test_type :card, :test_id test-id}
-                 :model/DataTestRun _                           {:test_type :transform, :test_id test-id}]
-    (testing "the newest run of the test, not a run of a transform test with the same id"
-      (is (= card-run (-> (t2/hydrate card-test :last_run) :last_run :id))))
-    (testing "a test with no runs has none"
-      (mt/with-temp [:model/CardTest other {:card_id card-id}]
-        (is (nil? (:last_run (t2/hydrate other :last_run))))))))
 
 (deftest deleting-a-card-test-keeps-its-runs-test
   (mt/with-temp [:model/Card        {card-id :id} {}

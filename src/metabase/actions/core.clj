@@ -51,7 +51,10 @@
  [metabase.actions.execution
   execute-action!
   execute-dashcard!
-  fetch-values]
+  fetch-values
+  parameter-values
+  query-with-parameter-values
+  remap-parameter-keys]
  [metabase.actions.models
   adhoc-action
   check-action-databases-enabled

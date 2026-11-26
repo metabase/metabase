@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
@@ -96,7 +97,7 @@
    body :- ::update-request]
   (let [card-test (api/read-check :model/CardTest id)]
     (api/update-check card-test body)
-    (refusing #(data-testing.models.card-test/check-edit (merge card-test body) (vec (keys body))))
+    (refusing #(data-testing.models/check-edit :model/CardTest (merge card-test body) (vec (keys body))))
     (when (seq body)
       (data-testing.models.card-test/update-card-tests! [(assoc body :id id)])))
   (data-testing.db/card-test id))

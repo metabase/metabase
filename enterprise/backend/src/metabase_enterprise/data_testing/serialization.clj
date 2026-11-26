@@ -70,6 +70,23 @@
           #{[:model/Card card_id]})
         entities))
 
+(defn action-test-storage-paths
+  "The storage path of each of the ActionTest `entities`, in the directory of the file of its Action, which a collection
+  holds, and a model when the action is one of the model's."
+  [entities _ctx]
+  (subject-storage-paths entities :model/Action :action_id
+                         [:collection_id :model_id]
+                         {:collection_id [:model/Collection :collection_id]
+                          :model_id      [:model/Card :model_id]}
+                         merge))
+
+(defn action-test-import-dependencies
+  "The Action each of the ActionTest `entities` tests."
+  [entities]
+  (mapv (fn [{:keys [action_id]}]
+          #{[:model/Action action_id]})
+        entities))
+
 (defn segment-test-storage-paths
   "The storage path of each of the SegmentTest `entities`, in the directory of the file of its Segment."
   [entities _ctx]
