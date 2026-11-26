@@ -902,6 +902,15 @@
           (is (=? {:id db-id}
                   (mt/user-http-request :rasta :put 200 (format "database/%d" db-id) {:name "Database Test"}))))))))
 
+(deftest non-admin-update-database-scan-mode-test
+  (testing "PUT /api/database/:id"
+    (testing "A non-admin with DB details permissions can set the scan mode that reads only the used value lists"
+      (mt/with-temp [:model/Database {db-id :id}]
+        (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
+          (is (=? {:settings {:scan-only-used-field-values true}}
+                  (mt/user-http-request :rasta :put 200 (format "database/%d" db-id)
+                                        {:settings {:scan-only-used-field-values true}}))))))))
+
 (deftest non-admin-delete-database-test
   (mt/with-temp [:model/Database {db-id :id}]
     (testing "A non-admin cannot delete a database even if they have DB details permissions"

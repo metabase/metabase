@@ -963,6 +963,20 @@
                                                {:settings {:database-enable-actions true}})
                          [:settings :database-enable-actions]))))))
 
+(deftest scan-only-used-field-values-setting-test
+  (testing "the scan mode that reads only the used value lists is a setting of the Database, set through its API"
+    (mt/with-temp [:model/Database {db-id :id} {:details {:let-user-control-scheduling true}}]
+      (let [put! (fn [value]
+                   (get-in (mt/user-http-request :crowberto :put 200 (format "database/%s" db-id)
+                                                 {:settings {:scan-only-used-field-values value}})
+                           [:settings :scan-only-used-field-values]))]
+        (is (true? (put! true)))
+        (is (true? (t2/select-one-fn (comp :scan-only-used-field-values :settings) :model/Database :id db-id)))
+        (testing "an admin reads it back"
+          (is (true? (get-in (mt/user-http-request :crowberto :get 200 (format "database/%s" db-id))
+                             [:settings :scan-only-used-field-values]))))
+        (is (false? (put! false)))))))
+
 (deftest update-database-settings-only-validates-changed-settings-test
   (testing "PUT /api/database/:id only validates settings that are being changed"
     (testing "should not validate existing settings that aren't being changed"

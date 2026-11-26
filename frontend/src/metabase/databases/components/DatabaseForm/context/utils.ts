@@ -2,6 +2,8 @@ import _ from "underscore";
 
 import type { DatabaseData } from "metabase-types/api";
 
+import { SCAN_ONLY_USED_FIELD_VALUES_SETTING } from "../../../utils/settings";
+
 export const checkFormIsDirty = (
   initialValues: DatabaseData,
   currentValues: DatabaseData,
@@ -14,6 +16,12 @@ export const checkFormIsDirty = (
       // These boolean fields are nullable. When null, they are treated as false in the form.
       refingerprint: values.refingerprint || false,
       auto_run_queries: values.auto_run_queries || false,
+      // A missing setting means false.
+      settings: {
+        ...values.settings,
+        [SCAN_ONLY_USED_FIELD_VALUES_SETTING]:
+          values.settings?.[SCAN_ONLY_USED_FIELD_VALUES_SETTING] ?? false,
+      },
     };
   };
 

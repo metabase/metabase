@@ -1,1 +1,1 @@
-export type ScheduleMode = "full" | "on-demand" | "none";
+export type ScheduleMode = "full" | "full-used" | "on-demand" | "none";

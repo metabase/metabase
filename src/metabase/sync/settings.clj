@@ -80,3 +80,20 @@
   :export?    false
   :doc        "Scans run with the scheduled analyze pass and with Sync database schema now on a database's admin
   page. Fields that already carry a label, including PUBLIC, are not rescanned.")
+
+(defsetting scan-only-used-field-values
+  (deferred-tru
+   (str "Whether the scheduled scan of the filter values of a database reads only the lists that someone used since "
+        "their last scan."))
+  ;; not `:admin`: whoever can edit the Database sets its scan mode, like `is_full_sync` and `is_on_demand`
+  :visibility     :authenticated
+  :export?        true
+  :type           :boolean
+  :default        false
+  :database-local :only
+  :encryption     :no)
+
+(defn scan-only-used-lists?
+  "Whether the scheduled scan of FieldValues of `database` reads only the lists used since their last scan."
+  [database]
+  (true? (get-in database [:settings :scan-only-used-field-values])))

@@ -739,3 +739,114 @@
               (scanned 2)
               (rescan table)
               (is (read?)))))))))
+
+(deftest ^:synchronized scheduled-scan-reads-only-used-lists-test
+  (testing "with the Database setting, the scheduled scan reads only the lists used since their last scan"
+    (mt/dataset test-data
+      (let [table    (t2/select-one :model/Table :id (mt/id :venues))
+            fv-id    (:id (field-values/get-or-create-full-field-values!
+                           (t2/select-one :model/Field :id (mt/id :venues :price))))
+            ago      #(some->> % t/hours (t/minus (t/offset-date-time)))
+            ;; the list was last used `used` hours ago and last scanned `scanned` hours ago, or never when nil
+            state!   (fn [{:keys [used scanned]}]
+                       (t2/update! (t2/table-name :model/FieldValues) {:id fv-id}
+                                   {:values          "[\"XX\"]"
+                                    :last_used_at    (ago used)
+                                    :last_scanned_at (ago scanned)}))
+            read?    #(not= ["XX"] (t2/select-one-fn :values :model/FieldValues :id fv-id))
+            ;; the scheduled scan of the Database
+            scan     #(sync.field-values/update-field-values! (mt/id))
+            rescan   #(sync.field-values/rescan-field-values-for-table! table)]
+        (mt/with-temp-vals-in-db :model/FieldValues fv-id {:values          ["XX"]
+                                                           :last_used_at    (t/offset-date-time)
+                                                           :last_scanned_at nil}
+          (testing "without the setting, a list not used since its last scan is read"
+            (state! {:used 48 :scanned 24})
+            (scan)
+            (is (read?)))
+          (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:scan-only-used-field-values true}}
+            (testing "not used since its last scan: not read"
+              (state! {:used 48 :scanned 24})
+              (scan)
+              (is (not (read?))))
+            (testing "used since its last scan: read, and the scan is recorded"
+              (state! {:used 2 :scanned 24})
+              (scan)
+              (is (read?))
+              (is (t/after? (t2/select-one-fn :last_scanned_at :model/FieldValues :id fv-id) (ago 1))))
+            (testing "not used again after that scan: not read"
+              (t2/update! (t2/table-name :model/FieldValues) {:id fv-id} {:values "[\"XX\"]"})
+              (scan)
+              (is (not (read?))))
+            (testing "never scanned: read"
+              (state! {:used 48 :scanned nil})
+              (scan)
+              (is (read?)))
+            (testing "another list of the Field was used since the last scan: read"
+              (state! {:used 48 :scanned 24})
+              (mt/with-temp [:model/FieldValues _ {:field_id     (mt/id :venues :price)
+                                                   :type         :advanced
+                                                   :hash_key     "used-list"
+                                                   :values       ["1"]
+                                                   :last_used_at (t/offset-date-time)}]
+                (scan)
+                (is (read?))))
+            (testing "a manual rescan reads a list not used since its last scan"
+              (state! {:used 48 :scanned 24})
+              (rescan)
+              (is (read?)))
+            (testing "the sync of one Table, as after an upload or a transform run, reads a list not used since its last scan"
+              (state! {:used 48 :scanned 24})
+              (sync.field-values/update-field-values-for-table! table)
+              (is (read?)))
+            (testing "a use while the scan runs counts as a use after the scan"
+              (state! {:used 2 :scanned 24})
+              (let [read-values! (mt/original-fn #'distinct-batch/run-distinct-batch)]
+                (mt/with-dynamic-fn-redefs [distinct-batch/run-distinct-batch
+                                            (fn [& args]
+                                              (u/prog1 (apply read-values! args)
+                                                ;; someone opens the filter after the read and before the scan saves
+                                                (Thread/sleep 1100)
+                                                (field-values/touch-field-values! {:id fv-id})
+                                                (Thread/sleep 1100)))]
+                  (scan)))
+              (is (read?))
+              (t2/update! (t2/table-name :model/FieldValues) {:id fv-id} {:values "[\"XX\"]"})
+              (scan)
+              (is (read?)))))))))
+
+(deftest used-lists-scan-statement-count-test
+  (mt/with-dynamic-fn-redefs [qp/process-query distinct-values-a-and-b]
+    (let [prepare! (fn [only-used?]
+                     (fn [database]
+                       (add-field-values! database)
+                       (update-field-values! database)
+                       (t2/update! :model/Database :id (:id database) {:settings {:scan-only-used-field-values only-used?}})
+                       ;; the lists of C0 and C4 were used since that scan, the others a day before it
+                       (let [field-ids (fn [& conds]
+                                         (apply t2/select-pks-vec :model/Field
+                                                :table_id [:in (t2/select-pks-vec :model/Table :db_id (:id database))]
+                                                conds))]
+                         (t2/update! (t2/table-name :model/FieldValues) {:field_id [:in (field-ids)] :type "full"}
+                                     {:last_used_at (t/minus (t/offset-date-time) (t/days 1))})
+                         (t2/update! (t2/table-name :model/FieldValues)
+                                     {:field_id [:in (field-ids :name [:in ["C0" "C4"]])] :type "full"}
+                                     {:last_used_at (t/plus (t/offset-date-time) (t/hours 1))}))))
+          scan!    (fn [database]
+                     (#'sync.field-values/update-field-values-for-database! (driver.u/lib-database (:id database))
+                                                                            {:rescan? false :only-used? true}))]
+      (testing "the setting takes effect: the scan reads only the used lists"
+        (let [last-probed (atom nil)
+              probed      (fn [only-used?]
+                            (analyze.tu/statement-count 4 5 list-or-plain-field (prepare! only-used?)
+                                                        (fn [database] (reset! last-probed (:probed (scan! database))))))]
+          (probed false)
+          (let [all @last-probed]
+            (probed true)
+            (is (< @last-probed all)))))
+      (testing "with the used-lists setting, the scan issues as many statements for 16 Tables as for 4"
+        (let [[small large] (analyze.tu/statement-counts-by-tables list-or-plain-field (prepare! true) scan!)]
+          (is (= small large))))
+      (testing "the setting adds one statement to the scan of a group of Tables: the read of the latest uses"
+        (is (= (mapv inc (analyze.tu/statement-counts-by-tables list-or-plain-field (prepare! false) scan!))
+               (analyze.tu/statement-counts-by-tables list-or-plain-field (prepare! true) scan!)))))))
