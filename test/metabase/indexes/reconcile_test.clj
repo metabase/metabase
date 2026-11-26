@@ -89,6 +89,14 @@
       (is (= "by_cat" (:name e)))
       (is (true? (:is_unique e)))
       (is (= :create-pending (-> e :request :status)))))
+  (testing "managed + absent: key_columns keep the declared column order, for pending and removing requests"
+    (doseq [status [:create-pending :delete-pending]]
+      (let [row (-> managed-btree
+                    (assoc :status status)
+                    (assoc-in [:structured :columns] [{:name "score"} {:name "name"}]))
+            [e] (reconcile/merge-indexes [row] [])]
+        (is (= ["score" "name"] (:key_columns e)))
+        (is (= status (-> e :request :status))))))
   (testing "a managed inline sortkey matches the warehouse sortkey by kind+columns, listed once as managed"
     (let [merged (reconcile/merge-indexes [managed-sortkey] [wh-sortkey])]
       (is (= 1 (count merged)))

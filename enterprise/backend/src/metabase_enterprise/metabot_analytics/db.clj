@@ -67,42 +67,59 @@
    "title"             [:c.title]
    "message_count"     [:message_count]
    "total_tokens"      [:total_tokens]
+   "uncached_tokens"   [:uncached_tokens]
    "cache_read_tokens" [:cache_read_tokens]
    "user"              [[:lower [:min :u.first_name]]
                         [:lower [:min :u.last_name]]]
    "profile_id"        [:profile_id]
    "ip_address"        [:c.ip_address]})
 
+(defn- usage-sum-expr
+  "Sum of the `ai_usage_log` column `col` over the LLM calls of a conversation. The split of the tokens into prompt,
+  completion, and cache read is only recorded per LLM call in `ai_usage_log` (`metabot_message` stores one total), so
+  this is a correlated subquery rather than another one-to-many join, which would fan out against the
+  `metabot_message` join and inflate every other aggregate."
+  [col]
+  [:coalesce
+   ^:allow-subquery {:select [[[:sum col]]]
+                     :from   [[:ai_usage_log :aul]]
+                     :where  [:= :aul.conversation_id :c.id]}
+   0])
+
+(defn- uncached-tokens-expr
+  "The tokens of one `ai_usage_log` row that were not served from the provider cache: the input tokens
+  (`prompt-col` minus `cache-read-col`) plus the output tokens (`completion-col`). `prompt_tokens` holds the cache
+  read tokens for every provider; the clamp only guards against a row that breaks that rule."
+  [prompt-col cache-read-col completion-col]
+  [:+ [:greatest [:- prompt-col [:coalesce cache-read-col 0]] 0] completion-col])
+
+(def ^:private token-usage-columns
+  "The uncached and cache read token columns of a conversation aliased `:c`."
+  [[(usage-sum-expr (uncached-tokens-expr :aul.prompt_tokens :aul.cache_read_tokens :aul.completion_tokens))
+    :uncached_tokens]
+   [(usage-sum-expr :aul.cache_read_tokens) :cache_read_tokens]])
+
 (def ^:private conversation-list-select
   "Conversation rows with aggregate stats, including deleted attempts. Messages
    a fork copied in from its origin are counted here — the list describes the
    thread as the reader sees it. `v_metabot_conversations.new_message_count` is
    the usage-metric counterpart that leaves them out."
-  {:select    [:c.*
-               [[:count :m.id] :message_count]
-               [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
-               [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
-               [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
-               [[:max :m.created_at] :last_message_at]
-               [^:allow-subquery {:select   [:mm.profile_id]
-                                  :from     [[:metabot_message :mm]]
-                                  :where    [:and
-                                             [:= :mm.conversation_id :c.id]
-                                             [:= :mm.role "assistant"]]
-                                  :order-by [[:mm.created_at :asc] [:mm.id :asc]]
-                                  :limit    1}
-                :profile_id]
-               ;; Cache tokens are only recorded per LLM call in `ai_usage_log`
-               ;; (`metabot_message` stores prompt+completion only), so this is a
-               ;; correlated subquery rather than another one-to-many join, which
-               ;; would fan out against the `metabot_message` join and inflate
-               ;; every aggregate above.
-               [[:coalesce
-                 ^:allow-subquery {:select [[[:sum :aul.cache_read_tokens]]]
-                                   :from   [[:ai_usage_log :aul]]
-                                   :where  [:= :aul.conversation_id :c.id]}
-                 0]
-                :cache_read_tokens]]
+  {:select    (into
+               [:c.*
+                [[:count :m.id] :message_count]
+                [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
+                [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
+                [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
+                [[:max :m.created_at] :last_message_at]
+                [^:allow-subquery {:select   [:mm.profile_id]
+                                   :from     [[:metabot_message :mm]]
+                                   :where    [:and
+                                              [:= :mm.conversation_id :c.id]
+                                              [:= :mm.role "assistant"]]
+                                   :order-by [[:mm.created_at :asc] [:mm.id :asc]]
+                                   :limit    1}
+                 :profile_id]]
+               token-usage-columns)
    :from      [[:metabot_conversation :c]]
    :left-join [[:metabot_message :m] [:= :m.conversation_id :c.id]
                [:core_user :u]       [:= :u.id :c.user_id]]
@@ -146,6 +163,17 @@
     (:count (t2/query-one (cond-> {:select [[[:count :*] :count]]
                                    :from   [[:metabot_conversation :c]]}
                             where (assoc :where where))))))
+
+(mu/defn token-usage-for-conversation :- [:map
+                                          [:uncached_tokens   ms/IntGreaterThanOrEqualToZero]
+                                          [:cache_read_tokens ms/IntGreaterThanOrEqualToZero]]
+  "The token sums of the LLM calls of the MetabotConversation with `conversation-id`: the input and output tokens
+  not served from the provider cache, and the cache read tokens. The list reads the same [[token-usage-columns]]."
+  [conversation-id :- :string]
+  (update-vals (t2/query-one {:select token-usage-columns
+                              :from   [[:metabot_conversation :c]]
+                              :where  [:= :c.id conversation-id]})
+               long))
 
 (mu/defn messages-for-conversation
   "The MetabotMessages of the MetabotConversation with `conversation-id`, oldest first."

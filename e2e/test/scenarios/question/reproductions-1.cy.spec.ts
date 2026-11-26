@@ -1,71 +1,15 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import type { QuestionDetails } from "e2e/support/helpers";
+import { checkNotNull } from "metabase/utils/types";
 
 import { setAdHocFilter } from "../native/helpers/e2e-date-filter-helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const QUESTION_NAME = "Foo";
-
-describe("issue 6239", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.openOrdersTable({ mode: "notebook" });
-
-    H.summarize({ mode: "notebook" });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-
-    H.CustomExpressionEditor.type("CountIf([Total] > 0)").format();
-
-    H.CustomExpressionEditor.nameInput().type("CE");
-    cy.button("Done").click();
-
-    cy.findByTestId("aggregate-step").contains("CE").should("exist");
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    H.popover().contains("Created At").first().click();
-  });
-
-  it("should be possible to sort by using custom expression (metabase#6239)", () => {
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sort").click();
-    H.popover().contains(/^CE$/).click();
-
-    H.visualize();
-
-    // Line chart renders initially. Switch to the table view.
-    cy.icon("table2").click();
-
-    cy.get("[data-testid=cell-data]")
-      .eq(1)
-      .should("contain", "CE")
-      .and("have.descendants", ".Icon-chevronup");
-
-    cy.get("[data-testid=cell-data]").eq(3).invoke("text").should("eq", "1");
-
-    // Go back to the notebook editor
-    H.openNotebook();
-
-    // Sort descending this time
-    cy.icon("arrow_up").click();
-    cy.icon("arrow_down").should("be.visible");
-    cy.icon("arrow_up").should("not.exist");
-
-    H.visualize();
-
-    cy.get("[data-testid=cell-data]")
-      .eq(1)
-      .should("contain", "CE")
-      .and("have.descendants", ".Icon-chevrondown");
-
-    cy.get("[data-testid=cell-data]").eq(3).invoke("text").should("eq", "584");
-  });
-});
 
 describe("issue 9027", () => {
   beforeEach(() => {
@@ -101,7 +45,10 @@ describe("issue 9027", () => {
   });
 });
 
-function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
+function goToSavedQuestionPickerAndAssertQuestion(
+  questionName: string,
+  exists = true,
+) {
   H.startNewQuestion();
   H.miniPickerBrowseAll().click();
   H.entityPickerModal().within(() => {
@@ -112,13 +59,13 @@ function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
   });
 }
 
-function archiveQuestion(questionName) {
+function archiveQuestion(questionName: string) {
   H.navigationSidebar().findByText("Our analytics").click();
   openEllipsisMenuFor(questionName);
   H.popover().findByText("Move to trash").click();
 }
 
-function unarchiveQuestion(questionName) {
+function unarchiveQuestion(questionName: string) {
   H.navigationSidebar().within(() => {
     cy.findByText("Trash").click();
   });
@@ -126,7 +73,7 @@ function unarchiveQuestion(questionName) {
   H.popover().findByText("Restore").click();
 }
 
-function openEllipsisMenuFor(item) {
+function openEllipsisMenuFor(item: string) {
   cy.findByText(item)
     .closest("tr")
     .find(".Icon-ellipsis")
@@ -182,17 +129,15 @@ describe("issue 17514", () => {
           `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
         ).as("cardQuery");
 
-        const mapFilterToCard = {
+        H.editDashboardCard(card, {
           parameter_mappings: [
             {
               parameter_id: filter.id,
-              card_id,
+              card_id: checkNotNull(card_id),
               target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
             },
           ],
-        };
-
-        H.editDashboardCard(card, mapFilterToCard);
+        });
 
         H.visitDashboard(dashboard_id);
 
@@ -300,7 +245,7 @@ function openVisualizationOptions() {
   cy.icon("palette").click({ force: true });
 }
 
-function hideColumn(columnName) {
+function hideColumn(columnName: string) {
   cy.findByTestId("chartsettings-sidebar").within(() => {
     cy.findByTestId(`draggable-item-${columnName}`)
       .icon("eye_outline")
@@ -322,7 +267,7 @@ function removeJoinedTable() {
     .click({ force: true });
 }
 
-function moveColumnToTop(column) {
+function moveColumnToTop(column: string) {
   cy.findByTestId("sidebar-left").within(() => {
     cy.findByText(column)
       .should("be.visible")
@@ -546,50 +491,218 @@ describe("issue 19341", () => {
   }
 });
 
-describe("issue 19742", () => {
+describe("issue 23023", () => {
+  const questionDetails: QuestionDetails = {
+    display: "table",
+    dataset_query: {
+      database: SAMPLE_DB_ID,
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            fields: [
+              ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+            ],
+            "source-table": PRODUCTS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.PRODUCT_ID, null],
+              ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+            ],
+            alias: "Products",
+          },
+        ],
+        fields: [
+          ["field", ORDERS.ID, null],
+          ["field", ORDERS.PRODUCT_ID, null],
+        ],
+      },
+      type: "query",
+    },
+  };
+
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
-  // In order to reproduce the issue, it's important to only use in-app links
-  // and don't refresh the app state (like by doing cy.visit)
-  it("shouldn't auto-close the data selector after a table was hidden", () => {
-    cy.visit("/");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
+  it("should show only selected columns in a step preview (metabase#23023)", () => {
+    H.visitQuestionAdhoc(questionDetails);
 
-    H.popover().findByText("Question").click();
-    H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalItem(0, "Databases").click();
-      H.entityPickerModalItem(1, "Sample Database").click();
-      cy.findByText("Orders").should("exist");
-      cy.button("Close").click();
+    H.openNotebook();
+
+    cy.icon("play").eq(1).click();
+
+    cy.findAllByTestId("header-cell").contains("Products → Category");
+    cy.findAllByTestId("header-cell").contains("Tax").should("not.exist");
+  });
+});
+
+describe("issue 35290", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should render column settings when source query is a table joined on itself (metabase#35290)", () => {
+    const questionDetails = {
+      name: "Orders + Orders",
+      query: {
+        "source-table": ORDERS_ID,
+        joins: [
+          {
+            "source-table": ORDERS_ID,
+            condition: [
+              "=",
+              ["field", ORDERS.ID, null],
+              ["field", ORDERS.ID, null],
+            ],
+            alias: "Orders",
+          },
+        ],
+        limit: 5,
+      },
+    };
+
+    H.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
+      const questionDetails = {
+        name: "35290",
+        query: {
+          "source-table": `card__${questionId}`,
+        },
+      };
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
     });
 
-    H.openNavigationSidebar();
-    H.goToAdmin();
+    H.openVizSettingsSidebar();
+    cy.findByTestId("chartsettings-sidebar")
+      // verify panel is shown
+      .should("contain", "Add or remove columns")
+      // verify column name is shown
+      .should("contain", "Created At");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Table Metadata").click();
-    H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
-
-    H.goToMainApp();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("New").click();
-    H.popover().findByText("Question").click();
-
-    H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalItem(0, "Databases").click();
-      H.entityPickerModalItem(1, "Sample Database").click();
-
-      cy.findByText("Products").should("exist");
-      cy.findByText("Reviews").should("exist");
-      cy.findByText("People").should("exist");
-      cy.findByText("Orders").should("not.exist");
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.icon("warning").should("not.exist");
     });
   });
 });
+
+describe("issue 43216", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createNativeQuestion({
+      name: "Source question",
+      native: { query: "select 1 as A, 2 as B, 3 as C" },
+    });
+  });
+
+  it("should update source question metadata when it changes (metabase#43216)", () => {
+    cy.intercept("GET", "/api/search*source*").as("searchSource");
+    cy.intercept("GET", "/api/search*target*").as("searchTarget");
+    cy.intercept("GET", "/api/card/**/query_metadata").as("queryMetadata");
+
+    cy.visit("/");
+    H.waitForLoaderToBeRemoved();
+
+    cy.log("Create target question");
+    H.newButton("Question").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findByText("Source question").click();
+    });
+    H.saveQuestion("Target question");
+    cy.wait("@queryMetadata");
+
+    cy.log("Update source question");
+    H.commandPaletteButton().click();
+    H.commandPaletteInput().type("source");
+    cy.wait("@searchSource");
+    H.commandPalette().findByText("Source question").click();
+    cy.wait("@queryMetadata");
+    cy.findByTestId("native-query-editor-container")
+      .findByText("Open Editor")
+      .click();
+    H.NativeEditor.focus().type(" , 4 as D;");
+    H.saveSavedQuestion();
+    cy.wait("@queryMetadata");
+    cy.wait(450); // let react process things (flaky test)
+
+    cy.log("Assert updated metadata in target question");
+    H.commandPaletteButton().click();
+    H.commandPaletteInput().type("target");
+    cy.wait("@searchTarget");
+    H.commandPalette().findByText("Target question").click();
+    cy.wait("@queryMetadata");
+    cy.findAllByTestId("header-cell").eq(3).should("have.text", "D");
+    H.openNotebook();
+    H.getNotebookStep("data").button("Pick columns").click();
+    H.popover().findByText("D").should("be.visible");
+  });
+});
+
+const EXPRESSION_NAME = "TEST_EXPRESSION";
+
+describe("Custom columns visualization settings", () => {
+  const question = {
+    name: "30905",
+    query: {
+      "source-table": ORDERS_ID,
+      expressions: {
+        [EXPRESSION_NAME]: ["+", 1, 1],
+      },
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.createQuestion(question).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
+      cy.wrap(id).as("questionId");
+
+      H.visitQuestion(id);
+    });
+  });
+
+  it("should not show 'Save' after modifying minibar settings for a custom column", () => {
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+    goToExpressionSidebarVisualizationSettings();
+    H.popover().within(() => {
+      cy.findByLabelText("Show a mini bar chart")
+        .click({ force: true })
+        .should("be.checked");
+    });
+    saveModifiedQuestion();
+    cy.wait("@updateCard");
+
+    cy.log("The saved setting is there when the question opens again");
+    H.visitQuestion("@questionId");
+    cy.findByTestId("qb-header-action-panel")
+      .findByText("Save")
+      .should("not.exist");
+    goToExpressionSidebarVisualizationSettings();
+    H.popover().findByLabelText("Show a mini bar chart").should("be.checked");
+  });
+});
+
+function saveModifiedQuestion() {
+  cy.findByTestId("qb-header-action-panel").within(() => {
+    cy.findByText("Save").click();
+  });
+  cy.findByTestId("save-question-modal").within(() => {
+    cy.findByText(/Replace original question/i).should("exist");
+    cy.findByText("Save").click();
+  });
+
+  cy.findByTestId("qb-header-action-panel").within(() => {
+    cy.findByText("Save").should("not.exist");
+  });
+}
+
+function goToExpressionSidebarVisualizationSettings() {
+  H.openVizSettingsSidebar();
+  cy.findByTestId(`${EXPRESSION_NAME}-settings-button`).click();
+}

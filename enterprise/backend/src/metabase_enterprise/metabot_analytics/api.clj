@@ -37,6 +37,7 @@
    [:user_message_count          ms/IntGreaterThanOrEqualToZero]
    [:assistant_message_count     ms/IntGreaterThanOrEqualToZero]
    [:total_tokens                ms/IntGreaterThanOrEqualToZero]
+   [:uncached_tokens             ms/IntGreaterThanOrEqualToZero]
    [:cache_read_tokens           ms/IntGreaterThanOrEqualToZero]
    [:last_message_at             [:maybe ms/TemporalInstant]]
    [:profile_id                  [:maybe :string]]
@@ -52,7 +53,8 @@
 
 (def ^:private SortColumn
   "Allow-list of columns the list endpoint can sort by."
-  [:enum "created_at" "title" "message_count" "total_tokens" "cache_read_tokens" "user" "profile_id" "ip_address"])
+  [:enum "created_at" "title" "message_count" "total_tokens" "uncached_tokens" "cache_read_tokens"
+   "user" "profile_id" "ip_address"])
 
 (def ^:private SortDirection
   [:enum "asc" "desc"])
@@ -116,6 +118,8 @@
    [:user                        [:maybe UserInfo]]
    [:message_count               ms/IntGreaterThanOrEqualToZero]
    [:total_tokens                ms/IntGreaterThanOrEqualToZero]
+   [:uncached_tokens             ms/IntGreaterThanOrEqualToZero]
+   [:cache_read_tokens           ms/IntGreaterThanOrEqualToZero]
    [:profile_id                  [:maybe :string]]
    [:slack_permalink             [:maybe :string]]
    [:messages                    [:sequential ConversationMessage]]
