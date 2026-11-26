@@ -144,8 +144,16 @@
         stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
         honeysql-expr ((get-method sql.qp/->honeysql [:sql :field]) driver clause)]
-    (if (driver-api/json-field? stored-field)
+    (cond
+      (driver-api/json-field? stored-field)
       (json-field->honeysql driver clause stored-field honeysql-expr)
+
+      ;; only the column itself: through a join or an earlier stage it is already the String
+      (and (clickhouse-introspection/variant-or-dynamic? (:database-type stored-field))
+           (integer? (driver-api/qp.add.source-table (lib.options/options clause))))
+      (h2x/cast "Nullable(String)" honeysql-expr)
+
+      :else
       honeysql-expr)))
 
 (defn- in-report-timezone

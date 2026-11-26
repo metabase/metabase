@@ -46,6 +46,15 @@
     [#"uint64"      :type/BigInteger]
     [#"uuid"        :type/UUID]]))
 
+(defn variant-or-dynamic?
+  "Is `database-type` a `Variant` or `Dynamic` type? Each value of these can have another type, and ClickHouse does not
+  allow them in GROUP BY, ORDER BY or aggregations. So they are text, and queries cast them to String."
+  [database-type]
+  (when-let [db-type (some-> database-type u/lower-case-en)]
+    (or (str/starts-with? db-type "variant(")
+        (= db-type "dynamic")
+        (str/starts-with? db-type "dynamic("))))
+
 (defn- normalize-db-type
   [db-type]
   (cond
@@ -67,6 +76,9 @@
     (if (> (count db-type) 8) :type/DateTimeWithLocalTZ :type/DateTime)
     ;; Enum*
     (str/starts-with? db-type "enum")
+    :type/Text
+    ;; Variant, Dynamic
+    (variant-or-dynamic? db-type)
     :type/Text
     ;; Map
     (str/starts-with? db-type "map")
