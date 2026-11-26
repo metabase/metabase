@@ -1055,6 +1055,103 @@
   [_]
   #{"sys" "INFORMATION_SCHEMA"})
 
+;;; ------------------------------------------------ Table statistics -----------------------------------------------
+
+;; Only for `:sqlserver` itself, so that a child driver keeps its own catalog.
+(defmethod driver/database-supports? [:sqlserver :table-statistics]
+  [driver _feature _db]
+  (= driver :sqlserver))
+
+(def ^:private table-statistics-timeout-seconds
+  "The time limit of the catalog query for the statistics of a table."
+  15)
+
+(def ^:private max-statistics-modified-fraction
+  "The most of a statistic's rows that may have changed since it was updated for it to be used."
+  0.1)
+
+(defn- statistics-rows
+  "For each statistic of `table` and the column it starts with: its rows, the changes since it was updated, and from
+  its histogram the distinct values that are not NULL (each step's key and the distinct values between steps) and the
+  rows that are NULL (the step whose key is NULL)."
+  [database table]
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+              [(str "SELECT c.name AS column_name, sp.rows, sp.rows_sampled, sp.modification_counter,"
+                    " x.distinct_count, x.null_rows"
+                    " FROM sys.stats s"
+                    ;; the first key column of an index: for a clustered index, `stats_column_id` follows the order
+                    ;; of the table's columns, not of the key
+                    " LEFT JOIN sys.index_columns ic ON ic.object_id = s.object_id AND ic.index_id = s.stats_id"
+                    " AND ic.key_ordinal = 1"
+                    " JOIN sys.stats_columns sc ON sc.object_id = s.object_id AND sc.stats_id = s.stats_id"
+                    " AND ((ic.column_id IS NULL AND sc.stats_column_id = 1) OR sc.column_id = ic.column_id)"
+                    " JOIN sys.columns c ON c.object_id = sc.object_id AND c.column_id = sc.column_id"
+                    " CROSS APPLY sys.dm_db_stats_properties(s.object_id, s.stats_id) sp"
+                    " CROSS APPLY (SELECT SUM(CASE WHEN h.range_high_key IS NULL THEN 0"
+                    "                              ELSE h.distinct_range_rows + 1 END) AS distinct_count,"
+                    "                     SUM(CASE WHEN h.range_high_key IS NULL THEN h.equal_rows ELSE 0 END)"
+                    "                     AS null_rows"
+                    "              FROM sys.dm_db_stats_histogram(s.object_id, s.stats_id) h) x"
+                    ;; a filtered statistic covers only some of the rows
+                    " WHERE s.object_id = OBJECT_ID(QUOTENAME(?) + '.' + QUOTENAME(?)) AND s.has_filter = 0")
+               (:schema table) (:name table)]
+              {:timeout table-statistics-timeout-seconds}))
+
+(defn- table-row-count
+  "The rows of `table`, from its heap or clustered index partitions in `sys.partitions`."
+  [database table]
+  (some-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                      [(str "SELECT SUM(p.rows) AS row_count FROM sys.partitions p"
+                            " WHERE p.object_id = OBJECT_ID(QUOTENAME(?) + '.' + QUOTENAME(?)) AND p.index_id IN (0, 1)")
+                       (:schema table) (:name table)]
+                      {:timeout table-statistics-timeout-seconds})
+          first
+          :row_count
+          long))
+
+(defn- fresh-statistic?
+  "Whether a statistic has rows and at most [[max-statistics-modified-fraction]] of them changed since it was updated."
+  [{:keys [rows modification_counter]}]
+  (and (some-> rows pos?)
+       (<= (or modification_counter 0) (* max-statistics-modified-fraction rows))))
+
+(defn- column-fingerprint
+  "The partial fingerprint of a column from its statistic: the histogram's distinct count does not count NULL, and a
+  fingerprint does, so a column with NULLs gets one more."
+  [{:keys [rows distinct_count null_rows]}]
+  (let [nulls (some-> null_rows double)]
+    {:global (cond-> {}
+               nulls
+               ;; at most 1: statistics updated at different times can count more NULL rows than rows
+               (assoc :nil% (min 1.0 (/ nulls (double rows))))
+
+               (some-> distinct_count pos?)
+               (assoc :distinct-count (+ (Math/round (double distinct_count)) (if (some-> nulls pos?) 1 0))))}))
+
+;; The histograms exist only for the columns that an index or a statistic starts with: index keys, and the columns that
+;; queries filtered on when automatic statistics are on. A column with several statistics gets the one that read the
+;; most rows. `last_updated` has no time zone, so the origin has no time. A statistic is a sample unless it was built
+;; with a full scan, and its distinct counts are estimates.
+(defmethod driver/table-statistics :sqlserver
+  [_driver database table fields {:keys [want]}]
+  (let [want?     #(or (empty? want) (contains? want %))
+        rows      (when (want? :fingerprint)
+                    (filterv fresh-statistic? (statistics-rows database table)))
+        origin    {:source :catalog :kind :estimate}
+        by-name   (update-vals (group-by :column_name rows) #(apply max-key (fn [r] (or (:rows_sampled r) 0)) %))
+        by-field  (when (want? :fingerprint)
+                    (into {}
+                          (keep (fn [{:keys [id] field-name :name}]
+                                  (when-let [stats (by-name field-name)]
+                                    (let [fingerprint (column-fingerprint stats)]
+                                      (when (seq (:global fingerprint))
+                                        [id {:fingerprint fingerprint :origin origin}])))))
+                          fields))
+        row-count (when (want? :row-count) (table-row-count database table))]
+    (cond-> {}
+      (and row-count (want? :row-count)) (assoc :row-count {:value row-count :origin origin})
+      (seq by-field)                     (assoc :fields by-field))))
+
 ;;; ------------------------------------------------ Table samples -------------------------------------------------
 
 ;; `TABLESAMPLE SYSTEM (p PERCENT)` reads a random set of pages of the table. A table alias goes before it, and the

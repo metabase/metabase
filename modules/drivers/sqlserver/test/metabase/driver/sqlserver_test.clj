@@ -42,6 +42,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli.registry :as mr]
    [next.jdbc]
    [toucan2.core :as t2]))
 
@@ -2002,6 +2003,88 @@
               "teardown ended the holder's session, so its commit fails")
           (finally
             (driver/destroy-workspace-isolation! :sqlserver database ws)))))))
+
+(defn- do-with-stats-table!
+  "Create the table `kb_stats` with 1,000 rows, `id` the key and `a` with 9 values and NULL in a tenth of the rows,
+  with full statistics on both when `statistics?`, and call `f` with the Lib database, a spec, its Table and Fields."
+  [statistics? f]
+  (let [database (lib.metadata/database (mt/metadata-provider))
+        spec     (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (jdbc/execute! spec ["DROP TABLE IF EXISTS dbo.kb_stats"])
+    (jdbc/execute! spec ["CREATE TABLE dbo.kb_stats (id INT PRIMARY KEY, a INT NULL)"])
+    (try
+      (jdbc/execute! spec [(str "INSERT INTO dbo.kb_stats SELECT n, CASE WHEN n % 10 = 0 THEN NULL ELSE n % 10 END"
+                                " FROM (SELECT TOP 1000 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS n"
+                                "       FROM sys.all_objects a CROSS JOIN sys.all_objects b) x")])
+      (when statistics?
+        (jdbc/execute! spec ["CREATE STATISTICS kb_stats_a ON dbo.kb_stats (a) WITH FULLSCAN"])
+        (jdbc/execute! spec ["UPDATE STATISTICS dbo.kb_stats WITH FULLSCAN"]))
+      (mt/with-temp [:model/Table table {:db_id (mt/id) :name "kb_stats" :schema "dbo"}
+                     :model/Field id    {:table_id (:id table) :name "id" :base_type :type/Integer :database_type "int"}
+                     :model/Field a     {:table_id (:id table) :name "a" :base_type :type/Integer :database_type "int"}]
+        (f database spec table [id a]))
+      (finally
+        (jdbc/execute! spec ["DROP TABLE IF EXISTS dbo.kb_stats"])))))
+
+(deftest table-statistics-test
+  (mt/test-driver :sqlserver
+    (is (driver.u/supports? :sqlserver :table-statistics (mt/db)))
+    (testing "the histograms of the statistics: distinct counts and nil fractions of the columns that have them"
+      (do-with-stats-table!
+       true
+       (fn [database _spec table [id a]]
+         (let [answer (driver/table-statistics :sqlserver database table [id a] {:max-cost :metadata})]
+           (is (mr/validate ::driver/table-statistics.result answer))
+           (is (= 1000 (get-in answer [:fields (:id id) :fingerprint :global :distinct-count])))
+           (testing "a distinct count that counts NULL as a value, as a sample does"
+             (is (= 10 (get-in answer [:fields (:id a) :fingerprint :global :distinct-count]))))
+           (is (= 0.1 (get-in answer [:fields (:id a) :fingerprint :global :nil%])))
+           (is (= {:source :catalog :kind :estimate} (get-in answer [:fields (:id a) :origin])))
+           (is (= {:value 1000 :origin {:source :catalog :kind :estimate}} (:row-count answer)))))))
+    (testing "a column with no statistics: nothing for it"
+      (do-with-stats-table!
+       false
+       (fn [database _spec table [_id a]]
+         (is (nil? (get-in (driver/table-statistics :sqlserver database table [a] {:max-cost :metadata})
+                           [:fields (:id a)]))))))
+    (testing "a statistic that changed much since it was updated: nothing for its column"
+      (do-with-stats-table!
+       true
+       (fn [database spec table [id a :as fields]]
+         (jdbc/execute! spec ["UPDATE dbo.kb_stats SET a = 1 WHERE id <= 500"])
+         (let [answer (driver/table-statistics :sqlserver database table fields {:max-cost :metadata})]
+           (is (nil? (get-in answer [:fields (:id a)])))
+           (testing "SQL Server counts the changes for each statistic, so the key's statistic is still fresh"
+             (is (= 1000 (get-in answer [:fields (:id id) :fingerprint :global :distinct-count]))))))))))
+
+(deftest table-statistics-of-index-keys-test
+  (mt/test-driver :sqlserver
+    (let [database (lib.metadata/database (mt/metadata-provider))
+          spec     (sql-jdbc.conn/db->pooled-connection-spec database)]
+      (jdbc/execute! spec ["DROP TABLE IF EXISTS dbo.kb_keys"])
+      (jdbc/execute! spec [(str "CREATE TABLE dbo.kb_keys (id INT NOT NULL, tenant INT NOT NULL, email VARCHAR(20) NULL,"
+                                " CONSTRAINT kb_keys_pk PRIMARY KEY CLUSTERED (tenant, id))")])
+      (try
+        (jdbc/execute! spec [(str "INSERT INTO dbo.kb_keys SELECT n, n % 4, CASE WHEN n % 4 = 0 THEN NULL"
+                                  " ELSE CONCAT('e', n) END"
+                                  " FROM (SELECT TOP 1000 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS n"
+                                  "       FROM sys.all_objects a CROSS JOIN sys.all_objects b) x")])
+        (jdbc/execute! spec ["CREATE UNIQUE INDEX kb_keys_email ON dbo.kb_keys (email) WHERE email IS NOT NULL"])
+        (jdbc/execute! spec ["UPDATE STATISTICS dbo.kb_keys WITH FULLSCAN"])
+        (mt/with-temp [:model/Table table  {:db_id (mt/id) :name "kb_keys" :schema "dbo"}
+                       :model/Field id     {:table_id (:id table) :name "id" :base_type :type/Integer}
+                       :model/Field tenant {:table_id (:id table) :name "tenant" :base_type :type/Integer}
+                       :model/Field email  {:table_id (:id table) :name "email" :base_type :type/Text}]
+          (let [answer (driver/table-statistics :sqlserver database table [id tenant email] {:max-cost :metadata})]
+            (testing "a clustered key's statistic is of its first key column, not of the first column of the table"
+              (is (= 4 (get-in answer [:fields (:id tenant) :fingerprint :global :distinct-count])))
+              (is (nil? (get-in answer [:fields (:id id)]))))
+            (testing "a filtered statistic, which covers only some rows, is not used"
+              (is (nil? (get-in answer [:fields (:id email)]))))
+            (testing "the row count of the table, from its partitions"
+              (is (= 1000 (get-in answer [:row-count :value]))))))
+        (finally
+          (jdbc/execute! spec ["DROP TABLE IF EXISTS dbo.kb_keys"]))))))
 
 (deftest table-sample-compile-test
   (mt/test-driver :sqlserver
