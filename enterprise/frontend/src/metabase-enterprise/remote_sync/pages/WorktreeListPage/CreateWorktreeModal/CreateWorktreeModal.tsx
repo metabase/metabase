@@ -38,6 +38,8 @@ type CreateWorktreeValues = Yup.InferType<
   ReturnType<typeof getValidationSchema>
 >;
 
+const DROPDOWN_WIDTH = 314;
+
 const INITIAL_VALUES: CreateWorktreeValues = { branch: "" };
 
 type CreateWorktreeModalProps = {
@@ -129,6 +131,7 @@ function BranchSelect({ branches, isLoading }: BranchSelectProps) {
         searchValue={searchValue}
         nothingFoundMessage={t`No branches found`}
         disabled={isLoading}
+        comboboxProps={{ width: DROPDOWN_WIDTH, position: "bottom-start" }}
         renderOption={({ option }) =>
           branches.includes(option.value) ? (
             <SelectItem>{option.value}</SelectItem>
