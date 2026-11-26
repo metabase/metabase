@@ -1023,12 +1023,9 @@ describe("ExplainAccess", () => {
 
       const warning = await screen.findByText(WARNING);
 
-      expect(isBefore(screen.getByText("Rules set by Sales"), warning)).toBe(
-        true,
-      );
       expect(
         isBefore(
-          screen.getByRole("button", { name: "Orders, Full access" }),
+          screen.getByRole("button", { name: "chevronright icon 2 tables" }),
           warning,
         ),
       ).toBe(true);
@@ -1036,6 +1033,57 @@ describe("ExplainAccess", () => {
         isBefore(warning, screen.getByText("Exploring this question")),
       ).toBe(true);
       expect(screen.queryByText("Not filtered")).not.toBeInTheDocument();
+    });
+
+    it("shows a SQL question's row and column security table as full access, with the warning", async () => {
+      setup({
+        answers: {
+          "card/query": createAnswer({
+            reasons: {
+              collection: createCollection(),
+              tables: [people],
+              "sql-cards": [createSqlCard()],
+            },
+          }),
+        },
+      });
+
+      expect(
+        await screen.findByRole("button", { name: "People, Full access" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(WARNING)).toBeInTheDocument();
+      expect(screen.queryByText("Rules set by Sales")).not.toBeInTheDocument();
+    });
+
+    it("keeps a SQL question's table rows filtered when an impersonation enforces them", async () => {
+      setup({
+        answers: {
+          "card/query": createAnswer({
+            reasons: {
+              collection: createCollection(),
+              tables: [orders, people],
+              "sql-cards": [createSqlCard()],
+              impersonations: [
+                {
+                  "db-id": 1,
+                  "db-name": "Sample Database",
+                  "group-id": 9,
+                  "group-name": "Sales",
+                  attribute: "role",
+                  value: "analyst_role",
+                  "missing?": false,
+                  "enforced?": true,
+                },
+              ],
+            },
+          }),
+        },
+      });
+
+      expect(
+        await screen.findByRole("button", { name: "Orders, Rows filtered" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(WARNING)).toBeInTheDocument();
     });
 
     it("warns about a rule that another group's full access overrides", async () => {
@@ -1116,7 +1164,8 @@ describe("ExplainAccess", () => {
       const fold = await screen.findByRole("button", { name: /2 SQL cards/ });
 
       expect(fold).toHaveAttribute("aria-expanded", "false");
-      expect(screen.getByText("Not filtered")).toBeInTheDocument();
+      // The "2 tables" fold's status plus the SQL cards fold's status
+      expect(screen.getAllByText("Full access")).toHaveLength(2);
       expect(screen.queryByText("Revenue by state")).not.toBeInTheDocument();
       expect(
         isBefore(screen.getByRole("button", { name: /2 tables/ }), fold),
@@ -1140,11 +1189,24 @@ describe("ExplainAccess", () => {
 
       const name = await screen.findByText("Revenue by state");
 
-      expect(screen.getByText("Not filtered")).toBeInTheDocument();
+      // The "Orders, Full access" row's label plus the card row's status
+      expect(screen.getAllByText("Full access")).toHaveLength(2);
       expect(isBefore(name, screen.getByText(WARNING))).toBe(true);
       expect(
         screen.queryByRole("button", { name: /SQL card/ }),
       ).not.toBeInTheDocument();
+    });
+
+    it("keeps a dashboard's sandboxed table rows filtered beside its SQL cards", async () => {
+      setupDashboard({
+        tables: [orders, people],
+        "sql-cards": [createSqlCard()],
+      });
+
+      expect(
+        await screen.findByRole("button", { name: "People, Rows filtered" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(WARNING)).toBeInTheDocument();
     });
 
     it("lists no SQL card on a dashboard when the person has no rule in their databases", async () => {

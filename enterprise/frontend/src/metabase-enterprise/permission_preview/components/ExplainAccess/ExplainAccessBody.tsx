@@ -197,13 +197,27 @@ function DataCard({
   target,
   onOpen,
 }: DataCardProps) {
-  const rows = sortTablesByStatus(tables, reasons);
+  const sqlCards = getSqlCardsToWarnAbout(reasons);
+  const rows = sortTablesByStatus(tables, reasons).map(({ table, status }) => {
+    if (
+      !isDashboard &&
+      sqlCards.length > 0 &&
+      status === "filtered" &&
+      !reasons.impersonations?.some(
+        (impersonation) =>
+          impersonation["db-id"] === table["db-id"] &&
+          impersonation["enforced?"],
+      )
+    ) {
+      return { table, status: "can-view" as const };
+    }
+    return { table, status };
+  });
   const ofStatus = (...statuses: TableStatus[]) =>
     rows.filter(({ status }) => statuses.includes(status));
   const blocked = ofStatus("blocked");
   const opening = ofStatus("cant-load", "filtered");
   const viewable = ofStatus("can-view");
-  const sqlCards = getSqlCardsToWarnAbout(reasons);
   const hasToggleRow =
     opening.length > 0 ||
     blocked.length > 1 ||
@@ -312,7 +326,7 @@ interface SqlCardRowsProps {
 
 /** A dashboard's SQL cards: two or more fold into a row; one stays its own row. */
 function SqlCardRows({ cards, hasChevronSlot }: SqlCardRowsProps) {
-  const status = <FoldStatus label={t`Not filtered`} />;
+  const status = <FoldStatus label={t`Full access`} />;
   if (cards.length === 1) {
     return (
       <Row name={cards[0].name} hasChevronSlot={hasChevronSlot}>
