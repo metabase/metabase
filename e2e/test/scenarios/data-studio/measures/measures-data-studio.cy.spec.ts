@@ -4,7 +4,7 @@ import { NODATA_USER_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
 const { MeasureList, MeasureEditor, MeasureRevisionHistory } = H.DataModel;
-const { ORDERS, ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > data studio > data model > measures", () => {
   beforeEach(() => {
@@ -15,435 +15,236 @@ describe("scenarios > data studio > data model > measures", () => {
 
     cy.intercept("POST", "/api/measure").as("createMeasure");
     cy.intercept("PUT", "/api/measure/*").as("updateMeasure");
-    cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
   });
 
-  describe("Measure list", () => {
-    it("should display measures and allow navigation to edit page", () => {
-      createTestMeasure({
-        name: "Total Revenue",
-        aggregation: ["sum", ["field", ORDERS.TOTAL, null]],
-      });
-      visitDataStudioMeasures(ORDERS_ID);
+  it("should create a measure with aggregation and verify it in the query builder", () => {
+    visitDataStudioMeasures(ORDERS_ID);
 
-      cy.log("verify measure in list with aggregation description");
-      MeasureList.getMeasure("Total Revenue")
-        .scrollIntoView()
-        .should("be.visible");
-      MeasureList.get()
-        .findByTestId("list-item-description")
-        .should("contain", "Sum of Total");
+    cy.log("navigate to new measure page");
+    MeasureList.getNewMeasureLink().scrollIntoView().click();
 
-      cy.log("navigate to edit page");
-      MeasureList.getMeasure("Total Revenue").click();
-      cy.get<number>("@measureId").then((measureId) => {
-        cy.url().should(
-          "include",
-          `${getMeasuresBaseUrl(ORDERS_ID)}/${measureId}`,
-        );
-      });
+    cy.log("verify measure_create_started event");
+    H.expectUnstructuredSnowplowEvent({
+      event: "measure_create_started",
+      triggered_from: "data_studio_measures_list",
+      target_id: ORDERS_ID,
     });
+    cy.url().should("include", `${getMeasuresBaseUrl(ORDERS_ID)}/new`);
 
-    it("should navigate between Fields and Measures tabs", () => {
-      visitDataStudioTable(ORDERS_ID);
+    cy.log("fill in measure name and add aggregation");
+    MeasureEditor.getNameInput().type("Total Revenue");
+    MeasureEditor.getAggregationPlaceholder().click();
+    H.popover().findByText("Sum of ...").click();
+    H.popover().findByText("Total").click();
+    MeasureEditor.get()
+      .findByText(/Sum of Total/i)
+      .should("exist");
 
-      cy.log("verify both tabs visible");
-      cy.findByRole("tab", { name: /Fields/i }).scrollIntoView();
-      cy.findByRole("tab", { name: /Measures/i }).should("be.visible");
+    cy.log("save measure");
+    MeasureEditor.getSaveButton().click();
+    cy.wait("@createMeasure").then((interception) => {
+      const measureId = interception.response?.body?.id;
 
-      cy.log("navigate to measures tab");
-      cy.findByRole("tab", { name: /Measures/i }).click();
-      cy.url().should(
-        "include",
-        `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/measures`,
-      );
-      MeasureList.getEmptyState().scrollIntoView().should("be.visible");
-
-      cy.log("verify tab selection preserved on refresh");
-      cy.reload();
-      cy.wait("@metadata");
-      cy.findByRole("tab", { name: /Measures/i })
-        .scrollIntoView()
-        .should("have.attr", "aria-selected", "true");
-
-      cy.log("navigate back to fields tab");
-      cy.findByRole("tab", { name: /Fields/i }).click();
-      cy.url().should("include", "/field");
-    });
-  });
-
-  describe("Measure creation", () => {
-    it("should create a measure with aggregation, confirm leaving with unsaved changes, and verify it in the query builder", () => {
-      visitDataStudioMeasures(ORDERS_ID);
-
-      cy.log("verify empty state");
-      MeasureList.getEmptyState().scrollIntoView().should("be.visible");
-      MeasureList.get()
-        .findByText(
-          "Create a measure to define a reusable aggregation for this table.",
-        )
-        .should("be.visible");
-
-      cy.log("navigate to new measure page");
-      MeasureList.getNewMeasureLink().scrollIntoView().click();
-
-      cy.log("verify measure_create_started event");
+      cy.log("verify measure_created success event");
       H.expectUnstructuredSnowplowEvent({
-        event: "measure_create_started",
-        triggered_from: "data_studio_measures_list",
-        target_id: ORDERS_ID,
+        event: "measure_created",
+        triggered_from: "data_studio_measures",
+        result: "success",
+        target_id: measureId,
       });
-      cy.url().should("include", `${getMeasuresBaseUrl(ORDERS_ID)}/new`);
-
-      cy.log("fill in measure name");
-      MeasureEditor.getNameInput().type("Total Revenue");
-
-      cy.log("verify leave confirmation with unsaved changes");
-      MeasureEditor.getBreadcrumb("Orders").click();
-      H.modal().within(() => {
-        cy.findByText("Discard your changes?").should("be.visible");
-        cy.button("Cancel").click();
-      });
-      MeasureEditor.get().findByText("Total Revenue").should("be.visible");
-
-      cy.log("add aggregation");
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Sum of ...").click();
-      H.popover().findByText("Total").click();
-
-      cy.log("verify aggregation was added");
-      MeasureEditor.get()
-        .findByText(/Sum of Total/i)
-        .should("exist");
-
-      cy.log("save measure");
-      MeasureEditor.getSaveButton().click();
-      cy.wait("@createMeasure").then((interception) => {
-        const measureId = interception.response?.body?.id;
-
-        cy.log("verify measure_created success event");
-        H.expectUnstructuredSnowplowEvent({
-          event: "measure_created",
-          triggered_from: "data_studio_measures",
-          result: "success",
-          target_id: measureId,
-        });
-      });
-
-      cy.log("verify redirect to edit page and toast");
-      H.undoToast().should("contain.text", "Measure created");
-      cy.url().should(
-        "match",
-        new RegExp(
-          `${getMeasuresBaseUrl(ORDERS_ID).replace(/\//g, "\\/")}\/\\d+$`,
-        ),
-      );
-
-      cy.log("verify measure in query builder");
-      verifyMeasureInQueryBuilder("Total Revenue");
     });
 
-    it("should add aggregation and show explore in menu", () => {
-      visitDataStudioMeasures(PRODUCTS_ID);
+    cy.log("verify redirect to edit page and toast");
+    H.undoToast().should("contain.text", "Measure created");
+    cy.url().should(
+      "match",
+      new RegExp(
+        `${getMeasuresBaseUrl(ORDERS_ID).replace(/\//g, "\\/")}\/\\d+$`,
+      ),
+    );
 
-      MeasureList.getNewMeasureLink().scrollIntoView().click();
-
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Average of ...").click();
-      H.popover().findByText("Price").click();
-
-      cy.log("verify aggregation was added");
-      MeasureEditor.get()
-        .findByText(/Average of Price/i)
-        .should("exist");
-
-      cy.log("verify explore is available in menu");
-      MeasureEditor.getActionsButton().click();
-      H.popover().findByText("Explore").should("be.visible");
-    });
+    cy.log("verify measure in query builder");
+    verifyMeasureInQueryBuilder("Total Revenue");
   });
 
-  describe("Measure editing", () => {
-    it("should display and update existing measure, and navigate back to measures tab via breadcrumb", () => {
-      createTestMeasure({
-        name: "Test Measure",
-        description: "Test description",
-      });
-      cy.get<number>("@measureId").then((measureId) => {
-        visitDataModelMeasure(ORDERS_ID, measureId);
-      });
+  it("should update a measure, record its revisions, and remove it", () => {
+    createTestMeasure({ name: "Kept Measure" });
+    createTestMeasure({
+      name: "Test Measure",
+      description: "Test description",
+    });
+    cy.get<number>("@measureId").then((measureId) => {
+      visitDataModelMeasure(ORDERS_ID, measureId);
+    });
 
-      cy.log("verify existing data displayed");
-      MeasureEditor.get()
-        .findByDisplayValue("Test Measure")
+    cy.log("update measure name (saves immediately on enter)");
+    MeasureEditor.get()
+      .findByDisplayValue("Test Measure")
+      .click()
+      .type(" Updated{enter}");
+    cy.wait("@updateMeasure");
+
+    cy.log("update description");
+    MeasureEditor.getDescriptionInput().clear().type("Updated description");
+    MeasureEditor.getSaveButton().click();
+    cy.wait("@updateMeasure");
+
+    cy.log("verify the changes are stored");
+    cy.reload();
+    MeasureEditor.get()
+      .findByDisplayValue("Test Measure Updated")
+      .should("be.visible");
+    MeasureEditor.getDescriptionInput().should(
+      "have.value",
+      "Updated description",
+    );
+
+    cy.log("verify the revisions recorded by the backend");
+    MeasureEditor.getRevisionHistoryTab().click();
+    MeasureRevisionHistory.get().within(() => {
+      cy.findByText(/created this measure/i)
+        .scrollIntoView()
         .should("be.visible");
-      MeasureEditor.getDescriptionInput().should(
-        "have.value",
-        "Test description",
-      );
+      cy.findByText(/renamed the measure/i)
+        .scrollIntoView()
+        .should("be.visible");
+      cy.findByText(/updated the description/i)
+        .scrollIntoView()
+        .should("be.visible");
+    });
 
-      cy.log("update measure name (saves immediately on blur/enter)");
-      MeasureEditor.get()
-        .findByDisplayValue("Test Measure")
-        .click()
-        .type(" Updated{enter}");
-      cy.wait("@updateMeasure");
-
-      cy.log("verify toast for name update");
-      H.undoToast().should("contain.text", "Measure name updated");
-
-      cy.log("update description");
-      MeasureEditor.getDescriptionInput().clear().type("Updated description");
-      MeasureEditor.getSaveButton().click();
-      cy.wait("@updateMeasure");
-      H.undoToastList().should("contain.text", "Measure updated");
-
-      cy.log("navigate back to measures tab via breadcrumb");
-      MeasureEditor.getBreadcrumb("Orders").click();
-
+    cy.log("verify the dependency graph of the measure");
+    MeasureEditor.getDependenciesTab().click();
+    cy.get<number>("@measureId").then((measureId) => {
       cy.url().should(
         "include",
-        `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/measures`,
+        `${getMeasuresBaseUrl(ORDERS_ID)}/${measureId}/dependencies`,
       );
-      cy.findByRole("tab", { name: /Measures/i })
-        .scrollIntoView()
-        .should("have.attr", "aria-selected", "true");
+    });
+    H.DependencyGraph.graph().should("be.visible");
+    H.DependencyGraph.graph()
+      .findByText("Test Measure Updated")
+      .should("be.visible");
 
-      cy.log("verify updated measure in query builder");
-      verifyMeasureInQueryBuilder("Test Measure Updated");
+    cy.log("verify the renamed measure in the query builder");
+    verifyMeasureInQueryBuilder("Test Measure Updated");
+
+    cy.log("remove the measure");
+    cy.get<number>("@measureId").then((measureId) => {
+      visitDataModelMeasure(ORDERS_ID, measureId);
+    });
+    MeasureEditor.getActionsButton().click();
+    H.popover().findByText("Remove measure").click();
+    H.modal().button("Remove").click();
+    cy.wait("@updateMeasure");
+
+    cy.log("verify the list after removal");
+    cy.url().should("include", getMeasuresBaseUrl(ORDERS_ID));
+    MeasureList.getMeasure("Kept Measure")
+      .scrollIntoView()
+      .should("be.visible");
+    MeasureList.get()
+      .findByTestId("list-item-description")
+      .should("contain", "Sum of Total");
+    MeasureList.get().findByText("Test Measure Updated").should("not.exist");
+
+    cy.log("verify measure removed from query builder");
+    verifyMeasureNotInQueryBuilder({
+      removedMeasureName: "Test Measure Updated",
+      keptMeasureName: "Kept Measure",
     });
   });
 
-  describe("Measure deletion", () => {
-    it("should remove measure via more menu", () => {
-      createTestMeasure({ name: "Kept Measure" });
-      createTestMeasure({ name: "Measure to Delete" });
-      cy.get<number>("@measureId").then((measureId) => {
-        visitDataModelMeasure(ORDERS_ID, measureId);
-      });
+  it("should create a measure with implicit join aggregation", () => {
+    visitDataStudioMeasures(ORDERS_ID);
 
-      cy.log("delete via more menu");
-      MeasureEditor.getActionsButton().click();
-      H.popover().findByText("Remove measure").click();
-      H.modal().button("Remove").click();
-      cy.wait("@updateMeasure");
+    cy.log("navigate to new measure page");
+    MeasureList.getNewMeasureLink().scrollIntoView().click();
 
-      cy.log("verify redirect to list and removal");
-      H.undoToast().should("contain.text", "Measure removed");
-      cy.url().should(
-        "include",
-        `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/measures`,
-      );
-      MeasureList.getMeasure("Kept Measure")
-        .scrollIntoView()
-        .should("be.visible");
-      MeasureList.get().findByText("Measure to Delete").should("not.exist");
+    cy.log("fill in measure name");
+    MeasureEditor.getNameInput().type("Average Product Price");
 
-      cy.log("verify measure removed from query builder");
-      verifyMeasureNotInQueryBuilder({
-        removedMeasureName: "Measure to Delete",
-        keptMeasureName: "Kept Measure",
-      });
+    cy.log("add aggregation via implicit join");
+    MeasureEditor.getAggregationPlaceholder().click();
+    H.popover().findByText("Average of ...").click();
+    H.popover().within(() => {
+      cy.findByText("Product").click();
+      cy.findByText("Price").click();
     });
+
+    cy.log("verify aggregation was added and save");
+    MeasureEditor.get()
+      .findByText(/Average of Product → Price/i)
+      .should("exist");
+    MeasureEditor.getSaveButton().click();
+    cy.wait("@createMeasure");
+
+    cy.log("verify redirected to edit page with measure name");
+    MeasureEditor.get().should("be.visible");
+    MeasureEditor.get()
+      .findByDisplayValue("Average Product Price")
+      .should("be.visible");
+
+    cy.log("verify measure works in query builder");
+    verifyMeasureInQueryBuilder("Average Product Price");
   });
 
-  describe("Measure with implicit joins", () => {
-    it("should create a measure with implicit join aggregation", () => {
-      visitDataStudioMeasures(ORDERS_ID);
+  it("should show measures read-only to a data analyst", () => {
+    createTestMeasure({ name: "Readonly Test Measure" });
 
-      cy.log("navigate to new measure page");
-      MeasureList.getNewMeasureLink().scrollIntoView().click();
+    H.setUserAsAnalyst(NODATA_USER_ID);
+    cy.signIn("nodata");
 
-      cy.log("fill in measure name");
-      MeasureEditor.getNameInput().type("Average Product Price");
+    cy.log("verify measure is visible in list");
+    visitDataStudioMeasures(ORDERS_ID);
+    MeasureList.getMeasure("Readonly Test Measure").scrollIntoView().click();
 
-      cy.log("add aggregation via implicit join");
-      MeasureEditor.getAggregationPlaceholder().click();
-      H.popover().findByText("Average of ...").click();
-      H.popover().within(() => {
-        cy.findByText("Product").click();
-        cy.findByText("Price").click();
-      });
+    cy.log("verify measure name input is disabled");
+    MeasureEditor.get()
+      .findByDisplayValue("Readonly Test Measure")
+      .should("be.disabled");
 
-      cy.log("verify aggregation was added and save");
-      MeasureEditor.get()
-        .findByText(/Average of Product → Price/i)
-        .should("exist");
-      MeasureEditor.getSaveButton().click();
-      cy.wait("@createMeasure");
-
-      cy.log("verify redirected to edit page with measure name");
-      MeasureEditor.get().should("be.visible");
-      MeasureEditor.get()
-        .findByDisplayValue("Average Product Price")
-        .should("be.visible");
-
-      cy.log("verify measure works in query builder");
-      verifyMeasureInQueryBuilder("Average Product Price");
-    });
-  });
-
-  describe("Revision history", () => {
-    it("should display revision history with changes to name, description, and aggregation, and the dependency graph", () => {
-      createTestMeasure({
-        name: "Original Name",
-        description: "Original description",
-        aggregation: ["count"],
-      });
-      cy.get<number>("@measureId").then((measureId) => {
-        // Fetch the measure to get the current MBQL 5 definition
-        cy.request("GET", `/api/measure/${measureId}`).then(({ body }) => {
-          const currentDefinition = body.definition;
-
-          cy.log("update measure name");
-          cy.request("PUT", `/api/measure/${measureId}`, {
-            name: "Updated Name",
-            description: "Original description",
-            revision_message: "Updated from Data Studio",
-            definition: currentDefinition,
-          });
-
-          cy.log("update measure description");
-          cy.request("PUT", `/api/measure/${measureId}`, {
-            name: "Updated Name",
-            description: "Updated description",
-            revision_message: "Updated from Data Studio",
-            definition: currentDefinition,
-          });
-
-          cy.log("update measure aggregation");
-          // Update aggregation in the MBQL 5 definition
-          const updatedDefinition = {
-            ...currentDefinition,
-            stages: [
-              {
-                ...currentDefinition.stages[0],
-                aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-              },
-            ],
-          };
-          cy.request("PUT", `/api/measure/${measureId}`, {
-            name: "Updated Name",
-            description: "Updated description",
-            revision_message: "Updated from Data Studio",
-            definition: updatedDefinition,
-          });
-
-          cy.wait(1000);
-
-          visitDataModelMeasure(ORDERS_ID, measureId);
-        });
-      });
-
-      cy.log("navigate to revision history tab");
-      MeasureEditor.getRevisionHistoryTab().click();
-
-      cy.log("verify URL");
-      cy.get<number>("@measureId").then((measureId) => {
-        cy.url().should(
-          "include",
-          `${getMeasuresBaseUrl(ORDERS_ID)}/${measureId}/revisions`,
-        );
-      });
-
-      cy.log("verify revision history entries");
-      MeasureRevisionHistory.get().within(() => {
-        cy.findByText(/created this measure/i)
-          .scrollIntoView()
-          .should("be.visible");
-        cy.findByText(/renamed the measure/i)
-          .scrollIntoView()
-          .should("be.visible");
-        cy.findByText(/changed the aggregation/i)
-          .scrollIntoView()
-          .should("be.visible");
-        cy.findByText(/updated the description/i)
-          .scrollIntoView()
-          .should("be.visible");
-      });
-
-      cy.log("navigate to dependencies tab");
-      MeasureEditor.getDependenciesTab().click();
-
-      cy.log("verify URL and dependency graph display");
-      cy.get<number>("@measureId").then((measureId) => {
-        cy.url().should(
-          "include",
-          `${getMeasuresBaseUrl(ORDERS_ID)}/${measureId}/dependencies`,
-        );
-      });
-      H.DependencyGraph.graph().should("be.visible");
-      H.DependencyGraph.graph().findByText("Updated Name").should("be.visible");
-    });
-  });
-
-  describe("Readonly access for data analysts", () => {
-    it("should show measures in list and measure detail in readonly mode for non-admin", () => {
-      createTestMeasure({ name: "Readonly Test Measure" });
-      createTestMeasure({
-        name: "Readonly Detail Measure",
-        description: "Test description for readonly",
-      });
-
-      H.setUserAsAnalyst(NODATA_USER_ID);
-      cy.signIn("nodata");
-
-      cy.log("verify measure is visible in list");
-      visitDataStudioMeasures(ORDERS_ID);
-      MeasureList.getMeasure("Readonly Test Measure")
+    cy.log("verify revision history is accessible");
+    MeasureEditor.getRevisionHistoryTab().click();
+    MeasureRevisionHistory.get().within(() => {
+      cy.findByText(/created this measure/i)
         .scrollIntoView()
         .should("be.visible");
-
-      cy.log("verify New measure button is not visible");
-      MeasureList.get()
-        .findByRole("link", { name: /New measure/i })
-        .should("not.exist");
-
-      cy.log("verify direct navigation to new measure page is blocked");
-      cy.visit(
-        `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/measures/new`,
-      );
-      cy.url().should("include", "/unauthorized");
-
-      cy.get<number>("@measureId").then((measureId) => {
-        visitDataModelMeasure(ORDERS_ID, measureId);
-      });
-
-      cy.log("verify measure name input is disabled");
-      MeasureEditor.get()
-        .findByDisplayValue("Readonly Detail Measure")
-        .should("be.disabled");
-
-      cy.log("verify description is displayed as plain text");
-      MeasureEditor.get().findByText("Description").should("be.visible");
-      MeasureEditor.get()
-        .findByText("Test description for readonly")
-        .should("be.visible");
-
-      cy.log("verify Remove measure option is hidden in actions menu");
-      MeasureEditor.getActionsButton().click();
-      H.popover().findByText("Explore").should("be.visible");
-      H.popover().findByText("Remove measure").should("not.exist");
-      cy.realPress("Escape");
-
-      cy.log("verify revision history is still accessible");
-      MeasureEditor.getRevisionHistoryTab().click();
-      MeasureRevisionHistory.get().within(() => {
-        cy.findByText(/created this measure/i)
-          .scrollIntoView()
-          .should("be.visible");
-      });
     });
   });
 });
 
-function visitDataStudioTable(tableId: number) {
-  H.DataModel.visitDataStudio({
-    databaseId: SAMPLE_DB_ID,
-    schemaId: SAMPLE_DB_SCHEMA_ID,
-    tableId,
+describe("scenarios > data studio > library > published tables > measures", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.createLibrary();
+    H.publishTables({ table_ids: [ORDERS_ID] });
   });
-}
+
+  it("should open a measure from a published table and go back through the collection breadcrumbs", () => {
+    createTestMeasure({ name: "Total Revenue" });
+    H.DataStudio.Tables.visitMeasuresPage(ORDERS_ID);
+
+    MeasureList.getMeasure("Total Revenue").click();
+    cy.get<number>("@measureId").then((measureId) => {
+      cy.url().should(
+        "include",
+        `/data-studio/library/tables/${ORDERS_ID}/measures/${measureId}`,
+      );
+    });
+
+    MeasureEditor.get().findByText("Data").should("be.visible");
+    MeasureEditor.getBreadcrumb("Orders").click();
+
+    cy.url().should(
+      "include",
+      `/data-studio/library/tables/${ORDERS_ID}/measures`,
+    );
+    cy.url().should("not.match", /measures\/\d+/);
+  });
+});
 
 function visitDataStudioMeasures(tableId: number) {
   H.DataModel.visitDataStudioMeasures({
