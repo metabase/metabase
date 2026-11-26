@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
-import { Button, Icon } from "metabase/ui";
+import { Button, Icon, Tooltip } from "metabase/ui";
 import { openSaveDialog } from "metabase/utils/dom";
 
 import { useLazyGetMetabotAnalyticsConversationTextQuery } from "../../api";
@@ -18,7 +18,8 @@ type ConversationDownloadButtonProps = {
 /**
  * Downloads the conversation detail as JSON, exactly as the API sends it. The
  * button is disabled, with a spinner, while the detail is fetched, so a second
- * click can't start a second download; a failure shows a toast.
+ * click can't start a second download; a failure shows a toast. The tooltip
+ * warns about personal data where the admin decides to download and share it.
  */
 export function ConversationDownloadButton({
   conversationId,
@@ -50,12 +51,18 @@ export function ConversationDownloadButton({
   };
 
   return (
-    <Button
-      leftSection={<Icon name="download" aria-hidden />}
-      loading={isFetching}
-      onClick={handleClick}
+    <Tooltip
+      label={t`The file may contain personal data about the conversation's users and rows from connected databases.`}
+      multiline
+      maw="20rem"
     >
-      {t`Download JSON`}
-    </Button>
+      <Button
+        leftSection={<Icon name="download" aria-hidden />}
+        loading={isFetching}
+        onClick={handleClick}
+      >
+        {t`Download JSON`}
+      </Button>
+    </Tooltip>
   );
 }

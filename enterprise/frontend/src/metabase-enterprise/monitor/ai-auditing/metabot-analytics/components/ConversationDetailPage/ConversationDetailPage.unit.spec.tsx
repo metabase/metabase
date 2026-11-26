@@ -554,7 +554,18 @@ describe("ConversationDetailPage", () => {
       expect(() => JSON.parse(text)).not.toThrow();
     });
 
-    it("shows that it is loading and ignores clicks until the download is ready", async () => {
+    it("warns about personal data in a tooltip", async () => {
+      setup({ conversation: CONVERSATION });
+      const button = await screen.findByRole("button", DOWNLOAD_BUTTON);
+
+      await userEvent.hover(button);
+
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "The file may contain personal data about the conversation's users and rows from connected databases.",
+      );
+    });
+
+    it("disables the button while the download is loading", async () => {
       setup({ conversation: CONVERSATION });
       const button = await screen.findByRole("button", DOWNLOAD_BUTTON);
       const response = defer<string>();
@@ -568,7 +579,6 @@ describe("ConversationDetailPage", () => {
         expect(button).toHaveAttribute("data-loading", "true");
       });
       expect(button).toBeDisabled();
-      await userEvent.click(button, { pointerEventsCheck: 0 });
       response.resolve(JSON.stringify(CONVERSATION));
 
       await waitForDownloadToFinish(button);

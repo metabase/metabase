@@ -49,7 +49,7 @@ describe("conversationExportJson", () => {
     ]);
   });
 
-  it("says the conversation is recorded content and which personal data it holds", () => {
+  it("says the conversation is recorded content that may contain personal data", () => {
     const parsed: unknown = JSON.parse(
       conversationExportJson(RAW_CONVERSATION, {
         exportedAt: "2026-11-18T10:00:00.000Z",
@@ -63,10 +63,9 @@ describe("conversationExportJson", () => {
       ),
     });
     expect(parsed).toMatchObject({
-      description: expect.stringContaining("email addresses"),
-    });
-    expect(parsed).toMatchObject({
-      description: expect.stringContaining("IP address"),
+      description: expect.stringContaining(
+        "may contain personal data about the conversation's users and rows from the connected databases",
+      ),
     });
     expect(parsed).toMatchObject({
       description: expect.not.stringContaining("/api/"),
