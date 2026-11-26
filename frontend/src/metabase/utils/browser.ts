@@ -62,11 +62,6 @@ export function stringifyHashOptions(options: querystring.ParsedUrlQueryInput) {
   return querystring.stringify(options).replace(/=true\b/g, "");
 }
 
-export function isMac() {
-  const { platform = "" } = navigator;
-  return Boolean(platform.match(/^Mac/));
-}
-
 export function isWindows() {
   return /Win/.test(navigator.platform);
 }
@@ -91,5 +86,4 @@ export const isTouchDevice = () => {
   return typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
 };
 
-export const METAKEY = isMac() ? "⌘" : "Ctrl";
-export const ALTKEY = isMac() ? "⌥" : "Alt";
+export { ALTKEY, METAKEY, isMac } from "./key-labels";

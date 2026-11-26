@@ -115,11 +115,14 @@
 (defn- table-field-values-changes
   "Fetch distinct values for `fields` from `table` and return `{:queries n :changes pairs}`: the number of warehouse
   queries and, for each of `fields`, a pair of the Field and what [[field-values/field-values-change]] returns for it,
-  or the Throwable fetching or comparing its values threw."
+  or the Throwable fetching or comparing its values threw.
+
+  Nested fields (with a `:parent_id`) and unfolded JSON fields (with an `:nfc_path`) do not go in the UNION batch query,
+  because it uses only the field name, which is not a column for these fields."
   [database table fields fvs-map]
   (if (empty? fields)
     {:queries 0 :changes []}
-    (let [{nested true plain false}    (group-by #(boolean (:parent_id %)) fields)
+    (let [{nested true plain false}    (group-by (comp boolean (some-fn :parent_id :nfc_path)) fields)
           batch?                       (can-batch-distinct? database table)
           batch-fields                 (when batch? plain)
           per-field-fields             (concat nested (when-not batch? plain))

@@ -1,0 +1,74 @@
+{
+  "name": "@metabase/ui",
+  "version": "0.1.0",
+  "description": "Metabase's UI components, theme and icons, for Metabase's own products",
+  "license": "SEE LICENSE IN LICENSE.txt",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/metabase/metabase.git",
+    "directory": "frontend/ui-package"
+  },
+  "files": [
+    "dist",
+    "LICENSE.txt",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "**/*.css",
+    "./dist/src/metabase/ui/components/overlays/Popover/register-popover-dropdown.js",
+    "./dist/src/metabase/dayjs/index.js"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": {
+      "types": "./dist/css.d.ts",
+      "default": "./dist/styles.css"
+    },
+    "./fonts.css": {
+      "types": "./dist/css.d.ts",
+      "default": "./dist/fonts.css"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vite build && bun run scripts/build-types.ts",
+    "type-check": "../../node_modules/typescript7/bin/tsc --noEmit -p tsconfig.json && ../../node_modules/typescript7/bin/tsc --noEmit -p tsconfig.node.json && ../../node_modules/typescript7/bin/tsc --noEmit -p tsconfig.spec.json",
+    "check:dist": "bun run scripts/check-dist.ts",
+    "check:package-versions": "bun run scripts/check-package-versions.ts",
+    "pack": "bun run build && bun run scripts/pack.ts",
+    "smoke": "bun run scripts/smoke.ts"
+  },
+  "dependencies": {
+    "@floating-ui/dom": "^1.7.4",
+    "@juggle/resize-observer": "^3.4.0",
+    "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.13.2",
+    "@tanstack/table-core": "^8.21.3",
+    "classnames": "^2.1.3",
+    "color": "^5.0.3",
+    "csv-parse": "^7.0.2",
+    "get-nonce": "^1.0.1",
+    "kbar": "0.1.0-beta.45",
+    "react-use": "^17.5.1",
+    "ttag": "1.7.21",
+    "underscore": "^1.13.8"
+  },
+  "peerDependencies": {
+    "@mantine/core": "~8.3.18",
+    "@mantine/dates": "~8.3.18",
+    "@mantine/hooks": "~8.3.18",
+    "dayjs": "^1.11.18",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}
