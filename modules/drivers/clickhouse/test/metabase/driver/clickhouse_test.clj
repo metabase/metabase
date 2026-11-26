@@ -1296,7 +1296,6 @@
                (is (instance? Throwable result))
                (is (re-find #"(?i)cancel" (str (ex-message result) (some-> result ex-cause ex-message))))))
            (finally
-             (jdbc/execute! admin [(format "KILL QUERY WHERE user = '%s' SYNC" user)])
              (driver/destroy-workspace-isolation! :clickhouse (mt/db) workspace))))))))
 
 (deftest ^:synchronized init-workspace-isolation-refuses-objects-created-after-the-check-test

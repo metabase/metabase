@@ -3073,6 +3073,7 @@
            events
            interestingness
            lib
+           lib.be
            lib.schema
            models
            premium-features

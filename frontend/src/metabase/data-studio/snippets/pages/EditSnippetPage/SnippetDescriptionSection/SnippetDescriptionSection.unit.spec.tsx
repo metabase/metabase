@@ -38,4 +38,12 @@ describe("SnippetDescriptionSection", () => {
 
     expect(screen.getByPlaceholderText("No description")).toBeDisabled();
   });
+
+  it("renders the description as markdown", () => {
+    setup({ description: "**Bold text** and *italic text*" });
+
+    expect(screen.getByText("Bold text").tagName).toBe("STRONG");
+    expect(screen.getByText("italic text").tagName).toBe("EM");
+    expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument();
+  });
 });
