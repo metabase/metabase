@@ -1317,9 +1317,8 @@
  {:id     "unicode-decomposed-accent"
   :focus  "decomposed accent queried against both Unicode spellings"
   :note
-  ["The query uses e plus U+0301. MySQL drops the combining mark and also finds Cafe and Cafeteria."
-   "PostgreSQL returns only the card with the same Unicode spelling. This records a MySQL"
-   "tokenization bug."]
+  ["The query uses e plus U+0301. Every word engine keeps the combining mark in the word, so each"
+   "returns only the card with the same Unicode spelling."]
   :config "simple"
   :query  "cafe\u0301"
   :docs   {:A {:name "Café sales"}
@@ -1328,7 +1327,7 @@
            :D {:name "Cafeteria sales"}}
   :expect {:in-place       [:B]
            :appdb-h2       [:B]
-           :appdb-mysql    [:B :C :D]
+           :appdb-mysql    [:B]
            :appdb-postgres [:B]
            :semantic       {:keyword [:B]
                             :vector  [:A :B :C]}}}

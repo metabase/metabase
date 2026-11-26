@@ -25,10 +25,6 @@
     :text  (str "MySQL also matches space-separated words for a quoted email address. "
                 "PostgreSQL preserves the email token.")
     :holds {:appdb-mysql {:B true, :D true}, :appdb-postgres {:B false, :D false}}}
-   {:case  "unicode-decomposed-accent"
-    :text  (str "A decomposed accent broadens MySQL's query to unaccented prefixes, including \"Cafeteria\". "
-                "PostgreSQL returns only the card with the same Unicode spelling.")
-    :holds {:appdb-mysql {:C true, :D true}, :appdb-postgres {:B true, :C false, :D false}}}
    {:case  "english-not-stopword"
     :text  (str "With the English config, `orders not shipped` also matches \"Orders shipped\", the "
                 "opposite of what was asked.")

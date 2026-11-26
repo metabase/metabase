@@ -95,22 +95,22 @@
               :all-equal 8
               :mean-hits {:in-place               89/35
                           :appdb-h2               3/2
-                          :appdb-mysql            61/35
+                          :appdb-mysql            12/7
                           :appdb-postgres         117/70
                           :semantic-only          94/35
                           :semantic-with-fallback 207/70}
               :pairwise  {[:in-place :appdb-h2]                     [42 28 0 0]
-                          [:in-place :appdb-mysql]                  [16 41 12 1]
+                          [:in-place :appdb-mysql]                  [17 41 11 1]
                           [:in-place :appdb-postgres]               [18 39 10 3]
                           [:in-place :semantic-only]                [22 25 21 2]
                           [:in-place :semantic-with-fallback]       [23 22 23 2]
-                          [:appdb-h2 :appdb-mysql]                  [29 19 19 3]
+                          [:appdb-h2 :appdb-mysql]                  [30 19 18 3]
                           [:appdb-h2 :appdb-postgres]               [28 19 20 3]
                           [:appdb-h2 :semantic-only]                [14 13 40 3]
                           [:appdb-h2 :semantic-with-fallback]       [14 10 44 2]
-                          [:appdb-mysql :appdb-postgres]            [57 8 5 0]
-                          [:appdb-mysql :semantic-only]             [16 9 41 4]
-                          [:appdb-mysql :semantic-with-fallback]    [22 2 45 1]
+                          [:appdb-mysql :appdb-postgres]            [58 7 5 0]
+                          [:appdb-mysql :semantic-only]             [16 9 42 3]
+                          [:appdb-mysql :semantic-with-fallback]    [22 2 46 0]
                           [:appdb-postgres :semantic-only]          [18 8 41 3]
                           [:appdb-postgres :semantic-with-fallback] [26 0 44 0]
                           [:semantic-only :semantic-with-fallback]  [59 0 11 0]}}
