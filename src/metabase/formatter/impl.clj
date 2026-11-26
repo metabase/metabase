@@ -332,7 +332,8 @@
      (number-formatter col visualization-settings)
 
      (or (isa? (:semantic_type col) :type/SerializedJSON)
-         (isa? ((some-fn :effective_type :base_type) col) :type/Dictionary))
+         (isa? ((some-fn :effective_type :base_type) col) :type/Dictionary)
+         (isa? ((some-fn :effective_type :base_type) col) :type/JSON))
      dictionary-formatter
 
      :else

@@ -321,6 +321,20 @@
       (is (= "variant works"
              (format "variant works" {}))))))
 
+(deftest json-formatting-test
+  (testing "Map values in JSON columns are formatted as JSON"
+    (doseq [col [{:name "J", :display_name "J", :base_type :type/JSON}
+                 {:name "J", :display_name "J", :base_type :type/*, :effective_type :type/JSON}]]
+      (let [format (formatter/create-formatter "UTC" col {})]
+        (is (= "{\"a.b\":1,\"c\":[\"x\",\"y\"]}"
+               (format (java.util.LinkedHashMap. {"a.b" 1, "c" ["x" "y"]}))))
+        (is (= "{\"a\":{\"b\":1}}"
+               (format {:a {:b 1}}))))))
+  (testing "String values in JSON columns do not change"
+    (let [format (formatter/create-formatter "UTC" {:name "J", :display_name "J", :base_type :type/JSON} {})]
+      (is (= "{\"a\": 1}"
+             (format "{\"a\": 1}"))))))
+
 (deftest global-settings-should-not-override-column-settings-test
   (testing "Column settings should take precedence over global currency settings"
     (mt/with-temporary-setting-values [custom-formatting {:type/Currency {:currency "AUD"
