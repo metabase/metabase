@@ -67,6 +67,7 @@
    [:document  {:optional true} [:set ::documents.schema/document.id]]
    [:sandbox   {:optional true} [:set ::lib.schema.id/sandbox]]
    [:segment   {:optional true} [:set ::lib.schema.id/segment]]
+   [:measure   {:optional true} [:set ::lib.schema.id/measure]]
    [:action    {:optional true} [:set ::lib.schema.id/action]]])
 
 (mr/def ::analysis-finding-error

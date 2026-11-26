@@ -54,6 +54,11 @@
            (assoc strategy :avg-execution-ms (or et 0)))
     strategy))
 
+(defn card-cache-strategy
+  "The cache strategy for running `query`, a query of `card`, on the dashboard with `dashboard-id` (nil for none)."
+  [card dashboard-id query]
+  (enrich-strategy (cache-strategy card dashboard-id) query))
+
 (mu/defn- explict-stage-references :- [:set :int]
   [parameters :- [:maybe ::parameters.schema/parameters]]
   (into #{}
@@ -126,8 +131,7 @@
                                                     :parameters  (not-empty (cond-> parameters
                                                                               filter-stage-added? add-stage-to-temporal-unit-parameters))
                                                     :middleware  (not-empty middleware)))
-          cs                      (-> (cache-strategy card (:dashboard-id ids))
-                                      (enrich-strategy query))]
+          cs                      (card-cache-strategy card (:dashboard-id ids) query)]
       (-> query
           (assoc :cache-strategy cs)
           (->> (lib/normalize ::lib.schema/query))))))

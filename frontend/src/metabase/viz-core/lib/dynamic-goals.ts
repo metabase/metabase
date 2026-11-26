@@ -1,0 +1,411 @@
+import { P, match } from "ts-pattern";
+import { t } from "ttag";
+
+import { color } from "metabase/ui/colors";
+import type { ColorGetter } from "metabase/ui/colors/types";
+import type {
+  GoalForeignColumnRef,
+  GoalForeignEntityRef,
+  GoalSegment,
+  GoalSourceResult,
+  GoalSourceResults,
+  GoalValue,
+  RowValue,
+  VisualizationDisplay,
+  VisualizationSettings,
+} from "metabase-types/api";
+import {
+  isGoalForeignColumnRef,
+  isGoalSegment,
+  isGoalSelfColumnRef,
+  isGoalStaticValue,
+  isGoalValue,
+} from "metabase-types/guards";
+
+import type {
+  ComputedVisualizationSettings,
+  GoalCard,
+  GoalData,
+  GoalRefError,
+  GoalRefErrorReason,
+  GoalSourceKind,
+  GoalValueResult,
+  ResolvedGoalSegment,
+  ResolvedOpenEndedGoalSegment,
+} from "../types";
+
+import {
+  GOAL_SETTINGS,
+  type GoalSettingKey,
+  getDynamicGoalSettingKeys,
+} from "./dynamic-goal-settings";
+
+export function resolveGoalValue(
+  data: GoalData,
+  sourceResults: GoalSourceResults,
+  goalValue: GoalValue | null | undefined,
+): GoalValueResult {
+  if (goalValue == null) {
+    return { value: null };
+  }
+
+  if (isGoalStaticValue(goalValue)) {
+    return { value: goalValue };
+  }
+
+  if (isGoalSelfColumnRef(goalValue)) {
+    return resolveSelfColumnValue(data, goalValue);
+  }
+
+  return resolveForeignColumnRef(sourceResults, goalValue);
+}
+
+export function resolveSelfColumnValue(
+  data: GoalData,
+  columnName: string,
+): GoalValueResult {
+  const columnIndex = data.cols.findIndex(
+    (column) => column.name === columnName,
+  );
+
+  if (columnIndex === -1) {
+    return {
+      value: null,
+      error: {
+        column: columnName,
+        reason: "column-not-found",
+      },
+    };
+  }
+
+  const value = toNumberOrNull(data.rows[0]?.[columnIndex]);
+
+  if (value == null) {
+    return {
+      value: null,
+      error: {
+        column: columnName,
+        reason: "not-a-number",
+      },
+    };
+  }
+
+  return { value };
+}
+
+export function resolveForeignColumnRef(
+  sourceResults: GoalSourceResults,
+  ref: GoalForeignColumnRef,
+): GoalValueResult {
+  const { type, id, column } = ref;
+  const result = sourceResults[type]?.[id];
+
+  // a source with no result never ran
+  if (result == null) {
+    return {
+      value: null,
+      error: { type, id, column, reason: "query-failed" },
+    };
+  }
+
+  if (result.status === "failed" || result.data == null) {
+    return {
+      value: null,
+      error: {
+        type,
+        id,
+        column,
+        reason: getFailedQueryReason(result.error_type),
+        message: result.error,
+      },
+    };
+  }
+
+  const columnIndex = result.data.cols.findIndex(
+    (resultColumn) => resultColumn.name === column,
+  );
+
+  if (columnIndex === -1) {
+    return {
+      value: null,
+      error: {
+        type,
+        id,
+        column,
+        reason: "column-not-found",
+        message: t`Column not found`,
+      },
+    };
+  }
+
+  const value = toNumberOrNull(result.data.rows[0]?.[columnIndex]);
+
+  if (value == null) {
+    return {
+      value: null,
+      error: {
+        type,
+        id,
+        column,
+        reason: "not-a-number",
+        message: t`Column value is not a number`,
+      },
+    };
+  }
+
+  return { value };
+}
+
+function getFailedQueryReason(
+  errorType: GoalSourceResult["error_type"],
+): GoalRefErrorReason {
+  return match(errorType)
+    .returnType<GoalRefErrorReason>()
+    .with("too-many-rows", () => "too-many-rows")
+    .with("not-found", () => "source-not-found")
+    .with("has-parameters", () => "has-parameters")
+    .otherwise(() => "query-failed");
+}
+
+function toNumberOrNull(raw: RowValue | undefined): number | null {
+  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+}
+
+export function getNumericGoalValue(
+  settings: VisualizationSettings,
+): number | null {
+  const value = settings["graph.goal_value"];
+  return isGoalStaticValue(value) ? value : null;
+}
+
+// Users enter "50" for 50%, while the axis will use 0.5
+export const getGoalAxisValue = (goalValue: number, isNormalized: boolean) =>
+  isNormalized ? goalValue / 100 : goalValue;
+
+export const getGoalLineValue = (
+  settings: VisualizationSettings,
+  isNormalized: boolean,
+): number | null => {
+  const goalValue = getNumericGoalValue(settings);
+
+  return settings["graph.show_goal"] && goalValue !== null
+    ? getGoalAxisValue(goalValue, isNormalized)
+    : null;
+};
+
+export function isDynamicGoalSetting(
+  display: VisualizationDisplay | undefined,
+  key: GoalSettingKey,
+): boolean {
+  return getDynamicGoalSettingKeys(display).includes(key);
+}
+
+export const getGoalErrorMessage = (
+  { reason, message }: GoalRefError,
+  sourceKind?: GoalSourceKind,
+) =>
+  match(reason)
+    .with("query-failed", () => message ?? t`Couldn't load this value`)
+    .with("source-not-found", () => getMissingSourceMessage(sourceKind))
+    .with("too-many-rows", () => getTooManyRowsMessage(sourceKind))
+    .with("has-parameters", () => getHasParametersMessage(sourceKind))
+    .with("column-not-found", () => t`This column no longer exists`)
+    .with("not-a-number", () => t`This value isn't a number`)
+    .exhaustive();
+
+const getMissingSourceMessage = (sourceKind: GoalSourceKind | undefined) =>
+  match(sourceKind)
+    .with("question", () => t`This question no longer exists`)
+    .with("model", () => t`This model no longer exists`)
+    .with("metric", () => t`This metric no longer exists`)
+    .with("measure", () => t`This measure no longer exists`)
+    // a deleted card can't tell which kind it was
+    .with(undefined, () => t`This source no longer exists`)
+    .exhaustive();
+
+const getTooManyRowsMessage = (sourceKind: GoalSourceKind | undefined) =>
+  match(sourceKind)
+    .with(
+      "question",
+      () => t`The question's result must be a single value or row.`,
+    )
+    .with("model", () => t`The model's result must be a single value or row.`)
+    .with("metric", () => t`The metric's result must be a single value or row.`)
+    .with(
+      "measure",
+      () => t`The measure's result must be a single value or row.`,
+    )
+    .with(undefined, () => t`The result must be a single value or row.`)
+    .exhaustive();
+
+const getHasParametersMessage = (sourceKind: GoalSourceKind | undefined) =>
+  match(sourceKind)
+    .with(
+      "question",
+      () =>
+        t`This question uses variables, directly or through a question it's built on. A goal runs on its own and can't fill them in, so pick a question without variables.`,
+    )
+    .with(
+      "model",
+      () =>
+        t`This model is built on a question that uses variables. A goal runs on its own and can't fill them in, so pick a source without variables.`,
+    )
+    .with(
+      "metric",
+      () =>
+        t`This metric is built on a question that uses variables. A goal runs on its own and can't fill them in, so pick a source without variables.`,
+    )
+    // measures can't have variables; sourceKind can be undefined e.g. for deleted entities
+    .with(
+      P.union("measure", undefined),
+      () =>
+        t`This source uses variables. A goal runs on its own and can't fill them in, so pick a source without variables.`,
+    )
+    .exhaustive();
+
+function isGoalSettingActive(
+  settings: VisualizationSettings,
+  key: GoalSettingKey,
+): boolean {
+  return key !== "graph.goal_value" || settings["graph.show_goal"] === true;
+}
+
+export function needsGraphGoalResolution(
+  display: VisualizationDisplay | undefined,
+  settings: VisualizationSettings,
+): boolean {
+  const goal = settings["graph.goal_value"];
+
+  return (
+    isGoalSettingActive(settings, "graph.goal_value") &&
+    goal != null &&
+    !isGoalStaticValue(goal) &&
+    isDynamicGoalSetting(display, "graph.goal_value")
+  );
+}
+
+// Hide an unresolved goal line: drawing it at a fallback value would misrepresent the data.
+export function applyGraphGoalValue(
+  settings: ComputedVisualizationSettings,
+  value: number | null,
+): ComputedVisualizationSettings {
+  return value == null
+    ? { ...settings, "graph.show_goal": false, "graph.goal_value": null }
+    : { ...settings, "graph.goal_value": value };
+}
+
+function validGoalSegments(segments: unknown): GoalSegment[] {
+  return Array.isArray(segments) ? segments.filter(isGoalSegment) : [];
+}
+
+export function getGoalSegmentBounds(segments: unknown): (GoalValue | null)[] {
+  return validGoalSegments(segments).flatMap((segment) => [
+    segment.min,
+    segment.max,
+  ]);
+}
+
+export function getGoalValues(
+  settings: VisualizationSettings,
+  keys: GoalSettingKey[],
+): GoalValue[] {
+  return keys.flatMap((key) => {
+    if (!isGoalSettingActive(settings, key)) {
+      return [];
+    }
+
+    const setting: unknown = settings[key];
+
+    return match(GOAL_SETTINGS[key])
+      .with("value", () => (isGoalValue(setting) ? [setting] : []))
+      .with("segments", () => getGoalSegmentBounds(setting).filter(isGoalValue))
+      .exhaustive();
+  });
+}
+
+export function resolveOpenEndedGoalSegments(
+  data: GoalData,
+  sourceResults: GoalSourceResults,
+  segments: GoalSegment[] | undefined,
+  getColor: ColorGetter = color,
+): ResolvedOpenEndedGoalSegment[] {
+  return validGoalSegments(segments).flatMap((segment) => {
+    // a bound that can't resolve counts as unset
+    const min = resolveGoalValue(data, sourceResults, segment.min).value;
+    const max = resolveGoalValue(data, sourceResults, segment.max).value;
+
+    if (min == null && max == null) {
+      return [];
+    }
+
+    return [
+      {
+        color: getSegmentColor(segment, getColor),
+        label: segment.label,
+        min,
+        max,
+      },
+    ];
+  });
+}
+
+export function resolveGoalSegments(
+  data: GoalData,
+  sourceResults: GoalSourceResults,
+  segments: GoalSegment[] | undefined,
+  getColor: ColorGetter = color,
+): ResolvedGoalSegment[] {
+  return resolveOpenEndedGoalSegments(
+    data,
+    sourceResults,
+    segments,
+    getColor,
+  ).filter(isClosedGoalSegment);
+}
+
+function isClosedGoalSegment(
+  segment: ResolvedOpenEndedGoalSegment,
+): segment is ResolvedGoalSegment {
+  return segment.min != null && segment.max != null;
+}
+
+export function getSegmentColor(
+  segment: GoalSegment,
+  getColor: ColorGetter = color,
+): string {
+  return segment.color ?? getColor("text-secondary");
+}
+
+export function getGoalErrors(results: GoalValueResult[]): GoalRefError[] {
+  return results.flatMap((result) => (result.error ? [result.error] : []));
+}
+
+export function getGoalSources(
+  values: (GoalValue | null | undefined)[],
+): GoalForeignEntityRef[] {
+  const sources = new Map(
+    values
+      .filter(isGoalForeignColumnRef)
+      .map((ref) => [`${ref.type}:${ref.id}`, toGoalSource(ref)]),
+  );
+
+  return Array.from(sources.values()).sort(
+    (a, b) => a.type.localeCompare(b.type) || a.id - b.id,
+  );
+}
+
+export function getChartGoalSources(card: GoalCard): GoalForeignEntityRef[] {
+  return getGoalSources(
+    getGoalValues(
+      card.visualization_settings ?? {},
+      getDynamicGoalSettingKeys(card.display),
+    ),
+  );
+}
+
+function toGoalSource({
+  type,
+  id,
+}: GoalForeignEntityRef): GoalForeignEntityRef {
+  return { type, id };
+}

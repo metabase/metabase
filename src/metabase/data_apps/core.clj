@@ -73,6 +73,14 @@
    _card-id  :- ::lib.schema.id/card]
   nil)
 
+(defenterprise-schema goal-source-refusals :- [:map-of [:tuple :string :int] :string]
+  "Refusal messages for the dynamic goal `sources` that `data-app` may not run, keyed by `[type id]`; none without the
+  data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app :- ::data-apps.schema/data-app-info
+   _sources  :- [:sequential [:map [:type :string] [:id :int]]]]
+  {})
+
 (defenterprise-schema check-action :- :nil
   "Throws a 400 unless `data-app` may run the action with `action-id`, after a read check of the action; does nothing
   without the data-apps feature."

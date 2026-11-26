@@ -37,7 +37,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals])
   (:import
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
@@ -96,15 +97,26 @@
     :else
     (str value)))
 
-(defn get-color-from-segment
-  "Returns the color of the first segment who's max is higher than value and min is lower than value"
-  [viz-settings value]
-  (let [{segments :scalar.segments} viz-settings
-        ->min (fn [min] (if (number? min) min Double/NEGATIVE_INFINITY))
-        ->max (fn [max] (if (number? max) max Double/POSITIVE_INFINITY))]
+(defn- scalar-segments
+  "Resolve column names in scalar segment bounds using `data`, leaving a bound that can't resolve unset. Omit segments
+  with no bounds. Entity references must already be resolved by `metabase.channel.render.card`."
+  [viz-settings data]
+  (filterv (fn [{:keys [min max]}]
+             (or (some? min) (some? max)))
+           (dynamic-goals/resolve-segments (:scalar.segments viz-settings)
+                                           #(dynamic-goals/resolve-self-column-value % data))))
+
+(defn- scalar-color
+  "Return the color of the first segment containing `value`, or nil if none matches or `value` is not numeric.
+  Like the app, a numeric string counts as its number (\"42\" but not \"42%\") and a segment without a color gets
+  the default fallback."
+  [segments value]
+  (when-let [value (cond
+                     (number? value) value
+                     (string? value) (parse-double value))]
     (some (fn [{:keys [min max color]}]
-            (when (<= (->min min) value (->max max))
-              color))
+            (when (<= (or min Double/NEGATIVE_INFINITY) value (or max Double/POSITIVE_INFINITY))
+              (or color style/color-text-secondary)))
           segments)))
 
 ;;; --------------------------------------------------- Rendering ----------------------------------------------------
@@ -305,6 +317,7 @@
    [:channel.render/include-description?       {:description "default: false", :optional true} :boolean]
    [:channel.render/disable-links?             {:description "default: false", :optional true} :boolean]
    [:channel.render/include-inline-parameters? {:description "default: false", :optional true} :boolean]
+   [:channel.render/goal-values                {:description "resolves the card's dynamic goals", :optional true} [:maybe ::dynamic-goals/goal-values]]
    [:channel.render/padding-x                  {:description "default: 0, horizontal pixels around image", :optional true} [:maybe :int]]
    [:channel.render/padding-y                  {:description "default: 0, vertical pixels around image", :optional true} [:maybe :int]]
    [:channel.render/scale                      {:description "default: 1.0, a factor, or a fn of the laid-out content's logical width/height returning one", :optional true} [:maybe [:or number? ifn?]]]])
@@ -727,7 +740,7 @@
       (dissoc :result)))
 
 (mu/defmethod render :scalar :- ::RenderedPartCard
-  [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
+  [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings] :as data}]
   (let [field-name    (:scalar.field viz-settings)
         [row-idx col] (or (when field-name
                             (get-col-by-name cols field-name))
@@ -735,7 +748,7 @@
         row           (first rows)
         raw-value     (get row row-idx)
         value         (format-scalar-value timezone-id raw-value col viz-settings)
-        color         (get-color-from-segment viz-settings raw-value)]
+        color         (scalar-color (scalar-segments viz-settings data) raw-value)]
     {:attachments
      nil
 

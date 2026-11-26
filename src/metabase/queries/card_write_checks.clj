@@ -96,6 +96,7 @@
   (check-allowed-to-run-query! (:dataset_query card))
   ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
   (api/create-check :model/Card (assoc card :collection_id (actual-collection-id card)))
+  (queries.card/check-new-card-goal-references card)
   (check-no-save-cycle (:dataset_query card)))
 
 (mu/defn check-allowed-to-update-card!
@@ -104,6 +105,7 @@
    card-updates       :- ::queries.schema/card]
   (check-embedding-enabled-to-change-embedding card-before-update card-updates)
   (api/update-check card-before-update card-updates)
+  (queries.card/check-updated-goal-references [[card-before-update card-updates]])
   (doseq [f [check-update-result-metadata-data-perms
              check-allowed-to-modify-query]]
     (f card-before-update card-updates)))
@@ -118,4 +120,5 @@
                            {:user-id api/*current-user-id*
                             :object  (first (or (queries.card/first-update-refused card-changes)
                                                 (first card-changes)))})
-    (api/check-403 false)))
+    (api/check-403 false))
+  (queries.card/check-updated-goal-references card-changes))

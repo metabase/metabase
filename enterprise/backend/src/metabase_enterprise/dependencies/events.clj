@@ -200,6 +200,18 @@
       (mark-dependents! batched :table owner-id)
       (mark-own! batched :dependency {owner-type #{owner-id}}))))
 
+(mu/defn- dependencies-changed? :- :boolean
+  "Whether the `event` changes a `:dependency-columns` column of `spec`, as its `:dependency-column-values` read it."
+  [{:keys [object previous-object] :as event} :- [:map]
+   {:keys [dependency-columns dependency-column-values]} :- [:maybe :map]]
+  (boolean
+   (some (fn [column]
+           (and (u.events/changed? event column)
+                (if-let [read-value (get dependency-column-values column)]
+                  (not= (read-value (get previous-object column)) (read-value (get object column)))
+                  true)))
+         dependency-columns)))
+
 (mu/defn- output-changed? :- :boolean
   "Whether the `event`, the update of a row of a model, changes what the entities directly depending on it read,
   ignoring a card's result metadata changes they don't see, such as a run's new fingerprints."
@@ -232,7 +244,7 @@
   (let [spec        (dependencies/spec model)
         entity-type (:type spec)
         own         {entity-type #{(:id object)}}
-        dependency? (u.events/changed-any? event (:dependency-columns spec))
+        dependency? (dependencies-changed? event spec)
         analysis?   (u.events/changed-any? event (:analysis-columns spec))
         output?     (output-changed? event)
         part?       (u.events/changed-any? event (:part-columns spec))

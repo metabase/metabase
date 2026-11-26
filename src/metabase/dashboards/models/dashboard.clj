@@ -748,8 +748,13 @@
                              (remove #(and (contains? current-tab-ids (:dashboard_tab_id %))
                                            (not (contains? kept-tab-ids (:dashboard_tab_id %)))))
                              (dashboards.revisions/snapshot-dashcards))]
-      (queries/check-newly-exposed-dashcards-timeline-permissions!
-       (dashboards.db/dashboard dashboard-id) current-cards dashcards)
+      ;; Reverting can put a card back on a publicly shared or embedded dashboard, exposing its selected timeline
+      ;; events and its goals, so the current user needs read access to those timelines and to what the goals reference.
+      (let [dashboard (dashboards.db/dashboard dashboard-id)]
+        (queries/check-newly-exposed-dashcards-timeline-permissions! dashboard current-cards dashcards)
+        (queries/check-newly-exposed-dashcards-goal-permissions! dashboard current-cards dashcards))
+      ;; a restored dashcard may reuse goals still on the dashboard; one that's no longer anywhere is checked
+      (dashboard-card/check-new-goal-references current-cards dashcards)
       (update-dashboard! dashboard-id
                          (assoc (select-keys serialized-dashboard (:track (revisions/spec :model/Dashboard)))
                                 :tabs      (mapv #(select-keys % [:id :name :position]) (:tabs serialized-dashboard))
