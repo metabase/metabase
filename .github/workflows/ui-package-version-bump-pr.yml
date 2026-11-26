@@ -37,7 +37,7 @@ jobs:
           BUMP: ${{ inputs.bump }}
           NOTE: ${{ inputs.note }}
         run: |
-          version=$(python3 ../../bin/ui-package/bump-version.py "$BUMP" "$NOTE")
+          version=$(node ../../bin/ui-package/bump-version.mjs "$BUMP" "$NOTE")
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Open release PR
