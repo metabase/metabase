@@ -742,7 +742,7 @@
     ;; Default to viz card
     (viz-card->xml card)))
 
-(def ^:private max-dashboard-filters
+(def max-dashboard-filters
   "Cap on the filters listed for a dashboard."
   50)
 
@@ -757,6 +757,11 @@
 (def ^:private max-dashboard-filter-value-length
   "Cap on a dashboard filter's default or current value, as written in the prompt."
   500)
+
+(defn dashboard-filter-name
+  "A dashboard filter's `name`, cut to [[max-dashboard-filter-name-length]] characters."
+  [name]
+  (truncate name max-dashboard-filter-name-length))
 
 (defn dashboard-filter-value
   "The text of a dashboard filter's default or current `value`, with at most [[max-dashboard-filter-values]] of its
@@ -781,7 +786,7 @@
   A filter without that key says nothing about its value on screen."
   [{:keys [id name type default connected_dashcards] :as parameter}]
   (str "<filter id=\"" (escape-xml id)
-       "\" name=\"" (escape-xml (truncate name max-dashboard-filter-name-length))
+       "\" name=\"" (escape-xml (dashboard-filter-name name))
        "\" type=\"" (escape-xml (u/qualified-name type)) "\""
        (when (some? default)
          (str " default=\"" (escape-xml (dashboard-filter-value default)) "\""))

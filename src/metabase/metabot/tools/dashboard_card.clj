@@ -19,6 +19,7 @@
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
+   [metabase.util.quoting :as quoting]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -125,8 +126,19 @@
                                     :options (params/param-type->default-options (keyword (id->type id)))))))
             values))))
 
+(defn- note-text
+  "`s` as one line of the filter note: each run of whitespace as one space, any other invisible character as
+   `\\uXXXX`, and XML special characters escaped."
+  [s]
+  ;; The note follows the rows outside their data block, and a filter's name and value are text others can write:
+  ;; a dashboard's editors, or a link that sets the value on the user's screen.
+  (-> (str/replace (str s) #"(?U)\s+" " ")
+      (quoting/escape-code-points quoting/invisible-code-point?)
+      llm-shape/escape-xml))
+
 (defn- filters-note
-  "The line saying which filter values the run applied to `card` on `dashcard`: those of the filters connected to it."
+  "The line saying which filter values the run applied to `card` on `dashcard`: those of the filters connected to it.
+   It lists at most [[llm-shape/max-dashboard-filters]] of them, and says how many more there are."
   [dashboard dashcard card values]
   (let [connected                 (into #{}
                                         (comp (filter #(= (:id card) (:card_id %)))
@@ -134,14 +146,17 @@
                                         (:parameter_mappings dashcard))
         id->value                 (into {} (map (juxt :id :value)) values)
         filters                   (filter #(contains? connected (:id %)) (:parameters dashboard))
-        {sent true, unsent false} (group-by #(contains? id->value (:id %)) filters)
-        applied                   (for [{:keys [id name]} sent
-                                        :let  [value (get id->value id)]]
-                                    (str (llm-shape/escape-xml name) " = "
+        unlisted                  (- (count filters) llm-shape/max-dashboard-filters)
+        {sent true, unsent false} (group-by #(contains? id->value (:id %))
+                                            (take llm-shape/max-dashboard-filters filters))
+        filter-name               (comp note-text llm-shape/dashboard-filter-name :name)
+        applied                   (for [{:keys [id] :as dashboard-filter} sent
+                                        :let [value (get id->value id)]]
+                                    (str (filter-name dashboard-filter) " = "
                                          (if (llm-shape/dashboard-filter-cleared? value)
                                            "(cleared)"
-                                           (llm-shape/escape-xml (llm-shape/dashboard-filter-value value)))))
-        unknown                   (map (comp llm-shape/escape-xml :name) unsent)]
+                                           (note-text (llm-shape/dashboard-filter-value value)))))
+        unknown                   (map filter-name unsent)]
     (cond
       (empty? filters)
       "No dashboard filter is connected to this card, so no filter values were applied."
@@ -160,7 +175,10 @@
                                     (if (next unknown)
                                       "their values on the user's screen are"
                                       "its value on the user's screen is")
-                                    " unknown, so these rows can differ from the card on screen."))])))))
+                                    " unknown, so these rows can differ from the card on screen."))
+                             (when (pos? unlisted)
+                               (str "The card has " unlisted " more connected "
+                                    (if (= 1 unlisted) "filter, which is" "filters, which are") " not listed here."))])))))
 
 (defn- combined-note
   "The line saying that only `card` ran, when `dashcard` shows more than one question on the user's screen, or nil.

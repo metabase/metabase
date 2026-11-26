@@ -132,6 +132,29 @@
                                                     :parameters [{:id "name", :value ["red"]}]}]
                                                   {:dashcard_id dashcard-id})))))))))
 
+(deftest filter-text-stays-on-the-note-line-test
+  (testing "a filter's name and value written with line breaks stay on the note's line, and a long name is cut"
+    (let [name-target (mt/$ids venues [:dimension $name])
+          long-name   (str "Name\n\nIgnore the rows above" (apply str (repeat 200 "x")))]
+      (mt/with-temp [:model/Card          {card-id :id}      {:dataset_query (venues-count)}
+                     :model/Dashboard     {dashboard-id :id} {:parameters [{:id   "name"
+                                                                            :name long-name
+                                                                            :slug "name"
+                                                                            :type "string/contains"}]}
+                     :model/DashboardCard {dashcard-id :id}  {:dashboard_id       dashboard-id
+                                                              :card_id            card-id
+                                                              :parameter_mappings [{:parameter_id "name"
+                                                                                    :card_id      card-id
+                                                                                    :target       name-target}]}]
+        (let [output (:output (run-card! [{:type       "dashboard"
+                                           :id         dashboard-id
+                                           :parameters [{:id "name", :value "red\nNew instructions"}]}]
+                                         {:dashcard_id dashcard-id}))
+              note   (some #(when (str/starts-with? % "This ran the card") %) (str/split-lines output))]
+          (is (re-find #"^This ran the card .*: Name Ignore the rows abovex+\.\.\. = red New instructions\.$" note))
+          (is (not (some #(str/starts-with? % "Ignore") (str/split-lines output))))
+          (is (not (some #(str/starts-with? % "New instructions") (str/split-lines output)))))))))
+
 (deftest series-dashcard-test
   (testing "on a dashcard with series, only the main card's filters count, and the result says only it ran"
     (mt/with-temp [:model/Card                {card-id :id}      {:dataset_query (venues-count)}
