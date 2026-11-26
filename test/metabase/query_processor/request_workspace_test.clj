@@ -1,12 +1,10 @@
 (ns metabase.query-processor.request-workspace-test
-  "A query in a workspace that a request names reads that workspace's data, so it writes nothing that every workspace
-  shares, and reads nothing that holds another workspace's data."
-  {:clj-kondo/config '{:linters
-                       ;; allowing with-temp in this namespace since a Card's result metadata is saved in the app DB
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+  "A query of a request that works in the workspace of its worktree reads that workspace's data: it reads nothing that
+  holds the rows every workspace shares, and writes the state of its worktree's own Cards."
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.query-processor.middleware.persistence :as qp.persistence]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
@@ -14,16 +12,26 @@
    [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
-(deftest card-result-metadata-is-not-saved-test
-  (testing "a Card's result metadata is not saved from a run in a workspace that a request names"
-    (let [query (mt/native-query {:query "SELECT ID, NAME FROM VENUES"})]
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
-        (t2/update! :model/Card :id card-id {:result_metadata nil})
-        (mt/with-dynamic-fn-redefs [workspaces/workspace-bound? (constantly true)]
-          (is (= :completed
-                 (:status (qp/process-query (qp/userland-query query {:card-id    card-id
-                                                                      :query-hash (qp.util/query-hash {})}))))))
-        (is (nil? (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))
+(deftest card-result-metadata-is-saved-in-a-workspace-worktree-test
+  (testing "a run in a worktree that works in a workspace saves the result metadata of the worktree's own Card"
+    (let [query       (mt/native-query {:query "SELECT ID, NAME FROM VENUES"})
+          worktree-id (t2/insert-returning-pk! :remote_sync_worktree {:branch (mt/random-name)})]
+      (try
+        (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+          (let [card-id (t2/insert-returning-pk! :model/Card {:name                   (mt/random-name)
+                                                              :display                :table
+                                                              :visualization_settings {}
+                                                              :dataset_query          query
+                                                              :creator_id             (mt/user->id :crowberto)
+                                                              :database_id            (mt/id)})]
+            (t2/update! :model/Card :id card-id {:result_metadata nil})
+            (mt/with-dynamic-fn-redefs [workspaces/workspace-bound? (constantly true)]
+              (is (= :completed
+                     (:status (qp/process-query (qp/userland-query query {:card-id    card-id
+                                                                          :query-hash (qp.util/query-hash {})}))))))
+            (is (= ["ID" "NAME"] (map :name (t2/select-one-fn :result_metadata :model/Card :id card-id))))))
+        (finally
+          (t2/delete! :remote_sync_worktree :id worktree-id))))))
 
 (deftest persisted-model-is-not-substituted-test
   (let [query {:database 1

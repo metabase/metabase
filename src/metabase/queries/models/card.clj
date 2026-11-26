@@ -72,7 +72,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.models.database :as database]
-   [metabase.workspaces.core :as workspaces]
    [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -1301,20 +1300,6 @@
                 (map :id))
           cards)))
 
-(defn- keep-shared-result-metadata
-  "`rows`, new Cards or updates of Cards, as a workspace that the request names may write them. There a Card is
-  shared, and its queries read the workspace's copies: store none of their columns. A new Card stores no column list.
-  An update keeps the stored list, or clears it when the query changes, since the list is of the old query. Until a
-  workspace has Cards of its own, the next run outside a workspace stores the list. Elsewhere `rows` as they are."
-  [rows new?]
-  (if (workspaces/workspace-bound?)
-    (mapv (fn [row]
-            (if (or new? (contains? row :dataset_query))
-              (assoc row :result_metadata nil)
-              (dissoc row :result_metadata :verified-result-metadata?)))
-          rows)
-    rows))
-
 (t2/define-before-insert :model/Card
   [card]
   (let [card (-> (merge {:parameters [] :parameter_mappings []} card)
@@ -1646,8 +1631,7 @@
   [rows dashboards]
   (->> (assoc-source-card-tables rows)
        (mapv #(assoc-inferred-result-metadata % nil))
-       (mapv #(dashboard-question-collection % dashboards))
-       (#(keep-shared-result-metadata % true))))
+       (mapv #(dashboard-question-collection % dashboards))))
 
 (defn- check-id-setting
   "Throws a 400 with `message` unless the value under `k` in `visibility`, when there is one, is a sequence of
@@ -1712,7 +1696,7 @@
    (let [importing?     (= :import (:writer opts))
          rows           (cond->> rows
                           (not importing?) (mapv new-row-with-defaults))
-         [rows futures] (if (and (nil? (:writer opts)) (not (workspaces/workspace-bound?)))
+         [rows futures] (if (nil? (:writer opts))
                           (assoc-new-result-metadata rows)
                           [(vec rows) {}])
          cards          (t2/with-transaction [_conn]
@@ -2342,8 +2326,7 @@
   ([updates :- [:sequential ::queries.schema/card.update]
     opts    :- :metabase.events.schema/write-opts]
    (when (seq updates)
-     (let [updates           (keep-shared-result-metadata updates false)
-           [updates futures] (if (and (nil? (:writer opts)) (not (workspaces/workspace-bound?)))
+     (let [[updates futures] (if (nil? (:writer opts))
                                (assoc-updated-result-metadata updates)
                                [updates {}])]
        (t2/with-transaction [_conn]

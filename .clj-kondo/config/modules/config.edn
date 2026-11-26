@@ -2391,7 +2391,6 @@
            util.graph
            warehouses
            warehouses.schema
-           workspaces
            xrays}
    :model-exports #{:model/Card
                     :model/ParameterCard
@@ -3344,8 +3343,7 @@
            transforms.indexes
            transforms.schema
            util
-           warehouses
-           workspaces}
+           warehouses}
    :model-exports #{:model/Transform
                     :model/TransformDagRun
                     :model/TransformJob

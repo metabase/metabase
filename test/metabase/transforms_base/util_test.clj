@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
@@ -12,7 +13,8 @@
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.date-2 :as u.date]
-   [metabase.workspaces.core :as workspaces]))
+   [metabase.workspaces.core :as workspaces]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -240,35 +242,65 @@
       (is (string? (:transform/checkpoint-hi attrs)))
       (is (re-find #"2024-01-16" (:transform/checkpoint-hi attrs))))))
 
-(deftest a-run-in-a-workspace-keeps-production-incremental-state-test
-  (mt/with-dynamic-fn-redefs [workspaces/workspace-bound? (constantly true)]
-    (testing "in a workspace that the request names, an incremental run rebuilds the workspace's copy: the watermark
-              belongs to production's table, not the copy"
-      (is (true? (transforms-base.u/full-incremental-run?
-                  (assoc (transform-with-target {:type "table-incremental"}) :last_checkpoint_value "42")))))
-    (testing "and saves no watermark"
-      (let [updates (atom [])]
-        (mt/with-dynamic-fn-redefs [transforms-base.u/update-transform! (fn [& args] (swap! updates conj args) nil)]
-          (transforms-base.u/save-watermark! 1 {:column                     {:lib/type  :metadata/column
-                                                                             :name      "id"
-                                                                             :base-type :type/Integer}
-                                                :checkpoint-filter-field-id 1
-                                                :hi                         {:value 42}})
-          (is (empty? @updates)))))))
+(defn- do-in-a-workspace-worktree
+  "Calls `f` with the id of a new remote sync worktree, in that worktree, working in a workspace, as a request of a
+  worktree that names a workspace does. Deleting the worktree after deletes its content."
+  [f]
+  (let [worktree-id (t2/insert-returning-pk! :remote_sync_worktree {:branch (mt/random-name)})]
+    (try
+      (mdb/with-worktree-scope {:type :worktree :worktree-id worktree-id}
+        (mt/with-dynamic-fn-redefs [workspaces/workspace-bound? (constantly true)]
+          (f worktree-id)))
+      (finally
+        (t2/delete! :remote_sync_worktree :id worktree-id)))))
 
-(deftest a-run-in-a-workspace-writes-no-index-status-test
-  (mt/with-dynamic-fn-redefs [workspaces/workspace-bound? (constantly true)]
-    (let [targets (atom [])]
-      (mt/with-dynamic-fn-redefs [transforms-base.u/apply-standalone-indexes! (fn [_database target] (swap! targets conj target) nil)]
-        (testing "in a workspace that the request names, the indexes go on the workspace's copy, and a failure does not
-                  mark production's index request"
-          (transforms-base.u/apply-target-indexes!
-           {:id     7
-            :source {:type :query :query (lib/native-query (mt/metadata-provider) "SELECT 1 AS id")}
-            :target {:type "table" :schema "public" :name "t"
-                     :indexes [{:kind :btree :name "t_id_idx" :columns [{:name "id"}]}]}})
-          (is (=? [{:name "t" :transform-id nil}] @targets)))))
-    (testing "and verifies no index request"
-      (mt/with-dynamic-fn-redefs [table-index/select-for-transform (fn [& _] (throw (ex-info "must not read requests" {})))]
-        (is (nil? (transforms-base.u/verify-managed-indexes!
-                   (assoc (transform-with-target {:type "table" :schema "public" :name "t"}) :id 7))))))))
+(defn- incremental-transform
+  "The columns of an incremental Transform whose watermark is `checkpoint`."
+  [checkpoint]
+  {:name                  (mt/random-name)
+   :source                {:type :query :query (lib/native-query (mt/metadata-provider) "SELECT 1 AS id")}
+   :target                {:type "table-incremental" :schema "public" :name (mt/random-name)}
+   :last_checkpoint_value checkpoint})
+
+(def ^:private source-range-params
+  {:column                     {:lib/type :metadata/column :name "id" :base-type :type/Integer}
+   :checkpoint-filter-field-id 1
+   :hi                         {:value 42}})
+
+(deftest a-run-in-a-workspace-worktree-keeps-incremental-state-test
+  (mt/with-model-cleanup [:model/Transform]
+    (let [production    (t2/insert-returning-instance! :model/Transform (incremental-transform "7"))
+          checkpoint-of (fn [id] (mdb/with-worktree-scope {:type :all}
+                                   (t2/select-one-fn :last_checkpoint_value :model/Transform :id id)))]
+      (do-in-a-workspace-worktree
+       (fn [_worktree-id]
+         (let [own (t2/insert-returning-instance! :model/Transform (incremental-transform "7"))]
+           (testing "a worktree's Transform is its own: an incremental run trusts its watermark"
+             (is (false? (transforms-base.u/full-incremental-run? (t2/select-one :model/Transform :id (:id own))))))
+           (testing "and saves it"
+             (transforms-base.u/save-watermark! (:id own) source-range-params)
+             (is (= "42" (checkpoint-of (:id own)))))
+           (testing "production's Transform is out of the worktree's reach: its watermark does not change"
+             (transforms-base.u/save-watermark! (:id production) source-range-params)
+             (is (= "7" (checkpoint-of (:id production)))))))))))
+
+(deftest a-run-in-a-workspace-worktree-writes-index-status-test
+  (do-in-a-workspace-worktree
+   (fn [_worktree-id]
+     (let [targets (atom [])
+           reads   (atom 0)]
+       (mt/with-dynamic-fn-redefs [transforms-base.u/apply-standalone-indexes! (fn [_database target]
+                                                                                (swap! targets conj target) nil)
+                                   table-index/select-for-transform           (fn [& _] (swap! reads inc) [])]
+         (testing "the indexes of a worktree's Transform are its own requests"
+           (transforms-base.u/apply-target-indexes!
+            {:id     7
+             :source {:type :query :query (lib/native-query (mt/metadata-provider) "SELECT 1 AS id")}
+             :target {:type "table" :schema "public" :name "t"
+                      :indexes [{:kind :btree :name "t_id_idx" :columns [{:name "id"}]}]}})
+           (is (=? [{:name "t" :transform-id 7}] @targets)))
+         (testing "and are verified"
+           (transforms-base.u/verify-managed-indexes!
+            (assoc (transform-with-target {:type "table" :schema "public" :name "t"}) :id 7))
+           (is (= 1 @reads))))))))
+

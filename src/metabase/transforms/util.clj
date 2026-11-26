@@ -35,7 +35,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
@@ -318,22 +317,17 @@
               (transforms-base.u/record-workspace-target-remapping! transform)
               ;; Before the watermark/succeed mark, so a failure hits the catch below and fails the run (and a retry
               ;; stays a full rebuild that re-attempts the index).
-              ;; In a workspace that the request names, the index requests are production's: the run puts the indexes
-              ;; on the workspace's copy, and changes no request's status.
-              (let [requests?       (not (workspaces/workspace-bound?))
-                    running-indexes (when requests?
-                                      (table-index/mark-runnable-indexes-running!
-                                       (:index-request-ids (:target transform))))]
+              (let [running-indexes (table-index/mark-runnable-indexes-running!
+                                     (:index-request-ids (:target transform)))]
                 (try
                   (transforms-base.u/apply-target-indexes! transform)
                   (transforms-base.u/verify-managed-indexes! transform)
                   (finally
                     ;; Fail any request verification couldn't settle -- whether apply/verify threw or just left it
                     ;; running. On a throw the exception still propagates to the run-level catch.
-                    (when requests?
-                      (table-index/mark-unverified-running-indexes-failed!
-                       running-indexes
-                       "Index status could not be verified after the transform completed."))))))
+                    (table-index/mark-unverified-running-indexes-failed!
+                     running-indexes
+                     "Index status could not be verified after the transform completed.")))))
             (transforms-base.u/save-watermark! (:id transform) source-range-params)
             (when-not full-create?
               (transforms-base.u/record-workspace-target-remapping! transform))

@@ -239,9 +239,10 @@
              (is (= [[1 "a" (get-in ws-a [:database_details :user])] [2 "b" (get-in ws-a [:database_details :user])]]
                     (run-query (:workspace-id ws-a)
                                {:database (:id ws-db) :type :query :query {:source-table (:id new-table)}})))))
-         (testing "production's transform does not point at it"
-           (is (nil? (in-worktree-of (:workspace-id ws-a)
-                                     #(t2/select-one-fn :target_table_id :model/Transform :id (:id new-transform)))))))
+         (testing "the worktree's own transform points at it"
+           (is (= (:id (workspaces/with-workspace-id (:workspace-id ws-a) (table new-name)))
+                  (in-worktree-of (:workspace-id ws-a)
+                                  #(t2/select-one-fn :target_table_id :model/Transform :id (:id new-transform)))))))
        (testing "deleting a workspace deletes its remappings and the Tables and Fields it owns, and leaves the other's"
          (let [worktree-a (worktree-of (:workspace-id ws-a))]
            (ws/delete-workspace! (:workspace-id ws-a))

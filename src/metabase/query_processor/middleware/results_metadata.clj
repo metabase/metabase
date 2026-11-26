@@ -26,8 +26,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv select-keys get-in]]
-   [metabase.workspaces.core :as workspaces]))
+   [metabase.util.performance :refer [mapv select-keys get-in]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
@@ -98,9 +97,6 @@
                  ;; A row-restricted run (sandbox, impersonation, DB routing) returns metadata without fingerprints.
                  ;; Persisting it would erase the whole-table fingerprints an unrestricted run stored for every reader.
                  (not (row-restricted-metadata/row-restricted? query))
-                 ;; A run in a workspace that the request names reads the workspace's copies, whose columns can
-                 ;; differ from those every workspace shares.
-                 (not (workspaces/workspace-bound?))
                  ;; Only update changed metadata; a non-default parameterized run writes only on
                  ;; parameter-independent column changes, not fingerprint drift (#83734, see also #72007).
                  (let [parameter-independent? (boolean (:qp/non-default-parameterized? query))]
