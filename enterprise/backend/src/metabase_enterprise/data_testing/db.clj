@@ -384,11 +384,12 @@
   (t2/select-one :model/ActionTest :id id))
 
 (mu/defn action-tests :- [:sequential ::data-testing.schema/action-test]
-  "The ActionTests in name order, only those of the Action with `:action-id` when it is given."
-  [{:keys [action-id]} :- [:map {:closed true}
-                           [:action-id {:optional true} [:maybe ::lib.schema.id/action]]]]
-  (t2/select :model/ActionTest (cond-> {:order-by [[:name :asc] [:id :asc]]}
-                                 action-id (assoc :where [:= :action_id action-id]))))
+  "The ActionTests in name order: only those of the Action with `:action-id` when it is given, and those of archived
+  Actions only when `:include-archived?`."
+  [{:keys [action-id include-archived?]} :- [:map {:closed true}
+                                             [:action-id         {:optional true} [:maybe ::lib.schema.id/action]]
+                                             [:include-archived? {:optional true} [:maybe :boolean]]]]
+  (tests-of-subjects :model/ActionTest :action_id :model/Action action-id include-archived?))
 
 (mu/defn synced-action-test-items :- [:sequential ::data-testing.schema/action-test]
   "The ActionTests with `ids`, as remote sync lists them: each with its Action, in the shape remote sync lists Actions

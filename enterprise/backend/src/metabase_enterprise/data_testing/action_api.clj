@@ -32,16 +32,17 @@
   (refusing #(data-testing.models.action-test/validate-test action-id definition)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/action-test.response]
-  "List the action tests the caller can read, with their newest runs, optionally only those of one action. Needs Data
-  Studio access.
+  "List the action tests the caller can read, with their newest runs, optionally only those of one action. The tests
+  of archived actions are left out unless `include-archived` is true. Needs Data Studio access.
 
   An action test, with its parameter values, inputs and expectations, is readable by every user who can read its
   action."
   [_route-params
-   {:keys [action-id]} :- [:map {:closed true}
-                           [:action-id {:optional true} [:maybe ms/PositiveInt]]]]
+   {:keys [action-id include-archived]} :- [:map {:closed true}
+                                            [:action-id        {:optional true} [:maybe ms/PositiveInt]]
+                                            [:include-archived {:default false} [:maybe ms/BooleanValue]]]]
   (api/check-data-studio-access)
-  (-> (mi/readable (data-testing.db/action-tests {:action-id action-id}))
+  (-> (mi/readable (data-testing.db/action-tests {:action-id action-id :include-archived? include-archived}))
       (t2/hydrate :last_run)))
 
 (api.macros/defendpoint :get "/:id" :- ::data-testing.schema/action-test.response

@@ -363,3 +363,23 @@
                                  (is (not (t2/exists? :model/ActionTest :id test-id))))
                                (testing "through the tests' write function, which keeps no run naming the deleted test"
                                  (is (nil? (t2/select-one-fn :test_id :model/DataTestRun :id run-id))))))))))
+
+(deftest tests-of-an-archived-action-are-listed-only-on-request-test
+  (mt/with-premium-features #{:transforms-testing}
+    (do-with-action!
+     nil
+     (fn [action-id]
+       (mt/with-temp [:model/ActionTest {test-id :id} (body action-id)]
+         (let [listed (fn [& params]
+                        (into #{} (map :id) (apply mt/user-http-request :crowberto :get 200 "ee/action-test" params)))]
+           (testing "control: the test of an action that is not archived is listed"
+             (is (contains? (listed) test-id))
+             (is (contains? (listed :action-id action-id) test-id)))
+           (t2/update! :model/Action :id action-id {:archived true})
+           (testing "the list leaves out the test of an archived action, unless asked to include archived subjects"
+             (is (not (contains? (listed) test-id)))
+             (is (not (contains? (listed :action-id action-id) test-id)))
+             (is (contains? (listed :include-archived true) test-id))
+             (is (contains? (listed :action-id action-id :include-archived true) test-id)))
+           (testing "the test is still readable by id"
+             (is (=? {:id test-id} (mt/user-http-request :crowberto :get 200 (str "ee/action-test/" test-id)))))))))))
