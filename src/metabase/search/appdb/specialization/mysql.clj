@@ -8,7 +8,6 @@
    [metabase.search.ingestion.query :as search.ingestion.query]
    [metabase.search.util :as search.util]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.string :as u.str])
   (:import
@@ -208,7 +207,7 @@
     (into [:and]
           (map-indexed
            (fn [i tokens]
-             [:regexp [::h2x/collate column :utf8mb4_bin]
+             [:regexp [:collate column :utf8mb4_bin]
               (str "(^|" boundary ")" (str/join (str boundary "+") tokens)
                    (when-not (and prefix? (= i (dec (count patterns))))
                      (str "(" boundary "|$)")))])

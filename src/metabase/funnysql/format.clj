@@ -321,6 +321,7 @@
     :not-like
     :not=
     :or
+    :regexp
     honey.sql.pg-ops/atat})
 
 (defn- predicate-call?
@@ -858,6 +859,18 @@
   (append-sql! context " @@ ")
   (expr! rhs context))
 
+(defn- call-match-against!
+  "Compile MySQL's Boolean-mode full text search match `MATCH (column) AGAINST (query IN BOOLEAN MODE)`."
+  [[_ column query] context]
+  (when-not (= (engine context) :mysql)
+    (throw (ex-info "MATCH AGAINST requires MySQL" {:column column})))
+  (check-identifier-form column)
+  (append-sql! context "MATCH (")
+  (expr! column context)
+  (append-sql! context ") AGAINST (")
+  (expr! query context)
+  (append-sql! context " IN BOOLEAN MODE)"))
+
 (defn- call-function!
   "Compile a call of a whitelisted plain SQL function, `f(args...)`."
   [[f & args] context]
@@ -904,9 +917,10 @@
     :literal           (call-literal! form context)
     :escape            (call-escape! form context)
     :position          (call-position! form context)
+    :match-against     (call-match-against! form context)
     :call              (call-call! form context)
 
-    (:< :<= :> :>= :like :ilike :not-like :is :is-not)
+    (:< :<= :> :>= :like :ilike :not-like :regexp :is :is-not)
     (call-comparison! form context)
 
     (:+ :- :/ :* :% :||)
@@ -971,6 +985,47 @@
         :if-not-exists (append-sql! context "IF NOT EXISTS ")))
     (expr! identifier context)))
 
+(defn- charset-or-collation!
+  "Compile `COLLATE name` or `CHARACTER SET name`."
+  [option identifier context]
+  (check-identifier-form identifier)
+  (append-sql! context (if (= option :collate) "COLLATE " "CHARACTER SET "))
+  (expr! identifier context))
+
+(defn- require-mysql!
+  "Throw unless `context` compiles for MySQL."
+  [what context]
+  (when-not (= (engine context) :mysql)
+    (throw (ex-info (str what " requires MySQL") {:engine (engine context)}))))
+
+(defn- clause-engine!
+  "Compile MySQL's `ENGINE InnoDB` table option, the only storage engine allowed."
+  [storage-engine context]
+  (require-mysql! "A table engine" context)
+  (when-not (= storage-engine :innodb)
+    (throw (ex-info "Table engine must be :innodb" {:storage-engine storage-engine})))
+  (append-sql! context "ENGINE InnoDB"))
+
+(defn- clause-character-set!
+  "Compile MySQL's `CHARACTER SET name` table option."
+  [identifier context]
+  (require-mysql! "A table character set" context)
+  (charset-or-collation! :character-set identifier context))
+
+(defn- clause-collate!
+  "Compile MySQL's `COLLATE name` table option."
+  [identifier context]
+  (require-mysql! "A table collation" context)
+  (charset-or-collation! :collate identifier context))
+
+(defn- clause-analyze-table!
+  "Compile MySQL's `ANALYZE TABLE table`."
+  [table context]
+  (require-mysql! "ANALYZE TABLE" context)
+  (check-identifier-form table)
+  (append-sql! context "ANALYZE TABLE ")
+  (expr! table context))
+
 (defn- column-default!
   "Compile the value of a column's `DEFAULT`. DDL takes no parameters, so the value has to end up in the SQL text: a
   number is spliced even where [[number!]] would bind it, and anything that would compile to a `?` -- a string, say --
@@ -1009,8 +1064,14 @@
                 :auto-increment
                 (append-sql! context "AUTO_INCREMENT")
 
+                (:collate :character-set)
+                (charset-or-collation! option (first args) context)
+
                 :not-null
                 (append-sql! context "NOT NULL")
+
+                :null
+                (append-sql! context "NULL")
 
                 :default
                 ;; check `args` for emptiness rather than truthiness of its first element -- `false` and `nil` are
@@ -1394,6 +1455,7 @@
 (defn- clause-on-duplicate-key-update!
   "Compile `ON DUPLICATE KEY UPDATE ...`."
   [kvs context]
+  (require-mysql! "ON DUPLICATE KEY UPDATE" context)
   (append-sql! context "ON DUPLICATE KEY UPDATE ")
   (assignments! kvs context))
 
@@ -1414,6 +1476,10 @@
    :with-recursive          clause-with-recursive!
    :create-table            clause-create-table!
    :with-columns            clause-with-columns!
+   :engine                  clause-engine!
+   :character-set           clause-character-set!
+   :collate                 clause-collate!
+   :analyze-table           clause-analyze-table!
    :insert-into             clause-insert-into!
    :merge-into              clause-merge-into!
    :using                   clause-using!

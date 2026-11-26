@@ -5,8 +5,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.config :as search.config]
-   [metabase.search.scoring :as search.scoring]
-   [metabase.util.honey-sql-2 :as h2x]))
+   [metabase.search.scoring :as search.scoring]))
 
 (defn all-scores
   "Score stats for each scorer"
@@ -26,7 +25,7 @@
 (defn- normalized-title-expr []
   (let [title (search.scoring/normalize-text-expr :search_index.name)]
     (if (= :mysql (mdb/db-type))
-      [::h2x/collate title "utf8mb4_bin"]
+      [:collate title "utf8mb4_bin"]
       title)))
 
 (defn base-scorers

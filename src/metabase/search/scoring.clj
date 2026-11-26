@@ -87,7 +87,7 @@
   (if (= :mysql (mdb/db-type))
     ;; A cast takes the connection's collation, which the server's defaults can set to something other than the
     ;; `utf8mb4_unicode_ci` of the index columns it is compared with, such as MariaDB's `utf8mb4_general_ci`.
-    [::h2x/collate [:cast column :char] "utf8mb4_unicode_ci"]
+    [:collate [:cast column :char] "utf8mb4_unicode_ci"]
     [:cast column :text]))
 
 (defn user-recency-expr
