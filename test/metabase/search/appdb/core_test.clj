@@ -22,10 +22,10 @@
 
 (deftest keyword-queries-match-any-query-and-every-word-in-each-test
   (when (= :postgres (mdb/db-type))
-    (testing "[\"orders\" \"monthly revenue\"] searches for orders, or monthly and revenue together"
+    (testing "appdb folds [\"orders\" \"monthly revenue\"] into orders, or monthly and revenue together"
       (let [[folded] (search.engine/disjunction :search.engine/appdb ["orders" "monthly revenue"])
             expr     (search.util/to-tsquery-expr folded)
-            ;; Postgres parses it as a search would, under the simple configuration, which stems nothing.
+            ;; Parsed under the simple configuration, which stems nothing, to keep stemming out of the assertion.
             parsed   (mdb/query {:select [[[:to_tsquery [:literal "simple"] [:lift expr]] :query]]})]
         ;; Only the last word of the folded search matches as a prefix.
         (is (= "'orders' | 'monthly' & 'revenue':*"

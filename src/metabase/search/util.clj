@@ -180,14 +180,17 @@
            complete?      (not (str/ends-with? trimmed "\""))
            ;; The prefix serves search as you type, and Metabot gets it too: its search folds the keyword queries
            ;; into one, so the last query's last word matches as a prefix. For the :metabot context, the model-free
-           ;; search evals (metabase/evals, metabase#88181) compared that with three rules, NDCG@10:
+           ;; search evals (metabase/evals, metabase#88181) compared that with three rules, each against its own base
+           ;; build, NDCG@10:
            ;; - No prefix loses plurals under the simple configuration, which stems nothing (`floors` stops finding
            ;;   `fac_floor`). Appdb BEAVER fell from 0.375 to 0.366.
            ;; - Whole words where the configuration stems, and a prefix on every word under simple, still loses
-           ;;   compound names (`pilot` stops finding `pilotskills`). Semantic Spider fell from 0.645 to 0.609.
+           ;;   compound names (`pilot` stops finding `pilotskills`). Appdb BEAVER rose from 0.361 to 0.384, but
+           ;;   semantic Spider fell from 0.645 to 0.609.
            ;; - A prefix on every word finds both, but lets same-named decoys in. Appdb Spider rose from 0.597 to
            ;;   0.620, while appdb LiveSQLBench with descriptions fell from 0.327 to 0.288 and semantic Spider to 0.619.
-           ;; None beat the last-word prefix across the benchmarks, so every context keeps it.
+           ;; None beat the last-word prefix across the benchmarks, so the :metabot context keeps it.
+           ;; TODO: decide per context for the others, which were not measured, such as a submitted search page.
            maybe-complete (if complete? complete-last-word identity)]
        (->> (str/replace trimmed "\\" "\\\\")
             search-clauses
