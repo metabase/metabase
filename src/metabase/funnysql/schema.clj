@@ -711,8 +711,8 @@
   (into [:map {:closed true}] (clauses [:with :update :set :from :join :left-join :inner-join :where :returning])))
 
 (mr/def ::query.delete
-  "A `DELETE` statement."
-  (into [:map {:closed true}] (clauses [:with :delete-from :where :returning])))
+  "A `DELETE` statement, with the `ORDER BY` and `LIMIT` MySQL accepts to delete a batch."
+  (into [:map {:closed true}] (clauses [:with :delete-from :where :order-by :limit :returning])))
 
 (mr/def ::query.merge
   "An H2 `MERGE` statement."
