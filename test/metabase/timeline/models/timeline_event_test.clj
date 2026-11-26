@@ -41,7 +41,7 @@
                    :model/Timeline tl-b {:icon "cake"}
                    :model/TimelineEvent a {:timeline_id (u/the-id tl-a)}
                    :model/TimelineEvent b {:timeline_id (u/the-id tl-b) :icon "cake"}]
-      (t2/query-one {:update :timeline_event :set {:icon "balloons"} :where [:= :id (u/the-id a)]})
+      (t2/query-one {:update (t2/table-name :model/TimelineEvent) :set {:icon "balloons"} :where [:= :id (u/the-id a)]})
       (is (= timeline-event/default-icon
              (t2/select-one-fn :icon :model/TimelineEvent :id (u/the-id a))))
       (is (= "cake"

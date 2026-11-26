@@ -53,7 +53,6 @@
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.spec :as xrays]
@@ -96,7 +95,7 @@
 
 (defmethod mi/non-internal-filter-clause :model/Dashboard
   [_model alias]
-  [:not= (h2x/identifier :field alias :creator_id) config/internal-mb-user-id])
+  [:not= (u/qualified-key alias :creator_id) config/internal-mb-user-id])
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 

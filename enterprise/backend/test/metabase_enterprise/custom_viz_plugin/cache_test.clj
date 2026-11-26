@@ -287,7 +287,7 @@
                                                     :display_name "tampered-viz"
                                                     :status       :active
                                                     :bundle       (cvp.tu/valid-bundle-bytes "tampered-viz")}]
-        (t2/update! :custom_viz_plugin :id (:id plugin) {:bundle_hash "deadbeef"})
+        (t2/update! (t2/table-name :model/CustomVizPlugin) :id (:id plugin) {:bundle_hash "deadbeef"})
         (is (nil? (cache/get-bundle (assoc plugin :bundle_hash "deadbeef")))
             "mismatch between bundle bytes and bundle_hash must not be served")))))
 

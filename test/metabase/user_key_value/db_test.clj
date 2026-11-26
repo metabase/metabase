@@ -42,5 +42,5 @@
                               "unexpired-user-key-value key" #(user-key-value.db/unexpired-user-key-value user-id "ns" op)
                               "unexpired-user-key-values ns" #(doall (user-key-value.db/unexpired-user-key-values user-id op))}]
           (testing desc
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Marked a whole operator form"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace and key must be strings"
                                   (thunk)))))))))

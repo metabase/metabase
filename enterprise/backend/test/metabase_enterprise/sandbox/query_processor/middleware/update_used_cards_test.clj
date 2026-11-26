@@ -12,8 +12,8 @@
   (qp.updated-used-cards-test/with-used-cards-setup!
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:< $id 3]})}}}
       (let [gtap-card-id (:id (t2/query-one {:select [:c.id]
-                                             :from   [[:report_card :c]]
-                                             :left-join [[:sandboxes :s] [:= :s.card_id :c.id]]
+                                             :from   [[(t2/table-name :model/Card) :c]]
+                                             :left-join [[(t2/table-name :model/Sandbox) :s] [:= :s.card_id :c.id]]
                                              :where     [:= :s.group_id (:id &group)]}))]
         (qp.updated-used-cards-test/do-test!
          gtap-card-id

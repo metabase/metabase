@@ -49,7 +49,7 @@
   (testing "timelines with icon=balloons should use the default icon instead when selected"
     (mt/with-temp [:model/Timeline a {}
                    :model/Timeline b {:icon "cake"}]
-      (t2/query-one {:update :timeline :set {:icon "balloons"} :where [:= :id (u/the-id a)]})
+      (t2/query-one {:update (t2/table-name :model/Timeline) :set {:icon "balloons"} :where [:= :id (u/the-id a)]})
       (is (= timeline-event/default-icon
              (t2/select-one-fn :icon :model/Timeline :id (u/the-id a))))
       (is (= "cake"

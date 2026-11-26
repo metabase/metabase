@@ -183,7 +183,7 @@
                   (is (= before (t2/select-one :model/SegmentTest :id test-id)))))))
           (testing "a segment whose definition names no table"
             ;; A raw write: the model refuses a definition with no source table.
-            (t2/query-one {:update :segment
+            (t2/query-one {:update (t2/table-name :model/Segment)
                            :set    {:definition (str "{\"lib/type\":\"mbql/query\",\"database\":" (mt/id) ","
                                                      "\"stages\":[{\"lib/type\":\"mbql.stage/native\","
                                                      "\"native\":\"SELECT 1\"}]}")}

@@ -27,7 +27,6 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.encryption :as encryption]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -36,6 +35,7 @@
    [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
+   [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]
@@ -484,7 +484,7 @@
   and H2 and `now(6)` for MySQL/MariaDB (`now()` for MySQL only return second resolution; `now(6)` uses the
   max (nanosecond) resolution)."
   []
-  (h2x/current-datetime-honeysql-form (mdb/db-type)))
+  [:current-timestamp])
 
 (defn ->integer
   "Return a HoneySQL form casting `expr` to an integer in the app DB: `SIGNED` for MySQL/MariaDB, which have no
@@ -525,7 +525,7 @@
      [:= ^:allow-subquery {:select [:parent.archived]
                            :from   [[(t2/table-name :model/Collection) :parent]]
                            :where  [:= :parent.id (if (contains? changes :collection_id)
-                                                    (when-some [id (:collection_id changes)] [:auto/param id])
+                                                    (when-some [id (:collection_id changes)] id)
                                                     (u/qualified-key (t2/table-name model) :collection_id))]}
       [:inline true]]
      [:inline false]
@@ -693,9 +693,39 @@
                                    (next-method rf query-type model parsed-args resolved-query)))
    ::uniform-update-guard))
 
+(def ^:private row-statement-pattern
+  "Matches SQL that reads or writes rows, after any leading comments and parentheses."
+  #"(?is)^(?:\s|--[^\n]*(?:\n|$)|/\*.*?\*/|\()*(select|insert|update|delete|merge|with|values|table|replace)\b")
+
+(defn- check-not-sql-string
+  "Throws when the Toucan query `query`, a SQL string or `[sql & params]` that is not run against a warehouse Database,
+  reads or writes rows, which an app-DB query must express in Honey SQL, unless Funny SQL compiled it."
+  [query]
+  (let [sql (if (string? query) query (first query))]
+    (when (and (string? sql)
+               (not (:metabase.funnysql.core/compiled (meta query)))
+               (not (instance-of? :model/Database t2.connection/*current-connectable*))
+               (re-find row-statement-pattern sql))
+      (throw (ex-info (format (str "An app-DB query must be Honey SQL, not the SQL string %s; write it as a Honey SQL map "
+                                   "with (t2/table-name :model/X) table names")
+                              (pr-str sql))
+                      {:sql sql})))))
+
+(defn- install-sql-string-guard!
+  "Wraps the Toucan compile of a SQL string or `[sql & params]` query in [[check-not-sql-string]]."
+  []
+  (doseq [query-class [String clojure.lang.IPersistentVector clojure.lang.ISeq]]
+    (methodical/add-aux-method-with-unique-key!
+     #'t2.pipeline/compile :around [:default :default query-class]
+     (fn [next-method query-type model query]
+       (check-not-sql-string query)
+       (next-method query-type model query))
+     ::sql-string-guard)))
+
 (when (or config/is-dev? config/is-test?)
   (install-hook-statement-guard!)
-  (install-uniform-update-guard!))
+  (install-uniform-update-guard!)
+  (install-sql-string-guard!))
 
 ;; --- helper fns
 (defn changes-with-pk

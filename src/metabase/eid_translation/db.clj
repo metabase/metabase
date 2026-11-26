@@ -10,4 +10,6 @@
   "A map of entity id to id for the rows of `model` whose entity id is in `entity-ids`."
   [model      :- :keyword
    entity-ids :- [:sequential :string]]
+  (when-not (every? string? entity-ids)
+    (throw (ex-info "entity ids must be strings" {:entity-ids entity-ids})))
   (mdb/select-batched-map #(t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in %]) entity-ids))

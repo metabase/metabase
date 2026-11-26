@@ -277,7 +277,7 @@
                                               :database_id   (mt/id)
                                               :dataset_query (mt/mbql-query orders)}]
       ;; Set result_metadata directly via SQL to bypass Card hooks that recompute metadata
-      (t2/query-one {:update :report_card
+      (t2/query-one {:update (t2/table-name :model/Card)
                      :set    {:result_metadata
                               (json/encode [{:name          "TOTAL"
                                              :display_name  "Order Total"
@@ -325,7 +325,7 @@
                                               :database_id   (mt/id)
                                               :dataset_query (mt/mbql-query orders)}]
       ;; result_metadata has :name "ID" but :lib/desired-column-alias "Products__ID"
-      (t2/query-one {:update :report_card
+      (t2/query-one {:update (t2/table-name :model/Card)
                      :set    {:result_metadata
                               (json/encode [{:name                      "ID"
                                              :lib/desired-column-alias  "Products__ID"
@@ -355,7 +355,7 @@
                                                                   :database_type "VARCHAR"}))]
                        (t2/insert! :model/FieldUserSettings (for [id (take-nth 2 field-ids)]
                                                               {:field_id id :description "old" :description_set true}))
-                       (t2/query-one {:update :report_card
+                       (t2/query-one {:update (t2/table-name :model/Card)
                                       :set    {:result_metadata
                                                (json/encode (for [i (range n)]
                                                               {:name         (str "C" i)

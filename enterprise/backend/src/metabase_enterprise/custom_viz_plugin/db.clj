@@ -39,7 +39,7 @@
    columns     :- [:maybe [:sequential :keyword]]]
   (let [modelable (if columns (into [:model/CustomVizPlugin] columns) :model/CustomVizPlugin)]
     (vec (sort-by :id (app-db/select-batched #(t2/select modelable
-                                                         :identifier [:in [:auto/param %]]
+                                                         :identifier [:in %]
                                                          {:order-by [[:id :asc]]})
                                              identifiers)))))
 
@@ -63,7 +63,7 @@
   [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (into {}
         (map (juxt :id identity))
-        (app-db/select-batched #(t2/select non-blob-columns :id [:in [:auto/param %]]) plugin-ids)))
+        (app-db/select-batched #(t2/select non-blob-columns :id [:in %]) plugin-ids)))
 
 (mu/defn update-plugins! :- :nil
   "Apply each of `updates`, the `:id` of a CustomVizPlugin and the columns to change, with one statement for each set of
@@ -75,4 +75,4 @@
 (mu/defn delete-plugins!
   "Delete the CustomVizPlugins with `plugin-ids`, returning the number deleted."
   [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/CustomVizPlugin :id [:in [:auto/param %]]) plugin-ids))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/CustomVizPlugin :id [:in %]) plugin-ids))

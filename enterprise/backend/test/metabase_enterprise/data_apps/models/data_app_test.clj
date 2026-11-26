@@ -201,7 +201,7 @@
       (mt/with-temp [:model/Collection {own-id :id} {:namespace :data-apps}
                      :model/DataApp {collection-id :resource_collection_id} {:resource_collection_id own-id}]
         (let [insert! (fn [slug collection-id]
-                        (t2/query-one {:insert-into :data_app
+                        (t2/query-one {:insert-into (t2/table-name :model/DataApp)
                                        :values      [{:slug                   slug
                                                       :name                   slug
                                                       :bundle_path            "index.js"

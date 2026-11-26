@@ -64,7 +64,7 @@
 (mu/defn task
   "The RemoteSyncTask with `task-id`, or nil."
   [task-id :- ms/PositiveInt]
-  (t2/select-one :model/RemoteSyncTask :id [:auto/param task-id]))
+  (t2/select-one :model/RemoteSyncTask :id task-id))
 
 (mu/defn task-cancelled?
   "The cancelled flag of the RemoteSyncTask with `task-id`."

@@ -105,7 +105,7 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"failure before commit"
                               (ws/set-instance-workspace! {})))))
     (testing "the stored flag rolled back"
-      (is (= "false" (t2/select-one-fn :value :setting :key "workspaces-enabled"))))
+      (is (= "false" (t2/select-one-fn :value (t2/table-name :model/Setting) :key "workspaces-enabled"))))
     (is (false? (ws/workspace-mode?)))))
 
 (deftest clearing-a-database-schema-deletes-its-remappings-test
@@ -308,25 +308,25 @@
         (testing "instance-workspace stored in the app DB, workspaces-enabled unset"
           (let [json (pre-settings-instance-workspace-json "ws_old")]
             (try
-              (t2/delete! :setting :key "workspaces-enabled")
-              (t2/insert! :setting {:key            "instance-workspace"
-                                    :value          json
-                                    :value_with_aad (encryption/maybe-encrypt
-                                                     json {:aad (mdb.setting/setting-aad "instance-workspace")})})
+              (t2/delete! (t2/table-name :model/Setting) :key "workspaces-enabled")
+              (t2/insert! (t2/table-name :model/Setting) {:key            "instance-workspace"
+                                                          :value          json
+                                                          :value_with_aad (encryption/maybe-encrypt
+                                                                           json {:aad (mdb.setting/setting-aad "instance-workspace")})})
               (setting/restore-cache!)
               (insert-mode-exit-remap-row! "ws_old")
               (ws/translate-instance-workspace-setting!)
               (is (true? (ws/workspace-mode?)))
               (is (= ["ws_old" "PUBLIC__MODE_EXIT_T"] (transform-write-target!)))
               (testing "and the old setting is deleted, so no build reads it again"
-                (is (not (t2/exists? :setting :key "instance-workspace"))))
+                (is (not (t2/exists? (t2/table-name :model/Setting) :key "instance-workspace"))))
               (finally
-                (t2/delete! :setting :key "instance-workspace")
+                (t2/delete! (t2/table-name :model/Setting) :key "instance-workspace")
                 (setting/restore-cache!)
                 (ws/clear-instance-workspace!)))))
         (testing "MB_INSTANCE_WORKSPACE set, nothing stored"
           (try
-            (t2/delete! :setting :key "workspaces-enabled")
+            (t2/delete! (t2/table-name :model/Setting) :key "workspaces-enabled")
             (setting/restore-cache!)
             (insert-mode-exit-remap-row! "ws_old")
             (mt/with-temp-env-var-value! [mb-instance-workspace (pre-settings-instance-workspace-json "ws_old")]

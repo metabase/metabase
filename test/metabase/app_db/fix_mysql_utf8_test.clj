@@ -28,34 +28,34 @@
    (mt/dbdef->connection-details :mysql :db {:database-name "utf8_test"})))
 
 (defn- db-charset []
-  (t2/query-one
-   (str "SELECT default_collation_name AS `collation`, default_character_set_name AS `character-set` "
-        "FROM information_schema.SCHEMATA "
-        "WHERE schema_name = 'utf8_test';")))
+  (t2/query-one {:select [[:default_collation_name :collation] [:default_character_set_name :character-set]]
+                 :from   [:information_schema.SCHEMATA]
+                 :where  [:= :schema_name "utf8_test"]}))
 
 (defn- table-charset []
-  (t2/query-one
-   (str "SELECT ccsa.collation_name AS `collation`, ccsa.character_set_name AS `character-set` "
-        "FROM information_schema.`TABLES` t,"
-        " information_schema.`COLLATION_CHARACTER_SET_APPLICABILITY` ccsa "
-        "WHERE ccsa.collation_name = t.table_collation"
-        "  AND t.table_schema = 'utf8_test' "
-        "  AND t.table_name = 'metabase_database';")))
+  (t2/query-one {:select [[:ccsa.collation_name :collation] [:ccsa.character_set_name :character-set]]
+                 :from   [[:information_schema.TABLES :t]]
+                 :join   [[:information_schema.COLLATION_CHARACTER_SET_APPLICABILITY :ccsa]
+                          [:= :ccsa.collation_name :t.table_collation]]
+                 :where  [:and [:= :t.table_schema "utf8_test"] [:= :t.table_name (name (t2/table-name :model/Database))]]}))
 
 (defn- column-charset []
-  (t2/query-one
-   (str "SELECT collation_name AS `collation`, character_set_name AS `character-set` "
-        "FROM information_schema.`COLUMNS` "
-        "WHERE table_schema = 'utf8_test'"
-        "  AND table_name = 'metabase_database'"
-        "AND column_name = 'name';")))
+  (t2/query-one {:select [[:collation_name :collation] [:character_set_name :character-set]]
+                 :from   [:information_schema.COLUMNS]
+                 :where  [:and
+                          [:= :table_schema "utf8_test"]
+                          [:= :table_name (name (t2/table-name :model/Database))]
+                          [:= :column_name "name"]]}))
 
 (def ^:private test-unicode-str "Cam 𝌆 Saul 💩")
 
 (defn- insert-row! []
-  (t2/query [(str "INSERT INTO metabase_database (engine, name, created_at, updated_at, details) "
-                  "VALUES ('mysql', ?, current_timestamp, current_timestamp, '{}')")
-             test-unicode-str]))
+  (t2/query {:insert-into (t2/table-name :model/Database)
+             :values      [{:engine     "mysql"
+                            :name       test-unicode-str
+                            :created_at :%now
+                            :updated_at :%now
+                            :details    "{}"}]}))
 
 (deftest utf8-test
   (testing "makes sure mysql uses utf-8 charset (#10691)"

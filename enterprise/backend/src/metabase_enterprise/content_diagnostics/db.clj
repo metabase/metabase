@@ -25,7 +25,7 @@
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id [:auto/param collection-id]))
+  (t2/select-one :model/Collection :id collection-id))
 
 (mu/defn insert-findings!
   "Insert one chunk of `content_diagnostics_finding` `rows`."
@@ -254,7 +254,7 @@
   `eligible-clause` allows."
   [eligible-clause :- vector?]
   (t2/query {:select [:id :collection_id]
-             :from   [:report_card]
+             :from   [(t2/table-name :model/Card)]
              :where  [:and
                       [:= :archived false]
                       [:= :dashboard_id nil]
@@ -279,8 +279,8 @@
                                            :order-by     [[:qe.started_at :desc]
                                                           [:qe.id :desc]]}]]
                                   :rn]]
-                        :from   [[:query_execution :qe]]
-                        :join   [[:report_card :c] [:= :c.id :qe.card_id]]
+                        :from   [[(t2/table-name :model/QueryExecution) :qe]]
+                        :join   [[(t2/table-name :model/Card) :c] [:= :c.id :qe.card_id]]
                         :where  [:and
                                  [:= :c.archived false]
                                  [:>= :qe.started_at cutoff]
@@ -311,8 +311,8 @@
                                              :order-by     [[:qe.running_time :asc]]}]]
                                     :rn]
                                    [[:over [[:count :*] ^:allow-subquery {:partition-by :qe.card_id}]] :cnt]]
-                          :from   [[:query_execution :qe]]
-                          :join   [[:report_card :c] [:= :c.id :qe.card_id]]
+                          :from   [[(t2/table-name :model/QueryExecution) :qe]]
+                          :join   [[(t2/table-name :model/Card) :c] [:= :c.id :qe.card_id]]
                           :where  [:and
                                    [:not= :qe.running_time nil]
                                    [:not= :qe.cache_hit true]
@@ -334,7 +334,7 @@
   allows."
   [eligible-clause :- vector?]
   (t2/query {:select [:id :collection_id]
-             :from   [:report_dashboard]
+             :from   [(t2/table-name :model/Dashboard)]
              :where  [:and [:= :archived false] eligible-clause]}))
 
 (mu/defn dashboard-dashcard-counts
@@ -343,14 +343,14 @@
   counted."
   []
   (t2/query {:select   [:dashboard_id [[:count :*] :cnt]]
-             :from     [:report_dashboardcard]
+             :from     [(t2/table-name :model/DashboardCard)]
              :group-by [:dashboard_id]}))
 
 (mu/defn dashboard-tab-dashcard-counts
   "The `(dashboard_id, dashboard_tab_id, cnt)` primary-dashcard counts, one row per tab."
   []
   (t2/query {:select   [:dashboard_id :dashboard_tab_id [[:count :*] :cnt]]
-             :from     [:report_dashboardcard]
+             :from     [(t2/table-name :model/DashboardCard)]
              :group-by [:dashboard_id :dashboard_tab_id]}))
 
 (mu/defn dashboard-tab-counts
@@ -358,7 +358,7 @@
   dashboard."
   []
   (t2/query {:select   [:dashboard_id [[:count :*] :cnt]]
-             :from     [:dashboard_tab]
+             :from     [(t2/table-name :model/DashboardTab)]
              :group-by [:dashboard_id]}))
 
 (mu/defn dashboard-primary-card-pairs
@@ -367,8 +367,8 @@
   [eligible-clause :- vector?
    card-ids        :- [:sequential ::lib.schema.id/card]]
   (mdb/select-batched #(t2/query {:select [[:dc.dashboard_id :dashboard_id] [:dc.card_id :card_id]]
-                                  :from   [[:report_dashboardcard :dc]]
-                                  :join   [[:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
+                                  :from   [[(t2/table-name :model/DashboardCard) :dc]]
+                                  :join   [[(t2/table-name :model/Dashboard) :d] [:= :d.id :dc.dashboard_id]]
                                   :where  [:and eligible-clause [:in :dc.card_id %]]})
                       card-ids))
 
@@ -378,9 +378,9 @@
   [eligible-clause :- vector?
    card-ids        :- [:sequential ::lib.schema.id/card]]
   (mdb/select-batched #(t2/query {:select [[:dc.dashboard_id :dashboard_id] [:s.card_id :card_id]]
-                                  :from   [[:dashboardcard_series :s]]
-                                  :join   [[:report_dashboardcard :dc] [:= :dc.id :s.dashboardcard_id]
-                                           [:report_dashboard :d]      [:= :d.id :dc.dashboard_id]]
+                                  :from   [[(t2/table-name :model/DashboardCardSeries) :s]]
+                                  :join   [[(t2/table-name :model/DashboardCard) :dc] [:= :dc.id :s.dashboardcard_id]
+                                           [(t2/table-name :model/Dashboard) :d]      [:= :d.id :dc.dashboard_id]]
                                   :where  [:and eligible-clause [:in :s.card_id %]]})
                       card-ids))
 
@@ -419,7 +419,7 @@
   `archived` column to filter on."
   []
   (t2/query {:select [:id :collection_id]
-             :from   [:transform]}))
+             :from   [(t2/table-name :model/Transform)]}))
 
 (mu/defn transforms
   "The whole Transform rows matching `where` - `mi/can-read?` reads `:source`, so the caller needs them
@@ -437,7 +437,7 @@
   (t2/query {:select   [:transform_id
                         [[:max :start_time] :start_time]
                         [[:max :end_time] :end_time]]
-             :from     [:transform_run]
+             :from     [(t2/table-name :model/TransformRun)]
              :where    [:and
                         [:in :status ["succeeded" "failed" "timeout"]]
                         [:>= :start_time cutoff]]

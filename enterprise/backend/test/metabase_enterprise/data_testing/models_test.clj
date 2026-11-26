@@ -177,7 +177,7 @@
           ;; Raw: the model's before-delete hook reads the row back, which is the very thing under
           ;; test here. Nothing should have been written, but a leftover row would break the
           ;; Transform's own cleanup on its FK.
-          (t2/query {:delete-from :transform_test :where [:= :transform_id transform-id]}))))))
+          (t2/query {:delete-from (t2/table-name :model/TransformTest) :where [:= :transform_id transform-id]}))))))
 
 (deftest duplicate-expectation-names-test
   ;; Uniqueness is a property of the vector rather than of one expectation, so `::expectations`
@@ -191,7 +191,7 @@
         (is (re-find #"unique" (pr-str (keep (comp :error ex-data) (causes e))))
             (pr-str (mapv ex-message (causes e)))))
       (finally
-        (t2/query {:delete-from :transform_test :where [:= :transform_id transform-id]})))))
+        (t2/query {:delete-from (t2/table-name :model/TransformTest) :where [:= :transform_id transform-id]})))))
 
 (deftest update-is-validated-too-test
   (testing "an update goes through the same :in transform as an insert"
@@ -449,7 +449,7 @@
   "What the run permission check of a native query on the Database `db-id` answers, or `:throws`."
   [db-id]
   (try
-    (query-perms/can-run-query? (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1"))
+    (first (query-perms/query-run-answers [(lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")]))
     (catch Throwable _
       :throws)))
 
@@ -638,7 +638,7 @@
   (boolean
    (when subject
      (and (mi/can-read? (t2/hydrate subject :can_read))
-          (query-perms/can-run-query? query)
+          (first (query-perms/query-run-answers [query]))
           (or (mi/superuser?)
               (some-> (data-testing.models/query-database-id query) per-query-native?))))))
 

@@ -402,11 +402,11 @@
               boot!  #(with-redefs-fn {#'advanced-config.file/config-from-disk (constantly config)}
                         advanced-config.file/boot-initialize!)]
           (try
-            (t2/delete! :setting :key "workspaces-enabled")
-            (t2/insert! :setting {:key            "instance-workspace"
-                                  :value          json
-                                  :value_with_aad (encryption/maybe-encrypt
-                                                   json {:aad (mdb.setting/setting-aad "instance-workspace")})})
+            (t2/delete! (t2/table-name :model/Setting) :key "workspaces-enabled")
+            (t2/insert! (t2/table-name :model/Setting) {:key            "instance-workspace"
+                                                        :value          json
+                                                        :value_with_aad (encryption/maybe-encrypt
+                                                                         json {:aad (mdb.setting/setting-aad "instance-workspace")})})
             (setting/restore-cache!)
             (t2/insert! :model/TableRemapping row)
             (boot!)
@@ -419,7 +419,7 @@
               (boot!)
               (is (= ["ws_old"] (t2/select-fn-vec :to_schema :model/TableRemapping :database_id db-id))))
             (finally
-              (t2/delete! :setting :key "instance-workspace")
+              (t2/delete! (t2/table-name :model/Setting) :key "instance-workspace")
               (setting/restore-cache!)
               (t2/delete! :model/TableRemapping :database_id db-id))))))))
 

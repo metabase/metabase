@@ -16,7 +16,7 @@
                     (if (= (mdb/db-type) :postgres)
                       [:= [:date_part (name part-key) :started_at] part-value]
                       [:= [part-key :started_at] part-value]))]
-    (t2/select :query_execution
+    (t2/select (t2/table-name :model/QueryExecution)
                {:order-by [[:started_at :desc]]
                 :where    [:and
                            (date-part :year year)
@@ -56,4 +56,4 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id [:auto/param database-id]))
+  (t2/select-one :model/Database :id database-id))

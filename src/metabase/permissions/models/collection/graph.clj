@@ -145,9 +145,9 @@
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
 (defenterprise update-audit-collection-permissions!
-  "OSS implementation of `audit-db/update-audit-collection-permissions!`, which is an enterprise feature, so does nothing in the OSS
-  version. Returns the changes map unchanged."
-  metabase-enterprise.audit-app.permissions [_ changes] changes)
+  "OSS version of the enterprise `update-audit-collection-permissions!`, returning `changes`, a map of group id to its
+  Collection changes, unchanged."
+  metabase-enterprise.audit-app.permissions [changes] changes)
 
 (defn create-perms-revision!
   "Increments the current revision number and writes it to the database. This lets us track the permissions graph
@@ -269,13 +269,13 @@
                            (perms/update-collection-accesses!
                             (into []
                                   (mapcat (fn [[group-id changes]]
-                                            (for [[collection-id access] (update-audit-collection-permissions! group-id changes)]
+                                            (for [[collection-id access] changes]
                                               [group-id
                                                (if (= collection-id :root)
                                                  (assoc collection.root/root-collection :namespace collection-namespace)
                                                  collection-id)
                                                access])))
-                                  changes))
+                                  (update-audit-collection-permissions! changes)))
                            (:id (create-perms-revision! (:revision old-graph))))]
          ;; The graph is updated infrequently, but `diff-old` and `old-graph` can get huge on larger instances.
          (perms.u/log-permissions-changes diff-old changes)

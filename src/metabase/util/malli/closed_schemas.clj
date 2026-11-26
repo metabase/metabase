@@ -313,7 +313,7 @@
     (forget-results!)
     (not-empty (vec (failing (findings schema options))))))
 
-(defn check-args!
+(defn check-args
   "Throw when an argument schema of `fn-name`, or an argument without one, can reach a schema that accepts a value of
   any shape."
   [fn-name arg-schemas]

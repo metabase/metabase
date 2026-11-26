@@ -3,7 +3,7 @@ import type { MantineColorsTuple } from "@mantine/core";
 import { ALL_COLOR_NAMES, deriveFullMetabaseTheme } from "metabase/ui/colors";
 import type { ColorName, MetabaseColorKey } from "metabase/ui/colors/types";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
-import type { ColorSettings } from "metabase-types/api";
+import type { ColorSettings } from "metabase-types/api/color-settings";
 
 const ORIGINAL_COLORS = [
   "dark",

@@ -2515,7 +2515,7 @@
   "Throw an app DB lookup error without leaving the surrounding transaction aborted."
   [& _]
   (t2/with-transaction [_conn]
-    (t2/query ["SELECT no_such_column FROM metabase_field"])))
+    (t2/query {:select [:no_such_column] :from [(t2/table-name :model/Field)]})))
 
 (defn- logs-app-db-error?
   "Whether captured log `messages` include the app DB error that [[reject-app-db-lookup]] causes."

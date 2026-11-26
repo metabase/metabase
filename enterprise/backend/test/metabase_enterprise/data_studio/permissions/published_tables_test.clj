@@ -94,7 +94,7 @@
                (into #{}
                      (map :id)
                      (t2/query {:select [:mt.id]
-                                :from   [[:metabase_table :mt]]
+                                :from   [[(t2/table-name :model/Table) :mt]]
                                 :where  [:and
                                          [:in :mt.id [visible-pub-id hidden-pub-id unpub-id]]
                                          (published-tables/published-table-clause

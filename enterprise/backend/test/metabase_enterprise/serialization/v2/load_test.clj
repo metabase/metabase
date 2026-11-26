@@ -3337,7 +3337,7 @@
                                :display       :table)]
           ;; Corrupt dataset_query to a non-empty but structurally broken value, bypassing the
           ;; model hooks. This simulates a card whose query became malformed after migrations.
-          (t2/query {:update :report_card
+          (t2/query {:update (t2/table-name :model/Card)
                      :set    {:dataset_query (json/encode {:broken true})}
                      :where  [:= :id (:id card)]})
           (let [serialized (into [] (serdes.extract/extract {:include-h2? true}))
@@ -3415,7 +3415,7 @@
               (mt/with-user-locale import-locale
                 (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized)))
               (is (= "Library"
-                     (t2/select-one-fn :name :collection :entity_id collection/library-entity-id))))))))))
+                     (t2/select-one-fn :name (t2/table-name :model/Collection) :entity_id collection/library-entity-id))))))))))
 
 (deftest library-import-preserves-existing-permissions-test
   (testing "Importing library subcollections does not overwrite existing permissions on destination"
@@ -3608,11 +3608,11 @@
                       (t2/select-one [:model/TransformJob :active :built_in_type] :id job-id))]
         (testing "an import keeps active on an existing built-in job"
           (is (=? {:active false :built_in_type "hourly"} (import! built-in-id true)))
-          (t2/update! :transform_job :id built-in-id {:active true})
+          (t2/update! (t2/table-name :model/TransformJob) :id built-in-id {:active true})
           (is (=? {:active true :built_in_type "hourly"} (import! built-in-id false))))
         (testing "an import keeps active on an existing custom job"
           (is (=? {:active false :built_in_type nil} (import! custom-id true)))
-          (t2/update! :transform_job :id custom-id {:active true})
+          (t2/update! (t2/table-name :model/TransformJob) :id custom-id {:active true})
           (is (=? {:active true :built_in_type nil} (import! custom-id false))))
         (testing "an import inserts a job with the column default for active"
           (let [extracted (assoc (ts/extract-one "TransformJob" custom-id) :active false)]
@@ -3698,7 +3698,7 @@
   (testing "settings the model cannot decrypt are their ciphertext string, which an export and an import pass through"
     (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
       ;; what the column holds when it was encrypted with a key this instance does not have
-      (t2/update! :metabase_database :id db-id {:settings "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="})
+      (t2/update! (t2/table-name :model/Database) :id db-id {:settings "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="})
       (let [ciphertext (t2/select-one-fn :settings :model/Database :id db-id)
             extracted  (ts/extract-one "Database" db-id)]
         (is (string? ciphertext))
@@ -3706,7 +3706,7 @@
         (serdes.load/load-metabase! (ts/ingestion-in-memory [extracted]))
         (is (= ciphertext (t2/select-one-fn :settings :model/Database :id db-id)))
         (testing "an import of map settings over a Database whose settings cannot be decrypted"
-          (t2/update! :metabase_database :id db-id {:settings ciphertext})
+          (t2/update! (t2/table-name :model/Database) :id db-id {:settings ciphertext})
           (serdes.load/load-metabase!
            (ts/ingestion-in-memory [(assoc extracted :settings {:database-enable-actions false})]))
           (is (= {:database-enable-actions false} (t2/select-one-fn :settings :model/Database :id db-id))))))))

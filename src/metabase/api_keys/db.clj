@@ -6,6 +6,7 @@
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -35,7 +36,7 @@
 (mu/defn api-key
   "The ApiKey with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/ApiKey :id [:auto/param id]))
+  (t2/select-one :model/ApiKey :id id))
 
 (mu/defn api-key-exists?
   "Whether an ApiKey with `id` exists."
@@ -52,11 +53,11 @@
   [api-key-ids :- [:sequential ms/PositiveInt]]
   (mdb/select-batched #(t2/query {:select [[:pg.name :group-name]
                                            [:pg.id :group-id]
-                                           [:api_key.id :api-key-id]]
-                                  :from   [[:permissions_group :pg]]
-                                  :join   [[:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]
-                                           :api_key [:= :api_key.user_id :pgm.user_id]]
-                                  :where  [:in :api_key.id %]})
+                                           [(u/qualified-key (t2/table-name :model/ApiKey) :id) :api-key-id]]
+                                  :from   [[(t2/table-name :model/PermissionsGroup) :pg]]
+                                  :join   [[(t2/table-name :model/PermissionsGroupMembership) :pgm] [:= :pgm.group_id :pg.id]
+                                           (t2/table-name :model/ApiKey) [:= (u/qualified-key (t2/table-name :model/ApiKey) :user_id) :pgm.user_id]]
+                                  :where  [:in (u/qualified-key (t2/table-name :model/ApiKey) :id) %]})
                       api-key-ids))
 
 (mu/defn user-types :- [:map-of ::lib.schema.id/user :keyword]
@@ -82,7 +83,7 @@
 (mu/defn api-key-usage-log-ids-occurred-before :- [:sequential ms/PositiveInt]
   "The ids of the ApiKeyUsageLogs whose `occurred_at` is before `cutoff`."
   [cutoff :- (ms/InstanceOfClass java.time.OffsetDateTime)]
-  (vec (t2/select-pks-vec :model/ApiKeyUsageLog {:where [:< :occurred_at [:auto/param cutoff]]})))
+  (vec (t2/select-pks-vec :model/ApiKeyUsageLog {:where [:< :occurred_at cutoff]})))
 
 (defn lock-available-key-ids
   "The subset of `ids` not currently locked by another writer, locked for update (`SKIP LOCKED` outside

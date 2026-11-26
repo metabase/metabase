@@ -159,12 +159,12 @@
 (mu/defn end-session-log!
   "Stamp `ended_at` on the McpSessionLog with `session-id`."
   [session-id :- :string]
-  (t2/update! :model/McpSessionLog :id [:auto/param session-id] {:ended_at :%now}))
+  (t2/update! :model/McpSessionLog :id session-id {:ended_at :%now}))
 
 (mu/defn session-log-ids-created-before :- [:sequential :string]
   "The ids of the McpSessionLogs created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (vec (t2/select-pks-vec :model/McpSessionLog {:where [:< :created_at [:auto/param cutoff]]})))
+  (vec (t2/select-pks-vec :model/McpSessionLog {:where [:< :created_at cutoff]})))
 
 (mu/defn insert-tool-call-log!
   "Insert the McpToolCallLog `row`."
@@ -174,7 +174,7 @@
 (mu/defn tool-call-log-ids-created-before :- [:sequential ms/PositiveInt]
   "The ids of the McpToolCallLogs created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (vec (t2/select-pks-vec :model/McpToolCallLog {:where [:< :created_at [:auto/param cutoff]]})))
+  (vec (t2/select-pks-vec :model/McpToolCallLog {:where [:< :created_at cutoff]})))
 
 (defn session-user-ids
   "The ids of every User owning a `core_session` with `key-hashed`.
@@ -183,7 +183,7 @@
   can each materialize their own row under one id. Reading a single owner picks one of them arbitrarily and
   locks the rest out of a session they already hold — see `metabase.mcp.session/owned-by-user?`."
   [key-hashed]
-  (t2/select-fn-set :user_id :core_session :key_hashed key-hashed))
+  (t2/select-fn-set :user_id (t2/table-name :model/Session) :key_hashed key-hashed))
 
 (mu/defn insert-query-handle!
   "Insert the McpQueryHandle `row` under the client-generated `handle-id`, returning the number inserted."
@@ -197,8 +197,8 @@
    user-id   :- ::lib.schema.id/user]
   (t2/select-one :model/McpQueryHandle
                  {:select [:mqh.*]
-                  :from   [[:mcp_query_handle :mqh]]
-                  :join   [[:core_session :cs] [:= :cs.id :mqh.core_session_id]]
+                  :from   [[(t2/table-name :model/McpQueryHandle) :mqh]]
+                  :join   [[(t2/table-name :model/Session) :cs] [:= :cs.id :mqh.core_session_id]]
                   :where  [:and
                            [:= :mqh.id handle-id]
                            [:= :cs.user_id user-id]]}))
@@ -206,7 +206,7 @@
 (mu/defn query-handle-ids-created-before :- [:sequential :string]
   "The ids of every McpQueryHandle created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (vec (t2/select-pks-vec :model/McpQueryHandle {:where [:< :created_at [:auto/param cutoff]]})))
+  (vec (t2/select-pks-vec :model/McpQueryHandle {:where [:< :created_at cutoff]})))
 
 (defn delete-query-handles-for-user-session!
   "Delete the McpQueryHandles of MCP session `mcp-session-id` that belong to the User with `user-id`, plus any
@@ -215,13 +215,13 @@
   The subquery is deliberate: resolving those session ids in a separate round trip leaves a window where a
   concurrent teardown drops the session between the two statements."
   [mcp-session-id key-hashed user-id]
-  (t2/query {:delete-from :mcp_query_handle
+  (t2/query {:delete-from (t2/table-name :model/McpQueryHandle)
              :where       [:and
                            [:= :mcp_session_id mcp-session-id]
                            [:or
                             [:= :core_session_id nil]
                             [:in :core_session_id ^:allow-subquery {:select [:id]
-                                                                    :from   [:core_session]
+                                                                    :from   [(t2/table-name :model/Session)]
                                                                     :where  [:and
                                                                              [:= :key_hashed key-hashed]
                                                                              [:= :user_id user-id]]}]]]}))
@@ -263,7 +263,7 @@
   "The McpGroupPermissions of the groups among `group-ids`."
   [group-ids :- [:sequential ms/PositiveInt]]
   (when (seq group-ids)
-    (mdb/select-batched #(t2/select :model/McpGroupPermission :group_id [:in [:auto/param %]]) group-ids)))
+    (mdb/select-batched #(t2/select :model/McpGroupPermission :group_id [:in %]) group-ids)))
 
 (mu/defn insert-group-permissions!
   "Insert the McpGroupPermission `rows` in one statement."
@@ -283,7 +283,7 @@
                          [:tool_access {:optional true} ::mcp.perms/tool-access]]]]
   (doseq [[changes rows] (group-by #(dissoc % :group_id) rows)]
     (doseq [chunk (partition-all mdb/update-partition-size (mapv :group_id rows))]
-      (t2/update! :model/McpGroupPermission :group_id [:in [:auto/param (vec chunk)]] changes))))
+      (t2/update! :model/McpGroupPermission :group_id [:in (vec chunk)] changes))))
 
 (mu/defn delete-hidden-group-permissions!
   "Delete the McpGroupPermission rows of the groups the mode selected by `advanced?` hides."

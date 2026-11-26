@@ -144,8 +144,8 @@
   3. deleting the metric migration collection."
   []
   (when-let [metric-v2-coll-id (get-or-create-metric-migration-collection-id!)]
-    (t2/query [(str "UPDATE report_card"
-                    "   SET dataset_query = dataset_query_metrics_v2_migration_backup"
-                    " WHERE dataset_query_metrics_v2_migration_backup IS NOT NULL")])
+    (t2/query {:update :report_card
+               :set    {:dataset_query :dataset_query_metrics_v2_migration_backup}
+               :where  [:<> :dataset_query_metrics_v2_migration_backup nil]})
     (t2/delete! :report_card :collection_id metric-v2-coll-id)
     (t2/delete! :collection :id metric-v2-coll-id)))

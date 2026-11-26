@@ -1,11 +1,13 @@
 import {
+  type InputVariant,
   TextInput as MantineTextInput,
   type TextInputProps as MantineTextInputProps,
 } from "@mantine/core";
 import { forwardRef } from "react";
 
-export type TextInputProps = Omit<MantineTextInputProps, "size"> & {
+export type TextInputProps = Omit<MantineTextInputProps, "size" | "variant"> & {
   size?: "sm" | "md" | "lg";
+  variant?: InputVariant | "read-only";
 };
 
 export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(

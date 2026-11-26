@@ -9,6 +9,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.settings :as settings]
    [metabase.task.core :as task]
    [next.jdbc :as next.jdbc]))
@@ -56,14 +57,7 @@
 (defn current-partitions
   "List the names of the currently-attached query_execution partition tables."
   [conn]
-  (map :pg_class/relname
-       ;; the regclass::oid cast resolves to only the table in the current schema.
-       ;; appdb with a non-default schema is not supported for new installs, but
-       ;; there are users who have upgraded from ancient installs who have it.
-       (next.jdbc/execute! conn ["SELECT c.relname FROM pg_inherits i
-                                    JOIN pg_class p ON i.inhparent = p.oid
-                                    JOIN pg_class c ON i.inhrelid = c.oid
-                                   WHERE p.oid = 'query_execution'::regclass::oid"])))
+  (audit-app.db/query-execution-partitions conn))
 
 (defn fully-on-partitions?
   "Has the database fully switched to managing its truncation with partitions?
@@ -75,9 +69,7 @@
   (and (= :postgres (mdb/db-type))
        (with-open [conn (.getConnection (mdb/data-source))]
          (when-let [oldest-partition (first (sort (current-partitions conn)))]
-           (let [[oldest] (next.jdbc/execute! conn [(str "SELECT min(started_at) AS min FROM "
-                                                         oldest-partition)])
-                 oldest-date-time (some-> (:min oldest) t/instant
+           (let [oldest-date-time (some-> (audit-app.db/earliest-started-at conn oldest-partition) t/instant
                                           (t/local-date-time "UTC"))]
              (or (nil? oldest-date-time)
                  (= oldest-partition (partition-for oldest-date-time))))))))

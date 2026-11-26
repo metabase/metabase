@@ -1567,7 +1567,7 @@
            :model/Card {c-id :id} {:name "Metric C", :type :metric, :dataset_query (metric-query b-id)}]
           ;; close the cycle with a raw update -- the Card hooks reject cyclic saves, so this is how a cycle saved
           ;; before they did reaches the DB
-          (t2/update! :report_card :id a-id {:dataset_query (t2/select-one-fn :dataset_query :report_card :id c-id)})
+          (t2/update! (t2/table-name :model/Card) :id a-id {:dataset_query (t2/select-one-fn :dataset_query (t2/table-name :model/Card) :id c-id)})
           (f a-id b-id))))))
 
 (deftest query-description-metric-reference-cycle-test
@@ -1584,14 +1584,14 @@
    upgrade and report the current version whether or not it was ever written."
   [card-id]
   (:card_schema (t2/query-one {:select [:card_schema]
-                               :from   [:report_card]
+                               :from   [(t2/table-name :model/Card)]
                                :where  [:= :id card-id]})))
 
 (defn- age-card!
   "Put `card-id`'s stored `card_schema` behind the current version. Needs a raw UPDATE because
    before-insert forces `:card_schema` to current, so passing it to `with-temp` is silently ignored."
   [card-id schema-version]
-  (t2/query-one {:update :report_card
+  (t2/query-one {:update (t2/table-name :model/Card)
                  :set    {:card_schema schema-version}
                  :where  [:= :id card-id]})
   (assert (= schema-version (stored-card-schema card-id))))
@@ -2000,7 +2000,7 @@
                                               :database_id   (mt/id)
                                               :table_id      (mt/id :venues)
                                               :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
-      (t2/query-one {:update :report_card
+      (t2/query-one {:update (t2/table-name :model/Card)
                      :set    {:card_schema 23, :dimensions nil, :dimension_mappings nil}
                      :where  [:= :id card-id]})
       (t2/update! :model/Card :id card-id {:dataset_query (mt/mbql-query categories {:aggregation [[:count]]})})
@@ -2018,7 +2018,7 @@
   "Stores `settings` as the visualization settings of Card `card-id` without the Card hooks, as a Card saved before the
   timeline settings were validated holds them."
   [card-id settings]
-  (t2/update! :report_card :id card-id {:visualization_settings (json/encode settings)}))
+  (t2/update! (t2/table-name :model/Card) :id card-id {:visualization_settings (json/encode settings)}))
 
 (deftest new-card-timeline-selection-permissions-test
   (mt/with-temp [:model/Collection collection {}
@@ -2203,7 +2203,7 @@
       ;; A pre-curation metric: schema 23, no stored dimensions, and a `:result_metadata` still carrying one of
       ;; the abandoned `:ident`s that the upgrade to 22 exists to strip. Written raw because before-insert
       ;; forces `:card_schema` to current and normalizes the card.
-      (t2/query-one {:update :report_card
+      (t2/query-one {:update (t2/table-name :model/Card)
                      :set    {:card_schema        23
                               :dimensions         nil
                               :dimension_mappings nil
@@ -2213,7 +2213,7 @@
                      :where  [:= :id card-id]})
       (testing "precondition: the stored row really does carry the stale ident"
         (is (str/includes? (:result_metadata (t2/query-one {:select [:result_metadata]
-                                                            :from   [:report_card]
+                                                            :from   [(t2/table-name :model/Card)]
                                                             :where  [:= :id card-id]}))
                            "abandoned-ident")))
       (testing "without the flag the backfill runs"

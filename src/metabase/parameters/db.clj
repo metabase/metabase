@@ -29,7 +29,7 @@
   ^:allow-subquery
   {:select    [[:dest.id :id] [(mapping-type-name->code mapping-type) :mapping_type]]
    :from      [[(t2/table-name :model/Field) :source]]
-   :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
+   :left-join [[(t2/table-name :model/Table) :table] [:= :source.table_id :table.id]
                [(t2/table-name :model/Field) :dest] [:= :dest.table_id :table.id]]
    :where     [:and
                [:= :source.id field-id]
@@ -50,7 +50,7 @@
                                       ^:allow-subquery
                                       {:select [[:dimension.human_readable_field_id :id]
                                                 [(mapping-type-name->code "fk->field") :mapping_type]]
-                                       :from   [[:dimension :dimension]]
+                                       :from   [[(t2/table-name :model/Dimension) :dimension]]
                                        :where  [:and
                                                 [:= :dimension.field_id field-id]
                                                 [:not= :dimension.human_readable_field_id nil]]
@@ -86,7 +86,7 @@
 (mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
   "The Database id of each of the Tables with `table-ids`, by Table id."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (mdb/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in [:auto/param %]]) table-ids))
+  (mdb/select-batched-map #(t2/select-pk->fn :db_id :model/Table :id [:in %]) table-ids))
 
 (mu/defn fields-fk-info
   "The id, FK target, and semantic type of the Fields with `field-ids`."
@@ -171,9 +171,9 @@
                           [:pk-field.id :f2]
                           [:pk-field.table_id :t2]]
               :from      [[(t2/table-name :model/Field) :fk-field]]
-              :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
-                                                          :fk-table.active]
-                          [:metabase_database :database] [:= :fk-table.db_id :database.id]
+              :left-join [[(t2/table-name :model/Table) :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
+                                                                       :fk-table.active]
+                          [(t2/table-name :model/Database) :database] [:= :fk-table.db_id :database.id]
                           [(t2/table-name :model/Field) :pk-field] [:and [:= :fk-field.fk_target_field_id :pk-field.id]
                                                                     :pk-field.active]]
               :where     [:and

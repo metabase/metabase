@@ -28,7 +28,7 @@
                                      [4 "root"      0]]
                  :when              model-id]
              ^:allow-subquery
-             {:from   [:cache_config]
+             {:from   [(t2/table-name :model/CacheConfig)]
               :select [:id
                        [[:inline i] :ordering]]
               :where  [:and

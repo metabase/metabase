@@ -25,7 +25,7 @@
         (is (= 2 (:data_version row))))
       (testing "the stored row is untouched"
         (is (= 1 (:data_version (t2/query-one {:select [:data_version]
-                                               :from   [:metabot_message]
+                                               :from   [(t2/table-name :model/MetabotMessage)]
                                                :where  [:= :id (:id msg)]}))))))))
 
 (deftest after-select-migrates-v1-tool-results-test
@@ -129,10 +129,10 @@
           (is (= [:user :assistant] [(:role plain) (:role explicit)])))
         (testing "a row that leaves a column out keeps its default"
           (is (=? {:finished true}
-                  (t2/query-one {:select [:finished] :from [:metabot_message] :where [:= :id (:id plain)]}))))
+                  (t2/query-one {:select [:finished] :from [(t2/table-name :model/MetabotMessage)] :where [:= :id (:id plain)]}))))
         (testing "a row that gives the column keeps its value"
           (is (=? {:finished false}
-                  (t2/query-one {:select [:finished] :from [:metabot_message] :where [:= :id (:id explicit)]}))))))))
+                  (t2/query-one {:select [:finished] :from [(t2/table-name :model/MetabotMessage)] :where [:= :id (:id explicit)]}))))))))
 
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {}]

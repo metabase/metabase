@@ -5,7 +5,8 @@
   `MB_SQL_PARSING_DIFFERENTIAL_CASES`: an `.edn` or `.json` file of `{:cases [{:sql ... :dialect ...} ...]}`, the
   same shape as the files in `test_cases/` (see [[metabase.sql-parsing.case-files/expand]]; other keys are
   ignored). For each distinct query, both backends answer `referenced-tables`, `referenced-fields` and
-  `field-references`, and the test fails for each answer on which they disagree. There are no expected answers.
+  `field-references`, and the test fails for each answer on which they disagree, except the differences in
+  `known-differences`, which it counts as `:known`. There are no expected answers.
   `MB_SQL_PARSING_DIFFERENTIAL_REPORT`, when set, is a file to write each disagreement to as JSON.
 
   `MB_SQL_PARSING_SCORECARD_CORPUS`: the root of a labelled corpus of SQL that tries to hide tables from table
@@ -77,6 +78,35 @@
        (logical (:value java)))         :match
     :else                               :mismatch))
 
+(defn- parse-failed?
+  "True when `answer` is a parse failure: a thrown error, or `field-references` with a syntax error."
+  [answer]
+  (boolean (or (:error answer)
+               (some #(= :syntax-error (:type %)) (:errors (:value answer))))))
+
+(def ^:private known-differences
+  "Each difference the test accepts, as a description and a predicate on the SQL and the GraalPy and Java answers."
+  [{:description "GraalPy cannot parse a placeholder with a :: cast, e.g. `?::date`; Java parses it"
+    :known?      (fn [sql python java]
+                   (and (re-find #"\?\s*::" sql)
+                        (parse-failed? python)
+                        (not (parse-failed? java))))}])
+
+(defn- known-difference?
+  "True when the GraalPy and Java answers for `sql` differ in a way in [[known-differences]]."
+  [sql python java]
+  (boolean (some #((:known? %) sql python java) known-differences)))
+
+(deftest ^:parallel known-difference?-test
+  (let [sql "SELECT * FROM t WHERE d > ?::date"]
+    (testing "a placeholder cast that only GraalPy fails to parse is known"
+      (is (known-difference? sql {:error "ParseError"} {:value #{}}))
+      (is (known-difference? sql {:value {:errors #{{:type :syntax-error}}}} {:value {:errors #{}}})))
+    (testing "other differences are not known"
+      (is (not (known-difference? sql {:value #{}} {:error "ParseError"})))
+      (is (not (known-difference? sql {:value #{}} {:value #{[nil nil "t" "d"]}})))
+      (is (not (known-difference? "SELECT * FROM t WHERE d > ?" {:error "ParseError"} {:value #{}}))))))
+
 (deftest differential-test
   (if-let [path (env-path "MB_SQL_PARSING_DIFFERENTIAL_CASES")]
     (let [queries     (distinct-queries (case-files/file-cases path))
@@ -89,9 +119,12 @@
                 [function {:keys [f logical]}] differential-functions]
           (let [python-answer (answer f python dialect sql)
                 java-answer   (answer f java dialect sql)
-                result        (outcome logical python-answer java-answer)]
+                result        (let [result (outcome logical python-answer java-answer)]
+                                (if (and (not= :match result) (known-difference? sql python-answer java-answer))
+                                  :known
+                                  result))]
             (vswap! counts update-in [function result] (fnil inc 0))
-            (when-not (= :match result)
+            (when-not (#{:match :known} result)
               (vswap! divergences conj {:function function, :dialect dialect, :sql sql, :outcome result
                                         :python python-answer, :java java-answer})
               (is (= :match result)

@@ -16,7 +16,7 @@
 (mu/defn transform-sources
   "The map from each of `transform-ids` that exists to its source."
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
-  (mdb/select-batched-map #(t2/select-pk->fn :source [:model/Transform :id :source] :id [:in [:auto/param %]])
+  (mdb/select-batched-map #(t2/select-pk->fn :source [:model/Transform :id :source] :id [:in %])
                           transform-ids))
 
 (mu/defn transforms-for-ordering
@@ -30,14 +30,14 @@
   (let [db-ids (into [] (comp (map first) (distinct)) triples)]
     (mdb/select-batched #(t2/select [:model/Table :id :db_id :schema :name]
                                     :active true
-                                    :db_id [:in [:auto/param db-ids]]
-                                    :name [:in [:auto/param %]])
+                                    :db_id [:in db-ids]
+                                    :name [:in %])
                         (into [] (comp (map #(nth % 2)) (distinct)) triples))))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Transform :id [:auto/param transform-id]))
+  (t2/select-one :model/Transform :id transform-id))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
@@ -69,8 +69,8 @@
   [transform-id :- [:maybe ::lib.schema.id/transform]]
   (when transform-id
     (when-let [table-id (t2/select-one-fn :target_table_id [:model/Transform :target_table_id]
-                                          :id [:auto/param transform-id])]
-      (t2/select-one :model/Table :id [:auto/param table-id]))))
+                                          :id transform-id)]
+      (t2/select-one :model/Table :id table-id))))
 
 (mu/defn active-field-names-for-table
   "The names of the active Fields of the Table with `table-id`, in position order."
