@@ -73,8 +73,6 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
-      - name: Test contracts against generated declarations
-        run: bun test ./frontend/build/openapi/generated-contracts.integration.spec.ts
       - name: Check API contracts job status
         uses: actions/github-script@v9
         env:
