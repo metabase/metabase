@@ -1666,6 +1666,23 @@
                    :is_error     true}]
                  (filter #(= :tool (:role %)) (metabot-persistence/history rows)))))))))
 
+(deftest ^:parallel history-replays-whitespace-only-text-test
+  (let [replay (fn [assistant-row]
+                 (rest (metabot-persistence/history
+                        [{:id 1 :role :user :data [{:type "text" :text "look it up"}]}
+                         (merge {:id 2 :role :assistant :finished true} assistant-row)])))
+        part   {:type "tool-search" :toolCallId "c1" :state "output-available" :input {:q "x"} :output "rows"}
+        call   {:role :assistant :tool_calls [{:id "c1" :name "search" :arguments (json/encode {:q "x"})}]}
+        result {:role :tool :tool_call_id "c1" :content "rows"}]
+    (testing (str "text that is only whitespace replays in its place, because the request, not history, leaves it "
+                  "out (see `metabase.metabot.agent.messages/build-message-history`)")
+      (is (= [{:role :assistant :content "\n\n"} call result]
+             (replay {:data [{:type "text" :text "\n\n"} part]}))))
+    (testing "text that is only whitespace after the last call of a `tool-calls` row replays after the results"
+      (is (= [call result {:role :assistant :content "\n\n"}]
+             (replay {:finish_reason "tool-calls"
+                      :data          [{:type "step-start"} part {:type "text" :text "\n\n"}]}))))))
+
 (deftest history-hides-query-results-while-query-execution-is-off-test
   (testing "a stored run_query result is replayed only while query execution is on, and nothing stored changes"
     (with-rasta-tx
