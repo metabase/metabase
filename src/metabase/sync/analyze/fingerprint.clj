@@ -4,8 +4,8 @@
   (:require
    [java-time.api :as t]
    [metabase.analyze.core :as analyze]
-   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.sync.analyze.sample :as sample]
    [metabase.sync.analyze.table-chunks :as table-chunks]
    [metabase.sync.interface :as i]
    [metabase.sync.settings :as sync.settings]
@@ -16,8 +16,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field :as field]
-   [redux.core :as redux]))
+   [metabase.warehouse-schema.models.field :as field]))
 
 (defn incomplete-analysis-kvs
   "Key-value pairs corresponding to the state of Fields that have the latest fingerprint, but have not yet
@@ -57,12 +56,14 @@
                                      :fingerprint_origin origin))))
 
 (defn- sample-origin
-  "The origin of the fingerprints from a sample of `table` read with `method`."
-  [table method]
-  {:source       :sample
-   :method       method
-   :row-count    (:estimated_row_count table)
-   :collected-at (str (t/instant))})
+  "The origin of the fingerprints from a sample of `table`, as [[sample/sample]] describes it."
+  [table {:keys [method fraction runs]}]
+  (cond-> {:source       :sample
+           :method       method
+           :row-count    (:estimated_row_count table)
+           :collected-at (str (t/instant))}
+    fraction (assoc :fraction fraction)
+    runs     (assoc :runs runs)))
 
 (mr/def ::FingerprintStats
   [:map {:closed true}
@@ -105,17 +106,23 @@
   `:stats`."
   [table  :- i/TableInstance
    fields :- [:maybe [:sequential i/FieldInstance]]]
-  (let [rff (fn [_metadata]
-              (redux/post-complete
-               (analyze/fingerprint-fields fields)
-               (fn [fingerprints]
-                 {:rows  (into [] (keep identity) (map (partial fingerprint-row (sample-origin table :unspecified))
-                                                       fields fingerprints))
-                  :stats (fingerprint-stats fingerprints)})))
-        driver (driver.u/database->driver (:db_id table))
-        opts {:truncation-size *truncation-size*}]
-    (tracing/with-span :sync "sync.fingerprint.sample" {:sync/table (:name table) :sync/field-count (count fields)}
-      (driver/table-rows-sample driver table fields rff opts))))
+  (let [rff                          (fn [_metadata]
+                                       (analyze/fingerprint-fields fields))
+        opts                         {:truncation-size *truncation-size*}
+        no-data?                     (fn [fingerprints]
+                                       (every? #(= :no-data-fingerprints (fingerprint-outcome %)) fingerprints))
+        {fingerprints :result :as how} (tracing/with-span :sync "sync.fingerprint.sample" {:sync/table       (:name table)
+                                                                                           :sync/field-count (count fields)}
+                                         (let [how (sample/sample table fields rff opts)]
+                                           ;; A better sample with no rows, for example of a table whose row count
+                                           ;; estimate is old, gives no fingerprints; the first rows may have some. A sample that
+                                           ;; is already the first rows is not read again.
+                                           (if (and (not (#{:unspecified :first-rows} (:method how)))
+                                                    (no-data? (:result how)))
+                                             (sample/first-rows-sample table fields rff opts)
+                                             how)))]
+    {:rows  (into [] (keep identity) (map (partial fingerprint-row (sample-origin table how)) fields fingerprints))
+     :stats (fingerprint-stats fingerprints)}))
 
 (mu/defn- fingerprint-fields!
   "Fingerprint `fields` of `table` from a sample of its rows and save the fingerprints, returning their stats."
@@ -276,7 +283,7 @@
   [database        :- i/DatabaseInstance
    log-progress-fn :- LogProgressFn]
   (if (driver.u/supports? (:engine database) :fingerprint database)
-    (fingerprint-fields-for-db!* database log-progress-fn)
+    (sample/do-with-better-sample-run #(fingerprint-fields-for-db!* database log-progress-fn))
     (empty-stats-map 0)))
 
 (def ^:private max-refingerprint-field-count
@@ -289,10 +296,11 @@
   [database        :- i/DatabaseInstance
    log-progress-fn :- LogProgressFn]
   (binding [*refingerprint?* true]
-    (fingerprint-fields-for-db!* database
-                                 log-progress-fn
-                                 (fn [stats-acc]
-                                   (< (:fingerprints-attempted stats-acc) max-refingerprint-field-count)))))
+    (sample/do-with-better-sample-run
+     #(fingerprint-fields-for-db!* database
+                                   log-progress-fn
+                                   (fn [stats-acc]
+                                     (< (:fingerprints-attempted stats-acc) max-refingerprint-field-count))))))
 
 (mu/defn refingerprint-field!
   "Refingerprint a field"

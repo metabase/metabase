@@ -7,6 +7,23 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- New multimethod `metabase.driver/table-random-sample` and feature flag `:table-random-sample`, false by default. A
+  driver that supports the flag gives sync a better sample of a table's rows for fingerprints than the first rows, and
+  says how it read them: `{:method :block | :row | :first-rows | :unspecified, :fraction f, :runs n, :result r}`. The
+  options are open and include `:rows` (the sample size), `:row-count` (the row count estimate) and `:truncation-size`.
+  Declare the flag for the driver itself only, as `(= driver :my-driver)`: sync chooses between this method and
+  `metabase.driver/table-rows-sample` by the flag, so a child driver that does not declare it keeps its own
+  `table-rows-sample`. `table-rows-sample` does not change and stays the fallback: sync uses it when the new method
+  throws or takes longer than its time limit, and then for the rest of the run for that database. Sync stores the
+  method with each fingerprint, in `metabase_field.fingerprint_origin`.
+
+- New multimethod `metabase.driver.sql.query-processor/table-sample->honeysql`, for a SQL driver's built-in block
+  sample (such as `TABLESAMPLE SYSTEM`). It returns the `FROM` item for a compiled table identifier and
+  `{:percent p}`. The compiler calls it for a query stage with `:table-sample`. The `:sql` default throws. A driver
+  that implements it uses `metabase.driver.common.table-rows-sample/block-sample` as its
+  `metabase.driver/table-random-sample`. A driver with its own `apply-top-level-clause` for `:source-table` must call
+  the new method itself. The Postgres and SQL Server drivers use it.
+
 - `metabase.driver.sql-jdbc.sync/sample-json-row-honeysql` `[driver table-identifier json-field-identifiers
   pk-identifiers]` -- new multimethod that returns the query sync uses to sample rows of JSON columns, to find their
   nested field columns. Each JSON value must come back as JSON text. Override it if the driver reads JSON values as

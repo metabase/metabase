@@ -80,3 +80,11 @@
   :export?    false
   :doc        "Scans run with the scheduled analyze pass and with Sync database schema now on a database's admin
   page. Fields that already carry a label, including PUBLIC, are not rescanned.")
+
+(defsetting fingerprint-sample-timeout-seconds
+  "How long sync waits for a better sample of a table than its first rows, in seconds. When it waits longer, it reads
+  the first rows instead, and reads only first rows from that database for the rest of the run."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    60)
