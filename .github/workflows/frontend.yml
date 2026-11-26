@@ -118,7 +118,7 @@ jobs:
         # Jest exits non-zero on a shard with no files unless --passWithNoTests is set.
         run: |
           rm -f "$UNIT_TEST_RESULTS_FILE" "$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME"
-          bun run test-unit-harness --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile="$UNIT_TEST_RESULTS_FILE" ${{ steps.unit-selection.outputs.paths-file && '--passWithNoTests' || '' }}
+          bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile="$UNIT_TEST_RESULTS_FILE" ${{ steps.unit-selection.outputs.paths-file && '--passWithNoTests' || '' }}
         # Ordinary assertion failures can be quarantined, but runner failures cannot.
         continue-on-error: true
       - name: Check unit test results
@@ -174,7 +174,7 @@ jobs:
         id: fe-tests
         run: |
           rm -f "$UNIT_TEST_RESULTS_FILE" "$JEST_JUNIT_OUTPUT_DIR/$JEST_JUNIT_OUTPUT_NAME"
-          bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile="$UNIT_TEST_RESULTS_FILE"
+          bun run test-unit-jest --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }} --json --outputFile="$UNIT_TEST_RESULTS_FILE"
         # Ordinary assertion failures can be quarantined, but runner failures cannot.
         continue-on-error: true
       - name: Check unit test results

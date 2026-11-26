@@ -15,7 +15,8 @@ const SCOPE = "agent:content:read";
  * backend integration tests in `oauth_server/api_test.clj` and `oauth_server/api/admin_test.clj`.
  *
  * Note: `POST /oauth/register` is throttled to 10/min/IP, so we deliberately seed only a handful of
- * events here. Pagination is covered by the page's unit test instead.
+ * events here. Pagination and the event-type filter UI are covered by the page's unit test, and the
+ * superuser-only permission check by `oauth_server/api/admin_test.clj`.
  */
 describe("scenarios > admin > metabot > oauth authorizations", () => {
   beforeEach(() => {
@@ -23,7 +24,7 @@ describe("scenarios > admin > metabot > oauth authorizations", () => {
     cy.signInAsAdmin();
   });
 
-  it("lists registration, approval, and denial events with client and user details, and filters events by type via the API", () => {
+  it("lists registration, approval, and denial events with client and user details", () => {
     registerClient("E2E MCP Client A");
     registerClient("E2E MCP Client B", {
       token_endpoint_auth_method: "client_secret_basic",
@@ -36,9 +37,6 @@ describe("scenarios > admin > metabot > oauth authorizations", () => {
     cy.visit(PATH);
     cy.wait("@list");
 
-    cy.log(
-      "lists registration, approval, and denial events with client and user details",
-    );
     // Every client's registration row renders, and each decision event lands in the same row as
     // its client (and the deciding user). Client A's row also shows the registered redirect URI.
     assertEventRow("E2E MCP Client A", "Registered", REDIRECT_URI);
@@ -46,19 +44,6 @@ describe("scenarios > admin > metabot > oauth authorizations", () => {
     assertEventRow("E2E MCP Client C", "Registered");
     assertEventRow("E2E MCP Client B", "Approved", USERS.admin.email);
     assertEventRow("E2E MCP Client C", "Denied", USERS.admin.email);
-
-    cy.log("filters events by type via the API");
-    cy.findByLabelText("Filter by event").click();
-    cy.findByRole("option", { name: "Approved" }).click();
-
-    cy.wait("@list")
-      .its("request.url")
-      .should("include", "event-type=approved");
-
-    cy.findByTestId("oauth-authorizations-table").within(() => {
-      cy.findByText("Approved").should("be.visible");
-      cy.findByText("Registered").should("not.exist");
-    });
   });
 
   it("does not send the long authorization URL as a Referer header on submit (#76305)", () => {
@@ -95,17 +80,6 @@ describe("scenarios > admin > metabot > oauth authorizations", () => {
         expect(request.headers).to.not.have.property("referer");
       });
     });
-  });
-
-  it("is accessible to superusers only", () => {
-    cy.signInAsNormalUser();
-    cy.request({
-      method: "GET",
-      url: "/api/oauth/authorizations",
-      failOnStatusCode: false,
-    })
-      .its("status")
-      .should("eq", 403);
   });
 });
 

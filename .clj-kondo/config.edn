@@ -995,7 +995,12 @@
    :name    agent-exit-namespaces}]
 
  :config-in-ns
- {test-namespaces
+ {dev.search-semantics-report
+  {:linters
+   ;; Babashka bundles Cheshire; metabase.util.json is not on the report's classpath.
+   {:discouraged-namespace {cheshire.core {:level :off}}}}
+
+  test-namespaces
   {:linters
    {:inline-def                                          {:level :off}
     :missing-docstring                                   {:level :off}

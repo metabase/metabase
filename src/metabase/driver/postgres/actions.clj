@@ -3,6 +3,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -130,12 +131,7 @@
       (finally
         (.releaseSavepoint conn savepoint)))))
 
-;;; Add returning * so that we don't have to make an additional query.
-(defmethod sql-jdbc.actions/prepare-query* [:postgres :model.row/create]
-  [_driver _action hsql-query]
-  (assoc hsql-query :returning [:*]))
-
-;;; Result is already the created row.
-(defmethod sql-jdbc.actions/select-created-row :postgres
-  [_driver _create-hsql _conn result]
-  result)
+;;; `RETURNING *` gives back the created row, so that we don't have to make an additional query.
+(defmethod driver/action-create-row! :postgres
+  [driver database args]
+  (sql-jdbc.actions/create-row! driver database args {:returning? true}))

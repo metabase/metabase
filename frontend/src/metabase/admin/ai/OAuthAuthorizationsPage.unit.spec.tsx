@@ -204,6 +204,96 @@ describe("OAuthAuthorizationsPage", () => {
     });
   });
 
+  it("ties each event to its client and user, and shows only the events of the selected type", async () => {
+    const registeredA = createMockOAuthAuthorization({
+      id: 1,
+      client_name: "MCP Client A",
+      event_type: "registered",
+      user_id: null,
+      user_email: null,
+      redirect_uris: ["https://a.example.com/callback"],
+    });
+    const registeredB = createMockOAuthAuthorization({
+      id: 2,
+      client_name: "MCP Client B",
+      event_type: "registered",
+      user_id: null,
+      user_email: null,
+      redirect_uris: ["https://b.example.com/callback"],
+    });
+    const registeredC = createMockOAuthAuthorization({
+      id: 3,
+      client_name: "MCP Client C",
+      event_type: "registered",
+      user_id: null,
+      user_email: null,
+      redirect_uris: ["https://c.example.com/callback"],
+    });
+    const approvedB = createMockOAuthAuthorization({
+      id: 4,
+      client_name: "MCP Client B",
+      event_type: "approved",
+      user_email: "approver@example.com",
+      redirect_uris: ["https://b.example.com/callback"],
+    });
+    const deniedC = createMockOAuthAuthorization({
+      id: 5,
+      client_name: "MCP Client C",
+      event_type: "denied",
+      user_email: "denier@example.com",
+      redirect_uris: ["https://c.example.com/callback"],
+    });
+
+    setupOAuthAuthorizationsEndpoint(
+      createMockListOAuthAuthorizationsResponse({
+        data: [approvedB],
+        total: 1,
+      }),
+      { query: { "event-type": "approved" } },
+    );
+    setup({
+      response: createMockListOAuthAuthorizationsResponse({
+        data: [deniedC, approvedB, registeredC, registeredB, registeredA],
+        total: 5,
+      }),
+    });
+
+    const table = await screen.findByTestId("oauth-authorizations-table");
+    const rowWith = (...texts: string[]) =>
+      within(table)
+        .getAllByRole("row")
+        .filter((row) =>
+          texts.every((text) => row.textContent?.includes(text)),
+        );
+
+    expect(
+      rowWith("MCP Client A", "Registered", "https://a.example.com/callback"),
+    ).toHaveLength(1);
+    expect(rowWith("MCP Client B", "Registered")).toHaveLength(1);
+    expect(rowWith("MCP Client C", "Registered")).toHaveLength(1);
+    expect(
+      rowWith("MCP Client B", "Approved", "approver@example.com"),
+    ).toHaveLength(1);
+    expect(
+      rowWith("MCP Client C", "Denied", "denier@example.com"),
+    ).toHaveLength(1);
+
+    await userEvent.click(screen.getByLabelText("Filter by event"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Approved" }),
+    );
+
+    await waitFor(() => {
+      expect(within(table).queryByText("Registered")).not.toBeInTheDocument();
+    });
+    expect(lastCallUrl()).toContain("event-type=approved");
+    expect(within(table).getAllByRole("row")).toHaveLength(1);
+    expect(
+      rowWith("MCP Client B", "Approved", "approver@example.com"),
+    ).toHaveLength(1);
+    expect(within(table).queryByText("Denied")).not.toBeInTheDocument();
+  });
+
   it("requests the next page when paginating", async () => {
     setup({
       response: createMockListOAuthAuthorizationsResponse({

@@ -204,8 +204,9 @@
   (call-schema [:= :not] expr))
 
 (mr/def ::call.comparison
-  "A binary comparison or pattern match, `[:< x y]`, `[:like x pattern]`, `[:is x y]` and the like."
-  (call-schema [:enum :< :<= :> :>= :like :ilike :not-like :is :is-not] expr expr))
+  "A binary comparison or pattern match, `[:< x y]`, `[:like x pattern]`, `[:regexp x pattern]`, `[:is x y]` and the
+  like."
+  (call-schema [:enum :< :<= :> :>= :like :ilike :not-like :regexp :is :is-not] expr expr))
 
 (mr/def ::call.arithmetic
   "Arithmetic or string concatenation, `[:+ & xs]`; `:+` and `:-` also take a single operand."
@@ -300,6 +301,14 @@
 (mr/def ::call.full-text-match
   "`[:@@ x y]`, the Postgres full text search match of two columns."
   (call-schema [:= honey.sql.pg-ops/atat] ::identifier ::identifier))
+
+(mr/def ::call.match-against
+  "`[:match-against column query]`, MySQL's `MATCH (column) AGAINST (query IN BOOLEAN MODE)`."
+  (call-schema [:= :match-against] ::identifier expr))
+
+(mr/def ::call.system-variable
+  "`[:system-variable name]`, MySQL's session system variable `@@name`."
+  [:tuple [:= :system-variable] :keyword])
 
 (def ^:private function-arities
   "Each whitelisted plain SQL function as `[f min-args max-args]`, `nil` meaning any number."
@@ -430,9 +439,11 @@
     :literal                 ::call.literal
     :escape                  ::call.escape
     :position                ::call.position
+    :match-against           ::call.match-against
+    :system-variable         ::call.system-variable
     :call                    ::call.call
     honey.sql.pg-ops/atat    ::call.full-text-match}
-   (zipmap [:< :<= :> :>= :like :ilike :not-like :is :is-not] (repeat ::call.comparison))
+   (zipmap [:< :<= :> :>= :like :ilike :not-like :regexp :is :is-not] (repeat ::call.comparison))
    (zipmap [:+ :- :* :/ :% :||] (repeat ::call.arithmetic))
    (zipmap function-names (repeat ::call.function))))
 
@@ -509,14 +520,16 @@
 
 (mr/def ::column-option-keyword
   "A column option of `:with-columns` that takes no value."
-  [:enum :primary-key :generated-by-default-as-identity :auto-increment :not-null])
+  [:enum :primary-key :generated-by-default-as-identity :auto-increment :not-null :null])
 
 (mr/def ::column-option
-  "A column option of `:with-columns`: a keyword, a keyword wrapped in a vector, or `[:default value]`."
+  "A column option of `:with-columns`: a keyword, a keyword wrapped in a vector, `[:default value]`, or MySQL's
+  `[:character-set name]` or `[:collate name]`."
   [:or
    ::column-option-keyword
    [:tuple ::column-option-keyword]
-   [:tuple [:= :default] expr]])
+   [:tuple [:= :default] expr]
+   [:tuple [:enum :character-set :collate] ::identifier]])
 
 (mr/def ::column-spec
   "A column of `CREATE TABLE`: `[name type & options]`."
@@ -675,6 +688,22 @@
   "`ON CONFLICT ... DO NOTHING`, given as `true`."
   [:= true])
 
+(mr/def ::clause.engine
+  "MySQL's table storage engine, which must be InnoDB."
+  [:= :innodb])
+
+(mr/def ::clause.character-set
+  "MySQL's table character set."
+  ::identifier)
+
+(mr/def ::clause.collate
+  "MySQL's table collation."
+  ::identifier)
+
+(mr/def ::clause.analyze-table
+  "The table of MySQL's `ANALYZE TABLE`."
+  ::identifier)
+
 (mr/def ::clause.on-duplicate-key-update
   "What MySQL's `ON DUPLICATE KEY UPDATE` sets."
   ::assignments)
@@ -722,7 +751,11 @@
 
 (mr/def ::query.create-table
   "A `CREATE TABLE` statement."
-  (into [:map {:closed true}] (clauses [:create-table :with-columns])))
+  (into [:map {:closed true}] (clauses [:create-table :with-columns :engine :character-set :collate])))
+
+(mr/def ::query.analyze-table
+  "MySQL's `ANALYZE TABLE` statement."
+  (into [:map {:closed true}] (clauses [:analyze-table])))
 
 (mr/def ::query.drop-table
   "A `DROP TABLE` statement."
@@ -739,6 +772,7 @@
                          (contains? m :merge-into)      :merge
                          (contains? m :create-table)    :create-table
                          (contains? m :drop-table)      :drop-table
+                         (contains? m :analyze-table)   :analyze-table
                          :else                          :select))}
    [:select       ::query.select]
    [:insert       ::query.insert]
@@ -746,7 +780,8 @@
    [:delete       ::query.delete]
    [:merge        ::query.merge]
    [:create-table ::query.create-table]
-   [:drop-table   ::query.drop-table]])
+   [:drop-table   ::query.drop-table]
+   [:analyze-table ::query.analyze-table]])
 
 (mr/def ::sandbox.row-filter
   "The rows of a table a sandboxed query keeps: those whose `:column` holds `:value`."
