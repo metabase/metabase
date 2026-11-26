@@ -368,7 +368,7 @@
   [message-ids :- [:sequential ms/PositiveInt]
    finished-at :- ms/TemporalInstant]
   (mdb/sum-batched mdb/update-partition-size
-                   #(t2/update! :model/MetabotLlmCall :message_id [:in [:auto/param %]] :finished_at nil
+                   #(t2/update! :model/MetabotLlmCall :message_id [:in %] :finished_at nil
                                 {:status "aborted" :finished_at finished-at})
                    message-ids))
 
@@ -378,19 +378,19 @@
   [message-ids :- [:sequential ms/PositiveInt]
    finished-at :- ms/TemporalInstant]
   (mdb/sum-batched mdb/update-partition-size
-                   #(t2/update! :model/MetabotToolCall :message_id [:in [:auto/param %]] :finished_at nil
+                   #(t2/update! :model/MetabotToolCall :message_id [:in %] :finished_at nil
                                 {:status "aborted" :finished_at finished-at})
                    message-ids))
 
 (mu/defn llm-call-ids-started-before :- [:sequential ms/PositiveInt]
   "The ids of the MetabotLlmCalls started before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (vec (t2/select-pks-vec :model/MetabotLlmCall {:where [:< :started_at [:auto/param cutoff]]})))
+  (vec (t2/select-pks-vec :model/MetabotLlmCall {:where [:< :started_at cutoff]})))
 
 (mu/defn tool-call-ids-created-before :- [:sequential ms/PositiveInt]
   "The ids of the MetabotToolCalls submitted before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (vec (t2/select-pks-vec :model/MetabotToolCall {:where [:< :created_at [:auto/param cutoff]]})))
+  (vec (t2/select-pks-vec :model/MetabotToolCall {:where [:< :created_at cutoff]})))
 
 ;;; -------------------------------------------------- AI usage --------------------------------------------------
 
