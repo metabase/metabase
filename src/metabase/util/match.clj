@@ -74,10 +74,13 @@
   "Return true if `pattern` can only match a map or a sequential collection."
   [pattern]
   (let [{:keys [clauses] :as parsed} (parse-pattern pattern)]
+    ;; Only the length check of a vector pattern and the key checks of a map pattern reject other values, so `[]`,
+    ;; `[& rest]` and `{}` match anything and don't count.
     (case (:type parsed)
-      (:vector :map) true
-      :and           (boolean (some colls-only-pattern? clauses))
-      :or            (every? colls-only-pattern? clauses)
+      :vector (boolean (seq (:parts parsed)))
+      :map    (boolean (seq (:map parsed)))
+      :and    (boolean (some colls-only-pattern? clauses))
+      :or     (every? colls-only-pattern? clauses)
       false)))
 
 (defn- colls-only-clauses?

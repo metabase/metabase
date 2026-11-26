@@ -536,7 +536,14 @@
              (match/replace-all {:b [:b]} :b :c))))
   (t/testing "a default clause in match-all still sees scalars"
     (t/is (= [[:a 1] :a 1]
-             (match/match-all [:a 1] [:x] :x _ &match)))))
+             (match/match-all [:a 1] [:x] :x _ &match))))
+  (t/testing "patterns without a length or key check give the same answer for a scalar with or without a default"
+    (t/is (= (match/match-one :x [] :hit _ :miss)
+             (match/match-one :x [] :hit)))
+    (t/is (= (match/match-one :x [& _] :hit _ :miss)
+             (match/match-one :x [& _] :hit)))
+    (t/is (= (match/match-one :x {} :hit _ :miss)
+             (match/match-one :x {} :hit)))))
 
 (t/deftest ^:parallel match-in-map-keys-test
   (t/testing "match-one looks inside map keys, before the values"
