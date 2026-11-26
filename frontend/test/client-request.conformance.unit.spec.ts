@@ -1,8 +1,10 @@
+// The core Jest project provides the browser environment needed by the real API client.
 import type { BaseQueryApi } from "@reduxjs/toolkit/query/react";
 import fetchMock from "fetch-mock";
 import ts from "typescript";
 
 import { baseQuery } from "metabase/api/api";
+import { isRecord } from "metabase-types/guards/common";
 
 import {
   type ClientRequest,
@@ -70,10 +72,6 @@ function model(source: string): Modelled {
   return { request: modelClientRequest(checker, rtk, config), checker };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function loadFixture(source: string): {
   query: (argument: unknown) => unknown;
   extraOptions: unknown;
@@ -136,7 +134,10 @@ async function send(
   const api: BaseQueryApi = {
     signal: controller.signal,
     abort: () => controller.abort(),
-    dispatch: jest.fn(),
+    dispatch: jest.fn<
+      ReturnType<BaseQueryApi["dispatch"]>,
+      Parameters<BaseQueryApi["dispatch"]>
+    >(),
     getState: () => ({}),
     extra: undefined,
     endpoint: "conformance",
@@ -186,7 +187,10 @@ function projected(overrides: Partial<Projection>): Projection {
   };
 }
 
-function valuesProjection(checker: ts.TypeChecker, values: Shape[]): string[] {
+function valuesProjection(
+  checker: ts.TypeChecker,
+  values: readonly Shape[],
+): string[] {
   return values
     .flatMap((value): string[] => {
       if (value.kind === "union") {
@@ -830,7 +834,33 @@ describe("modelClientRequest against the real API client", () => {
         method: "POST",
         body: { kind: "json", value: { when: "1970-01-01T00:00:00.000Z" } },
       }),
-      projected({ method: "POST", body: [{ when: ["string"] }] }),
+      projected({ method: "POST", body: [{ when: ["null", "string"] }] }),
+    ],
+    [
+      "should keep the enumerable indices of a typed array during JSON conversion",
+      {
+        endpoint:
+          '{ query: (body: { data: Uint8Array }) => ({ method: "POST", url: "/api/x", body }) }',
+        argument: "{ data: new Uint8Array([7]) }",
+      },
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { data: { "0": 7 } } },
+      }),
+      projected({ method: "POST", body: [{ data: ["unverified"] }] }),
+    ],
+    [
+      "should send an invalid Date body field as null",
+      {
+        endpoint:
+          '{ query: (body: { when: Date }) => ({ method: "POST", url: "/api/x", body }) }',
+        argument: "{ when: new Date(NaN) }",
+      },
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { when: null } },
+      }),
+      projected({ method: "POST", body: [{ when: ["null", "string"] }] }),
     ],
     [
       "should send an undefined array item in a body as null",

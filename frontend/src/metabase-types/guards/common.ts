@@ -4,6 +4,9 @@ export const isObject = (
   return typeof value === "object" && value !== null;
 };
 
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
+  isObject(value) && !Array.isArray(value);
+
 export const isFunction = (
   value: unknown,
 ): value is (...args: unknown[]) => unknown => {

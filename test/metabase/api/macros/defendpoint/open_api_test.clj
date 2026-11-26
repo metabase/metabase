@@ -210,3 +210,15 @@
                                       :docstr "Get it."
                                       :params {}
                                       :body   []})))))))))
+
+(deftest ^:parallel request-body-presence-test
+  (doseq [[schema required?] [[[:map [:name :string]] true]
+                              [[:map [:name {:optional true} :string]] false]
+                              [[:map [:name {:default "untitled"} :string]] false]]]
+    (let [form {:method :post :route {:path "/body"} :docstr "Create." :params {:body {:binding 'body :schema schema}} :body []}]
+      (is (= required? (true? (get-in (#'defendpoint.open-api/path-item "/api/body" form) [:requestBody :required])))
+          (pr-str schema)))))
+
+(deftest ^:parallel nullable-query-schema-test
+  (is (=? [{:name "search" :required false}]
+          (#'defendpoint.open-api/schema->params* [:maybe [:map [:search {:optional true} :string]]] (constantly :query) nil))))

@@ -321,7 +321,19 @@ function buildShape(
         reason: "the checker does not model a custom toJSON method",
       };
     }
-    return jsonView(checker, checker.getReturnTypeOfSignature(signature), walk);
+    const result = jsonView(
+      checker,
+      checker.getReturnTypeOfSignature(signature),
+      walk,
+    );
+    // Date.prototype.toJSON returns null for an invalid date, despite its lib.d.ts signature.
+    return toJson.declarations.some(
+      (declaration) =>
+        ts.isInterfaceDeclaration(declaration.parent) &&
+        declaration.parent.name.text === "Date",
+    )
+      ? unionShape([result, { kind: "null", from: type }])
+      : result;
   }
   if (omittedByJson(type)) {
     return { kind: "type", type };
@@ -342,6 +354,14 @@ function buildShape(
       ? { kind: "type", type }
       : { kind: "array", from: type, element: unionShape(views) };
   }
+  return jsonObjectShape(checker, type, walk);
+}
+
+function jsonObjectShape(
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  walk: JsonWalk,
+): Shape {
   if (isAugmentedLibType(type)) {
     return {
       kind: "unverified",
@@ -351,9 +371,16 @@ function buildShape(
     };
   }
   if (!type.isIntersection() && isLibType(type)) {
+    // Native collections keep entries in internal slots. Other library objects can have enumerable own keys.
+    const name = type.getSymbol()?.name;
+    if (name && ["Map", "Set", "WeakMap", "WeakSet", "RegExp"].includes(name)) {
+      return { kind: "empty", from: type };
+    }
     return {
-      kind: "empty",
+      kind: "unverified",
       from: type,
+      reason:
+        "the checker does not model the enumerable JSON properties of this library type",
     };
   }
   const indexes = checker.getIndexInfosOfType(type);

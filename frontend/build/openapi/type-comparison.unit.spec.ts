@@ -51,6 +51,43 @@ function compare({
 }
 
 describe("type comparison", () => {
+  it("should leave an unreachable object branch unverified", () => {
+    expect(
+      compare({ frontend: "{ id: number } | null", backend: "null" }).status,
+    ).toBe("unverified");
+  });
+  it.each(["", " | { id: number }"])(
+    "should identify missing fields across overlapping response branches %s",
+    (base) => {
+      const result = compare({
+        frontend:
+          "{ id: number; label?: string } | { id: number; title?: string }" +
+          base,
+        backend: "{ id: number }",
+      });
+      expect(result.status).toBe("mismatch");
+      expect(result.message).toContain("$.label");
+      expect(result.message).toContain("$.title");
+    },
+  );
+  it("should check response tuple rest fields", () => {
+    expect(
+      compare({
+        frontend: "[string, ...{ id: number; nickname?: string }[]]",
+        backend: "[string, { id: number }]",
+      }).status,
+    ).not.toBe("compatible");
+  });
+  it("should respect every applicable backend index signature", () => {
+    expect(
+      compare({
+        kind: "request",
+        frontend: "{ [key: number]: string }",
+        backend: "{ [key: string]: string | number; [key: number]: number }",
+      }).status,
+    ).toBe("mismatch");
+  });
+
   it("should ignore unconsumed response fields throughout nested arrays", () => {
     expect(
       compare({
@@ -209,14 +246,14 @@ describe("type comparison", () => {
       message: "$.second.a",
     },
     {
-      name: "should report a disagreement at the path that failed after trying a union",
+      name: "should report an overlapping branch at its first occurrence",
       frontend: "{ first: A | B; second: A }",
       frontendDeclarations:
         "type A = { x: number; a?: string }; type B = { x: number };",
       backend: "{ first: S; second: S }",
       backendDeclarations: "type S = { x: number };",
       status: "mismatch",
-      message: "$.second.a",
+      message: "$.first.a",
     },
     {
       name: "should explain optional-property presence independently of its value type",

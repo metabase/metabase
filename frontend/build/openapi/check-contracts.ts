@@ -81,11 +81,19 @@ function readTsConfig(): ts.ParsedCommandLine {
       ts.flattenDiagnosticMessageText(config.error.messageText, "\n"),
     );
   }
-  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root);
+  const json: unknown = config.config;
+  if (typeof json !== "object" || json === null || Array.isArray(json)) {
+    throw new Error(
+      "Expected tsconfig.json to contain a configuration object.",
+    );
+  }
+  const parsed = ts.parseJsonConfigFileContent(json, ts.sys, root);
   if (parsed.errors.length) {
     throw new Error(
       parsed.errors
-        .map((d) => ts.flattenDiagnosticMessageText(d.messageText, "\n"))
+        .map((diagnostic) =>
+          ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
+        )
         .join("\n"),
     );
   }
@@ -105,7 +113,12 @@ function runChecks(): ContractResult[] {
     ],
     options: { ...config.options, incremental: false, noEmit: true },
   });
-  return checkContracts(program, endpointFiles, generatedPath, root);
+  return checkContracts({
+    program,
+    endpointFiles,
+    generatedFile: generatedPath,
+    root,
+  });
 }
 
 function countByStatus(results: ContractResult[]): StatusCounts {
@@ -185,7 +198,7 @@ function main(): void {
   }
   if (staleExemptions.length) {
     console.log(
-      `${staleExemptions.length} endpoint exemptions have no current failures (informational; see staleExemptions in the report).`,
+      `${staleExemptions.length} endpoint exemptions have no current failures. Remove these IDs from baseline.json:\n${staleExemptions.join("\n")}`,
     );
   }
   console.log(`API contracts: ${formatCounts(counts)}.`);

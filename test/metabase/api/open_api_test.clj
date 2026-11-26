@@ -183,7 +183,14 @@
 
 (deftest ^:parallel openapi-all-routes
   (testing "Make sure we can successfully generate an OpenAPI spec for the entire API"
-    (is (open-api/root-open-api-object #'routes/routes))))
+    (let [paths (:paths (open-api/root-open-api-object #'routes/routes))
+          query (get-in paths ["/api/cache" :get :parameters])]
+      (is (get-in paths ["/api/testing/restore/{name}" :post]))
+      (is (true? (get-in paths ["/api/measure" :post :requestBody :required])))
+      (is (not (get-in paths ["/api/action/{id}/execute" :post :requestBody :required])))
+      (is (= #{"offset" "limit"}
+             (into #{} (comp (filter #(and (= :query (:in %)) (= :integer (get-in % [:schema :type]))
+                                           (not (:required %)))) (map :name) (filter #{"offset" "limit"})) query))))))
 
 (defn- undeclared-empty-schemas
   "The malli forms that make generating the OpenAPI spec of `routes` fail for compiling to a JSON Schema that accepts

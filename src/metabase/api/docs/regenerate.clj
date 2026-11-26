@@ -9,7 +9,9 @@
    [metabase.api.open-api :as open-api]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match])
+  (:import
+   (java.nio.file CopyOption Files StandardCopyOption)))
 
 (set! *warn-on-reflection* true)
 
@@ -34,11 +36,17 @@
   ([root-handler]
    (write-openapi-spec-to-file! root-handler openapi-file-path))
   ([root-handler output-path]
-   (let [file (io/file output-path)]
-     (when (.getParentFile file)
-       (io/make-parents file))
-     (with-open [writer (io/writer file)]
-       (json/encode-to (sort-keys (open-api-object root-handler)) writer {:pretty true}))
+   (let [spec (sort-keys (open-api-object root-handler))
+         file (.getAbsoluteFile (io/file output-path))]
+     (io/make-parents file)
+     (let [temp (java.io.File/createTempFile ".openapi-" ".json" (.getParentFile file))]
+       (try
+         (with-open [writer (io/writer temp)]
+           (json/encode-to spec writer {:pretty true}))
+         (Files/move (.toPath temp) (.toPath file)
+                     (into-array CopyOption [StandardCopyOption/ATOMIC_MOVE StandardCopyOption/REPLACE_EXISTING]))
+         (finally
+           (Files/deleteIfExists (.toPath temp)))))
      (log/info "OpenAPI specification written to" output-path))))
 
 (defonce ^:private openapi-regen-state
@@ -53,23 +61,16 @@
   "Request OpenAPI spec regeneration. Multiple rapid requests are coalesced into one execution.
   Uses a debounce delay to batch requests that arrive in quick succession (e.g., when re-evaling a file with multiple endpoints)."
   [routes]
-  (swap! openapi-regen-state assoc :needs-regen? true)
-
-  (when-not (:executing? @openapi-regen-state)
-    (swap! openapi-regen-state assoc :executing? true)
-    (future
-      (try
-        ;; Wait for debounce period to let multiple requests coalesce
+  (let [[before] (swap-vals! openapi-regen-state assoc :executing? true :needs-regen? true)]
+    (when-not (:executing? before)
+      (future
         (Thread/sleep ^Long debounce-delay-ms)
         (loop []
-          (when (:needs-regen? @openapi-regen-state)
-            (swap! openapi-regen-state assoc :needs-regen? false)
-            (log/info "Regenerating OpenAPI specification...")
+          (swap! openapi-regen-state assoc :needs-regen? false)
+          (try
             (write-openapi-spec-to-file! routes)
-            (log/info "OpenAPI specification regenerated successfully")
-            ;; Check if more requests came in while we were working
-            (recur)))
-        (catch Throwable e
-          (log/errorf "Error regenerating OpenAPI specification: %s" (ex-message e)))
-        (finally
-          (swap! openapi-regen-state assoc :executing? false))))))
+            (catch Throwable e
+              (log/error e "Error regenerating OpenAPI specification")))
+          ;; Release the worker only if nobody queued another generation during the write.
+          (when (:executing? (swap! openapi-regen-state #(assoc % :executing? (:needs-regen? %))))
+            (recur)))))))

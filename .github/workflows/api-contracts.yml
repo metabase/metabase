@@ -52,6 +52,8 @@ jobs:
         run: bun run lint-openapi
       - name: Generate TypeScript declarations
         run: bun run types:generate
+      - name: Test contracts against generated declarations
+        run: bun test ./frontend/build/openapi/generated-contracts.integration.spec.ts
       - name: Check API contracts
         run: bun run api-contract-check-pure
       - name: Upload API contracts report
@@ -71,6 +73,8 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
+      - name: Test contracts against generated declarations
+        run: bun test ./frontend/build/openapi/generated-contracts.integration.spec.ts
       - name: Check API contracts job status
         uses: actions/github-script@v9
         env:

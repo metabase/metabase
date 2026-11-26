@@ -20,7 +20,7 @@ export type Shape =
   | { kind: "array"; from: ts.Type; element: Shape }
   /** A query array, sent as one value per item. */
   | { kind: "items"; from: ts.Type; elements: Shape[] }
-  | { kind: "union"; members: Shape[] };
+  | { kind: "union"; members: readonly Shape[] };
 
 export interface ShapeField {
   name: string;
@@ -39,13 +39,15 @@ export function typeShape(type: ts.Type): Extract<Shape, { kind: "type" }> {
   return { kind: "type", type };
 }
 
-export function unionShape(members: Shape[]): Shape {
+export function unionShape(members: readonly Shape[]): Shape {
   const [only] = members;
   return only && members.length === 1 ? only : { kind: "union", members };
 }
 
+const DESCRIPTION_NODE_LIMIT = 200;
+
 export function describeShape(checker: ts.TypeChecker, view: Shape): string {
-  let remaining = 200;
+  let remaining = DESCRIPTION_NODE_LIMIT;
   const describe = (view: Shape): string => {
     if (--remaining < 0) {
       return "…";

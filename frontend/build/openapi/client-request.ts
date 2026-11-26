@@ -17,6 +17,7 @@ import {
   elementTypes,
   isObjectLike,
   properties,
+  propertyName,
   symbolDeclaration,
   typeText,
   unionMembers,
@@ -36,7 +37,13 @@ import {
 
 // `frontend/src/metabase/api/api.ts:22`
 const RTK_CACHE_KEY = "__rtkCacheKey";
-const REQUEST_FIELDS = ["url", "method", "params", "body"];
+const REQUEST_FIELDS: readonly string[] = [
+  "url",
+  "method",
+  "params",
+  "body",
+  "headers",
+];
 
 const NULLISH = ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void;
 const UNDEFINED = ts.TypeFlags.Undefined | ts.TypeFlags.Void;
@@ -157,21 +164,13 @@ export function modelClientRequest(
       "a GET body is sent as query parameters, so no request body is sent (ApiClient._prepareRequest)",
     );
   } else {
-    const walk = createJsonWalk(options);
-    try {
-      sentBody = bodyVariants.map((payload) =>
-        sendAsJson(checker, payload, bodyNotes, walk),
-      );
-    } catch (error) {
-      if (!(error instanceof TypeWalkError) && !isStackOverflow(error)) {
-        throw error;
-      }
-      body.unverified =
-        error instanceof TypeWalkError
-          ? error.message
-          : "JSON modelling overflowed the call stack";
-      sentBody = [];
+    if (rtk.body && rtk.headers && hasUnverifiedMediaType(rtk.headers)) {
+      body.unverified ??=
+        "the request headers do not establish a JSON Content-Type";
     }
+    const json = jsonBodyVariants(checker, bodyVariants, bodyNotes, options);
+    sentBody = json.variants;
+    body.unverified ??= json.unverified;
   }
   const queryVariants = queryPayloads(sources, onUnverified);
 
@@ -196,6 +195,34 @@ export function modelClientRequest(
       alwaysSent: !foldsBody && body.alwaysSent,
     },
   };
+}
+
+function jsonBodyVariants(
+  checker: ts.TypeChecker,
+  payloads: Payload[],
+  notes: string[],
+  options: WalkOptions,
+): Pick<SentPart, "variants" | "unverified"> {
+  const walk = createJsonWalk(options);
+  try {
+    return {
+      variants: payloads.map((payload) =>
+        sendAsJson(checker, payload, notes, walk),
+      ),
+      unverified: undefined,
+    };
+  } catch (error) {
+    if (!(error instanceof TypeWalkError) && !isStackOverflow(error)) {
+      throw error;
+    }
+    return {
+      variants: [],
+      unverified:
+        error instanceof TypeWalkError
+          ? error.message
+          : "JSON modelling overflowed the call stack",
+    };
+  }
 }
 
 function plainType(value: Shape): ts.Type | undefined {
@@ -366,11 +393,18 @@ function paramsPayloads(
 }
 
 function globalInterface(
-  { checker, at }: ModelContext,
+  { checker }: ModelContext,
   name: string,
 ): ts.Type | undefined {
-  const symbol = checker.resolveName(name, at, ts.SymbolFlags.Interface, false);
-  return symbol && checker.getDeclaredTypeOfSymbol(symbol);
+  const symbol = checker.resolveName(
+    name,
+    undefined,
+    ts.SymbolFlags.Interface,
+    false,
+  );
+  return symbol?.declarations?.some(isLibDeclaration)
+    ? checker.getDeclaredTypeOfSymbol(symbol)
+    : undefined;
 }
 
 function bodyPayloads(
@@ -736,6 +770,31 @@ function queryPayloads(
     );
   }
   return nonempty[0] ?? sources[0] ?? [];
+}
+
+// Only a statically known JSON content type establishes that the backend will parse the body as JSON.
+function hasUnverifiedMediaType(headers: ts.Expression): boolean {
+  if (!ts.isObjectLiteralExpression(headers)) {
+    return true;
+  }
+  return headers.properties.some((property) => {
+    if (!property.name || ts.isComputedPropertyName(property.name)) {
+      return true;
+    }
+    const name = propertyName(property.name);
+    if (name?.toLowerCase() !== "content-type") {
+      return false;
+    }
+    if (
+      !ts.isPropertyAssignment(property) ||
+      !ts.isStringLiteral(property.initializer)
+    ) {
+      return true;
+    }
+    return !/^application\/(?:[\w.+-]+\+)?json(?:\s*;|$)/.test(
+      property.initializer.text,
+    );
+  });
 }
 
 function extraOptionsUnverified(rtk: RtkRequest): string | undefined {

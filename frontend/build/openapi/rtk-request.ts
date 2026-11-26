@@ -26,6 +26,7 @@ export interface RtkRequest {
   url: RequestUrl;
   params: ts.Expression | undefined;
   body: ts.Expression | undefined;
+  headers: ts.Expression | undefined;
   extraOptions: ts.Expression | undefined;
   rawResponse: ts.Expression | undefined;
 }
@@ -177,6 +178,18 @@ function urlTemplate(url: ts.Expression): RequestUrl | undefined {
   };
 }
 
+function isUnsupportedRequestProperty(
+  property: ts.ObjectLiteralElementLike,
+): boolean {
+  return (
+    hasComputedName(property) ||
+    !(
+      ts.isPropertyAssignment(property) ||
+      ts.isShorthandPropertyAssignment(property)
+    )
+  );
+}
+
 /**
  * The request an RTK `query` function returns, when it is one statically known object or URL.
  */
@@ -196,12 +209,9 @@ export function resolveRtkRequest(
   const method = object && expressionMember(object, "method");
   if (
     !url ||
-    object?.properties.some(
-      (property) =>
-        (!ts.isPropertyAssignment(property) &&
-          !ts.isShorthandPropertyAssignment(property)) ||
-        hasComputedName(property),
-    ) ||
+    (member(config, "extraOptions") &&
+      !expressionMember(config, "extraOptions")) ||
+    object?.properties.some(isUnsupportedRequestProperty) ||
     (method && !ts.isStringLiteral(method))
   ) {
     return undefined;
@@ -211,6 +221,7 @@ export function resolveRtkRequest(
     url,
     params: object && expressionMember(object, "params"),
     body: object && expressionMember(object, "body"),
+    headers: object && expressionMember(object, "headers"),
     extraOptions: expressionMember(config, "extraOptions"),
     rawResponse: object && expressionMember(object, "rawResponse"),
   };

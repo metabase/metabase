@@ -12,7 +12,7 @@ import {
   cleanupFixtures,
   programFrom,
 } from "./test-fixtures";
-import { TypeWalkError } from "./type-comparison";
+import { TypeWalkError, type WalkOptions } from "./type-comparison";
 import * as valueConversion from "./value-conversion";
 
 const ENDPOINT_ID = "endpoints:example";
@@ -42,7 +42,7 @@ function check({
   backend: string;
   endpoint: string;
   options?: ts.CompilerOptions;
-  walkOptions?: Parameters<typeof checkContracts>[4];
+  walkOptions?: WalkOptions;
 }) {
   // The builder shares the template's first line, so the line numbers the specs quote stay put.
   const { root, files, program } = programFrom(
@@ -55,13 +55,13 @@ function check({
     },
     { options, checked: ["endpoint.ts"] },
   );
-  return checkContracts(
+  return checkContracts({
     program,
-    [files["endpoint.ts"] ?? ""],
-    files["types.gen.d.ts"] ?? "",
+    endpointFiles: [files["endpoint.ts"] ?? ""],
+    generatedFile: files["types.gen.d.ts"] ?? "",
     root,
     walkOptions,
-  );
+  });
 }
 
 function resultFor(results: ContractResult[], part: string) {
@@ -453,7 +453,9 @@ describe("diagnostic messages", () => {
       endpoint,
     });
     expect(
-      resultFor(results, "response.2XX")?.unconstrained?.map((p) => p.paths),
+      resultFor(results, "response.2XX")?.unconstrained?.map(
+        (position) => position.paths,
+      ),
     ).toEqual([["$.value"], ["$.meta[key]"]]);
   });
 
@@ -557,12 +559,18 @@ describe("diagnostic messages", () => {
 describe("walks that do not finish", () => {
   const growing = "type Grow<T> = { value: T; next: Grow<T[]> };";
 
-  function checkWith(
-    frontendTypes: string,
-    backendTypes: string,
-    options: Parameters<typeof checkContracts>[4],
-    configureChecker?: (checker: ts.TypeChecker) => void,
-  ) {
+  interface SetupOpts {
+    frontendTypes: string;
+    backendTypes: string;
+    options: WalkOptions;
+    configureChecker?: (checker: ts.TypeChecker) => void;
+  }
+  function checkWith({
+    frontendTypes,
+    backendTypes,
+    options,
+    configureChecker,
+  }: SetupOpts) {
     const { root, files, program } = programFrom({
       "endpoint.ts": `${ENDPOINT_BUILDER}
       ${frontendTypes}
@@ -572,21 +580,24 @@ describe("walks that do not finish", () => {
     });
     configureChecker?.(program.getTypeChecker());
     return () =>
-      checkContracts(
+      checkContracts({
         program,
-        [files["endpoint.ts"] ?? ""],
-        files["types.gen.d.ts"] ?? "",
+        endpointFiles: [files["endpoint.ts"] ?? ""],
+        generatedFile: files["types.gen.d.ts"] ?? "",
         root,
-        options,
-      );
+        walkOptions: options,
+      });
   }
 
   it("should report the check, type and path when a walk goes past its step budget", () => {
-    const run = checkWith(
-      "type ErdResponse = { first: { value: unknown }; second: { value: unknown } };",
-      withResponse("{ first: { value: string }; second: { value: string } }"),
-      { walkStepBudget: 3 },
-    );
+    const run = checkWith({
+      frontendTypes:
+        "type ErdResponse = { first: { value: unknown }; second: { value: unknown } };",
+      backendTypes: withResponse(
+        "{ first: { value: string }; second: { value: string } }",
+      ),
+      options: { walkStepBudget: 3 },
+    });
     const results = run();
     expect(resultFor(results, "request.path.0")?.status).toBe("compatible");
     expect(baselineProblems(results, [ENDPOINT_ID])).toEqual([]);
@@ -598,11 +609,11 @@ describe("walks that do not finish", () => {
   });
 
   it("should bound the check on a type that grows each time it recurs", () => {
-    const run = checkWith(
-      `${growing} type ErdResponse = Grow<string>;`,
-      withResponse("Grow<number>", growing),
-      { walkDepthBudget: 50 },
-    );
+    const run = checkWith({
+      frontendTypes: `${growing} type ErdResponse = Grow<string>;`,
+      backendTypes: withResponse("Grow<number>", growing),
+      options: { walkDepthBudget: 50 },
+    });
     expect(resultFor(run(), "response.2XX")?.message).toMatch(
       /^API contract check endpoints:example:response\.2XX stopped: the field walk went past its depth budget of 50 at \$\.next×\d+/,
     );
@@ -610,11 +621,12 @@ describe("walks that do not finish", () => {
 
   it("should report a stack overflow inside a walk with the check, type and path", () => {
     let calls = 0;
-    const run = checkWith(
-      "type ErdResponse = { nodes: { owner: { email: number } }[] };",
-      backend,
-      {},
-      (checker) => {
+    const run = checkWith({
+      frontendTypes:
+        "type ErdResponse = { nodes: { owner: { email: number } }[] };",
+      backendTypes: backend,
+      options: {},
+      configureChecker: (checker) => {
         const assignable = checker.isTypeAssignableTo.bind(checker);
         jest
           .spyOn(checker, "isTypeAssignableTo")
@@ -626,27 +638,33 @@ describe("walks that do not finish", () => {
             return assignable(from, to);
           });
       },
-    );
+    });
     expect(resultFor(run(), "response.2XX")?.message).toMatch(
       /^API contract check endpoints:example:response\.2XX stopped: the field walk overflowed the call stack at \$/,
     );
   });
 
   it("should propagate unexpected checker errors", () => {
-    const run = checkWith(frontend, backend, {}, (checker) => {
-      jest.spyOn(checker, "isTypeAssignableTo").mockImplementation(() => {
-        throw new Error("unexpected checker error");
-      });
+    const run = checkWith({
+      frontendTypes: frontend,
+      backendTypes: backend,
+      options: {},
+      configureChecker: (checker) => {
+        jest.spyOn(checker, "isTypeAssignableTo").mockImplementation(() => {
+          throw new Error("unexpected checker error");
+        });
+      },
     });
     expect(run).toThrow("unexpected checker error");
   });
 
   it("should report a stack overflow outside a walk with the check", () => {
-    const run = checkWith(
-      "type ErdResponse = { nodes: { owner: { email: number } }[] };",
-      backend,
-      {},
-      (checker) => {
+    const run = checkWith({
+      frontendTypes:
+        "type ErdResponse = { nodes: { owner: { email: number } }[] };",
+      backendTypes: backend,
+      options: {},
+      configureChecker: (checker) => {
         const symbolType = checker.getTypeOfSymbolAtLocation.bind(checker);
         jest
           .spyOn(checker, "getTypeOfSymbolAtLocation")
@@ -657,7 +675,7 @@ describe("walks that do not finish", () => {
             return symbolType(symbol, node);
           });
       },
-    );
+    });
     expect(resultFor(run(), "response.2XX")?.message).toContain(
       "API contract check endpoints:example:response.2XX stopped: the call stack overflowed outside a type walk",
     );
@@ -723,12 +741,12 @@ describe("type printing order", () => {
     );
     // The program is built twice, so the order the endpoint files are read in is what changes.
     const run = (ordered: string[]) =>
-      checkContracts(
-        ts.createProgram([...ordered, generated], COMPILER_OPTIONS),
-        ordered,
-        generated,
+      checkContracts({
+        program: ts.createProgram([...ordered, generated], COMPILER_OPTIONS),
+        endpointFiles: ordered,
+        generatedFile: generated,
         root,
-      );
+      });
     return {
       inOrder: run(endpointFiles),
       reversed: run([...endpointFiles].reverse()),
@@ -880,7 +898,7 @@ describe("request comparison rules", () => {
     [
       "should handle converted union member without a false verdict",
       '{ kind: "a"; date: Date }',
-      '{ kind: "a"; date: string } | { kind: "b"; count: number }',
+      '{ kind: "a"; date: string | null } | { kind: "b"; count: number }',
       "compatible",
     ],
     [
@@ -1038,7 +1056,7 @@ describe("request comparison rules", () => {
         tree +
         operation({
           method: "Post",
-          body: "body: { inner: { tree: Tree; note?: string; date: string } }",
+          body: "body: { inner: { tree: Tree; note?: string; date: string | null } }",
         }),
       endpoint: request(
         "{ inner: {tree: Tree; note: string | undefined; date: Date} }",
@@ -1069,6 +1087,72 @@ describe("request comparison rules", () => {
     },
   );
 
+  it.each([
+    ["{ value: Date }", "string", "mismatch"],
+    ["{ value: Date }", "string | null", "compatible"],
+    ["{ value: Uint8Array }", "{}", "unverified"],
+  ])("should model JSON for %s against %s", (args, value, status) => {
+    const results = check({
+      frontend,
+      backend: operation({ method: "Post", body: `body: { value: ${value} }` }),
+      endpoint: request(
+        args,
+        '(body) => ({ method: "POST", url: "/api/user", body })',
+      ),
+    });
+    expect(resultFor(results, "request.body")?.status).toBe(status);
+  });
+  it("should apply numeric and string index declarations to a copied JSON body", () => {
+    const results = check({
+      frontend,
+      backend: operation({
+        method: "Post",
+        body: "body: { [k:string]: string | number; [k:number]:number }",
+      }),
+      endpoint: request(
+        "{[k:number]:string}",
+        '(body) => ({method:"POST",url:"/api/user",body})',
+      ),
+    });
+    expect(resultFor(results, "request.body")?.status).toBe("mismatch");
+  });
+  it("should reject an empty path segment typed as a literal", () => {
+    const results = check({
+      frontend,
+      backend: operation({ url: "/api/user/{id}", path: "path: {id: string}" }),
+      endpoint: request('""', "(id) => ({ url: `/api/user/${id}` })"),
+    });
+    expect(resultFor(results, "request.path.0")?.status).toBe("mismatch");
+  });
+  it("should model a module-local FormData namesake as a plain object", () => {
+    const results = check({
+      frontend: frontend + " export {}; interface FormData { foo: string }",
+      backend: operation(),
+      endpoint: request("FormData", '(body) => ({ url: "/api/user", body })'),
+    });
+    expect(resultFor(results, "request.query")?.status).toBe("mismatch");
+  });
+  it("should leave a custom media type unverified", () => {
+    const results = check({
+      frontend,
+      backend: operation({ method: "Post", body: "body: { name: string }" }),
+      endpoint: request(
+        "{name: string}",
+        '(body) => ({ method: "POST", url: "/api/user", body, headers: {"Content-Type":"text/plain"} })',
+      ),
+    });
+    expect(resultFor(results, "request.body")?.status).toBe("unverified");
+  });
+  it("should leave an extraOptions getter unverified", () => {
+    const results = check({
+      frontend,
+      backend: operation(),
+      endpoint:
+        'builder.query<ErdResponse, void>({ query: () => ({url:"/api/user"}), get extraOptions() { return { rawResponse: true }; } })',
+    });
+    expect(results.some((result) => result.status === "unverified")).toBe(true);
+  });
+
   it("should inspect nested cache keys after removing the top-level key", () => {
     const results = check({
       frontend: `${frontend} type Args = { __rtkCacheKey?: unknown; child?: Args };`,
@@ -1084,7 +1168,7 @@ describe("request comparison rules", () => {
   it("should leave conversions in a recursive JSON body unverified", () => {
     const results = check({
       frontend: `${frontend} interface TreeNode { date: Date; children: TreeNode[] }`,
-      backend: `type BackendNode = { date: string; children: BackendNode[] }; ${operation({ method: "Post", body: "body: BackendNode" })}`,
+      backend: `type BackendNode = { date: string | null; children: BackendNode[] }; ${operation({ method: "Post", body: "body: BackendNode" })}`,
       endpoint: request(
         "TreeNode",
         '(body) => ({ method: "POST", url: "/api/user", body })',
@@ -1099,10 +1183,11 @@ describe("request comparison rules", () => {
   });
 
   it("should finish JSON modelling when a small type graph has millions of paths", () => {
-    const graph = ["type T0 = { value: string | undefined };"];
-    for (let depth = 1; depth <= 24; depth++) {
-      graph.push(`type T${depth} = { a: T${depth - 1}; b: T${depth - 1} };`);
-    }
+    const graph = Array.from({ length: 25 }, (_, depth) =>
+      depth === 0
+        ? "type T0 = { value: string | undefined };"
+        : `type T${depth} = { a: T${depth - 1}; b: T${depth - 1} };`,
+    );
     const results = check({
       frontend: `${frontend} ${graph.join("\n")}`,
       backend: `${graph.join("\n")} ${operation({ method: "Post", body: "body: T24" })}`,
@@ -1443,7 +1528,12 @@ describe("endpoint identities", () => {
     );
     const generated = files["types.gen.d.ts"] ?? "";
     const paths = Object.values(files).filter((file) => file !== generated);
-    return checkContracts(program, paths, generated, root);
+    return checkContracts({
+      program,
+      endpointFiles: paths,
+      generatedFile: generated,
+      root,
+    });
   };
 
   it("should preserve exemptions across file moves and line changes", () => {

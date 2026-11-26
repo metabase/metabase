@@ -17,6 +17,7 @@ import {
   TypeWalkError,
   type UnconstrainedPosition,
   type Verdict,
+  type WalkOptions,
   combineVerdicts,
   compareShape,
   isStackOverflow,
@@ -28,6 +29,7 @@ import {
   member,
   propertyName,
   propertyType,
+  unionMembers,
   unwrap,
 } from "./typescript-utils";
 
@@ -84,13 +86,19 @@ interface ResolvedEndpoint {
   route: string;
 }
 
-export function checkContracts(
-  program: ts.Program,
-  endpointFiles: string[],
-  generatedFile: string,
-  root: string,
-  options: Pick<CompareContext, "walkStepBudget" | "walkDepthBudget"> = {},
-): ContractResult[] {
+export function checkContracts({
+  program,
+  endpointFiles,
+  generatedFile,
+  root,
+  walkOptions,
+}: {
+  program: ts.Program;
+  endpointFiles: readonly string[];
+  generatedFile: string;
+  root: string;
+  walkOptions?: WalkOptions;
+}): ContractResult[] {
   assertCheckable(program, [generatedFile, ...endpointFiles], root);
   const checker = program.getTypeChecker();
   const generated = program.getSourceFile(generatedFile);
@@ -102,7 +110,7 @@ export function checkContracts(
     generated,
     operations: backendOperations(checker, generated),
     root,
-    ...options,
+    ...walkOptions,
   };
   const results = discoverEndpoints(
     program,
@@ -153,7 +161,7 @@ export function baselineProblems(
 
 function assertCheckable(
   program: ts.Program,
-  files: string[],
+  files: readonly string[],
   root: string,
 ): void {
   const options = program.getCompilerOptions();
@@ -186,7 +194,7 @@ function backendOperations(
   const aliases = new Map(
     source.statements
       .filter(ts.isTypeAliasDeclaration)
-      .map((n) => [n.name.text, n]),
+      .map((alias) => [alias.name.text, alias]),
   );
   const result = new Map<string, Operation[]>();
   for (const [name, node] of aliases) {
@@ -222,7 +230,7 @@ function backendOperations(
 function discoverEndpoints(
   program: ts.Program,
   checker: ts.TypeChecker,
-  endpointFiles: string[],
+  endpointFiles: readonly string[],
   root: string,
 ): Endpoint[] {
   const endpoints: Endpoint[] = [];
@@ -477,7 +485,7 @@ function checkResponse(
   const successes =
     operation.responses
       ?.getProperties()
-      .filter((p) => /^2(?:\d\d|XX)$/.test(p.name)) ?? [];
+      .filter((property) => /^2(?:\d\d|XX)$/.test(property.name)) ?? [];
   if (!successes.length) {
     return [
       {
@@ -652,7 +660,11 @@ function pathParameterVerdict(
   const verdicts: Verdict[] = parameter.unverified
     ? [{ status: "unverified", diagnostics: [parameter.unverified] }]
     : parameter.values.map((value) =>
-        value.kind === "text" && value.text === ""
+        (value.kind === "text" && value.text === "") ||
+        (value.kind === "type" &&
+          unionMembers(context.checker, value.type).some(
+            (part) => part.isStringLiteral() && part.value === "",
+          ))
           ? {
               status: "mismatch",
               diagnostics: [

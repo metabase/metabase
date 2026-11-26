@@ -190,6 +190,8 @@ describe("contract checker CLI", () => {
     expect(JSON.parse(read(CONTRACTS_REPORT_PATH))).toMatchObject({
       staleExemptions: [ENDPOINT_ID, "removedApi:oldEndpoint"],
     });
+    expect(result.stdout).toContain(ENDPOINT_ID);
+    expect(result.stdout).toContain("removedApi:oldEndpoint");
     expect(read(BASELINE_PATH)).toBe(baseline);
   });
 

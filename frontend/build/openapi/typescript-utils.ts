@@ -43,14 +43,21 @@ function printTypeNode(node: ts.TypeNode): string {
   return printer.printNode(ts.EmitHint.Unspecified, node, printTarget);
 }
 
-function compareStrings(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
+export function compareStrings(left: string, right: string): number {
+  if (left === right) {
+    return 0;
+  }
+  return left < right ? -1 : 1;
 }
 
 // `null` and `undefined` go last, as TypeScript writes them.
 function compareUnionTexts(left: string, right: string): number {
-  const rank = (text: string) =>
-    text === "undefined" ? 2 : text === "null" ? 1 : 0;
+  const rank = (text: string) => {
+    if (text === "undefined") {
+      return 2;
+    }
+    return Number(text === "null");
+  };
   return rank(left) - rank(right) || compareStrings(left, right);
 }
 

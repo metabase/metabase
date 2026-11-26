@@ -1,6 +1,6 @@
 (ns metabase.api.macros.defendpoint.closed-schemas
   "Check, when a `defendpoint` is evaluated, that its request schemas let nothing through that
-  [[metabase.api.macros/decode-transformer]] does not strip, which are the schemas that accept a map with a key of ours
+  [[metabase.api.macros.defendpoint.params/decode-transformer]] does not strip, which are the schemas that accept a map with a key of ours
   as it arrived, a `:map-of` keyed by keywords, and any other finding of [[metabase.util.malli.closed-schemas]], where a
   `[:map {:closed false}]` opts out and `metabase.api-routes.closed-schemas-test` pins every one a request can reach."
   (:require

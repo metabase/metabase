@@ -9,6 +9,7 @@ import {
   unionShape,
 } from "./shape";
 import {
+  compareStrings,
   elementTypes,
   indexAccepts,
   isObjectLike,
@@ -425,48 +426,64 @@ function renderShapeIssues(
   return problems;
 }
 
-function shapeProblems(
-  context: CompareContext,
-  direction: Direction,
-  sent: Shape,
-  target: ts.Type,
-  at: ts.Node,
-  location: string,
-): Problem[] {
-  const { checker, root } = context;
-  const walk = new TypeWalk(context, "field walk");
-  const ids = new Map<object, number>();
-  const idOf = (key: object): number => {
-    const known = ids.get(key);
+type ObjectFields = NonNullable<ReturnType<typeof shapeFields>>;
+
+function mismatch(position: Position, detail: string): ShapeIssue {
+  return { status: "mismatch", position, detail };
+}
+
+class ShapeComparator {
+  private readonly walk: TypeWalk;
+  private readonly checker: ts.TypeChecker;
+  private readonly ids = new Map<object, number>();
+  private readonly walking = new Set<string>();
+  private readonly walked = new Map<string, ShapeComparison>();
+  private recursions = 0;
+  constructor(
+    private readonly context: CompareContext,
+    private readonly direction: Direction,
+    private readonly at: ts.Node,
+  ) {
+    this.walk = new TypeWalk(context, "field walk");
+    this.checker = context.checker;
+  }
+  compare(sent: Shape, target: ts.Type, location: string): Problem[] {
+    return this.walk.run(() =>
+      renderShapeIssues(
+        this.visit(sent, target, { ...ROOT, depth: 0 }),
+        this.context.root,
+        location,
+      ),
+    );
+  }
+  private idOf(key: object): number {
+    const known = this.ids.get(key);
     if (known !== undefined) {
       return known;
     }
-    ids.set(key, ids.size);
-    return ids.size - 1;
-  };
-  const walking = new Set<string>();
-  const walked = new Map<string, ShapeComparison>();
-  let recursions = 0;
-  const mismatch = (position: Position, detail: string): ShapeIssue => ({
-    status: "mismatch",
-    position,
-    detail,
-  });
-  const notAssignable = (position: Position, sent: Shape, target: ts.Type) =>
-    mismatch(
+    const id = this.ids.size;
+    this.ids.set(key, id);
+    return id;
+  }
+  private notAssignable(
+    position: Position,
+    sent: Shape,
+    target: ts.Type,
+  ): ShapeIssue {
+    return mismatch(
       position,
-      `${direction.from} type ${describeShape(checker, sent)} is not assignable to ${direction.to} type ${typeText(checker, target)}`,
+      `${this.direction.from} type ${describeShape(this.checker, sent)} is not assignable to ${this.direction.to} type ${typeText(this.checker, target)}`,
     );
-  // `siblings` are the other variants sent at this position, kept when one variant is retried against one member.
-  const visit = (
+  }
+  private visit(
     sent: Shape,
     target: ts.Type,
     position: WalkPosition,
     siblings?: Shape[],
-  ): ShapeIssue[] => {
+  ): ShapeIssue[] {
     const problems: ShapeIssue[] = [];
     const { path, declaration, depth } = position;
-    walk.step(shapeType(sent) ?? target, { path, declaration }, depth);
+    this.walk.step(shapeType(sent) ?? target, { path, declaration }, depth);
     const loose = (type: ts.Type, side: Side, where?: ts.Declaration): void => {
       if (type.flags & LOOSE_TYPE_FLAGS) {
         problems.push({
@@ -474,34 +491,38 @@ function shapeProblems(
           position,
           loose: {
             side,
-            type: typeText(checker, type),
-            ...(where ? { declaration: declarationLabel(where, root) } : {}),
+            type: typeText(this.checker, type),
+            ...(where
+              ? { declaration: declarationLabel(where, this.context.root) }
+              : {}),
           },
         });
       }
     };
     if (sent.kind === "type") {
-      loose(sent.type, direction.from, position.sentDeclaration);
+      loose(sent.type, this.direction.from, position.sentDeclaration);
     }
     for (const member of target.isUnion() ? target.types : [target]) {
-      loose(member, direction.to, position.targetDeclaration);
+      loose(member, this.direction.to, position.targetDeclaration);
     }
     if (problems.length) {
       return problems;
     }
-    const variants = sentVariants(checker, sent);
-    const objectTargets = unionMembers(checker, target).filter(isObjectLike);
+    const variants = sentVariants(this.checker, sent);
+    const objectTargets = unionMembers(this.checker, target).filter(
+      isObjectLike,
+    );
     for (const variant of variants) {
       if (
         variant !== sent &&
         variant.kind === "type" &&
         variant.type.flags & LOOSE_TYPE_FLAGS
       ) {
-        loose(variant.type, direction.from, position.sentDeclaration);
+        loose(variant.type, this.direction.from, position.sentDeclaration);
         continue;
       }
       problems.push(
-        ...visitVariant(
+        ...this.visitVariant(
           variant,
           target,
           objectTargets,
@@ -511,7 +532,11 @@ function shapeProblems(
       );
     }
     // A frontend response variant no backend variant fits cannot have its fields checked.
-    if (direction.to === "frontend" && objectTargets.length > 1) {
+    if (
+      this.direction.to === "frontend" &&
+      target.isUnion() &&
+      objectTargets.length > 0
+    ) {
       const sentTypes = variants.flatMap((variant) => {
         const type = shapeType(variant);
         return type ? [type] : [];
@@ -519,28 +544,29 @@ function shapeProblems(
       objectTargets
         .filter(
           (member) =>
-            !sentTypes.some((type) => checker.isTypeAssignableTo(type, member)),
+            !sentTypes.some((type) =>
+              this.checker.isTypeAssignableTo(type, member),
+            ),
         )
         .forEach((member) =>
           problems.push({
             status: "unverified",
             position,
-            detail: `cannot establish frontend field coverage for frontend union variant ${typeText(checker, member)}, which no backend type at this position is assignable to.`,
+            detail: `cannot establish frontend field coverage for frontend union variant ${typeText(this.checker, member)}, which no backend type at this position is assignable to.`,
           }),
         );
     }
 
     return problems;
-  };
+  }
 
-  const visitVariant = (
+  private visitVariant(
     sent: Shape,
     target: ts.Type,
     objectTargets: ts.Type[],
     position: WalkPosition,
     siblings: Shape[],
-  ): ShapeIssue[] => {
-    const { path, declaration, depth } = position;
+  ): ShapeIssue[] {
     switch (sent.kind) {
       case "union":
         return [];
@@ -551,30 +577,32 @@ function shapeProblems(
           mismatch(position, `${sent.reason}, so the request is never sent`),
         ];
       case "numeric-text":
-        return checker.isTypeAssignableTo(sent.from, target) ||
-          checker.isTypeAssignableTo(checker.getStringType(), target)
+        return this.checker.isTypeAssignableTo(sent.from, target) ||
+          this.checker.isTypeAssignableTo(this.checker.getStringType(), target)
           ? []
-          : [notAssignable(position, sent, target)];
+          : [this.notAssignable(position, sent, target)];
       case "text":
         if (
-          !textReadings(checker, sent.text).some((reading) =>
-            checker.isTypeAssignableTo(reading, target),
+          !textReadings(this.checker, sent.text).some((reading) =>
+            this.checker.isTypeAssignableTo(reading, target),
           )
         ) {
           return [
             mismatch(
               position,
-              `${direction.from} value ${JSON.stringify(sent.text)} is not assignable to ${direction.to} type ${typeText(checker, target)}`,
+              `${this.direction.from} value ${JSON.stringify(sent.text)} is not assignable to ${this.direction.to} type ${typeText(this.checker, target)}`,
             ),
           ];
         }
         return [];
       case "null":
-        if (!checker.isTypeAssignableTo(checker.getNullType(), target)) {
+        if (
+          !this.checker.isTypeAssignableTo(this.checker.getNullType(), target)
+        ) {
           return [
             mismatch(
               position,
-              `${direction.from} value null, from ${typeText(checker, sent.from)}, is not assignable to ${direction.to} type ${typeText(checker, target)}`,
+              `${this.direction.from} value null, from ${typeText(this.checker, sent.from)}, is not assignable to ${this.direction.to} type ${typeText(this.checker, target)}`,
             ),
           ];
         }
@@ -590,81 +618,18 @@ function shapeProblems(
           return [
             mismatch(
               position,
-              `${direction.from} value {}, from ${typeText(checker, sent.from)}, is not assignable to ${direction.to} type ${typeText(checker, target)}`,
+              `${this.direction.from} value {}, from ${typeText(this.checker, sent.from)}, is not assignable to ${this.direction.to} type ${typeText(this.checker, target)}`,
             ),
           ];
         }
         return [];
-      case "items": {
-        const arrays = objectTargets.filter(
-          (member) =>
-            checker.isArrayType(member) || checker.isTupleType(member),
-        );
-        if (arrays.length > 1) {
-          return visitAgainstAny(sent, arrays, target, position);
-        }
-        const [array] = arrays;
-        const item = unionShape(sent.elements);
-        if (array && isTupleReference(checker, array)) {
-          if (!isTupleReference(checker, sent.from)) {
-            return [notAssignable(position, sent, target)];
-          }
-          const sourceTuple = sent.from.target;
-          const targetTuple = array.target;
-          if (
-            (sourceTuple.combinedFlags | targetTuple.combinedFlags) &
-            ts.ElementFlags.Variable
-          ) {
-            if (
-              sourceTuple.elementFlags.join() !==
-              targetTuple.elementFlags.join()
-            ) {
-              return [
-                {
-                  status: "unverified",
-                  position,
-                  detail:
-                    "cannot align repeated query parameters with different variadic tuple layouts",
-                },
-              ];
-            }
-          } else if (
-            sourceTuple.minLength < targetTuple.minLength ||
-            sourceTuple.fixedLength > targetTuple.fixedLength
-          ) {
-            return [notAssignable(position, sent, target)];
-          }
-          const targets = elementTypes(checker, array);
-          return sent.elements.flatMap((element, i) => {
-            const expected = targets[i];
-            return expected
-              ? visit(element, expected, {
-                  path: `${path}[${i}]`,
-                  declaration,
-                  depth: depth + 1,
-                })
-              : [notAssignable(position, sent, target)];
-          });
-        }
-        const expected =
-          array && checker.getIndexTypeOfType(array, ts.IndexKind.Number);
-        const problems = visit(item, expected ?? target, {
-          path: `${path}[]`,
-          declaration,
-          depth: depth + 1,
-        });
-        if (!expected && !checker.isTypeAssignableTo(sent.from, target)) {
-          problems.unshift(
-            notAssignable(position, typeShape(sent.from), target),
-          );
-        }
-        return problems;
-      }
+      case "items":
+        return this.compareQueryItems(sent, target, objectTargets, position);
       case "type":
         if (!isObjectLike(sent.type)) {
-          return checker.isTypeAssignableTo(sent.type, target)
+          return this.checker.isTypeAssignableTo(sent.type, target)
             ? []
-            : [notAssignable(position, sent, target)];
+            : [this.notAssignable(position, sent, target)];
         }
         break;
       case "object":
@@ -673,62 +638,148 @@ function shapeProblems(
     }
     if (!objectTargets.length) {
       const type = shapeType(sent);
-      return type && checker.isTypeAssignableTo(type, target)
+      return type && this.checker.isTypeAssignableTo(type, target)
         ? []
-        : [notAssignable(position, sent, target)];
+        : [this.notAssignable(position, sent, target)];
     }
-    const pair = `${idOf(sent.kind === "type" ? sent.type : sent)}|${idOf(target)}`;
+    const pair = `${this.idOf(sent.kind === "type" ? sent.type : sent)}|${this.idOf(target)}`;
     const key =
-      direction.to === "frontend"
-        ? `${pair}|${siblings.map((sibling) => idOf(sibling.kind === "type" ? sibling.type : sibling)).join(",")}`
+      this.direction.to === "frontend"
+        ? `${pair}|${siblings.map((sibling) => this.idOf(sibling.kind === "type" ? sibling.type : sibling)).join(",")}`
         : pair;
-    let comparison = walked.get(key);
+    let comparison = this.walked.get(key);
     if (!comparison) {
-      if (walking.has(pair)) {
-        recursions += 1;
+      if (this.walking.has(pair)) {
+        this.recursions += 1;
         return [];
       }
-      walking.add(pair);
-      const before = recursions;
+      this.walking.add(pair);
+      const before = this.recursions;
       const [only] = objectTargets;
       const found =
         only && objectTargets.length === 1
-          ? compareInto(sent, only, target, position, siblings)
-          : visitAgainstAny(sent, objectTargets, target, position, siblings);
-      walking.delete(pair);
+          ? this.compareInto(sent, only, target, position, siblings)
+          : this.visitAgainstAny(
+              sent,
+              objectTargets,
+              target,
+              position,
+              siblings,
+            );
+      this.walking.delete(pair);
       comparison = { position, issues: found };
       // A recursive assumption is valid only inside the comparison that is still checking it.
-      if (before === recursions) {
-        walked.set(key, comparison);
+      if (before === this.recursions) {
+        this.walked.set(key, comparison);
       }
     }
     return comparison.issues.length
       ? [{ status: problemStatus(comparison.issues), position, comparison }]
       : [];
-  };
+  }
+
+  private compareQueryItems(
+    sent: Extract<Shape, { kind: "items" }>,
+    target: ts.Type,
+    objectTargets: ts.Type[],
+    position: WalkPosition,
+  ): ShapeIssue[] {
+    const { path, declaration, depth } = position;
+
+    const arrays = objectTargets.filter(
+      (member) =>
+        this.checker.isArrayType(member) || this.checker.isTupleType(member),
+    );
+    if (arrays.length > 1) {
+      return this.visitAgainstAny(sent, arrays, target, position);
+    }
+    const [array] = arrays;
+    const item = unionShape(sent.elements);
+    if (array && isTupleReference(this.checker, array)) {
+      if (!isTupleReference(this.checker, sent.from)) {
+        return [this.notAssignable(position, sent, target)];
+      }
+      const sourceTuple = sent.from.target;
+      const targetTuple = array.target;
+      if (
+        (sourceTuple.combinedFlags | targetTuple.combinedFlags) &
+        ts.ElementFlags.Variable
+      ) {
+        if (
+          sourceTuple.elementFlags.join() !== targetTuple.elementFlags.join()
+        ) {
+          return [
+            {
+              status: "unverified",
+              position,
+              detail:
+                "cannot align repeated query parameters with different variadic tuple layouts",
+            },
+          ];
+        }
+      } else if (
+        sourceTuple.minLength < targetTuple.minLength ||
+        sourceTuple.fixedLength > targetTuple.fixedLength
+      ) {
+        return [this.notAssignable(position, sent, target)];
+      }
+      const targets = elementTypes(this.checker, array);
+      return sent.elements.flatMap((element, i) => {
+        const expected = targets[i];
+        return expected
+          ? this.visit(element, expected, {
+              path: `${path}[${i}]`,
+              declaration,
+              depth: depth + 1,
+            })
+          : [this.notAssignable(position, sent, target)];
+      });
+    }
+    const expected =
+      array && this.checker.getIndexTypeOfType(array, ts.IndexKind.Number);
+    const problems = this.visit(item, expected ?? target, {
+      path: `${path}[]`,
+      declaration,
+      depth: depth + 1,
+    });
+    if (!expected && !this.checker.isTypeAssignableTo(sent.from, target)) {
+      problems.unshift(
+        this.notAssignable(position, typeShape(sent.from), target),
+      );
+    }
+    return problems;
+  }
 
   // The value fits when any one member accepts it. The one member its type is assignable to gets
   // its disagreements listed; with none, or several, the whole is reported as one line.
-  const visitAgainstAny = (
+  private visitAgainstAny(
     sent: Shape,
     members: ts.Type[],
     whole: ts.Type,
     position: WalkPosition,
     siblings?: Shape[],
-  ): ShapeIssue[] => {
+  ): ShapeIssue[] {
     const type = sent.kind === "type" ? sent.type : undefined;
     const candidates = type
-      ? members.filter((member) => checker.isTypeAssignableTo(type, member))
+      ? members.filter((member) =>
+          this.checker.isTypeAssignableTo(type, member),
+        )
       : members;
+    if (this.direction.to === "frontend" && type && candidates.length) {
+      // Each reachable frontend branch declares fields, even when a less specific branch fits.
+      return candidates.flatMap((member) =>
+        this.visit(sent, member, position, siblings),
+      );
+    }
     const [only] = candidates;
     if (candidates.length === 1 && only) {
-      return visit(sent, only, position, siblings);
+      return this.visit(sent, only, position, siblings);
     }
     const attempts: ShapeIssue[][] = [];
     // A nested unknown can be the only reason TypeScript rejects every candidate.
     // Compare their fields before claiming a definite mismatch.
     for (const member of candidates.length ? candidates : members) {
-      const found = visit(sent, member, position, siblings);
+      const found = this.visit(sent, member, position, siblings);
       if (!found.length) {
         return [];
       }
@@ -737,42 +788,57 @@ function shapeProblems(
     const undecided = attempts.find((attempt) =>
       attempt.every((problem) => problem.status === "unverified"),
     );
-    return undecided ?? [notAssignable(position, sent, whole)];
-  };
+    return undecided ?? [this.notAssignable(position, sent, whole)];
+  }
 
-  const compareInto = (
+  private compareInto(
     sent: Shape,
     member: ts.Type,
     whole: ts.Type,
     position: WalkPosition,
     siblings: Shape[],
-  ): ShapeIssue[] => {
+  ): ShapeIssue[] {
     const problems: ShapeIssue[] = [];
     const { path, depth } = position;
-    const sentElement = shapeElement(checker, sent);
+    if (
+      isTupleReference(this.checker, member) &&
+      member.target.combinedFlags & ts.ElementFlags.Variable
+    ) {
+      return [
+        {
+          status: "unverified",
+          position,
+          detail: "field coverage of a variadic tuple cannot be established",
+        },
+      ];
+    }
+    const sentElement = shapeElement(this.checker, sent);
     const memberElement =
-      checker.isArrayType(member) &&
-      checker.getIndexTypeOfType(member, ts.IndexKind.Number);
+      this.checker.isArrayType(member) &&
+      this.checker.getIndexTypeOfType(member, ts.IndexKind.Number);
     if (
       sent.kind === "type" &&
-      checker.isTupleType(sent.type) &&
+      this.checker.isTupleType(sent.type) &&
       memberElement
     ) {
-      const issues = elementTypes(checker, sent.type).flatMap(
+      const issues = elementTypes(this.checker, sent.type).flatMap(
         (element, index) =>
-          visit(typeShape(element), memberElement, {
+          this.visit(typeShape(element), memberElement, {
             path: `${path}[${index}]`,
             declaration: undefined,
             depth: depth + 1,
           }),
       );
-      if (!issues.length && !checker.isTypeAssignableTo(sent.type, member)) {
-        return [notAssignable(position, sent, whole)];
+      if (
+        !issues.length &&
+        !this.checker.isTypeAssignableTo(sent.type, member)
+      ) {
+        return [this.notAssignable(position, sent, whole)];
       }
       return issues;
     }
     if (sentElement && memberElement) {
-      return visit(sentElement, memberElement, {
+      return this.visit(sentElement, memberElement, {
         path: `${path}[]`,
         declaration: undefined,
         depth: depth + 1,
@@ -781,54 +847,85 @@ function shapeProblems(
     // A declared type is what TypeScript compares; a shape the client assembled has no whole to compare.
     const assignable =
       sent.kind === "type"
-        ? checker.isTypeAssignableTo(sent.type, member)
+        ? this.checker.isTypeAssignableTo(sent.type, member)
         : undefined;
-    const shape = shapeFields(checker, sent, at, direction.from === "frontend");
-    if (!shape || sentElement || checker.isArrayType(member)) {
+    const shape = shapeFields(
+      this.checker,
+      sent,
+      this.at,
+      this.direction.from === "frontend",
+    );
+    if (!shape || sentElement || this.checker.isArrayType(member)) {
       if (assignable !== true) {
-        problems.push(notAssignable(position, sent, whole));
+        problems.push(this.notAssignable(position, sent, whole));
       }
       return problems;
     }
     // A frontend response field counts as declared when any backend variant this member accepts declares it.
     const siblingShapes =
-      direction.to === "frontend"
+      this.direction.to === "frontend"
         ? siblings
             .filter((sibling) => {
               const siblingType = shapeType(sibling);
               return (
                 sibling !== sent &&
                 siblingType !== undefined &&
-                checker.isTypeAssignableTo(siblingType, member)
+                this.checker.isTypeAssignableTo(siblingType, member)
               );
             })
             .flatMap(
               (sibling) =>
                 shapeFields(
-                  checker,
+                  this.checker,
                   sibling,
-                  at,
-                  direction.from === "frontend",
+                  this.at,
+                  this.direction.from === "frontend",
                 ) ?? [],
             )
         : [];
+    const tupleMember = this.checker.isTupleType(member);
+    const targetIndexes = tupleMember
+      ? []
+      : this.checker.getIndexInfosOfType(member);
+    problems.push(
+      ...this.compareDeclaredFields(shape, member, siblingShapes, position),
+      ...this.compareExtraFields(shape, member, targetIndexes, position),
+      ...this.compareIndexSignatures(
+        shape,
+        targetIndexes,
+        siblingShapes,
+        position,
+      ),
+    );
+    if (!problems.length && assignable === false) {
+      problems.push(this.notAssignable(position, sent, whole));
+    }
+
+    return problems;
+  }
+
+  private compareDeclaredFields(
+    shape: ObjectFields,
+    member: ts.Type,
+    siblingShapes: ObjectFields[],
+    position: WalkPosition,
+  ): ShapeIssue[] {
+    const { path, depth } = position;
+    const problems: ShapeIssue[] = [];
+    const tupleMember = this.checker.isTupleType(member);
     const declaredBySibling = (name: string) =>
       siblingShapes.some(
         (sibling) =>
           sibling.fields.some((field) => field.name === name) ||
           sibling.indexes.some((index) =>
             indexAccepts(
-              checker,
-              checker.getStringLiteralType(name),
+              this.checker,
+              this.checker.getStringLiteralType(name),
               index.keyType,
             ),
           ),
       );
-    const tupleMember = checker.isTupleType(member);
-    const targetIndexes = tupleMember
-      ? []
-      : checker.getIndexInfosOfType(member);
-    const targetNames = new Set<string>();
+
     for (const property of properties(member)) {
       if (
         property.name.startsWith("__@") ||
@@ -836,15 +933,15 @@ function shapeProblems(
       ) {
         continue;
       }
-      targetNames.add(property.name);
+
       const field = tupleMember
         ? `${path}[${property.name}]`
         : `${path}.${property.name}`;
       const required = !(property.flags & ts.SymbolFlags.Optional);
       const index = shape.indexes.find((index) =>
         indexAccepts(
-          checker,
-          checker.getStringLiteralType(property.name),
+          this.checker,
+          this.checker.getStringLiteralType(property.name),
           index.keyType,
         ),
       );
@@ -859,7 +956,7 @@ function shapeProblems(
             }
           : undefined);
       const frontendDeclaration =
-        direction.to === "frontend"
+        this.direction.to === "frontend"
           ? symbolDeclaration(property)
           : found?.declaration;
       if (!found) {
@@ -867,11 +964,11 @@ function shapeProblems(
           problems.push(
             mismatch(
               { path: field, declaration: frontendDeclaration },
-              `property required by the ${direction.to} type is missing from the ${direction.from} type`,
+              `property required by the ${this.direction.to} type is missing from the ${this.direction.from} type`,
             ),
           );
         } else if (
-          direction.to === "frontend" &&
+          this.direction.to === "frontend" &&
           !declaredBySibling(property.name)
         ) {
           problems.push(
@@ -887,42 +984,62 @@ function shapeProblems(
         problems.push(
           mismatch(
             { path: field, declaration: frontendDeclaration },
-            `property is optional in the ${direction.from} type but required by the ${direction.to} type`,
+            `property is optional in the ${this.direction.from} type but required by the ${this.direction.to} type`,
           ),
         );
       }
       problems.push(
-        ...visit(found.shape, checker.getTypeOfSymbolAtLocation(property, at), {
-          path: field,
-          declaration: frontendDeclaration,
-          sentDeclaration: found.declaration,
-          targetDeclaration: symbolDeclaration(property),
-          depth: depth + 1,
-        }),
+        ...this.visit(
+          found.shape,
+          this.checker.getTypeOfSymbolAtLocation(property, this.at),
+          {
+            path: field,
+            declaration: frontendDeclaration,
+            sentDeclaration: found.declaration,
+            targetDeclaration: symbolDeclaration(property),
+            depth: depth + 1,
+          },
+        ),
       );
     }
+    return problems;
+  }
+  private compareExtraFields(
+    shape: ObjectFields,
+    member: ts.Type,
+    targetIndexes: readonly ts.IndexInfo[],
+    position: WalkPosition,
+  ): ShapeIssue[] {
+    const { path, depth } = position;
+    const problems: ShapeIssue[] = [];
     for (const field of shape.fields.filter(
-      ({ name }) => !targetNames.has(name),
+      ({ name }) =>
+        !(
+          member.getProperty(name) &&
+          (!this.checker.isTupleType(member) || /^\d+$/.test(name))
+        ),
     )) {
-      const index = targetIndexes.find((candidate) =>
+      const indexes = targetIndexes.filter((candidate) =>
         indexAccepts(
-          checker,
-          checker.getStringLiteralType(field.name),
+          this.checker,
+          this.checker.getStringLiteralType(field.name),
           candidate.keyType,
         ),
       );
       const fieldPath = `${path}.${field.name}`;
-      if (index) {
-        problems.push(
-          ...visit(field.shape, index.type, {
-            path: fieldPath,
-            declaration: field.declaration,
-            sentDeclaration: field.declaration,
-            targetDeclaration: index.declaration,
-            depth: depth + 1,
-          }),
-        );
-      } else if (direction.from === "frontend") {
+      if (indexes.length) {
+        for (const index of indexes) {
+          problems.push(
+            ...this.visit(field.shape, index.type, {
+              path: fieldPath,
+              declaration: field.declaration,
+              sentDeclaration: field.declaration,
+              targetDeclaration: index.declaration,
+              depth: depth + 1,
+            }),
+          );
+        }
+      } else if (this.direction.from === "frontend") {
         problems.push(
           mismatch(
             { path: fieldPath, declaration: field.declaration },
@@ -931,28 +1048,34 @@ function shapeProblems(
         );
       }
     }
+    return problems;
+  }
+  private compareIndexSignatures(
+    shape: ObjectFields,
+    targetIndexes: readonly ts.IndexInfo[],
+    siblingShapes: ObjectFields[],
+    position: WalkPosition,
+  ): ShapeIssue[] {
+    const { path, depth } = position;
+    const problems: ShapeIssue[] = [];
     for (const index of shape.indexes) {
       const accepting = targetIndexes.filter((candidate) =>
-        indexAccepts(checker, index.keyType, candidate.keyType),
+        indexAccepts(this.checker, index.keyType, candidate.keyType),
       );
       const indexPath = `${path}[key]`;
       if (accepting.length) {
-        problems.push(
-          ...visitAgainstAny(
-            index.shape,
-            accepting.map((candidate) => candidate.type),
-            whole,
-            {
+        for (const candidate of accepting) {
+          problems.push(
+            ...this.visit(index.shape, candidate.type, {
               path: indexPath,
               declaration: index.declaration,
               sentDeclaration: index.declaration,
-              targetDeclaration:
-                accepting.length === 1 ? accepting[0]?.declaration : undefined,
+              targetDeclaration: candidate.declaration,
               depth: depth + 1,
-            },
-          ),
-        );
-      } else if (direction.from === "frontend") {
+            }),
+          );
+        }
+      } else if (this.direction.from === "frontend") {
         problems.push(
           mismatch(
             { path: indexPath, declaration: index.declaration },
@@ -962,17 +1085,17 @@ function shapeProblems(
       }
     }
     // A frontend response index signature has to be declared by the backend too.
-    if (direction.to === "frontend") {
+    if (this.direction.to === "frontend") {
       for (const index of targetIndexes) {
         const indexPath = `${path}[key]`;
         const sentIndexes = shape.indexes.filter((candidate) =>
-          indexAccepts(checker, index.keyType, candidate.keyType),
+          indexAccepts(this.checker, index.keyType, candidate.keyType),
         );
         if (!sentIndexes.length) {
           if (
             siblingShapes.some((sibling) =>
               sibling.indexes.some((candidate) =>
-                indexAccepts(checker, index.keyType, candidate.keyType),
+                indexAccepts(this.checker, index.keyType, candidate.keyType),
               ),
             )
           ) {
@@ -988,7 +1111,7 @@ function shapeProblems(
         }
         sentIndexes.forEach((candidate) =>
           problems.push(
-            ...visit(candidate.shape, index.type, {
+            ...this.visit(candidate.shape, index.type, {
               sentDeclaration: candidate.declaration,
               targetDeclaration: index.declaration,
               path: indexPath,
@@ -999,29 +1122,15 @@ function shapeProblems(
         );
       }
     }
-    if (!problems.length && assignable === false) {
-      problems.push(notAssignable(position, sent, whole));
-    }
-
     return problems;
-  };
-
-  return walk.run(() =>
-    renderShapeIssues(
-      visit(sent, target, { ...ROOT, depth: 0 }),
-      root,
-      location,
-    ),
-  );
+  }
 }
 
 const LOOSE_TYPE_FLAGS =
   ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.TypeParameter;
 
 function comparePaths(left: string, right: string): number {
-  return (
-    left.length - right.length || (left < right ? -1 : left > right ? 1 : 0)
-  );
+  return left.length - right.length || compareStrings(left, right);
 }
 
 function positionKey({
@@ -1063,6 +1172,94 @@ function sortedPositions(
     );
 }
 
+interface WalkEntry {
+  shape: Shape;
+  position: Position;
+}
+type ReachShape = (
+  shape: Shape,
+  position: Position,
+  level: WalkEntry[],
+) => void;
+
+function reachChildren(
+  checker: ts.TypeChecker,
+  at: ts.Node,
+  shape: Shape,
+  path: string,
+  next: WalkEntry[],
+  reach: ReachShape,
+): void {
+  switch (shape.kind) {
+    case "object":
+      shape.fields.forEach((field) =>
+        reach(
+          field.shape,
+          { path: `${path}.${field.name}`, declaration: field.declaration },
+          next,
+        ),
+      );
+      shape.indexes.forEach((index) =>
+        reach(
+          index.shape,
+          { path: `${path}[key]`, declaration: index.declaration },
+          next,
+        ),
+      );
+      return;
+    case "array":
+      reach(shape.element, { path: `${path}[]`, declaration: undefined }, next);
+      return;
+    case "items":
+      reach(
+        unionShape(shape.elements),
+        { path: `${path}[]`, declaration: undefined },
+        next,
+      );
+      return;
+    case "type": {
+      const { type } = shape;
+      if (
+        isTypeReference(type) &&
+        (checker.isArrayType(type) || checker.isTupleType(type))
+      ) {
+        checker
+          .getTypeArguments(type)
+          .forEach((element) =>
+            reach(
+              typeShape(element),
+              { path: `${path}[]`, declaration: undefined },
+              next,
+            ),
+          );
+        return;
+      }
+      checker
+        .getIndexInfosOfType(type)
+        .forEach((index) =>
+          reach(
+            typeShape(index.type),
+            { path: `${path}[key]`, declaration: index.declaration },
+            next,
+          ),
+        );
+      properties(type).forEach((property) =>
+        reach(
+          typeShape(checker.getTypeOfSymbolAtLocation(property, at)),
+          {
+            path: `${path}.${property.name}`,
+            declaration: symbolDeclaration(property),
+          },
+          next,
+        ),
+      );
+      return;
+    }
+    default:
+      return;
+  }
+}
+
 // Every `any`, `unknown` or unresolved type in a shape, each at the shortest path that reaches it.
 // The walk goes one path segment at a time and walks each object type once, at its first, shortest path.
 // Listing every path instead does not finish: the MBQL expression types reach each other in every order.
@@ -1078,12 +1275,11 @@ function unconstrainedPositions(
   const found: UnconstrainedPosition[] = [];
   const visited = new Set<ts.Type | Shape>();
   let depth = 0;
-  type Entry = { shape: Shape; position: Position };
   // Union members and the values a field may hold sit at the same path, so they join the current level.
   const reach = (
     shape: Shape,
     { path, declaration }: Position,
-    level: Entry[],
+    level: WalkEntry[],
   ): void => {
     const reached = shapeType(shape);
     walk.step(
@@ -1146,91 +1342,17 @@ function unconstrainedPositions(
     visited.add(type);
     level.push({ shape, position: { path, declaration } });
   };
-  const children = (shape: Shape, path: string, next: Entry[]): void => {
-    switch (shape.kind) {
-      case "object":
-        shape.fields.forEach((field) =>
-          reach(
-            field.shape,
-            { path: `${path}.${field.name}`, declaration: field.declaration },
-            next,
-          ),
-        );
-        shape.indexes.forEach((index) =>
-          reach(
-            index.shape,
-            { path: `${path}[key]`, declaration: index.declaration },
-            next,
-          ),
-        );
-        return;
-      case "array":
-        reach(
-          shape.element,
-          { path: `${path}[]`, declaration: undefined },
-          next,
-        );
-        return;
-      case "items":
-        reach(
-          unionShape(shape.elements),
-          { path: `${path}[]`, declaration: undefined },
-          next,
-        );
-        return;
-      case "type": {
-        const { type } = shape;
-        if (
-          isTypeReference(type) &&
-          (checker.isArrayType(type) || checker.isTupleType(type))
-        ) {
-          checker
-            .getTypeArguments(type)
-            .forEach((element) =>
-              reach(
-                typeShape(element),
-                { path: `${path}[]`, declaration: undefined },
-                next,
-              ),
-            );
-          return;
-        }
-        checker
-          .getIndexInfosOfType(type)
-          .forEach((index) =>
-            reach(
-              typeShape(index.type),
-              { path: `${path}[key]`, declaration: index.declaration },
-              next,
-            ),
-          );
-        properties(type).forEach((property) =>
-          reach(
-            typeShape(checker.getTypeOfSymbolAtLocation(property, at)),
-            {
-              path: `${path}.${property.name}`,
-              declaration: symbolDeclaration(property),
-            },
-            next,
-          ),
-        );
-        return;
-      }
-      default:
-        return;
-    }
-  };
   walk.run(() => {
-    let level: Entry[] = [];
+    let level: WalkEntry[] = [];
     reach(root, position, level);
     while (level.length) {
       depth += 1;
-      const next: Entry[] = [];
+      const next: WalkEntry[] = [];
       for (const {
         shape,
         position: { path },
       } of level) {
-        children(shape, path, next);
+        reachChildren(checker, at, shape, path, next, reach);
       }
       level = next;
     }
@@ -1283,12 +1405,9 @@ export function compareShape(
     kind === "response"
       ? { from: "backend", to: "frontend" }
       : { from: "frontend", to: "backend" };
-  const problems = shapeProblems(
-    context,
-    direction,
+  const problems = new ShapeComparator(context, direction, at).compare(
     sent,
     target,
-    at,
     location,
   );
   if (!problems.length) {
@@ -1303,11 +1422,12 @@ export function compareShape(
 /** A definite mismatch fails even when another possible request is unverified. */
 export function combineVerdicts(verdicts: Verdict[], notes: string[]): Verdict {
   const failing = verdicts.filter((verdict) => verdict.status !== "compatible");
-  const status = failing.some((verdict) => verdict.status === "mismatch")
-    ? "mismatch"
-    : failing.length
-      ? "unverified"
-      : "compatible";
+  let status: Verdict["status"] = "compatible";
+  if (failing.length) {
+    status = failing.some((verdict) => verdict.status === "mismatch")
+      ? "mismatch"
+      : "unverified";
+  }
   return {
     status,
     diagnostics: failing.length
@@ -1329,13 +1449,14 @@ export function renderDiagnostics(
   const firstGroup = diagnostics.findIndex(
     (diagnostic) => typeof diagnostic !== "string",
   );
-  const lines = diagnostics.flatMap((diagnostic, index) =>
-    typeof diagnostic === "string"
-      ? [diagnostic]
-      : index === firstGroup
-        ? unconstrainedLines({ location: diagnostic.location, positions })
-        : [],
-  );
+  const lines = diagnostics.flatMap((diagnostic, index) => {
+    if (typeof diagnostic === "string") {
+      return [diagnostic];
+    }
+    return index === firstGroup
+      ? unconstrainedLines({ location: diagnostic.location, positions })
+      : [];
+  });
   return {
     message: [...new Set(lines), ...notes.map((note) => `note: ${note}`)].join(
       LINE_BREAK,

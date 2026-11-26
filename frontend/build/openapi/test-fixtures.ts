@@ -9,7 +9,7 @@ import ts from "typescript";
  * `defineEndpoint` and `EndpointBuilder` type a fixture's query function the way RTK's builder does,
  * so a fixture cannot build a request a real endpoint cannot.
  */
-const BASE_QUERY_ARGS = `type BaseQueryArgs = string | { method?: "GET" | "POST" | "PUT" | "DELETE"; url: string | null; params?: Record<string, unknown> | null | void; body?: unknown; rawResponse?: boolean };`;
+const BASE_QUERY_ARGS = `type BaseQueryArgs = string | { method?: "GET" | "POST" | "PUT" | "DELETE"; url: string | null; params?: Record<string, unknown> | null | void; body?: unknown; headers?: Record<string,string>; rawResponse?: boolean };`;
 
 export const ENDPOINT_PRELUDE = `${BASE_QUERY_ARGS}
   function defineEndpoint<Argument>(endpoint: {
@@ -31,6 +31,7 @@ export const ENDPOINT_BUILDER = `${BASE_QUERY_ARGS}
     declare const builder: EndpointBuilder;`;
 
 const directories: string[] = [];
+const CANNOT_FIND_NAME = 2304;
 
 export function cleanupFixtures(): void {
   for (const directory of directories.splice(0)) {
@@ -87,7 +88,7 @@ export function programFrom(
     }
     const diagnostics = program
       .getSemanticDiagnostics(source)
-      .filter((diagnostic) => diagnostic.code !== 2304);
+      .filter((diagnostic) => diagnostic.code !== CANNOT_FIND_NAME);
     if (diagnostics.length) {
       throw new Error(
         diagnostics
@@ -108,16 +109,19 @@ export function endpointObject(
   const source = program.getSourceFile(file);
   let found: ts.ObjectLiteralExpression | undefined;
   const visit = (node: ts.Node) => {
-    if (
-      ts.isVariableDeclaration(node) &&
-      ts.isIdentifier(node.name) &&
-      node.name.text === "endpoint" &&
-      node.initializer &&
-      ts.isCallExpression(node.initializer) &&
-      node.initializer.arguments[0] &&
-      ts.isObjectLiteralExpression(node.initializer.arguments[0])
-    ) {
-      found = node.initializer.arguments[0];
+    if (ts.isVariableDeclaration(node)) {
+      const argument =
+        node.initializer &&
+        ts.isCallExpression(node.initializer) &&
+        node.initializer.arguments[0];
+      if (
+        argument &&
+        ts.isObjectLiteralExpression(argument) &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === "endpoint"
+      ) {
+        found = argument;
+      }
     }
     ts.forEachChild(node, visit);
   };

@@ -460,6 +460,11 @@ serialization_baseline:
   - "test_resources/serialization_baseline/**"
 
 api_contracts:
+  - ".nvmrc"
+  - ".github/scripts/cache-keys.sh"
+  - "shadow-cljs.edn"
+  - ".github/actions/prepare-*/**"
+  - "patches/**"
   - ".github/file-paths.yaml"
   - ".github/workflows/api-contracts.yml"
   - "frontend/**"

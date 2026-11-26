@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.api.macros.defendpoint.params :as params]
    [metabase.api.open-api]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -158,6 +159,9 @@
    renames :- [:maybe [:map-of :string :string]]]
   ;; Named parameter schemas need dereferencing before their map entries are visible.
   (let [schema                        (-> schema mc/schema mc/deref-all)
+        schema                        (if (= :maybe (mc/type schema))
+                                        (mc/deref-all (first (mc/children schema)))
+                                        schema)
         {:keys [properties required]} (mjs-collect-definitions schema)
         required                      (set required)]
     (for [[k param-schema] properties
@@ -236,7 +240,8 @@
           ctype           (if (get-in form [:metadata :multipart])
                             "multipart/form-data"
                             "application/json")
-          body-schema     (some-> (get-in form [:params :body :schema])
+          body-form       (get-in form [:params :body :schema])
+          body-schema     (some-> body-form
                                   mjs-collect-definitions
                                   fix-json-schema)
           response-schema (:response-schema form)
@@ -247,7 +252,10 @@
                :description (some-> (:docstr form) str)
                :parameters params
                :responses  default-response-schema}
-        body-schema     (assoc :requestBody {:content {ctype {:schema body-schema}}})
+        body-schema     (assoc :requestBody (cond-> {:content {ctype {:schema body-schema}}}
+                                              ;; An absent body goes through the same decoder as an empty map.
+                                              (not (mr/validate body-form ((params/decoder body-form) {})))
+                                              (assoc :required true)))
         ;; the endpoint's own success response replaces the default `2XX` stub, even when it names an exact status
         response-schema (update :responses #(merge (dissoc % "2XX") (schema->response-obj response-schema)))
         deprecated?     (assoc :deprecated true)))
