@@ -4,7 +4,7 @@ const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID, ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { PEOPLE_ID, ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("extract shortcut", () => {
   beforeEach(() => {
@@ -292,16 +292,14 @@ describe("scenarios > visualizations > combine shortcut", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should combine columns from the column header", () => {
+  it("should combine columns from the column header and scroll to the new column", () => {
+    // All People columns, so that the table overflows and the new column is
+    // only visible after the table scrolls to it
     H.createQuestion(
       {
         query: {
           "source-table": PEOPLE_ID,
           limit: 1,
-          fields: [
-            ["field", PEOPLE.ID, null],
-            ["field", PEOPLE.EMAIL, null],
-          ],
         },
       },
       {
@@ -316,8 +314,11 @@ describe("scenarios > visualizations > combine shortcut", () => {
       .should("contain", "email@example.com12345");
     H.popover().findByText("Done").click();
 
+    // The grid renders only the columns in view, and the "Add column" button
+    // can cover the last header, so the visible value cell shows that the
+    // table scrolled to the new column.
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell")
-      .should("have.length", 3)
       .last()
       .should("have.text", "Combined Email, ID");
     cy.findByRole("gridcell", { name: "borer-hudson@yahoo.com1" }).should(
