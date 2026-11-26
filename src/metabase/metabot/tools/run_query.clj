@@ -723,9 +723,9 @@
    that text shows, and whether the run has more rows than it shows.
    The `<query_results>` tag carries the `[name value]` pairs `attrs`, in order, and then the counts.
    The lines `notes` follow the rows.
-   A truncated page, or one whose rows are too long to show, gets advice to change the query and run it again only
-   with `rerun-advice?`."
-  [attrs {:keys [cols rows truncated?]} {:keys [notes rerun-advice?]}]
+   A page whose rows are too long to show gets advice to select fewer columns only with `select-advice?`, and a
+   truncated page gets advice to aggregate, filter or limit the query only with `aggregate-advice?`."
+  [attrs {:keys [cols rows truncated?]} {:keys [notes select-advice? aggregate-advice?]}]
   (let [shown-cols            (vec (take max-columns cols))
         {:keys [table shown]} (rows-table shown-cols rows)
         truncated?            (or truncated? (< shown (count rows)))
@@ -752,12 +752,12 @@
                          [(cond
                             none-fit?
                             (str "The query returned rows, but one row is longer than the output limit."
-                                 (when rerun-advice?
+                                 (when select-advice?
                                    " Select fewer columns and run it again."))
 
                             truncated?
                             (str "Only the first " shown " rows are shown, so do not count or total them to answer."
-                                 (when rerun-advice?
+                                 (when aggregate-advice?
                                    " Aggregate, filter, or limit the query and run it again.")))]))}))
 
 (defn- result-output
@@ -770,16 +770,17 @@
   [query-id page saved-card]
   (rows-output [["query_id" query-id]]
                page
-               {:notes         [(when-let [{:keys [id type]} saved-card]
-                                  (str (format (str "This ran the saved version of %s %d: edits and filter values on"
-                                                    " the user's screen are not applied. Link to it as"
-                                                    " `metabase://%s/%d`, not as a query.")
-                                               (name type) id (name type) id)
-                                       " If the user is viewing it, run its query ID to read the query on the user's"
-                                       " screen."))]
+               {:notes             [(when-let [{:keys [id type]} saved-card]
+                                      (str (format (str "This ran the saved version of %s %d: edits and filter values on"
+                                                        " the user's screen are not applied. Link to it as"
+                                                        " `metabase://%s/%d`, not as a query.")
+                                                   (name type) id (name type) id)
+                                           " If the user is viewing it, run its query ID to read the query on the user's"
+                                           " screen."))]
+                :select-advice?    true
                 ;; A viewed saved question or model is a client ID too, through the chart that seeding stores under
                 ;; its ID
-                :rerun-advice? (not (contains? (shared/current-client-ids) query-id))}))
+                :aggregate-advice? (not (contains? (shared/current-client-ids) query-id))}))
 
 (defn- run-query
   "Run the stored query `query_id` names and return the tool's result.

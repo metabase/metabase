@@ -196,10 +196,9 @@
           (run-query/rows-output
            [["dashcard_id" dashcard_id] [(str card-type "_id") (:id card)]]
            page
-           {:notes         [(filters-note dashboard dashcard card values)
-                            (combined-note dashcard card card-type)
-                            (format "Link to the %s as `metabase://%s/%d`." card-type card-type (:id card))]
-            :rerun-advice? false})]
+           {:notes [(filters-note dashboard dashcard card values)
+                    (combined-note dashcard card card-type)
+                    (format "Link to the %s as `metabase://%s/%d`." card-type card-type (:id card))]})]
       {:output            output
        :structured-output {:dashcard-id dashcard_id
                            :card-id     (:id card)
