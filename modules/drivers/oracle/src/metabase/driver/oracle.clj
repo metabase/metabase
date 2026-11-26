@@ -827,7 +827,8 @@
 
 (defn- statistics-rows
   "The optimizer statistics of the columns of `table` with the table's row count, when they are not stale: Oracle sets
-  `STALE_STATS` to `YES` when more than 10% of the rows changed, as its change monitoring last flushed them."
+  `STALE_STATS` to `YES` when more rows changed than the table preference `STALE_PERCENT` allows (10% by default),
+  as its change monitoring last flushed them."
   [database table]
   (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
               [(str "SELECT c.column_name, c.num_distinct, c.num_nulls, t.num_rows"
