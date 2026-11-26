@@ -29,7 +29,11 @@ if (!history.startsWith(header)) {
   throw new Error("Missing changelog heading.");
 }
 const date = new Date().toISOString().slice(0, 10);
-const entry = `## ${version} (${date})\n\n- ${note}\n\n`;
+const bullets = note
+  .split(/\r?\n/)
+  .map((line) => line.trim())
+  .filter(Boolean);
+const entry = `## ${version} (${date})\n\n${bullets.map((line) => `- ${line}`).join("\n")}\n\n`;
 writeFileSync("CHANGELOG.md", header + entry + history.slice(header.length));
 writeFileSync(
   "package.json",
