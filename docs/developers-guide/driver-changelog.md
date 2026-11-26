@@ -7,6 +7,10 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- The queries that sync sends to read a sample of a table or the values of a field now have the top-level key
+  `:sync-query? true`, which reaches `metabase.driver/execute-reducible-query`. A driver can use it to limit the cost
+  of these queries. The BigQuery driver uses it for its new connection option "Maximum GB billed for each sync query".
+
 - `metabase.driver.sql-jdbc.sync/sample-json-row-honeysql` `[driver table-identifier json-field-identifiers
   pk-identifiers]` -- new multimethod that returns the query sync uses to sample rows of JSON columns, to find their
   nested field columns. Each JSON value must come back as JSON text. Override it if the driver reads JSON values as

@@ -2404,6 +2404,7 @@
     [:qp/compiled        {:optional true} :metabase.lib.schema/compiled-native-query]
     [:qp/compiled-inline {:optional true} :metabase.lib.schema/compiled-native-query]
     [:async?                               {:optional true} :boolean]
+    [:sync-query?                          {:optional true} :boolean]
     [:was-pivot                            {:optional true} [:maybe :boolean]]
     [:pivot-rows                           {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
     [:pivot-cols                           {:optional true} [:maybe [:sequential [:int {:min 0}]]]]

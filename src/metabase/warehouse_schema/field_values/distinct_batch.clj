@@ -144,9 +144,10 @@
             hsql           (build-union driver table fields)
             [sql & params] (sql.qp/format-honeysql driver hsql)
             result         (qp/process-query
-                            {:database db-id
-                             :type     :native
-                             :native   {:query sql, :params (vec params)}})
+                            {:lib/type    :mbql/query
+                             :database    db-id
+                             :stages      [{:lib/type :mbql.stage/native, :native sql, :params (vec params)}]
+                             :sync-query? true})
             rows           (-> result :data :rows)]
         (reduce (fn [acc [arm-idx value-str]]
                   ;; Arms are tagged by ordinal rather than by name: the name is warehouse-controlled and has no
