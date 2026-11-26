@@ -922,7 +922,12 @@
   returns nil otherwise, creating nothing. Cloned rows share the conversation and
   message insert shapes used by [[start-turn!]] but with fresh `id`/`external_id`s,
   `user-id` attribution, DB-stamped `created_at`, and zeroed token usage. Returns
-  the new conversation id."
+  the new conversation id.
+
+  The LLM call and tool call records of the cloned messages are not copied (see
+  [[metabase.metabot.call-records]]): the fork made none of those calls. A count of tool
+  calls from `metabot_tool_call` is therefore lower for a fork than a count of the tool
+  parts in its message data."
   [conversation-id  :- :string
    fork-external-id :- :string
    user-id          :- pos-int?]

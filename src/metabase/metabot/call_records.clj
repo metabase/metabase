@@ -5,6 +5,9 @@
   A tool call gets a row when it is submitted to the tool executor, and the row gets its end on the tool's thread.
   The end of a turn sets the rows that are still open to `aborted`.
 
+  A fork of a conversation copies its messages and none of these rows, so the rows count the calls that ran, and
+  the tool parts in a forked message's data have no row.
+
   No function here throws: a record that fails is logged, and the turn goes on. In OSS nothing is recorded."
   (:require
    [metabase.premium-features.core :refer [defenterprise]]))
