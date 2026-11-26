@@ -391,6 +391,34 @@ describe("QueryBuilder", () => {
     });
   });
 
+  describe("development watermark", () => {
+    // the table only draws the rows that fit in its measured size
+    mockGetBoundingClientRect({ width: 1000, height: 800 });
+
+    const DATASET = createMockDataset({
+      data: createMockDatasetData({
+        cols: [createMockColumn({ name: "TOTAL", display_name: "Total" })],
+        rows: [[39.72], [117.03]],
+      }),
+    });
+
+    it.each([true, false])(
+      "shows the watermark on a saved question only in development mode (development mode: %s)",
+      async (isDevelopmentMode) => {
+        await setup({
+          card: TEST_STRUCTURED_CARD,
+          dataset: DATASET,
+          tokenFeatures: { development_mode: isDevelopmentMode },
+        });
+
+        expect(await screen.findByText("117.03")).toBeInTheDocument();
+        expect(screen.queryAllByTestId("development-watermark")).toHaveLength(
+          isDevelopmentMode ? 1 : 0,
+        );
+      },
+    );
+  });
+
   describe("saving a new question", () => {
     mockGetBoundingClientRect();
 

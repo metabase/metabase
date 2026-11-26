@@ -169,7 +169,7 @@
   "How should we order fields."
   warehouse-schema.db/field-order-rule)
 
-(defn- check-changes
+(defn check-changes
   "Throws a 400 for a change in `changes` that `original`, the Table as stored, cannot take."
   [changes original]
   (when (contains? changes :db_id)
@@ -277,7 +277,7 @@
 
 (t2/define-after-select :model/Table
   [table]
-  (dissoc table :is_defective_duplicate :unique_table_helper))
+  (dissoc table :is_defective_duplicate :unique_table_helper :worktree_id))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

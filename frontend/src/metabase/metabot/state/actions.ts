@@ -784,11 +784,12 @@ export const sendAgentRequest = createAsyncThunk<
           onStart: function handleStart() {
             serverStarted = true;
           },
-          onTextPart: function handleTextPart(delta) {
+          onTextPart: function handleTextPart(delta, blockId) {
             dispatch(
               addAgentTextDelta({
                 conversationId,
                 text: delta,
+                blockId,
                 nowMs: Date.now(),
               }),
             );

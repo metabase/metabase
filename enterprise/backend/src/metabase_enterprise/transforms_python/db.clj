@@ -42,6 +42,11 @@
   [library-id :- ms/PositiveInt]
   (t2/select-one :model/PythonLibrary :id library-id))
 
+(mu/defn python-library-exists? :- :boolean
+  "Whether a PythonLibrary has the `entity-id`."
+  [entity-id :- :string]
+  (t2/exists? :model/PythonLibrary :entity_id entity-id))
+
 (mu/defn python-library-by-path
   "The PythonLibrary at `path`, or nil."
   [path :- :string]

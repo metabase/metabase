@@ -253,7 +253,21 @@
     (is (= [{:type :text :text "lone"}]
            (into [] (streaming/combine-text-parts-xf) [{:type :text :text "lone"}]))))
   (testing "empty input"
-    (is (= [] (into [] (streaming/combine-text-parts-xf) [])))))
+    (is (= [] (into [] (streaming/combine-text-parts-xf) []))))
+  (testing "the deltas of one text block coalesce, and two text blocks stay two parts"
+    (is (= [{:type :text :id "t1" :text "First point."}
+            {:type :text :id "t2" :text "Second point."}]
+           (into [] (streaming/combine-text-parts-xf)
+                 [{:type :text :id "t1" :text "First "}
+                  {:type :text :id "t1" :text "point."}
+                  {:type :text :id "t2" :text "Second "}
+                  {:type :text :id "t2" :text "point."}]))))
+  (testing "a text part with an :id and a text part with no :id stay two parts"
+    (is (= [{:type :text :id "t1" :text "a"}
+            {:type :text :text "b"}]
+           (into [] (streaming/combine-text-parts-xf)
+                 [{:type :text :id "t1" :text "a"}
+                  {:type :text :text "b"}])))))
 
 (deftest ^:parallel combine-text-parts-xf-drops-nil-test
   (testing "a nil part is dropped and does not split a run of text"

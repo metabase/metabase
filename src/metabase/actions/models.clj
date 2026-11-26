@@ -48,11 +48,14 @@
 
 (doto :model/Action
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
 (doseq [model action-sub-models]
-  (derive model :metabase/model))
+  (doto model
+    (derive :metabase/model)
+    (derive :hook/worktree-id)))
 
 (methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])

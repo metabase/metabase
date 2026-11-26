@@ -209,9 +209,11 @@
               [part]))))
 
 (defn combine-text-parts-xf
-  "Transducer that merges each run of consecutive `:text` parts into one `:text` part.
+  "Transducer that merges each run of consecutive `:text` parts with the same `:id` into one `:text` part.
 
-  Other parts pass through unchanged. A `nil` part is dropped."
+  The parts of one run are the deltas of one text block. Two text blocks stay two parts, as the stream to the client
+  keeps them (see [[metabase.metabot.self.core/parts->aisdk-sse-xf]]). Parts with no `:id` also merge. Other parts
+  pass through unchanged. A `nil` part is dropped."
   []
   (fn [rf]
     (let [pending (volatile! nil)]
@@ -227,7 +229,9 @@
              (nil? part)
              result
 
-             (and prev (= :text (:type prev) (:type part)))
+             (and prev
+                  (= :text (:type prev) (:type part))
+                  (= (:id prev) (:id part)))
              (do (vswap! pending update :text str (:text part))
                  result)
 

@@ -8,6 +8,7 @@
    [metabase.app-db.liquibase.h2 :as liquibase.h2]
    [metabase.app-db.liquibase.mysql :as liquibase.mysql]
    [metabase.app-db.liquibase.versions :as versions]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.util :as u]
@@ -138,7 +139,8 @@
              (.checkLiquibaseTables liquibase false (.getDatabaseChangeLog liquibase) nil nil)
              (.setShowSummaryOutput liquibase UpdateSummaryOutputEnum/LOG)
              (f liquibase))]
-    (binding [t2.conn/*current-connectable* conn-or-data-source]
+    (binding [t2.conn/*current-connectable* conn-or-data-source
+              mdb.worktree/*scope*            {:type :all}]
       (if (instance? Connection conn-or-data-source)
         (f* (->> conn-or-data-source liquibase-connection database (liquibase conn-or-data-source)))
         ;; closing the `LiquibaseConnection`/`Database` closes the parent JDBC `Connection`, so only use it in combination

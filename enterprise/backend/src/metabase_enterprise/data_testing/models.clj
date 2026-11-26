@@ -34,6 +34,7 @@
 ;; `::saved-test` is the parent of every saved test model, for the methods they share.
 (doto :model/TransformTest
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
   (derive ::saved-test))

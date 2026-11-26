@@ -5,10 +5,10 @@
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
+   [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.events.core :as events]
    [metabase.serialization.core :as serialization]
-   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.jvm :as u.jvm]
@@ -40,12 +40,12 @@
 
 (defn- finish!
   "Records `result` on the task with `task-id`, a success always, as its changes landed, and a conflict or error unless
-  the task already ended, and on success sets the branch setting to `branch` and publishes the `event` of the task."
+  the task already ended, and on success makes `branch` the synced branch and publishes the `event` of the task."
   [task-id {:keys [branch event user-id]} {:keys [status version conflicts outcome message]}]
   (let [recorded? (t2/with-transaction [_conn]
                     (when (or (= :success status) (not (:ended_at (remote-sync.db/task task-id))))
                       (case status
-                        :success  (do (setting/set! :remote-sync-branch branch)
+                        :success  (do (remote-sync.settings/set-branch! branch)
                                       (remote-sync.task/set-version! task-id version)
                                       (remote-sync.task/complete-sync-task! task-id (cond-> outcome
                                                                                       (:count outcome) (assoc :branch branch))))

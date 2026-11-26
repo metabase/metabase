@@ -104,6 +104,16 @@
     {:type     "context"
      :elements [{:type "mrkdwn" :text (str "_" notice "_")}]}))
 
+(defn- end-paragraph
+  "End `text` with exactly one paragraph break, so that text after a tool call shows as a new paragraph.
+
+  Example: `\"Let me check.\"`, `\"Let me check.\\n\"` and `\"Let me check.\\n\\n\"` all become
+  `\"Let me check.\\n\\n\"`. Blank text stays as it is."
+  [text]
+  (if (str/blank? text)
+    text
+    (str (str/trimr text) "\n\n")))
+
 (defn- make-channel-callbacks
   "Create callback functions for channel replies.
    Uses the Slack assistant setStatus API for progress indication.
@@ -122,6 +132,9 @@
                                    (when (seq text)
                                      (swap! current-text str text))))
        :on-tool-start (fn [{:keys [tool-name]}]
+                        ;; `separate-text-blocks-xf` adds no break across a tool call, so add it here.
+                        ;; The final post trims a break that no text follows.
+                        (swap! current-text end-paragraph)
                         (set-status! (str (tool-name->friendly tool-name "Thinking") "...")))
        :set-status!   set-status!
        :current-text  current-text})))

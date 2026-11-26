@@ -50,6 +50,7 @@
 
 (doto :model/TableUserSettings
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/timestamped?)
   (derive :search/indexed))
 
@@ -158,6 +159,23 @@
       (dissoc changes :visibility_type))
     changes))
 
+(defn- write-tables!
+  "Write each of `table-rows`, the `:id` of a Table and the columns to change, onto its Table with `opts` for the
+  events; in a remote sync worktree, which leaves the main app's Tables as they are, only check the changes."
+  [table-rows opts]
+  (if (:worktree-id (mdb/worktree-scope))
+    (let [tables (warehouse-schema.db/tables-by-ids (mapv :id table-rows))]
+      (doseq [{:keys [id] :as row} table-rows]
+        (table/check-changes (dissoc row :id) (tables id))))
+    (table/update-tables! table-rows opts)))
+
+(defn- update-field-positions!
+  "Set the positions of the Fields of `tables` from their field order, outside a remote sync worktree, which leaves the
+  main app's Fields as they are."
+  [tables]
+  (when-not (:worktree-id (mdb/worktree-scope))
+    (table/update-field-positions! tables)))
+
 (defn- mirror-onto-tables!
   "Write the columns each of the settings `rows` says a user set onto its Table, in one update, with `opts` for the
   events."
@@ -171,7 +189,7 @@
                                                              (select-keys settings (user-settings/user-set-table-columns settings)))))]
                                          (assoc changes :id table_id))))
                                rows))]
-    (table/update-tables! table-rows opts)))
+    (write-tables! table-rows opts)))
 
 (defn- update-settings!
   "Apply to each of the `stored` settings rows its `row` of changes, with its two-column pairs completed from its Table
@@ -255,8 +273,9 @@
           (throw e))))))
 
 (mu/defn upsert-table-user-settings!
-  "Record the user-settable Table columns present in `settings` as the user values of `table`, in its settings and its
-  row; a nil for a column without a set flag unsets it."
+  "Record the user-settable Table columns present in `settings` as the user values of `table`: in its settings, and in
+  its row outside a remote sync worktree, which reads them through the settings. In a worktree, throws a 400 for a
+  change the Table cannot take. A nil for a column without a set flag unsets it."
   [{:keys [id]} :- ::warehouse-schema.schema/table
    settings     :- (mut/dissoc ::warehouse-schema.schema/table-user-settings.update :id)]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]
@@ -271,7 +290,7 @@
                                  (user-settings-writes/add-created {} [inserted]))
                                (user-settings-writes/delete-empty! writes-spec [id]))]
           (when-let [changes (not-empty (user-settings/table-row-columns settings))]
-            (table/update-tables! [(assoc changes :id id)]))
+            (write-tables! [(assoc changes :id id)] nil))
           (user-settings-writes/publish-writes! writes writes-spec)
           1)))))
 
@@ -303,7 +322,7 @@
                                              tables)
                            (user-settings-writes/delete-empty! writes-spec table-ids))]
           (when-let [changes (not-empty (user-settings/table-row-columns settings))]
-            (table/update-tables! (for [id table-ids] (assoc changes :id id))))
+            (write-tables! (for [id table-ids] (assoc changes :id id)) nil))
           (user-settings-writes/publish-writes! writes writes-spec)
           (count table-ids))))))
 
@@ -320,7 +339,7 @@
   (t2/with-transaction [_conn]
     (upsert-table-user-settings! table {:field_order :custom})
     (field-user-settings/set-custom-positions! (zipmap field-order (range)))
-    (table/update-field-positions! [(warehouse-schema.db/table (u/the-id table))])))
+    (update-field-positions! [(warehouse-schema.db/table (u/the-id table))])))
 
 (mu/defn unset-table-user-settings!
   "Drop the user values of the Table columns `ks` for `table` from its settings, leaving its row as it is for sync to
@@ -369,7 +388,7 @@
   [items]
   (load-legacy-fields! items)
   (when-let [table-ids (not-empty (into #{} (comp (filter #(:field_order (:instance %))) (map #(:table_id (:instance %)))) items))]
-    (table/update-field-positions! (vec (vals (u/index-by :id (warehouse-schema.db/tables table-ids)))))))
+    (update-field-positions! (vec (vals (u/index-by :id (warehouse-schema.db/tables table-ids)))))))
 
 (defmethod collection/archive-in-collections! :model/TableUserSettings
   [_model collection-ids opts]

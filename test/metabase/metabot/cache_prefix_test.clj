@@ -4,14 +4,22 @@
   between two turns: the first request of a turn must start with the last request of the turn before it, in the
   wire format of each adapter.
 
-  They cover the `<context>` block sent before each user message, assistant text streamed in deltas, a turn with one
-  successful tool call, a tool call that fails with a failure the runtime declares, text written after a tool call,
-  tool calls that run in parallel, and a turn that ends at its step limit. The history does not replay some other
-  parts of a turn as they were sent: the SQL dialect preload, thinking and the text of a failure that no tool
-  declared. No conversation here has those parts, except DeepSeek's thinking directive, which the tests with tool
-  calls leave out: after a tool call with no signed thinking, it differs between the two turns. One test has a failed
-  call that ends its turn. It does not check the prefix: it checks where the history replays the message that ends
-  the turn."
+  They cover these cases:
+
+  - the `<context>` block sent before each user message
+  - assistant text streamed in deltas
+  - text blocks that follow each other
+  - a turn with one successful tool call
+  - a tool call that fails with a failure the runtime declares
+  - text written after a tool call
+  - tool calls that run in parallel
+  - a turn that ends at its step limit
+
+  The history does not replay some other parts of a turn as they were sent: the SQL dialect preload, thinking and
+  the text of a failure that no tool declared. No conversation here has those parts, except DeepSeek's thinking
+  directive, which the tests with tool calls leave out: after a tool call with no signed thinking, it differs between
+  the two turns. One test has a failed call that ends its turn. It does not check the prefix: it checks where the
+  history replays the message that ends the turn."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -124,6 +132,21 @@
    {:message  "And last month?"
     :context  {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
     :response (answer "msg-4" "Last month there were 1,412.")}])
+
+(def ^:private text-block-turns
+  "Two turns. The first LLM call of the first turn writes two text blocks, one after the other, and then calls
+  `load_skill`."
+  [{:message   "How many orders do we have?"
+    :context   {:current_time_with_timezone "2026-10-20T10:00:00+00:00"}
+    :responses [(mut/mock-llm-response [{:type :start :id "msg-1"}
+                                        {:type :text :id "msg-1-text-1" :text "First I read a skill."}
+                                        {:type :text :id "msg-1-text-2" :text "Then I count the orders."}
+                                        {:type :tool-input :id "msg-1-call" :function "load_skill"
+                                         :arguments {:ids ["read-resource"]}}])
+                (answer "msg-2" "There are 18,760 orders.")]}
+   {:message   "And last month?"
+    :context   {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
+    :responses [(answer "msg-3" "Last month there were 1,412.")]}])
 
 (def ^:private parallel-call-turns
   "Two turns. The first LLM call of the first turn calls `load_skill` twice, and the two calls run in parallel."
@@ -468,6 +491,18 @@
     ;; DeepSeek turns thinking off while the open turn holds a tool call with no signed thinking, as these mocked
     ;; calls do, and on again in the next turn. That is part of the thinking, which the history does not replay as
     ;; sent.
+    (check-turn-edge last-of-turn-1 turn-2 {"deepseek" [:thinking]})))
+
+(deftest text-blocks-replay-as-separate-parts-test
+  (let [requests                  (run-turns! text-block-turns)
+        [_ last-of-turn-1 turn-2] requests
+        texts                     (fn [opts] (keep #(when (= :text (:type %)) (:text %)) (:input opts)))]
+    (testing "turn 1 makes two LLM calls, turn 2 makes one"
+      (is (= 3 (count requests))))
+    (testing "two text blocks of one response are sent as two parts, not joined with nothing between them"
+      (is (= ["First I read a skill." "Then I count the orders."]
+             (texts last-of-turn-1))))
+    ;; DeepSeek's thinking directive is left out, for the reason in [[streamed-text-replays-as-one-part-test]].
     (check-turn-edge last-of-turn-1 turn-2 {"deepseek" [:thinking]})))
 
 (deftest parallel-tool-calls-replay-before-their-results-test

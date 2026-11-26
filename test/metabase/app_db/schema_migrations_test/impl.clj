@@ -71,13 +71,15 @@
 
 (defn do-with-app-db-bindings
   "Call `f` with the app DB bound to `data-source`, a DB of type `driver`, and with the bindings migrating a throwaway
-  app DB needs: no work handed to Quartz, and no test dataset prewarmed into it."
+  app DB needs: no work handed to Quartz, no test dataset prewarmed into it, and queries across every worktree, since
+  its tables may not have `worktree_id` yet."
   [driver ^javax.sql.DataSource data-source f]
   ;; Quartz would outlive the throwaway DB, and the DB must hold only what the test loads.
   (binding [custom-migrations.util/*allow-temp-scheduling* false
             data.impl/*skip-dataset-prewarm?*              true]
     (mdb/with-application-db (mdb.connection/application-db driver data-source)
-      (f))))
+      (mdb/with-worktree-scope {:type :all}
+        (f)))))
 
 (defn do-with-temp-empty-app-db
   "The function invoked by [[with-temp-empty-app-db]] to execute function `f` in a temporary, empty app DB. Use the
