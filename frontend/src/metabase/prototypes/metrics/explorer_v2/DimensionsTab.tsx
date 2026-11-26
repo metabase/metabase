@@ -167,7 +167,7 @@ export function DimensionsTab({
                     <Text fz="sm" c="text-secondary">
                       Different columns, same kind
                     </Text>
-                    {addBack(dimension, "Map")}
+                    {addBack(dimension, "Add")}
                   </>,
                 ),
               )}

@@ -359,6 +359,8 @@ function DimensionRow({
   const removeLabel =
     status === "mapped" ? "Remove from metric" : "Discard this dimension";
   const detailsLabel = isOpen ? "Hide fields" : "Show fields";
+  const addLabel =
+    status === "suggested" ? "Add to metric" : "Add back to metric";
   const isOut = status === "suggested" || status === "removed";
   // One measure has no fields to match, so nothing to fold out.
   const hasDetails = isMath;
@@ -420,9 +422,16 @@ function DimensionRow({
         {!isRenaming && (
           <Flex className={S.rowActions} align="center">
             {isOut && (
-              <Button variant="subtle" size="compact-sm" onClick={onMap}>
-                {status === "suggested" ? "Map" : "Add back"}
-              </Button>
+              <Tooltip label={addLabel}>
+                <ActionIcon
+                  variant="subtle"
+                  c="text-secondary"
+                  aria-label={addLabel}
+                  onClick={onMap}
+                >
+                  <Icon name="add" />
+                </ActionIcon>
+              </Tooltip>
             )}
             {showTools && (
               <Tooltip label="Rename">
