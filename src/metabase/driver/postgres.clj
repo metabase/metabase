@@ -38,7 +38,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
-   [metabase.util.performance :refer [mapv not-empty select-keys some]]
+   [metabase.util.performance :as perf :refer [mapv not-empty select-keys some]]
    [next.jdbc :as next.jdbc]
    [taoensso.nippy :as nippy])
   (:import
@@ -177,6 +177,69 @@
         (str (str/capitalize message) \.))
 
       message)))
+
+;;; ------------------------------------------------ Table statistics -----------------------------------------------
+
+;; Only for `:postgres` itself, so that a child driver, such as Redshift, does not read `pg_stats`.
+(defmethod driver/database-supports? [:postgres :table-statistics]
+  [driver _feature _db]
+  (= driver :postgres))
+
+(def ^:private table-statistics-timeout-seconds
+  "The time limit of the catalog query for the statistics of a table."
+  15)
+
+(defn- analyzed-at
+  "The time of the last `ANALYZE` of a table, `t`, as the JDBC driver gives it, as an ISO-8601 instant in UTC."
+  [t]
+  (when t
+    (str (if (instance? java.sql.Timestamp t) (.toInstant ^java.sql.Timestamp t) (t/instant t)))))
+
+(defn- column-distinct-count
+  "The distinct count of a column from `pg_stats`: `n_distinct` is the count when positive, and minus the count over the
+  rows when negative. `n_distinct` does not count NULL, and a fingerprint does, so a column with NULLs gets one more."
+  [{:keys [n_distinct null_frac]} row-count]
+  (when n_distinct
+    (let [n (if (neg? n_distinct)
+              (when (some-> row-count pos?) (* (- (double n_distinct)) row-count))
+              n_distinct)]
+      (when n
+        (+ (Math/round (double n)) (if (some-> null_frac pos?) 1 0))))))
+
+(defmethod driver/table-statistics :postgres
+  [_driver database table fields {:keys [want]}]
+  (let [want?   #(or (perf/empty? want) (contains? want %))
+        rows    (when (or (want? :fingerprint) (want? :row-count))
+                  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                              [(str "SELECT s.attname, s.null_frac, s.n_distinct, c.reltuples,"
+                                    " COALESCE(t.last_analyze, t.last_autoanalyze) AS analyzed_at"
+                                    " FROM pg_catalog.pg_stats s"
+                                    " JOIN pg_catalog.pg_namespace n ON n.nspname = s.schemaname"
+                                    " JOIN pg_catalog.pg_class c ON c.relnamespace = n.oid AND c.relname = s.tablename"
+                                    " LEFT JOIN pg_catalog.pg_stat_user_tables t ON t.relid = c.oid"
+                                    " WHERE s.schemaname = ? AND s.tablename = ? AND NOT s.inherited")
+                               (:schema table) (:name table)]
+                              {:timeout table-statistics-timeout-seconds}))
+        row-count (some-> (first rows) :reltuples long)
+        row-count (when (some-> row-count (>= 0)) row-count)
+        origin    {:source :catalog :kind :sampled :collected-at (analyzed-at (:analyzed_at (first rows)))}
+        by-name   (into {} (map (juxt :attname identity)) rows)]
+    (cond-> {}
+      (and (seq rows) row-count (want? :row-count))
+      (assoc :row-count {:value row-count :origin (assoc origin :kind :estimate)})
+
+      (and (seq rows) (want? :fingerprint))
+      (assoc :fields (into {}
+                           (keep (fn [{:keys [id nfc_path] field-name :name}]
+                                   (when-let [stats (and (perf/empty? nfc_path) (by-name field-name))]
+                                     (let [distinct-count (column-distinct-count stats row-count)]
+                                       [id {:fingerprint {:global (cond-> {:nil% (double (:null_frac stats))}
+                                                                    distinct-count (assoc :distinct-count distinct-count))}
+                                            :origin      origin}]))))
+                           fields))
+
+      true
+      (as-> $answer (if (seq (:fields $answer)) $answer (dissoc $answer :fields))))))
 
 (defmethod driver/db-default-timezone :postgres
   [driver database]

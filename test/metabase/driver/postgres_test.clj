@@ -58,6 +58,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.secrets.models.secret :as secret]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -69,6 +70,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.warehouses.provider-detection :as provider-detection]
    [next.jdbc :as next.jdbc]
    [taoensso.nippy :as nippy]
@@ -3104,3 +3106,65 @@
          (is (thrown-with-msg? Exception #"more parameters than we can handle"
                                (with-open [_stmt (sql-jdbc.execute/prepared-statement
                                                   :postgres conn "SELECT 1 -- ?" [1])]))))))))
+
+(defn- do-with-stats-table!
+  "Create the table `kb_stats` with 1,000 rows: `a` with 10 values and NULL in a tenth of the rows, `b` unique; run
+  `analyze?` ANALYZE, and call `f` with its Table and Fields."
+  [analyze? f]
+  (let [spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
+    (jdbc/execute! spec ["DROP TABLE IF EXISTS kb_stats"])
+    (jdbc/execute! spec ["CREATE TABLE kb_stats (a int, b int)"])
+    (try
+      (jdbc/execute! spec [(str "INSERT INTO kb_stats SELECT CASE WHEN g % 10 = 0 THEN NULL ELSE g % 10 END, g"
+                                " FROM generate_series(1, 1000) g")])
+      (when analyze? (jdbc/execute! spec ["ANALYZE kb_stats"]))
+      (mt/with-temp [:model/Table table {:db_id (mt/id) :name "kb_stats" :schema "public"}
+                     :model/Field a     {:table_id (:id table) :name "a" :base_type :type/Integer :database_type "int4"}
+                     :model/Field b     {:table_id (:id table) :name "b" :base_type :type/Integer :database_type "int4"}]
+        (f table [a b]))
+      (finally
+        (jdbc/execute! spec ["DROP TABLE IF EXISTS kb_stats"])))))
+
+(deftest table-statistics-test
+  (mt/test-driver :postgres
+    (is (driver.u/supports? :postgres :table-statistics (mt/db)))
+    (testing "the statistics of ANALYZE in pg_stats: distinct counts and nil fractions, as sampled by ANALYZE"
+      (do-with-stats-table!
+       true
+       (fn [table [a b]]
+         (let [answer (driver/table-statistics :postgres (lib.metadata/database (mt/metadata-provider)) table [a b]
+                                               {:max-cost :metadata})]
+           (is (mr/validate ::driver/table-statistics.result answer))
+           (testing "a distinct count that counts NULL as a value, as a sample does"
+             (is (= 10 (get-in answer [:fields (:id a) :fingerprint :global :distinct-count]))))
+           (is (< 0.09 (get-in answer [:fields (:id a) :fingerprint :global :nil%]) 0.11))
+           (is (= 1000 (get-in answer [:fields (:id b) :fingerprint :global :distinct-count])))
+           (is (=? {:source :catalog :kind :sampled :collected-at #"^\d{4}-.*Z$"}
+                   (get-in answer [:fields (:id a) :origin])))
+           (is (=? {:value 1000 :origin {:source :catalog :kind :estimate}} (:row-count answer)))))))
+    (testing "a table that ANALYZE has not read: nothing"
+      (do-with-stats-table!
+       false
+       (fn [table fields]
+         (is (= {} (driver/table-statistics :postgres (lib.metadata/database (mt/metadata-provider)) table fields
+                                            {:max-cost :metadata}))))))
+    (testing "nothing that is not wanted"
+      (do-with-stats-table!
+       true
+       (fn [table fields]
+         (is (= {} (driver/table-statistics :postgres (lib.metadata/database (mt/metadata-provider)) table fields
+                                            {:max-cost :metadata :want #{:values}}))))))))
+
+(deftest fingerprints-use-pg-stats-test
+  (mt/test-driver :postgres
+    (testing "sync fills the distinct counts and nil fractions of fingerprints from pg_stats"
+      (let [spec  (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+            table (t2/select-one :model/Table :id (mt/id :venues))]
+        (jdbc/execute! spec [(format "ANALYZE \"%s\".\"%s\"" (:schema table) (:name table))])
+        (mt/with-temp-copy-of-db
+          (binding [sync.fingerprint/*refingerprint?* true]
+            (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (mt/id :venues))))
+          (let [{:keys [fingerprint fingerprint_origin]} (t2/select-one :model/Field :id (mt/id :venues :name))]
+            (is (= 100 (get-in fingerprint [:global :distinct-count])))
+            (is (= #{"global.distinct-count" "global.nil%"} (set (map :part (:parts fingerprint_origin)))))
+            (is (every? #(= [:catalog :sampled] [(:source %) (:kind %)]) (:parts fingerprint_origin)))))))))
