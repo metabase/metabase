@@ -106,14 +106,14 @@
   (collections.db/collection-of-type trash-collection-type))
 
 (let [get-trash (mdb/memoize-for-application-db
-                 (fn []
+                 (fn [_scope]
                    (u/prog1 (trash-collection*)
                      (when-not <>
                        (throw (ex-info "Fatal error: Trash collection is missing" {}))))))]
   (defn trash-collection
-    "Get the (memoized) trash collection"
+    "Get the trash collection of the remote sync worktree this thread works in, memoized per worktree."
     []
-    (assoc (get-trash) :name (deferred-tru "Trash"))))
+    (assoc (get-trash (mdb/worktree-scope)) :name (deferred-tru "Trash"))))
 
 (def shared-tenant-ns
   "Namespace for shared tenant collections"

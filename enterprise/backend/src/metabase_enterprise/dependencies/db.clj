@@ -836,11 +836,12 @@
   sets its `result` when its unique key exists, stamping `analyzed_at` with the database clock only when the `result`
   differs, on the app DB `db-type`."
   [db-type entity-type rows]
-  (let [table      (t2/table-name :model/AnalysisFinding)
-        row-values (fn [now] (mapv (fn [[entity-id result]]
-                                     {:entity_type (name entity-type) :entity_id entity-id :result result :analyzed_at now
-                                      :worktree_id (:worktree-id (mdb/worktree-scope) mdb/default-worktree-id)})
-                                   rows))]
+  (let [table       (t2/table-name :model/AnalysisFinding)
+        worktree-id (or (mdb/worktree-id) mdb/default-worktree-id)
+        row-values  (fn [now] (mapv (fn [[entity-id result]]
+                                      {:entity_type (name entity-type) :entity_id entity-id :result result :analyzed_at now
+                                       :worktree_id worktree-id})
+                                    rows))]
     (case db-type
       :postgres
       {:insert-into   table
@@ -864,7 +865,7 @@
                                                       {:select [[[:cast (name entity-type) [:varchar 254]] :entity_type]
                                                                 [[:cast entity-id :integer] :entity_id]
                                                                 [[:cast result :boolean] :result]
-                                                                [[:cast (:worktree-id (mdb/worktree-scope) mdb/default-worktree-id) :integer] :worktree_id]]})
+                                                                [[:cast worktree-id :integer] :worktree_id]]})
                                                     rows)}
                                   {:allow-subquery true})
                                  :s]
@@ -874,7 +875,7 @@
                                            :result      :s.result)
        :when-not-matched-insert [[:entity_type :entity_id :result :analyzed_at :worktree_id]
                                  [:s.entity_type :s.entity_id :s.result [:now]
-                                  (:worktree-id (mdb/worktree-scope) mdb/default-worktree-id)]]})))
+                                  worktree-id]]})))
 
 (mu/defn upsert-findings!
   "Insert or update the AnalysisFinding of each entity of `entity-type` that `id->result` maps to its `result`, with

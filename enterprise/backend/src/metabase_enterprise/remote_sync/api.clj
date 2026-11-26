@@ -355,7 +355,7 @@
 (api.macros/defendpoint :get "/worktree/:id" :- ::remote-sync.schema/worktree
   "The worktree with `id`, with the user who created it and the users working in it."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (present-worktree (t2/hydrate (api/read-check (remote-sync.db/worktree id)) :creator :users)))
+  (present-worktree (t2/hydrate (api/read-check (remote-sync.db/worktree-by-id id)) :creator :users)))
 
 (api.macros/defendpoint :post "/worktree" :- ::remote-sync.schema/worktree
   "Create a worktree checking out `branch`, a branch of the repository, empty until someone working in it pulls."
@@ -374,7 +374,7 @@
 (api.macros/defendpoint :delete "/worktree/:id" :- ::api/generic-204-no-content
   "Delete the worktree with `id` and its content, moving the users working in it to the main app."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (remote-sync-worktree/delete-remote-sync-worktree! (:id (api/write-check (remote-sync.db/worktree id))))
+  (remote-sync-worktree/delete-remote-sync-worktree! (:id (api/write-check (remote-sync.db/worktree-by-id id))))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :put "/checkout" :- ::api/generic-204-no-content
@@ -385,7 +385,7 @@
                              [:worktree_id [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (when worktree_id
-    (api/check-404 (remote-sync.db/worktree worktree_id))
+    (api/check-404 (remote-sync.db/worktree-by-id worktree_id))
     (api/check-400 (not= mdb/default-worktree-id worktree_id)
                    (tru "The main app is not a worktree to check out.")))
   (remote-sync-worktree/check-out-worktree! api/*current-user-id* worktree_id)

@@ -62,6 +62,8 @@
   default-worktree-id
   do-with-worktree-scope
   with-worktree-scope
+  worktree-id
+  worktree-id->scope
   worktree-scope]
  [mdb.jdbc-protocols
   clob->str]

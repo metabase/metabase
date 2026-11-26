@@ -222,13 +222,25 @@
     (catch Throwable e
       (log/errorf "Error rescheduling job: %s" (ex-message e)))))
 
+(def ^:private worktree-id-key
+  "The key of the job data entry that names the remote sync worktree whose thread scheduled a trigger."
+  "worktree-id")
+
+(defn- in-worktree
+  "`trigger`, its job data naming the remote sync worktree this thread works in, or `previous`'s, when there is one."
+  ^Trigger [^Trigger trigger ^Trigger previous]
+  (when-let [worktree-id (or (mdb/worktree-id) (some-> previous .getJobDataMap (.get worktree-id-key)))]
+    (.put (.getJobDataMap trigger) ^String worktree-id-key ^Object worktree-id))
+  trigger)
+
 (mu/defn reschedule-trigger!
-  "Reschedule a trigger with the same key as the given trigger.
+  "Reschedule a trigger with the same key as the given trigger, in the remote sync worktree of the trigger it replaces.
 
   Used to update trigger properties like priority."
   [trigger :- (ms/InstanceOfClass Trigger)]
   (when-let [scheduler (scheduler)]
-    (.rescheduleJob scheduler (.getKey ^Trigger trigger) trigger)))
+    (let [trigger-key (.getKey ^Trigger trigger)]
+      (.rescheduleJob scheduler trigger-key (in-worktree trigger (.getTrigger scheduler trigger-key))))))
 
 (mu/defn schedule-task!
   "Add a given job and trigger to our scheduler."
@@ -240,7 +252,7 @@
     trigger   :- (ms/InstanceOfClass Trigger)]
    (when scheduler
      (try
-       (qs/schedule scheduler job trigger)
+       (qs/schedule scheduler job (in-worktree trigger nil))
        (catch ObjectAlreadyExistsException _
          (log/debug "Job already exists:" (-> ^JobDetail job .getKey .getName))
          (reschedule-task! scheduler job trigger))))))
@@ -292,10 +304,11 @@
     (qs/add-job scheduler job true)))
 
 (mu/defn add-trigger!
-  "Add a trigger. Assumes the trigger is already associated to a job (i.e. `trigger/for-job`)"
+  "Add a trigger, run in the remote sync worktree this thread works in. Assumes the trigger is already associated to a
+  job (i.e. `trigger/for-job`)"
   [trigger :- (ms/InstanceOfClass Trigger)]
   (when-let [scheduler (scheduler)]
-    (qs/add-trigger scheduler trigger)))
+    (qs/add-trigger scheduler (in-worktree trigger nil))))
 
 (mu/defn delete-trigger!
   "Remove `trigger-key` from the scheduler"
@@ -541,12 +554,19 @@
   (let [{:keys [more], :as definition} (parse-job-definition "defjob-type" type-name args)]
     (job-type-form type-name definition more)))
 
+(defn job-worktree-scope
+  "The scope of the remote sync worktree whose thread scheduled the trigger that fired `job-context`."
+  [^JobExecutionContext job-context]
+  (mdb/worktree-id->scope (.get (.getMergedJobDataMap job-context) worktree-id-key)))
+
 (defn- job-body-form
-  "The `body` of a [[defjob]], inside its log context and its tracing span."
-  [type-name body]
+  "The `body` of a [[defjob]] with the `job-context` binding, inside its log context, its tracing span and the
+  remote sync worktree that scheduled its trigger."
+  [type-name job-context body]
   `(log/with-context {:quartz-job-type (quote ~type-name)}
      (tracing/with-span :tasks (str "task." (quote ~type-name)) {:task/name (str (quote ~type-name))}
-       ~@body)))
+       (mdb/with-worktree-scope (job-worktree-scope ~job-context)
+         ~@body))))
 
 (defmacro defjob
   "Defines a Quartz job class that runs `body` with a log context and an OpenTelemetry tracing span around it.
@@ -583,7 +603,7 @@
                    definition
                    `[org.quartz.Job
                      (~'execute [~'_this ~@job-args]
-                                ~(job-body-form type-name body))])))
+                                ~(job-body-form type-name (first job-args) body))])))
 
 (defn add-job-listener!
   "Add a [Quartz Joblistener](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-07.html). That will

@@ -55,11 +55,11 @@
     :model/Dependency
     :model/DependencyStatus
     :model/ResultMetadataStatus
-    ;; They are source replacement records keyed by entity ids.
+    ;; They are usage metadata and source replacement records keyed by entity ids.
+    :model/ReplacementRun
     :model/SourceDimensionDaily
     :model/SourceDimensionProfileDaily
     :model/SourceMetricDaily
-    :model/ReplacementRun
     :model/SourceSegmentCompositeDaily
     :model/SourceSegmentDaily
     ;; They are notifications whose payload names content polymorphically.

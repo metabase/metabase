@@ -43,6 +43,11 @@
   (check-not-default (:is_default worktree))
   worktree)
 
+(t2/define-after-insert :model/RemoteSyncWorktree
+  [worktree]
+  (remote-sync.db/clear-non-default-worktree-exists-cache!)
+  worktree)
+
 (t2/define-before-update :model/RemoteSyncWorktree
   [worktree]
   (check-not-default (or (:is_default (t2/original worktree)) (contains? (t2/changes worktree) :is_default)))
@@ -51,6 +56,7 @@
 (t2/define-before-delete :model/RemoteSyncWorktree
   [worktree]
   (check-not-default (:is_default worktree))
+  (remote-sync.db/clear-non-default-worktree-exists-cache!)
   worktree)
 
 ;;; --------------------------------------------------- Permissions ----------------------------------------------------

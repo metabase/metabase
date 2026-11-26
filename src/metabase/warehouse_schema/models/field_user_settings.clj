@@ -117,14 +117,14 @@
   "Write each of `field-rows`, the `:id` of a Field and the columns to change, onto its Field, outside a remote sync
   worktree, which leaves the main app's Fields as they are."
   [field-rows]
-  (when-not (:worktree-id (mdb/worktree-scope))
+  (when-not (mdb/worktree-id)
     (field/update-fields! field-rows)))
 
 (defn- write-custom-positions!
   "Set the `custom_position` of each Field in `field-id->position`, outside a remote sync worktree, which leaves the
   main app's Fields as they are."
   [field-id->position]
-  (when-not (:worktree-id (mdb/worktree-scope))
+  (when-not (mdb/worktree-id)
     (field/set-custom-positions! field-id->position)))
 
 (defn- mirror-onto-fields!

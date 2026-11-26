@@ -9,7 +9,7 @@
 (set! *warn-on-reflection* true)
 
 (defenterprise non-default-worktree-exists?
-  "Whether any worktree other than the default one exists, which none does without the `:remote-sync` feature."
+  "Whether any worktree other than the default one exists, which none does without the enterprise code."
   metabase-enterprise.remote-sync.db
   []
   false)

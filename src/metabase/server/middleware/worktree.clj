@@ -17,13 +17,6 @@
    :headers {"Content-Type" "text/plain"}
    :body    body})
 
-(defn- id-scope
-  "The scope of the worktree with `worktree-id`, the main app's when it is nil."
-  [worktree-id]
-  (if worktree-id
-    {:type :worktree :worktree-id worktree-id}
-    {:type :main}))
-
 (defn- header-scope
   "The scope the `X-Metabase-Worktree-Id` header `value` names, `0` naming the main app, or an error response."
   [value]
@@ -32,7 +25,7 @@
     (cond
       (not api/*is-superuser?*) {:response (text-response 403 (tru "Only admins can choose a worktree."))}
       (= "0" value)             {:scope {:type :main}}
-      worktree                  {:scope (id-scope (:id worktree))}
+      worktree                  {:scope (mdb/worktree-id->scope (:id worktree))}
       :else                     {:response (text-response 400 (tru "There is no worktree {0}." value))})))
 
 (defn- request-scope
@@ -41,8 +34,8 @@
   (cond
     (not (remote-sync/non-default-worktree-exists?)) (if value (header-scope value) {:scope {:type :all}})
     value                                            (header-scope value)
-    api/*is-superuser?*                              {:scope (id-scope (remote-sync/user-worktree-id
-                                                                        api/*current-user-id*))}
+    api/*is-superuser?*                              {:scope (mdb/worktree-id->scope (remote-sync/user-worktree-id
+                                                                                      api/*current-user-id*))}
     :else                                            {:scope {:type :main}}))
 
 (defn wrap-worktree

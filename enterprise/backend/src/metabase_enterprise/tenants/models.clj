@@ -118,13 +118,15 @@
     (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400}))))
 
 (defn- create-tenant-collections!
-  "Create a new Collection for each of the Tenant `rows` and return the rows with it."
+  "Create a new Collection in the main app, where Tenants live, for each of the Tenant `rows` and return the rows with
+  it."
   [rows]
-  (let [collections (collection/create-collections!
-                     (for [{tenant-name :name} rows]
-                       {:type      collection/tenant-specific-root-collection-type
-                        :name      (format "Tenant Collection: %s" tenant-name)
-                        :namespace :tenant-specific}))]
+  (let [collections (app-db/with-worktree-scope {:type :main}
+                      (collection/create-collections!
+                       (for [{tenant-name :name} rows]
+                         {:type      collection/tenant-specific-root-collection-type
+                          :name      (format "Tenant Collection: %s" tenant-name)
+                          :namespace :tenant-specific})))]
     (mapv #(assoc %1 :tenant_collection_id (:id %2)) rows collections)))
 
 (mu/defn create-tenants! :- [:sequential ::tenants.schema/tenant]

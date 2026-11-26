@@ -258,20 +258,21 @@
 
 (defn- run-loop
   "Future for the two-slot schedule held in `cur`/`nxt`: await `predecessor` (nil to start now), call
-  `(work scheduled-timer)`, then promote the queued follow-up. Returns `work`'s value (the full path's
-  result map; nil for the targeted path)."
+  `(work scheduled-timer)` in the main app, whose content the shared index holds, then promote the queued follow-up.
+  Returns `work`'s value (the full path's result map; nil for the targeted path)."
   [cur nxt predecessor work]
   (future
-    (let [scheduled (u/start-timer)]
-      (when predecessor
-        ;; A failed predecessor must not block the follow-up — its writes still need reconciling.
-        (try @predecessor (catch Throwable _ nil)))
-      (try
-        (work scheduled)
-        (finally
-          (locking run-lock
-            (reset! cur @nxt)
-            (reset! nxt nil)))))))
+    (mdb/with-worktree-scope {:type :main}
+      (let [scheduled (u/start-timer)]
+        (when predecessor
+          ;; A failed predecessor must not block the follow-up — its writes still need reconciling.
+          (try @predecessor (catch Throwable _ nil)))
+        (try
+          (work scheduled)
+          (finally
+            (locking run-lock
+              (reset! cur @nxt)
+              (reset! nxt nil))))))))
 
 (defn- schedule!
   "Schedule (or join) a run of `work` on the `cur`/`nxt` two-slot schedule, returning its future. Must be

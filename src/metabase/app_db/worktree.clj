@@ -35,6 +35,16 @@
   []
   *scope*)
 
+(defn worktree-id
+  "The id of the worktree other than the main app this thread works in, or nil."
+  []
+  (:worktree-id *scope*))
+
+(defn worktree-id->scope
+  "The [[::scope]] of the worktree with `worktree-id`, or of the main app when it is nil."
+  [worktree-id]
+  (if worktree-id {:type :worktree :worktree-id worktree-id} {:type :main}))
+
 (mu/defn do-with-worktree-scope
   "Impl for [[with-worktree-scope]]."
   [scope :- ::scope

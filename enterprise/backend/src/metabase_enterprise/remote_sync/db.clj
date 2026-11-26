@@ -2,6 +2,7 @@
   "Application database queries for the remote sync module, each a direct Toucan 2 call, so that no other namespace of
   the module runs a query itself."
   (:require
+   [clojure.core.memoize :as memoize]
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -13,11 +14,23 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defenterprise non-default-worktree-exists?
-  "Whether any worktree other than the default one exists."
-  :feature :remote-sync
+(def ^:private ^{:arglists '([])} non-default-worktree-exists?*
+  (memoize/ttl
+   (vary-meta (fn [] (t2/exists? :model/RemoteSyncWorktree :is_default false))
+              assoc ::memoize/args-fn (fn [_args] [(mdb/unique-identifier)]))
+   :ttl/threshold 1000))
+
+(defn clear-non-default-worktree-exists-cache!
+  "Forgets whether a worktree other than the default one exists, after one is created or deleted on this instance."
   []
-  (t2/exists? :model/RemoteSyncWorktree :is_default false))
+  (memoize/memo-clear! non-default-worktree-exists?*))
+
+(defenterprise non-default-worktree-exists?
+  "Whether any worktree other than the default one exists, cached for a second, with the `:remote-sync` feature or
+  without it, so that a lost feature keeps every request in the main app."
+  :feature :none
+  []
+  (non-default-worktree-exists?*))
 
 (defenterprise user-worktree-id
   "The id of the worktree other than the default one the user with `user-id` checked out, or nil."
@@ -203,11 +216,6 @@
   "Every worktree but the default one, the main app, by branch."
   []
   (t2/select :model/RemoteSyncWorktree :is_default false {:order-by [[:branch :asc] [:id :asc]]}))
-
-(mu/defn worktree :- [:maybe ::remote-sync.schema/worktree]
-  "The worktree with `worktree-id`, or nil."
-  [worktree-id :- ms/PositiveInt]
-  (t2/select-one :model/RemoteSyncWorktree :id worktree-id))
 
 (mu/defn worktree-branch :- [:maybe :string]
   "The branch of the worktree with `worktree-id`, or nil."

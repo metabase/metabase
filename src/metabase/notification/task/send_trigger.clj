@@ -115,7 +115,9 @@
       (let [trigger-key     (:key trigger)
             subscription-id (send-notification-trigger-key->subscription-id trigger-key)]
         (log/infof "Updating timezone of trigger %s to %s. Was: %s" trigger-key new-timezone (:timezone trigger))
-        (task/reschedule-trigger! (build-trigger subscription-id (get subscription-id->cron subscription-id)))))))
+        (task/reschedule-trigger! (build-trigger subscription-id (get subscription-id->cron
+                                                                      subscription-id
+                                                                      (:schedule trigger))))))))
 
 (defn init-send-notification-triggers!
   "Initialize all notification subscription triggers.
@@ -125,7 +127,8 @@
   (assert (task/scheduler) "Scheduler must be started before initializing SendNotification triggers")
 
   ;; Get all existing triggers and subscription IDs
-  (let [existing-triggers                  (:triggers (task/job-info send-notification-job-key))
+  (let [existing-triggers                  (remove #(get-in % [:data "worktree-id"])
+                                                   (:triggers (task/job-info send-notification-job-key)))
         existing-triggers-subscription-ids (map #(get-in % [:data "subscription-id"]) existing-triggers)
         subscription-id->subscription      (active-cron-subscription-id->subscription)
         db-subscription-ids                (keys subscription-id->subscription)

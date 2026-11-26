@@ -162,7 +162,7 @@
   "Write each of `table-rows`, the `:id` of a Table and the columns to change, onto its Table with `opts` for the
   events; in a remote sync worktree, which leaves the main app's Tables as they are, only check the changes."
   [table-rows opts]
-  (if (:worktree-id (mdb/worktree-scope))
+  (if (mdb/worktree-id)
     (let [tables (warehouse-schema.db/tables-by-ids (mapv :id table-rows))]
       (doseq [{:keys [id] :as row} table-rows]
         (table/check-changes (dissoc row :id) (tables id))))
@@ -172,7 +172,7 @@
   "Set the positions of the Fields of `tables` from their field order, outside a remote sync worktree, which leaves the
   main app's Fields as they are."
   [tables]
-  (when-not (:worktree-id (mdb/worktree-scope))
+  (when-not (mdb/worktree-id)
     (table/update-field-positions! tables)))
 
 (defn- mirror-onto-tables!

@@ -2,6 +2,7 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
@@ -60,10 +61,12 @@
     (hydrate! (events/event-schema topic))))
 
 (defn- notifications-for-topic
-  "Returns notifications for a given topic if it is supported and has notifications."
+  "Returns the notifications of the main app, which holds the system-event ones, for a given topic if it is supported
+  and has notifications."
   [topic]
   (when (supported-topics topic)
-    (models.notification/notifications-for-event topic)))
+    (mdb/with-worktree-scope {:type :main}
+      (models.notification/notifications-for-event topic))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *skip-sending-notification?*
@@ -80,7 +83,8 @@
     [event]))
 
 (defn- send-notifications!
-  "Send `notifications` for the `event` of `topic`, with a task history row of their own."
+  "Send the main app's `notifications` for the `event` of `topic`, hydrated in the worktree it happened in, with a task
+  history row of their own."
   [topic event notifications]
   (task-history/with-task-history {:task         "notification-trigger"
                                    :task_details {:trigger_type     :notification-subscription/system-event
@@ -88,9 +92,11 @@
                                                   :notification_ids (map :id notifications)}}
     (log/debugf "Found %d notifications for event: %s" (count notifications) topic)
     (doseq [event-info (event-infos event)
+            :let [event-info (maybe-hydrate-event-info topic event-info)]
             notification notifications]
-      (notification.send/send-notification! (assoc notification :payload {:event_info  (maybe-hydrate-event-info topic event-info)
-                                                                          :event_topic topic})))))
+      (mdb/with-worktree-scope {:type :main}
+        (notification.send/send-notification! (assoc notification :payload {:event_info  event-info
+                                                                            :event_topic topic}))))))
 
 (defn- maybe-send-notification-for-topic!
   "Send the notifications of `topic` for `event`, or for each of the events of its `:events` when it has them, finding
