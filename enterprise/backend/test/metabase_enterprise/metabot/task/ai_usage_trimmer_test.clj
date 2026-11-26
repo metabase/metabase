@@ -56,6 +56,26 @@
         (is (= #{recent-id old-id}
                (t2/select-fn-set :id :model/AiUsageLog {:where [:in :id [recent-id old-id]]})))))))
 
+(deftest counts-trimmed-call-records-test
+  (testing "the trimmer counts the LLM call and tool call records that it deletes by age"
+    (let [now (t/offset-date-time)
+          old (t/minus now (t/days 200))]
+      (mt/with-prometheus-system! [_ system]
+        (mt/with-temp
+          [:model/MetabotLlmCall  {recent-llm :id} {:attempt 1 :status "ok" :started_at now}
+           :model/MetabotLlmCall  {old-llm :id}    {:attempt 1 :status "ok" :started_at old}
+           :model/MetabotToolCall _                {:tool_call_id "c1" :tool_name "t" :status "ok" :created_at now
+                                                    :llm_call_id recent-llm}
+           :model/MetabotToolCall _                {:tool_call_id "c2" :tool_name "t" :status "ok" :created_at old}
+           :model/MetabotToolCall _                {:tool_call_id "c3" :tool_name "t" :status "ok" :created_at old}
+           ;; deleted by the cascade from its old LLM call, not by its own age
+           :model/MetabotToolCall _                {:tool_call_id "c4" :tool_name "t" :status "ok" :created_at now
+                                                    :llm_call_id old-llm}]
+          (#'ai-usage-trimmer/trim-old-usage-data!)
+          (is (== 1 (mt/metric-value system :metabase-metabot/call-records-trimmed {:table "metabot_llm_call"})))
+          (is (== 2 (mt/metric-value system :metabase-metabot/call-records-trimmed
+                                     {:table "metabot_tool_call"}))))))))
+
 (deftest trims-llm-call-and-tool-call-records-test
   (testing "the records of LLM calls and tool calls older than the retention are deleted"
     (let [now (t/offset-date-time)

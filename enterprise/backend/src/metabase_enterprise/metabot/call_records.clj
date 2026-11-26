@@ -1,25 +1,51 @@
 (ns metabase-enterprise.metabot.call-records
-  "Enterprise implementation of [[metabase.metabot.call-records]]: writes `metabot_llm_call` and `metabot_tool_call`."
+  "Enterprise implementation of [[metabase.metabot.call-records]]: writes `metabot_llm_call` and `metabot_tool_call`.
+
+  Four counters show how fast the two tables grow and whether their writes fail: `call-records-written`,
+  `call-record-write-errors`, `tool-call-record-bytes`, and `call-records-trimmed` from the AI usage trimmer."
   (:require
    [java-time.api :as t]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.metabot.models.metabot-llm-call :as metabot-llm-call]
    [metabase.metabot.models.metabot-tool-call :as metabot-tool-call]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
+(def ^:private llm-call-table "metabot_llm_call")
+(def ^:private tool-call-table "metabot_tool_call")
+
 (defmacro ^:private logging-failure
-  "Run `body` and return its value. When it throws, log the failure of `what` and return nil: a record that fails
-  never fails the turn it describes."
-  [what & body]
+  "Run `body`, an `operation` (`insert` or `update`) on `table`, and return its value. When it throws, log the failure
+  of `what`, count it in `call-record-write-errors` and return nil: a record that fails never fails the turn it
+  describes."
+  [what table operation & body]
   `(try
      ~@body
      (catch Throwable e#
        (log/warnf e# "Failed to %s" ~what)
+       (u/ignore-exceptions
+         (analytics/inc! :metabase-metabot/call-record-write-errors {:table ~table :operation ~operation}))
        nil)))
+
+(defn- count-written!
+  "Count the inserted row with `id` in `call-records-written`. Returns `id`."
+  [table id]
+  (when id
+    (analytics/inc! :metabase-metabot/call-records-written {:table table}))
+  id)
+
+(defn- count-tool-call-bytes!
+  "Count the size of `value`, an `input` or `output` that was written to `metabot_tool_call`, as the JSON its column
+  holds."
+  [value]
+  (when (some? value)
+    (analytics/inc! :metabase-metabot/tool-call-record-bytes (u/string-byte-count (json/encode value)))))
 
 (defn- limited
   "`s` cut to the `limit` characters its column holds."
@@ -32,27 +58,29 @@
   MetabotLlmCall, or nil when the insert failed."
   :feature :none
   [{:keys [message-id session-id request-id source tag profile-id provider model iteration]} attempt]
-  (logging-failure "record the start of an LLM call"
-                   (:id (first (metabot-llm-call/create-metabot-llm-calls!
-                                [{:message_id      message-id
-                                  :conversation_id session-id
-                                  :user_id         api/*current-user-id*
-                                  :request_id      request-id
-                                  :source          (limited (or source tag) 255)
-                                  :profile_id      (some-> profile-id name)
-                                  :provider        (some-> provider name)
-                                  :model           (limited model 255)
-                                  :iteration       iteration
-                                  :attempt         attempt
-                                  :started_at      (t/offset-date-time)
-                                  :status          "running"}])))))
+  (logging-failure "record the start of an LLM call" llm-call-table "insert"
+                   (count-written!
+                    llm-call-table
+                    (:id (first (metabot-llm-call/create-metabot-llm-calls!
+                                 [{:message_id      message-id
+                                   :conversation_id session-id
+                                   :user_id         api/*current-user-id*
+                                   :request_id      request-id
+                                   :source          (limited (or source tag) 255)
+                                   :profile_id      (some-> profile-id name)
+                                   :provider        (some-> provider name)
+                                   :model           (limited model 255)
+                                   :iteration       iteration
+                                   :attempt         attempt
+                                   :started_at      (t/offset-date-time)
+                                   :status          "running"}]))))))
 
 (defenterprise record-llm-call-end!
   "Record the end of the MetabotLlmCall with `llm-call-id`."
   :feature :none
   [llm-call-id {:keys [status error-class error-status retry-delay-ms finish-reason usage-log-id]}]
   (when llm-call-id
-    (logging-failure "record the end of an LLM call"
+    (logging-failure "record the end of an LLM call" llm-call-table "update"
                      (metabot-llm-call/update-metabot-llm-calls!
                       [(cond-> {:id          llm-call-id
                                 :finished_at (t/offset-date-time)
@@ -68,15 +96,19 @@
   insert failed."
   :feature :none
   [{:keys [llm-call-id message-id tool-call-id tool-name input]}]
-  (logging-failure "record the submit of a tool call"
-                   (:id (first (metabot-tool-call/create-metabot-tool-calls!
-                                [{:llm_call_id  llm-call-id
-                                  :message_id   message-id
-                                  :tool_call_id (limited (str tool-call-id) 255)
-                                  :tool_name    (limited (str tool-name) 255)
-                                  :created_at   (t/offset-date-time)
-                                  :status       "running"
-                                  :input        (force input)}])))))
+  (logging-failure "record the submit of a tool call" tool-call-table "insert"
+                   (let [input (force input)]
+                     (u/prog1 (count-written!
+                               tool-call-table
+                               (:id (first (metabot-tool-call/create-metabot-tool-calls!
+                                            [{:llm_call_id  llm-call-id
+                                              :message_id   message-id
+                                              :tool_call_id (limited (str tool-call-id) 255)
+                                              :tool_name    (limited (str tool-name) 255)
+                                              :created_at   (t/offset-date-time)
+                                              :status       "running"
+                                              :input        input}]))))
+                       (count-tool-call-bytes! input)))))
 
 (defenterprise record-tool-call-end!
   "Record the end of the MetabotToolCall with `tool-call-record-id`. A failed call stores no output, as the tool part
@@ -84,25 +116,29 @@
   :feature :none
   [tool-call-record-id {:keys [status started-at result error-class]}]
   (when tool-call-record-id
-    (logging-failure "record the end of a tool call"
+    (logging-failure "record the end of a tool call" tool-call-table "update"
                      (let [error  (when (map? result) (:error result))
-                           status (or status (if error "error" "ok"))]
+                           status (or status (if error "error" "ok"))
+                           output (when (= "ok" status)
+                                    (metabot.persistence/tool-result->storable-output result))]
                        (metabot-tool-call/update-metabot-tool-calls!
                         [(cond-> {:id          tool-call-record-id
                                   :finished_at (t/offset-date-time)
                                   :status      status}
-                           started-at     (assoc :started_at started-at)
-                           error-class    (assoc :error_class (limited error-class 255))
-                           (:class error) (assoc :error_class (name (:class error)))
-                           (= "ok" status) (assoc :output (metabot.persistence/tool-result->storable-output result)))])))))
+                           started-at      (assoc :started_at started-at)
+                           error-class     (assoc :error_class (limited error-class 255))
+                           (:class error)  (assoc :error_class (name (:class error)))
+                           (= "ok" status) (assoc :output output))])
+                       (count-tool-call-bytes! output)
+                       nil))))
 
 (defenterprise abort-open-calls!
   "Set the MetabotLlmCalls and MetabotToolCalls of the MetabotMessage with `message-id` that have no end to `aborted`,
   ended at `finished-at`."
   :feature :none
   [message-id finished-at]
-  (logging-failure "abort the open LLM calls of a message"
+  (logging-failure "abort the open LLM calls of a message" llm-call-table "update"
                    (metabot-llm-call/abort-open-metabot-llm-calls! [message-id] finished-at))
-  (logging-failure "abort the open tool calls of a message"
+  (logging-failure "abort the open tool calls of a message" tool-call-table "update"
                    (metabot-tool-call/abort-open-metabot-tool-calls! [message-id] finished-at))
   nil)

@@ -875,6 +875,23 @@
                                             "calls.")
                           ;; 10ms -> 1 minute. Every edge is one time series per instance, so the list is short.
                           :buckets [10 100 1000 10000 60000]})
+   ;; Call records: the growth of the tables `metabot_llm_call` and `metabot_tool_call` (EE only). Counters only, so
+   ;; the cost is one time series for each label value. The `:table` label is one of those two table names.
+   (prometheus/counter :metabase-metabot/call-records-written
+                       {:description "Rows inserted into the metabot call record tables."
+                        :labels [:table]})
+   (prometheus/counter :metabase-metabot/call-record-write-errors
+                       {:description (str "Writes to the metabot call record tables that failed. The turn goes on "
+                                          "and the record is lost or stays open. `operation` is `insert` or `update`.")
+                        :labels [:table :operation]})
+   (prometheus/counter :metabase-metabot/tool-call-record-bytes
+                       {:description (str "Size in bytes of the `input` and `output` (JSON) written to "
+                                          "`metabot_tool_call`, the columns of the call record tables with no "
+                                          "size limit.")})
+   (prometheus/counter :metabase-metabot/call-records-trimmed
+                       {:description (str "Rows of the metabot call record tables that the AI usage trimmer deleted "
+                                          "by age. Rows that a cascade deletes are not counted.")
+                        :labels [:table]})
    (prometheus/counter :metabase-metabot/sql-reference-checks
                        {:description (str "Reference checks of Metabot SQL, by outcome: `ran`, `skipped` (no table check "
                                           "ran: the caller turned it off, the dialect has none, a table tag, or SQL "

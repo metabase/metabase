@@ -10,6 +10,8 @@
    [metabase.premium-features.defenterprise :as defenterprise]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -301,6 +303,63 @@
             (finally
               (t2/delete! :model/MetabotLlmCall :request_id request-id)
               (t2/delete! :model/AiUsageLog :request_id request-id))))))))
+
+(defn- metric
+  "The value of the call record counter `metric-name` with `labels` in `system`, 0 when nothing was counted."
+  ([system metric-name]
+   (metric system metric-name nil))
+  ([system metric-name labels]
+   (or (mt/metric-value system (keyword "metabase-metabot" metric-name) labels) 0)))
+
+(defn- json-bytes [x]
+  (u/string-byte-count (json/encode x)))
+
+(deftest written-metrics-test
+  (mt/with-prometheus-system! [_ system]
+    (do-with-turn!
+     (fn [{:keys [message-id] :as tracking-opts}]
+       (call-llm! #(test-util/mock-llm-response [get-time-call usage-part])
+                  (select-keys test-util/TOOLS ["get-time"])
+                  tracking-opts)
+       (metabot.persistence/finalize-assistant-turn! message-id [])
+       (let [[tool-call] (tool-calls tracking-opts)]
+         (testing "each inserted row is counted for its table, and an update adds none"
+           (is (== 1 (metric system "call-records-written" {:table "metabot_llm_call"})))
+           (is (== 1 (metric system "call-records-written" {:table "metabot_tool_call"}))))
+         (testing "the bytes of the stored input and output of the tool call are counted"
+           (is (some? (:output tool-call)))
+           (is (== (+ (json-bytes (:input tool-call)) (json-bytes (:output tool-call)))
+                   (metric system "tool-call-record-bytes"))))
+         (testing "no write failed"
+           (doseq [table     ["metabot_llm_call" "metabot_tool_call"]
+                   operation ["insert" "update"]]
+             (is (== 0 (metric system "call-record-write-errors" {:table table :operation operation}))))))))))
+
+(deftest tool-error-counts-no-output-bytes-test
+  (mt/with-prometheus-system! [_ system]
+    (do-with-turn!
+     (fn [tracking-opts]
+       (let [failing (assoc (get test-util/TOOLS "get-time")
+                            :fn (fn [_] {:output "No such timezone." :error {:class :recoverable :code :no-timezone}}))]
+         (call-llm! #(test-util/mock-llm-response [get-time-call usage-part]) {"get-time" failing} tracking-opts)
+         (testing "a failed tool call stores no output, so only its input is counted"
+           (is (== (json-bytes (:input (first (tool-calls tracking-opts))))
+                   (metric system "tool-call-record-bytes")))))))))
+
+(deftest write-error-metrics-test
+  (mt/with-prometheus-system! [_ system]
+    (mt/with-log-level [metabase-enterprise.metabot.call-records :fatal]
+      (testing "an insert that fails is counted, and the caller gets no id"
+        ;; `conversation_id` has a foreign key, and this conversation does not exist
+        (is (nil? (call-records/record-llm-call-start! {:session-id (str (random-uuid))
+                                                        :request-id (str (random-uuid))}
+                                                       1)))
+        (is (== 1 (metric system "call-record-write-errors" {:table "metabot_llm_call" :operation "insert"})))
+        (is (== 0 (metric system "call-records-written" {:table "metabot_llm_call"}))))
+      (testing "an update that fails is counted"
+        (is (nil? (call-records/record-tool-call-end! Integer/MAX_VALUE {:status "no-such-status"})))
+        (is (== 1 (metric system "call-record-write-errors" {:table "metabot_tool_call" :operation "update"})))
+        (is (== 0 (metric system "tool-call-record-bytes")))))))
 
 (def ^:private record-fns
   '[record-llm-call-start! record-llm-call-end! record-tool-call-submit! record-tool-call-end! abort-open-calls!])

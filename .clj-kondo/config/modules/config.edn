@@ -4477,7 +4477,8 @@
                      enterprise/metabot.analytics
                      enterprise/metabot.data-complexity-score}
    :api            #{metabase-enterprise.metabot.api metabase-enterprise.metabot.api.routes metabase-enterprise.metabot.init}
-   :uses           #{api
+   :uses           #{analytics.interface
+                     api
                      app-db
                      lib.schema
                      metabot

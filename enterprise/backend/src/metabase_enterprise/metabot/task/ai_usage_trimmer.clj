@@ -6,6 +6,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.models.ai-usage-log :as ai-usage-log]
    [metabase.metabot.models.metabot-llm-call :as metabot-llm-call]
@@ -36,6 +37,9 @@
           ;; Usage rows last: the delete of one clears `usage_log_id` on the LLM call that names it, and the old LLM
           ;; calls are gone by now.
           (ai-usage-log/delete-ai-usage-logs! ids)
+          ;; Only the rows deleted by age: the cascade from an LLM call can delete more tool calls.
+          (analytics/inc! :metabase-metabot/call-records-trimmed {:table "metabot_tool_call"} (count tool-call-ids))
+          (analytics/inc! :metabase-metabot/call-records-trimmed {:table "metabot_llm_call"} (count llm-call-ids))
           (log/infof "AI usage log cleanup complete. Deleted %d rows, %d LLM call records and %d tool call records."
                      (count ids) (count llm-call-ids) (count tool-call-ids)))))))
 
