@@ -1,6 +1,7 @@
 {
   "extends": ["stylelint-config-standard", "stylelint-config-css-modules"],
   "plugins": ["./frontend/lint/stylelint-rules/no-base-colors.mjs"],
+  "ignoreFiles": ["frontend/ui-package/dist/**"],
   "rules": {
     "alpha-value-notation": null,
     "color-function-notation": null,

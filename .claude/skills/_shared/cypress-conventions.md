@@ -85,7 +85,7 @@ cy.visit("/dashboard/10");
 NEVER use:
 
 - `cy.get("[data-testid='...']")` — always use `cy.findByTestId(...)` instead.
-- CSS class names (especially generated ones from styled-components or Mantine).
+- CSS class names (especially generated ones from CSS modules or Mantine).
 - Ad-hoc CSS attribute selectors (`path[fill="..."]`, `[stroke="..."]`, etc.) in test specs or new helpers.
 - XPath expressions.
 

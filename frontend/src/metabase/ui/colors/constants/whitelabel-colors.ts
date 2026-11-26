@@ -2,7 +2,7 @@ import type {
   ColorSettings,
   ColorSettingsAccentKey,
   ColorSettingsKey,
-} from "metabase-types/api/settings";
+} from "metabase-types/api/color-settings";
 
 import type { ColorPalette } from "../types";
 import type { MetabaseColorKey } from "../types/color-keys";
