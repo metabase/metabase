@@ -80,7 +80,8 @@
   driver gives none), and `:collected-at` the time, as an ISO-8601 instant in UTC.
 
   More keys can come later, so the map is open. When statistics from the database's catalog fill some parts of a
-  fingerprint, a later `:parts` key holds the origin of each part. A Field with no origin, such as one whose
+  fingerprint, `:parts` holds the origin of each of them, as entries with the `:part`, such as
+  `global.distinct-count`, and its `:source`, `:kind` and `:collected-at`. A Field with no origin, such as one whose
   fingerprint came from before this was recorded or from a metadata seed, has an unknown origin."
   [:map
    [:source       :keyword]
@@ -88,7 +89,11 @@
    [:fraction     {:optional true} [:maybe number?]]
    [:runs         {:optional true} [:maybe :int]]
    [:row-count    {:optional true} [:maybe :int]]
-   [:collected-at {:optional true} [:maybe [:re #"^\d{4}-\d{2}-\d{2}T.*Z$"]]]])
+   [:collected-at {:optional true} [:maybe [:re #"^\d{4}-\d{2}-\d{2}T.*Z$"]]]
+   [:parts        {:optional true} [:maybe [:sequential [:map
+                                                         [:part :string]
+                                                         [:source :keyword]
+                                                         [:kind {:optional true} [:maybe :keyword]]]]]]])
 
 (mr/def ::field.update
   "What an update of a Field takes: its `:id` and the columns of `:metabase_field` to change, each optional."

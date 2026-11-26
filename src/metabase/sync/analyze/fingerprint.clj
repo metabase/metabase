@@ -2,8 +2,11 @@
   "Analysis sub-step that takes a sample of values for a Field and saving a non-identifying fingerprint
    used for classification. This fingerprint is saved as a column on the Field it belongs to."
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.analyze.core :as analyze]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sync.analyze.sample :as sample]
    [metabase.sync.analyze.table-chunks :as table-chunks]
@@ -65,6 +68,52 @@
     fraction (assoc :fraction fraction)
     runs     (assoc :runs runs)))
 
+(defn- catalog-statistics
+  "What the database's catalog knows of the fingerprints of `fields` of `table`, by Field id, from the driver's
+  [[driver/table-statistics]] at the cost of catalog reads only, or `{}` for a driver without it. A failure or an answer
+  of a wrong shape is logged and gives `{}`: the sample alone gives the fingerprints, as before."
+  [table fields]
+  (let [driver (driver.u/database->driver (:db_id table))]
+    (or (when (and (contains? (methods driver/table-statistics) driver)
+                   (driver.u/supports? driver :table-statistics (driver.u/lib-database (:db_id table))))
+          (try
+            (let [answer (driver/table-statistics driver (driver.u/lib-database (:db_id table)) table fields
+                                                  {:max-cost :metadata :want #{:fingerprint}})]
+              (if (mr/validate ::driver/table-statistics.result answer)
+                (:fields answer)
+                (log/warnf "The statistics of %s are not in the shape of table-statistics; using the sample only"
+                           (sync-util/name-for-logging table))))
+            (catch Exception e
+              (sync-util/rethrow-fatal e)
+              (log/warn e "Could not read the statistics of" (sync-util/name-for-logging table))
+              nil)))
+        {})))
+
+(defn- leaf-paths
+  "The paths of the values of the nested map `m`, as vectors of keys."
+  [m]
+  (mapcat (fn [[k v]]
+            (if (map? v)
+              (map #(into [k] %) (leaf-paths v))
+              [[k]]))
+          m))
+
+(defn- part-name
+  "The name of the fingerprint part at `path`, such as `\"global.distinct-count\"`, for the `:parts` of an origin."
+  [path]
+  (str/join "." (map #(if (keyword? %) (subs (str %) 1) (str %)) path)))
+
+(defn- with-catalog-parts
+  "The fingerprint `fingerprint` of a sample with `origin`, and the field's answer from the catalog, `catalog`: the
+  parts the catalog has replace those of the sample, since they describe the whole table, and the origin records the
+  origin of each of them in `:parts`. Returns `[fingerprint origin]`."
+  [fingerprint origin {catalog-fingerprint :fingerprint catalog-origin :origin :keys [parts]}]
+  (if (and (map? fingerprint) (seq catalog-fingerprint))
+    (let [part-origin (or (:fingerprint parts) catalog-origin)]
+      [(m/deep-merge fingerprint catalog-fingerprint)
+       (assoc origin :parts (mapv #(assoc part-origin :part (part-name %)) (leaf-paths catalog-fingerprint)))])
+    [fingerprint origin]))
+
 (mr/def ::FingerprintStats
   [:map {:closed true}
    [:no-data-fingerprints   ms/IntGreaterThanOrEqualToZero]
@@ -120,8 +169,14 @@
                                            (if (and (not (#{:unspecified :first-rows} (:method how)))
                                                     (no-data? (:result how)))
                                              (sample/first-rows-sample table fields rff opts)
-                                             how)))]
-    {:rows  (into [] (keep identity) (map (partial fingerprint-row (sample-origin table how)) fields fingerprints))
+                                             how)))
+        origin                       (sample-origin table how)
+        catalog                      (catalog-statistics table fields)]
+    {:rows  (into []
+                  (keep (fn [[field fingerprint]]
+                          (let [[fingerprint origin] (with-catalog-parts fingerprint origin (get catalog (:id field)))]
+                            (fingerprint-row origin field fingerprint))))
+                  (map vector fields fingerprints))
      :stats (fingerprint-stats fingerprints)}))
 
 (mu/defn- fingerprint-fields!
