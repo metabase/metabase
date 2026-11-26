@@ -24,7 +24,7 @@
   [channel messages]
   (let [dedup-fn     (q.registry/dedup-fn channel)
         before-count (count messages)
-        messages     (if dedup-fn (dedup-fn messages) messages)]
+        messages     (mq.impl/tag-worktree (if dedup-fn (dedup-fn messages) messages))]
     (when (and dedup-fn (< (count messages) before-count))
       (analytics/inc! :metabase-mq/dedup-messages-dropped
                       {:channel (name channel)}

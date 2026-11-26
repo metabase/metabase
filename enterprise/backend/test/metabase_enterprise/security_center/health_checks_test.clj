@@ -518,3 +518,8 @@
         (testing "the duration must be a java.time.Duration"
           (is (thrown? clojure.lang.ExceptionInfo
                        (health-checks/refresh-and-run-checks {:skip-if-refreshed-within 300}))))))))
+
+(deftest ^:parallel read-only-connections-paused-test
+  (testing "the check is paused: it is not served and its refresh does not run (GDGT-3564, GDGT-3565)"
+    (is (false? (health-checks/applicable? (health-checks/check-by-id :read-only-connections))))
+    (is (not-any? #(= :read-only-connections (:id %)) (#'health-checks/background-checks)))))

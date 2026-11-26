@@ -2,13 +2,18 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupNotificationChannelsEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
-import type { Advisory } from "metabase-types/api";
+import type {
+  Advisory,
+  AdvisoryId,
+  ListAdvisoriesResponse,
+} from "metabase-types/api";
 import { createMockVersion } from "metabase-types/api/mocks";
 import { createAdvisory } from "metabase-types/api/mocks/security-center";
 
@@ -47,6 +52,10 @@ function setup(
     acknowledgeAdvisories: mockAcknowledgeAll,
   });
 
+  renderPage(initialRoute);
+}
+
+function renderPage(initialRoute = "/") {
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupNotificationChannelsEndpoints({
     email: { configured: true },
@@ -376,6 +385,46 @@ describe("AdvisoriesPage", () => {
     expect(screen.getByTestId("advisory-filter-bar")).toBeInTheDocument();
   });
 
+  it("filters advisory cards by severity", async () => {
+    setup([
+      createAdvisory({
+        advisory_id: "1",
+        title: "Critical RCE vulnerability",
+        severity: "critical",
+        match_status: "active",
+      }),
+      createAdvisory({
+        advisory_id: "2",
+        title: "SQL injection in query builder",
+        severity: "high",
+        match_status: "resolved",
+      }),
+      createAdvisory({
+        advisory_id: "3",
+        title: "SSRF in GeoJSON endpoint",
+        severity: "medium",
+        match_status: "not_affected",
+      }),
+    ]);
+
+    expect(screen.getAllByTestId("advisory-card")).toHaveLength(3);
+
+    await userEvent.click(screen.getByTestId("severity-filter"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Critical" }),
+    );
+
+    expect(screen.getAllByTestId("advisory-card")).toHaveLength(1);
+    expect(screen.getByText("Critical RCE vulnerability")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId("severity-filter"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "All severities" }),
+    );
+
+    expect(screen.getAllByTestId("advisory-card")).toHaveLength(3);
+  });
+
   describe("upgrade banner", () => {
     it("shows the upgrade banner when there are active advisories", async () => {
       const advisories = [
@@ -456,6 +505,16 @@ describe("AdvisoriesPage", () => {
   describe("notification settings modal", () => {
     it("opens the modal when the 'open=notifications' query param is set", async () => {
       setup([], { initialRoute: "/?open=notifications" });
+
+      expect(
+        await screen.findByRole("dialog", { name: "Notification settings" }),
+      ).toBeInTheDocument();
+    });
+
+    it("opens the modal when the notification settings button is clicked", async () => {
+      setup();
+
+      await userEvent.click(screen.getByTestId("notification-config-toggle"));
 
       expect(
         await screen.findByRole("dialog", { name: "Notification settings" }),
@@ -602,6 +661,87 @@ describe("AdvisoriesPage", () => {
         ),
       ).toBeInTheDocument();
       expect(spy).toHaveBeenLastCalledWith(false);
+    });
+  });
+
+  describe("with the advisories API", () => {
+    function setupWithApi(advisories: Advisory[]) {
+      const acknowledgedIds = new Set<AdvisoryId>();
+
+      fetchMock.get(
+        "path:/api/ee/security-center/advisories",
+        (): ListAdvisoriesResponse => ({
+          last_checked_at: null,
+          last_sync_attempted_at: null,
+          last_sync_error: null,
+          advisories: advisories.map((advisory) =>
+            acknowledgedIds.has(advisory.advisory_id)
+              ? { ...advisory, acknowledged_at: "2026-03-02T00:00:00Z" }
+              : advisory,
+          ),
+        }),
+      );
+      fetchMock.post(
+        "path:/api/ee/security-center/advisories/acknowledge",
+        ({ options }) => {
+          const body: unknown = JSON.parse(String(options.body));
+          const ids =
+            body != null && typeof body === "object" && "advisory_ids" in body
+              ? body.advisory_ids
+              : [];
+          if (Array.isArray(ids)) {
+            ids.forEach((id) => acknowledgedIds.add(String(id)));
+          }
+          return [];
+        },
+      );
+
+      renderPage();
+    }
+
+    it("dismisses every undismissed advisory that does not affect the instance", async () => {
+      setupWithApi([
+        createAdvisory({
+          advisory_id: "TEST-001",
+          title: "Critical RCE vulnerability",
+          match_status: "active",
+          severity: "critical",
+        }),
+        createAdvisory({
+          advisory_id: "TEST-002",
+          title: "SQL injection in query builder",
+          match_status: "resolved",
+          severity: "high",
+        }),
+        createAdvisory({
+          advisory_id: "TEST-003",
+          title: "SSRF in GeoJSON endpoint",
+          match_status: "not_affected",
+          severity: "medium",
+        }),
+        createAdvisory({
+          advisory_id: "TEST-004",
+          title: "Already dismissed advisory",
+          match_status: "not_affected",
+          severity: "low",
+          acknowledged_at: "2026-03-01T00:00:00Z",
+        }),
+      ]);
+
+      await userEvent.click(await screen.findByText("Dismiss all"));
+
+      await waitFor(() => {
+        expect(screen.queryByText("Dismiss all")).not.toBeInTheDocument();
+      });
+      const posts = await findRequests("POST");
+      expect(posts).toHaveLength(1);
+      expect(posts[0].body).toEqual({
+        advisory_ids: ["TEST-002", "TEST-003"],
+      });
+      expect(screen.getAllByTestId("advisory-card")).toHaveLength(1);
+      expect(
+        screen.getByText("Critical RCE vulnerability"),
+      ).toBeInTheDocument();
     });
   });
 });

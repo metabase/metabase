@@ -238,6 +238,23 @@ describe("DataAppView", () => {
     expect(iframe).toHaveAttribute("allow", "clipboard-write");
   });
 
+  it("sandboxes the app iframe: scripts run, but it can't navigate the host or open unsandboxed popups", () => {
+    setup({
+      data: createMockDataApp({ name: "Sales" }),
+      enableUrlMirroring: true,
+    });
+
+    const sandboxTokens = (
+      screen.getByTitle("Sales").getAttribute("sandbox") ?? ""
+    ).split(/\s+/);
+    expect(sandboxTokens).toContain("allow-scripts");
+    expect(sandboxTokens).not.toContain("allow-top-navigation");
+    expect(sandboxTokens).not.toContain(
+      "allow-top-navigation-by-user-activation",
+    );
+    expect(sandboxTokens).not.toContain("allow-popups-to-escape-sandbox");
+  });
+
   /** Post a `message` event as if it came from `source`. */
   function postMessage(
     source: MessageEventSource | null,

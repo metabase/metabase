@@ -29,6 +29,7 @@
 
 (doto :model/Dimension
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 

@@ -45,6 +45,7 @@ import {
   type DownloadPermission,
   type ParameterId,
   type ParameterValueOrArray,
+  type TokenFeatures,
   type VisualizationDisplay,
 } from "metabase-types/api";
 import {
@@ -148,6 +149,7 @@ function setup({
   dashcardMenu,
   withTimelineEvents = false,
   navigateToNewCardFromDashboard = jest.fn(),
+  tokenFeatures,
   ...props
 }: Partial<DashCardProps> &
   Pick<
@@ -163,6 +165,7 @@ function setup({
     withMetadata?: boolean;
     databases?: Database[];
     parameterValues?: Record<ParameterId, ParameterValueOrArray>;
+    tokenFeatures?: Partial<TokenFeatures>;
   } = {}) {
   const onReplaceCard = jest.fn();
 
@@ -186,6 +189,11 @@ function setup({
 
   const storeInitialState = createMockState({
     dashboard: baseDashboardState,
+    ...(tokenFeatures && {
+      settings: mockSettings({
+        "token-features": createMockTokenFeatures(tokenFeatures),
+      }),
+    }),
     ...(databases && {
       entities: createMockEntitiesState({ databases }),
     }),
@@ -286,6 +294,22 @@ describe("DashCard", () => {
     expect(within(visualizationRoot).getByText("Davy Crocket")).toBeVisible();
     expect(within(visualizationRoot).getByText("Daniel Boone")).toBeVisible();
   });
+
+  it.each([true, false])(
+    "shows the development watermark on a card only in development mode (development mode: %s)",
+    async (isDevelopmentMode) => {
+      setup({ tokenFeatures: { development_mode: isDevelopmentMode } });
+
+      // the visualization loads lazily
+      const visualizationRoot = await screen.findByTestId("visualization-root");
+      expect(
+        await within(visualizationRoot).findByText("Daniel Boone"),
+      ).toBeVisible();
+      expect(
+        within(visualizationRoot).queryAllByTestId("development-watermark"),
+      ).toHaveLength(isDevelopmentMode ? 1 : 0);
+    },
+  );
 
   describe("timeline event availability", () => {
     it.each([

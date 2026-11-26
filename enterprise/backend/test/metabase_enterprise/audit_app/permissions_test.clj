@@ -27,14 +27,16 @@
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
 (deftest audit-db-view-names-test
-  (testing "`audit-db-view-names` includes all views in the app DB prefixed with `v_`"
+  (testing "`audit-db-view-names` includes all views in the app DB prefixed with `v_`, but the remote sync worktree views"
     (let [view-query {:select [:table_name]
                       :from   [:information_schema.views]
                       :where  [:like :table_name "v\\_%"]}]
       (is (set/superset?
            audit-app.permissions/audit-db-view-names
            (into #{}
-                 (map :table_name (t2/query view-query))))))))
+                 (comp (map :table_name)
+                       (remove #(str/starts-with? (u/lower-case-en %) "v_worktree_")))
+                 (t2/query view-query)))))))
 
 (deftest audit-db-basic-query-test
   (audit-test/with-audit-db-restoration!

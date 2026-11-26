@@ -347,6 +347,8 @@
     :model/BookmarkOrdering
     :model/CacheConfig
     :model/CardBookmark
+    :model/CardFavorite
+    :model/CardLabel
     :model/CardTest
     :model/Channel
     :model/ChannelTemplate
@@ -361,6 +363,7 @@
     :model/ContentTranslation
     :model/CustomVizPlugin
     :model/DashboardBookmark
+    :model/DashboardFavorite
     :model/DashboardCard
     :model/DashboardCardSeries
     :model/DashboardTab
@@ -430,6 +433,8 @@
     :model/QueryTable
     :model/RecentViews
     :model/RemoteSyncTask
+    :model/RemoteSyncWorktree
+    :model/RemoteSyncWorktreeUser
     :model/ReplacementRun
     :model/ResultMetadataStatus
     :model/Revision

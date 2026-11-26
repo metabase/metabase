@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.app-db.core :as mdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.task.search-index :as task]
@@ -39,3 +40,36 @@
         (testing "It can cycle the index gracefully"
           (is (search/reindex! {:async? false}))
           (is (= initial-size (index-size))))))))
+
+(deftest index-lock-survives-ddl-test
+  (when (= :mysql (mdb/db-type))
+    (search.tu/with-temp-index-table
+      (let [table     (keyword (str "search_lock_probe_" (random-uuid)))
+            holding   (promise)
+            release   (promise)
+            attempted (promise)
+            entered   (promise)
+            holder    (future
+                        (#'task/do-with-index-lock
+                         (fn []
+                           (t2/query {:create-table [table], :with-columns [[:id :integer]]})
+                           (deliver holding true)
+                           (deref release 10000 :timeout))))]
+        (try
+          (is (true? (deref holding 10000 :timeout)))
+          (let [contender (future
+                            (deliver attempted true)
+                            (#'task/do-with-index-lock #(deliver entered true)))]
+            (try
+              (is (true? (deref attempted 5000 :timeout)))
+              (is (= :blocked (deref entered 500 :blocked)))
+              (deliver release true)
+              (is (true? (deref entered 5000 :timeout)))
+              (is (not= :timeout (deref contender 5000 :timeout)))
+              (finally
+                (future-cancel contender))))
+          (finally
+            (deliver release true)
+            (deref holder 5000 :timeout)
+            (future-cancel holder)
+            (t2/query {:drop-table [:if-exists table]})))))))

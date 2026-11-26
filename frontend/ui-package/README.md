@@ -65,10 +65,15 @@ From the repository root: `bun run build-ui-package` builds `dist/`, and `bun ru
 
 ## Releasing
 
-1. In a normal PR, bump `version` in `package.json` and add a `CHANGELOG.md` entry.
-2. In `0.x`, a minor release may break compatibility; a patch must not. Any Mantine upgrade in Metabase is a minor release.
-3. `X.Y.Z` publishes to the `latest` dist-tag and `X.Y.Z-canary.N` to `canary`. No other version shape is accepted.
-4. Run the "Release UI Package" workflow from `master`; other refs skip all jobs. Run it first with `dry_run` on (the default), then again with it off.
+1. Run [UI Package Version Bump PR](https://github.com/metabase/metabase/actions/workflows/ui-package-version-bump-pr.yml) from `master`. Select the bump and enter a changelog note. To draft it, compare the last stable UI release with `master` (use the verified release commit if the tag is missing). An agent can summarize the consumer-facing changes and any migration steps for review.
+2. Review the generated version and changelog PR. In `0.x`, a patch must be compatible; breaking changes and Mantine upgrades need at least a minor bump.
+3. Merge the PR with its `ui-release-trigger` label. **Release UI Package** smoke-tests the tarball, publishes it to npm, and tags the merge commit. No second dispatch is needed.
+
+If the bump workflow pushes a branch but cannot open the PR, open a PR from that branch to `master` and add `ui-release-trigger` rather than dispatching the bump again.
+
+Manual **Release UI Package** dispatches still support dry runs or publishing a version already committed on `master`. Stable versions publish to `latest`; manually prepared canaries publish to `canary`.
+
+The bump workflow starts from a stable version. If `master` is on a canary, open a PR to `master` that sets `frontend/ui-package/package.json` to the intended unpublished stable version (for example, `0.2.0-canary.1` → `0.2.0`) and adds its entry to `frontend/ui-package/CHANGELOG.md`. Apply `ui-release-trigger` before merging to publish that stable version. Subsequent releases can use the bump workflow again.
 
 Before enabling live publishing, create the GitHub environment `ui-package-release` and restrict deployments to the `master` branch only. In npm, register `metabase/metabase`, workflow `release-ui-package.yml`, and environment `ui-package-release` as the trusted publisher. Enable `npm publish` under **Allowed actions**; staged publish alone is not enough.
 
@@ -76,7 +81,7 @@ A dry run resolves the version, checks that the `ui-v<version>` tag and the npm 
 
 The tested archive is uploaded as the `metabase-ui-<version>-<sha7>-attempt-<n>` artifact, also on dry runs, and kept for 90 days. A real run builds and tests again, publishes the archive its own smoke job tested, then pushes the `ui-v<version>` tag on the released commit. It doesn't reuse an earlier dry run's archive.
 
-If the publish job succeeded but the tag job failed, use **Re-run failed jobs** to retry the tag job. If npm accepted the tarball but the publish job reported failure, do not retry the publish. Compare `npm view @metabase/ui@<version> dist.integrity` with the SHA-512 integrity of the tested tarball (`sha512-` followed by the base64-encoded digest). Only if they match, and the tag is absent, create the tag on the commit recorded in that run's summary.
+To retry a failed automatic release, use **Re-run failed jobs** on the original run. If npm accepted the tarball but the publish job reported failure, do not retry the publish. Compare `npm view @metabase/ui@<version> dist.integrity` with the SHA-512 integrity of the tested tarball (`sha512-` followed by the base64-encoded digest). Only if they match, and the tag is absent, create the tag on the commit recorded in that run's summary.
 
 ### Manual first publish
 

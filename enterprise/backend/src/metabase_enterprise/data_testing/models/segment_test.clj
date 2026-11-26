@@ -30,6 +30,7 @@
 
 (doto :model/SegmentTest
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
   (derive ::data-testing.models/saved-test))

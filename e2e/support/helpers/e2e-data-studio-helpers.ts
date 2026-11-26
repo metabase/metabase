@@ -1,11 +1,6 @@
 import type { MatcherOptions } from "@testing-library/cypress";
 
-import type {
-  MeasureId,
-  SegmentId,
-  TableId,
-  TransformId,
-} from "metabase-types/api";
+import type { SegmentId, TableId, TransformId } from "metabase-types/api";
 
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 import { MetricPage } from "./e2e-metric-page-helpers";
@@ -113,12 +108,10 @@ export const DataStudio = {
     segmentsPage: () => cy.findByTestId("table-segments-page"),
     measuresPage: () => cy.findByTestId("table-measures-page"),
     header: () => cy.findByTestId("table-pane-header"),
-    nameInput: () => cy.findByTestId("table-name-input"),
     moreMenu: () => DataStudio.Tables.header().icon("ellipsis"),
     overviewTab: () => DataStudio.Tables.header().findByText("Overview"),
     fieldsTab: () => DataStudio.Tables.header().findByText("Fields"),
     segmentsTab: () => DataStudio.Tables.header().findByText("Segments"),
-    measuresTab: () => DataStudio.Tables.header().findByText("Measures"),
     dependenciesTab: () =>
       DataStudio.Tables.header().findByText("Dependencies"),
     visitOverviewPage: (tableId: TableId) =>
@@ -133,8 +126,6 @@ export const DataStudio = {
       cy.visit(`/data-studio/library/tables/${tableId}/segments/new`),
     visitMeasuresPage: (tableId: TableId) =>
       cy.visit(`/data-studio/library/tables/${tableId}/measures`),
-    visitMeasurePage: (tableId: TableId, measureId: MeasureId) =>
-      cy.visit(`/data-studio/library/tables/${tableId}/measures/${measureId}`),
     visitNewMeasurePage: (tableId: TableId) =>
       cy.visit(`/data-studio/library/tables/${tableId}/measures/new`),
     moreMenuViewTable: () =>
@@ -143,18 +134,6 @@ export const DataStudio = {
         .invoke("removeAttr", "target")
         .click(),
 
-    Overview: {
-      descriptionSidebar: () => cy.findByTestId("table-description-sidebar"),
-
-      descriptionText: () =>
-        cy
-          .findByTestId("table-description-section")
-          .findByTestId("editable-text"),
-      descriptionInput: () =>
-        cy
-          .findByTestId("table-description-section")
-          .findByPlaceholderText("No description"),
-    },
     openFilterPopover: () => {
       cy.findByRole("button", { name: "Filter" }).click();
       H.popover();
@@ -188,10 +167,6 @@ export const DataStudio = {
     expandCollection: (name: string) =>
       DataStudio.Library.result(name)
         .findByRole("button", { name: "Expand" })
-        .click(),
-    collapseCollection: (name: string) =>
-      DataStudio.Library.result(name)
-        .findByRole("button", { name: "Collapse" })
         .click(),
     emptyStateRow: (description: string | RegExp) =>
       libraryPage().contains('[data-testid="empty-state-row"]', description),

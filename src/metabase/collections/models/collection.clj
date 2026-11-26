@@ -119,6 +119,19 @@
   "Namespace for shared tenant collections"
   :shared-tenant-collection)
 
+(defn ensure-trash-collection!
+  "Create the Trash collection of the remote sync worktree this thread works in, as the migration that added it created
+  the main app's, unless it has one, retrying once after a concurrent call created it."
+  []
+  (mdb/with-conflict-retry
+    (t2/with-transaction [_conn]
+      (when-not (trash-collection*)
+        (collections.db/insert-collections! [{:name      "Trash"
+                                              :slug      "trash"
+                                              :entity_id "trashtrashtrashtrasht"
+                                              :type      trash-collection-type}]))))
+  nil)
+
 (defn trash-collection-id
   "The ID representing the Trash collection."
   [] (u/the-id (trash-collection)))
@@ -325,6 +338,7 @@
 
 (doto :model/Collection
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/entity-id))
 
 (defn- default-audit-collection?
@@ -3109,13 +3123,16 @@
     (throw (ex-info "Fatal error: the trash collection cannot be trashed" {})))
   (when-not *allow-deleting-personal-collections*
     (when personal_owner_id
-      (throw (Exception. (tru "You cannot delete a Personal Collection!"))))))
+      (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
+  (when (= tenant-specific-root-collection-type (:type collection))
+    (throw (ex-info (tru "You cannot delete the root collection of a tenant.") {:status-code 400}))))
 
 (defn- check-collection-deletes
   "Throw unless every one of `collections` satisfies these rules:
 
   - it is not the Trash
-  - it is not a personal Collection, unless deleting those is allowed"
+  - it is not a personal Collection, unless deleting those is allowed
+  - it is not the root Collection of a tenant"
   [collections]
   (run! check-deletable collections))
 
@@ -3171,7 +3188,8 @@
 (defmethod remote-sync/spec :model/Collection
   [_model]
   {:synced-items         collections.db/synced-collection-items
-   :synced-filter-clause (partial collections.db/synced-collections-clause (vec (sort remote-synced-namespaces)))})
+   :synced-filter-clause (partial collections.db/synced-collections-clause (vec (sort remote-synced-namespaces)))
+   :ensure-built-ins     ensure-trash-collection!})
 
 (defmethod search/spec :model/Collection
   [_model]

@@ -20,7 +20,10 @@ import {
 } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
-import { dataStudioArchivedSnippets } from "metabase/urls";
+import {
+  dataStudioArchivedSnippets,
+  newDataStudioSnippet,
+} from "metabase/urls";
 import type { Collection, EnterpriseSettings, User } from "metabase-types/api";
 import {
   createMockCollection,
@@ -36,6 +39,7 @@ type SetupOpts = {
   user?: Partial<User>;
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
   extraCollections?: Collection[];
+  isEmpty?: boolean;
 };
 
 const NATIVE_WRITE_USER: Partial<User> = {
@@ -47,33 +51,43 @@ function setup({
   user = NATIVE_WRITE_USER,
   remoteSyncType,
   extraCollections = [],
+  isEmpty = false,
 }: SetupOpts) {
-  const collections = [
-    createMockCollection({ id: "root", name: "Root", namespace: "snippets" }),
-    createMockCollection({
-      id: 10,
-      name: "Revenue folder",
-      namespace: "snippets",
-      location: "/",
-      parent_id: null,
-    }),
-    ...extraCollections,
-  ];
+  const rootCollection = createMockCollection({
+    id: "root",
+    name: "Root",
+    namespace: "snippets",
+  });
+  const collections = isEmpty
+    ? [rootCollection]
+    : [
+        rootCollection,
+        createMockCollection({
+          id: 10,
+          name: "Revenue folder",
+          namespace: "snippets",
+          location: "/",
+          parent_id: null,
+        }),
+        ...extraCollections,
+      ];
   setupCollectionsEndpoints({ collections });
   setupCollectionByIdEndpoint({ collections });
   setupNativeQuerySnippetEndpoints({
-    snippets: [
-      createMockNativeQuerySnippet({
-        id: 1,
-        name: "Orders filter",
-        collection_id: null,
-      }),
-      createMockNativeQuerySnippet({
-        id: 2,
-        name: "Revenue sum",
-        collection_id: 10,
-      }),
-    ],
+    snippets: isEmpty
+      ? []
+      : [
+          createMockNativeQuerySnippet({
+            id: 1,
+            name: "Orders filter",
+            collection_id: null,
+          }),
+          createMockNativeQuerySnippet({
+            id: 2,
+            name: "Revenue sum",
+            collection_id: 10,
+          }),
+        ],
   });
   const state = createMockState({
     settings: mockSettings({
@@ -142,6 +156,31 @@ describe("SnippetListPage", () => {
     expect(await within(page).findByText("Orders filter")).toBeInTheDocument();
     expect(within(page).getByText("Revenue folder")).toBeInTheDocument();
     expect(within(page).queryByText("SQL snippets")).not.toBeInTheDocument();
+  });
+
+  it("shows an empty state with a link to a new snippet when there are no snippets", async () => {
+    setup({ isEmpty: true });
+
+    const emptyState = await screen.findByTestId("empty-state-row");
+    expect(
+      within(emptyState).getByText("Reusable bits of code that save your time"),
+    ).toBeInTheDocument();
+    expect(
+      within(emptyState).getByRole("link", { name: "New snippet" }),
+    ).toHaveAttribute("href", newDataStudioSnippet());
+    expect(screen.queryByTestId("collection-name")).not.toBeInTheDocument();
+  });
+
+  it("does not link to a new snippet from the empty state in remote sync read-only mode", async () => {
+    setup({ isEnterprise: true, isEmpty: true, remoteSyncType: "read-only" });
+
+    const emptyState = await screen.findByTestId("empty-state-row");
+    expect(
+      within(emptyState).getByText("Reusable bits of code that save your time"),
+    ).toBeInTheDocument();
+    expect(
+      within(emptyState).queryByRole("link", { name: "New snippet" }),
+    ).not.toBeInTheDocument();
   });
 
   it("filters snippets by name, including ones in folders", async () => {

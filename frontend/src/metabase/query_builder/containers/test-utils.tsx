@@ -50,6 +50,7 @@ import type {
   Database,
   Dataset,
   Timeline,
+  TokenFeatures,
   UnsavedCard,
   User,
 } from "metabase-types/api";
@@ -62,6 +63,7 @@ import {
   createMockFieldValues,
   createMockModelIndex,
   createMockSettings,
+  createMockTokenFeatures,
   createMockUnsavedCard,
   createMockUser,
   createMockUserPermissions,
@@ -248,6 +250,7 @@ interface SetupOpts {
   waitForLoad?: boolean;
   hasAcknowledgedModelModal?: boolean;
   collections?: Collection[];
+  tokenFeatures?: Partial<TokenFeatures>;
   /**
    * The query builder reads `window.location` to decide whether a URL update
    * adds a history entry, as it does in a browser. The memory test router
@@ -284,6 +287,7 @@ export const setup = async ({
   waitForLoad = true,
   hasAcknowledgedModelModal = false,
   collections = [TEST_COLLECTION],
+  tokenFeatures,
   syncWindowLocation = false,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
@@ -359,7 +363,12 @@ export const setup = async ({
       initialRoute,
       storeInitialState: createMockState({
         currentUser,
-        settings: mockSettings({ "site-url": "http://localhost:3000" }),
+        settings: mockSettings({
+          "site-url": "http://localhost:3000",
+          ...(tokenFeatures && {
+            "token-features": createMockTokenFeatures(tokenFeatures),
+          }),
+        }),
       }),
     },
   );

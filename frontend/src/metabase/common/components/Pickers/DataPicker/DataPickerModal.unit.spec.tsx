@@ -2,11 +2,13 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { useState } from "react";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupLibraryEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -23,6 +25,7 @@ import {
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { TableVisibilityToggle } from "metabase/metadata/pages/DataModelV1/components/TablePicker/components/TableVisibilityToggle";
+import { reinitialize } from "metabase/plugins";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   Collection,
@@ -42,6 +45,7 @@ import {
   createMockRecentTableItem,
   createMockSearchResult,
   createMockTable,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
 import {
@@ -78,6 +82,7 @@ type SetupOpts = {
   collections?: Collection[];
   collectionItems?: { collection: Collection; items: CollectionItem[] }[];
   hasNestedQueries?: boolean;
+  hasLibrary?: boolean;
 };
 
 async function setup({
@@ -94,6 +99,7 @@ async function setup({
   ],
   collectionItems = [],
   hasNestedQueries = true,
+  hasLibrary = false,
 }: SetupOpts = {}) {
   mockGetBoundingClientRect();
   process.env.OVERSCAN = "20";
@@ -112,6 +118,16 @@ async function setup({
   );
   setupRecentViewsAndSelectionsEndpoints(recentItems, ["selections"]);
   setupSearchEndpoints(searchItems, undefined, { filterByScope: true });
+  const storeInitialState = createMockState({
+    ...(currentUser ? { currentUser } : {}),
+    settings: mockSettings({
+      "enable-nested-queries": hasNestedQueries,
+      "token-features": createMockTokenFeatures({ library: hasLibrary }),
+    }),
+  });
+  if (hasLibrary) {
+    setupEnterpriseOnlyPlugin("library");
+  }
 
   renderWithProviders(
     <DataPickerModal
@@ -121,12 +137,7 @@ async function setup({
       onChange={onChange}
       onClose={onClose}
     />,
-    {
-      storeInitialState: createMockState({
-        ...(currentUser ? { currentUser } : {}),
-        settings: mockSettings({ "enable-nested-queries": hasNestedQueries }),
-      }),
-    },
+    { storeInitialState },
   );
 
   await waitForLoaderToBeRemoved();
@@ -787,5 +798,157 @@ describe("DataPickerModal", () => {
       }
       expect(screen.queryByText("Orders")).not.toBeInTheDocument();
     });
+  });
+});
+
+describe("DataPickerModal > library", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
+  const LIBRARY_ID = 6464;
+  const DATA_COLLECTION_ID = 6465;
+  const METRICS_COLLECTION_ID = 6466;
+  const ORDERS_ID = 10;
+  const DATA_COLLECTION = createMockCollection({
+    id: DATA_COLLECTION_ID,
+    name: "Data",
+    type: "library-data",
+    location: `/${LIBRARY_ID}/`,
+    is_library_root: true,
+  });
+  const METRICS_COLLECTION = createMockCollection({
+    id: METRICS_COLLECTION_ID,
+    name: "Metrics",
+    type: "library-metrics",
+    location: `/${LIBRARY_ID}/`,
+    is_library_root: true,
+  });
+  const ACCOUNTS = createMockTable({
+    id: 9,
+    db_id: 1,
+    schema: "PUBLIC",
+    display_name: "Accounts",
+    collection: DATA_COLLECTION,
+  });
+  const ORDERS = createMockTable({
+    id: ORDERS_ID,
+    db_id: 1,
+    schema: "PUBLIC",
+    display_name: "Orders",
+    collection: DATA_COLLECTION,
+  });
+
+  function toTableItem(id: number, name: string) {
+    return createMockCollectionItem({
+      id,
+      name,
+      model: "table",
+      database_id: 1,
+      collection_id: DATA_COLLECTION.id,
+    });
+  }
+
+  async function setupLibrary({
+    value,
+    hasMetric = false,
+  }: { value?: DataPickerValue; hasMetric?: boolean } = {}) {
+    // Without a metric only the Data collection has items, so the library
+    // lists only tables
+    setupLibraryEndpoints({
+      hasLibrary: true,
+      library: {
+        id: LIBRARY_ID,
+        below: hasMetric ? ["metric", "table"] : ["table"],
+      },
+    });
+    // the database endpoints also answer GET /api/table/:id with `collection`
+    return setup({
+      value,
+      hasLibrary: true,
+      databases: [
+        createMockDatabase({ id: 1, name: "DB 1", tables: [ACCOUNTS, ORDERS] }),
+      ],
+      collections: [
+        createMockCollection({ id: LIBRARY_ID, name: "Library" }),
+        DATA_COLLECTION,
+        METRICS_COLLECTION,
+      ],
+      collectionItems: [
+        {
+          collection: createMockCollection({ id: LIBRARY_ID }),
+          items: [
+            createMockCollectionItem({
+              id: DATA_COLLECTION_ID,
+              name: DATA_COLLECTION.name,
+              type: DATA_COLLECTION.type,
+              location: DATA_COLLECTION.location,
+              is_library_root: true,
+              model: "collection",
+              here: ["table"],
+            }),
+            createMockCollectionItem({
+              id: METRICS_COLLECTION_ID,
+              name: METRICS_COLLECTION.name,
+              type: METRICS_COLLECTION.type,
+              location: METRICS_COLLECTION.location,
+              is_library_root: true,
+              model: "collection",
+              here: hasMetric ? ["metric"] : [],
+            }),
+          ],
+        },
+        {
+          collection: DATA_COLLECTION,
+          items: [toTableItem(9, "Accounts"), toTableItem(ORDERS_ID, "Orders")],
+        },
+        {
+          collection: METRICS_COLLECTION,
+          items: hasMetric
+            ? [
+                createMockCollectionItem({
+                  id: 50,
+                  name: "Trusted Orders Metric",
+                  model: "metric",
+                  collection_id: METRICS_COLLECTION_ID,
+                }),
+              ]
+            : [],
+        },
+      ],
+    });
+  }
+
+  const getLevel = (level: number) =>
+    screen.getByTestId(`item-picker-level-${level}`);
+
+  const findItem = async (level: number, name: string) => {
+    const element = await waitFor(() => getLevel(level));
+    return within(element).findByRole("link", { name: new RegExp(name) });
+  };
+
+  it("shows the library when only its Data collection has items", async () => {
+    await setupLibrary();
+
+    await userEvent.click(await findItem(0, "Library"));
+    await userEvent.click(await findItem(1, "Data"));
+
+    expect(await findItem(2, "Orders")).toBeInTheDocument();
+  });
+
+  it("builds the path to a published table from the value", async () => {
+    // A metric in the Metrics collection, like in the e2e test this replaces
+    await setupLibrary({
+      value: { model: "table", id: ORDERS_ID, database_id: 1 },
+      hasMetric: true,
+    });
+
+    expect(await findItem(2, "Orders")).toHaveAttribute("data-active", "true");
+    expect(await findItem(2, "Accounts")).not.toHaveAttribute(
+      "data-active",
+      "true",
+    );
+    expect(await findItem(1, "Data")).toHaveAttribute("data-active", "true");
+    expect(await findItem(0, "Library")).toHaveAttribute("data-active", "true");
   });
 });

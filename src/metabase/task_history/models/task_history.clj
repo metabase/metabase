@@ -32,7 +32,8 @@
 (methodical/defmethod t2/table-name :model/TaskHistory [_model] :task_history)
 
 (doto :model/TaskHistory
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 ;;; Permissions to read or write Task. If `advanced-permissions` is enabled it requires superusers or non-admins with
 ;;; monitoring permissions, Otherwise it requires superusers.

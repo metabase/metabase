@@ -307,6 +307,43 @@
                    after)
              (resolve-parts (into [{:type :text :id "t1" :text "Let me check the [Orders"}] after)))))))
 
+(deftest ^:parallel resolve-xf-flushes-held-text-where-its-text-block-ends-test
+  (testing "text held for a possible link comes out with its own block, before the next block"
+    (is (= [{:type :text :id "t1" :text "Values fall in the range "}
+            {:type :text :id "t1" :text "[0, 10)."}
+            {:type :text :id "t2" :text "Next point."}]
+           (resolve-parts [{:type :text :id "t1" :text "Values fall in the range [0, 10)."}
+                           {:type :text :id "t2" :text "Next point."}]))))
+  (doseq [held ["<" "<meta"]]
+    (testing (str "a block that ends in " (pr-str held) " keeps it")
+      (is (= [{:type :text :id "t1" :text "See "}
+              {:type :text :id "t1" :text held}
+              {:type :text :id "t2" :text "Next point."}]
+             (resolve-parts [{:type :text :id "t1" :text (str "See " held)}
+                             {:type :text :id "t2" :text "Next point."}])))))
+  (testing "a block that is held whole keeps its text"
+    (is (= [{:type :text :id "t1" :text "[0, 10)."}
+            {:type :text :id "t2" :text "Next point."}]
+           (resolve-parts [{:type :text :id "t1" :text "[0, 10)."}
+                           {:type :text :id "t2" :text "Next point."}]))))
+  (testing "the consumer stops at the held text flushed before the next block"
+    (is (= [{:type :text :id "t1" :text "a "}
+            {:type :text :id "t1" :text "[b"}]
+           (into [] (comp (mlb/resolve-xf {} {} (atom {})) (take 2))
+                 [{:type :text :id "t1" :text "a [b"}
+                  {:type :text :id "t2" :text "c"}])))))
+
+(deftest ^:parallel resolve-xf-holds-text-between-text-blocks-with-a-part-between-test
+  (doseq [part [{:type :reasoning :id "r1" :text "Thinking"}
+                {:type :usage :usage {:promptTokens 1}}]]
+    (testing (str "a link that a " (name (:type part)) " part splits into two text blocks stays one link")
+      (is (= [{:type :text :id "t1" :text "See "}
+              part
+              {:type :text :id "t2" :text "[My Model](/model/1)"}]
+             (resolve-parts [{:type :text :id "t1" :text "See [My "}
+                             part
+                             {:type :text :id "t2" :text "Model](metabase://model/1)"}]))))))
+
 (deftest ^:parallel resolve-xf-supports-early-termination-test
   (let [take-parts (fn [n parts]
                      (into [] (comp (mlb/resolve-xf {} {} (atom {})) (take n)) parts))]
