@@ -450,6 +450,68 @@ describe("Map", () => {
     });
   });
 
+  describe("settings of native results without coordinate types (metabase#18063)", () => {
+    const cols = [
+      nativeColumn("LATITUDE"),
+      nativeColumn("LONGITUDE"),
+      nativeColumn("COUNT", { base_type: "type/Integer" }),
+      nativeColumn("NAME", { base_type: "type/Text" }),
+    ];
+    const rows = [
+      [null, null, null, "NULL ROW"],
+      [55.6761, 12.5683, 1, "Copenhagen"],
+    ];
+
+    it("should default to a region map and offer the pin map", async () => {
+      const onChange = jest.fn<void, [VisualizationSettings, unknown]>();
+      const [series] = getMapSeries({ cols, rows, settings: {} });
+      renderWithProviders(
+        <QuestionChartSettings
+          series={[series]}
+          onChange={onChange}
+          initial={{ section: "Data" }}
+        />,
+      );
+
+      const mapType = screen.getByLabelText("Map type");
+      expect(mapType).toHaveValue("Region map");
+      await userEvent.click(mapType);
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Pin map" }),
+      );
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange.mock.calls[0][0]).toMatchObject({ "map.type": "pin" });
+    });
+
+    it("should ask for the latitude and longitude fields of a pin map", () => {
+      const [series] = getMapSeries({
+        cols,
+        rows,
+        settings: { "map.type": "pin" },
+      });
+      renderWithProviders(
+        <QuestionChartSettings
+          series={[series]}
+          onChange={jest.fn()}
+          initial={{ section: "Data" }}
+        />,
+      );
+
+      // the field pickers are not associated with their labels
+      expect(
+        within(
+          screen.getByTestId("chart-settings-widget-map.latitude_column"),
+        ).getByPlaceholderText("Select a field"),
+      ).toHaveValue("");
+      expect(
+        within(
+          screen.getByTestId("chart-settings-widget-map.longitude_column"),
+        ).getByPlaceholderText("Select a field"),
+      ).toHaveValue("");
+    });
+  });
+
   describe("grid map", () => {
     it("should show the cell coordinates in the tooltip without a metric column (metabase#17940)", async () => {
       setup({
