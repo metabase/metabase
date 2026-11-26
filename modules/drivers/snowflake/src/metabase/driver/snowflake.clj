@@ -1384,6 +1384,55 @@
            (remove str/blank?)
            vec))))
 
+;;; ------------------------------------------------ Change tokens ------------------------------------------------
+
+(def ^:private max-statement-seconds
+  "The longest a Snowflake statement can run: the largest value of `STATEMENT_TIMEOUT_IN_SECONDS`, 7 days. A value of
+  0 also means this limit."
+  (* 7 24 60 60))
+
+(defn- change-tokens-sql
+  "The columns of `INFORMATION_SCHEMA.TABLES` of `db` that the change tokens of the base tables in `schemas` are made of,
+  with the age of `LAST_ALTERED` in seconds."
+  [db schemas]
+  (into [(str "SELECT table_schema, table_name, last_altered, row_count, bytes,"
+              " DATEDIFF('second', last_altered, CURRENT_TIMESTAMP()) AS altered_seconds_ago"
+              " FROM " (quote-name db) ".INFORMATION_SCHEMA.TABLES"
+              " WHERE table_type = 'BASE TABLE'"
+              " AND COALESCE(is_iceberg, 'NO') = 'NO'"
+              " AND table_schema IN (" (str/join ", " (repeat (count schemas) "?")) ")")]
+        schemas))
+
+(defn- change-token
+  "The change token of a table from its row of [[change-tokens-sql]]: `LAST_ALTERED`, which changes on DML, DDL and
+  background maintenance, and the row count and bytes. nil while `LAST_ALTERED` is newer than the longest a statement
+  can run: for DML it holds the time the statement started, not the time it committed, so a statement still running
+  can have set it before its rows are visible."
+  [{:keys [last_altered row_count bytes altered_seconds_ago]}]
+  (when (and last_altered
+             altered_seconds_ago
+             (> altered_seconds_ago max-statement-seconds))
+    (str/join ":" [last_altered row_count bytes])))
+
+;; Views, external tables and Iceberg tables get no token: `LAST_ALTERED` does not change when the base tables of a
+;; view change, does not follow the refresh of an external table, and an Iceberg table can change outside Snowflake.
+(defmethod driver/database-supports? [:snowflake :table-change-tokens]
+  [driver _feat _db]
+  (= driver :snowflake))
+
+(defmethod driver/table-change-tokens :snowflake
+  [_driver database tables]
+  (let [schemas (into [] (comp (keep :schema) (distinct)) tables)]
+    (if (seq schemas)
+      (let [schema+name->token (into {}
+                                     (map (juxt (juxt :table_schema :table_name) change-token))
+                                     (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                                                 (change-tokens-sql (db-name database) schemas)))]
+        (into {}
+              (map (juxt :id #(schema+name->token [(:schema %) (:name %)])))
+              tables))
+      {})))
+
 ;; `CLUSTERING_KEY` lives in the current database's INFORMATION_SCHEMA; a blank schema falls back to `current_schema()`.
 (defmethod driver/fetch-table-indexes :snowflake
   [_driver database schema table]
