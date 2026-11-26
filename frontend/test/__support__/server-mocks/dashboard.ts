@@ -6,7 +6,10 @@ import type {
   DashboardId,
   DashboardQueryMetadata,
   FieldId,
+  FieldValue,
   GetPublicDashboard,
+  ParameterId,
+  ParameterValues,
 } from "metabase-types/api";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
@@ -91,5 +94,73 @@ export function setupValidFilterFieldsEndpoint(
   fetchMock.get(
     "path:/api/dashboard/params/valid-filter-fields",
     filteringIdsByFilteredId,
+  );
+}
+
+export function setupDashboardParameterValuesEndpoint({
+  dashboardId,
+  parameterId,
+  parameterValues,
+}: {
+  dashboardId: DashboardId;
+  parameterId: ParameterId;
+  parameterValues: ParameterValues;
+}) {
+  fetchMock.get(
+    `path:/api/dashboard/${dashboardId}/params/${parameterId}/values`,
+    parameterValues,
+  );
+}
+
+/**
+ * Like the real API, returns the values that contain the search query, ignoring case.
+ */
+export function setupDashboardParameterSearchEndpoint({
+  dashboardId,
+  parameterId,
+  parameterValues,
+}: {
+  dashboardId: DashboardId;
+  parameterId: ParameterId;
+  parameterValues: ParameterValues;
+}) {
+  fetchMock.get(
+    `begin:http://localhost/api/dashboard/${dashboardId}/params/${parameterId}/search/`,
+    ({ url }) => {
+      const query = decodeURIComponent(
+        new URL(url).pathname.split("/").pop() ?? "",
+      ).toLowerCase();
+      return {
+        ...parameterValues,
+        values: parameterValues.values.filter(([value]) =>
+          String(value).toLowerCase().includes(query),
+        ),
+      };
+    },
+  );
+}
+
+/**
+ * Like the real API, returns the remapped value for a known value, and the value alone otherwise.
+ */
+export function setupDashboardParameterRemappingEndpoint({
+  dashboardId,
+  parameterId,
+  remappings,
+}: {
+  dashboardId: DashboardId;
+  parameterId: ParameterId;
+  remappings: FieldValue[];
+}) {
+  fetchMock.get(
+    `path:/api/dashboard/${dashboardId}/params/${parameterId}/remapping`,
+    ({ url }) => {
+      const value = new URL(url).searchParams.get("value");
+      return (
+        remappings.find(
+          ([remappedValue]) => String(remappedValue) === value,
+        ) ?? [value]
+      );
+    },
   );
 }
