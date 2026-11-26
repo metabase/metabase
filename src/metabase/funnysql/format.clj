@@ -16,79 +16,68 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- default-context :- ::funnysql.schema/context
-  "A fresh compile context for `engine` and `options`."
-  [engine  :- ::funnysql.schema/engine
-   options :- ::funnysql.schema/options]
+(defn- default-context "A fresh compile context for `engine` and `options`."
+  [engine
+   options]
   {:engine  engine
    :options options
    :sql     (StringBuilder.)
    :args    (volatile! (transient []))})
 
-(mu/defn- engine :- ::funnysql.schema/engine
-  "The engine `context` compiles for."
-  [context :- ::funnysql.schema/context]
+(defn- engine "The engine `context` compiles for."
+  [context]
   (:engine context))
 
-(mu/defn- options :- ::funnysql.schema/options
-  "The options `context` compiles with."
-  [context :- ::funnysql.schema/context]
+(defn- options "The options `context` compiles with."
+  [context]
   (:options context))
 
-(mu/defn- append-sql! :- :nil
-  "Append `s` to the SQL text of `context`."
-  [context :- ::funnysql.schema/context
-   s       :- [:or :string char?]]
+(defn- append-sql! "Append `s` to the SQL text of `context`."
+  [context
+   s]
   (.append ^StringBuilder (:sql context) (str s))
   nil)
 
-(mu/defn- append-arg! :- :nil
-  "Append `arg` to the arguments of `context`."
-  [context :- ::funnysql.schema/context
-   arg     :- ::funnysql.schema/bindable]
+(defn- append-arg! "Append `arg` to the arguments of `context`."
+  [context
+   arg]
   (vswap! (:args context) conj! arg)
   nil)
 
-(mu/defn- result! :- ::funnysql.schema/compiled
-  "The `[sql & args]` written to `context`."
-  [context :- ::funnysql.schema/context]
+(defn- result! "The `[sql & args]` written to `context`."
+  [context]
   (into [(str (:sql context))] (persistent! @(:args context))))
 
 (declare expr! call! query!)
 
-(mu/defn- subquery? :- :boolean
-  "Whether `x` is a map marked `^:allow-subquery`."
-  [x :- [:or ::funnysql.schema/form ::funnysql.schema/bindable]]
+(defn- subquery? "Whether `x` is a map marked `^:allow-subquery`."
+  [x]
   (boolean (and (map? x)
                 (:allow-subquery (meta x)))))
 
-(mu/defn- call-form? :- :boolean
-  "Whether `x` is a vector headed by a keyword, the shape of a call."
-  [x :- [:or ::funnysql.schema/form ::funnysql.schema/bindable]]
+(defn- call-form? "Whether `x` is a vector headed by a keyword, the shape of a call."
+  [x]
   (and (vector? x)
        (keyword? (get x 0))))
 
-(mu/defn- call-of-type? :- :boolean
-  "Whether `x` is a call of the operator `k-or-k-set`, or of one of the set of them."
-  [x          :- [:or ::funnysql.schema/form ::funnysql.schema/bindable]
-   k-or-k-set :- [:or :keyword [:set :keyword]]]
+(defn- call-of-type? "Whether `x` is a call of the operator `k-or-k-set`, or of one of the set of them."
+  [x
+   k-or-k-set]
   (and (call-form? x)
        (let [f (get x 0)]
          (if (set? k-or-k-set)
            (contains? k-or-k-set f)
            (= f k-or-k-set)))))
 
-(mu/defn- bind-value! :- :nil
-  "Write a `?` to the SQL text and bind `x` to it."
-  [x       :- ::funnysql.schema/bindable
-   context :- ::funnysql.schema/context]
+(defn- bind-value! "Write a `?` to the SQL text and bind `x` to it."
+  [x
+   context]
   (append-sql! context "?")
   (append-arg! context x))
 
-(mu/defn- splice-number! :- :nil
-  "Write `n` into the SQL text as a numeric literal. A Ratio is written as a double, since `1/2` is not SQL."
-  [n       :- number?
-   context :- ::funnysql.schema/context]
+(defn- splice-number! "Write `n` into the SQL text as a numeric literal. A Ratio is written as a double, since `1/2` is not SQL."
+  [n
+   context]
   (let [s (str (cond-> n (ratio? n) double))]
     ;; don't trust `(str n)` blindly -- fail closed instead of splicing whatever it produces. This rejects
     ;; non-finite Doubles (`NaN`, `Infinity`) and guards against a hostile custom `Number` implementation whose
@@ -97,24 +86,22 @@
       (throw (ex-info "Invalid number" {:n n})))
     (append-sql! context s)))
 
-(mu/defn- number! :- :nil
-  "Splice an integer; bind anything else. Postgres and H2 type a decimal literal like `0.5` as an exact `NUMERIC`, so a
+(defn- number! "Splice an integer; bind anything else. Postgres and H2 type a decimal literal like `0.5` as an exact `NUMERIC`, so a
   spliced Double, Float or Ratio would come back as a `BigDecimal`, and a Float would be written as its shortest
   decimal rather than the value it holds. Bound, each keeps its type -- [[metabase.app-db.jdbc-protocols]] sets a
   Ratio as a double -- which is what Honey SQL did (#9246). Use `[:inline n]` where a non-integral number has to be a
   literal."
-  [n       :- number?
-   context :- ::funnysql.schema/context]
+  [n
+   context]
   (if (integer? n)
     (splice-number! n context)
     (bind-value! n context)))
 
-(mu/defn- interpose-fn :- :nil
-  "Iterate all elements in `xs`. Execute `(x-fn <x>)` for each item in `xs`. Execute `(separator-fn)` in between each
+(defn- interpose-fn "Iterate all elements in `xs`. Execute `(x-fn <x>)` for each item in `xs`. Execute `(separator-fn)` in between each
   item in `xs`."
-  [xs           :- [:maybe ::funnysql.schema/separated-items]
-   x-fn         :- fn?
-   separator-fn :- fn?]
+  [xs
+   x-fn
+   separator-fn]
   {:pre [(or (nil? xs) (coll? xs))]} ; maps are ok here, we can iterate over the pairs
   (when (seq xs)
     (loop [[x & more] xs]
@@ -123,67 +110,55 @@
         (separator-fn)
         (recur more)))))
 
-(mu/defn- ->sequence :- [:maybe [:or [:sequential ::funnysql.schema/sequence-item] [:set ::funnysql.schema/sequence-item]]]
-  "Normalize a clause value that is allowed to be either a single item or a sequence of them. Honey SQL accepts
+(defn- ->sequence "Normalize a clause value that is allowed to be either a single item or a sequence of them. Honey SQL accepts
   `{:group-by :id}` as shorthand for `{:group-by [:id]}` -- likewise `:select`, `:order-by`, `:columns`, `:returning`
   and `:partition-by` -- and plenty of app-db queries rely on that, so accept it instead of blowing up on `(seq :id)`."
-  [x :- [:maybe [:or
-                 ::funnysql.schema/clause.select
-                 ::funnysql.schema/identifier-list
-                 ::funnysql.schema/clause.group-by
-                 ::funnysql.schema/clause.order-by
-                 ::funnysql.schema/clause.returning]]]
+  [x]
   (cond
     ;; `nil` means the clause is absent, not a one-element list containing `NULL`
     (nil? x)                      nil
     (or (sequential? x) (set? x)) x
     :else                         [x]))
 
-(mu/defn- commas! :- :nil
-  "Compile `xs` separated by commas."
-  [xs      :- [:maybe ::funnysql.schema/exprs]
-   context :- ::funnysql.schema/context]
+(defn- commas! "Compile `xs` separated by commas."
+  [xs
+   context]
   (interpose-fn xs #(expr! % context) #(append-sql! context ", ")))
 
-(mu/defn- parens! :- :nil
-  "Compile `x` wrapped in parens. A `^:allow-subquery` map is compiled directly rather than via [[expr!]], which
+(defn- parens! "Compile `x` wrapped in parens. A `^:allow-subquery` map is compiled directly rather than via [[expr!]], which
   would parenthesize it a second time."
-  [x       :- ::funnysql.schema/expr
-   context :- ::funnysql.schema/context]
+  [x
+   context]
   (append-sql! context "(")
   ((if (subquery? x) query! expr!) x context)
   (append-sql! context ")"))
 
-(mu/defn- list! :- :nil
-  "Compile `xs` as a parenthesized list."
-  [xs      :- [:maybe ::funnysql.schema/exprs]
-   context :- ::funnysql.schema/context]
+(defn- list! "Compile `xs` as a parenthesized list."
+  [xs
+   context]
   (append-sql! context "(")
   (commas! xs context)
   (append-sql! context ")"))
 
-(mu/defn- check-identifier-form :- :nil
-  "Table/column-name positions must never silently fall through to [[bind-value!]]'s `?`-parameter handling just
+(defn- check-identifier-form "Table/column-name positions must never silently fall through to [[bind-value!]]'s `?`-parameter handling just
   because someone passed the wrong shape of value (a string, a number, a map...) -- that produces a confusing
   runtime error from the database instead of a clear one from the compiler. Call this before compiling anything
   in one of those positions."
-  [x :- ::funnysql.schema/expr]
+  [x]
   (when-not (keyword? x)
     (throw (ex-info "Expected an identifier" {:x x}))))
 
-(mu/defn- check-subquery-marked :- :nil
-  "In a position that only takes a query -- a CTE, `FROM`, a join, `EXISTS`, `UNION`, `INSERT INTO ... SELECT` -- a map
+(defn- check-subquery-marked "In a position that only takes a query -- a CTE, `FROM`, a join, `EXISTS`, `UNION`, `INSERT INTO ... SELECT` -- a map
   not marked `^:allow-subquery` would be bound as a `?` the database can only reject, so throw instead, like `:in`
   does. Call this before compiling anything in one of those positions."
-  [x :- ::funnysql.schema/form]
+  [x]
   (when (and (map? x)
              (not (subquery? x)))
     (throw (ex-info "A subquery must be marked ^:allow-subquery" {:subquery x}))))
 
-(mu/defn- quoted-identifier! :- :nil
-  "Emit `s` as a single quoted identifier. `s` must already be validated -- it is not escaped."
-  [s       :- :string
-   context :- ::funnysql.schema/context]
+(defn- quoted-identifier! "Emit `s` as a single quoted identifier. `s` must already be validated -- it is not escaped."
+  [s
+   context]
   (let [engine     (engine context)
         quote-char (case engine
                      :mysql "`"
@@ -194,10 +169,9 @@
                            s))
     (append-sql! context quote-char)))
 
-(mu/defn- identifier-part! :- :nil
-  "Emit a single quoted and escaped identifier part."
-  [part    :- :string
-   context :- ::funnysql.schema/context]
+(defn- identifier-part! "Emit a single quoted and escaped identifier part."
+  [part
+   context]
   (if (= part "*")
     (append-sql! context "*")
     (do
@@ -205,19 +179,17 @@
         (throw (ex-info "Invalid identifier" {:identifier part})))
       (quoted-identifier! part context))))
 
-(mu/defn- identifier! :- :nil
-  "Emit a (possibly qualified) identifier composed of multiple [[identifier-part!]]s."
-  [s       :- :string
-   context :- ::funnysql.schema/context]
+(defn- identifier! "Emit a (possibly qualified) identifier composed of multiple [[identifier-part!]]s."
+  [s
+   context]
   (interpose-fn (str/split s #"\.") #(identifier-part! % context) #(append-sql! context ".")))
 
-(mu/defn- alias! :- :nil
-  "Emit the alias in `<x> AS <alias>`. An alias names a single thing, so like Honey SQL, an unqualified keyword alias is
+(defn- alias! "Emit the alias in `<x> AS <alias>`. An alias names a single thing, so like Honey SQL, an unqualified keyword alias is
   quoted whole rather than split on `.` into qualified parts -- `:report_card.name` is the column `\"report_card.name\"`,
   not `\"report_card\".\"name\"`, which isn't valid SQL in an alias. For the same reason a qualified keyword throws
   rather than compiling to `AS \"a\".\"b\"`."
-  [alias   :- ::funnysql.schema/alias
-   context :- ::funnysql.schema/context]
+  [alias
+   context]
   (if (simple-keyword? alias)
     (let [s (name alias)]
       (when-not (re-matches #"^[A-Za-z_][?A-Za-z0-9_.-]*$" s)
@@ -225,15 +197,12 @@
       (quoted-identifier! s context))
     (throw (ex-info "Invalid alias: an alias cannot be qualified" {:alias alias}))))
 
-(mu/defn- identifier-with-optional-alias! :- :nil
-  "Handle an identifier form as seen in `:select`, `:from`, etc.; unwrapped or a vector with one element will act an
+(defn- identifier-with-optional-alias! "Handle an identifier form as seen in `:select`, `:from`, etc.; unwrapped or a vector with one element will act an
   unaliased identifier while a vector with two elements will emit `<x> AS <y>`. `check-lhs`, if given, is called with
   the unaliased part before it is compiled."
-  [identifier :- [:or ::funnysql.schema/select-item ::funnysql.schema/table-ref]
-   context    :- ::funnysql.schema/context
-   & {:keys [check-lhs include-as?], :or {include-as? true}} :- [:maybe [:map {:closed true}
-                                                                         [:check-lhs   {:optional true} fn?]
-                                                                         [:include-as? {:optional true} :boolean]]]]
+  [identifier
+   context
+   & {:keys [check-lhs include-as?], :or {include-as? true}}]
   (let [[lhs rhs] (if (vector? identifier)
                     identifier
                     [identifier])]
@@ -247,18 +216,16 @@
       (append-sql! context (if include-as? " AS " " "))
       (alias! rhs context))))
 
-(mu/defn- identifier-list! :- :nil
-  "Compile a parenthesized list of column names."
-  [xs      :- ::funnysql.schema/identifier-list
-   context :- ::funnysql.schema/context]
+(defn- identifier-list! "Compile a parenthesized list of column names."
+  [xs
+   context]
   (let [xs (->sequence xs)]
     (run! check-identifier-form xs)
     (list! xs context)))
 
-(mu/defn- assignments! :- :nil
-  "Compile `col = value` assignments separated by commas."
-  [kvs     :- ::funnysql.schema/assignments
-   context :- ::funnysql.schema/context]
+(defn- assignments! "Compile `col = value` assignments separated by commas."
+  [kvs
+   context]
   (letfn [(x-equals-y! [[x y]]
             (check-identifier-form x)
             (expr! x context)
@@ -266,18 +233,16 @@
             (expr! y context))]
     (interpose-fn kvs x-equals-y! #(append-sql! context ", "))))
 
-(mu/defn- function-call! :- :nil
-  "Compile `f(args...)`."
-  [f       :- [:or :keyword :string]
-   args    :- [:maybe [:sequential ::funnysql.schema/expr]]
-   context :- ::funnysql.schema/context]
+(defn- function-call! "Compile `f(args...)`."
+  [f
+   args
+   context]
   (append-sql! context (name f))
   (list! args context))
 
-(mu/defn- type-name! :- :nil
-  "Compile a SQL type name, validated with [[h2x/raw-type-name?]] before it is spliced."
-  [type-name :- [:or ::funnysql.schema/type-name ::funnysql.schema/column-type [:= :datetime]]
-   context   :- ::funnysql.schema/context]
+(defn- type-name! "Compile a SQL type name, validated with [[h2x/raw-type-name?]] before it is spliced."
+  [type-name
+   context]
   (let [;; a keyword spells the spaces in a type name as dashes, e.g. `:timestamp-with-time-zone`. A string is the name
         ;; exactly as given, where a dash can be meaningful -- ClickHouse's `DateTime64(3, 'America/Port-au-Prince')`
         keyword-name  (fn [k]
@@ -299,10 +264,9 @@
       (throw (ex-info "Invalid type" {:type type-name-str})))
     (append-sql! context type-name-str)))
 
-(mu/defn- string-literal! :- :nil
-  "Splice `s`, a hardcoded string or keyword, as a single-quoted SQL string literal."
-  [s       :- [:or :string :keyword]
-   context :- ::funnysql.schema/context]
+(defn- string-literal! "Splice `s`, a hardcoded string or keyword, as a single-quoted SQL string literal."
+  [s
+   context]
   ;; only double backslashes on engines that actually treat `\` as an escape character inside a plain `'...'`
   ;; literal. MySQL always does, unless the session's `NO_BACKSLASH_ESCAPES` sql_mode is set (see
   ;; [[metabase.driver.mysql/utf8-string-literal]]'s docstring for the same caveat). Postgres and H2 do *not*, as long
@@ -319,9 +283,8 @@
     (append-sql! context s)
     (append-sql! context "'")))
 
-(mu/defn- check-valid-unit :- :nil
-  "Throw unless `unit` is a token of letters and digits, safe to splice."
-  [unit :- ::funnysql.schema/unit-name]
+(defn- check-valid-unit "Throw unless `unit` is a token of letters and digits, safe to splice."
+  [unit]
   (when-not (and ((some-fn keyword? string?) unit)
                  (re-matches #"^[a-zA-Z0-9]+$" (name unit)))
     (throw (ex-info "Invalid unit" {:unit unit}))))
@@ -354,39 +317,35 @@
     :or
     honey.sql.pg-ops/atat})
 
-(mu/defn- predicate-call? :- :boolean
-  "Whether `x` is a call of one of the [[predicate-operators]]."
-  [x :- ::funnysql.schema/expr]
+(defn- predicate-call? "Whether `x` is a call of one of the [[predicate-operators]]."
+  [x]
   (call-of-type? x predicate-operators))
 
 (def ^:private infix-operators
   (into predicate-operators #{:+ :- :/ :* :% :||}))
 
-(mu/defn- infix-call? :- :boolean
-  "Whether `x` compiles to a bare infix expression -- a [[predicate-call?]], arithmetic, `||`, or on Postgres a
+(defn- infix-call? "Whether `x` compiles to a bare infix expression -- a [[predicate-call?]], arithmetic, `||`, or on Postgres a
   `:date-add` -- which needs parens as the operand of another infix operator: `[:* [:+ :x 1] 2]` is `(x + 1) * 2`, not
   `x + 1 * 2`. `:escape` is the exception. It is the postfix `ESCAPE` of the `LIKE` pattern it is the operand of, and
   `x LIKE (? ESCAPE '!')` is not valid SQL."
-  [x       :- ::funnysql.schema/expr
-   context :- ::funnysql.schema/context]
+  [x
+   context]
   (and (call-form? x)
        (not (call-of-type? x :escape))
        (or (call-of-type? x infix-operators)
            (and (call-of-type? x :date-add)
                 (= (engine context) :postgres)))))
 
-(mu/defn- infix-operand! :- :nil
-  "Compile `x` as the operand of an infix operator like `*`, `IS`, `BETWEEN` or `IN`, parenthesized if it is an
+(defn- infix-operand! "Compile `x` as the operand of an infix operator like `*`, `IS`, `BETWEEN` or `IN`, parenthesized if it is an
   [[infix-call?]]."
-  [x       :- ::funnysql.schema/expr
-   context :- ::funnysql.schema/context]
+  [x
+   context]
   ((if (infix-call? x context) parens! expr!) x context))
 
-(mu/defn- infix! :- :nil
-  "Compile the operator `f` between `args`, or as a unary `+`/`-` when there is one."
-  [f       :- :keyword
-   args    :- [:sequential ::funnysql.schema/expr]
-   context :- ::funnysql.schema/context]
+(defn- infix! "Compile the operator `f` between `args`, or as a unary `+`/`-` when there is one."
+  [f
+   args
+   context]
   (if (= (count args) 1)
     (let [x (first args)]
       (case f
@@ -407,12 +366,11 @@
                   (str \space (name f) \space))]
       (interpose-fn args #(infix-operand! % context) #(append-sql! context f-str)))))
 
-(mu/defn- equals! :- :nil
-  "Compile an equality `x <sql> y`, or `x <nil-sql>` when either side is `nil`."
-  [sql            :- :string
-   nil-sql        :- :string
-   [x y :as args] :- [:sequential ::funnysql.schema/expr]
-   context        :- ::funnysql.schema/context]
+(defn- equals! "Compile an equality `x <sql> y`, or `x <nil-sql>` when either side is `nil`."
+  [sql
+   nil-sql
+   [x y :as args]
+   context]
   (when-not (= (count args) 2)
     (throw (ex-info "Wrong number of args to :=/:!=/:<>/:not= (expected 2 args)" {:args args})))
   ;; A `nil` on *either* side becomes `IS [NOT] NULL` against whichever side is non-`nil`, matching Honey SQL's
@@ -433,25 +391,23 @@
         (append-sql! context sql)
         (operand! y)))))
 
-(mu/defn- compound! :- :nil
-  "Compile a compound boolean expression like `:and` or `:or`. Like Honey SQL we ignore `nil` args -- this is what makes
+(defn- compound! "Compile a compound boolean expression like `:and` or `:or`. Like Honey SQL we ignore `nil` args -- this is what makes
   `[:and x (when y z)]` work -- and if nothing is left we compile `identity-value` (`TRUE` for AND, `FALSE` for OR)
   rather than emitting nothing at all."
-  [sql            :- :string
-   identity-value :- :boolean
-   xs             :- [:maybe [:sequential [:maybe ::funnysql.schema/expr]]]
-   context        :- ::funnysql.schema/context]
+  [sql
+   identity-value
+   xs
+   context]
   (let [xs (filter some? xs)]
     (condp = (count xs)
       0 (expr! identity-value context)
       1 (expr! (first xs) context)
       (interpose-fn xs #(parens! % context) #(append-sql! context sql)))))
 
-(mu/defn- param-value :- ::funnysql.schema/bindable
-  "The value `context`'s options bind to `k`, for a `[:param k]` form. Throws if param named by `k` is missing from
+(defn- param-value "The value `context`'s options bind to `k`, for a `[:param k]` form. Throws if param named by `k` is missing from
   `:params` in the options map."
-  [k       :- :keyword
-   context :- ::funnysql.schema/context]
+  [k
+   context]
   {:pre [(keyword? k)]}
   ;; look the key up with a sentinel rather than testing the value for truthiness -- `false` and `nil` are both
   ;; legitimate parameter values.
@@ -460,9 +416,8 @@
       (throw (ex-info "Missing value for :param" {:param k})))
     v))
 
-(mu/defn- lift-value :- ::funnysql.schema/bindable
-  "`x` with each call or keyword in it wrapped in `[:lift ...]`, so it is bound rather than compiled."
-  [x :- ::funnysql.schema/bindable]
+(defn- lift-value "`x` with each call or keyword in it wrapped in `[:lift ...]`, so it is bound rather than compiled."
+  [x]
   (cond
     ((some-fn call-form? keyword?) x)
     [:lift x]
@@ -473,8 +428,7 @@
     :else
     x))
 
-(mu/defn- in-values :- ::funnysql.schema/in-values
-  "The values side of an `:in`/`:not-in` form, with a `[:param k]` naming a collection resolved to
+(defn- in-values "The values side of an `:in`/`:not-in` form, with a `[:param k]` naming a collection resolved to
   that collection.
 
   `IN` takes a list of values rather than one value, so a collection bound to a param has to expand
@@ -485,8 +439,8 @@
   A param naming anything else is left alone, and compiles to a single `?` as it would in any other
   value slot. A scalar is not a list of values, and a map must stay one bound value rather than
   become a list of its entries."
-  [vs      :- ::funnysql.schema/in-values
-   context :- ::funnysql.schema/context]
+  [vs
+   context]
   (if (call-of-type? vs :param)
     (let [v (lift-value (param-value (second vs) context))]
       (if (or (sequential? v) (set? v))
@@ -494,12 +448,11 @@
         vs))
     vs))
 
-(mu/defn- in! :- :nil
-  "Compile `lhs IN vs` or `lhs NOT IN vs`, or the constant an empty `vs` makes it."
-  [f       :- [:enum :in :not-in]
-   lhs     :- ::funnysql.schema/expr
-   vs      :- ::funnysql.schema/in-values
-   context :- ::funnysql.schema/context]
+(defn- in! "Compile `lhs IN vs` or `lhs NOT IN vs`, or the constant an empty `vs` makes it."
+  [f
+   lhs
+   vs
+   context]
   (let [vs (in-values vs context)]
     (when-not (or (empty? vs)
                   (sequential? vs)
@@ -535,20 +488,18 @@
           :else
           (list! vs context))))))
 
-(mu/defn- exists! :- :nil
-  "Compile `<sql>(subquery)`."
-  [sql      :- :string
-   subquery :- ::funnysql.schema/expr.subquery
-   context  :- ::funnysql.schema/context]
+(defn- exists! "Compile `<sql>(subquery)`."
+  [sql
+   subquery
+   context]
   (check-subquery-marked subquery)
   (append-sql! context sql)
   (expr! subquery context))
 
-(mu/defn- interval-literal! :- :nil
-  "Compile an interval of `amount` `unit`s, `INTERVAL '2 day'` on Postgres and `INTERVAL 2 day` on MySQL."
-  [amount  :- number?
-   unit    :- ::funnysql.schema/unit
-   context :- ::funnysql.schema/context]
+(defn- interval-literal! "Compile an interval of `amount` `unit`s, `INTERVAL '2 day'` on Postgres and `INTERVAL 2 day` on MySQL."
+  [amount
+   unit
+   context]
   (when-not (number? amount)
     (throw (ex-info "Invalid amount" {:amount amount})))
   (when-not (#{:millisecond :second :minute :hour :day :week :month :year} unit)
@@ -563,12 +514,11 @@
     (when postgres?
       (append-sql! context "'"))))
 
-(mu/defn- cast-unless! :- :nil
-  "Compile `x`, or `CAST(x AS type)` unless `skip-cast?`."
-  [x          :- ::funnysql.schema/expr
-   type-name  :- [:or ::funnysql.schema/type-name [:= :datetime]]
-   skip-cast? :- :boolean
-   context    :- ::funnysql.schema/context]
+(defn- cast-unless! "Compile `x`, or `CAST(x AS type)` unless `skip-cast?`."
+  [x
+   type-name
+   skip-cast?
+   context]
   (if skip-cast?
     (expr! x context)
     (do
@@ -578,10 +528,9 @@
       (type-name! type-name context)
       (append-sql! context ")"))))
 
-(mu/defn- expr-identifier! :- :nil
-  "Compile a keyword as a quoted and escaped identifier, or a `:%f.arg` shorthand as the call it names."
-  [k       :- ::funnysql.schema/expr.identifier
-   context :- ::funnysql.schema/context]
+(defn- expr-identifier! "Compile a keyword as a quoted and escaped identifier, or a `:%f.arg` shorthand as the call it names."
+  [k
+   context]
   ;; the `%` shorthand can carry a `/` (`:%lower.metabase_field/name`), so match against the keyword's whole printed
   ;; form rather than just its name
   (let [s (if-let [kw-ns (namespace k)]
@@ -605,32 +554,28 @@
       :else
       (identifier! (name k) context))))
 
-(mu/defn- expr-value! :- :nil
-  "Compile a literal value: `NULL`, `TRUE`/`FALSE`, a number, or a bound `?`."
-  [x       :- ::funnysql.schema/expr.value
-   context :- ::funnysql.schema/context]
+(defn- expr-value! "Compile a literal value: `NULL`, `TRUE`/`FALSE`, a number, or a bound `?`."
+  [x
+   context]
   (cond
     (nil? x)     (append-sql! context "NULL")
     (boolean? x) (append-sql! context (str x))
     (number? x)  (number! x context)
     :else        (bind-value! x context)))
 
-(mu/defn- expr-param! :- :nil
-  "Compile `[:param k]` as a `?` bound to the value of `k` in the options' `:params`."
-  [[_ k]   :- ::funnysql.schema/expr.param
-   context :- ::funnysql.schema/context]
+(defn- expr-param! "Compile `[:param k]` as a `?` bound to the value of `k` in the options' `:params`."
+  [[_ k]
+   context]
   (bind-value! (param-value k context) context))
 
-(mu/defn- expr-subquery! :- :nil
-  "Compile a scalar subquery, derived table and the like, which below the top level is always parenthesized."
-  [x       :- ::funnysql.schema/expr.subquery
-   context :- ::funnysql.schema/context]
+(defn- expr-subquery! "Compile a scalar subquery, derived table and the like, which below the top level is always parenthesized."
+  [x
+   context]
   (parens! x context))
 
-(mu/defn- expr-list! :- :nil
-  "Compile a parenthesized list of expressions."
-  [xs      :- ::funnysql.schema/expr.list
-   context :- ::funnysql.schema/context]
+(defn- expr-list! "Compile a parenthesized list of expressions."
+  [xs
+   context]
   ;; a function call has to be a vector. Compiled as a list of values, a seq like `(cons :or clauses)` gives
   ;; `("or", ...)`, which the database only rejects later with a misleading `Column "OR" not found`
   (when (and (sequential? xs)
@@ -638,10 +583,9 @@
     (throw (ex-info "A function call must be a vector, not a seq" {:form xs})))
   (list! xs context))
 
-(mu/defn- expr! :- :nil
-  "Compile an expression, dispatching on its kind like [[::funnysql.schema/expr]]."
-  [x       :- ::funnysql.schema/expr
-   context :- ::funnysql.schema/context]
+(defn- expr! "Compile an expression, dispatching on its kind like [[::funnysql.schema/expr]]."
+  [x
+   context]
   (cond
     (keyword? x)                  (expr-identifier! x context)
     (map? x)                      ((if (subquery? x) expr-subquery! bind-value!) x context)
@@ -649,63 +593,54 @@
     (or (sequential? x) (set? x)) (expr-list! x context)
     :else                         (expr-value! x context)))
 
-(mu/defn- call-=! :- :nil
-  "Compile `x = y`, or `x IS NULL` against a `nil`."
-  [[_ & args] :- ::funnysql.schema/call.=
-   context    :- ::funnysql.schema/context]
+(defn- call-=! "Compile `x = y`, or `x IS NULL` against a `nil`."
+  [[_ & args]
+   context]
   (equals! " = " " IS NULL" args context))
 
-(mu/defn- call-<>! :- :nil
-  "Compile `x <> y`, or `x IS NOT NULL` against a `nil`."
-  [[_ & args] :- ::funnysql.schema/call.<>
-   context    :- ::funnysql.schema/context]
+(defn- call-<>! "Compile `x <> y`, or `x IS NOT NULL` against a `nil`."
+  [[_ & args]
+   context]
   (equals! " <> " " IS NOT NULL" args context))
 
-(mu/defn- call-and! :- :nil
-  "Compile `a AND b ...`."
-  [[_ & args] :- ::funnysql.schema/call.and
-   context    :- ::funnysql.schema/context]
+(defn- call-and! "Compile `a AND b ...`."
+  [[_ & args]
+   context]
   (compound! " AND " true args context))
 
-(mu/defn- call-or! :- :nil
-  "Compile `a OR b ...`."
-  [[_ & args] :- ::funnysql.schema/call.or
-   context    :- ::funnysql.schema/context]
+(defn- call-or! "Compile `a OR b ...`."
+  [[_ & args]
+   context]
   (compound! " OR " false args context))
 
-(mu/defn- call-not! :- :nil
-  "Compile `NOT (x)`."
-  [[_ x]   :- ::funnysql.schema/call.not
-   context :- ::funnysql.schema/context]
+(defn- call-not! "Compile `NOT (x)`."
+  [[_ x]
+   context]
   (append-sql! context "NOT ")
   (parens! x context))
 
-(mu/defn- call-comparison! :- :nil
-  "Compile a binary comparison or pattern match."
-  [[f & args] :- ::funnysql.schema/call.comparison
-   context    :- ::funnysql.schema/context]
+(defn- call-comparison! "Compile a binary comparison or pattern match."
+  [[f & args]
+   context]
   (infix! f args context))
 
-(mu/defn- call-arithmetic! :- :nil
-  "Compile arithmetic or string concatenation."
-  [[f & args] :- ::funnysql.schema/call.arithmetic
-   context    :- ::funnysql.schema/context]
+(defn- call-arithmetic! "Compile arithmetic or string concatenation."
+  [[f & args]
+   context]
   (infix! f args context))
 
-(mu/defn- call-between! :- :nil
-  "Compile `x BETWEEN low AND high`."
-  [[_ x y z] :- ::funnysql.schema/call.between
-   context   :- ::funnysql.schema/context]
+(defn- call-between! "Compile `x BETWEEN low AND high`."
+  [[_ x y z]
+   context]
   (infix-operand! x context)
   (append-sql! context " BETWEEN ")
   (infix-operand! y context)
   (append-sql! context " AND ")
   (infix-operand! z context))
 
-(mu/defn- call-case! :- :nil
-  "Compile `CASE WHEN ... THEN ... ELSE ... END`."
-  [[_ & args] :- ::funnysql.schema/call.case
-   context    :- ::funnysql.schema/context]
+(defn- call-case! "Compile `CASE WHEN ... THEN ... ELSE ... END`."
+  [[_ & args]
+   context]
   (append-sql! context "CASE ")
   (loop [[condition expr & more] args]
     (if-not (= condition :else)
@@ -722,30 +657,26 @@
       (recur more)))
   (append-sql! context " END"))
 
-(mu/defn- call-cast! :- :nil
-  "Compile `CAST(x AS type)`."
-  [[_ x type-name] :- ::funnysql.schema/call.cast
-   context         :- ::funnysql.schema/context]
+(defn- call-cast! "Compile `CAST(x AS type)`."
+  [[_ x type-name]
+   context]
   (cast-unless! x type-name false context))
 
-(mu/defn- call-composite! :- :nil
-  "Compile a row constructor `(a, b, ...)`."
-  [[_ & args] :- ::funnysql.schema/call.composite
-   context    :- ::funnysql.schema/context]
+(defn- call-composite! "Compile a row constructor `(a, b, ...)`."
+  [[_ & args]
+   context]
   (list! args context))
 
-(mu/defn- call-current-timestamp! :- :nil
-  "Compile the current moment at the app DB's best precision, `now()`, or `now(6)` on MySQL where `now()` has whole
+(defn- call-current-timestamp! "Compile the current moment at the app DB's best precision, `now()`, or `now(6)` on MySQL where `now()` has whole
   seconds."
-  [_form   :- ::funnysql.schema/call.current-timestamp
-   context :- ::funnysql.schema/context]
+  [_form
+   context]
   (append-sql! context (if (= (engine context) :mysql) "now(6)" "now()")))
 
-(mu/defn- call-date-add! :- :nil
-  "Compile `x` plus `amount` `unit`s: a timestamp plus an interval on Postgres, `date_add` on MySQL and `dateadd` on H2,
+(defn- call-date-add! "Compile `x` plus `amount` `unit`s: a timestamp plus an interval on Postgres, `date_add` on MySQL and `dateadd` on H2,
   casting `x` to a timestamp unless it is `[:current-timestamp]`."
-  [[_ x amount unit] :- ::funnysql.schema/call.date-add
-   context           :- ::funnysql.schema/context]
+  [[_ x amount unit]
+   context]
   (let [now? (call-of-type? x :current-timestamp)]
     (case (engine context)
       :postgres
@@ -775,34 +706,29 @@
         (cast-unless! x :datetime now? context)
         (append-sql! context ")")))))
 
-(mu/defn- call-exists! :- :nil
-  "Compile `EXISTS (subquery)`."
-  [[_ subquery] :- ::funnysql.schema/call.exists
-   context      :- ::funnysql.schema/context]
+(defn- call-exists! "Compile `EXISTS (subquery)`."
+  [[_ subquery]
+   context]
   (exists! "EXISTS " subquery context))
 
-(mu/defn- call-not-exists! :- :nil
-  "Compile `NOT EXISTS (subquery)`."
-  [[_ subquery] :- ::funnysql.schema/call.not-exists
-   context      :- ::funnysql.schema/context]
+(defn- call-not-exists! "Compile `NOT EXISTS (subquery)`."
+  [[_ subquery]
+   context]
   (exists! "NOT EXISTS " subquery context))
 
-(mu/defn- call-in! :- :nil
-  "Compile `x IN values`."
-  [[_ lhs vs] :- ::funnysql.schema/call.in
-   context    :- ::funnysql.schema/context]
+(defn- call-in! "Compile `x IN values`."
+  [[_ lhs vs]
+   context]
   (in! :in lhs vs context))
 
-(mu/defn- call-not-in! :- :nil
-  "Compile `x NOT IN values`."
-  [[_ lhs vs] :- ::funnysql.schema/call.not-in
-   context    :- ::funnysql.schema/context]
+(defn- call-not-in! "Compile `x NOT IN values`."
+  [[_ lhs vs]
+   context]
   (in! :not-in lhs vs context))
 
-(mu/defn- call-inline! :- :nil
-  "Splice a number, boolean or `nil`, or a parenthesized list of them, into the SQL text."
-  [[_ x]   :- ::funnysql.schema/call.inline
-   context :- ::funnysql.schema/context]
+(defn- call-inline! "Splice a number, boolean or `nil`, or a parenthesized list of them, into the SQL text."
+  [[_ x]
+   context]
   (letfn [(inlineable-atomic-value? [x]
             ((some-fn nil? number? boolean?) x))
           ;; splice numbers directly rather than via [[expr!]], since [[number!]] binds non-integral ones
@@ -823,16 +749,14 @@
       (throw (ex-info ":inline is only allowed for numbers, booleans and nil; use [:literal s] for a string"
                       {:inline x})))))
 
-(mu/defn- call-lift! :- :nil
-  "Bind `x` as a `?` parameter."
-  [[_ x]   :- ::funnysql.schema/call.lift
-   context :- ::funnysql.schema/context]
+(defn- call-lift! "Bind `x` as a `?` parameter."
+  [[_ x]
+   context]
   (bind-value! x context))
 
-(mu/defn- call-over! :- :nil
-  "Compile `expr OVER (window)`."
-  [[_ [expr m & more :as args]] :- ::funnysql.schema/call.over
-   context                      :- ::funnysql.schema/context]
+(defn- call-over! "Compile `expr OVER (window)`."
+  [[_ [expr m & more :as args]]
+   context]
   ;; Honey SQL also accepts an alias inside the `:over` form, `[:over [expr window alias]]`. Don't silently drop it --
   ;; the query would fail later with a confusing `column "alias" does not exist`.
   (when (seq more)
@@ -851,10 +775,9 @@
     (query! m context))
   (append-sql! context ")"))
 
-(mu/defn- call-timestampdiff! :- :nil
-  "Compile `timestampdiff(unit, x, y)`."
-  [[_ unit col-x col-y] :- ::funnysql.schema/call.timestampdiff
-   context              :- ::funnysql.schema/context]
+(defn- call-timestampdiff! "Compile `timestampdiff(unit, x, y)`."
+  [[_ unit col-x col-y]
+   context]
   (check-valid-unit unit)
   (append-sql! context "timestampdiff(")
   (append-sql! context (name unit))
@@ -864,10 +787,9 @@
   (expr! col-y context)
   (append-sql! context ")"))
 
-(mu/defn- call-extract! :- :nil
-  "Compile `extract(unit FROM x)`."
-  [[_ unit expr] :- ::funnysql.schema/call.extract
-   context       :- ::funnysql.schema/context]
+(defn- call-extract! "Compile `extract(unit FROM x)`."
+  [[_ unit expr]
+   context]
   (check-valid-unit unit)
   (append-sql! context "extract(")
   (append-sql! context (name unit))
@@ -875,18 +797,16 @@
   (expr! expr context)
   (append-sql! context ")"))
 
-(mu/defn- call-distinct-count! :- :nil
-  "Compile `count(DISTINCT x)`."
-  [[_ expr] :- ::funnysql.schema/call.distinct-count
-   context  :- ::funnysql.schema/context]
+(defn- call-distinct-count! "Compile `count(DISTINCT x)`."
+  [[_ expr]
+   context]
   (append-sql! context "count(DISTINCT ")
   (expr! expr context)
   (append-sql! context ")"))
 
-(mu/defn- call-percentile-cont! :- :nil
-  "Compile `percentile_cont(fraction) WITHIN GROUP (ORDER BY x)`."
-  [[_ expr fraction] :- ::funnysql.schema/call.percentile-cont
-   context           :- ::funnysql.schema/context]
+(defn- call-percentile-cont! "Compile `percentile_cont(fraction) WITHIN GROUP (ORDER BY x)`."
+  [[_ expr fraction]
+   context]
   (when-not (number? fraction)
     (throw (ex-info "Invalid continuous percentile fraction" {:fraction fraction})))
   (append-sql! context "percentile_cont(")
@@ -896,38 +816,34 @@
   (expr! expr context)
   (append-sql! context ")"))
 
-(mu/defn- call-collate! :- :nil
-  "Compile `x COLLATE collation`."
-  [[_ expr collation] :- ::funnysql.schema/call.collate
-   context            :- ::funnysql.schema/context]
+(defn- call-collate! "Compile `x COLLATE collation`."
+  [[_ expr collation]
+   context]
   (when-not (re-matches #"^\w+$" (name collation))
     (throw (ex-info "Invalid collation" {:collation collation})))
   (expr! expr context)
   (append-sql! context " COLLATE ")
   (append-sql! context (name collation)))
 
-(mu/defn- call-literal! :- :nil
-  "Splice a hardcoded string as a single-quoted SQL string literal."
-  [[_ s]   :- ::funnysql.schema/call.literal
-   context :- ::funnysql.schema/context]
+(defn- call-literal! "Splice a hardcoded string as a single-quoted SQL string literal."
+  [[_ s]
+   context]
   (string-literal! s context))
 
-(mu/defn- call-escape! :- :nil
-  "Compile the `LIKE` pattern `pattern ESCAPE 'c'`, splicing the escape character as a literal."
-  [[_ pattern escape-char] :- ::funnysql.schema/call.escape
-   context                 :- ::funnysql.schema/context]
+(defn- call-escape! "Compile the `LIKE` pattern `pattern ESCAPE 'c'`, splicing the escape character as a literal."
+  [[_ pattern escape-char]
+   context]
   ;; `ESCAPE` is a postfix operator on a `LIKE` pattern (`... LIKE ? ESCAPE '!'`), not a function call -- compiling it
   ;; as `escape(?, '!')` produces a `Function "ESCAPE" not found` error from the database.
   (expr! pattern context)
   (append-sql! context " ESCAPE ")
   ((if (string? escape-char) string-literal! expr!) escape-char context))
 
-(mu/defn- call-position! :- :nil
-  "`[:position <substring> <string>]` compiles to `position(<substring> IN <string>)`, the 1-based index of the first
+(defn- call-position! "`[:position <substring> <string>]` compiles to `position(<substring> IN <string>)`, the 1-based index of the first
   occurrence of `substring` in `string`, or `0` if there isn't one. H2, Postgres and MySQL all accept this standard
   form, but Postgres rejects the comma form `position(<substring>, <string>)` that Honey SQL emits."
-  [[_ & [substring s :as args]] :- ::funnysql.schema/call.position
-   context                      :- ::funnysql.schema/context]
+  [[_ & [substring s :as args]]
+   context]
   (when-not (= (count args) 2)
     (throw (ex-info "Wrong number of args to :position (expected 2 args)" {:args args})))
   (append-sql! context "position(")
@@ -936,32 +852,28 @@
   (infix-operand! s context)
   (append-sql! context ")"))
 
-(mu/defn- call-full-text-match! :- :nil
-  "Compile Postgres's full text search match `x @@ y`."
-  [[_ lhs rhs] :- ::funnysql.schema/call.full-text-match
-   context     :- ::funnysql.schema/context]
+(defn- call-full-text-match! "Compile Postgres's full text search match `x @@ y`."
+  [[_ lhs rhs]
+   context]
   (check-identifier-form lhs)
   (check-identifier-form rhs)
   (expr! lhs context)
   (append-sql! context " @@ ")
   (expr! rhs context))
 
-(mu/defn- call-function! :- :nil
-  "Compile a call of a whitelisted plain SQL function, `f(args...)`."
-  [[f & args] :- ::funnysql.schema/call.function
-   context    :- ::funnysql.schema/context]
+(defn- call-function! "Compile a call of a whitelisted plain SQL function, `f(args...)`."
+  [[f & args]
+   context]
   (function-call! f args context))
 
-(mu/defn- call-call! :- :nil
-  "Compile `[:call f & args]` like `[f & args]`, the Honey SQL 1 spelling."
-  [[_ & args] :- ::funnysql.schema/call.call
-   context    :- ::funnysql.schema/context]
+(defn- call-call! "Compile `[:call f & args]` like `[f & args]`, the Honey SQL 1 spelling."
+  [[_ & args]
+   context]
   (call! (vec args) context))
 
-(mu/defn- call! :- :nil
-  "Compile a call, dispatching on its operator like [[::funnysql.schema/expr.call]]."
-  [[f & args :as form] :- ::funnysql.schema/expr.call
-   context             :- ::funnysql.schema/context]
+(defn- call! "Compile a call, dispatching on its operator like [[::funnysql.schema/expr.call]]."
+  [[f & args :as form]
+   context]
   ;; This `case` has no default behavior for an unknown function on purpose: `f` can come from an attacker-derived
   ;; `:%foo` keyword (see `expr-identifier!`), so an unrecognized function name must throw instead of being spliced
   ;; into the SQL raw. All allowed functions need to be explicitly whitelisted.
@@ -1018,11 +930,10 @@
                                            (pr-str f))
                       {:f f, :args args})))))
 
-(mu/defn- ctes! :- :nil
-  "Compile `<sql>` followed by CTEs."
-  [sql     :- :string
-   ctes    :- ::funnysql.schema/clause.with
-   context :- ::funnysql.schema/context]
+(defn- ctes! "Compile `<sql>` followed by CTEs."
+  [sql
+   ctes
+   context]
   (append-sql! context sql)
   (letfn [(cte! [[identifier subquery & options]]
             (let [[identifier {:keys [columns]}] (if (vector? identifier)
@@ -1041,22 +952,19 @@
             (parens! subquery context))]
     (interpose-fn ctes cte! #(append-sql! context ", "))))
 
-(mu/defn- clause-with! :- :nil
-  "Compile `WITH` CTEs."
-  [ctes    :- ::funnysql.schema/clause.with
-   context :- ::funnysql.schema/context]
+(defn- clause-with! "Compile `WITH` CTEs."
+  [ctes
+   context]
   (ctes! "WITH " ctes context))
 
-(mu/defn- clause-with-recursive! :- :nil
-  "Compile `WITH RECURSIVE` CTEs."
-  [ctes    :- ::funnysql.schema/clause.with-recursive
-   context :- ::funnysql.schema/context]
+(defn- clause-with-recursive! "Compile `WITH RECURSIVE` CTEs."
+  [ctes
+   context]
   (ctes! "WITH RECURSIVE " ctes context))
 
-(mu/defn- clause-create-table! :- :nil
-  "Compile `CREATE TABLE [IF NOT EXISTS] table`."
-  [identifier :- ::funnysql.schema/clause.create-table
-   context    :- ::funnysql.schema/context]
+(defn- clause-create-table! "Compile `CREATE TABLE [IF NOT EXISTS] table`."
+  [identifier
+   context]
   (let [[identifier & options] (if (vector? identifier)
                                  identifier
                                  [identifier])]
@@ -1067,12 +975,11 @@
         :if-not-exists (append-sql! context "IF NOT EXISTS ")))
     (expr! identifier context)))
 
-(mu/defn- column-default! :- :nil
-  "Compile the value of a column's `DEFAULT`. DDL takes no parameters, so the value has to end up in the SQL text: a
+(defn- column-default! "Compile the value of a column's `DEFAULT`. DDL takes no parameters, so the value has to end up in the SQL text: a
   number is spliced even where [[number!]] would bind it, and anything that would compile to a `?` -- a string, say --
   throws rather than producing a `CREATE TABLE` the database rejects. Use `[:literal s]` for a string default."
-  [x       :- ::funnysql.schema/expr
-   context :- ::funnysql.schema/context]
+  [x
+   context]
   (if (number? x)
     (splice-number! x context)
     (let [recursive-context (default-context (engine context) (options context))
@@ -1083,10 +990,9 @@
                         {:default x, :args args})))
       (append-sql! context sql))))
 
-(mu/defn- clause-with-columns! :- :nil
-  "Compile the column definitions of `CREATE TABLE`."
-  [column-specs :- ::funnysql.schema/clause.with-columns
-   context      :- ::funnysql.schema/context]
+(defn- clause-with-columns! "Compile the column definitions of `CREATE TABLE`."
+  [column-specs
+   context]
   (append-sql! context "(")
   (letfn [(column-identifier! [column-identifier]
             (check-identifier-form column-identifier)
@@ -1132,10 +1038,9 @@
     (interpose-fn column-specs column-spec! #(append-sql! context ", ")))
   (append-sql! context ")"))
 
-(mu/defn- clause-insert-into! :- :nil
-  "Compile `INSERT INTO table [(columns)] [subquery]`."
-  [x       :- ::funnysql.schema/clause.insert-into
-   context :- ::funnysql.schema/context]
+(defn- clause-insert-into! "Compile `INSERT INTO table [(columns)] [subquery]`."
+  [x
+   context]
   (let [[identifier subquery] (if (and (vector? x)
                                        (vector? (get x 0)))
                                 x
@@ -1155,60 +1060,52 @@
       ;; `INSERT INTO t SELECT ...` -- the subquery is not wrapped in parens here
       ((if (subquery? subquery) query! expr!) subquery context))))
 
-(mu/defn- clause-merge-into! :- :nil
-  "Compile H2's `MERGE INTO <table> [AS <alias>]`."
-  [identifier :- ::funnysql.schema/clause.merge-into
-   context    :- ::funnysql.schema/context]
+(defn- clause-merge-into! "Compile H2's `MERGE INTO <table> [AS <alias>]`."
+  [identifier
+   context]
   (append-sql! context "MERGE INTO ")
   (identifier-with-optional-alias! identifier context :check-lhs check-identifier-form))
 
-(mu/defn- clause-using! :- :nil
-  "Compile the `USING <query> AS <alias>` source of a `MERGE`."
-  [source  :- ::funnysql.schema/clause.using
-   context :- ::funnysql.schema/context]
+(defn- clause-using! "Compile the `USING <query> AS <alias>` source of a `MERGE`."
+  [source
+   context]
   (append-sql! context "USING ")
   (identifier-with-optional-alias! source context :check-lhs check-subquery-marked))
 
-(mu/defn- clause-on! :- :nil
-  "Compile the `ON` condition of a `MERGE`."
-  [condition :- ::funnysql.schema/clause.on
-   context   :- ::funnysql.schema/context]
+(defn- clause-on! "Compile the `ON` condition of a `MERGE`."
+  [condition
+   context]
   (append-sql! context "ON ")
   (expr! condition context))
 
-(mu/defn- clause-when-matched-update-set! :- :nil
-  "Compile `WHEN MATCHED THEN UPDATE SET ...`."
-  [kvs     :- ::funnysql.schema/clause.when-matched-update-set
-   context :- ::funnysql.schema/context]
+(defn- clause-when-matched-update-set! "Compile `WHEN MATCHED THEN UPDATE SET ...`."
+  [kvs
+   context]
   (append-sql! context "WHEN MATCHED THEN UPDATE SET ")
   (assignments! kvs context))
 
-(mu/defn- clause-when-not-matched-insert! :- :nil
-  "Compile `WHEN NOT MATCHED THEN INSERT (<columns>) VALUES (<values>)` from `[columns values]`."
-  [[columns values] :- ::funnysql.schema/clause.when-not-matched-insert
-   context          :- ::funnysql.schema/context]
+(defn- clause-when-not-matched-insert! "Compile `WHEN NOT MATCHED THEN INSERT (<columns>) VALUES (<values>)` from `[columns values]`."
+  [[columns values]
+   context]
   (append-sql! context "WHEN NOT MATCHED THEN INSERT ")
   (identifier-list! columns context)
   (append-sql! context " VALUES ")
   (list! values context))
 
-(mu/defn- clause-columns! :- :nil
-  "Compile the parenthesized columns of an `INSERT` or `MERGE`."
-  [columns :- ::funnysql.schema/clause.columns
-   context :- ::funnysql.schema/context]
+(defn- clause-columns! "Compile the parenthesized columns of an `INSERT` or `MERGE`."
+  [columns
+   context]
   (identifier-list! columns context))
 
-(mu/defn- clause-key! :- :nil
-  "Compile H2's `KEY (<columns>)`."
-  [columns :- ::funnysql.schema/clause.key
-   context :- ::funnysql.schema/context]
+(defn- clause-key! "Compile H2's `KEY (<columns>)`."
+  [columns
+   context]
   (append-sql! context "KEY ")
   (identifier-list! columns context))
 
-(mu/defn- clause-values! :- :nil
-  "Compile `VALUES` rows, with the columns of map rows before them."
-  [rows    :- ::funnysql.schema/clause.values
-   context :- ::funnysql.schema/context]
+(defn- clause-values! "Compile `VALUES` rows, with the columns of map rows before them."
+  [rows
+   context]
   (when-not (and (coll? rows)
                  (seq rows))
     (throw (ex-info ":values cannot have empty or nil rows" {:rows rows})))
@@ -1225,10 +1122,9 @@
       (append-sql! context "VALUES ")
       (interpose-fn rows #(list! % context) #(append-sql! context ", ")))))
 
-(mu/defn- clause-drop-table! :- :nil
-  "Compile `DROP TABLE [IF EXISTS] table`."
-  [table   :- ::funnysql.schema/clause.drop-table
-   context :- ::funnysql.schema/context]
+(defn- clause-drop-table! "Compile `DROP TABLE [IF EXISTS] table`."
+  [table
+   context]
   (let [options (butlast table)
         table   (last table)]
     (append-sql! context "DROP TABLE ")
@@ -1240,51 +1136,44 @@
     (check-identifier-form table)
     (expr! table context)))
 
-(mu/defn- clause-update! :- :nil
-  "Compile `UPDATE table [alias]`."
-  [identifier :- ::funnysql.schema/clause.update
-   context    :- ::funnysql.schema/context]
+(defn- clause-update! "Compile `UPDATE table [alias]`."
+  [identifier
+   context]
   (append-sql! context "UPDATE ")
   (identifier-with-optional-alias! identifier context :check-lhs check-identifier-form, :include-as? false))
 
-(mu/defn- clause-set! :- :nil
-  "Compile `SET col = value, ...`."
-  [kvs     :- ::funnysql.schema/clause.set
-   context :- ::funnysql.schema/context]
+(defn- clause-set! "Compile `SET col = value, ...`."
+  [kvs
+   context]
   (append-sql! context "SET ")
   (assignments! kvs context))
 
-(mu/defn- clause-delete-from! :- :nil
-  "Compile `DELETE FROM table [alias]`."
-  [identifier :- ::funnysql.schema/clause.delete-from
-   context    :- ::funnysql.schema/context]
+(defn- clause-delete-from! "Compile `DELETE FROM table [alias]`."
+  [identifier
+   context]
   (append-sql! context "DELETE FROM ")
   (identifier-with-optional-alias! identifier context :check-lhs check-identifier-form, :include-as? false))
 
-(mu/defn- select-items! :- :nil
-  "Compile `<sql>` followed by select items."
-  [sql     :- :string
-   cols    :- ::funnysql.schema/clause.select
-   context :- ::funnysql.schema/context]
+(defn- select-items! "Compile `<sql>` followed by select items."
+  [sql
+   cols
+   context]
   (append-sql! context sql)
   (interpose-fn (->sequence cols) #(identifier-with-optional-alias! % context) #(append-sql! context ", ")))
 
-(mu/defn- clause-select! :- :nil
-  "Compile `SELECT items`."
-  [cols    :- ::funnysql.schema/clause.select
-   context :- ::funnysql.schema/context]
+(defn- clause-select! "Compile `SELECT items`."
+  [cols
+   context]
   (select-items! "SELECT " cols context))
 
-(mu/defn- clause-select-distinct! :- :nil
-  "Compile `SELECT DISTINCT items`."
-  [cols    :- ::funnysql.schema/clause.select-distinct
-   context :- ::funnysql.schema/context]
+(defn- clause-select-distinct! "Compile `SELECT DISTINCT items`."
+  [cols
+   context]
   (select-items! "SELECT DISTINCT " cols context))
 
-(mu/defn- clause-from! :- :nil
-  "Compile `FROM sources`."
-  [from    :- ::funnysql.schema/clause.from
-   context :- ::funnysql.schema/context]
+(defn- clause-from! "Compile `FROM sources`."
+  [from
+   context]
   (append-sql! context "FROM ")
   (if (keyword? from)
     (identifier-with-optional-alias! from context)
@@ -1292,11 +1181,10 @@
                   #(identifier-with-optional-alias! % context :check-lhs check-subquery-marked)
                   #(append-sql! context ", "))))
 
-(mu/defn- joins! :- :nil
-  "Compile joins of `join-type`."
-  [join-type :- [:enum :join :left :right :inner]
-   joins     :- ::funnysql.schema/joins
-   context   :- ::funnysql.schema/context]
+(defn- joins! "Compile joins of `join-type`."
+  [join-type
+   joins
+   context]
   ;; `joins` alternates `<thing-to-join> <condition>`. A missing or `nil` condition -- what a `(when ...)` around one
   ;; gives you -- would otherwise compile to `ON NULL`, which the database happily runs, silently returning no rows.
   (when-not (even? (count joins))
@@ -1319,96 +1207,84 @@
           (append-sql! context \space)
           (recur more))))))
 
-(mu/defn- clause-join! :- :nil
-  "Compile `JOIN`s."
-  [joins   :- ::funnysql.schema/clause.join
-   context :- ::funnysql.schema/context]
+(defn- clause-join! "Compile `JOIN`s."
+  [joins
+   context]
   (joins! :join joins context))
 
-(mu/defn- clause-left-join! :- :nil
-  "Compile `LEFT JOIN`s."
-  [joins   :- ::funnysql.schema/clause.left-join
-   context :- ::funnysql.schema/context]
+(defn- clause-left-join! "Compile `LEFT JOIN`s."
+  [joins
+   context]
   (joins! :left joins context))
 
-(mu/defn- clause-right-join! :- :nil
-  "Compile `RIGHT JOIN`s."
-  [joins   :- ::funnysql.schema/clause.right-join
-   context :- ::funnysql.schema/context]
+(defn- clause-right-join! "Compile `RIGHT JOIN`s."
+  [joins
+   context]
   (joins! :right joins context))
 
-(mu/defn- clause-inner-join! :- :nil
-  "Compile `INNER JOIN`s."
-  [joins   :- ::funnysql.schema/clause.inner-join
-   context :- ::funnysql.schema/context]
+(defn- clause-inner-join! "Compile `INNER JOIN`s."
+  [joins
+   context]
   (joins! :inner joins context))
 
-(mu/defn- condition! :- :nil
-  "Compile a `WHERE`/`HAVING` condition, dropping the clause entirely when there isn't one. Honey SQL ignores a nil or
+(defn- condition! "Compile a `WHERE`/`HAVING` condition, dropping the clause entirely when there isn't one. Honey SQL ignores a nil or
   empty clause value and callers rely on that -- the `dashboard` search spec declares `:where []` to mean \"no extra
   filter\". Emitting it anyway is not merely untidy: `[]` compiles to `()`, which H2 reads as an empty ROW
   (`Data conversion error converting \"ROW to BOOLEAN\"`), and `WHERE NULL` would silently match no rows at all.
 
   Only `nil` and `[]` mean \"no condition\". Dropping a `WHERE` fails open -- the query matches every row -- so any
   other empty value, like `{}`, `#{}` or `()`, is compiled like any other condition rather than silently disappearing."
-  [sql       :- :string
-   condition :- ::funnysql.schema/clause.where
-   context   :- ::funnysql.schema/context]
+  [sql
+   condition
+   context]
   (when-not (or (nil? condition)
                 (and (vector? condition) (empty? condition)))
     (append-sql! context sql)
     (expr! condition context)))
 
-(mu/defn- clause-where! :- :nil
-  "Compile `WHERE condition`."
-  [condition :- ::funnysql.schema/clause.where
-   context   :- ::funnysql.schema/context]
+(defn- clause-where! "Compile `WHERE condition`."
+  [condition
+   context]
   (condition! "WHERE " condition context))
 
-(mu/defn- clause-group-by! :- :nil
-  "Compile `GROUP BY exprs`."
-  [cols    :- ::funnysql.schema/clause.group-by
-   context :- ::funnysql.schema/context]
+(defn- clause-group-by! "Compile `GROUP BY exprs`."
+  [cols
+   context]
   (when-let [cols (not-empty (->sequence cols))]
     (append-sql! context "GROUP BY ")
     (commas! cols context)))
 
-(mu/defn- clause-having! :- :nil
-  "Compile `HAVING condition`."
-  [condition :- ::funnysql.schema/clause.having
-   context   :- ::funnysql.schema/context]
+(defn- clause-having! "Compile `HAVING condition`."
+  [condition
+   context]
   (condition! "HAVING " condition context))
 
-(mu/defn- clause-partition-by! :- :nil
-  "Compile `PARTITION BY exprs`."
-  [xs      :- ::funnysql.schema/clause.partition-by
-   context :- ::funnysql.schema/context]
+(defn- clause-partition-by! "Compile `PARTITION BY exprs`."
+  [xs
+   context]
   (when-let [xs (not-empty (->sequence xs))]
     (append-sql! context "PARTITION BY ")
     (commas! xs context)))
 
-(mu/defn- union! :- :nil
-  "Compile the queries combined by a `UNION`. These are complete `SELECT`s rather than scalar subqueries, so unlike
+(defn- union! "Compile the queries combined by a `UNION`. These are complete `SELECT`s rather than scalar subqueries, so unlike
   [[expr!]] don't wrap them in parens -- use `:nest` for that."
-  [separator :- :string
-   queries   :- ::funnysql.schema/clause.union
-   context   :- ::funnysql.schema/context]
+  [separator
+   queries
+   context]
   (interpose-fn queries
                 (fn [query]
                   (check-subquery-marked query)
                   ((if (subquery? query) query! expr!) query context))
                 #(append-sql! context separator)))
 
-(mu/defn- clause-union! :- :nil
-  "Compile queries combined by `UNION`."
-  [queries :- ::funnysql.schema/clause.union
-   context :- ::funnysql.schema/context]
+(defn- clause-union! "Compile queries combined by `UNION`."
+  [queries
+   context]
   (union! " UNION " queries context))
 
-(mu/defn- clause-union-all! :- :nil
-  "Compile queries combined by `UNION ALL`."
-  [queries :- ::funnysql.schema/clause.union-all
-   context :- ::funnysql.schema/context]
+(defn- clause-union-all! "Compile queries combined by `UNION ALL`."
+  [queries
+   context]
   (union! " UNION ALL " queries context))
 
 (def ^:private order-by-directions
@@ -1422,13 +1298,12 @@
    :asc-nulls-first  [:asc :first]
    :desc-nulls-first [:desc :first]})
 
-(mu/defn- mysql-order-by-item! :- :nil
-  "MySQL and MariaDB have no `NULLS FIRST`/`NULLS LAST`. They sort `NULL` below every other value -- first ascending, last
+(defn- mysql-order-by-item! "MySQL and MariaDB have no `NULLS FIRST`/`NULLS LAST`. They sort `NULL` below every other value -- first ascending, last
   descending -- so when that isn't the placement asked for, sort on whether `expr` is `NULL` first."
-  [expr           :- ::funnysql.schema/expr
-   sort-direction :- [:maybe [:enum :asc :desc]]
-   nulls          :- [:maybe [:enum :first :last]]
-   context        :- ::funnysql.schema/context]
+  [expr
+   sort-direction
+   nulls
+   context]
   (let [sort-direction (or sort-direction :asc)]
     (when (and nulls
                (not= nulls (case sort-direction
@@ -1444,10 +1319,9 @@
                            :asc  " ASC"
                            :desc " DESC"))))
 
-(mu/defn- clause-order-by! :- :nil
-  "Compile `ORDER BY items`."
-  [subclauses :- ::funnysql.schema/clause.order-by
-   context    :- ::funnysql.schema/context]
+(defn- clause-order-by! "Compile `ORDER BY items`."
+  [subclauses
+   context]
   (when-let [subclauses (not-empty (->sequence subclauses))]
     (append-sql! context "ORDER BY ")
     (letfn [(subclause! [subclause]
@@ -1477,28 +1351,25 @@
                                                :first " NULLS FIRST"))))))))]
       (interpose-fn subclauses subclause! #(append-sql! context ", ")))))
 
-(mu/defn- clause-limit! :- :nil
-  "Compile `LIMIT n`."
-  [n       :- ::funnysql.schema/clause.limit
-   context :- ::funnysql.schema/context]
+(defn- clause-limit! "Compile `LIMIT n`."
+  [n
+   context]
   (when-not ((some-fn nat-int? #(call-of-type? % :inline)) n)
     (throw (ex-info "Invalid limit" {:n n})))
   (append-sql! context "LIMIT ")
   (expr! n context))
 
-(mu/defn- clause-offset! :- :nil
-  "Compile `OFFSET n`."
-  [n       :- ::funnysql.schema/clause.offset
-   context :- ::funnysql.schema/context]
+(defn- clause-offset! "Compile `OFFSET n`."
+  [n
+   context]
   (when-not ((some-fn nat-int? #(call-of-type? % :inline)) n)
     (throw (ex-info "Invalid offset" {:n n})))
   (append-sql! context "OFFSET ")
   (expr! n context))
 
-(mu/defn- clause-for! :- :nil
-  "Compile `FOR` row locking options."
-  [options :- ::funnysql.schema/clause.for
-   context :- ::funnysql.schema/context]
+(defn- clause-for! "Compile `FOR` row locking options."
+  [options
+   context]
   (append-sql! context "FOR ")
   (let [options (if (vector? options)
                   options
@@ -1511,46 +1382,40 @@
                                          :skip-locked "SKIP LOCKED")))]
     (interpose-fn options option! #(append-sql! context \space))))
 
-(mu/defn- clause-on-conflict! :- :nil
-  "Compile `ON CONFLICT [(columns)]`."
-  [columns :- ::funnysql.schema/clause.on-conflict
-   context :- ::funnysql.schema/context]
+(defn- clause-on-conflict! "Compile `ON CONFLICT [(columns)]`."
+  [columns
+   context]
   (append-sql! context "ON CONFLICT")
   (when (seq columns)
     (append-sql! context \space)
     (identifier-list! columns context)))
 
-(mu/defn- clause-do-update-set! :- :nil
-  "Compile `DO UPDATE SET ...`."
-  [kvs     :- ::funnysql.schema/clause.do-update-set
-   context :- ::funnysql.schema/context]
+(defn- clause-do-update-set! "Compile `DO UPDATE SET ...`."
+  [kvs
+   context]
   (append-sql! context "DO UPDATE SET ")
   (assignments! kvs context))
 
-(mu/defn- clause-do-nothing! :- :nil
-  "Compile `DO NOTHING`."
-  [_value  :- ::funnysql.schema/clause.do-nothing
-   context :- ::funnysql.schema/context]
+(defn- clause-do-nothing! "Compile `DO NOTHING`."
+  [_value
+   context]
   (append-sql! context "DO NOTHING"))
 
-(mu/defn- clause-on-duplicate-key-update! :- :nil
-  "Compile `ON DUPLICATE KEY UPDATE ...`."
-  [kvs     :- ::funnysql.schema/clause.on-duplicate-key-update
-   context :- ::funnysql.schema/context]
+(defn- clause-on-duplicate-key-update! "Compile `ON DUPLICATE KEY UPDATE ...`."
+  [kvs
+   context]
   (append-sql! context "ON DUPLICATE KEY UPDATE ")
   (assignments! kvs context))
 
-(mu/defn- clause-returning! :- :nil
-  "Compile `RETURNING exprs`."
-  [cols    :- ::funnysql.schema/clause.returning
-   context :- ::funnysql.schema/context]
+(defn- clause-returning! "Compile `RETURNING exprs`."
+  [cols
+   context]
   (append-sql! context "RETURNING ")
   (commas! (->sequence cols) context))
 
-(mu/defn- clause-nest! :- :nil
-  "Compile an expression or subquery wrapped in parens."
-  [x       :- ::funnysql.schema/clause.nest
-   context :- ::funnysql.schema/context]
+(defn- clause-nest! "Compile an expression or subquery wrapped in parens."
+  [x
+   context]
   (parens! x context))
 
 (def ^:private clause-fns
@@ -1603,11 +1468,10 @@
         (map-indexed (fn [i [k _f]] [k i]))
         clause-fns))
 
-(mu/defn- query! :- :nil
-  "Compile a query map, its clauses in SQL order. This is normally only allowed by [[format]] but not by [[expr!]] to
+(defn- query! "Compile a query map, its clauses in SQL order. This is normally only allowed by [[format]] but not by [[expr!]] to
   avoid accidentally compiling subqueries where unintended."
-  [m       :- ::funnysql.schema/query
-   context :- ::funnysql.schema/context]
+  [m
+   context]
   (interpose-fn (sort-by clause-rank (keys m))
                 (fn [k]
                   (let [f (or (clause-fns k)
