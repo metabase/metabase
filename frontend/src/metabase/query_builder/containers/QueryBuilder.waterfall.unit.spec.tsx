@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { getInstanceByDom } from "echarts/core";
 import fetchMock, { type CallLog } from "fetch-mock";
+import _ from "underscore";
 
 import {
   act,
@@ -37,6 +38,7 @@ import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
+  SAMPLE_DB_ID,
   createOrdersCreatedAtDatasetColumn,
   createProductsCategoryDatasetColumn,
 } from "metabase-types/api/mocks/presets";
@@ -240,9 +242,35 @@ interface AdhocQuestionOpts {
   dataset: Dataset;
 }
 
+function removeUuids(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(removeUuids);
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => key !== "lib/uuid")
+        .map(([key, item]) => [key, removeUuids(item)]),
+    );
+  }
+  return value;
+}
+
+/** The request runs the card's query: the same database and stages */
+function isCardQuery(body: unknown, card: UnsavedCard) {
+  return (
+    getIn(body, ["database"]) === SAMPLE_DB_ID &&
+    getIn(card.dataset_query, ["database"]) === SAMPLE_DB_ID &&
+    _.isEqual(
+      removeUuids(getIn(body, ["stages"])),
+      removeUuids(getIn(card.dataset_query, ["stages"])),
+    )
+  );
+}
+
 /**
- * Opens an ad-hoc question. POST /api/dataset returns the rows only for a
- * query that `matches`, and no rows for any other query.
+ * Opens an ad-hoc question. POST /api/dataset returns the rows only for the
+ * card's query that also `matches`, and no rows for any other query.
  */
 async function setupAdhocQuestion({
   card,
@@ -257,8 +285,10 @@ async function setupAdhocQuestion({
   });
   // the question runs from a timer after the loader is gone
   fetchMock.modifyRoute("dataset-post", {
-    response: (call: CallLog) =>
-      matches(getRequestBody(call)) ? dataset : EMPTY_DATASET,
+    response: (call: CallLog) => {
+      const body = getRequestBody(call);
+      return isCardQuery(body, card) && matches(body) ? dataset : EMPTY_DATASET;
+    },
   });
   await waitForLoaderToBeRemoved();
   await waitForQueryToStart();
@@ -325,8 +355,8 @@ async function assertWaterfallRendering(xLabel: string, yLabel: string) {
   await waitFor(() =>
     expect(within(chart).getByText("Total")).toBeInTheDocument(),
   );
-  expect(getPathsWithFill(chart, INCREASE_COLOR).length).toBeGreaterThan(0);
-  expect(getPathsWithFill(chart, TOTAL_COLOR).length).toBeGreaterThan(0);
+  expectVisibleBar(chart, INCREASE_COLOR);
+  expectVisibleBar(chart, TOTAL_COLOR);
   expect(within(chart).getByText(xLabel)).toBeInTheDocument();
   expect(within(chart).getByText(yLabel)).toBeInTheDocument();
 }
@@ -356,6 +386,8 @@ function getChartElementPoint(
       rect.applyTransform(element.getComputedTransform());
       return { element, rect };
     })
+    // a bar without area paints nothing
+    .filter(({ rect }) => rect.width > 0 && rect.height > 0)
     .sort((a, b) => a.rect.x - b.rect.x);
   const { element, rect } = checkNotNull(elements.at(index));
   const STEPS = 20;
@@ -369,6 +401,13 @@ function getChartElementPoint(
     }
   }
   throw new Error(`No point hits the chart element at ${index}`);
+}
+
+/** Fails unless a bar of the color has area and a point of it can be hovered */
+function expectVisibleBar(chart: HTMLElement, fill: string) {
+  expect(() =>
+    getChartElementPoint(chart, (style) => style.fill === fill),
+  ).not.toThrow();
 }
 
 function hoverChartPoint(chart: HTMLElement, { x, y }: ChartPoint) {
@@ -530,7 +569,7 @@ describe("QueryBuilder > waterfall chart", () => {
     await waitFor(() =>
       expect(within(chart).getByText("Total")).toBeInTheDocument(),
     );
-    expect(getPathsWithFill(chart, TOTAL_COLOR).length).toBeGreaterThan(0);
+    expectVisibleBar(chart, TOTAL_COLOR);
     // the same yearly grid labels April 2028
     expect(within(chart).getByText("April 2028")).toBeInTheDocument();
     // the last month sits one month before the Total and gives way to it
@@ -954,7 +993,7 @@ describe("QueryBuilder > waterfall chart", () => {
       await waitFor(() =>
         expect(within(chart).getByText("Total")).toBeInTheDocument(),
       );
-      expect(getPathsWithFill(chart, TOTAL_COLOR).length).toBeGreaterThan(0);
+      expectVisibleBar(chart, TOTAL_COLOR);
       expect(within(chart).queryAllByText("(4.56)")).toHaveLength(0);
 
       await userEvent.click(
