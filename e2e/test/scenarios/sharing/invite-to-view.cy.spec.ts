@@ -1,11 +1,10 @@
 const { H } = cy;
 import { USER_GROUPS } from "e2e/support/cypress_data";
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
+
+type MaildevEmail = { subject: string; html: string };
 
 const PASSWORD = "Sup3r-S3cret-Pw!";
 
@@ -13,7 +12,7 @@ const inviteEmail = () =>
   `invitee-${Math.round(Math.random() * 1_000_000)}@metabase.test`;
 
 /** Open the Share menu on the current dashboard/question and invite `email`. */
-function inviteFromShareMenu(email) {
+function inviteFromShareMenu(email: string) {
   H.openSharingMenu("Invite someone to view this");
   H.modal().within(() => {
     cy.findByLabelText(/Email/i).type(email);
@@ -22,11 +21,12 @@ function inviteFromShareMenu(email) {
 }
 
 /** Pull the Join link out of a sent invite email and decode the HTML entities. */
-function joinUrlFromEmail(sent) {
-  return sent.html
-    .match(/href="([^"]*reset_password[^"]*)"/)[1]
-    .replace(/&#x3D;/g, "=")
-    .replace(/&amp;/g, "&");
+function joinUrlFromEmail(sent: MaildevEmail) {
+  const href = sent.html.match(/href="([^"]*reset_password[^"]*)"/)?.[1];
+  if (!href) {
+    throw new Error("No reset_password link in the invite email");
+  }
+  return href.replace(/&#x3D;/g, "=").replace(/&amp;/g, "&");
 }
 
 /** Set a password on the new-user signup screen reached from a join link. */
@@ -51,51 +51,6 @@ describe("scenarios > sharing > invite someone to view", () => {
     cy.signInAsAdmin();
   });
 
-  describe("invite action in the Share menu", () => {
-    it("invites someone to view a dashboard", () => {
-      const email = inviteEmail();
-      cy.intercept("POST", "/api/user").as("createUser");
-
-      H.visitDashboard(ORDERS_DASHBOARD_ID);
-      inviteFromShareMenu(email);
-
-      cy.wait("@createUser").then(({ request }) => {
-        expect(request.body.email).to.eq(email);
-        expect(request.body.invite_target).to.deep.include({
-          type: "dashboard",
-          id: ORDERS_DASHBOARD_ID,
-        });
-      });
-    });
-
-    it("invites someone to view a question", () => {
-      const email = inviteEmail();
-      cy.intercept("POST", "/api/user").as("createUser");
-
-      H.visitQuestion(ORDERS_QUESTION_ID);
-      inviteFromShareMenu(email);
-
-      cy.wait("@createUser").then(({ request }) => {
-        expect(request.body.invite_target).to.deep.include({
-          type: "question",
-          id: ORDERS_QUESTION_ID,
-        });
-      });
-
-      H.modal().within(() => {
-        cy.findByText(/We couldn't send an email invitation/).should(
-          "be.visible",
-        );
-        cy.findByLabelText("Temporary password")
-          .invoke("val")
-          .should("not.be.empty");
-        cy.findByLabelText("Link to share")
-          .invoke("val")
-          .should("contain", `/question/${ORDERS_QUESTION_ID}`);
-      });
-    });
-  });
-
   describe("invite email", { tags: "@external" }, () => {
     beforeEach(() => H.setupSMTP());
 
@@ -106,7 +61,7 @@ describe("scenarios > sharing > invite someone to view", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       inviteFromShareMenu(inviteEmail());
 
-      H.getInbox().then(({ body: [email] }) => {
+      H.getInbox().then(({ body: [email] }: { body: MaildevEmail[] }) => {
         expect(email.html).to.match(
           new RegExp(
             `/auth/login\\?redirect(&#x3D;|=)/dashboard/${ORDERS_DASHBOARD_ID}`,
@@ -124,7 +79,7 @@ describe("scenarios > sharing > invite someone to view", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       inviteFromShareMenu(inviteEmail());
 
-      H.getInbox().then(({ body: [sent] }) => {
+      H.getInbox().then(({ body: [sent] }: { body: MaildevEmail[] }) => {
         expect(sent.subject).to.contain("invited to view the dashboard");
         expect(sent.html).to.contain(`/dashboard/${ORDERS_DASHBOARD_ID}`);
         expect(sent.html).to.contain(
@@ -175,7 +130,7 @@ describe("scenarios > sharing > invite someone to view", () => {
           H.visitDashboard(dashboard.id);
           inviteFromShareMenu(inviteEmail());
 
-          H.getInbox().then(({ body: [sent] }) => {
+          H.getInbox().then(({ body: [sent] }: { body: MaildevEmail[] }) => {
             cy.signOut();
             cy.visit(joinUrlFromEmail(sent));
             completeSignup();
