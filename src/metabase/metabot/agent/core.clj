@@ -436,7 +436,6 @@
    memory
    parts))
 
-;; The docstring and its examples change in https://github.com/metabase/metabase/pull/87324.
 (defn- step-parts
   "The `parts` of an iteration, with each text block merged into one part and no text that is only whitespace.
 
