@@ -1844,25 +1844,24 @@
                                                            (field (meta/id :categories :id)))])
                                   (lib/with-join-fields [(field (meta/id :categories :name)) (field 999902)]))))]
       (is (= ["SELECT"
-              "  PUBLIC.VENUES.ID AS ID,"
-              "  Categories.NAME AS Categories__NAME,"
-              "  Categories.NAME_2 AS Categories__NAME_2"
+              "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\","
+              "  \"Categories\".\"NAME\" AS \"Categories__NAME\","
+              "  \"Categories\".\"NAME_2\" AS \"Categories__NAME_2\""
               "FROM"
-              "  PUBLIC.VENUES"
+              "  \"PUBLIC\".\"VENUES\""
               "  LEFT JOIN ("
               "    SELECT"
-              "      PUBLIC.CATEGORIES.ID AS ID,"
-              "      PUBLIC.CATEGORIES.NAME AS NAME,"
-              "      PUBLIC.CATEGORIES.INFO AS INFO,"
-              "      PUBLIC.CATEGORIES.INFO.NAME AS NAME_2"
+              "      \"PUBLIC\".\"CATEGORIES\".\"ID\" AS \"ID\","
+              "      \"PUBLIC\".\"CATEGORIES\".\"NAME\" AS \"NAME\","
+              "      \"PUBLIC\".\"CATEGORIES\".\"INFO\" AS \"INFO\","
+              "      \"PUBLIC\".\"CATEGORIES\".\"INFO\".\"NAME\" AS \"NAME_2\""
               "    FROM"
-              "      PUBLIC.CATEGORIES"
-              "  ) AS Categories ON PUBLIC.VENUES.CATEGORY_ID = Categories.ID"
+              "      \"PUBLIC\".\"CATEGORIES\""
+              "  ) AS \"Categories\" ON \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = \"Categories\".\"ID\""
               "LIMIT"
               "  1048575"]
              (->> (driver/with-driver :h2 (:query (qp.compile/compile query)))
                   (driver/prettify-native-form :h2)
-                  (#(str/replace % #"\"" ""))
                   str/split-lines))))))
 
 (deftest ^:parallel nested-field-in-later-stage-test
@@ -1874,21 +1873,20 @@
                     lib/append-stage
                     (lib/filter (lib/= (field 999902) "a")))]
       (is (= ["SELECT"
-              "  __mb_source.NAME AS NAME,"
-              "  __mb_source.NAME_2 AS NAME_2"
+              "  \"__mb_source\".\"NAME\" AS \"NAME\","
+              "  \"__mb_source\".\"NAME_2\" AS \"NAME_2\""
               "FROM"
               "  ("
               "    SELECT"
-              "      PUBLIC.CATEGORIES.NAME AS NAME,"
-              "      PUBLIC.CATEGORIES.INFO.NAME AS NAME_2"
+              "      \"PUBLIC\".\"CATEGORIES\".\"NAME\" AS \"NAME\","
+              "      \"PUBLIC\".\"CATEGORIES\".\"INFO\".\"NAME\" AS \"NAME_2\""
               "    FROM"
-              "      PUBLIC.CATEGORIES"
-              "  ) AS __mb_source"
+              "      \"PUBLIC\".\"CATEGORIES\""
+              "  ) AS \"__mb_source\""
               "WHERE"
-              "  __mb_source.NAME_2 = ?"
+              "  \"__mb_source\".\"NAME_2\" = ?"
               "LIMIT"
               "  1048575"]
              (->> (driver/with-driver :h2 (:query (qp.compile/compile query)))
                   (driver/prettify-native-form :h2)
-                  (#(str/replace % #"\"" ""))
                   str/split-lines))))))

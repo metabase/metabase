@@ -262,7 +262,7 @@
                    :breakout [:expression :cap_service]}))))))))
 
 (deftest ^:parallel join-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields :left-join)
+  (mt/test-drivers (mt/normal-driver-select {:+features [:nested-fields :left-join]})
     (testing "Nested Field of a joined table that has the same name as another of its columns (QUE-1211)"
       (mt/dataset geographical-tips
         (let [mp       (mt/metadata-provider)
