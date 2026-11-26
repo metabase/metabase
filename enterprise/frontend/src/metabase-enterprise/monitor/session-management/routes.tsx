@@ -10,13 +10,16 @@ const sessionsPage = () =>
     Component: SessionsPage,
   }));
 
-const sessionPage = featureGatedRoute(
-  "session-management",
-  sessionsPage,
-  sessionManagementUpsellPage,
-);
-
 export function getSessionsRoutes() {
+  // One loader for the list and the detail route, so moving between them does
+  // not remount the page. Made per tree, because the router resolves a loader
+  // once and keeps the page it picked.
+  const sessionPage = featureGatedRoute(
+    "session-management",
+    sessionsPage,
+    sessionManagementUpsellPage,
+  );
+
   return (
     <>
       <Route index lazy={sessionPage} />
