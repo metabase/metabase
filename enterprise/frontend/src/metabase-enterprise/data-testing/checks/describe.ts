@@ -158,7 +158,7 @@ function describeValueCheck(definition: DataCheckDefinition): string | null {
       return t`Every row satisfies: ${text("expression")}`;
     case "column_a_lte_column_b": {
       const operator = describeOperator(text("operator"));
-      return t`${text("a")} ${operator} ${text("b")}`;
+      return `${text("a")} ${operator} ${text("b")}`;
     }
     case "at_least_one_not_null":
       return t`At least one of ${list("columns")} has a value`;
