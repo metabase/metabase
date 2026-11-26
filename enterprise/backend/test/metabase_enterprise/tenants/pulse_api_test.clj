@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [toucan2.core :as t2]))
 
 (defmacro ^:private with-tenant-pulse-fixture!
@@ -15,23 +16,25 @@
      (mt/with-temporary-setting-values [~'use-tenants true]
        (mt/with-temp [:model/Tenant {tenant-a-id# :id, tenant-a-coll-id# :tenant_collection_id}
                       {:name "Tenant A" :slug "tenant-a"}
-                      :model/Tenant {tenant-b-id# :id} {:name "Tenant B" :slug "tenant-b"}
-                      :model/User {alice-id# :id} {:tenant_id tenant-a-id#}
-                      :model/User {dave-id# :id} {:tenant_id tenant-b-id#}
-                      :model/User {jane-id# :id} {}
-                      :model/Dashboard {dash-id# :id} {:collection_id tenant-a-coll-id#}
-                      :model/Pulse {pulse-id# :id} {:creator_id    alice-id#
-                                                    :collection_id tenant-a-coll-id#
-                                                    :dashboard_id  dash-id#
-                                                    :name          "Tenant A subscription"}
-                      :model/PulseChannel {pc-id# :id} {:pulse_id pulse-id#
-                                                        :details  {:emails ["external@vendor.example"]}}
-                      :model/PulseChannelRecipient _# {:pulse_channel_id pc-id# :user_id alice-id#}
-                      :model/PulseChannelRecipient _# {:pulse_channel_id pc-id# :user_id dave-id#}
-                      :model/PulseChannelRecipient _# {:pulse_channel_id pc-id# :user_id jane-id#}]
-         (let [~binding {:alice-id alice-id#, :dave-id dave-id#, :jane-id jane-id#
-                         :dash-id dash-id#, :pulse-id pulse-id#, :pc-id pc-id#}]
-           ~@body)))))
+                      :model/Tenant {tenant-b-id# :id} {:name "Tenant B" :slug "tenant-b"}]
+         (mt/with-model-cleanup [:model/User]
+           (let [[{alice-id# :id} {dave-id# :id} {jane-id# :id}]
+                 (user/create-users! [{:email (mt/random-email) :tenant_id tenant-a-id#}
+                                      {:email (mt/random-email) :tenant_id tenant-b-id#}
+                                      {:email (mt/random-email) :tenant_id nil}])]
+             (mt/with-temp [:model/Dashboard {dash-id# :id} {:collection_id tenant-a-coll-id#}
+                            :model/Pulse {pulse-id# :id} {:creator_id    alice-id#
+                                                          :collection_id tenant-a-coll-id#
+                                                          :dashboard_id  dash-id#
+                                                          :name          "Tenant A subscription"}
+                            :model/PulseChannel {pc-id# :id} {:pulse_id pulse-id#
+                                                              :details  {:emails ["external@vendor.example"]}}
+                            :model/PulseChannelRecipient _# {:pulse_channel_id pc-id# :user_id alice-id#}
+                            :model/PulseChannelRecipient _# {:pulse_channel_id pc-id# :user_id dave-id#}
+                            :model/PulseChannelRecipient _# {:pulse_channel_id pc-id# :user_id jane-id#}]
+               (let [~binding {:alice-id alice-id#, :dave-id dave-id#, :jane-id jane-id#
+                               :dash-id dash-id#, :pulse-id pulse-id#, :pc-id pc-id#}]
+                 ~@body))))))))
 
 (defn- recipient-user-ids [pulse]
   (into #{} (comp (mapcat :recipients) (keep :id)) (:channels pulse)))

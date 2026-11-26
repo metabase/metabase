@@ -327,7 +327,7 @@
         (mt/with-full-data-perms-for-all-users!
           ;; Sync dimensions for both metric and measure
           (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
-          (metrics/sync-dimensions! :metadata/measure (:id measure))
+          (metrics/sync-dimensions! :metadata/measure [(:id measure)])
           ;; Get dimension UUIDs from each entity
           (let [metric-response  (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
                 dim-metric-uuid  (:id (first (:dimensions metric-response)))

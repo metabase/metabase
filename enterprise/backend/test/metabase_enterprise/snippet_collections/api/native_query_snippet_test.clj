@@ -141,47 +141,49 @@
                               (doseq [c [source-collection dest-collection]]
                                 (perms/revoke-collection-permissions! (perms-group/all-users) c)))))))))))))))))
 
-(deftest ^:parallel snippet-collection-items-test
+(deftest snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
     (testing "Native query snippets should come back when fetching the items in a Collection in the `:snippets` namespace"
-      (mt/with-temp [:model/Collection         collection {:namespace "snippets", :name "My Snippet Collection"}
-                     :model/NativeQuerySnippet snippet    {:collection_id (:id collection), :name "My Snippet"}
-                     :model/NativeQuerySnippet archived   {:collection_id (:id collection) , :name "Archived Snippet", :archived true}]
-        (mt/with-premium-features #{:snippet-collections}
-          (is (=? [{:id        (:id snippet)
-                    :name      "My Snippet"
-                    :entity_id (:entity_id snippet)
-                    :model     "snippet"}]
-                  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection))))))
-          (testing "\nShould be able to fetch archived Snippets"
-            (is (=? [{:id        (:id archived)
-                      :name      "Archived Snippet"
-                      :entity_id (:entity_id archived)
-                      :model     "snippet"}]
-                    (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?archived=true" (:id collection)))))))
-          (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
-            (is (=? [{:id        (:id snippet)
-                      :name      "My Snippet"
-                      :entity_id (:entity_id snippet)
-                      :model     "snippet"}]
-                    (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection))))))))))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [[collection] (collection/create-collections! [{:namespace "snippets", :name "My Snippet Collection"}])]
+          (mt/with-temp [:model/NativeQuerySnippet snippet    {:collection_id (:id collection), :name "My Snippet"}
+                         :model/NativeQuerySnippet archived   {:collection_id (:id collection) , :name "Archived Snippet", :archived true}]
+            (mt/with-premium-features #{:snippet-collections}
+              (is (=? [{:id        (:id snippet)
+                        :name      "My Snippet"
+                        :entity_id (:entity_id snippet)
+                        :model     "snippet"}]
+                      (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection))))))
+              (testing "\nShould be able to fetch archived Snippets"
+                (is (=? [{:id        (:id archived)
+                          :name      "Archived Snippet"
+                          :entity_id (:entity_id archived)
+                          :model     "snippet"}]
+                        (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?archived=true" (:id collection)))))))
+              (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
+                (is (=? [{:id        (:id snippet)
+                          :name      "My Snippet"
+                          :entity_id (:entity_id snippet)
+                          :model     "snippet"}]
+                        (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection))))))))))))))
 
 (deftest snippet-collection-items-test-2
   (testing "GET /api/collection/:id/items"
     (testing "Snippet collections should be returned on EE with the snippet-collections feature flag, rather than
              returning all nested snippets as a flat list"
       (mt/with-premium-features #{:snippet-collections}
-        (mt/with-temp [:model/Collection         collection {:namespace "snippets" :name "My Snippet Collection"}
-                       :model/Collection         sub-collection {:namespace "snippets"
-                                                                 :name      "Nested Snippet Collection"
-                                                                 :location  (collection/location-path collection)}
-                       :model/NativeQuerySnippet snippet {:collection_id (:id collection) :name "My Snippet"}
-                       :model/NativeQuerySnippet _ {:collection_id (:id sub-collection)
-                                                    :name          "Nested Snippet"}]
-          (is (=?
-               [{:id (:id snippet) :name "My Snippet"}
-                {:id (:id sub-collection) :name "Nested Snippet Collection"}]
-               (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))
+        (mt/with-model-cleanup [:model/Collection]
+          (let [[collection]     (collection/create-collections! [{:namespace "snippets" :name "My Snippet Collection"}])
+                [sub-collection] (collection/create-collections! [{:namespace "snippets"
+                                                                   :name      "Nested Snippet Collection"
+                                                                   :location  (collection/location-path collection)}])]
+            (mt/with-temp [:model/NativeQuerySnippet snippet {:collection_id (:id collection) :name "My Snippet"}
+                           :model/NativeQuerySnippet _ {:collection_id (:id sub-collection)
+                                                        :name          "Nested Snippet"}]
+              (is (=?
+                   [{:id (:id snippet) :name "My Snippet"}
+                    {:id (:id sub-collection) :name "Nested Snippet Collection"}]
+                   (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
 
 (deftest snippet-folder-read-only-remote-sync-test
   (testing "A snippet folder synced with the Library cannot be edited under read-only remote sync"

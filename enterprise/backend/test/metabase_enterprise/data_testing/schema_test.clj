@@ -9,10 +9,13 @@
    [metabase-enterprise.data-testing.expectations.empty :as expectations.empty]
    [metabase-enterprise.data-testing.expectations.equals :as expectations.equals]
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
+   [metabase-enterprise.data-testing.models.card-test]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase.lib.core :as lib]
+   [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
 
@@ -240,14 +243,75 @@
           :let [schema (fn [suffix] (keyword "metabase-enterprise.data-testing.schema"
                                              (str (name test-type) suffix)))]]
     (testing (str test-type)
-      (testing "create takes the definition and the subject key, and no other subject's key"
-        (is (mr/validate (schema ".create") (assoc definition subject-key 1)))
-        (is (not (mr/validate (schema ".create") definition)))
-        (is (not (mr/validate (schema ".create") (assoc definition other-key 1)))))
-      (testing "update takes any subset of them"
-        (is (mr/validate (schema ".update") {}))
-        (is (mr/validate (schema ".update") {subject-key 2 :name "renamed"}))
-        (is (not (mr/validate (schema ".update") {other-key 2}))))
+      (testing "create takes the definition, the creator and the subject key, and no other subject's key"
+        (is (mr/validate (schema ".create") (assoc definition subject-key 1 :creator_id 1)))
+        (is (not (mr/validate (schema ".create") (assoc definition :creator_id 1))))
+        (is (not (mr/validate (schema ".create") (assoc definition other-key 1 :creator_id 1)))))
+      (testing "update takes the id and any subset of the columns"
+        (is (mr/validate (schema ".update") {:id 1}))
+        (is (mr/validate (schema ".update") {:id 1 subject-key 2 :name "renamed"}))
+        (is (not (mr/validate (schema ".update") {subject-key 2 :name "renamed"})))
+        (is (not (mr/validate (schema ".update") {:id 1 other-key 2}))))
       (testing "a saved test is the definition, the subject key and the row's own columns"
         (is (mr/validate (schema "") (merge saved definition {subject-key 1})))
         (is (not (mr/validate (schema "") (merge saved definition {other-key 1}))))))))
+
+;;; ---------------------------------------------- now ----------------------------------------------
+
+(defn- now-valid?
+  "Whether `value`, as a client sends it, decodes to a valid `now`."
+  [value]
+  (mr/validate ::data-testing.schema/now (lib/normalize ::data-testing.schema/now value)))
+
+(deftest now-is-a-moment-every-app-db-stores-test
+  (testing "a date-time with an offset or Z is a moment"
+    (is (now-valid? "2026-10-13T09:00:00+09:00"))
+    (is (now-valid? "2026-10-13T00:00:00Z")))
+  (testing "a date-time without an offset names no moment"
+    (is (not (now-valid? "2026-10-13T00:00:00"))))
+  (testing "the first and last moments a MySQL app DB's TIMESTAMP column stores are accepted"
+    (is (now-valid? "1970-01-01T00:00:01Z"))
+    (is (now-valid? "2038-01-19T03:14:07Z")))
+  (testing "moments outside that range are refused, whatever the app DB"
+    (is (not (now-valid? "1970-01-01T00:00:00Z")))
+    (is (not (now-valid? "2038-01-19T03:14:08Z")))
+    (is (not (now-valid? "2038-01-19T03:14:07.5Z")))))
+
+(deftest external-now-needs-an-offset-test
+  (let [external (fn [now]
+                   (mr/validate ::data-testing.schema/external-card-test
+                                {:entity_id "aaaaaaaaaaaaaaaaaaaaa" :name "t" :now now :inputs [] :expectations []}))]
+    (testing "a serialized `now` with an offset is accepted"
+      (is (external "2026-10-13T00:00:00Z")))
+    (testing "a serialized `now` without an offset is refused by the file's schema"
+      (is (not (external "2026-10-13T00:00:00")))
+      (is (not (external "2026-10-13")))))
+  (testing "a `now` written without quotes, which YAML reads as a date and so loses its offset, is refused"
+    (doseq [text ["now: 2026-10-13T00:00:00Z" "now: 2026-10-13T00:00:00" "now: 2026-10-13"]]
+      (let [now (:now (yaml/parse-string text))]
+        (is (instance? java.util.Date now) text)
+        (is (not (mr/validate ::data-testing.schema/now-string now)) text)))))
+
+(deftest import-refusal-of-now-names-the-reason-test
+  (testing "an import that refuses a test's `now` says why, as the API does"
+    (let [refusal (fn [now]
+                    (try
+                      (serialization/check-entity :model/CardTest {:entity_id    "aaaaaaaaaaaaaaaaaaaaa"
+                                                                   :name         "t"
+                                                                   :now          now
+                                                                   :inputs       []
+                                                                   :expectations []})
+                      nil
+                      (catch clojure.lang.ExceptionInfo e
+                        (ex-message e))))]
+      (let [refused   #(str "Invalid CardTest \"aaaaaaaaaaaaaaaaaaaaa\": " (pr-str {:now %}))
+            no-offset "must be an ISO-8601 date-time with an offset, such as 2026-10-13T00:00:00Z"
+            unquoted  "must be a quoted string, such as \"2026-10-13T00:00:00Z\": YAML reads an unquoted date-time as a date"]
+        (is (= (refused no-offset) (refusal "2026-10-13T00:00:00")))
+        (is (= (refused "must be from 1970-01-01T00:00:01Z to 2038-01-19T03:14:07Z, inclusive")
+               (refusal "2040-01-01T00:00:00Z")))
+        (testing "a `now` YAML read as a date, and any other value that is not a string, asks for a quoted string"
+          (is (= (refused unquoted) (refusal (:now (yaml/parse-string "now: 2026-10-13T00:00:00")))))
+          (is (= (refused unquoted) (refusal 12345)))))
+      (testing "control: a `now` with an offset in range is accepted"
+        (is (nil? (refusal "2026-10-13T00:00:00Z")))))))

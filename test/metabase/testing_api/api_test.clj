@@ -3,11 +3,13 @@
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [java-time.clock]
    [metabase.app-db.core :as mdb]
    [metabase.global-system.mutable-component :as mc]
    [metabase.llm.settings :as llm.settings]
+   [metabase.metabot.tools.search :as metabot.search]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
@@ -128,13 +130,13 @@
   (let [snapshot-name (str (random-uuid))]
     (mt/with-temp-empty-app-db [_conn :h2]
       (jdbc/execute! {:datasource (mdb/app-db)} ["create table test_table (a int)"])
-      (jdbc/execute! {:datasource (mdb/app-db)} ["insert into test_table (a) values (1)"])
+      (jdbc/execute! {:datasource (mdb/app-db)} (sql/format {:insert-into :test_table :columns [:a] :values [[1]]} {:quoted false}))
       (jdbc/execute! {:datasource (mdb/app-db)} ["create or replace view test_view as select a from test_table"])
       (jdbc/execute! {:datasource (mdb/app-db)} ["alter table test_table add column b int"])
       (#'testing/save-snapshot! snapshot-name))
     (mt/with-temp-empty-app-db [_conn :h2]
       (#'testing/restore-snapshot! snapshot-name)
-      (is (= [{:a 1}] (jdbc/query {:datasource (mdb/app-db)} ["select a from test_view"]))))))
+      (is (= [{:a 1}] (jdbc/query {:datasource (mdb/app-db)} (sql/format {:select [:a] :from [:test_view]} {:quoted false})))))))
 
 (deftest set-time-test
   (try
@@ -201,3 +203,70 @@
     (testing "a nil value unsets it"
       (is (nil? (mt/user-http-request :rasta :put 204 "testing/isolated-origin" {:value nil})))
       (is (nil? (server.settings/isolated-origin))))))
+
+(deftest ^:parallel metabot-retrieve-is-for-admins-test
+  (is (= "You don't have permissions to do that."
+         (mt/user-http-request :rasta :post 403 "testing/metabot/retrieve"
+                               {:retriever "general", :arguments {:keyword_queries ["orders"]}}))))
+
+(deftest metabot-retrieve-runs-the-named-tool-test
+  (doseq [[retriever types arguments] [["general"
+                                        ["dashboard" "document" "measure" "metric" "model" "question" "segment" "table"]
+                                        {:keyword_queries ["orders"]}]
+                                       ["nlq"
+                                        ["metric" "measure" "segment" "model" "question" "table"]
+                                        {:keyword_queries ["orders"]}]
+                                       ["sql"
+                                        ["model" "table"]
+                                        {:keyword_queries ["orders"], :database_id (mt/id)}]]]
+    (testing retriever
+      (let [opts (atom nil)]
+        (mt/with-dynamic-fn-redefs [metabot.search/search (fn [search-opts] (reset! opts search-opts) [])]
+          (is (string? (:output (mt/user-http-request :crowberto :post 200 "testing/metabot/retrieve"
+                                                      {:retriever retriever, :arguments arguments})))))
+        (is (= types (vec (:entity-types @opts))))
+        (is (= ["orders"] (:term-queries @opts)))))))
+
+(deftest metabot-retrieve-rejects-bad-arguments-test
+  (testing "an unknown retriever is rejected by the route's schema"
+    (is (some? (:errors (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
+                                              {:retriever "run_sql", :arguments {}})))))
+  (testing "arguments the tool rejects are the caller's mistake"
+    (doseq [[retriever arguments] [["sql"     {:keyword_queries ["orders"]}]
+                                   ["general" {:keyword_queries ["orders"], :entity_typo ["table"]}]]]
+      (is (=? {:error-class "validation"}
+              (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
+                                    {:retriever retriever, :arguments arguments})))))
+  (testing "arguments that pass the tool's schema but name nothing to search are the caller's mistake too"
+    (doseq [[retriever arguments code] [["general" {:keyword_queries [" "]}
+                                         "metabase.metabot.tools.search/missing-query"]
+                                        ["library" {:user_search_prompt " "}
+                                         "metabase.metabot.tools.entity-retrieval/blank-search-prompt"]
+                                        ["sql"     {:keyword_queries ["orders"], :database_id Integer/MAX_VALUE}
+                                         "metabase.metabot.tools.search/unavailable-database"]]]
+      (is (=? {:error-code code, :error-class "recoverable"}
+              (mt/user-http-request :crowberto :post 400 "testing/metabot/retrieve"
+                                    {:retriever retriever, :arguments arguments}))))))
+
+(deftest metabot-retrieve-passes-arguments-through-test
+  (testing "a null the tool accepts reaches the tool"
+    (mt/with-dynamic-fn-redefs [metabot.search/search (constantly [])]
+      (is (string? (:output (mt/user-http-request :crowberto :post 200 "testing/metabot/retrieve"
+                                                  {:retriever "general"
+                                                   :arguments {:keyword_queries ["orders"], :limit nil}})))))))
+
+(deftest metabot-retrieve-reports-a-failed-call-test
+  (mt/with-premium-features #{}
+    (is (=? {:error-code  "metabase.metabot.tools.entity-retrieval/library-search-unavailable"
+             :error-class "recoverable"}
+            (mt/user-http-request :crowberto :post 502 "testing/metabot/retrieve"
+                                  {:retriever "library"
+                                   :arguments {:user_search_prompt "Where are the orders?"}})))))
+
+(deftest metabot-retrieve-reports-failed-queries-test
+  (testing "a search that lost some of its queries is a failure, not a smaller result"
+    (mt/with-dynamic-fn-redefs [metabot.search/search (fn [_] (with-meta [] {:failed-queries ["people"]}))]
+      (is (=? {:failed-queries ["people"]
+               :output         #"(?s).*Total results: 0.*"}
+              (mt/user-http-request :crowberto :post 502 "testing/metabot/retrieve"
+                                    {:retriever "general", :arguments {:keyword_queries ["orders" "people"]}}))))))

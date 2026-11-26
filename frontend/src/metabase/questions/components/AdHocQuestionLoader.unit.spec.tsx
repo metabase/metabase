@@ -52,9 +52,9 @@ describe("AdHocQuestionLoader", () => {
 
     const calls = mockChild.mock.calls;
     const { question, loading, error } = calls[calls.length - 1][0];
-    expect(
-      Lib.areLegacyQueriesEqual(question.datasetQuery(), q.datasetQuery()),
-    ).toBe(true);
+    expect(Lib.areQueriesEqual(question.datasetQuery(), q.datasetQuery())).toBe(
+      true,
+    );
     expect(loading).toEqual(false);
     expect(error).toEqual(null);
   });

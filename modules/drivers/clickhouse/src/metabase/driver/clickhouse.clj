@@ -11,8 +11,10 @@
    [metabase.driver.clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -23,6 +25,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
@@ -215,6 +218,39 @@
   (merge
    ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver database)
    {"testConnectionOnCheckout" false}))
+
+(defmethod driver/database-supports? [:clickhouse :nested-field-columns]
+  [_driver _feature db]
+  (driver.common/json-unfolding-default db))
+
+(defmethod sql-jdbc.sync/sample-json-row-honeysql :clickhouse
+  [_driver table-identifier json-field-identifiers pk-identifiers]
+  ;; `db.table.column` fails when the database and the table have the same name, so use only the column names
+  (let [column    #(h2x/identifier :field (last (h2x/identifier->components %)))
+        json-text (fn [field]
+                    (let [field (column field)]
+                      ;; JDBC reads a `JSON` value as a map with dotted keys, but sync needs JSON text
+                      [[:case
+                        [:<
+                         [:inline (driver.settings/nested-field-columns-value-length-limit)]
+                         [:'length [:'toJSONString field]]]
+                        nil
+                        :else
+                        [:'toJSONString field]]
+                       (last (h2x/identifier->components field))]))
+        sample    (fn [limit]
+                    {:select (perf/mapv json-text json-field-identifiers)
+                     :from   [[table-identifier]]
+                     :limit  [:inline limit]})
+        edge-rows (fn [direction]
+                    {:nest (assoc (sample (/ table-rows-sample/nested-field-sample-limit 2))
+                                  :order-by (perf/mapv #(vector (column %) direction) pk-identifiers))})]
+    ;; The default joins on the first and last PKs. ClickHouse reads the whole table for this join, and ClickHouse PKs
+    ;; are not unique, so a join or an `IN` on them can return the whole table. Select the first and last rows directly.
+    (if (seq pk-identifiers)
+      {:select [:*]
+       :from   [[{:union-all [(edge-rows :asc) (edge-rows :desc)]}]]}
+      (sample table-rows-sample/nested-field-sample-limit))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
   (let [{:keys [cloud single-node]} (clickhouse-version/dbms-version db)]
@@ -930,6 +966,15 @@
     (catch SQLException e
       e)))
 
+(defn- execute-kill-for-error
+  "Like [[execute-for-error]], for a KILL QUERY. When no query matches, ClickHouse 26.11 and later throw
+  NOTHING_TO_KILL, and older versions return no rows. Both mean that no query is left to end, so this returns nil."
+  [^Statement stmt ^String sql]
+  (let [e (execute-for-error stmt sql)]
+    ;; 785 is NOTHING_TO_KILL
+    (when-not (= 785 (some-> ^SQLException e .getErrorCode))
+      e)))
+
 (defn- destroy-workspace!
   "Runs [[destroy-workspace-sqls]] one at a time. A failed ALTER USER or KILL QUERY does not stop the statements after
   it. A failed DROP DATABASE stops DROP USER: a view in the database may have the user as its definer. The second
@@ -949,11 +994,11 @@
   [^Statement stmt db-name user]
   (let [[lock kill drop-db drop-user kill-again] (destroy-workspace-sqls db-name user)
         lock-error                     (execute-for-error stmt lock)
-        kill-error                     (execute-for-error stmt kill)
+        kill-error                     (execute-kill-for-error stmt kill)
         drop-db-error                  (execute-for-error stmt drop-db)
         drop-user-error                (when-not drop-db-error
                                          (execute-for-error stmt drop-user))
-        kill-again-error               (execute-for-error stmt kill-again)
+        kill-again-error               (execute-kill-for-error stmt kill-again)
         drop-error                     (or drop-db-error drop-user-error)
         ;; 497 is ACCESS_DENIED: ClickHouse's own message for it can be unreadable
         denied?                        #(= 497 (some-> ^SQLException % .getErrorCode))

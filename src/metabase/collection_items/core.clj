@@ -23,13 +23,13 @@
    [metabase.collection-items.spec :as collection-items.spec]
    [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.models.interface :as mi]
    [metabase.models.resolution :as models.resolution]
    [metabase.request.core :as request]
    [metabase.revisions.schema :as revisions.schema]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -119,7 +119,7 @@
                            not-empty)]
       (into [:and]
             (for [token tokens
-                  :let  [pattern (h2x/like-substring token)]]
+                  :let  [pattern (funnysql.util/like-substring token)]]
               [:or
                [:like [:lower :name] pattern]
                [:like [:lower :last_edit_first_name] pattern]
@@ -219,7 +219,7 @@
     (map (fn [col]
            (let [[col-name type'] (u/one-or-many col)]
              (get columns col-name (if (and type' (= (mdb/db-type) :postgres))
-                                     [(h2x/cast type' nil) col-name]
+                                     [[:cast nil type'] col-name]
                                      [nil col-name]))))
          necessary-columns)))
 

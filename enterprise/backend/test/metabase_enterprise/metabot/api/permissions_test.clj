@@ -6,6 +6,7 @@
    [metabase.metabot.usage-controls :as usage-controls]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -101,6 +102,44 @@
                                                        :perm_type  "permission/metabot-nlq"
                                                        :perm_value "yes"}]})))
           (is (not (t2/exists? :model/MetabotPermissions :group_id group-id))))))))
+
+(deftest update-permissions-statement-count-test
+  (mt/with-premium-features #{:ai-controls}
+    (mt/with-temporary-setting-values [metabot-advanced-permissions true]
+      (mt/with-model-cleanup [:model/PermissionsGroup :model/MetabotPermissions]
+        (let [groups     (fn [n prefix]
+                           (t2/insert-returning-pks! :model/PermissionsGroup
+                                                     (for [i (range n)] {:name (str prefix " " i)})))
+              request    (fn [group-ids value]
+                           {:permissions (for [group-id group-ids
+                                               perm-type ["permission/metabot" "permission/metabot-nlq"]]
+                                           {:group_id group-id :perm_type perm-type :perm_value value})})
+              statements (fn [n]
+                           (let [group-ids (groups n (str "Statements " n))]
+                             (mt/user-http-request :crowberto :put 200 "ee/ai-controls/permissions"
+                                                   (request (take (quot n 2) group-ids) "no"))
+                             (t2/with-call-count [call-count]
+                               (mt/user-http-request :crowberto :put 200 "ee/ai-controls/permissions"
+                                                     (request group-ids "yes"))
+                               (u/prog1 (call-count)
+                                 (is (= (* 2 n) (t2/count :model/MetabotPermissions :group_id [:in group-ids]
+                                                          :perm_value :yes)))))))]
+          (statements 2)
+          (testing "PUT /api/ee/ai-controls/permissions inserting and updating rows costs as many statements for 10 groups as for 40"
+            (is (= (statements 10) (statements 40))))
+          (testing "a batch where one group is hidden by current mode is refused and writes nothing"
+            (let [group-ids (groups 3 "Refused")]
+              (is (= (str "Group " (u/the-id (perms/all-users-group)) " has no AI permissions in the current permission mode.")
+                     (mt/user-http-request :crowberto :put 400 "ee/ai-controls/permissions"
+                                           (update (request group-ids "yes") :permissions concat
+                                                   [{:group_id   (u/the-id (perms/all-users-group))
+                                                     :perm_type  "permission/metabot-nlq"
+                                                     :perm_value (if (= :yes (t2/select-one-fn :perm_value :model/MetabotPermissions
+                                                                                               :group_id (u/the-id (perms/all-users-group))
+                                                                                               :perm_type :permission/metabot-nlq))
+                                                                   "no"
+                                                                   "yes")}]))))
+              (is (not (t2/exists? :model/MetabotPermissions :group_id [:in group-ids]))))))))))
 
 (deftest user-permissions-with-custom-group-test
   (mt/with-premium-features #{:ai-controls}
@@ -225,21 +264,22 @@
                                                                        :perm_type  "permission/metabot"
                                                                        :perm_value perm-value}]}))]
             ;; Simple mode hides the custom group, so its :yes must not override All Users.
-            (mt/with-temp [:model/User                       {user-id :id}  {}
-                           :model/PermissionsGroup           {group-id :id} {:name "Hidden Metabot Group"}
-                           :model/PermissionsGroupMembership _              {:user_id user-id :group_id group-id}]
-              (insert-in-mode-showing-them! [{:group_id group-id :perm_type :permission/metabot :perm_value :yes}])
-              (let [metabot-perm (fn []
-                                   (-> (mt/user-http-request user-id :get 200 "metabot/permissions/user-permissions")
-                                       (get-in [:permissions :metabot])))]
-                (testing "the migration-seeded All Users row gives yes"
-                  (is (= "yes" (metabot-perm))))
-                (testing "after the admin turns Metabot off for All Users"
-                  (set-all-users! "no")
-                  (is (= "no" (metabot-perm))))
-                (testing "after the admin turns Metabot on again"
-                  (set-all-users! "yes")
-                  (is (= "yes" (metabot-perm))))))))))))
+            (mt/with-model-cleanup [:model/User]
+              (let [[{user-id :id}] (user/create-users! [{:email "simple-mode-all-users-metabot-round-trip-test-1@example.com"}])]
+                (mt/with-temp [:model/PermissionsGroup           {group-id :id} {:name "Hidden Metabot Group"}
+                               :model/PermissionsGroupMembership _              {:user_id user-id :group_id group-id}]
+                  (insert-in-mode-showing-them! [{:group_id group-id :perm_type :permission/metabot :perm_value :yes}])
+                  (let [metabot-perm (fn []
+                                       (-> (mt/user-http-request user-id :get 200 "metabot/permissions/user-permissions")
+                                           (get-in [:permissions :metabot])))]
+                    (testing "the migration-seeded All Users row gives yes"
+                      (is (= "yes" (metabot-perm))))
+                    (testing "after the admin turns Metabot off for All Users"
+                      (set-all-users! "no")
+                      (is (= "no" (metabot-perm))))
+                    (testing "after the admin turns Metabot on again"
+                      (set-all-users! "yes")
+                      (is (= "yes" (metabot-perm))))))))))))))
 
 (deftest mode-switch-is-atomic-test
   (mt/with-premium-features #{:ai-controls}

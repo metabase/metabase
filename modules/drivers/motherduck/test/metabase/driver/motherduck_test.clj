@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [honey.sql :as sql]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    ;; Register the driver before testing its methods.
    [metabase.driver.motherduck]
@@ -27,6 +28,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
@@ -37,7 +39,7 @@
   (:import
    (com.mchange.v2.c3p0 ConnectionTester)
    (java.sql Connection PreparedStatement ResultSet ResultSetMetaData SQLException Statement Types)
-   (java.time LocalDateTime OffsetTime)
+   (java.time LocalDateTime OffsetDateTime OffsetTime ZoneId ZonedDateTime)
    (metabase.driver.motherduck ResetDatabaseConnectionTester)
    (org.postgresql.util PSQLException PSQLState)))
 
@@ -249,6 +251,39 @@
         (is (identical? rs (sql-jdbc.execute/execute-statement! :motherduck stmt "SELECT 1")))
         (is (= 2 @attempts))))))
 
+(deftest ^:parallel compile-transform-test
+  (is (= ["CREATE OR REPLACE TABLE \"main\".\"out\" AS SELECT x FROM src WHERE y = ?" [5]]
+         (driver/compile-transform :motherduck {:query        {:query "SELECT x FROM src WHERE y = ?", :params [5]}
+                                                :output-table :main/out}))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "the Postgres names that mean something else on the endpoint, or don't exist there"
+    (are [base-type database-type] (= database-type (driver/type->database-type :motherduck base-type))
+      :type/Float          [:double-precision]
+      :type/JSON           [:json]
+      :type/SerializedJSON [:json]
+      :type/IPAddress      [:text]))
+  (testing "the rest is inherited from Postgres"
+    (are [base-type database-type] (= database-type (driver/type->database-type :motherduck base-type))
+      :type/Decimal        [:decimal]
+      :type/Integer        [:int]
+      :type/BigInteger     [:bigint]
+      :type/Number         [:bigint]
+      :type/Text           [:text]
+      :type/Boolean        [:boolean]
+      :type/Date           [:date]
+      :type/DateTime       [:timestamp]
+      :type/DateTimeWithTZ [:timestamp-with-time-zone]
+      :type/Instant        [:timestamp-with-time-zone]
+      :type/UUID           [:uuid])))
+
+(deftest ^:parallel compile-create-temp-table-test
+  (testing "transform tests use an ordinary table, since the endpoint refuses temp tables"
+    (is (= ["CREATE TABLE \"mb_test_abc\" AS SELECT 1 AS x" []]
+           (driver/compile-create-temp-table :motherduck {:table "mb_test_abc", :query {:query "SELECT 1 AS x", :params []}})))
+    (is (= ["DROP TABLE IF EXISTS \"mb_test_abc\"" []]
+           (driver/compile-drop-temp-table :motherduck "mb_test_abc")))))
+
 (defn- read-unparseable
   "Read `s` with the driver's reader for a column of `jdbc-type` and `type-name`, through stand-in JDBC objects.
 
@@ -306,6 +341,20 @@
                             (read-unparseable jdbc-type type-name s))
           s))))
 
+(deftest ^:parallel inline-timestamptz-test
+  (testing "the offset follows the time with no space, because DuckDB reads text after a space as a zone name"
+    (are [t] (= "timestamp with time zone '2020-06-07 12:00:00.000+05:30'"
+                (sql.qp/inline-value :motherduck t))
+      (OffsetDateTime/parse "2020-06-07T12:00:00+05:30")
+      (ZonedDateTime/of 2020 6 7 12 0 0 0 (ZoneId/of "Asia/Kolkata"))))
+  (testing "a pinned clock writes the pinned moment as such a literal"
+    (driver/with-driver :motherduck
+      (mt/with-results-timezone-id "Asia/Kolkata"
+        (qp.timezone/with-pinned-now (t/instant "2020-06-17T12:00:00Z")
+          (is (str/includes? (first (sql.qp/format-honeysql :motherduck
+                                                            (sql.qp/current-datetime-honeysql-form :motherduck)))
+                             "timestamp with time zone '2020-06-17 17:30:00.000+05:30'")))))))
+
 (deftest ^:parallel duckdb-only-base-types-test
   (are [database-type base-type] (= base-type (sql-jdbc.sync/database-type->base-type :motherduck database-type))
     :duckdb_enum         :type/Text
@@ -340,6 +389,27 @@
       (is (=? {:sslmode    "verify-ca"
                :sslfactory "org.postgresql.ssl.DefaultJavaSSLFactory"}
               (sql-jdbc.conn/connection-details->spec :motherduck (assoc details :tunnel-enabled true)))))))
+
+(deftest command-tags-test
+  (mt/test-driver :motherduck
+    (testing "every write statement returns a Postgres command tag, which `executeUpdate` needs, not a result set"
+      (let [table (str "command_tags_" (mt/random-name))
+            sql   (fn [fmt] (format fmt (str \" table \")))]
+        (sql-jdbc.execute/do-with-connection-with-options
+         :motherduck (mt/id) {:write? true}
+         (fn [^Connection conn]
+           (with-open [stmt (.createStatement conn)]
+             (try
+               (is (= [0 3 2 1 0 0]
+                      (mapv #(.executeUpdate stmt ^String (sql %))
+                            ["CREATE TABLE %s (id INTEGER, x INTEGER)"
+                             "INSERT INTO %s VALUES (1, 1), (2, 2), (3, 3)"
+                             "UPDATE %s SET x = 0 WHERE id < 3"
+                             "DELETE FROM %s WHERE id = 3"
+                             "ALTER TABLE %s ADD COLUMN y INTEGER"
+                             "COMMENT ON TABLE %s IS 'command tags'"])))
+               (finally
+                 (is (= 0 (.executeUpdate stmt ^String (sql "DROP TABLE IF EXISTS %s")))))))))))))
 
 (deftest ^:parallel connection-form-test
   (let [field-names (into #{}
@@ -455,8 +525,8 @@
         (finally
           (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))
 
-;; The checkout tester must accept a `USE` whether or not the endpoint returns a result set for it, which it does today
-;; but may stop doing (QUE-1012). A mock connection stands in for both behaviors.
+;; The checkout tester must accept a `USE` whether or not the endpoint returns a result set for it. It returns none with
+;; `return_pg_command_tags`, and an empty one without. A mock connection stands in for both behaviors.
 (defn- mock-connection
   "A Connection opened on `catalog` whose statements record their SQL in `executed`, then return `result-set?` or
   throw `error`."
@@ -518,11 +588,17 @@
       (finally
         (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))))))
 
-(mt/defdataset pk-leak-a
-  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+(def ^:private pk-leak-a
+  (mt/dataset-definition
+   "pk-leak-a"
+   [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]]
+   {:static false}))
 
-(mt/defdataset pk-leak-b
-  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+(def ^:private pk-leak-b
+  (mt/dataset-definition
+   "pk-leak-b"
+   [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]]
+   {:static false}))
 
 (defn- exec!
   "Execute `statements` against the database whose spec is passed as the first param."
@@ -531,7 +607,6 @@
    :motherduck spec {:write? true}
    (fn [^Connection conn]
      (with-open [stmt (.createStatement conn)]
-       ;; The endpoint returns result sets for DDL, which executeUpdate rejects.
        (doseq [^String statement statements]
          (.execute stmt statement))))))
 
@@ -589,7 +664,6 @@
     (fn [^Connection conn]
       (doseq [^String sql statements]
         (with-open [stmt (.createStatement conn)]
-          ;; The endpoint returns result sets for DDL, which executeUpdate rejects.
           (.execute stmt sql))))))
 
 ;; The endpoint's information_schema.table_constraints and key_column_usage list every database in the account. A
@@ -619,8 +693,11 @@
                                              (lib.metadata/database (mt/metadata-provider))
                                              :table-names ["both_pk" "diff_pk" "only_b_pk"]))))))))
 
-(mt/defdataset estimated-row-counts
-  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+(def ^:private estimated-row-counts
+  (mt/dataset-definition
+   "estimated-row-counts"
+   [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]]
+   {:static false}))
 
 (deftest describe-database-estimated-row-count-test
   (mt/test-driver :motherduck
@@ -640,8 +717,11 @@
                           (driver/describe-database :motherduck)
                           :tables))))))))
 
-(mt/defdataset schema-filters
-  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+(def ^:private schema-filters
+  (mt/dataset-definition
+   "schema-filters"
+   [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]]
+   {:static false}))
 
 (deftest schema-filters-test
   (mt/test-driver :motherduck
@@ -708,6 +788,16 @@
     ;; option with "FATAL: option is not allowed: search_path".
     (is (= "main"
            (driver.sql/default-schema :motherduck (lib.metadata/database (mt/metadata-provider)))))))
+
+(deftest schema-exists?-test
+  (mt/test-driver :motherduck
+    (testing "a schema of the connected database"
+      (is (true? (driver/schema-exists? :motherduck (mt/id) "main"))))
+    ;; JDBC's getSchemas() lists these, and would answer yes for a schema of any attached database.
+    (testing "a schema the endpoint only emulates for Postgres clients"
+      (is (false? (driver/schema-exists? :motherduck (mt/id) "pg_catalog"))))
+    (testing "a schema that doesn't exist"
+      (is (false? (driver/schema-exists? :motherduck (mt/id) (str "no_such_schema_" (mt/random-name))))))))
 
 (deftest recreated-views-test
   (mt/test-driver :motherduck

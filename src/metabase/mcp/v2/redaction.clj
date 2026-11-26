@@ -108,13 +108,19 @@
       (seq (:series dashcard))
       (redact-hidden-series readable))))
 
+(defn readable-card-ids
+  "The ids of the cards on `dash`'s dashcards that the current user can read, which [[redact-dashboard]] keeps.
+   Its dashcards' `:card` and `:series` must be populated, as for [[redact-dashboard]]."
+  [dash]
+  (into #{} (map :id) (mi/readable (dashcard-card-rows (:dashcards dash)))))
+
 (defn redact-dashboard
   "The dashboard `dash`, with the cards the current user cannot read reduced to their ids.
    Its dashcards' `:card` and `:series` must be populated, by hydration on a saved dashboard and by hand on a
    compiled one.
    The stored settings and filter mappings that describe a hidden card are removed with it."
   [dash]
-  (let [readable (into #{} (map :id) (mi/readable (dashcard-card-rows (:dashcards dash))))]
+  (let [readable (readable-card-ids dash)]
     (update dash :dashcards (partial mapv #(redact-dashcard readable %)))))
 
 ;;; ------------------------------------------------ notification --------------------------------------------------

@@ -30,6 +30,7 @@ export {
 } from "./open-url";
 export * from "./permissions";
 export * from "./product-analytics";
+export * from "./security-center";
 export * from "./questions";
 export * from "./timelines";
 export * from "./transforms";

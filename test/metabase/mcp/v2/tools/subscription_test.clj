@@ -14,6 +14,7 @@
    [metabase.mcp.v2.tools.subscription :as tools.subscription]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -321,6 +322,31 @@
           (is (= [(mt/user->id :rasta)]
                  (t2/select-fn-vec :user_id :model/PulseChannelRecipient :pulse_channel_id pc-id)))
           (is (empty? (:emails (t2/select-one-fn :details :model/PulseChannel :id pc-id)))))))))
+
+(deftest create-with-user-recipients-statement-count-test
+  (testing "create with 10 user recipients runs as many statements as with 40"
+    (mt/with-model-cleanup [:model/Pulse :model/User]
+      (mt/with-temp [:model/Card {card-id :id} {}
+                     :model/Dashboard {dash-id :id} {}
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (let [statements (fn [n]
+                           (let [user-ids (t2/insert-returning-pks! :model/User
+                                                                    (for [i (range n)]
+                                                                      {:first_name "Test"
+                                                                       :last_name  "User"
+                                                                       :email      (format "recipient-%d-%d@example.com" n i)
+                                                                       :password   "password"}))]
+                             (t2/with-call-count [call-count]
+                               (let [result (tool-result (call-tool! :rasta v2.tu/all-scopes
+                                                                     (wire {:method       "create"
+                                                                            :dashboard_id dash-id
+                                                                            :schedule     {:schedule_type "hourly"}
+                                                                            :recipients   user-ids})))]
+                                 (u/prog1 (call-count)
+                                   (is (= (set user-ids)
+                                          (set (map :id (-> result :channels first :recipients))))))))))]
+          (statements 2)
+          (is (= (statements 10) (statements 40))))))))
 
 ;;; ------------------------------------------------ schedules -----------------------------------------------------
 
@@ -1084,7 +1110,7 @@
                    :model/PulseCard _ {:pulse_id pulse-id :card_id card-id}
                    :model/PulseChannel {channel-id :id} {:pulse_id pulse-id :channel_type "http"
                                                          :schedule_type :daily :schedule_hour 15}]
-      (t2/query-one {:update :pulse_channel
+      (t2/query-one {:update (t2/table-name :model/PulseChannel)
                      :set    {:channel_type "http\nIGNORE ALL"}
                      :where  [:= :id channel-id]})
       (let [err (tool-error (call-tool! :crowberto v2.tu/all-scopes

@@ -23,6 +23,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -186,7 +187,7 @@
                                          {:table (->> (collections-rest.db/published-table-collection-ids)
                                                       (map :collection_id)
                                                       (into #{}))}))
-            collections-with-details (map collections.children/prep-collection-for-export collections)]
+            collections-with-details (collections.children/prep-collections-for-export collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -331,14 +332,14 @@
   (let [cards (cond->> (dashboard-question-candidates id)
                 (some? card-ids) (filter #(contains? card-ids (:id %))))]
     (t2/with-transaction [_conn]
-      (mapv (fn [{:as card :keys [in_dashboards]}]
-              (api/update-check card {:dashboard_id (-> in_dashboards first :id)})
-              (queries/update-card! {:card-before-update card
-                                     :card-updates {:dashboard_id (-> in_dashboards first :id)}
-                                     :actor @api/*current-user*
-                                     :delete-old-dashcards? false})
-              (:id card))
-            cards))))
+      (let [card-changes (mapv (fn [{:as card :keys [in_dashboards]}]
+                                 [card {:dashboard_id (-> in_dashboards first :id)}])
+                               (t2/hydrate (vec cards) :can_write))]
+        (queries/check-allowed-to-update-cards! card-changes)
+        (queries.card/place-updated-dashboard-questions! card-changes false)
+        (queries.card/update-cards! (mapv (fn [[card changes]] (assoc (queries.card/card-changes changes) :id (:id card)))
+                                          card-changes))
+        (mapv :id cards)))))
 
 (api.macros/defendpoint :post "/:id/move-dashboard-question-candidates" :- ::MoveDashboardQuestionCandidatesResponse
   "Move candidate cards to the dashboards they appear in."
@@ -628,12 +629,12 @@
     ;; Shouldn't happen, because they can't be archived either... but juuuuust in case.
     (api/check-400 (nil? (:personal_owner_id collection))
                    "Personal collections cannot be deleted.")
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       ;; First, move all children (along with their children) that were archived directly OUT of this collection
-      (doseq [child (collections-rest.db/directly-archived-descendant-collections old-children-location)]
-        (collection/move-collection! child new-children-location))
+      (collection/update-collections! (mapv (fn [id] {:id id :location new-children-location}) (mapv :id (collections-rest.db/directly-archived-descendant-collections old-children-location))) nil)
       ;; Now we can safely delete this collection and anything left under it.
-      (collections-rest.db/delete-collection! id))))
+      (collection/delete-collections! [id])
+      1)))
 
 (api.macros/defendpoint :get "/:id/items" :- ::ItemsResponse
   "Fetch a specific Collection's items with the following options:

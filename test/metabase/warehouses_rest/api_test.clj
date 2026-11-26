@@ -8,7 +8,9 @@
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.documents.test-util :as documents.test-util]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -21,6 +23,7 @@
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.premium-features.core :as premium-features]
+   [metabase.request.core :as request]
    [metabase.secrets.core :as secret]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.sync.analyze :as analyze]
@@ -46,9 +49,11 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.api :as api.database]
-   [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.models.database :as database]
    [metabase.warehouses.util :as warehouses.util]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
@@ -95,11 +100,12 @@
     (mt/object-defaults :model/Database)
     (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version :default_schema
                      :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled :uploads_schema_name])
-    {:engine                (u/qualified-name (:engine db))
-     :settings              {}
-     :features              (map u/qualified-name (driver.u/features driver db))
-     :initial_sync_status   "complete"
-     :router_user_attribute nil})))
+    {:engine                          (u/qualified-name (:engine db))
+     :settings                        {}
+     :features                        (map u/qualified-name (driver.u/features driver db))
+     :initial_sync_status             "complete"
+     :router_user_attribute           nil
+     :router_anonymous_access_granted nil})))
 
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults :model/Table))
@@ -330,6 +336,195 @@
               :segment   0
               :transform 0}
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))))
+
+(defn- anonymous-reach [db-id]
+  (mt/user-http-request :crowberto :get 200 (format "database/%d/anonymous-reach" db-id)))
+
+(deftest get-database-anonymous-reach-requires-superuser-test
+  (mt/with-temp [:model/Database {db-id :id} {}]
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 (format "database/%d/anonymous-reach" db-id))))))
+
+(deftest get-database-anonymous-reach-404-test
+  (let [non-existing-db-id (inc (t2/select-one-pk :model/Database {:order-by [[:id :desc]]}))]
+    (is (= "Not found."
+           (mt/user-http-request :crowberto :get 404
+                                 (format "database/%d/anonymous-reach" non-existing-db-id))))))
+
+(deftest get-database-anonymous-reach-nothing-published-test
+  (mt/with-temp
+    [:model/Database {db-id :id}    {}
+     :model/Table    {table-id :id} {:db_id db-id}
+     :model/Card     _              {:database_id db-id, :table_id table-id, :type :question}]
+    (testing "a database whose questions are neither shared nor published is reached by nothing"
+      (is (= {:total 0, :data []}
+             (anonymous-reach db-id))))))
+
+(deftest get-database-anonymous-reach-lists-published-entities-test
+  (mt/with-temporary-setting-values [enable-embedding-modular true]
+    (mt/with-temp
+      [:model/Database      {db-id :id}        {}
+       :model/Table         {table-id :id}     {:db_id db-id}
+       :model/Card          {question-id :id}  {:database_id      db-id
+                                                :table_id         table-id
+                                                :type             :question
+                                                :name             "A question"
+                                                :public_uuid      (str (random-uuid))
+                                                :enable_embedding true}
+       :model/Card          {on-dashboard :id} {:database_id db-id, :table_id table-id, :type :question}
+       :model/Dashboard     {dashboard-id :id} {:name "B dashboard", :enable_embedding true}
+       :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id on-dashboard}
+       :model/Document      {document-id :id}  {:name "C document", :public_uuid (str (random-uuid))}
+       :model/Card          {in-document :id}  {:database_id db-id
+                                                :table_id    table-id
+                                                :type        :question
+                                                :document_id document-id}]
+      (t2/update! :model/Document :id document-id
+                  {:document (documents.test-util/cards->prose-mirror-ast [in-document])})
+      (testing "each published entity reaching the database is one row, by name, saying which surfaces open it"
+        (is (= {:total 3
+                :data  [{:id                 question-id
+                         :model              "card"
+                         :name               "A question"
+                         :surfaces           ["guest-embed" "public-link"]
+                         :reaches_indirectly false}
+                        {:id                 dashboard-id
+                         :model              "dashboard"
+                         :name               "B dashboard"
+                         :surfaces           ["guest-embed"]
+                         :reaches_indirectly false}
+                        {:id                 document-id
+                         :model              "document"
+                         :name               "C document"
+                         :surfaces           ["public-link"]
+                         :reaches_indirectly false}]}
+               (anonymous-reach db-id))))
+      (testing "and the question on the dashboard is not itself a row -- nothing published opens it"
+        (is (not-any? #(= on-dashboard (:id %)) (:data (anonymous-reach db-id))))))))
+
+(deftest get-database-anonymous-reach-model-names-test
+  (mt/with-temp
+    [:model/Database {db-id :id}    {}
+     :model/Table    {table-id :id} {:db_id db-id}
+     :model/Card     _              {:database_id db-id, :table_id table-id, :type :model
+                                     :name "A model", :public_uuid (str (random-uuid))}
+     :model/Card     _              {:database_id db-id, :table_id table-id, :type :metric
+                                     :name "B metric", :public_uuid (str (random-uuid))}]
+    (testing "a published question's row says which kind of question it is, so a client can link to it"
+      (is (= [["A model" "dataset"] ["B metric" "metric"]]
+             (map (juxt :name :model) (:data (anonymous-reach db-id))))))))
+
+(defn- card-value-source-parameter
+  "A dashboard or question filter drawing its value list from the Card with `card-id`."
+  [card-id]
+  {:id                   "_FILTER_"
+   :name                 "Filter"
+   :slug                 "filter"
+   :type                 "string/="
+   :values_source_type   "card"
+   :values_source_config {:card_id card-id, :value_field ["field" 1 nil]}})
+
+(deftest get-database-anonymous-reach-indirect-test
+  (mt/with-temp
+    [:model/Database      {db-id :id}       {}
+     :model/Table         {table-id :id}    {:db_id db-id}
+     :model/Card          {source-id :id}   {:database_id db-id, :table_id table-id, :type :question}
+     :model/Database      {other-db :id}    {}
+     :model/Table         {other-table :id} {:db_id other-db}
+     :model/Card          {elsewhere :id}   {:database_id other-db, :table_id other-table, :type :question}
+     :model/Dashboard     {only-filter :id} {:name        "A filter only"
+                                             :public_uuid (str (random-uuid))
+                                             :parameters  [(card-value-source-parameter source-id)]}
+     :model/DashboardCard _                 {:dashboard_id only-filter, :card_id elsewhere}
+     :model/Dashboard     {shows-it :id}    {:name        "B shows it too"
+                                             :public_uuid (str (random-uuid))
+                                             :parameters  [(card-value-source-parameter source-id)]}
+     :model/DashboardCard _                 {:dashboard_id shows-it, :card_id source-id}]
+    (testing "a dashboard reaching the database only through a filter's value list says so, and one that also shows a
+             question on the database does not -- its connection needs no explaining"
+      (is (= [{:id                 only-filter
+               :model              "dashboard"
+               :name               "A filter only"
+               :surfaces           ["public-link"]
+               :reaches_indirectly true}
+              {:id                 shows-it
+               :model              "dashboard"
+               :name               "B shows it too"
+               :surfaces           ["public-link"]
+               :reaches_indirectly false}]
+             (:data (anonymous-reach db-id)))))))
+
+(deftest get-database-anonymous-reach-caps-rows-test
+  (mt/with-temp
+    [:model/Database {db-id :id}    {}
+     :model/Table    {table-id :id} {:db_id db-id}]
+    (mt/with-model-cleanup [:model/Card]
+      (t2/insert! :model/Card
+                  (for [i (range 101)]
+                    (assoc (mt/with-temp-defaults :model/Card)
+                           :name        (format "Question %03d" i)
+                           :database_id db-id
+                           :table_id    table-id
+                           :type        :question
+                           :public_uuid (str (random-uuid)))))
+      (testing "the rows stop at the server's cap while the total stays exact, so a client can say how many of them
+               it is not showing"
+        (let [{:keys [total data]} (anonymous-reach db-id)]
+          (is (= 101 total))
+          (is (= 100 (count data)))
+          (is (= ["Question 000" "Question 099"]
+                 [(:name (first data)) (:name (last data))])
+              "and they are the first hundred by name, so an admin sees the same hundred each time"))))))
+
+(deftest get-database-anonymous-reach-question-reaches-indirectly-test
+  (mt/with-temp
+    [:model/Database {db-id :id}       {}
+     :model/Table    {table-id :id}    {:db_id db-id}
+     :model/Card     {source-id :id}   {:database_id db-id, :table_id table-id, :type :question}
+     :model/Database {other-db :id}    {}
+     :model/Table    {other-table :id} {:db_id other-db}
+     :model/Card     {question-id :id} {:database_id other-db
+                                        :table_id    other-table
+                                        :type        :question
+                                        :name        "Elsewhere"
+                                        :public_uuid (str (random-uuid))
+                                        :parameters  [(card-value-source-parameter source-id)]}]
+    (testing "a published question whose own query runs elsewhere, and which reaches this database only through its
+             filter's value list, says its reach is indirect too"
+      (is (= [{:id                 question-id
+               :model              "card"
+               :name               "Elsewhere"
+               :surfaces           ["public-link"]
+               :reaches_indirectly true}]
+             (:data (anonymous-reach db-id)))))))
+
+(deftest get-database-anonymous-reach-surfaces-are-the-ones-that-reach-test
+  (mt/with-temporary-setting-values [enable-embedding-modular true]
+    (mt/with-temp
+      [:model/Database      {db-id :id}        {}
+       :model/Table         {table-id :id}     {:db_id db-id}
+       :model/Card          {source-id :id}    {:database_id db-id, :table_id table-id, :type :question}
+       :model/Database      {other-db :id}     {}
+       :model/Table         {other-table :id}  {:db_id other-db}
+       :model/Card          {elsewhere :id}    {:database_id other-db, :table_id other-table, :type :question}
+       :model/Dashboard     {dashboard-id :id} {:name             "Both ways"
+                                                :public_uuid      (str (random-uuid))
+                                                :enable_embedding true
+                                                :embedding_params {}
+                                                :parameters       [(card-value-source-parameter source-id)]}
+       :model/DashboardCard _                  {:dashboard_id dashboard-id, :card_id elsewhere}]
+      (testing "a dashboard published both ways, reaching this database only through a filter its guest embed leaves
+               disabled, names only the public link -- the surface that would actually stop returning data"
+        (is (= [{:id                 dashboard-id
+                 :model              "dashboard"
+                 :name               "Both ways"
+                 :surfaces           ["public-link"]
+                 :reaches_indirectly true}]
+               (:data (anonymous-reach db-id)))))
+      (testing "and names both once the guest embed enables that filter"
+        (t2/update! :model/Dashboard :id dashboard-id {:embedding_params {:filter "enabled"}})
+        (is (= [["guest-embed" "public-link"]]
+               (map :surfaces (:data (anonymous-reach db-id)))))))))
 
 (defn- create-db-via-api! [& [m]]
   (let [db-name (mt/random-name)]
@@ -854,7 +1049,8 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :initial_sync_error :router_user_attribute)
+    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :initial_sync_error
+                          :router_user_attribute :router_anonymous_access_granted)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -926,6 +1122,30 @@
       (let [tables (:tables (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" db-id)))]
         (is (= #{"t1" "t2" "t3" "t4" "t5" "t6"} (set (map :name tables)))
             "every table is returned to a non-admin user with table-granular perms, without tripping the backstop")))))
+
+(deftest fetch-database-metadata-metrics-statement-count-test
+  (testing "GET /api/database/:id/metadata takes as many statements for many tables with a metric as for few, as a non-admin"
+    (let [metadata! (fn [n]
+                      (mt/with-temp [:model/Database {db-id :id} {}]
+                        (mt/with-model-cleanup [:model/Card]
+                          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+                          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :query-builder)
+                          (doseq [i (range n)]
+                            (let [table-id (t2/insert-returning-pk! :model/Table {:db_id db-id :schema "public" :name (str "t" i) :active true})
+                                  _        (t2/insert! :model/Field {:table_id table-id :name "id" :base_type :type/Integer
+                                                                     :database_type "INTEGER"})
+                                  mp       (lib-be/application-database-metadata-provider db-id)]
+                              (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card)
+                                                             {:name          (str "metric " i)
+                                                              :type          :metric
+                                                              :database_id   db-id
+                                                              :dataset_query (lib/aggregate (lib/query mp (lib.metadata/table mp table-id))
+                                                                                            (lib/count))}))))
+                          (t2/with-call-count [call-count]
+                            (is (= n (count (mapcat :metrics (:tables (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" db-id)))))))
+                            (call-count)))))]
+      (metadata! 1)
+      (is (= (metadata! 2) (metadata! 6))))))
 
 (deftest fetch-database-fields-test
   (letfn [(f [fields] (m/index-by #(str (:table_name %) "." (:name %)) fields))]
@@ -1076,13 +1296,13 @@
             (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Currency})
             (is (= ["PRICE" (str "VENUES " base-type " :type/Currency")] (venues-row)))
             (finally
-              (field-user-settings/delete-field-user-settings! [field-id]))))
+              (field-user-settings/delete-field-user-settings! (field-user-settings/ids-of-fields [field-id])))))
         (testing "a user-set sensitive visibility_type hides the Field"
           (try
             (field-user-settings/upsert-field-user-settings! {:id field-id} {:visibility_type :sensitive})
             (is (nil? (venues-row)))
             (finally
-              (field-user-settings/delete-field-user-settings! [field-id]))))))))
+              (field-user-settings/delete-field-user-settings! (field-user-settings/ids-of-fields [field-id])))))))))
 
 (deftest ^:parallel autocomplete-suggestions-test-2
   (testing "GET /api/database/:id/autocomplete_suggestions"
@@ -1132,41 +1352,41 @@
 
 (deftest card-autocomplete-suggestions-test
   (testing "GET /api/database/:id/card_autocomplete_suggestions"
-    (mt/with-temp
-      [:model/Collection collection {:name "Maz Analytics"}
-       :model/Card       card-1     (card-with-native-query "Maz Quote Views Per Month" :collection_id (:id collection))
-       :model/Card       card-2     (card-with-native-query "Maz Quote Views Per Day" :type :model)
-       :model/Card       card-3     (card-with-native-query "Maz Quote Views Per Day")]
-      (let [card->result {card-1 (assoc (select-keys card-1 [:id :name]) :type "question", :collection_name (:name collection))
-                          card-2 (assoc (select-keys card-2 [:id :name]) :type "model", :collection_name nil)
-                          card-3 (assoc (select-keys card-3 [:id :name]) :type "question", :collection_name nil)}]
-        (testing "exclude cards without perms"
-          (mt/with-non-admin-groups-no-root-collection-perms
-            (is (= [(card->result card-1)]
-                   (mt/user-http-request :rasta :get 200
-                                         (format "database/%d/card_autocomplete_suggestions" (mt/id))
-                                         :query "maz"))))
-          (testing "cards should match the query"
-            (doseq [[query expected-cards] [; in all these queries, card-2 should be first because it's a model,
-                                            ; followed by card-3 because it's created more recently than card-1
-                                            ["QUOTE-views" [card-2 card-3 card-1]]
-                                            ["per-day" [card-2 card-3]]
-                                            [(str (:id card-1)) [card-1]]
-                                            [(str (:id card-2) "-maz") [card-2]]
-                                            [(str (:id card-2) "-kyle") []]]]
-              (testing (format "query = %s" query)
-                (is (= (map card->result expected-cards)
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[collection] (collection/create-collections! [{:name "Maz Analytics"}])]
+        (mt/with-temp [:model/Card       card-1     (card-with-native-query "Maz Quote Views Per Month" :collection_id (:id collection))
+                       :model/Card       card-2     (card-with-native-query "Maz Quote Views Per Day" :type :model)
+                       :model/Card       card-3     (card-with-native-query "Maz Quote Views Per Day")]
+          (let [card->result {card-1 (assoc (select-keys card-1 [:id :name]) :type "question", :collection_name (:name collection))
+                              card-2 (assoc (select-keys card-2 [:id :name]) :type "model", :collection_name nil)
+                              card-3 (assoc (select-keys card-3 [:id :name]) :type "question", :collection_name nil)}]
+            (testing "exclude cards without perms"
+              (mt/with-non-admin-groups-no-root-collection-perms
+                (is (= [(card->result card-1)]
                        (mt/user-http-request :rasta :get 200
                                              (format "database/%d/card_autocomplete_suggestions" (mt/id))
-                                             :query query))))))))
-      (testing "should reject requests for databases for which the user has no perms"
-        (mt/with-temp [:model/Database {database-id :id} {}
-                       :model/Card     _ (card-with-native-query "Maz Quote Views Per Month" :database_id database-id)] {}
-          (mt/with-no-data-perms-for-all-users!
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403
-                                         (format "database/%d/card_autocomplete_suggestions" database-id)
-                                         :query "maz")))))))))
+                                             :query "maz"))))
+              (testing "cards should match the query"
+                (doseq [[query expected-cards] [; in all these queries, card-2 should be first because it's a model,
+                                                ; followed by card-3 because it's created more recently than card-1
+                                                ["QUOTE-views" [card-2 card-3 card-1]]
+                                                ["per-day" [card-2 card-3]]
+                                                [(str (:id card-1)) [card-1]]
+                                                [(str (:id card-2) "-maz") [card-2]]
+                                                [(str (:id card-2) "-kyle") []]]]
+                  (testing (format "query = %s" query)
+                    (is (= (map card->result expected-cards)
+                           (mt/user-http-request :rasta :get 200
+                                                 (format "database/%d/card_autocomplete_suggestions" (mt/id))
+                                                 :query query))))))))
+          (testing "should reject requests for databases for which the user has no perms"
+            (mt/with-temp [:model/Database {database-id :id} {}
+                           :model/Card     _ (card-with-native-query "Maz Quote Views Per Month" :database_id database-id)] {}
+              (mt/with-no-data-perms-for-all-users!
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :get 403
+                                             (format "database/%d/card_autocomplete_suggestions" database-id)
+                                             :query "maz")))))))))))
 
 (driver/register! ::no-nested-query-support
                   :parent :sql-jdbc
@@ -1189,7 +1409,8 @@
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :transforms_permissions}
+        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute
+                                  :router_anonymous_access_granted :transforms_permissions}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
                                 (disj :details :write_data_details :admin_details :initial_sync_error))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
@@ -1212,24 +1433,22 @@
 (deftest ^:synchronized databases-caching
   (testing "GET /api/database"
     (testing "Testing that listing all databases does not make excessive queries with multiple databases"
-      (let [baseline (database-list-call-count)]
-        (mt/with-temp [:model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}
-                       :model/Database _ {:engine ::test-driver}]
-          ;; What a listing costs depends on the token's features and on the databases other tests leave behind.
-          ;; A query per database would add at least 14, and the two allowed are a settings cache refresh.
-          (is (<= (database-list-call-count) (+ baseline 2))))))))
+      (mt/with-temp [:model/Database _ {:engine ::test-driver}
+                     :model/Database _ {:engine ::test-driver}]
+        (let [small (database-list-call-count)]
+          (mt/with-temp [:model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}
+                         :model/Database _ {:engine ::test-driver}]
+            (is (= small (database-list-call-count)))))))))
 
 (deftest databases-list-test-2
   (testing "GET /api/database"
@@ -1454,8 +1673,7 @@
 (deftest update-db-to-never-scan-values-on-demand-test
   (with-db-scheduler-setup!
     (with-test-driver-available!
-      (mt/with-temp
-        [:model/Database db {}]
+      (let [db (first (database/create-databases! [(mt/with-temp-defaults :model/Database)]))]
         (testing "update db setting to never scan should remove scan field values trigger"
           (testing "sanity check that it has all triggers to begin with"
             (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
@@ -1809,8 +2027,8 @@
       (let [deleted (atom #{})]
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/field-values-delete topic)
-                                                (swap! deleted conj (:id (:previous-object event)))))]
-          (warehouses-rest.db/delete-field-values-for-database! db-id))
+                                                (swap! deleted into (map (comp :id :previous-object) (:changes event)))))]
+          (field-values/delete-field-values! (field-values/ids-of-database db-id)))
         (is (contains? @deleted fv-id))))))
 
 (deftest discard-db-fieldvalues-audit-log-test
@@ -2178,13 +2396,16 @@
 
 (deftest get-schema-tables-publishing-test
   (testing "GET /api/database/:id/schema/:schema"
-    (testing "should return is_published as true for published tables"
-      (mt/with-temp [:model/Database {database-id :id} {}
-                     :model/Table    _ {:db_id database-id :schema "public" :name "published-table" :is_published true}
-                     :model/Table    _ {:db_id database-id :schema "public" :name "unpublished-table" :is_published false}]
-        (let [tables (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public"))]
-          (is (true? (:is_published (m/find-first #(= "published-table" (:name %)) tables))))
-          (is (false? (:is_published (m/find-first #(= "unpublished-table" (:name %)) tables)))))))))
+    (testing "should return collection for published tables"
+      (mt/with-model-cleanup [:model/Collection]
+        (let [[{collection-id :id}] (collection/create-collections! [{:name "Published Tables"}])]
+          (mt/with-temp [:model/Database   {database-id :id} {}
+                         :model/Table      {table-id :id} {:db_id database-id :schema "public" :name "published-table"}
+                         :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id collection-id}
+                         :model/Table      _ {:db_id database-id :schema "public" :name "unpublished-table"}]
+            (let [tables (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public"))]
+              (is (=? {:collection {:id collection-id}} (m/find-first #(= "published-table" (:name %)) tables)))
+              (is (=? {:collection nil} (m/find-first #(= "unpublished-table" (:name %)) tables))))))))))
 
 (deftest get-schema-tables-permissions-test
   (testing "GET /api/database/:id/schema/:schema against permissions"
@@ -2407,16 +2628,17 @@
 (deftest secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver
     (testing "File path values for secrets are returned as plaintext in the API (#20030)"
-      (mt/with-temp [:model/Database database {:engine  :secret-test-driver
-                                               :name    "Test secret DB with password path"
-                                               :details {:host           "localhost"
-                                                         :password-path "/path/to/password.txt"}}]
-        (is (=? {:password-options "local"
-                 :password-path  "/path/to/password.txt"}
-                (as-> (u/the-id database) d
-                  (format "database/%d" d)
-                  (mt/user-http-request :crowberto :get 200 d)
-                  (:details d))))))))
+      (mt/with-model-cleanup [:model/Database :model/Secret]
+        (let [[database] (database/create-databases! [{:engine  :secret-test-driver
+                                                       :name    "Test secret DB with password path"
+                                                       :details {:host           "localhost"
+                                                                 :password-path "/path/to/password.txt"}}])]
+          (is (=? {:password-options "local"
+                   :password-path  "/path/to/password.txt"}
+                  (as-> (u/the-id database) d
+                    (format "database/%d" d)
+                    (mt/user-http-request :crowberto :get 200 d)
+                    (:details d)))))))))
 
 ;; these descriptions use deferred-tru because the `defsetting` macro complains if they're not, but since these are in
 ;; tests they won't get scraped for i18n purposes so it's ok.
@@ -3219,3 +3441,75 @@
     (mt/with-dynamic-fn-redefs [sync/schedule-database-sync! #(swap! database-ids conj %)]
       (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (mt/id)))
       (is (= [(mt/id)] @database-ids)))))
+
+(defn- insert-restricted-databases!
+  "Inserts `n` Databases with a Table in each schema of `schemas`, gives All Users nothing on them and the group with
+  `group-id` query builder access to the Tables in the schemas of `queryable`, and returns their ids."
+  [n group-id schemas queryable]
+  (vec (for [_ (range n)]
+         (let [db-id     (first (t2/insert-returning-pks! :model/Database
+                                                          [(merge (mt/with-temp-defaults :model/Database)
+                                                                  {:engine :h2 :details {:db "mem:statement-count-test"}})]))
+               table-ids (t2/insert-returning-pks! :model/Table
+                                                   (for [schema schemas]
+                                                     (merge (mt/with-temp-defaults :model/Table)
+                                                            {:db_id db-id :schema schema :active true})))]
+           (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :blocked)
+           (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries :no)
+           (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+           (data-perms/set-table-permissions! group-id :perms/create-queries
+                                              (zipmap table-ids
+                                                      (for [schema schemas]
+                                                        (if (contains? queryable schema) :query-builder :no))))
+           db-id))))
+
+(defn- request-statement-count
+  "The number of statements the request `args` of rasta costs."
+  [& args]
+  (t2/with-call-count [call-count]
+    (apply mt/user-http-request :rasta args)
+    (call-count)))
+
+(deftest ^:synchronized database-list-statement-count-test
+  (testing "GET /api/database costs as many statements for 6 restricted Databases as for 2"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+      (mt/with-model-cleanup [:model/Database]
+        (doseq [path ["database" "database?include=schemas" "database?include=tables"]]
+          (testing path
+            (insert-restricted-databases! 2 group-id ["A" "B"] #{"A"})
+            (mt/user-http-request :rasta :get 200 path)
+            (let [small (request-statement-count :get 200 path)]
+              (insert-restricted-databases! 4 group-id ["A" "B"] #{"A"})
+              (is (= small (request-statement-count :get 200 path))))))))))
+
+(deftest schemas-readable-in-bulk-test
+  (testing "GET /api/database/:id/schemas and ?include=schemas list the schemas the per-schema check reads"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+      (mt/with-model-cleanup [:model/Database]
+        (let [[db-id]  (insert-restricted-databases! 1 group-id ["A" "B" "C" nil] #{"A" "C"})
+              per-row  (request/with-current-user (mt/user->id :rasta)
+                         (vec (sort (map #(or % "")
+                                         (filter #(schema.table/can-read-schema? db-id %) ["A" "B" "C" nil])))))
+              listed   (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))
+              included (->> (mt/user-http-request :rasta :get 200 "database?include=schemas")
+                            :data
+                            (some #(when (= db-id (:id %)) %))
+                            :schemas)]
+          (is (= ["A" "C"] per-row))
+          (is (= per-row listed))
+          (is (= per-row included)))))))
+
+(deftest schemas-statement-count-test
+  (testing "GET /api/database/:id/schemas costs as many statements for 8 schemas as for 2"
+    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _              {:group_id group-id :user_id (mt/user->id :rasta)}]
+      (mt/with-model-cleanup [:model/Database]
+        (let [counts (fn [schemas]
+                       (let [[db-id] (insert-restricted-databases! 1 group-id schemas (set (take-nth 2 schemas)))
+                             path    (format "database/%d/schemas" db-id)]
+                         (mt/user-http-request :rasta :get 200 path)
+                         (request-statement-count :get 200 path)))]
+          (is (= (counts ["S0" "S1"])
+                 (counts ["S0" "S1" "S2" "S3" "S4" "S5" "S6" "S7"]))))))))

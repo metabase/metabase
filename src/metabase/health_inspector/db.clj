@@ -9,7 +9,7 @@
 (mu/defn unarchived-cards-reducible
   "A reducible of the unarchived `report_card` rows."
   []
-  (t2/reducible-select :report_card {:where [:= :archived false]}))
+  (t2/reducible-select (t2/table-name :model/Card) {:where [:= :archived false]}))
 
 (mu/defn insert-run!
   "Insert the `health_inspector_runs` `row`."

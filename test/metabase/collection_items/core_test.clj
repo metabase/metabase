@@ -102,8 +102,8 @@
                            (t2/insert! :model/Dashboard {:name          (str "root count dashboard " i)
                                                          :creator_id    (mt/user->id :crowberto)
                                                          :collection_id nil})
-                           (t2/insert! :model/Collection {:name     (str "root count collection " i)
-                                                          :location "/"}))
+                           (collection/create-collections! [{:name     (str "root count collection " i)
+                                                             :location "/"}]))
                          (mt/user-http-request :crowberto :get 200 "collection/root/items")
                          (t2/with-call-count [cc]
                            (mt/user-http-request :crowberto :get 200 "collection/root/items")

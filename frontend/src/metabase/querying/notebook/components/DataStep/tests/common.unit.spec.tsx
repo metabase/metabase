@@ -195,6 +195,32 @@ describe("DataStep", () => {
     expect(getNextTableName()).toBe("Products");
   });
 
+  it("should open the data picker modal on the selected table", async () => {
+    await setup();
+
+    await userEvent.click(screen.getByText("Orders"));
+    // the mini picker opens on the table's database, so go back to its root
+    await userEvent.click(await screen.findByTestId("mini-picker-header"));
+    const miniPicker = await screen.findByTestId("mini-picker");
+    await userEvent.click(await within(miniPicker).findByText("Browse all"));
+
+    const modal = await screen.findByRole("dialog", {
+      name: "Pick your starting data",
+    });
+    const findLevelItem = async (level: number, name: string) =>
+      within(
+        await within(modal).findByTestId(`item-picker-level-${level}`),
+      ).findByRole("link", { name: new RegExp(name) });
+    expect(await findLevelItem(2, "Orders")).toHaveAttribute(
+      "data-active",
+      "true",
+    );
+    expect(await findLevelItem(2, "Products")).not.toHaveAttribute(
+      "data-active",
+      "true",
+    );
+  });
+
   it("should change to card", async () => {
     const card = createMockCard({
       id: 1,
@@ -444,6 +470,15 @@ describe("DataStep", () => {
         expect(Lib.allSourceCardIds(getNextQuery())).toEqual([card.id]);
       }
     };
+
+    it("should list metrics in Our analytics (metabase#66210)", async () => {
+      await setupCardPicking();
+
+      await userEvent.click(await screen.findByText("Our analytics"));
+
+      expect(await screen.findByText(ROOT_METRIC.name)).toBeVisible();
+      expect(screen.getByText(ROOT_QUESTION.name)).toBeVisible();
+    });
 
     it.each([ROOT_QUESTION, ROOT_MODEL, ROOT_METRIC])(
       "should use the $type picked from the search of Our analytics as the source",

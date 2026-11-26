@@ -5,11 +5,11 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.usage-metadata.db :as usage-metadata.db]
    [metabase.usage-metadata.extract :as usage-metadata.extract]
-   [metabase.usage-metadata.models.source-dimension-daily]
-   [metabase.usage-metadata.models.source-dimension-profile-daily]
-   [metabase.usage-metadata.models.source-metric-daily]
-   [metabase.usage-metadata.models.source-segment-composite-daily]
-   [metabase.usage-metadata.models.source-segment-daily]
+   [metabase.usage-metadata.models.source-dimension-daily :as source-dimension-daily]
+   [metabase.usage-metadata.models.source-dimension-profile-daily :as source-dimension-profile-daily]
+   [metabase.usage-metadata.models.source-metric-daily :as source-metric-daily]
+   [metabase.usage-metadata.models.source-segment-composite-daily :as source-segment-composite-daily]
+   [metabase.usage-metadata.models.source-segment-daily :as source-segment-daily]
    [metabase.usage-metadata.settings :as usage-metadata.settings]
    [metabase.usage-metadata.store :as usage-metadata.store]
    [metabase.util.json :as json]
@@ -25,11 +25,11 @@
   (t/zone-offset "Z"))
 
 (def ^:private delete-rollups-before-fns
-  [usage-metadata.db/delete-segment-rollups-before!
-   usage-metadata.db/delete-segment-composite-rollups-before!
-   usage-metadata.db/delete-metric-rollups-before!
-   usage-metadata.db/delete-dimension-rollups-before!
-   usage-metadata.db/delete-dimension-profile-rollups-before!])
+  [source-segment-daily/delete-segment-rollups-for-cleanup!
+   source-segment-composite-daily/delete-segment-composite-rollups-for-cleanup!
+   source-metric-daily/delete-metric-rollups-for-cleanup!
+   source-dimension-daily/delete-dimension-rollups-for-cleanup!
+   source-dimension-profile-daily/delete-dimension-profile-rollups-for-cleanup!])
 
 (def ^:private low-cardinality-threshold
   30)
@@ -211,19 +211,29 @@
     :else
     nil))
 
-(defn- field-fingerprint
-  [field-id]
-  (some-> (usage-metadata.db/raw-field-fingerprint field-id)
-          decode-fingerprint))
+(defn- profiled-dimension-row?
+  [{:keys [source_type ownership_mode field_id]}]
+  (and (= source_type :table)
+       (= ownership_mode :direct)
+       (pos-int? field_id)))
+
+(defn- field-fingerprints
+  "The decoded fingerprints of the Fields with `field-ids`, by Field id."
+  [field-ids]
+  (into {}
+        (keep (fn [[field-id fingerprint]]
+                (when-let [fingerprint (decode-fingerprint fingerprint)]
+                  [field-id fingerprint])))
+        (when (seq field-ids)
+          (usage-metadata.db/raw-field-fingerprints (vec field-ids)))))
 
 (defn- profile-rows-for-dimensions
   [bucket-date dimension-rows]
-  (into []
-        (mapcat (fn [{:keys [source_type source_id ownership_mode field_id count]}]
-                  (when (and (= source_type :table)
-                             (= ownership_mode :direct)
-                             (pos-int? field_id))
-                    (when-let [fingerprint (field-fingerprint field_id)]
+  (let [profiled     (filter profiled-dimension-row? dimension-rows)
+        fingerprints (field-fingerprints (into #{} (map :field_id) profiled))]
+    (into []
+          (mapcat (fn [{:keys [source_type source_id field_id count]}]
+                    (when-let [fingerprint (get fingerprints field_id)]
                       (for [{:keys [observation_type observation_value]} (fingerprint-observations fingerprint)]
                         {:source_type       source_type
                          :source_id         source_id
@@ -232,8 +242,8 @@
                          :observation_type  observation_type
                          :observation_value observation_value
                          :bucket_date       bucket-date
-                         :count             count})))))
-        dimension-rows))
+                         :count             count}))))
+          profiled)))
 
 (defn- process-query-row
   [bucket-date hash->count stats {:keys [query_hash query]}]

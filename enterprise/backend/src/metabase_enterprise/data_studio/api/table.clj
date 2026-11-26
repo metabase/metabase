@@ -143,9 +143,9 @@
    _body
    _request]
   (api/check-data-studio-access)
-  (let [table (api/read-check :model/Table id)]
-    (when (:is_published table)
-      (publishing-info id))))
+  (api/read-check :model/Table id)
+  (when (seq (data-studio.db/published-table-ids #{id}))
+    (publishing-info id)))
 
 (defn- can-publish?
   "Publishing a table means that it's now query-able by a new set of people. So we should not allow you to publish a
@@ -192,7 +192,7 @@
         table-ids-to-update (data-studio.db/table-ids-matching-selectors selectors downstream-ids :any)]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
-      (let [collection-ids (into #{} (keep :collection_id) (data-studio.db/tables table-ids-to-update))
+      (let [collection-ids (into #{} (keep val) (data-studio.db/published-table-collection-ids (vec table-ids-to-update)))
             by-id          (u/index-by :id (t2/hydrate (data-studio.db/collections collection-ids) :can_write))]
         (run! (comp api/write-check by-id) collection-ids))
       (data-studio.db/unpublish-tables! table-ids-to-update))

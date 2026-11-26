@@ -150,9 +150,7 @@
         tree
         parsed-collapsed-subtotals))))
 
-;; defrecord has no docstring slot for the vars it interns
-#_{:clj-kondo/ignore [:missing-docstring]}
-(defrecord TreeNode [value children value->child-pos isCollapsed rawValue clicked])
+(defrecord ^:private TreeNode [value children value->child-pos isCollapsed rawValue clicked])
 
 (defn- add-path-to-tree
   "Adds a path of values to a row or column tree. The path is represented by the actual row and the list of indexes in
@@ -588,10 +586,8 @@
       #?(:cljs (perf/clj->js result)
          :clj result))))
 
-;; defrecord has no docstring slot for the vars it interns
-#_{:clj-kondo/ignore [:missing-docstring]}
-(defrecord ResultItem [value rawValue clicked isCollapsed hasSubtotal isGrandTotal isSubtotal isValueColumn depth offset
-                       hasChildren path span maxDepthBelow])
+(defrecord ^:private ResultItem [value rawValue clicked isCollapsed hasSubtotal isGrandTotal isSubtotal isValueColumn
+                                 depth offset hasChildren path span maxDepthBelow])
 
 (defn- tree-to-array
   "Flattens a hierarchical tree structure into an array of nodes with positioning information.

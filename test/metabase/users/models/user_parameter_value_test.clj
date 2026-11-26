@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
    [metabase.users.models.user-parameter-value :as upv]
    [toucan2.core :as t2]))
@@ -142,3 +143,18 @@
                  (binding [api/*current-user-id*  rasta-id]
                    (map #(select-keys % [:id :last_used_param_values])
                         (t2/hydrate [dash-1 dash-2] :last_used_param_values))))))))))
+
+(deftest upsert-user-parameter-values-statement-count-does-not-grow-with-rows-test
+  (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+    (mt/with-model-cleanup [:model/UserParameterValue]
+      (let [counted (fn [n]
+                      (events.tu/statement-count!
+                       #(upv/upsert-user-parameter-values!
+                         (mapv (fn [i] {:user_id      (mt/user->id :rasta)
+                                        :dashboard_id dashboard-id
+                                        :parameter_id (str "parameter-" i)
+                                        :value        (when (even? i) "a value")
+                                        :default      nil})
+                               (range n)))))]
+        (counted 1)
+        (is (= (counted 2) (counted 6)))))))

@@ -328,7 +328,7 @@
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                     (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
       (mt/with-temp [:model/Segment {segment-id :id} {:definition query}]
-        (t2/query-one {:update :segment
+        (t2/query-one {:update (t2/table-name :model/Segment)
                        :set    {:definition "{\"x\": \"y\"}"}
                        :where  [:= :id segment-id]})
         (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
@@ -365,7 +365,7 @@
                     (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "test measure"
                                                       :definition query}]
-        (t2/query-one {:update :measure
+        (t2/query-one {:update (t2/table-name :model/Measure)
                        :set    {:definition "{\"x\": \"y\"}"}
                        :where  [:= :id measure-id]})
         (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
@@ -514,6 +514,6 @@
     (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
                                                         :source {:type :query :query query}
                                                         :target {:database (mt/id) :type "table" :name "out"}}]
-      (with-redefs [events/publish-event! (fn [topic event] (swap! topics conj [topic (get-in event [:object :id])]))]
+      (with-redefs [events/publish-event! (fn [topic event] (swap! topics into (for [change (:changes event [event])] [topic (get-in change [:object :id])])))]
         (replacement.field-refs/upgrade-field-refs! [:transform transform-id]))
       (is (= [[:event/transform-update transform-id]] @topics)))))

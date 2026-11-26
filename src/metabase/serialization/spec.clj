@@ -18,7 +18,9 @@
   - `:identity`, the columns whose values make the ref of a row, which finds the row an imported row updates,
     `[:entity_id]` by default (see [[metabase.serialization.protocol/select-by-refs]]).
   - `:children`, the map from a key to a child model whose rows the rows of this model own, which they export nested
-    under that key and load with, deleting the children a loaded entity no longer holds.
+    under that key and load with, deleting the children a loaded entity no longer holds. After an import writes the
+    children of a batch, it calls the `:update!` of the model, when it has one, once with the rows `{pk id}` of the
+    parents whose children, at any depth, it inserted, updated or deleted, so that the parent learns of the change.
   - `:parent`, for a child model, `{:model parent-model :key column :order key-fn :import-only? bool}`: `column` holds
     the primary key of the parent, `key-fn` sorts the children nested in its entity, and with `:import-only?` the
     children export as entities of their own and load nested only from older exports.
@@ -35,6 +37,14 @@
   - `:before-load`, `(fn [items])`, the load items to load (see [[metabase.serialization.load/before-load]]), by
     default all of them as they are.
   - `:after-load`, `(fn [items])`, the side effects of loading `items`, by default none.
+  - `:insert!`, `(fn [rows])`, inserts `rows` and returns the inserted instances, in any order; a row it leaves out
+    is not loaded, and neither are its children. By default one plain insert.
+  - `:update!`, `(fn [rows])`, updates rows, each of `rows` holding a primary key and the columns to change, and
+    returns the rows it updated, in any order, each with its primary key; a row it leaves out counts as not loaded.
+    By default one plain update per row.
+  - `:delete!`, `(fn [pks])`, deletes the rows with the primary keys `pks`. By default one plain delete. An import
+    deletes only child rows; remote sync deletes the rows its repository no longer holds.
+  These three are the write functions of the model, so an import writes a model the way the product does.
   - `:entity-ref`, `(fn [entity])`, the ref of `entity`, by default made of the exported values of its `:identity`.
   - `:rows-by-refs`, `(fn [refs columns])`, the map from each of the set `refs` to the oldest row of the app DB with
     that ref, with only `columns` unless nil, by default found by entity id.
@@ -96,6 +106,9 @@
    [:loaded-entities     {:optional true} fn?]
    [:before-load         {:optional true} fn?]
    [:after-load          {:optional true} fn?]
+   [:insert!             {:optional true} fn?]
+   [:update!             {:optional true} fn?]
+   [:delete!             {:optional true} fn?]
    [:entity-ref          {:optional true} fn?]
    [:rows-by-refs        {:optional true} fn?]
    [:rows-by-parent-pks  {:optional true} fn?]])

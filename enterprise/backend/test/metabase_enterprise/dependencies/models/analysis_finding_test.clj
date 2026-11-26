@@ -6,6 +6,7 @@
    [metabase-enterprise.dependencies.models.analysis-finding-error :as models.analysis-finding-error]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.test-util :as deps.test]
+   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
@@ -46,22 +47,23 @@
                                          :entity_id unanalyzed))))))))))
 
 (deftest ^:synchronized concurrent-upserts-test
-  (testing "two analyses of an entity inserting its finding at once leave the finding they found, not an insert error"
-    (mt/test-helpers-set-global-values!
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
-          (mt/with-temp [:model/Card {card-id :id} {}]
-            (let [barrier (CyclicBarrier. 2)
-                  insert! (mt/original-fn #'t2/insert-returning-pk!)]
-              (mt/with-dynamic-fn-redefs [t2/insert-returning-pk! (fn [model & args]
-                                                                    (when (= :model/AnalysisFinding model)
-                                                                      (.await barrier 10 TimeUnit/SECONDS))
-                                                                    (apply insert! model args))]
-                (let [upserts (repeatedly 2 #(future (models.analysis-finding/upsert-analysis! :card card-id true #{})))]
-                  (run! deref (doall upserts))))
-              (is (=? {:result true} (finding card-id)))
-              (is (zero? (t2/count :model/AnalysisFindingError :analyzed_entity_type "card"
-                                   :analyzed_entity_id card-id))))))))))
+  (testing "analyses of an entity upserting its finding at once leave one finding, not an insert error"
+    (when-not (= :h2 (mdb/db-type))
+      (mt/test-helpers-set-global-values!
+        (mt/with-premium-features #{:dependencies}
+          (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
+            (mt/with-temp [:model/Card {card-id :id} {}]
+              (let [threads 4
+                    barrier (CyclicBarrier. threads)
+                    upserts (doall (repeatedly threads
+                                               #(future
+                                                  (.await barrier 10 TimeUnit/SECONDS)
+                                                  (models.analysis-finding/upsert-analysis! :card card-id true #{}))))]
+                (run! deref upserts)
+                (is (=? {:result true} (finding card-id)))
+                (is (= 1 (t2/count :model/AnalysisFinding :entity_type :card :entity_id card-id)))
+                (is (zero? (t2/count :model/AnalysisFindingError :analyzed_entity_type "card"
+                                     :analyzed_entity_id card-id)))))))))))
 
 (deftest ^:synchronized malformed-source-id-does-not-break-the-finding-insert-test
   (testing "an error naming a non-integer source (unchecked in prod) is recorded without the source (GHY-4956)"

@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
+   [java-time.api :as t]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.actions.error :as actions.error]
@@ -50,10 +51,12 @@
    [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.secrets.models.secret :as secret]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -635,6 +638,53 @@
                   "  \"__mb_stage_0\" AS \"__mb_source\""]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
 
+(deftest ^:parallel multi-stage-join-source-stage-ctes-test
+  (testing "Stage CTEs of a multi-stage join source go in the top-level WITH, not inside the JOIN (#87571)"
+    (let [mp       (lib.tu/mock-metadata-provider
+                    (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :postgres}})
+                    {:cards [{:id            1
+                              :database-id   (meta/id)
+                              :dataset-query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                                                 (lib/aggregate (lib/count))
+                                                 (lib/breakout (meta/field-metadata :checkins :venue-id))
+                                                 lib/append-stage)}]})
+          card     (lib.metadata/card mp 1)
+          query    (lib/query mp (lib.metadata/table mp (meta/id :venues)))
+          card-col (m/find-first #(= (:name %) "VENUE_ID")
+                                 (lib/join-condition-rhs-columns query card nil nil))
+          query    (lib/join query (lib/join-clause card [(lib/= (lib.metadata/field mp (meta/id :venues :id))
+                                                                 card-col)]))]
+      (qp.store/with-metadata-provider mp
+        (let [hsql        (driver/with-driver :postgres
+                            (sql.qp/mbql->honeysql :postgres (qp.preprocess/preprocess query)))
+              join-source (get-in hsql [:join-by 1 0 0])]
+          (is (= ["__mb_stage_0" "__mb_stage_1"]
+                 (map first (:with hsql))))
+          (is (not (contains? join-source :with)))
+          (is (=? {:from [[[::h2x/identifier :table-alias ["__mb_stage_1"]] some?]]}
+                  join-source)))))))
+
+(deftest ^:parallel single-row-aggregation-stage-cte-test
+  (testing "A last stage that aggregates without breakouts goes in its own stage CTE, so Postgres can use its MIN/MAX
+            index optimization, which it skips in a query level with a WITH list"
+    (let [mp     (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :postgres}})
+          query  (lib/append-stage (lib/query mp (lib.metadata/table mp (meta/id :venues))))
+          id-col (m/find-first #(= (:name %) "ID") (lib/visible-columns query))
+          query  (lib/aggregate query (lib/max id-col))]
+      (qp.store/with-metadata-provider mp
+        (driver/with-driver :postgres
+          (testing "without breakouts, a stage that selects the aggregation goes after it"
+            (is (=? [{:source-table (meta/id :venues)}
+                     {:aggregation [[:max {} [:field {} "ID"]]]}
+                     {:fields [[:field {} "max"]]}]
+                    (sql.qp/preprocess :postgres query))))
+          (testing "with a breakout, no stage goes after the aggregation"
+            (is (=? [{:source-table (meta/id :venues)}
+                     {:aggregation [[:max {} [:field {} "ID"]]]
+                      :breakout    [some?]}]
+                    (sql.qp/preprocess :postgres (lib/breakout query (m/find-first #(= (:name %) "NAME")
+                                                                                   (lib/breakoutable-columns query))))))))))))
+
 (deftest ^:parallel nested-field-pivot-compile-test
   (mt/test-driver :postgres
     (testing "Pivot with a nested-field (JSON-unfolded) breakout compiles to a derived table that pre-computes the JSON path expression and references plain identifiers in GROUPING SETS / GROUPING"
@@ -747,15 +797,28 @@
             (is (= (sort pgs) pgs)
                 "rows should appear in non-decreasing pivot-grouping order")))))))
 
+(defn- set-standard-conforming-strings!
+  "Sets `standard_conforming_strings` to `value` on `conn`, and returns whether the server accepted it.
+   Returns false when the server refuses `value` as unsupported, and rethrows any other error."
+  [^Connection conn value]
+  (try
+    (with-open [stmt (.createStatement conn)]
+      (.execute stmt (str "SET standard_conforming_strings TO " value)))
+    true
+    (catch PSQLException e
+      (if (= (.getState PSQLState/NOT_IMPLEMENTED) (.getSQLState e))
+        false
+        (throw e)))))
+
 ;;; Postgres `:contains`/`:starts-with`/`:ends-with` must produce SQL that the PostgreSQL JDBC
 ;;; driver can prepare regardless of the server's `standard_conforming_strings` setting. With
 ;;; that setting off, PGJDBC's parser treats `\` as an escape inside string literals, so the
 ;;; `'\'` in `LIKE ? ESCAPE '\'` is parsed as an unterminated literal and the query crashes with
 ;;; `Unterminated string literal started at position N` before the SQL ever reaches the server
-;;; (#73721).
+;;; (#73721). PostgreSQL 19 refuses the setting off, so only the `on` case runs there.
 (deftest contains-filter-jdbc-parser-test
   (mt/test-driver :postgres
-    (testing "PGJDBC parses :contains/:starts-with/:ends-with SQL regardless of standard_conforming_strings (#73721)"
+    (testing "PGJDBC parses LIKE filters under each standard_conforming_strings setting the server allows (#73721)"
       (let [mp       (mt/metadata-provider)
             venues   (lib.metadata/table mp (mt/id :venues))
             name-col (lib.metadata/field mp (mt/id :venues :name))]
@@ -771,17 +834,16 @@
              (sql-jdbc.conn/connection-details->spec :postgres (:details (mt/db)))
              nil
              (fn [^Connection conn]
-               (with-open [stmt (.createStatement conn)]
-                 (.execute stmt (str "SET standard_conforming_strings TO " scs)))
-               (doseq [[op-name op-fn] {:contains    lib/contains
-                                        :starts-with lib/starts-with
-                                        :ends-with   lib/ends-with}]
-                 (testing op-name
-                   (let [query (-> (lib/query mp venues)
-                                   (lib/filter (op-fn name-col "Foo")))
-                         {sql :query} (qp.compile/compile query)]
-                     (is (some? (with-open [pstmt (.prepareStatement conn sql)] pstmt))
-                         (str "PGJDBC should prepare the SQL; got SQL: " sql)))))))))))))
+               (when (set-standard-conforming-strings! conn scs)
+                 (doseq [[op-name op-fn] {:contains    lib/contains
+                                          :starts-with lib/starts-with
+                                          :ends-with   lib/ends-with}]
+                   (testing op-name
+                     (let [query (-> (lib/query mp venues)
+                                     (lib/filter (op-fn name-col "Foo")))
+                           {sql :query} (qp.compile/compile query)]
+                       (is (some? (with-open [pstmt (.prepareStatement conn sql)] pstmt))
+                           (str "PGJDBC should prepare the SQL; got SQL: " sql))))))))))))))
 
 (deftest describe-nested-field-columns-identifier-test
   (mt/test-driver :postgres
@@ -1899,7 +1961,7 @@
                  (mt/formatted-rows [int str int 4.0 4.0 int int int] (qp/process-query query)))))))))
 
 (deftest ^:parallel native-source-stage-test
-  (testing "a native first stage that has its own WITH, compiled as the body of a stage CTE on Postgres, runs"
+  (testing "a native first stage that has its own WITH runs on Postgres"
     (mt/test-driver :postgres
       (mt/dataset test-data
         (let [mp    (mt/metadata-provider)
@@ -1912,15 +1974,32 @@
           (is (= [[4]]
                  (mt/formatted-rows [int] (qp/process-query query)))))))))
 
+(defn- compile-honeysql
+  "The HoneySQL form that the SQL QP compiles for `query`."
+  [query]
+  (mt/with-metadata-provider (mt/id)
+    (sql.qp/mbql->honeysql :postgres (qp.preprocess/preprocess query))))
+
 (deftest ^:parallel multi-stage-card-referenced-from-native-query-test
-  (testing "a multi-stage card spliced into a native query via {{#id}}, with its CTEs inside the subquery parens, runs"
-    (mt/test-driver :postgres
-      (mt/dataset test-data
-        (let [mp (mt/metadata-provider)]
-          (mt/with-temp [:model/Card card {:dataset_query (count-by-price-over-1-query mp)}]
-            (let [tag   (format "#%d" (:id card))
-                  query (-> (lib/native-query mp (format "SELECT SUM(c.count) FROM {{%s}} AS c" tag))
-                            (lib/with-template-tags {tag {:name tag, :display-name tag, :type :card, :card-id (:id card)}}))]
+  (mt/test-driver :postgres
+    (mt/dataset test-data
+      (let [mp         (mt/metadata-provider)
+            card-query (count-by-price-over-1-query mp)
+            ref-query  (assoc-in card-query [:middleware :card-reference?] true)]
+        (testing "a multi-stage card uses stage CTEs on its own, and subselects when a native query references it"
+          (is (seq (:with (compile-honeysql card-query))))
+          (is (nil? (:with (compile-honeysql ref-query)))))
+        (mt/with-temp [:model/Card card {:dataset_query card-query}]
+          (let [tag   (format "#%d" (:id card))
+                query (-> (lib/native-query mp (format "SELECT SUM(c.count) FROM {{%s}} AS c" tag))
+                          (lib/with-template-tags {tag {:name         tag
+                                                        :display-name tag
+                                                        :type         :card
+                                                        :card-id      (:id card)}}))]
+            (testing "the native query has the card compiled with subselects"
+              (is (str/includes? (:query (qp.compile/compile query))
+                                 (:query (qp.compile/compile ref-query)))))
+            (testing "the native query runs"
               (is (= [[100]]
                      (mt/formatted-rows [int] (qp/process-query query)))))))))))
 
@@ -2452,11 +2531,11 @@
                                            :dataset_query (mt/native-query {:query query})
                                            :database_id (mt/id)})]
           ;; update cards such that base_type is missing, similuating existing data
-          (t2/query ["update report_card set result_metadata = ? where id = ?"
-                     (json/encode [(first (:result_metadata model))
-                                   (assoc (second (:result_metadata model))
-                                          :base_type nil)])
-                     (:id model)])
+          (t2/query {:update (t2/table-name :model/Card)
+                     :set    {:result_metadata (json/encode [(first (:result_metadata model))
+                                                             (assoc (second (:result_metadata model))
+                                                                    :base_type nil)])}
+                     :where  [:= :id (:id model)]})
           (let [response (mt/user-http-request :crowberto :put 200
                                                (format "card/%d" (:id model))
                                                {:dataset_query
@@ -2989,6 +3068,16 @@
           (finally
             (is (= :ok (do (driver/destroy-workspace-isolation! :postgres database workspace) :ok)))))))))
 
+(deftest pinned-current-datetime-is-an-instant-literal-test
+  (testing "while the clock is pinned, the current time is a literal of the pinned instant, with its offset"
+    (mt/with-results-timezone-id "Asia/Tokyo"
+      (driver/with-driver :postgres
+        (let [form (qp.timezone/with-pinned-now (t/instant "2020-06-17T12:00:00Z")
+                     (sql.qp/current-datetime-honeysql-form :postgres))]
+          (is (= ["timestamp with time zone '2020-06-17 21:00:00.000 +09:00'"]
+                 (sql.qp/format-honeysql :postgres form)))
+          (is (= "timestamptz" (h2x/database-type form))))))))
+
 (deftest failed-parameterized-query-in-a-test-transaction-reports-its-own-error-test
   (mt/test-driver :postgres
     (testing "inside a transaction, a parameterized query that fails reports its own error, not \"current transaction is aborted\""
@@ -3001,3 +3090,17 @@
          (driver/query-on-connection :postgres conn ["SELECT 1" []] {})
          (is (thrown-with-msg? Exception #"column \"no_such_column\" does not exist"
                                (driver/query-on-connection :postgres conn ["SELECT no_such_column WHERE 1 = ?" [1]] {}))))))))
+
+(deftest parameter-in-a-comment-on-a-streaming-connection-gets-the-friendly-error-test
+  (mt/test-driver :postgres
+    (testing "outside a data-test run, a connection with autocommit off still checks the parameter count"
+      ;; Downloads and other streamed queries turn autocommit off on Postgres.
+      (sql-jdbc.execute/do-with-connection-with-options
+       :postgres
+       (mt/id)
+       {:stream? true}
+       (fn [^java.sql.Connection conn]
+         (is (false? (.getAutoCommit conn)))
+         (is (thrown-with-msg? Exception #"more parameters than we can handle"
+                               (with-open [_stmt (sql-jdbc.execute/prepared-statement
+                                                  :postgres conn "SELECT 1 -- ?" [1])]))))))))

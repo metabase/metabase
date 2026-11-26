@@ -2,10 +2,14 @@
   "A user-by-change table of the answers and statuses of archiving and restoring a Collection with `PUT /api/collection/:id`."
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.notification.models :as models.notification]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -171,7 +175,7 @@
                      :model/Collection target {}
                      :model/Card       card   {:collection_id (:id top)}]
         (mt/user-http-request :crowberto :put 200 (str "collection/" (:id top)) {:archived true})
-        (t2/query-one {:update :collection :set {:archive_operation_id nil} :where [:= :id (:id top)]})
+        (t2/query-one {:update (t2/table-name :model/Collection) :set {:archive_operation_id nil} :where [:= :id (:id top)]})
         (mt/user-http-request :crowberto :put 200 (str "collection/" (:id top))
                               (cond-> request (:parent_id request) (assoc :parent_id (:id target))))
         (is (= {(:id top) false} (archived-flags :model/Collection [top])))
@@ -253,3 +257,55 @@
       (is (= {(:id event) true} (archived-flags :model/TimelineEvent [event])))
       (mt/user-http-request :crowberto :put 200 (str "timeline/" (:id tl)) {:archived false})
       (is (= {(:id event) false} (archived-flags :model/TimelineEvent [event]))))))
+
+(defn- card-rows
+  "`n` Card rows in the Collection with `collection-id`, each merged with `extra`."
+  [n collection-id extra]
+  (let [mp (mt/metadata-provider)]
+    (repeatedly n #(merge (t2.with-temp/with-temp-defaults :model/Card)
+                          {:collection_id collection-id
+                           :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                          extra))))
+
+(defn- rows-in-collection
+  "`n` rows of `model` with its test defaults in the Collection with `collection-id`."
+  [model n collection-id]
+  (repeatedly n #(assoc (t2.with-temp/with-temp-defaults model) :collection_id collection-id)))
+
+(defn- fill-collection!
+  "Puts `n` of each item that follows the archive of the Collection with `collection-id` into it: Cards with an alert,
+  Dashboards with a dashboard question, Documents with a Card, and Explorations."
+  [collection-id n]
+  (let [card-ids      (t2/insert-returning-pks! :model/Card (card-rows n collection-id {}))
+        dashboard-ids (t2/insert-returning-pks! :model/Dashboard (rows-in-collection :model/Dashboard n collection-id))
+        document-ids  (t2/insert-returning-pks! :model/Document (rows-in-collection :model/Document n collection-id))]
+    (models.notification/create-notifications!
+     (for [card-id card-ids]
+       {:payload_type :notification/card
+        :creator_id   (mt/user->id :crowberto)
+        :active       true
+        :payload      {:card_id card-id :send_condition :has_result}}))
+    (t2/insert! :model/Card (concat (mapcat #(card-rows 1 collection-id {:dashboard_id %}) dashboard-ids)
+                                    (mapcat #(card-rows 1 collection-id {:document_id %}) document-ids)))
+    (t2/insert! :model/Exploration (rows-in-collection :model/Exploration n collection-id))))
+
+(defn- archive-and-restore-call-counts!
+  "The number of statements that rasta's archive, and then restore, of a Collection holding `n` of each following item
+  take."
+  [n]
+  (mt/with-temp [:model/Collection {coll-id :id} {}]
+    (grant! :write coll-id)
+    (fill-collection! coll-id n)
+    (vec (for [archived [true false]]
+           (t2/with-call-count [call-count]
+             (mt/user-http-request :rasta :put 200 (str "collection/" coll-id) {:archived archived})
+             (call-count))))))
+
+(deftest archive-and-restore-collection-call-count-test
+  (testing "archiving and restoring a Collection takes as many statements for 40 of each following item as for 10"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Document :model/Exploration
+                              :model/Notification :model/NotificationCard]
+        (archive-and-restore-call-counts! 2)
+        (is (= (archive-and-restore-call-counts! 10)
+               (archive-and-restore-call-counts! 40)))))))

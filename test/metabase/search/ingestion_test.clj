@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.queries.models.card :as card]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -17,6 +18,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [metabase.util.queue :as queue]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -158,7 +160,7 @@
             :type :metric
             :dataset_query (metric-query b-id)}]
           ;; close the cycle A -> B -> A with a raw update, which the Card hooks would refuse
-          (t2/update! :report_card :id a-id {:dataset_query (t2/select-one-fn :dataset_query :report_card :id c-id)})
+          (t2/update! (t2/table-name :model/Card) :id a-id {:dataset_query (t2/select-one-fn :dataset_query (t2/table-name :model/Card) :id c-id)})
           (let [result (#'search.ingestion/execute-all-function-attrs
                         (search.spec/search-model-spec "card")
                         {:dataset_query (json/encode (metric-query a-id))
@@ -286,8 +288,14 @@
 (deftest ^:synchronized failing-run-keeps-later-tombstones-test
   (testing "a re-index run that throws does not cost the tombstone after it in the same batch"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card {id :id} {:name "Failingrunprobe"}]
-        (let [indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                               :database_id (mt/id)
+                                               :display :table
+                                               :visualization_settings {}
+                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                               :name "Failingrunprobe"}])
+              indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
           (is (true? (indexed?)))
           (is (thrown? Exception
                        (search.ingestion/bulk-ingest! [["card" [:= 1 :this.no_such_column]]
@@ -296,8 +304,14 @@
           (is (false? (indexed?)))))))
   (testing "an AssertionError in a re-index run does not cost the tombstone after it either"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card {id :id} {:name "Failingassertprobe"}]
-        (let [indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                               :database_id (mt/id)
+                                               :display :table
+                                               :visualization_settings {}
+                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                               :name "Failingassertprobe"}])
+              indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
           (is (true? (indexed?)))
           (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages] (throw (AssertionError. "boom")))]
             (is (thrown? AssertionError
@@ -307,8 +321,14 @@
           (is (false? (indexed?)))))))
   (testing "any other Error is fatal, and stops the batch before the tombstone"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card {id :id} {:name "Fatalerrorprobe"}]
-        (let [indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{id :id}] (card/create-cards! [{:creator_id (mt/user->id :rasta)
+                                               :database_id (mt/id)
+                                               :display :table
+                                               :visualization_settings {}
+                                               :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")
+                                               :name "Fatalerrorprobe"}])
+              indexed? #(pos? (t2/count (search.index/active-table) :model "card" :model_id (str id)))]
           (is (true? (indexed?)))
           (mt/with-dynamic-fn-redefs [search.ingestion/ingest-updates! (fn [_messages] (throw (LinkageError. "fatal")))]
             (is (thrown? LinkageError
@@ -320,17 +340,19 @@
   (testing "curated (all models) and table data_layer ride through legacy_input to appdb search results,
             so Metabot can render them (BOT-1570) — not just stored in the filtering column"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table _ {:db_id          db-id
-                                     :name           "Curatedgoldtbl"
-                                     :active         true
-                                     :data_authority :authoritative
-                                     :data_layer     :final}]
-        (let [result (->> (search.tu/search-results "Curatedgoldtbl")
-                          (filter (comp #{"table"} :model))
-                          first)]
-          (is (=? {:model "table" :curated true :data_authority "authoritative" :data_layer "final"}
-                  result)))))))
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (mt/with-model-cleanup [:model/Table]
+          (table/create-tables! [(assoc (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at)
+                                        :db_id          db-id
+                                        :name           "Curatedgoldtbl"
+                                        :active         true
+                                        :data_authority :authoritative
+                                        :data_layer     :final)])
+          (let [result (->> (search.tu/search-results "Curatedgoldtbl")
+                            (filter (comp #{"table"} :model))
+                            first)]
+            (is (=? {:model "table" :curated true :data_authority "authoritative" :data_layer "final"}
+                    result))))))))
 
 (defn- queued-updates!
   "Run `f` with a fresh ingestion queue swapped in, and return the updates that end up on it."
@@ -485,3 +507,61 @@
              (queued-updates!
               (fn [_test-queue]
                 (search.ingestion/ingest-maybe-async! [update] false))))))))
+
+(defn- dashboard-documents
+  "The search documents of the Dashboards with `dashboard-ids`."
+  [dashboard-ids]
+  (into [] (#'search.ingestion/query->documents
+            (#'search.ingestion/spec-index-reducible "dashboard" [:in :this.id dashboard-ids]))))
+
+(defn- nested-dashboard-documents-call-count!
+  "The number of statements building the search documents of `n` Dashboards issues, each in a fresh Collection under a
+  fresh root Collection of its own."
+  [n]
+  (mt/with-model-cleanup [:model/Dashboard :model/Collection]
+    (let [dashboard-ids (vec (for [i (range n)]
+                               (let [root-id  (t2/insert-returning-pk! :model/Collection {:name     (str "Root " i)
+                                                                                          :location "/"})
+                                     child-id (t2/insert-returning-pk! :model/Collection {:name     (str "Child " i)
+                                                                                          :location (format "/%d/" root-id)})]
+                                 (t2/insert-returning-pk! :model/Dashboard {:name          (str "Dashboard " i)
+                                                                            :collection_id child-id
+                                                                            :creator_id    (mt/user->id :rasta)
+                                                                            :parameters    []}))))]
+      (t2/with-call-count [call-count]
+        (is (= n (count (dashboard-documents dashboard-ids))))
+        (call-count)))))
+
+(deftest root-collection-type-call-count-test
+  (testing "building the documents of more Dashboards nested under fresh root Collections issues no more statements"
+    (nested-dashboard-documents-call-count! 1)
+    (is (= (nested-dashboard-documents-call-count! 2)
+           (nested-dashboard-documents-call-count! 6)))))
+
+(deftest root-collection-type-follows-root-type-change-test
+  (testing "a nested Dashboard's document reads the current type of its root Collection"
+    (mt/with-temp [:model/Collection {root-id :id}      {:name "Root" :location "/"}
+                   :model/Collection {child-id :id}     {:name "Child" :location (format "/%d/" root-id)}
+                   :model/Dashboard  {dashboard-id :id} {:collection_id child-id}]
+      (is (nil? (:root_collection_type (first (dashboard-documents [dashboard-id])))))
+      (t2/update! :model/Collection :id root-id {:type "instance-analytics"})
+      (is (= "instance-analytics" (:root_collection_type (first (dashboard-documents [dashboard-id]))))))))
+
+(deftest execute-batch-function-attrs-test
+  (testing "a batch function attribute is called once per model with its records, in order"
+    (let [calls   (atom [])
+          spec-fn (fn [model]
+                    {:attrs {:size {:batch-fn (fn [records]
+                                                (swap! calls conj [model (mapv :id records)])
+                                                (mapv #(* 10 (:id %)) records))}}})]
+      (mt/with-dynamic-fn-redefs [search.spec/search-model-spec spec-fn]
+        (is (= [{:size 10} {:size 20} {:size 30}]
+               (#'search.ingestion/execute-batch-function-attrs [{:model "a" :id 1}
+                                                                 {:model "b" :id 2}
+                                                                 {:model "a" :id 3}])))
+        (is (= #{["a" [1 3]] ["b" [2]]} (set @calls))))))
+  (testing "a throwing batch function attribute leaves its column nil"
+    (mt/with-dynamic-fn-redefs [search.spec/search-model-spec
+                                (constantly {:attrs {:size {:batch-fn (fn [_] (throw (ex-info "boom" {})))}}})]
+      (is (= [{:size nil} {:size nil}]
+             (#'search.ingestion/execute-batch-function-attrs [{:model "a" :id 1} {:model "a" :id 2}]))))))

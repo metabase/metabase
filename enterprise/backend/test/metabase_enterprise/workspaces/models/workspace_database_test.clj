@@ -12,11 +12,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.models.workspace]
-   [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -30,14 +32,14 @@
       (finally
         ;; Manual cleanup in reverse-FK order: wsd rows first, then workspaces, then dbs.
         (when-let [wsd-ids (seq (:workspace-dbs @ids))]
-          (try (t2/delete! :workspace_database :id [:in wsd-ids]) (catch Throwable _ nil)))
+          (try (t2/delete! (t2/table-name :model/WorkspaceDatabase) :id [:in wsd-ids]) (catch Throwable _ nil)))
         (when-let [ws-ids (seq (:workspaces @ids))]
           (try (t2/delete! :model/Workspace :id [:in ws-ids]) (catch Throwable _ nil)))
         (when-let [db-ids (seq (:dbs @ids))]
           ;; Use raw table to bypass our pre-delete hook during teardown, in case
           ;; the test left behind state the hook would refuse.
-          (try (t2/delete! :workspace_database :database_id [:in db-ids]) (catch Throwable _ nil))
-          (try (t2/delete! :metabase_database :id [:in db-ids]) (catch Throwable _ nil)))))))
+          (try (t2/delete! (t2/table-name :model/WorkspaceDatabase) :database_id [:in db-ids]) (catch Throwable _ nil))
+          (try (t2/delete! (t2/table-name :model/Database) :id [:in db-ids]) (catch Throwable _ nil)))))))
 
 (deftest pre-delete-refuses-database-with-initialized-workspace-databases-test
   (testing "deleting a Database with an :provisioned WorkspaceDatabase child raises 409 and leaves state untouched"
@@ -60,7 +62,7 @@
                                                  :input_schemas    []
                                                  :status :provisioned})]
             (track-wsd! wsd-id)
-            (let [thrown (try (t2/delete! :model/Database :id db-id) nil
+            (let [thrown (try (database/delete-databases! [db-id]) nil
                               (catch Throwable t t))]
               (is (some? thrown)
                   "deletion of a Database with initialized workspace_database children must throw")
@@ -95,7 +97,7 @@
                                                  :input_schemas    []
                                                  :status :unprovisioned})]
             (track-wsd! wsd-id)
-            (t2/delete! :model/Database :id db-id)
+            (database/delete-databases! [db-id])
             (is (false? (t2/exists? :model/Database :id db-id))
                 "Database row is gone after successful delete")
             (is (false? (t2/exists? :model/WorkspaceDatabase :id wsd-id))
@@ -103,7 +105,7 @@
 
 (deftest fk-restrict-is-defense-in-depth-test
   (testing "FK constraint blocks cascade-delete of an :provisioned workspace_database even if the app-level hook is bypassed"
-    ;; `(t2/delete! :metabase_database ...)` against the raw table name bypasses the
+    ;; `(t2/delete! (t2/table-name :model/Database) ...)` against the raw table name bypasses the
     ;; `before-delete` hook (per toucan2 docs). The FK must still refuse the delete so
     ;; the warehouse schema isn't silently orphaned by a path that doesn't know about
     ;; the workspace invariants.
@@ -126,7 +128,7 @@
                                                  :input_schemas    []
                                                  :status :provisioned})]
             (track-wsd! wsd-id)
-            (let [thrown (try (t2/delete! :metabase_database :id db-id) nil
+            (let [thrown (try (t2/delete! (t2/table-name :model/Database) :id db-id) nil
                               (catch Throwable t t))]
               (is (some? thrown)
                   "raw-table delete must still throw — the FK enforces the invariant at the DB layer")
@@ -179,3 +181,48 @@
         (with-data-analyst (is (false? (mi/can-write? (t2/hydrate wsd :can_write))))))
       (testing "superuser — true"
         (with-admin (is (true? (mi/can-write? (t2/hydrate wsd :can_write)))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-premium-features #{:workspaces}
+    (mt/with-temp [:model/Workspace {workspace-id :id} {}
+                   :model/Database {d1 :id} {}
+                   :model/Database {d2 :id} {}
+                   :model/Database {d3 :id} {}
+                   :model/Database {d4 :id} {}
+                   :model/Database {d5 :id} {}
+                   :model/Database {d6 :id} {}
+                   :model/Database {d7 :id} {}]
+      (let [database-ids [d1 d2 d3 d4 d5 d6 d7]
+            rows         (fn [ids]
+                           (mapv (fn [database-id]
+                                   {:workspace_id     workspace-id
+                                    :database_id      database-id
+                                    :input_schemas    []
+                                    :database_details {}
+                                    :output_namespace ""})
+                                 ids))
+            clean!       #(workspace-database/delete-workspace-databases-of-databases! database-ids)
+            counted      (fn [ids write!]
+                           (clean!)
+                           (write! ids))]
+        (try
+          (testing "creating workspace databases"
+            (let [create! (fn [ids] (events.tu/statement-count! #(workspace-database/create-workspace-databases! (rows ids))))]
+              (counted (take 1 database-ids) create!)
+              (is (= (counted (take 2 database-ids) create!) (counted (take 6 database-ids) create!)))))
+          (testing "deleting workspace databases by id"
+            (let [delete! (fn [ids]
+                            (clean!)
+                            (workspace-database/create-workspace-databases! (rows ids))
+                            (let [wsd-ids (t2/select-pks-vec :model/WorkspaceDatabase :database_id [:in ids])]
+                              (events.tu/statement-count! #(workspace-database/delete-workspace-databases! wsd-ids))))]
+              (delete! (take 1 database-ids))
+              (is (= (delete! (take 2 database-ids)) (delete! (take 6 database-ids))))))
+          (testing "deleting the workspace databases of databases, some not yet having any"
+            (let [delete! (fn [ids]
+                            (clean!)
+                            (workspace-database/create-workspace-databases! (rows (take-nth 2 ids)))
+                            (events.tu/statement-count! #(workspace-database/delete-workspace-databases-of-databases! ids)))]
+              (delete! (take 1 database-ids))
+              (is (= (delete! (take 2 database-ids)) (delete! (take 6 database-ids))))))
+          (finally (clean!)))))))

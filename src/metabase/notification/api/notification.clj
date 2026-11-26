@@ -2,6 +2,7 @@
   "/api/notification endpoints"
   (:require
    [clojure.data :refer [diff]]
+   [malli.error :as me]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -15,6 +16,7 @@
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -44,7 +46,7 @@
    {:with-id? false}))
 
 (mr/def ::NotificationApiUpdateInput
-  "Notification schema for an update request, restricted to what `notification-update-spec` writes. On PUT
+  "Notification schema for an update request, restricted to what an update writes. On PUT
   the URL, not the body, identifies the target (RFC 9110 §9.3.4), so a client-sent id is stripped."
   (models.notification/hydrated-notification-schema
    (handler-api-input ::models.notification/NotificationHandler
@@ -91,6 +93,15 @@
    (when (or (some handler-touches-template? handlers)
              (some handler-touches-template? existing-handlers))
      (api/check-403 (mi/can-write? (t2/hydrate (t2/instance :model/ChannelTemplate {}) :can_write))))))
+
+(defn- check-request-shape
+  "Throws a 400 unless `value` is valid for `schema`, the request schema of the endpoint that shares the entry function
+  with the tools that call it directly."
+  [schema value]
+  (when-let [error (mr/explain schema value)]
+    (throw (ex-info (tru "Invalid notification request.")
+                    {:status-code 400
+                     :errors      (me/humanize error)}))))
 
 (defn get-notification
   "Get a notification by id."
@@ -160,14 +171,38 @@
   (-> (get-notification id)
       api/read-check))
 
-(defn- all-email-recipients [notification]
+(defn- email-recipients
+  "The user and raw-value recipients of the email handlers of `notification`."
+  [notification]
   (->> (:handlers notification)
        (filter #(= :channel/email ((comp keyword :channel_type) %)))
        (mapcat :recipients)
-       (filter #(#{:notification-recipient/user :notification-recipient/raw-value} ((comp keyword :type) %)))
+       (filter #(#{:notification-recipient/user :notification-recipient/raw-value} ((comp keyword :type) %)))))
+
+(defn- user-recipient? [recipient]
+  (= :notification-recipient/user ((comp keyword :type) recipient)))
+
+(defn- deactivated-recipient-emails
+  "A map of user ID to email of the user recipients of `notifications` whose hydrated `:user` has no email (a
+  deactivated user), read at once."
+  [notifications]
+  (let [user-ids (into #{}
+                       (comp (mapcat email-recipients)
+                             (filter user-recipient?)
+                             (remove (comp :email :user))
+                             (keep :user_id))
+                       notifications)]
+    (when (seq user-ids)
+      (notification.db/user-emails user-ids))))
+
+(defn- all-email-recipients
+  "The email addresses of the email recipients of `notification`,
+  with `user-emails` from [[deactivated-recipient-emails]]."
+  [notification user-emails]
+  (->> (email-recipients notification)
        (map (fn [recipient]
-              (if (= :notification-recipient/user ((comp keyword :type) recipient))
-                (or (-> recipient :user :email) (notification.db/user-email (:user_id recipient)))
+              (if (user-recipient? recipient)
+                (or (-> recipient :user :email) (get user-emails (:user_id recipient)))
                 (-> recipient :details :value))))
        (remove nil?)
        set))
@@ -175,7 +210,8 @@
 (defn- send-you-were-added-card-notification-email! [notification]
   (when (channel.settings/email-configured?)
     (let [current-user? #{(:email @api/*current-user*)}]
-      (when-let [recipients-except-creator (->> (all-email-recipients notification)
+      (when-let [recipients-except-creator (->> (all-email-recipients notification
+                                                                      (deactivated-recipient-emails [notification]))
                                                 (remove current-user?)
                                                 seq)]
         (messages/send-you-were-added-card-notification-email!
@@ -184,12 +220,11 @@
 (mu/defn create-notification! :- ::models.notification/FullyHydratedNotification
   "Create a notification with permission checks, hydration, email notifications, and event publishing."
   [notification-info :- ::CreateNotificationParams]
+  (check-request-shape ::CreateNotificationParams notification-info)
+  (check-handler-templates! (:handlers notification-info))
   (api/create-check :model/Notification notification-info)
   (let [notification (models.notification/hydrate-notification
-                      (models.notification/create-notification!
-                       (dissoc notification-info :handlers :subscriptions)
-                       (:subscriptions notification-info)
-                       (:handlers notification-info)))]
+                      (first (models.notification/create-notifications! [notification-info])))]
     (when (card-notification? notification)
       (send-you-were-added-card-notification-email! notification))
     notification))
@@ -197,7 +232,6 @@
 (api.macros/defendpoint :post "/" :- ::models.notification/FullyHydratedNotification
   "Create a new notification, return the created notification."
   [_route _query body :- ::CreateNotificationParams request]
-  (check-handler-templates! (:handlers body))
   (create-notification!
    (-> body
        (update :payload_type keyword)
@@ -207,13 +241,13 @@
 
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"
-  [updated-notification existing-notification]
+  [updated-notification existing-notification user-emails]
   (when (channel.settings/email-configured?)
     (let [was-active?  (:active existing-notification)
           is-active?   (:active updated-notification)
           current-user @api/*current-user*
-          old-emails   (all-email-recipients existing-notification)
-          new-emails   (all-email-recipients updated-notification)
+          old-emails   (all-email-recipients existing-notification user-emails)
+          new-emails   (all-email-recipients updated-notification user-emails)
           notification (update existing-notification :payload #(t2/hydrate % :card))]
       (cond
         ;; Notification was just archived - notify all users they were unsubscribed
@@ -231,42 +265,45 @@
           (when (seq added-recipients)
             (messages/send-you-were-added-card-notification-email! notification added-recipients @api/*current-user*)))))))
 
-(defn publish-notification-update!
-  "Post-update side effects for a notification: recipient emails on `:active` transitions (or
-  recipient diffs) + an `:event/notification-update` audit event. Shared between the self-service
-  PUT endpoint and the admin bulk endpoint so the contract can't drift. Both args should be
-  hydrated notifications (see [[models.notification/hydrate-notification]])."
-  [updated-notification existing-notification]
-  (when (card-notification? existing-notification)
-    (notify-notification-updates! updated-notification existing-notification))
-  (events/publish-event! :event/notification-update
-                         {:object          updated-notification
-                          :previous-object existing-notification
-                          :user-id         api/*current-user-id*}))
+(defn publish-notification-updates!
+  "Send the recipient emails for the `:active` transition or the recipient changes of each `[updated existing]` pair
+  of hydrated notifications in `pairs`, then publish one `:event/notification-update` for all of them, for the PUT
+  endpoint and the admin bulk endpoint alike."
+  [pairs]
+  (let [card-pairs  (filter (comp card-notification? second) pairs)
+        user-emails (when (and (seq card-pairs) (channel.settings/email-configured?))
+                      (deactivated-recipient-emails (mapcat identity card-pairs)))]
+    (doseq [[updated existing] card-pairs]
+      (notify-notification-updates! updated existing user-emails)))
+  (when (seq pairs)
+    (events/publish-event! :event/notification-update
+                           {:objects (mapv (fn [[updated existing]]
+                                             {:object updated :previous-object existing})
+                                           pairs)
+                            :user-id api/*current-user-id*})))
 
 (defn- body-with-authoritative-ids
-  "Set the URL notification's `:id` on `body`, and its payload's `:id` when the body carries a
-  payload."
+  "Set the URL notification's `:id` on `body`, and its payload's `:id` when the body carries a payload, so that an update
+  keeps the primary keys of the rows it matches."
   [body {:keys [id payload_id]}]
-  ;; without the ids the spec-update below would treat the body as a different row and delete +
-  ;; recreate it, changing primary keys out from under the caller
   (cond-> (assoc body :id id)
     (and (:payload body) payload_id) (assoc-in [:payload :id] payload_id)))
 
 (mu/defn update-notification!
   "Update notification `id` from `body` with the permission and handler-template checks and
   post-update side effects, and return the updated hydrated notification. `body` is a whole
-  notification, not a patch: the update spec deletes the subscription and handler rows it doesn't
+  notification, not a patch: the update deletes the subscription and handler rows it doesn't
   find there."
   [id   :- ms/PositiveInt
    body :- ::NotificationApiUpdateInput]
+  (check-request-shape ::NotificationApiUpdateInput body)
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
     (check-handler-templates! (:handlers body) (:handlers existing-notification))
     (let [body (body-with-authoritative-ids body existing-notification)]
-      (models.notification/update-notification! existing-notification body)
+      (models.notification/update-notification! id body {:notifications [existing-notification]})
       (u/prog1 (get-notification id)
-        (publish-notification-update! <> existing-notification)))))
+        (publish-notification-updates! [[<> existing-notification]])))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

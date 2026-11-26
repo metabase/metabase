@@ -16,18 +16,26 @@
    [metabase.util.malli.fn :as mu.fn]
    [metabase.workspaces.table-remapping :as ws.table-remapping]))
 
+(defn table-remapper
+  "The function of a Table's `{:schema :name}` to its workspace remap on `database`, read once for all its Tables, which
+  throws on each call what that read threw."
+  [database]
+  (try
+    (ws.table-remapping/workspace-table-remapper (:id database))
+    (catch Throwable e
+      (fn [_from-spec]
+        (throw e)))))
+
 (defn- effective-table-spec
-  "Resolves the workspace remap for `(schema, table-name)` on `database-id`. Returns
-  `{:db :schema :name}`: the iso warehouse coordinates when a remap exists, otherwise
-  the canonical input. Lets workspace mode redirect to the iso table while the app-db
-  row keeps its logical identity."
-  [database-id schema table-name]
+  "The `{:db :schema :name}` that `remap-table` gives for `schema` and `table-name`, or the canonical coordinates with
+  a nil `:db` when there is no remap."
+  [remap-table schema table-name]
   (let [from-spec {:schema schema :name table-name}]
-    (or (ws.table-remapping/workspace-remap-schema+name database-id from-spec)
+    (or (remap-table from-spec)
         {:db nil :schema schema :name table-name})))
 
 (defn- do-with-effective-table
-  "Resolve the workspace remap for `table` on `database`, then call `f` with an
+  "Resolve the workspace remap for `table` on `database` with `remap-table`, then call `f` with an
   `{:db :schema :name}` map of effective coordinates.
 
   When the resolved `:db` differs from the canonical bound DB (true for engines like
@@ -36,8 +44,8 @@
   driver-side `describe-fields`/`describe-table`/`describe-indexes` SQL filters and
   connects to the iso DB. Schema-having drivers (Postgres etc.) keep `:db` at the
   canonical value and skip the swap."
-  [database table f]
-  (let [{effective-db :db :as spec} (effective-table-spec (:id database) (:schema table) (:name table))
+  [database remap-table table f]
+  (let [{effective-db :db :as spec} (effective-table-spec remap-table (:schema table) (:name table))
         canonical-db (-> database :details :db)]
     (if (and effective-db (not= effective-db canonical-db))
       (driver.conn/with-swapped-connection-details (:id database) {:db effective-db}
@@ -66,11 +74,11 @@
       (driver/describe-database driver database))))
 
 (defn include-nested-fields-for-table
-  "Add nested-field-columns for table to set of fields."
-  [fields database table]
+  "`fields` with the nested field columns of `table`, read from the warehouse location that `remap-table` gives."
+  [fields database table remap-table]
   (let [driver (driver.u/database->driver database)]
     (do-with-effective-table
-     database table
+     database remap-table table
      (fn [{effective-schema :schema effective-name :name}]
        (let [effective-table (assoc table :schema effective-schema :name effective-name)]
          (cond-> fields
@@ -78,15 +86,15 @@
            (set/union (sql-jdbc.sync/describe-nested-field-columns driver database effective-table))))))))
 
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
-  "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
-  implementation of [[driver/describe-table]], or [[driver/describe-fields]] if implemented. Also includes nested field
-  column metadata."
-  [database :- i/DatabaseInstance
-   table    :- i/TableInstance]
+  "The Fields of `table`, read from the warehouse with [[driver/describe-fields]] or [[driver/describe-table]] at the
+  location that `remap-table`, the [[table-remapper]] of `database`, gives."
+  [database    :- i/DatabaseInstance
+   table       :- i/TableInstance
+   remap-table :- ifn?]
   (log-if-error "table-fields-metadata"
     (let [driver (driver.u/database->driver database)]
       (do-with-effective-table
-       database table
+       database remap-table table
        (fn [{effective-schema :schema effective-name :name}]
          (let [effective-table (assoc table :schema effective-schema :name effective-name)]
            (if (driver.u/supports? driver :describe-fields database)
@@ -96,27 +104,34 @@
                                           :schema-names [effective-schema]))
              (:fields (driver/describe-table driver database effective-table)))))))))
 
+(def ^:private describe-table-batch-size
+  "How many Tables [[describe-fields-using-describe-table]] reads from the app DB at a time."
+  1000)
+
 (defn- describe-fields-using-describe-table
   "Replaces [[metabase.driver/describe-fields]] for drivers that haven't implemented it. Uses [[driver/describe-table]]
   instead. Also includes nested field column metadata."
   [_driver database & {:keys [schema-names table-names]}]
   ;; Realize everything in a vector to close the connection. But only keep the ids because the maps can hog memory.
-  (let [table-ids (mapv :id (sync-util/reducible-sync-tables database :schema-names schema-names :table-names table-names))]
+  (let [table-ids   (mapv :id (sync-util/reducible-sync-tables database :schema-names schema-names :table-names table-names))
+        remap-table (table-remapper database)]
     (eduction
-     (mapcat (fn [table-id]
-               (try
-                 (let [table (sync.db/table table-id)
-                       table-fields (table-fields-metadata database table)]
-                   ;; Realize the fields from this table (from `table-fields-metadata`) immediately to ensure the
-                   ;; connection is closed before moving to the next table.
-                   (mapv #(assoc % :table-schema (:schema table) :table-name (:name table))
-                         table-fields))
-                 (catch Throwable e
-                   ;; an unreachable warehouse fails every table the same way; abort so sync can retry later
-                   (when (sync-util/transient-exception? e)
-                     (throw e))
-                   (log/warn (str "Could not fetch fields from table " table-id ": " (ex-message e)))
-                   nil))))
+     (comp
+      (partition-all describe-table-batch-size)
+      (mapcat #(sync.db/tables-by-schema-and-name (vec %)))
+      (mapcat (fn [table]
+                (try
+                  (let [table-fields (table-fields-metadata database table remap-table)]
+                    ;; Realize the fields from this table (from `table-fields-metadata`) immediately to ensure the
+                    ;; connection is closed before moving to the next table.
+                    (mapv #(assoc % :table-schema (:schema table) :table-name (:name table))
+                          table-fields))
+                  (catch Throwable e
+                    ;; an unreachable warehouse fails every table the same way; abort so sync can retry later
+                    (when (sync-util/transient-exception? e)
+                      (throw e))
+                    (log/warn (str "Could not fetch fields from table " (:id table) ": " (ex-message e)))
+                    nil)))))
      table-ids)))
 
 (mu/defn fields-metadata
@@ -178,14 +193,14 @@
           (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %))))))))
 
 (mu/defn index-metadata :- [:maybe i/TableIndexMetadata]
-  "Get information about the indexes belonging to `table`. In workspace mode,
-  redirects to the isolated warehouse table so describe-table-indexes asks the
-  warehouse about the physical table that backs this canonical Table row."
-  [database :- i/DatabaseInstance
-   table    :- i/TableInstance]
+  "The indexes of `table`, read from the warehouse table that `remap-table`, the [[table-remapper]] of
+  `database`, gives."
+  [database    :- i/DatabaseInstance
+   table       :- i/TableInstance
+   remap-table :- ifn?]
   (log-if-error "index-metadata"
     (do-with-effective-table
-     database table
+     database remap-table table
      (fn [{effective-schema :schema effective-name :name}]
        (let [effective-table (assoc table :schema effective-schema :name effective-name)]
          (driver/describe-table-indexes (driver.u/database->driver database) database effective-table))))))

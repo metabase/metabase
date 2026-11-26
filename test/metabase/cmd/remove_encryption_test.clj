@@ -1,6 +1,5 @@
 (ns metabase.cmd.remove-encryption-test
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.cmd.core :as cmd]
@@ -21,11 +20,10 @@
   :visibility :internal
   :encryption :when-encryption-key-set)
 
-(defn- raw-value [data-source keyy]
-  (-> (jdbc/query {:connection data-source}
-                  ["select \"VALUE\" from setting where setting.\"KEY\"=?;" keyy])
-      first
-      :value))
+(defn- raw-value [keyy]
+  (:value (t2/query-one {:select [:value]
+                         :from   [(t2/table-name :model/Setting)]
+                         :where  [:= :key keyy]})))
 
 (deftest cmd-remove-encryption-errors-when-failed-test
   (mt/with-dynamic-fn-redefs [remove-encryption! #(throw (Exception. "err"))
@@ -38,8 +36,8 @@
       (encryption-test/with-secret-key "key1"
         (mdb/setup-db! :create-sample-content? true)
         (t2/insert! :model/Setting {:key "remove-encryption-test-setting", :value "unencrypted value"})
-        (is (encryption/decryptable-string? (raw-value _conn "encryption-check")))
-        (is (encryption/decryptable-string? (raw-value _conn "remove-encryption-test-setting")))
+        (is (encryption/decryptable-string? (raw-value "encryption-check")))
+        (is (encryption/decryptable-string? (raw-value "remove-encryption-test-setting")))
         (remove-encryption!)
-        (is (= "unencrypted" (raw-value _conn "encryption-check")))
-        (is (not (encryption/possibly-encrypted-string? (raw-value _conn "remove-encryption-test-setting"))))))))
+        (is (= "unencrypted" (raw-value "encryption-check")))
+        (is (not (encryption/possibly-encrypted-string? (raw-value "remove-encryption-test-setting"))))))))

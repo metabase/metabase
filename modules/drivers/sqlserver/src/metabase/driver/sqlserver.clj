@@ -86,8 +86,7 @@
                               :describe-is-generated                  true
                               :workspace                              true
                               :table-privileges                       true
-                              :stage-ctes                             true
-                              :stage-ctes/nested                      false}]
+                              :stage-ctes                             true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :sqlserver

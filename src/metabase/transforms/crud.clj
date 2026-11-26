@@ -4,12 +4,13 @@
    on the `-rest` module."
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
+   [metabase.collections.models.collection :as collection]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.transforms-base.interface :as transforms-base.i]
@@ -22,6 +23,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -140,13 +142,15 @@
                [:database-id         {:optional true} [:maybe ms/PositiveInt]]]]]
   (let [enabled-types (transforms.gating/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
-    (let [transforms (transforms.db/transforms-of-source-types enabled-types database-id)]
-      (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
-           (into []
-                 (comp (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
-                       (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
-                       (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
-                       (map transforms.u/add-source-readable)))))))
+    (let [transforms   (transforms.db/transforms-of-source-types enabled-types database-id)
+          filtered     (into []
+                             (comp (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
+                                   (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
+                                   (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids))
+                             (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner))
+          models-cache (transforms.u/prefetch-source-models filtered)]
+      (-> (transform.model/assoc-permissions filtered models-cache [:can_read :can_write :can_query])
+          (transforms.u/add-source-readable models-cache)))))
 
 (mu/defn requestable-indexes :- [:maybe ::transforms.schema/requestable-indexes]
   "The index methods the target db's driver can create on `transform`'s target table, or nil when none are available."
@@ -167,44 +171,50 @@
   (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
         target-table (transforms-base.u/target-table (transforms-base.i/target-db-id transform) target :active true)]
     (-> transform
-        (t2/hydrate :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
+        (t2/hydrate :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_query)
         (assoc :table target-table)
         transforms.u/add-source-readable)))
 
 (mu/defn create-transform! :- ::transforms.schema/transform
   "Create new transform in the appdb.
    Optionally accepts a creator-id to use instead of the current user."
-  ([body :- ::transforms.schema/transform.create]
+  ([body :- ::transforms.u/create-body]
    (create-transform! body nil))
-  ([body       :- ::transforms.schema/transform.create
+  ([body       :- ::transforms.u/create-body
     creator-id :- [:maybe ::lib.schema.id/user]]
    (let [definition (transforms.u/->definition body)]
      (check-references definition (written-parts body))
      (check-target-table-free definition))
    (let [creator-id (or creator-id api/*current-user-id*)
-         transform  (events/with-batched-events
+         transform  (t2/with-transaction [_conn]
                       (let [tag-ids       (:tag_ids body)
                             ;; Set owner_user_id to current user if not explicitly provided
                             owner-user-id (when-not (:owner_email body)
                                             (or (:owner_user_id body) creator-id))
-                            transform     (transforms.db/insert-transform!
-                                           (assoc (select-keys body [:name :description :source :target :run_trigger
-                                                                     :collection_id :owner_email])
-                                                  :creator_id creator-id
-                                                  :owner_user_id owner-user-id))]
-                        ;; Add tag associations if provided
-                        (when (seq tag-ids)
-                          (transform.model/update-transform-tags! (:id transform) tag-ids))
+                            transform     (first
+                                           (transform.model/create-transforms!
+                                            [(cond-> (assoc (select-keys body [:name :description :source :target :run_trigger
+                                                                               :collection_id :owner_email])
+                                                            :creator_id creator-id
+                                                            :owner_user_id owner-user-id)
+                                               (seq tag-ids) (assoc :tag_ids tag-ids))]))]
                         ;; Return with hydrated tag_ids
-                        (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_execute)))]
+                        (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_query)))]
      transform)))
+
+(mr/def ::update-body
+  "What updates a Transform: the columns to change and the `:tag_ids` to link."
+  [:merge
+   (mut/dissoc ::transforms.schema/transform.update :id)
+   [:map {:closed true}
+    [:tag_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]])
 
 (mu/defn update-transform! :- ::transforms.schema/transform
   "Update a transform, validating its features, what it refers to and its target conflicts, and return it with its
   associations hydrated."
   [id   :- ::lib.schema.id/transform
-   body :- ::transforms.schema/transform.create]
-  (let [transform (events/with-batched-events
+   body :- ::update-body]
+  (let [transform (t2/with-transaction [_conn]
                     (let [old           (api/read-check :model/Transform id)
                           new           (merge old body)
                           definition    (transforms.u/->definition new)
@@ -213,22 +223,20 @@
                       ;; we must validate on a full transform object
                       (check-feature-enabled! definition)
                       (check-references definition (written-parts body))
-                      (transforms.db/update-transform! id (dissoc body :tag_ids))
+                      (transform.model/update-transform! id (cond-> (dissoc body :tag_ids)
+                                                              (contains? body :tag_ids) (assoc :tag_ids (:tag_ids body))))
                       (api/check (not (and (not= (target-fields old) (target-fields new))
                                            (transforms-base.u/planned-target-table-exists? new)))
                                  409
                                  (deferred-tru "A table with that name already exists.")))
-                    ;; Update tag associations if provided
-                    (when (contains? body :tag_ids)
-                      (transform.model/update-transform-tags! id (:tag_ids body)))
-                    (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
+                    (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_query))]
     (-> transform
         transforms.u/add-source-readable)))
 
 (mu/defn delete-transform! :- :nil
   "Delete a transform."
   [transform :- ::transforms.schema/transform]
-  (transforms.db/delete-transform! (:id transform))
+  (transform.model/delete-transforms! [(:id transform)])
   nil)
 
 (mu/defn delete-transforms-folder! :- :nil
@@ -244,18 +252,16 @@
         folders        (transforms.db/collections-by-ids collection-ids)
         transforms     (transforms.db/transforms-in-collections collection-ids)]
     ;; The delete removes every subfolder, so it needs write permission on each of them, as an archive does.
-    (run! api/write-check folders)
+    (run! api/write-check (t2/hydrate folders :can_write))
     ;; Write permission on the folder does not cover its Transforms: theirs comes from the databases they read and
     ;; write, and from the premium feature of their type.
-    (run! api/write-check transforms)
+    (run! api/write-check (t2/hydrate transforms :can_write))
     ;; Drop the tables before the transaction, in the order of the single delete in the frontend (table, then
     ;; transform). A failed drop stops the delete with every Transform row in place, so the user can retry; the tables
     ;; dropped before it stay dropped. `delete-target-table!` needs the Transform row to find its target.
     (when delete-tables?
       (run! transforms-base.u/delete-target-table! transforms))
     (t2/with-transaction [_]
-      ;; One delete per Transform, so each one publishes its delete events. The Collection `before-delete` hook
-      ;; deletes the subfolders.
-      (run! delete-transform! transforms)
-      (transforms.db/delete-collection! (:id collection)))
+      (transform.model/delete-transforms! (mapv :id transforms))
+      (collection/delete-collections! [(:id collection)]))
     nil))

@@ -669,6 +669,12 @@ describe("MonitorLayout", () => {
         expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
       },
     );
+    // The rest of the Monitor nav still renders.
+    expect(
+      within(screen.getByTestId("monitor-nav")).getByRole("link", {
+        name: "Background tasks",
+      }),
+    ).toHaveAttribute("href", Urls.monitorTasks());
   });
 
   it("shows Data app analytics in AI Auditing when the data apps plugin is on", async () => {

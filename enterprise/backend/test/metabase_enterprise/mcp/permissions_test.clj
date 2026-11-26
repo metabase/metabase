@@ -2,9 +2,9 @@
   "How a user's effective MCP policy is collected from their groups' `mcp_group_permission` rows."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase-enterprise.mcp.db :as mcp.db]
    [metabase-enterprise.mcp.permissions]
    [metabase-enterprise.mcp.test-util :as mcp.tu]
+   [metabase.mcp.models.mcp-group-permission :as mcp-group-permission]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util]
@@ -134,7 +134,7 @@
         (testing "simple mode: All Users' seeded row enables every user"
           (is (= [{}] (mcp.perms/effective-policy (mt/user->id :rasta)))))
         (testing "group-level mode: All Users has no row, so a user in no enabled group has no access"
-          (mcp.db/delete-hidden-group-permissions! true)
+          (mcp-group-permission/delete-hidden-mcp-group-permissions! true)
           (is (= no-access-policy (mcp.perms/effective-policy (mt/user->id :rasta)))))))))
 
 (deftest rows-denying-execute-sql-refuse-a-native-question-test

@@ -6,11 +6,15 @@
 
 (set! *warn-on-reflection* true)
 
+(defn hydrate
+  "The User `rows` with the Groups each belongs to as `:user_group_memberships`, loaded together."
+  [rows]
+  (vec (t2/hydrate (vec rows) :user_group_memberships)))
+
 (defn details
   "The details to store for the User `row` beside its columns: the Groups it belongs to and how it was invited."
   [row _event]
-  (select-keys (t2/hydrate row :user_group_memberships)
-               [:groups :invite_method :user_group_memberships]))
+  (select-keys row [:groups :invite_method :user_group_memberships]))
 
 (defn- api-key-user?
   "Whether the User of `event` is the one that an API key owns, which no page lists."

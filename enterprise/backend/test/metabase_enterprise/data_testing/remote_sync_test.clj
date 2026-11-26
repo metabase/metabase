@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.remote-sync.content :as content]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.stats :as remote-sync.stats]
@@ -182,6 +183,29 @@
                         (is (not (t2/exists? :model/CardTest :id (:id t2))))
                         (testing "and leaves the test as a local delete"
                           (is (= #{["delete" :model/CardTest "Second test"]} (local-changes! url v4))))))))))))))))
+
+(deftest card-test-now-round-trips-through-remote-sync-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-model-cleanup [:model/Card :model/CardTest]
+        (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Card       card   {:name "Synced card" :collection_id (:id synced)}
+                       :model/CardTest   t      {:card_id (:id card)
+                                                 :name    "Pinned"
+                                                 :now     (t/offset-date-time "2026-10-13T09:00:00+09:00")}]
+          (let [{v1 :version} (remote-sync.tu/push! url nil)
+                t-path        (remote-sync.tu/entity-path! url "main" t)
+                t-yaml        (some->> t-path (remote-sync.tu/read-file! url "main"))]
+            (testing "the pushed file holds `now` in UTC"
+              (is (str/includes? (str t-yaml) "2026-10-13T00:00:00Z")))
+            (testing "a pull that adds the test's file inserts the test with the same moment"
+              (remote-sync.tu/commit! url "main" {t-path nil})
+              (let [{v2 :version} (remote-sync.tu/pull! url v1)]
+                (is (not (t2/exists? :model/CardTest :entity_id (:entity_id t))))
+                (remote-sync.tu/commit! url "main" {t-path t-yaml})
+                (is (=? {:status :success} (remote-sync.tu/pull! url v2)))
+                (is (= (t/instant "2026-10-13T00:00:00Z")
+                       (some-> (t2/select-one-fn :now :model/CardTest :entity_id (:entity_id t)) t/instant)))))))))))
 
 (deftest pull-card-and-its-test-test
   (remote-sync.tu/with-repository [url]

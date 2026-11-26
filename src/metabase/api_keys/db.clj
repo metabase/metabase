@@ -3,11 +3,10 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [java-time.api :as t]
-   [malli.util :as mut]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.users.schema :as users.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -37,55 +36,34 @@
 (mu/defn api-key
   "The ApiKey with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/ApiKey :id [:auto/param id]))
-
-(def ^:private ApiKeyWithGroupId
-  "An ApiKey instance possibly carrying the `::api-keys/group-id` the before-update hook consumes."
-  (mut/merge ::api-keys.schema/api-key
-             [:map
-              [:metabase.api-keys.core/group-id {:optional true} [:maybe ms/PositiveInt]]]))
-
-(mu/defn save-api-key!
-  "Save the changes made to the ApiKey instance `api-key` and return it."
-  [api-key :- ApiKeyWithGroupId]
-  (t2/save! api-key))
+  (t2/select-one :model/ApiKey :id id))
 
 (mu/defn api-key-exists?
   "Whether an ApiKey with `id` exists."
   [id :- ms/PositiveInt]
   (t2/exists? :model/ApiKey :id id))
 
-(mu/defn delete-api-key!
-  "Delete the ApiKey with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/ApiKey :id id))
+(mu/defn api-key-ids-with-scope :- [:sequential ms/PositiveInt]
+  "The ids of the ApiKeys with `scope`."
+  [scope :- ::api-keys.schema/scope]
+  (vec (t2/select-pks-vec :model/ApiKey :scope scope)))
 
 (mu/defn api-key-groups
   "The group name, group id, and api key id of the PermissionsGroups of the ApiKeys with `api-key-ids`."
   [api-key-ids :- [:sequential ms/PositiveInt]]
-  (t2/query {:select [[:pg.name :group-name]
-                      [:pg.id :group-id]
-                      [:api_key.id :api-key-id]]
-             :from   [[:permissions_group :pg]]
-             :join   [[:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]
-                      :api_key [:= :api_key.user_id :pgm.user_id]]
-             :where  [:in :api_key.id api-key-ids]}))
+  (mdb/select-batched #(t2/query {:select [[:pg.name :group-name]
+                                           [:pg.id :group-id]
+                                           [(u/qualified-key (t2/table-name :model/ApiKey) :id) :api-key-id]]
+                                  :from   [[(t2/table-name :model/PermissionsGroup) :pg]]
+                                  :join   [[(t2/table-name :model/PermissionsGroupMembership) :pgm] [:= :pgm.group_id :pg.id]
+                                           (t2/table-name :model/ApiKey) [:= (u/qualified-key (t2/table-name :model/ApiKey) :user_id) :pgm.user_id]]
+                                  :where  [:in (u/qualified-key (t2/table-name :model/ApiKey) :id) %]})
+                      api-key-ids))
 
-(mu/defn rename-api-key-user!
-  "Set the first name (and clear the last name) of the api-key User with `user-id`."
-  [user-id    :- ::lib.schema.id/user
-   first-name :- :string]
-  (t2/update! :model/User :id user-id, :type :api-key, {:first_name first-name, :last_name ""}))
-
-(mu/defn user-type
-  "The `:type` of the User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :type :model/User :id user-id))
-
-(mu/defn deactivate-api-key-user!
-  "Deactivate the api-key User with `user-id` (nil for keys without a user, e.g. SCIM keys, which updates nothing)."
-  [user-id :- [:maybe ::lib.schema.id/user]]
-  (t2/update! :model/User user-id, :type :api-key, {:is_active false}))
+(mu/defn user-types :- [:map-of ::lib.schema.id/user :keyword]
+  "The map from id to `:type` of the Users with `user-ids`."
+  [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
+  (into {} (map (juxt :id :type)) (mdb/select-batched #(t2/select [:model/User :id :type] :id [:in %]) user-ids)))
 
 (mu/defn api-key-prefix-exists?
   "Whether an ApiKey with `prefix` exists."
@@ -97,21 +75,15 @@
   [key-name :- :string]
   (t2/exists? :model/ApiKey :name key-name))
 
-(mu/defn insert-user!
-  "Insert the User `row` and return its id."
-  [row :- ::users.schema/user.update]
-  (t2/insert-returning-pk! :model/User row))
+(mu/defn insert-api-key-usage-logs!
+  "Insert the ApiKeyUsageLog `rows` as one batch."
+  [rows :- [:sequential ::api-keys.schema/api-key-usage-log.create]]
+  (t2/insert! :model/ApiKeyUsageLog rows))
 
-(mu/defn insert-api-key!
-  "Insert the ApiKey `row` and return the inserted instance."
-  [row :- ::api-keys.schema/api-key.create]
-  (t2/insert-returning-instance! :model/ApiKey row))
-
-(mu/defn update-api-key!
-  "Apply `changes` to the ApiKey with `id`."
-  [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::api-keys.schema/api-key.update [:key :key_prefix :updated_by_id])]
-  (t2/update! :model/ApiKey :id id changes))
+(mu/defn api-key-usage-log-ids-occurred-before :- [:sequential ms/PositiveInt]
+  "The ids of the ApiKeyUsageLogs whose `occurred_at` is before `cutoff`."
+  [cutoff :- (ms/InstanceOfClass java.time.OffsetDateTime)]
+  (vec (t2/select-pks-vec :model/ApiKeyUsageLog {:where [:< :occurred_at cutoff]})))
 
 (defn lock-available-key-ids
   "The subset of `ids` not currently locked by another writer, locked for update (`SKIP LOCKED` outside

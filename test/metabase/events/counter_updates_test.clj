@@ -3,10 +3,10 @@
   no audit entry, Revision or change log entry, and no query of the consumers that only bookkeep."
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.core :as mdb]
    [metabase.audit-app.events.audit-log]
    [metabase.audit-app.spec :as audit.spec]
    [metabase.config.core :as config]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.revisions.events]
@@ -20,9 +20,9 @@
 (defn- row-counts
   "The number of rows of the tables the consumers record into."
   []
-  {:audit_log  (t2/count :audit_log)
-   :revision   (t2/count :revision)
-   :change_log (if config/ee-available? (t2/count :change_log) 0)})
+  {:audit_log  (t2/count (t2/table-name :model/AuditLog))
+   :revision   (t2/count (t2/table-name :model/Revision))
+   :change_log (if config/ee-available? (t2/count :model/ChangeLog) 0)})
 
 (deftest counter-updates-record-nothing-test
   (mt/with-premium-features #{:audit-app :dependencies :change-log :content-diagnostics}
@@ -41,32 +41,53 @@
               (t2/update! model :id id changes)
               (is (= before (row-counts))))))))))
 
-(defn- card-update-statements
-  "The number of statements of an UPDATE of a Card row through the model."
-  []
-  (if (#{:mysql :mariadb} (mdb/db-type)) 7 5))
-
 (deftest counter-updates-query-only-for-write-test
-  (testing "a counter-only update runs the statements of the write itself and no consumer's query: for a Card the load
-            of the row, its UPDATE (counted twice by Toucan), the after-update read and the read of the Actions that move
-            with it, and on MySQL and MariaDB, which return no rows of an UPDATE, one more read of the row and one more
-            UPDATE; for a Dashboard or a Document the load and the UPDATE"
+  (testing "a counter-only update runs the statements of the write itself and no consumer's query, for any number of
+            rows"
     (mt/with-premium-features #{:audit-app :dependencies :change-log :content-diagnostics}
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Card      {card-id :id} {}
-                       :model/Dashboard {dash-id :id} {}
-                       :model/Document  {doc-id :id}  {}]
+        (mt/with-temp [:model/Card      {c1 :id} {}
+                       :model/Card      {c2 :id} {}
+                       :model/Card      {c3 :id} {}
+                       :model/Card      {c4 :id} {}
+                       :model/Card      {c5 :id} {}
+                       :model/Card      {c6 :id} {}
+                       :model/Dashboard {d1 :id} {}
+                       :model/Dashboard {d2 :id} {}
+                       :model/Dashboard {d3 :id} {}
+                       :model/Dashboard {d4 :id} {}
+                       :model/Dashboard {d5 :id} {}
+                       :model/Dashboard {d6 :id} {}
+                       :model/Document  {o1 :id} {}
+                       :model/Document  {o2 :id} {}
+                       :model/Document  {o3 :id} {}
+                       :model/Document  {o4 :id} {}
+                       :model/Document  {o5 :id} {}
+                       :model/Document  {o6 :id} {}]
           (search.tu/with-index-disabled
-            (doseq [[model id changes expected] [[:model/Card card-id {:view_count 7} (card-update-statements)]
-                                                 [:model/Card card-id {:last_used_at (java.time.OffsetDateTime/now)} (card-update-statements)]
-                                                 [:model/Dashboard dash-id {:view_count 7} 2]
-                                                 [:model/Dashboard dash-id {:last_viewed_at (java.time.OffsetDateTime/now)} 2]
-                                                 [:model/Document doc-id {:view_count 7} 2]
-                                                 [:model/Document doc-id {:last_viewed_at (java.time.OffsetDateTime/now)} 2]]]
-              (testing (str model " " (keys changes))
-                (t2/with-call-count [call-count]
-                  (t2/update! model :id id changes)
-                  (is (= expected (call-count))))))))))))
+            (let [now       (java.time.OffsetDateTime/now)
+                  value     {:view_count     identity
+                             :last_used_at   #(.plusSeconds now %)
+                             :last_viewed_at #(.plusSeconds now %)}
+                  model-ids {:model/Card      [c1 c2 c3 c4 c5 c6]
+                             :model/Dashboard [d1 d2 d3 d4 d5 d6]
+                             :model/Document  [o1 o2 o3 o4 o5 o6]}]
+              (doseq [[model column] [[:model/Card :view_count]
+                                      [:model/Card :last_used_at]
+                                      [:model/Dashboard :view_count]
+                                      [:model/Dashboard :last_viewed_at]
+                                      [:model/Document :view_count]
+                                      [:model/Document :last_viewed_at]]]
+                (testing (str model " " column)
+                  (let [counted (fn [n step]
+                                  (t2/with-call-count [call-count]
+                                    (t2/update! model :id [:in (take n (model-ids model))] {column ((value column) step)})
+                                    (call-count)))]
+                    (counted 1 10)
+                    (let [small (counted 2 20)]
+                      (is (= small (counted 6 30)))
+                      (testing "and as many as with no consumer"
+                        (is (= small (events.tu/without-delivery (counted 2 40))))))))))))))))
 
 (defn- ignored-columns-of
   "The columns that the audit log ignores for `model` from its list, and the counters and computed columns that the revision spec of `model` skips."

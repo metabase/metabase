@@ -40,23 +40,21 @@
   "Returns true if the user can access this published table via collection read permissions."
   :feature :library
   [table]
-  (when (:is_published table)
-    (let [collection-id (:collection_id table)]
-      (perms/collection-permission-at-least?
-       (get (perms/collection-permissions-for-user (api/current-user-info) [collection-id] {:root-namespace nil})
-            collection-id)
-       :read))))
+  (when-let [[_table-id collection-id] (first (data-studio.db/published-table-collection-ids [(:id table)]))]
+    (perms/collection-permission-at-least?
+     (get (perms/collection-permissions-for-user (api/current-user-info) [collection-id] {:root-namespace nil})
+          collection-id)
+     :read)))
 
 (defenterprise published-table-clause
   "A HoneySQL clause holding when the Table aliased `table-alias` is published into a Collection the user of
-  `user-info` can read, which grants `:perms/create-queries :query-builder`. It reads the probed Table's own columns,
-  so each Table is checked on its own."
+  `user-info` can read, which grants `:perms/create-queries :query-builder`. It reads the probed Table's own
+  settings, so each Table is checked on its own."
   :feature :library
   [{:keys [user-id is-superuser? is-data-analyst?]} table-alias]
-  (let [column (fn [c] (keyword (str (name table-alias) "." c)))]
-    [:and
-     [:= (column "is_published") true]
-     (perms/visible-collections-filter-clause
-      (column "collection_id")
-      {:user-id user-id, :is-superuser? (boolean is-superuser?), :is-data-analyst? (boolean is-data-analyst?)}
-      {:root-namespace nil})]))
+  (data-studio.db/published-table-clause
+   table-alias
+   (perms/visible-collections-filter-clause
+    :published_settings.collection_id
+    {:user-id user-id, :is-superuser? (boolean is-superuser?), :is-data-analyst? (boolean is-data-analyst?)}
+    {:root-namespace nil})))

@@ -9,6 +9,7 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -16,7 +17,7 @@
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
 (defn- max-id []
-  (or (:id (t2/query-one {:select [[:%max.id :id]] :from [:audit_log]})) 0))
+  (or (:id (t2/query-one {:select [[:%max.id :id]] :from [(t2/table-name :model/AuditLog)]})) 0))
 
 (defn- rows-since [before]
   (mapv #(select-keys % [:topic :model :model_id :user_id :details])
@@ -163,7 +164,7 @@
       (testing "changing the connection details records one database-update row for the admin"
         (let [before (max-id)]
           (mt/with-current-user (mt/user->id :crowberto)
-            (t2/update! :model/Database :id db-id {:details (assoc (:details (mt/db)) :let-user-control-scheduling true)}))
+            (database/update-databases! [{:id db-id :details (assoc (:details (mt/db)) :let-user-control-scheduling true)}]))
           (is (= [[:database-update "Database" db-id]] (topics-since before))))))))
 
 (deftest database-update-keeps-secrets-out-of-details-test
@@ -171,7 +172,7 @@
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details (:details (mt/db)) :name "Audited"}]
       (let [before (max-id)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (t2/update! :model/Database :id db-id {:details (assoc (:details (mt/db)) :password "zz-secret-password")}))
+          (database/update-databases! [{:id db-id :details (assoc (:details (mt/db)) :password "zz-secret-password")}]))
         (is (= 1 (count (rows-since before))))
         (is (not (re-find #"zz-secret-password" (pr-str (rows-since before)))))))))
 
@@ -180,7 +181,7 @@
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details (:details (mt/db))}]
       (let [before (max-id)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (t2/update! :model/Database :id db-id {:initial_sync_status "complete" :dbms_version {:flavor "H2"}}))
+          (database/update-databases! [{:id db-id :initial_sync_status "complete" :dbms_version {:flavor "H2"}}]))
         (is (= [] (rows-since before)))))))
 
 (deftest user-update-records-row-test
@@ -261,17 +262,23 @@
           (is (seq (t2/select-one-fn :result_metadata :model/Card :id model-id)))
           (is (seq (t2/select-one-fn :result_metadata :model/Card :id question-id))))))))
 
+(defn- user-request-call-count!
+  "The number of app DB queries that `(mt/user-http-request user-and-args...)` runs."
+  [& user-and-args]
+  (t2/with-call-count [call-count]
+    (apply mt/user-http-request user-and-args)
+    (call-count)))
+
 (defn- user-qbnewb-call-count!
   "The number of app DB queries that the user `user-id` runs to clear their own new-user flag."
   [user-id]
   (t2/update! :model/User :id user-id {:is_qbnewb true})
-  (t2/with-call-count [call-count]
-    (mt/user-http-request :rasta :put 200 (str "user/" user-id "/modal/qbnewb"))
-    (call-count)))
+  (user-request-call-count! :rasta :put 200 (str "user/" user-id "/modal/qbnewb")))
 
 (deftest skipped-column-update-of-user-runs-no-details-query-test
   (let [user-id   (mt/user->id :rasta)
         before    (max-id)
+        _         (user-qbnewb-call-count! user-id)
         audit-off (mt/with-premium-features #{}
                     (user-qbnewb-call-count! user-id))
         audit-on  (mt/with-premium-features #{:audit-app}
@@ -280,12 +287,20 @@
       (is (= audit-off audit-on))
       (is (= [] (rows-since before)))))
   (mt/with-premium-features #{:audit-app}
+    (testing "deactivating a user runs the same number of queries whatever the number of their groups"
+      (let [deactivating (fn [n]
+                           (mt/with-temp [:model/User {user-id :id} {}]
+                             (mt/with-model-cleanup [:model/PermissionsGroup]
+                               (let [group-ids (t2/insert-returning-pks! :model/PermissionsGroup
+                                                                         (repeatedly n #(mt/with-temp-defaults :model/PermissionsGroup)))]
+                                 (t2/insert! :model/PermissionsGroupMembership
+                                             (for [group-id group-ids] {:user_id user-id :group_id group-id}))
+                                 (user-request-call-count! :crowberto :delete 200 (str "user/" user-id))))))]
+        (deactivating 1)
+        (is (= (deactivating 2) (deactivating 6)))))
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [before (max-id)]
-        (testing "deactivating a user runs one query to hydrate their groups, and one to insert the row"
-          (t2/with-call-count [call-count]
-            (mt/user-http-request :crowberto :delete 200 (str "user/" user-id))
-            (is (= 13 (call-count)))))
+        (mt/user-http-request :crowberto :delete 200 (str "user/" user-id))
         (is (= [[:user-deactivated "User" user-id]] (topics-since before)))))))
 
 (defn- update-segment-entity-id-call-count!
@@ -299,6 +314,7 @@
 (deftest skipped-column-update-of-segment-runs-no-details-query-test
   (mt/with-temp [:model/Segment {segment-id :id} {}]
     (let [before    (max-id)
+          _         (update-segment-entity-id-call-count! segment-id "bcdefghijklmnopqrstuv")
           audit-off (mt/with-premium-features #{}
                       (update-segment-entity-id-call-count! segment-id "abcdefghijklmnopqrstu"))
           audit-on  (mt/with-premium-features #{:audit-app}

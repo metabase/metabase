@@ -38,9 +38,9 @@
   can-delete?
   card-read-check-columns
   check-shared-dashboard-timeline-permissions!
+  check-new-dashboard-questions-timeline-permissions
   check-newly-exposed-dashcards-timeline-permissions!
   check-shared-dashboard-timeline-permissions-for-card-ids!
-  create-card!
   card-exposed-timeline-ids
   dashcard-hides-card-events?
   with-copy-source-card]
@@ -49,6 +49,7 @@
   check-allowed-to-create-card!
   check-allowed-to-run-query!
   check-allowed-to-update-card!
+  check-allowed-to-update-cards!
   check-card-can-be-saved!]
  [metabase.queries.metadata
   batch-fetch-card-metadata
@@ -57,21 +58,21 @@
   batch-fetch-query-metadata]
  [metabase.queries.models.card
   current-card-schema-version
-  maybe-unverify!
   model?
+  native-audit-db-query?
   sole-dashboard-id
   starting-card-schema-version
   timeline-events-supported-display?
-  update-card!
   visible-metric-cards-where-clause]
  [metabase.queries.models.card.metadata
   infer-metadata-with-model-overrides
   maybe-async-result-metadata
-  refresh-metadata
-  save-metadata-async!]
+  refresh-metadata]
  [metabase.queries.models.parameter-card
   check-new-parameter-source-card-permissions
   check-parameter-source-card-permissions
+  parameter-source-cards-readable?
+  values-source-card-id
   values-source-card-ids]
  [metabase.queries.models.query
   average-execution-time-ms
@@ -80,7 +81,7 @@
  [metabase.queries.cached-result
   allowed-chart-sorts
   assert-can-view-cached-result!
-  viewer-can-view-cached-result?
+  cached-result-view-answers
   cached-dataset]
  [metabase.queries.models.stored-result-use
   assert-can-view-card-snapshots!
@@ -88,12 +89,6 @@
  [metabase.query-processor.card
   parameter-template-tag?])
 
-(p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)
+(p/import-def metabase.queries.models.card/populate-cards-query-fields populate-cards-query-fields)
 
 (p/import-def metabase.query-processor.card/template-tag-parameters card-template-tag-parameters)
-
-(p/import-def metabase.queries.models.parameter-card/delete-all-for-parameterized-object!
-              delete-all-parameter-cards-for-parameterized-object!)
-
-(p/import-def metabase.queries.models.parameter-card/upsert-or-delete-from-parameters!
-              upsert-or-delete-parameter-cards-from-parameters!)
