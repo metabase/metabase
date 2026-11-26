@@ -1841,7 +1841,9 @@
   "An answer of [[table-statistics]], an open map with only what the driver knows, so `{}` when it knows nothing.
   `:row-count` is the table's row count and its origin; it is the same kind of number as the `:estimated_row_count` of
   `describe-database`, which sync stores. `:fields` is by Field id:
-  - `:fingerprint`, a partial fingerprint: the keys the database has, in the shape of a fingerprint.
+  - `:fingerprint`, a partial fingerprint: the keys the database has, in the shape of a fingerprint. Its
+    `:distinct-count` counts NULL as a value, as a sample does; a driver whose catalog does not count NULL (such as
+    `pg_stats.n_distinct`) adds 1 when the field has NULLs.
   - `:values`, the field's values in the form that a query of the column gives (an integer for an integer column, not
     a string), at most `:values-limit`. `:complete? true` only when no value of the column is missing; a value can
     have no rows, as a label of an enum type. `:declared? true` when they are the values the column can have, from its
