@@ -25,12 +25,6 @@ export function getAddDimensionButton({ name, index, isSelected }) {
     .find('[aria-label="Add dimension"]');
 }
 
-export function getRemoveDimensionButton({ name, index, isSelected }) {
-  return getDimensionByName({ name, index, isSelected })
-    .realHover()
-    .find('[aria-label="Remove dimension"]');
-}
-
 export function changeBinningForDimension({
   name,
   fromBinning,
