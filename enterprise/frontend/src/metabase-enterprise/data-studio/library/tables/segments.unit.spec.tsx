@@ -1,22 +1,21 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupSchemaEndpoints,
+  setupSegmentStoreEndpoints,
   setupTableQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { createSegmentFilterDefinition } from "metabase/data-studio/segments/test-utils";
 import { IsAdmin } from "metabase/route-guards";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type { FieldId, Segment, TableId } from "metabase-types/api";
+import type { Segment } from "metabase-types/api";
 import {
   createMockCollection,
   createMockSegment,
@@ -37,36 +36,6 @@ import { getDataStudioTableRoutes } from "./routes";
 
 const SAMPLE_DB = createSampleDatabase();
 
-function createFilterQuery({
-  tableId,
-  fieldId,
-  operator,
-  value,
-}: {
-  tableId: TableId;
-  fieldId: FieldId;
-  operator: "<" | ">";
-  value: number;
-}) {
-  return Lib.createTestJsQuery(SAMPLE_PROVIDER, {
-    stages: [
-      {
-        source: { type: "table", id: tableId },
-        filters: [
-          {
-            type: "operator",
-            operator,
-            args: [
-              { type: "column", fieldId },
-              { type: "literal", value },
-            ],
-          },
-        ],
-      },
-    ],
-  });
-}
-
 const NEW_SEGMENT_ID = 77;
 
 const DATA_COLLECTION = createMockCollection({
@@ -82,7 +51,7 @@ const SEGMENT = createMockSegment({
   id: 12,
   name: "Segment to Delete",
   table_id: ORDERS_ID,
-  definition: createFilterQuery({
+  definition: createSegmentFilterDefinition({
     tableId: ORDERS_ID,
     fieldId: ORDERS.TOTAL,
     operator: "<",
@@ -95,12 +64,6 @@ const OTHER_SEGMENT = createMockSegment({
   id: 11,
   name: "Another Segment",
 });
-
-type SegmentRequest = {
-  method: string;
-  url: string;
-  body: unknown;
-};
 
 type SetupOpts = {
   initialRoute: string;
@@ -119,7 +82,9 @@ function setup({ initialRoute, segments = [] }: SetupOpts) {
   setupTableQueryMetadataEndpoint(createPeopleTable({ db: SAMPLE_DB }));
   setupSchemaEndpoints(SAMPLE_DB);
   setupCollectionByIdEndpoint({ collections: [DATA_COLLECTION] });
-  const requests = setupSegmentStore(segments);
+  const { requests } = setupSegmentStoreEndpoints(segments, {
+    createdSegmentId: NEW_SEGMENT_ID,
+  });
 
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: true }),
@@ -145,58 +110,6 @@ function setup({ initialRoute, segments = [] }: SetupOpts) {
   );
 
   return { getPathname: () => router?.location.pathname, requests };
-}
-
-/**
- * Serves segments from a store that only the POST and PUT handlers change,
- * the way the backend stores a write.
- */
-function setupSegmentStore(initialSegments: Segment[]) {
-  const segments = new Map(initialSegments.map((s) => [s.id, s]));
-  const requests: SegmentRequest[] = [];
-
-  fetchMock.get(/\/api\/segment\/\d+$/, (call) => {
-    const segment = segments.get(getSegmentId(call.url));
-    return segment ?? { status: 404, body: "Not found" };
-  });
-  fetchMock.post("path:/api/segment", (call) => {
-    const body: unknown = JSON.parse(String(call.options.body));
-    requests.push({ method: "POST", url: "/api/segment", body });
-    const segment = createMockSegment({
-      ...getSegmentName(body),
-      table_id: ORDERS_ID,
-      id: NEW_SEGMENT_ID,
-    });
-    segments.set(segment.id, segment);
-    return segment;
-  });
-  fetchMock.put(/\/api\/segment\/\d+$/, (call) => {
-    const id = getSegmentId(call.url);
-    const body: unknown = JSON.parse(String(call.options.body));
-    requests.push({ method: "PUT", url: `/api/segment/${id}`, body });
-    const segment = segments.get(id);
-    if (!segment) {
-      return { status: 404, body: "Not found" };
-    }
-    const updated = { ...segment, archived: true };
-    segments.set(id, updated);
-    return updated;
-  });
-
-  return requests;
-}
-
-function getSegmentId(url: string) {
-  return Number(new URL(url).pathname.split("/").pop());
-}
-
-function getSegmentName(body: unknown): Partial<Segment> {
-  return typeof body === "object" &&
-    body != null &&
-    "name" in body &&
-    typeof body.name === "string"
-    ? { name: body.name }
-    : {};
 }
 
 describe("published table segment pages", () => {

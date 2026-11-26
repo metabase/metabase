@@ -5,9 +5,13 @@ import _ from "underscore";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupDatabasesEndpoints,
+  setupEntityRevisionsEndpoint,
   setupFieldSearchValuesEndpoint,
   setupFieldValuesEndpoint,
   setupLibraryEndpoints,
+  setupListDatabaseSchemasEndpoint,
+  setupSegmentStoreEndpoints,
+  setupTableQueryMetadataEndpoint,
   setupUserAcknowledgementEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
@@ -16,18 +20,12 @@ import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import * as Analytics from "metabase/analytics";
 import { getDataStudioMetadataRoutes } from "metabase/data-studio/data-model/routes";
+import { createSegmentFilterDefinition } from "metabase/data-studio/segments/test-utils";
 import { IsAdmin } from "metabase/route-guards";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type {
-  FieldId,
-  Revision,
-  Segment,
-  Table,
-  TableId,
-} from "metabase-types/api";
+import { defer } from "metabase/utils/promise";
+import type { Segment, Table, TableId } from "metabase-types/api";
 import {
   createMockRevision,
   createMockSegment,
@@ -52,49 +50,14 @@ import {
 
 const SAMPLE_DB = createSampleDatabase();
 
-function createFilterQuery({
-  tableId,
-  fieldId,
-  operator,
-  value,
-}: {
-  tableId: TableId;
-  fieldId: FieldId;
-  operator: "<" | ">";
-  value: number;
-}) {
-  return Lib.createTestJsQuery(SAMPLE_PROVIDER, {
-    stages: [
-      {
-        source: { type: "table", id: tableId },
-        filters: [
-          {
-            type: "operator",
-            operator,
-            args: [
-              { type: "column", fieldId },
-              { type: "literal", value },
-            ],
-          },
-        ],
-      },
-    ],
-  });
-}
-
 const NEW_SEGMENT_ID = 77;
-
-// Each test that waits for loaded data before acting also runs with slow
-// responses, so a wait that only passes on instant responses fails.
-const RESPONSE_DELAYS = [{ delayMs: 0 }, { delayMs: 400 }];
-const LOAD_TIMEOUT = { timeout: 5000 };
 
 const ORDERS_SEGMENT = createMockSegment({
   id: 12,
   name: "Test Segment",
   description: "Test description",
   table_id: ORDERS_ID,
-  definition: createFilterQuery({
+  definition: createSegmentFilterDefinition({
     tableId: ORDERS_ID,
     fieldId: ORDERS.TOTAL,
     operator: "<",
@@ -106,7 +69,7 @@ const PRODUCTS_SEGMENT = createMockSegment({
   id: 13,
   name: "Expensive Products",
   table_id: PRODUCTS_ID,
-  definition: createFilterQuery({
+  definition: createSegmentFilterDefinition({
     tableId: PRODUCTS_ID,
     fieldId: PRODUCTS.PRICE,
     operator: ">",
@@ -121,19 +84,13 @@ const PRODUCTS_TABLE = createProductsTable({
 });
 const PEOPLE_TABLE = createPeopleTable({ db: SAMPLE_DB, segments: [] });
 
-type SegmentRequest = {
-  method: string;
-  url: string;
-  body: unknown;
-};
-
 type SetupOpts = {
   initialRoute: string;
   segments?: Segment[];
   isAdmin?: boolean;
   ordersTable?: Table;
-  /** Delays the metadata, schema and segment responses the pages wait for. */
-  delayMs?: number;
+  /** The schemas response, which the breadcrumbs wait for, waits for this. */
+  schemasGate?: Promise<unknown>;
 };
 
 function setup({
@@ -141,19 +98,18 @@ function setup({
   segments = [],
   isAdmin = true,
   ordersTable = ORDERS_TABLE,
-  delayMs = 0,
+  schemasGate,
 }: SetupOpts) {
-  [ordersTable, PRODUCTS_TABLE, PEOPLE_TABLE].forEach((table) =>
-    fetchMock.get(`path:/api/table/${table.id}/query_metadata`, table, {
-      delay: delayMs,
-    }),
+  [ordersTable, PRODUCTS_TABLE, PEOPLE_TABLE].forEach(
+    setupTableQueryMetadataEndpoint,
   );
-  // Registered before the shared database mocks, so this delayed route wins.
-  fetchMock.get(`path:/api/database/${SAMPLE_DB_ID}/schemas`, ["PUBLIC"], {
-    delay: delayMs,
+  // Registered before the database mocks below, so that these routes win.
+  setupListDatabaseSchemasEndpoint(SAMPLE_DB_ID, ["PUBLIC"], {
+    responseGate: schemasGate,
   });
-  // Without `include`, the backend sends a database without its tables. The
-  // pages must load the joined tables' metadata themselves.
+  // Without `include`, the backend sends a database without its tables, so the
+  // pages must load the joined tables' metadata themselves. No server-mock
+  // helper serves that shape next to the table list the data model page needs.
   fetchMock.get(
     `path:/api/database/${SAMPLE_DB_ID}`,
     _.omit(SAMPLE_DB, "tables"),
@@ -167,7 +123,9 @@ function setup({
     value: false,
   });
   setupFieldValuesEndpoint(PRODUCT_CATEGORY_VALUES);
-  const requests = setupSegmentStore(segments, delayMs);
+  const segmentStore = setupSegmentStoreEndpoints(segments, {
+    createdSegmentId: NEW_SEGMENT_ID,
+  });
 
   const state = createMockState({
     currentUser: createMockUser({
@@ -198,88 +156,11 @@ function setup({
     },
   );
 
-  return { getPathname: () => router?.location.pathname, requests };
-}
-
-/**
- * Serves segments from a store that only the POST and PUT handlers change,
- * the way the backend stores a write.
- */
-function setupSegmentStore(initialSegments: Segment[], delayMs: number) {
-  const segments = new Map(initialSegments.map((s) => [s.id, s]));
-  const requests: SegmentRequest[] = [];
-
-  fetchMock.get(
-    /\/api\/segment\/\d+$/,
-    (call) => {
-      const segment = segments.get(getSegmentId(call.url));
-      return segment ?? { status: 404, body: "Not found" };
-    },
-    { delay: delayMs },
-  );
-  fetchMock.post(
-    "path:/api/segment",
-    (call) => {
-      const body: unknown = JSON.parse(String(call.options.body));
-      requests.push({ method: "POST", url: "/api/segment", body });
-      const segment = createMockSegment({
-        ...pickSegmentFields(body),
-        id: NEW_SEGMENT_ID,
-      });
-      segments.set(segment.id, segment);
-      return segment;
-    },
-    { delay: delayMs },
-  );
-  fetchMock.put(
-    /\/api\/segment\/\d+$/,
-    (call) => {
-      const id = getSegmentId(call.url);
-      const body: unknown = JSON.parse(String(call.options.body));
-      requests.push({ method: "PUT", url: `/api/segment/${id}`, body });
-      const segment = segments.get(id);
-      if (!segment) {
-        return { status: 404, body: "Not found" };
-      }
-      const updated = { ...segment, ...pickSegmentFields(body) };
-      segments.set(id, updated);
-      return updated;
-    },
-    { delay: delayMs },
-  );
-
-  return requests;
-}
-
-/**
- * Answers only the revisions request for this segment. A request for another
- * entity or id does not match, and the test fails on the unmocked call.
- */
-function setupSegmentRevisions(segmentId: number, revisions: Revision[]) {
-  fetchMock.get("path:/api/revision", revisions, {
-    query: { entity: "segment", id: String(segmentId) },
-  });
-}
-
-function getSegmentId(url: string) {
-  return Number(new URL(url).pathname.split("/").pop());
-}
-
-function pickSegmentFields(body: unknown): Partial<Segment> {
-  if (typeof body !== "object" || body == null) {
-    return {};
-  }
-  const fields: Partial<Segment> = {};
-  if ("name" in body && typeof body.name === "string") {
-    fields.name = body.name;
-  }
-  if ("description" in body && typeof body.description === "string") {
-    fields.description = body.description;
-  }
-  if ("archived" in body && typeof body.archived === "boolean") {
-    fields.archived = body.archived;
-  }
-  return fields;
+  return {
+    getPathname: () => router?.location.pathname,
+    requests: segmentStore.requests,
+    holdNextSegmentGet: segmentStore.holdNextGet,
+  };
 }
 
 function segmentsUrl(tableId: TableId) {
@@ -369,38 +250,40 @@ describe("segment pages in the data model", () => {
   });
 
   describe("new segment", () => {
-    it.each(RESPONSE_DELAYS)(
-      "asks to discard changes when leaving through the breadcrumb, and keeps the form on cancel (responses delayed $delayMs ms)",
-      async ({ delayMs }) => {
-        const { getPathname } = setup({
-          initialRoute: newSegmentUrl(ORDERS_ID),
-          delayMs,
-        });
+    it("asks to discard changes when leaving through the breadcrumb, and keeps the form on cancel", async () => {
+      const schemas = defer<void>();
+      const { getPathname } = setup({
+        initialRoute: newSegmentUrl(ORDERS_ID),
+        schemasGate: schemas.promise,
+      });
 
-        await userEvent.type(
-          await screen.findByPlaceholderText("New segment", {}, LOAD_TIMEOUT),
-          "Premium Orders",
-        );
-        // The breadcrumbs stay hidden until the schemas load.
-        await userEvent.click(
-          await screen.findByRole("link", { name: "Orders" }, LOAD_TIMEOUT),
-        );
+      await userEvent.type(
+        await screen.findByPlaceholderText("New segment"),
+        "Premium Orders",
+      );
+      // The breadcrumbs stay hidden until the schemas load.
+      expect(
+        screen.queryByRole("link", { name: "Orders" }),
+      ).not.toBeInTheDocument();
+      schemas.resolve();
+      await userEvent.click(
+        await screen.findByRole("link", { name: "Orders" }),
+      );
 
-        const modal = await screen.findByRole("dialog");
-        expect(
-          within(modal).getByText("Discard your changes?"),
-        ).toBeInTheDocument();
-        await userEvent.click(
-          within(modal).getByRole("button", { name: "Cancel" }),
-        );
+      const modal = await screen.findByRole("dialog");
+      expect(
+        within(modal).getByText("Discard your changes?"),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Cancel" }),
+      );
 
-        await waitFor(() => {
-          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        });
-        expect(getNameInput()).toHaveValue("Premium Orders");
-        expect(getPathname()).toBe(newSegmentUrl(ORDERS_ID));
-      },
-    );
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+      expect(getNameInput()).toHaveValue("Premium Orders");
+      expect(getPathname()).toBe(newSegmentUrl(ORDERS_ID));
+    });
 
     it("creates a segment with a number filter and opens it", async () => {
       const { getPathname, requests } = setup({
@@ -474,6 +357,16 @@ describe("segment pages in the data model", () => {
           "borer-hudson@yahoo.com",
         ),
       ).toBeInTheDocument();
+
+      // The mock answers only this field, search field and value; check the
+      // request too, so a changed request fails here and not only as an
+      // unmatched call.
+      const searchUrls = fetchMock.callHistory
+        .calls(`path:/api/field/${PEOPLE.EMAIL}/search/${PEOPLE.EMAIL}`)
+        .map((call) => new URL(call.url));
+      expect(searchUrls.at(-1)?.searchParams.get("value")).toBe(
+        "borer-hudson@yahoo.com",
+      );
     });
 
     it("lists the values of a field in list mode, closes on Escape, and offers a preview once a filter exists", async () => {
@@ -572,83 +465,78 @@ describe("segment pages in the data model", () => {
   });
 
   describe("existing segment", () => {
-    it.each(RESPONSE_DELAYS)(
-      "renames a segment on Enter, saves a description change, and returns to the segments tab through the breadcrumb (responses delayed $delayMs ms)",
-      async ({ delayMs }) => {
-        const { getPathname, requests } = setup({
-          initialRoute: segmentUrl(ORDERS_ID, ORDERS_SEGMENT.id),
-          segments: [ORDERS_SEGMENT],
-          delayMs,
-        });
+    it("renames a segment on Enter, saves a description change, and returns to the segments tab through the breadcrumb", async () => {
+      const { getPathname, requests, holdNextSegmentGet } = setup({
+        initialRoute: segmentUrl(ORDERS_ID, ORDERS_SEGMENT.id),
+        segments: [ORDERS_SEGMENT],
+      });
 
-        const nameInput = await screen.findByDisplayValue(
-          "Test Segment",
-          {},
-          LOAD_TIMEOUT,
-        );
-        expect(
-          screen.getByLabelText("Give it a description"),
-        ).toHaveTextContent("Test description");
+      const nameInput = await screen.findByDisplayValue("Test Segment");
+      expect(screen.getByLabelText("Give it a description")).toHaveTextContent(
+        "Test description",
+      );
 
-        await userEvent.type(nameInput, " Updated{enter}");
-        expect(
-          await screen.findByText("Segment name updated", {}, LOAD_TIMEOUT),
-        ).toBeInTheDocument();
-        // The breadcrumb shows the refetched segment, unlike the name input,
-        // which holds what was typed.
-        expect(
-          await screen.findByText(
-            "Test Segment Updated",
-            { selector: "span" },
-            LOAD_TIMEOUT,
-          ),
-        ).toBeInTheDocument();
-        expect(requests).toEqual([
-          {
-            method: "PUT",
-            url: `/api/segment/${ORDERS_SEGMENT.id}`,
-            body: {
-              name: "Test Segment Updated",
-              revision_message: "Updated segment name",
-            },
-          },
-        ]);
-
-        await userEvent.click(screen.getByLabelText("Give it a description"));
-        const descriptionInput = screen.getByPlaceholderText(
-          "Only if it really needs it",
-        );
-        await userEvent.clear(descriptionInput);
-        await userEvent.type(descriptionInput, "Updated description");
-        await userEvent.click(screen.getByRole("button", { name: "Save" }));
-
-        await waitFor(() => {
-          expect(
-            screen.queryByRole("button", { name: "Save" }),
-          ).not.toBeInTheDocument();
-        }, LOAD_TIMEOUT);
-        expect(requests).toHaveLength(2);
-        expect(requests[1]).toEqual({
+      // The rename refetches the segment; hold that response so the test
+      // sees the state before it arrives.
+      const releaseRefetch = holdNextSegmentGet();
+      await userEvent.type(nameInput, " Updated{enter}");
+      expect(
+        await screen.findByText("Segment name updated"),
+      ).toBeInTheDocument();
+      // The breadcrumb shows the stored segment, unlike the name input,
+      // which holds what was typed.
+      expect(
+        screen.getByText("Test Segment", { selector: "span" }),
+      ).toBeInTheDocument();
+      releaseRefetch();
+      expect(
+        await screen.findByText("Test Segment Updated", { selector: "span" }),
+      ).toBeInTheDocument();
+      expect(requests).toEqual([
+        {
           method: "PUT",
           url: `/api/segment/${ORDERS_SEGMENT.id}`,
           body: {
-            // The rename refetched the segment, so the save keeps the new name.
             name: "Test Segment Updated",
-            description: "Updated description",
-            definition: ORDERS_SEGMENT.definition,
-            revision_message: "Updated from Data Studio",
+            revision_message: "Updated segment name",
           },
-        });
+        },
+      ]);
 
-        await userEvent.click(screen.getByRole("link", { name: "Orders" }));
-        await waitFor(() => {
-          expect(getPathname()).toBe(segmentsUrl(ORDERS_ID));
-        }, LOAD_TIMEOUT);
+      await userEvent.click(screen.getByLabelText("Give it a description"));
+      const descriptionInput = screen.getByPlaceholderText(
+        "Only if it really needs it",
+      );
+      await userEvent.clear(descriptionInput);
+      await userEvent.type(descriptionInput, "Updated description");
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
         expect(
-          await screen.findByRole("tab", { name: /Segments/ }, LOAD_TIMEOUT),
-        ).toHaveAttribute("aria-selected", "true");
-      },
-    );
+          screen.queryByRole("button", { name: "Save" }),
+        ).not.toBeInTheDocument();
+      });
+      expect(requests).toHaveLength(2);
+      expect(requests[1]).toEqual({
+        method: "PUT",
+        url: `/api/segment/${ORDERS_SEGMENT.id}`,
+        body: {
+          // The rename refetched the segment, so the save keeps the new name.
+          name: "Test Segment Updated",
+          description: "Updated description",
+          definition: ORDERS_SEGMENT.definition,
+          revision_message: "Updated from Data Studio",
+        },
+      });
+
+      await userEvent.click(screen.getByRole("link", { name: "Orders" }));
+      await waitFor(() => {
+        expect(getPathname()).toBe(segmentsUrl(ORDERS_ID));
+      });
+      expect(
+        await screen.findByRole("tab", { name: /Segments/ }),
+      ).toHaveAttribute("aria-selected", "true");
+    });
 
     it("removes a segment from the actions menu and returns to the segments tab", async () => {
       const { getPathname, requests } = setup({
@@ -684,14 +572,14 @@ describe("segment pages in the data model", () => {
     });
 
     it("shows the revision history of a segment in its own tab", async () => {
-      setupSegmentRevisions(ORDERS_SEGMENT.id, [
+      setupEntityRevisionsEndpoint("segment", ORDERS_SEGMENT.id, [
         createMockRevision({
           id: 4,
           is_creation: false,
           diff: {
             definition: {
               before: ORDERS_SEGMENT.definition,
-              after: createFilterQuery({
+              after: createSegmentFilterDefinition({
                 tableId: ORDERS_ID,
                 fieldId: ORDERS.TOTAL,
                 operator: ">",
@@ -743,7 +631,7 @@ describe("segment pages in the data model", () => {
 
   describe("non-admin user", () => {
     it("shows a segment read-only and keeps its revision history", async () => {
-      setupSegmentRevisions(ORDERS_SEGMENT.id, [
+      setupEntityRevisionsEndpoint("segment", ORDERS_SEGMENT.id, [
         createMockRevision({ id: 1, is_creation: true, diff: null }),
       ]);
       const { getPathname } = setup({

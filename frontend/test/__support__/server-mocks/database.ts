@@ -188,8 +188,17 @@ export const setupSchemaEndpoints = (db: Database) => {
 export const setupListDatabaseSchemasEndpoint = (
   databaseId: DatabaseId,
   schemaNames: SchemaName[],
+  {
+    responseGate,
+  }: {
+    /** The response waits until this promise settles. */
+    responseGate?: Promise<unknown>;
+  } = {},
 ) => {
-  fetchMock.get(`path:/api/database/${databaseId}/schemas`, schemaNames);
+  fetchMock.get(`path:/api/database/${databaseId}/schemas`, async () => {
+    await responseGate;
+    return schemaNames;
+  });
 };
 
 export function setupDatabaseIdFieldsEndpoints({
