@@ -21,7 +21,7 @@
                                 :consistent-alias                                          2
                                 :def-fn                                                    1
                                 :deprecated-namespace                                      27
-                                :deprecated-var                                            59
+                                :deprecated-var                                            57
                                 :discouraged-java-method                                   4
                                 :duplicate-require                                         1
                                 :main-without-gen-class                                    1
@@ -33,10 +33,8 @@
                                 :metabase/validate-defendpoint-has-response-schema         327
                                 :metabase/validate-defendpoint-query-params-use-kebab-case 48
                                 :metabase/validate-defendpoint-route-uses-kebab-case       42
-                                :missing-docstring                                         4
                                 :non-arg-vec-return-type-hint                              1
                                 :reduce-without-init                                       3
-                                :redundant-do                                              1
                                 :syntax                                                    1
                                 :type-mismatch                                             2
                                 :unquote-not-syntax-quoted                                 1
@@ -45,7 +43,6 @@
                                 :unsorted-required-namespaces                              :unlimited
                                 :unused-alias                                              2
                                 :unused-binding                                            3
-                                :unused-excluded-var                                       2
                                 :unused-namespace                                          2
                                 :unused-private-var                                        1
                                 :unused-value                                              1}
@@ -75,7 +72,7 @@
                                 :ee.data-testing.expectations.empty/->Empty       1
                                 :ee.data-testing.expectations.equals/->EqualsRows 1
                                 :ee.data-testing.expectations.equals/->EqualsSql  1
-                                :lib.convert/->legacy-MBQL                        3
+                                :lib.convert/->legacy-MBQL                        2
                                 :lib.equality/find-column-indexes-for-refs        1
                                 :malli.core/explain                               1
                                 :malli.core/explainer                             1
@@ -99,7 +96,7 @@
                                 :metabase/prefer-with-dynamic-fn-redefs  4
                                 :metabase/t2-query-namespace             2
                                 :metabase/unsafe-app-db-query            1
-                                :missing-docstring                       1
+                                :missing-docstring                       2
                                 :private-call                            1
                                 :redundant-ignore                        1
                                 :redundant-primitive-coercion            1

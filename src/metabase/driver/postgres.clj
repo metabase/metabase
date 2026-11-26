@@ -132,6 +132,7 @@
                  ;; Index sync is turned off across the application as it is not used ATM.
                  #_:index-info
                  :database-replication
+                 :stage-ctes/nest-single-row-aggregation
                  ;; engines that only look like Postgres may not keep the statistics the tokens read
                  :table-change-tokens]]
   (defmethod driver/database-supports? [:postgres feature]

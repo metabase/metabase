@@ -4,6 +4,15 @@
    [clojure.test :as t]
    [metabase.util.match :as match]))
 
+;;; A record that, like toucan2's `IdentityQuery`, has its own `reduce` that goes over something other than its
+;;; entries.
+(defrecord ^:private ReducesOverRows [rows]
+  #?@(:clj  [clojure.lang.IReduceInit
+             (reduce [_ f init] (reduce f init rows))]
+      :cljs [IReduce
+             (-reduce [_ f] (reduce f rows))
+             (-reduce [_ f init] (reduce f init rows))]))
+
 (t/deftest ^:parallel basic-match-test
   (t/testing "can we use `match-many` to find the instances of a clause?"
     (t/is (= [[:field 10 nil]
@@ -441,8 +450,8 @@
   (t/testing "absent of matches returns nil"
     (t/is (= nil (match/match-all [[1 2 3] [4 5 6]]
                    #'keyword? &match))))
-  (t/testing "looks into map values and sequentials, but not map keys or sets"
-    (t/is (= [:v :w]
+  (t/testing "looks into map keys and values, sequentials and sets"
+    (t/is (= [:k :v :s :l :m :w]
              (match/match-all {:k [:v #{:s}] :l {:m :w}}
                #'keyword? &match)))))
 
@@ -482,3 +491,110 @@
     (t/is (= [[:field] [:field]]
              (match/match-many (match/replace '(:field 1 2) (n :guard number?) (inc n))
                (n :guard number?) &parents)))))
+
+(t/deftest ^:parallel match-in-sets-test
+  (t/testing "match-one looks inside sets"
+    (t/is (= [:field 1]
+             (match/match-one [:a {:b #{[:field 1]}}] [:field & _] &match))))
+  (t/testing "match-many and match-all look inside nested sets"
+    (t/is (= #{1 2}
+             (set (match/match-many [:a #{[:field 1] [:field 2]}] [:field n] n))))
+    (t/is (= [1 2]
+             (match/match-all [:a #{[:field 1 {:b #{[:field 2]}}]}] [:field n & _] n))))
+  (t/testing "sets don't add to &parents"
+    (t/is (= [:a :b]
+             (match/match-one [:a {:b #{1}}] 1 &parents)))))
+
+(t/deftest ^:parallel replace-in-sets-test
+  (t/testing "elements of sets are replaced, and sets come back as sets"
+    (t/is (= [:a #{[:f 2] [:f 3]} {:b #{[:f 4]}}]
+             (match/replace [:a #{[:field 1] [:field 2]} {:b #{[:field 3]}}] [:field n] [:f (inc n)]))))
+  (t/testing "sorted sets stay sorted"
+    (let [form' (match/replace (sorted-set 1 2 3) (n :guard number?) (- n))]
+      (t/is (= [-3 -2 -1] (seq form')))
+      (t/is (sorted? form'))))
+  (t/testing "metadata is kept"
+    (t/is (= {:x 1}
+             (meta (match/replace (with-meta #{1} {:x 1}) 1 2)))))
+  (t/testing "elements that are replaced with the same value are merged"
+    (t/is (= #{0}
+             (match/replace #{1 2} (n :guard number?) 0)))))
+
+(t/deftest ^:parallel match-in-map-keys-test
+  (t/testing "match-one looks inside map keys, before the values"
+    (t/is (= [:field 1]
+             (match/match-one {[:field 1] [:field 2]} [:field & _] &match))))
+  (t/testing "match-many and match-all look inside map keys"
+    (t/is (= [1 2]
+             (match/match-many {[:field 1] [:field 2]} [:field n] n)))
+    (t/is (= [1 2 3]
+             (match/match-all {[:field 1 {:a [:field 2]}] [:field 3]} [:field n & _] n))))
+  (t/testing "keys don't add themselves to &parents"
+    (t/is (= [[:a] [:a :b]]
+             (match/match-many {:a {:b 1}} (_ :guard #{:b 1}) &parents)))))
+
+(t/deftest ^:parallel replace-in-map-keys-test
+  (t/testing "keys and values are replaced"
+    (t/is (= {[:f 2] [:f 3] :a {[:f 4] 1}}
+             (match/replace {[:field 1] [:field 2] :a {[:field 3] 1}} [:field n] [:f (inc n)]))))
+  (t/testing "keys can be swapped with each other"
+    (t/is (= {:a 2 :b 1}
+             (match/replace {:a 1 :b 2} :a :b :b :a))))
+  (t/testing "a key can be renamed"
+    (t/is (= {:b 1}
+             (match/replace {:a 1} :a :b))))
+  (t/testing "untouched maps are returned as is"
+    (let [m {:a 1 :b [:c]}]
+      (t/is (identical? m (match/replace m :d :e)))))
+  (t/testing "metadata is kept when keys are replaced"
+    (t/is (= {:x 1}
+             (meta (match/replace (with-meta {:a 1} {:x 1}) :a :b))))))
+
+(t/deftest ^:parallel records-with-custom-reduce-test
+  (let [form {:q (->ReducesOverRows [[:field 1] [:field 2]])}]
+    (t/testing "match macros walk the entries of a record"
+      (t/is (= [:field 1]
+               (match/match-one form [:field & _] &match)))
+      (t/is (= [1 2]
+               (match/match-many form [:field n] n)))
+      (t/is (= [[:q :rows :field] [:q :rows :field]]
+               (match/match-many form (_ :guard int?) &parents))))
+    (t/testing "replace walks the entries of a record, with and without &parents"
+      (t/is (= {:q (->ReducesOverRows [[:field 2] [:field 3]])}
+               (match/replace form [:field n] [:field (inc n)])))
+      (t/is (= {:q (->ReducesOverRows [[:field 1] [:field 2]])}
+               (match/replace form
+                 [:field n] (if (some #{:rows} &parents) &match [:field (inc n)])))))))
+
+(t/deftest ^:parallel replace-&parents-in-map-keys-and-sets-test
+  (t/testing "map keys and set elements don't add to &parents"
+    (t/is (= {:a {[:x [:a]] 1, :s #{[:x [:a :s]]}}}
+             (match/replace {:a {[:x] 1, :s #{[:x]}}}
+               [:x] [:x &parents])))))
+
+(t/deftest ^:parallel vector-patterns-match-lists-and-seqs-test
+  (t/testing "vector patterns match lists and seqs"
+    (t/is (= 1 (match/match-one '(:field 1) [:field n] n)))
+    (t/is (= 5 (match/match-one (map identity [:field 5]) [:field n] n)))
+    (t/is (= [2 3] (match/match-many '(:a (:field 2 {}) [:field 3]) [:field n & _] n))))
+  (t/testing "length is still checked"
+    (t/is (nil? (match/match-one '(:field 1 2) [:field n] n))))
+  (t/testing "&match keeps its type"
+    (t/is (list? (match/match-one '(:field 1) [:field _] &match))))
+  (t/testing "& rest is a vector for vectors and a list for lists"
+    (t/is (= [[2 3] true] ((juxt identity vector?) (match/match-one [:field 1 2 3] [:field _ & r] r))))
+    (t/is (= ['(2 3) true] ((juxt identity list?) (match/match-one '(:field 1 2 3) [:field _ & r] r))))
+    (t/is (= () (match/match-one '(:field 1) [:field _ & r] r))))
+  (t/testing "matches? works with lists too"
+    (t/is (true? (match/matches? '(:field 1) [:field (_ :guard number?)])))
+    (t/is (false? (match/matches? '(:field 1) [:expression & _])))))
+
+(t/deftest ^:parallel replace-keeps-lists-test
+  (let [form' (match/replace '(:x (:field 1) (:keep 1) [:field 2])
+                [:field n] (if (vector? &match) [:field (inc n)] (list :field (inc n)))
+                [:keep & _] &match)]
+    (t/is (= '(:x (:field 2) (:keep 1) [:field 3]) form'))
+    (t/is (seq? form'))
+    (t/is (seq? (second form')))
+    (t/is (seq? (nth form' 2)))
+    (t/is (vector? (nth form' 3)))))

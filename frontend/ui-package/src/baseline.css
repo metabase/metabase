@@ -1,0 +1,46 @@
+/* Mantine's baseline, which patches/@mantine+core+*.patch strips for the app (it has its own reset). */
+:root,
+:host {
+  color-scheme: var(--mantine-color-scheme);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+select {
+  text-transform: none;
+}
+
+body,
+:host {
+  margin: 0;
+  font-family: var(--mantine-font-family);
+  font-size: var(--mantine-font-size-md);
+  line-height: var(--mantine-line-height);
+  background-color: var(--mantine-color-body);
+  color: var(--mantine-color-text);
+  -webkit-font-smoothing: var(--mantine-webkit-font-smoothing);
+  -moz-osx-font-smoothing: var(--mantine-moz-font-smoothing);
+}
+
+/* The theme turns Mantine's dark palette transparent, so --mantine-color-body/text are unusable in dark. Mirrors the app's body. */
+/* stylelint-disable-next-line no-duplicate-selectors */
+body,
+:host {
+  background-color: var(
+    --mb-color-background_page-secondary,
+    var(--mantine-color-body)
+  );
+  color: var(--mb-color-text-primary, var(--mantine-color-text));
+}

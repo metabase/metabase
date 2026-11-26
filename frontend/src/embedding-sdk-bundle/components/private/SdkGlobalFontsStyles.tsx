@@ -1,4 +1,4 @@
-import "metabase/css/core/fonts.css";
+import "fonts.css";
 import { useSelector } from "metabase/redux";
 import { GlobalStyleSheet } from "metabase/styled-components/components/GlobalStyleSheet";
 import { getFontFiles } from "metabase/styled-components/selectors";
