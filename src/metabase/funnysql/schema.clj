@@ -126,8 +126,8 @@
 (mr/def ::type-name
   "A type app-DB code casts to: one of the type keywords it uses, or `[:varchar n]`."
   [:or
-   [:enum :boolean :char :date :float :integer :jsonb :regclass :signed :text :timestamp :timestamp-with-time-zone
-    :unsigned :varchar]
+   [:enum :boolean :char :date :float :integer :jsonb :oid :regclass :signed :text :timestamp
+    :timestamp-with-time-zone :unsigned :varchar]
    [:tuple [:= :varchar] pos-int?]])
 
 (mr/def ::column-type
