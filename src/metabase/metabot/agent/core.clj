@@ -621,10 +621,10 @@
 
   The system message and the tool declarations are rendered once for the whole turn. Both read settings or status
   that can change mid-turn, and a change would invalidate replayed thinking the same way an edited earlier message
-  does (see [[turn-input-parts]]). So is the `<context>` block of the user's message, which memory keeps. The web
-  chat stores the turn with that block."
+  does (see [[turn-input-parts]]). So are the `<context>` block of the user's message and the SQL dialect preload,
+  which memory keeps. The web chat stores the turn with both."
   [{:keys [messages state metabot profile-id context tracking-opts conversation-id request-canceled-chan
-           full-context-replayed?]
+           full-context-replayed? preloaded-skill-ids]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
         ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
@@ -652,7 +652,8 @@
                                 :request-canceled-chan request-canceled-chan)
                          (memory/add-client-ids (client-content-ids context))
                          (as-> m (memory/set-context-block
-                                  m (messages/render-context-block context m (not full-context-replayed?)))))
+                                  m (messages/render-context-block context m (not full-context-replayed?))))
+                         (memory/set-dialect-preload (messages/dialect-preload context base-tools preloaded-skill-ids)))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         ;; `profile->tools` keys by name; `->entries` takes the tools themselves and keys them from
         ;; their declarations, so converted and unconverted ones arrive the same way.
@@ -1035,6 +1036,9 @@
             ;; True when `:messages` replay the full `<context>` block of an earlier turn, so this turn's block holds
             ;; only the time and what the user is viewing (see `metabase.metabot.agent.messages/render-context-block`).
             [:full-context-replayed? {:optional true} [:maybe :boolean]]
+            ;; The ids of the SQL dialect skills that `:messages` already preload, so this turn does not preload them
+            ;; again (see `metabase.metabot.persistence/replayed-skill-preloads`).
+            [:preloaded-skill-ids {:optional true} [:maybe [:set :string]]]
             ;; Receives a value when the request this turn serves is canceled, so a tool can cancel the query it runs.
             [:request-canceled-chan {:optional true} [:maybe [:fn async.u/promise-chan?]]]]]
   (let [opts               (m/update-existing-in opts [:context :capabilities] capabilities/enforce-permissions)

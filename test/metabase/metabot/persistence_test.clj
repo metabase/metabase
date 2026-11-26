@@ -1469,6 +1469,82 @@
       (testing "a failed turn is not replayed, so its full block is not either"
         (is (false? (replays? (into full [:error {:message "boom"}]))))))))
 
+(def ^:private preload-call-id "skill_preload_sql-dialect-postgresql")
+
+(def ^:private dialect-preload
+  "The internal parts of a SQL dialect preload, as [[metabase.metabot.skills/dialect-preload-parts]] makes them."
+  [{:type :tool-input :id preload-call-id :function "load_skill" :arguments {:ids ["sql-dialect-postgresql"]}}
+   {:type :tool-output :id preload-call-id :result {:output "SQL rules for the **postgres** engine."}}])
+
+(deftest finalize-stores-the-preload-before-the-first-step-test
+  (with-rasta-tx
+    (let [conversation-id (str (random-uuid))
+          block           "<context>\n\nThe user is in the SQL editor.\n</context>\n"
+          assistant-id    (seed-turn! conversation-id "How many orders?"
+                                      [{:type :start :id "msg-1"} {:type :text :text "There are 5."}]
+                                      :context-block block :preload-parts dialect-preload)
+          data            (:data (t2/select-one :model/MetabotMessage :id assistant-id))]
+      (testing "the preload is stored after the <context> part and before the first step"
+        (is (= ["data-context" "tool-load_skill" "step-start" "text"] (map :type data)))
+        (is (=? {:toolCallId preload-call-id
+                 :state      "output-available"
+                 :input      {:ids ["sql-dialect-postgresql"]}
+                 :output     {:output "SQL rules for the **postgres** engine."}}
+                (second data))))
+      (testing "history replays the preload right after the user message, before the first step"
+        (is (= [{:role :user :content (str block "How many orders?")}
+                {:role       :assistant
+                 :tool_calls [{:id        preload-call-id
+                               :name      "load_skill"
+                               :arguments (json/encode {:ids ["sql-dialect-postgresql"]})}]}
+                {:role :tool :tool_call_id preload-call-id :content "SQL rules for the **postgres** engine."}
+                {:role :assistant :content "There are 5."}]
+               (metabot-persistence/history (metabot-persistence/live-messages conversation-id))))))))
+
+(defn- replayed-skill-preloads
+  "Calls [[metabase.metabot.persistence/replayed-skill-preloads]], or returns `::undefined` when that var is missing.
+
+  The var is resolved when the test runs, so this namespace also loads at a commit without it."
+  [messages]
+  (if-let [f (ns-resolve 'metabase.metabot.persistence 'replayed-skill-preloads)]
+    (f messages)
+    ::undefined))
+
+(deftest replayed-skill-preloads-test
+  (with-rasta-tx
+    (let [preloads (fn [& turns]
+                     (let [conversation-id (str (random-uuid))]
+                       (doseq [[parts & finalize-opts] turns]
+                         (apply seed-turn! conversation-id "hi" parts finalize-opts))
+                       (metabot-persistence/live-messages conversation-id)))
+          answer   [{:type :start :id "msg"} {:type :text :text "hello"}]]
+      (testing "a stored preload gives its dialect skill id"
+        (is (= #{"sql-dialect-postgresql"}
+               (replayed-skill-preloads (preloads [answer :preload-parts dialect-preload])))))
+      (testing "a failed turn is not replayed, so its preload does not count"
+        (is (= #{} (replayed-skill-preloads
+                    (preloads [answer :preload-parts dialect-preload :error {:message "boom"}])))))
+      (testing "a deleted answer is not replayed, so its preload does not count"
+        (is (= #{} (replayed-skill-preloads
+                    (map #(cond-> % (= :assistant (:role %)) (assoc :deleted_at (t/offset-date-time)))
+                         (preloads [answer :preload-parts dialect-preload]))))))
+      (testing "an older row stored with no preload gives nothing"
+        (is (= #{} (replayed-skill-preloads (preloads [answer])))))
+      (testing "the model's own load_skill call is not a preload"
+        (is (= #{} (replayed-skill-preloads
+                    (preloads [[{:type :start :id "msg"}
+                                {:type :tool-input :id "call-1" :function "load_skill"
+                                 :arguments {:ids ["sql-dialect-postgresql"]}}
+                                {:type :tool-output :id "call-1" :result {:output "rules"}}]])))))
+      (testing "the preloads of every replayed turn count"
+        (is (= #{"sql-dialect-postgresql" "sql-dialect-mysql"}
+               (replayed-skill-preloads
+                (preloads [answer :preload-parts dialect-preload]
+                          [answer :preload-parts [{:type :tool-input :id "skill_preload_sql-dialect-mysql"
+                                                   :function "load_skill" :arguments {:ids ["sql-dialect-mysql"]}}
+                                                  {:type :tool-output :id "skill_preload_sql-dialect-mysql"
+                                                   :result {:output "rules"}}]]))))))))
+
 (deftest history-tool-call-conversion-test
   (testing "text and tool parts interleave; tool calls become an assistant call + tool result pair"
     (with-rasta-tx

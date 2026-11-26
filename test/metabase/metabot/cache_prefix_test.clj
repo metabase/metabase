@@ -14,12 +14,13 @@
   - text written after a tool call
   - tool calls that run in parallel
   - a turn that ends at its step limit
+  - the SQL dialect preload when the user opens, keeps or closes the SQL editor
 
-  The history does not replay some other parts of a turn as they were sent: the SQL dialect preload, thinking and
-  the text of a failure that no tool declared. No conversation here has those parts, except DeepSeek's thinking
-  directive, which the tests with tool calls leave out: after a tool call with no signed thinking, it differs between
-  the two turns. One test has a failed call that ends its turn. It does not check the prefix: it checks where the
-  history replays the message that ends the turn."
+  The history does not replay some other parts of a turn as they were sent: thinking and the text of a failure that
+  no tool declared. No conversation here has those parts, except DeepSeek's thinking directive, which the tests with
+  tool calls leave out: after a tool call with no signed thinking, it differs between the two turns. One test has a
+  failed call that ends its turn. It does not check the prefix: it checks where the history replays the message that
+  ends the turn."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -641,3 +642,88 @@
         (is (nil? (history-break history
                                  (strip-cache-control (render sent))
                                  (strip-cache-control (render turn-2)))))))))
+
+;;; ------------------------------------------------- SQL dialect --------------------------------------------------
+
+(defn- sql-editor-item
+  "What the frontend sends as the viewed item while the user is in the SQL editor on a database of SQL `engine`."
+  [engine]
+  {:type       "adhoc"
+   :sql_engine engine
+   :query      {:database (mt/id) :type "native" :native {:query "SELECT 1"}}})
+
+(defn- sql-turn
+  "Turn `n` of a conversation, sent from the SQL editor on `engine`, or from no item when `engine` is nil. Every turn
+  can write SQL: without the capability the SQL tools are absent, and no turn gets the dialect instructions."
+  [n engine]
+  {:message  (str "Question " n "?")
+   :context  (cond-> {:current_time_with_timezone (format "2026-10-20T10:0%d:00+00:00" n)
+                      :capabilities               ["permission:write_sql_queries"]}
+               engine (assoc :user_is_viewing [(sql-editor-item engine)]))
+   :response (answer (str "msg-" n) "An answer.")})
+
+(defn- input-kinds
+  "The type of each input part of the request options `opts`, with the user messages as `:user`."
+  [opts]
+  (mapv #(or (:type %) (:role %)) (:input opts)))
+
+(defn- preload-calls
+  "The dialect skill ids of the preload calls in the request options `opts`, in order."
+  [opts]
+  (into []
+        (comp (filter #(and (= :tool-input (:type %))
+                            (str/starts-with? (str (:id %)) "skill_preload_")))
+              (mapcat #(get-in % [:arguments :ids])))
+        (:input opts)))
+
+(def ^:private ignore-deepseek-thinking
+  "DeepSeek turns thinking off while the open turn holds a tool call with no signed thinking, as the preload call is.
+  On each edge here, the preload is in the open turn of one request and not of the other, so the directive differs.
+  It is part of the thinking, which the history does not replay as sent."
+  {"deepseek" [:thinking]})
+
+(deftest opening-the-sql-editor-keeps-the-system-prompt-test
+  (let [[turn-1 turn-2] (run-turns! [(sql-turn 1 nil) (sql-turn 2 "postgres")])]
+    (testing "the turn that opens the editor sends the dialect instructions after its own user message"
+      (is (= [] (preload-calls turn-1)))
+      (is (= ["sql-dialect-postgresql"] (preload-calls turn-2)))
+      (is (= [:user :text :user :tool-input :tool-output] (input-kinds turn-2))))
+    (check-turn-edge turn-1 turn-2 ignore-deepseek-thinking)))
+
+(deftest editor-open-in-two-turns-replays-the-dialect-preload-test
+  (let [[turn-1 turn-2] (run-turns! [(sql-turn 1 "postgres") (sql-turn 2 "postgres")])]
+    (testing "the second turn replays the first turn's preload where the first turn sent it, and sends no new one"
+      (is (= ["sql-dialect-postgresql"] (preload-calls turn-1)))
+      (is (= ["sql-dialect-postgresql"] (preload-calls turn-2)))
+      (is (= [:user :tool-input :tool-output :text :user] (input-kinds turn-2))))
+    (check-turn-edge turn-1 turn-2 ignore-deepseek-thinking)))
+
+(deftest failed-first-editor-turn-sends-the-preload-again-test
+  (let [failed (assoc (sql-turn 1 "postgres")
+                      :response (mut/mock-llm-response [{:type :start :id "msg-1"}
+                                                        {:type :error :error {:message "boom"}}]))]
+    (testing "the first editor turn failed, so the history has no preload: the next turn sends it"
+      (let [[_ turn-2] (run-turns! [failed (sql-turn 2 "postgres")])]
+        (is (= [:user :tool-input :tool-output] (input-kinds turn-2)))
+        (is (= ["sql-dialect-postgresql"] (preload-calls turn-2)))))
+    (testing "a retry deletes the first editor turn's answer and its preload: the retry sends it"
+      (let [[_ turn-2] (run-turns! [(sql-turn 1 "postgres") (assoc (sql-turn 2 "postgres") :retry? true)])]
+        (is (= [:user :tool-input :tool-output] (input-kinds turn-2)))
+        (is (= ["sql-dialect-postgresql"] (preload-calls turn-2)))))))
+
+(deftest engine-change-sends-the-new-dialect-test
+  (let [[turn-1 turn-2 turn-3] (run-turns! [(sql-turn 1 "postgres") (sql-turn 2 "mysql") (sql-turn 3 "postgres")])]
+    (testing "a turn on a new engine replays the earlier preload as sent and adds the new engine's preload"
+      (is (= ["sql-dialect-postgresql" "sql-dialect-mysql"] (preload-calls turn-2)))
+      (is (= [:user :tool-input :tool-output :text :user :tool-input :tool-output] (input-kinds turn-2))))
+    (testing "a turn on an engine that the history already holds sends no new preload"
+      (is (= ["sql-dialect-postgresql" "sql-dialect-mysql"] (preload-calls turn-3))))
+    (check-turn-edge turn-1 turn-2 ignore-deepseek-thinking)
+    (check-turn-edge turn-2 turn-3 ignore-deepseek-thinking)))
+
+(deftest closing-the-editor-keeps-the-prefix-test
+  (let [[turn-1 turn-2] (run-turns! [(sql-turn 1 "postgres") (sql-turn 2 nil)])]
+    (testing "the turn after the editor closes replays the preload and sends no new one"
+      (is (= ["sql-dialect-postgresql"] (preload-calls turn-2)))
+      (is (= [:user :tool-input :tool-output :text :user] (input-kinds turn-2))))
+    (check-turn-edge turn-1 turn-2 ignore-deepseek-thinking)))
