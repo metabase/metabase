@@ -100,6 +100,17 @@ const STATES = [
     label: "Disabled, filled",
     props: { disabled: true, defaultValue: FILLED_VALUE },
   },
+  {
+    id: "read-only-variant",
+    label: 'variant="read-only"',
+    props: { readOnly: true, variant: "read-only", defaultValue: FILLED_VALUE },
+  },
+  {
+    id: "read-only-variant-focused",
+    label: 'variant="read-only" + Focused',
+    props: { readOnly: true, variant: "read-only", defaultValue: FILLED_VALUE },
+    focus: true,
+  },
 ] satisfies {
   id: string;
   label: string;
