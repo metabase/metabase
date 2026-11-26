@@ -873,7 +873,8 @@
        :when-matched-update-set (array-map :analyzed_at [:case [:<> :t.result :s.result] [:now] :else :t.analyzed_at]
                                            :result      :s.result)
        :when-not-matched-insert [[:entity_type :entity_id :result :analyzed_at :worktree_id]
-                                 [:s.entity_type :s.entity_id :s.result [:now] :s.worktree_id]]})))
+                                 [:s.entity_type :s.entity_id :s.result [:now]
+                                  (:worktree-id (mdb/worktree-scope) mdb/default-worktree-id)]]})))
 
 (mu/defn upsert-findings!
   "Insert or update the AnalysisFinding of each entity of `entity-type` that `id->result` maps to its `result`, with

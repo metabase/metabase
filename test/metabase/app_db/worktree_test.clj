@@ -399,9 +399,11 @@
             [table (u/upper-case-en table)]))))
 
 (deftest worktree-unique-keys-include-worktree-id-test
+  (models.resolution/load-all-models!)
   (testing "every unique key but the primary key of a table with worktree_id includes worktree_id"
     (let [schema (app-db-schema)
-          bad    (for [table      (sort (set/difference (worktree-tables schema) (tables-of unique-key-allowlist)))
+          bad    (for [table      (sort (set/difference (set/intersection (worktree-tables schema) (model-tables))
+                                                        (tables-of unique-key-allowlist)))
                        :let       [pk (primary-key table)]
                        unique-key (get-in schema [table :unique-keys])
                        :when      (and (not= pk unique-key)
@@ -428,14 +430,16 @@
       (is (empty? bad) (str "Non-null foreign keys without a composite one:\n" (str/join "\n" bad))))))
 
 (defn- generated-constraint-names
-  "The `table.constraint` names of the H2 constraints that H2 named itself, but those of the Liquibase tables."
+  "The `table.constraint` names of the H2 constraints that H2 named itself, but those of the Liquibase tables and the
+  search index tables that search creates at run time."
   []
   (t2/with-connection [^Connection conn]
     (with-open [statement (.createStatement conn)]
       (result-rows (.executeQuery statement (str "SELECT TABLE_NAME, CONSTRAINT_NAME FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS "
                                                  "WHERE CONSTRAINT_SCHEMA = 'PUBLIC' "
                                                  "AND REGEXP_LIKE(CONSTRAINT_NAME, '^CONSTRAINT_[0-9A-F]+$') "
-                                                 "AND TABLE_NAME NOT LIKE 'DATABASECHANGELOG%' ORDER BY 1, 2"))
+                                                 "AND TABLE_NAME NOT LIKE 'DATABASECHANGELOG%' "
+                                                 "AND NOT REGEXP_LIKE(TABLE_NAME, '^SEARCH_INDEX__') ORDER BY 1, 2"))
                    (fn [^ResultSet rs]
                      (str (lower-name (.getString rs 1)) "." (.getString rs 2)))))))
 
