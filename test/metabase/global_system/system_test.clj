@@ -808,6 +808,15 @@
                                                               ::paths-a2 #{::paths-m1}
                                                               ::paths-m2 #{::paths-b1}
                                                               ::paths-m1 #{::paths-b2}}))}))
+        (testing "and when one component uses both middle components, which clear at the same moment"
+          (is (= {:straight [a2 a1 b2 b1]
+                  :crossed  [a2 a1 b2 b1]}
+                 {:straight (filterv (set handles) (halt-order {::paths-a1 #{::paths-m1 ::paths-m2}
+                                                                ::paths-m1 #{::paths-b1}
+                                                                ::paths-m2 #{::paths-b2}}))
+                  :crossed  (filterv (set handles) (halt-order {::paths-a1 #{::paths-m1 ::paths-m2}
+                                                                ::paths-m2 #{::paths-b1}
+                                                                ::paths-m1 #{::paths-b2}}))})))
         (finally
           (cleanup! handles))))))
 
