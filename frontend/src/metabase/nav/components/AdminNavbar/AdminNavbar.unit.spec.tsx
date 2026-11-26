@@ -111,6 +111,12 @@ describe("AdminNavbar", () => {
       setup({ isAdmin: true });
       expect(screen.getByText("Security")).toBeInTheDocument();
     });
+
+    it("hides the Security tab for admins when the plugin is disabled", () => {
+      PLUGIN_SECURITY_CENTER.isEnabled = false;
+      setup({ isAdmin: true });
+      expect(screen.queryByText("Security")).not.toBeInTheDocument();
+    });
   });
 
   describe("tab shortcuts", () => {

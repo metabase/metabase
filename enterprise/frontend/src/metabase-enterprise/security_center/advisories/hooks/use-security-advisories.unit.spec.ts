@@ -1,0 +1,94 @@
+import { act } from "@testing-library/react";
+import fetchMock from "fetch-mock";
+
+import { findRequests } from "__support__/server-mocks";
+import { renderHookWithProviders, waitFor } from "__support__/ui";
+import { createAdvisory } from "metabase-types/api/mocks/security-center";
+
+import { useSecurityAdvisories } from "./use-security-advisories";
+
+const LIST_URL = "path:/api/ee/security-center/advisories";
+
+describe("useSecurityAdvisories", () => {
+  it("returns the advisories and the sync status from the response", async () => {
+    const advisory = createAdvisory({ advisory_id: "SA-001" });
+    fetchMock.get(LIST_URL, {
+      advisories: [advisory],
+      last_checked_at: "2026-09-10T00:00:00Z",
+      last_sync_attempted_at: "2026-09-11T00:00:00Z",
+      last_sync_error: "Connection refused",
+    });
+
+    const { result } = renderHookWithProviders(
+      () => useSecurityAdvisories(),
+      {},
+    );
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual([advisory]);
+    });
+    expect(result.current.lastCheckedAt).toBe("2026-09-10T00:00:00Z");
+    expect(result.current.lastSyncAttemptedAt).toBe("2026-09-11T00:00:00Z");
+    expect(result.current.lastSyncError).toBe("Connection refused");
+  });
+
+  it("returns an empty list and no sync status before the response arrives", () => {
+    fetchMock.get(LIST_URL, { advisories: [], last_checked_at: null });
+
+    const { result } = renderHookWithProviders(
+      () => useSecurityAdvisories(),
+      {},
+    );
+
+    expect(result.current.data).toEqual([]);
+    expect(result.current.lastCheckedAt).toBeNull();
+    expect(result.current.lastSyncAttemptedAt).toBeNull();
+    expect(result.current.lastSyncError).toBeNull();
+  });
+
+  it("acknowledges one advisory through the hook", async () => {
+    const advisory = createAdvisory({ advisory_id: "SA-001" });
+    fetchMock.get(LIST_URL, { advisories: [advisory], last_checked_at: null });
+    fetchMock.post(
+      "path:/api/ee/security-center/advisories/SA-001/acknowledge",
+      advisory,
+    );
+
+    const { result } = renderHookWithProviders(
+      () => useSecurityAdvisories(),
+      {},
+    );
+
+    await act(async () => {
+      await result.current.acknowledgeAdvisory("SA-001").unwrap();
+    });
+
+    const posts = await findRequests("POST");
+    expect(posts.map((post) => post.url)).toEqual([
+      expect.stringContaining(
+        "/api/ee/security-center/advisories/SA-001/acknowledge",
+      ),
+    ]);
+  });
+
+  it("acknowledges advisories in bulk through the hook", async () => {
+    fetchMock.get(LIST_URL, { advisories: [], last_checked_at: null });
+    fetchMock.post("path:/api/ee/security-center/advisories/acknowledge", []);
+
+    const { result } = renderHookWithProviders(
+      () => useSecurityAdvisories(),
+      {},
+    );
+
+    await act(async () => {
+      await result.current.acknowledgeAdvisories(["SA-002", "SA-003"]).unwrap();
+    });
+
+    const posts = await findRequests("POST");
+    expect(posts).toHaveLength(1);
+    expect(posts[0].url).toContain(
+      "/api/ee/security-center/advisories/acknowledge",
+    );
+    expect(posts[0].body).toEqual({ advisory_ids: ["SA-002", "SA-003"] });
+  });
+});
