@@ -2,6 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver.clickhouse-introspection :as clickhouse-introspection]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse]
@@ -74,7 +77,37 @@
                  "counts → views"  [:type/BigInteger :normal]
                  ;; a map of arrays is not unfolded
                  "tags"            [:type/Dictionary :normal]}
-                (fields table)))))))
+                (fields table))))
+       (let [mp    (mt/metadata-provider)
+             field (fn [field-name]
+                     (lib.metadata/field mp (t2/select-one-pk :model/Field :table_id (:id table) :name field-name)))
+             query (lib/query mp (lib.metadata/table mp (:id table)))
+             rows  #(mt/rows (qp/process-query %))]
+         (testing "group by a key and sum another"
+           (is (= [["free" 5] ["pro" 3]]
+                  (mt/formatted-rows [str int]
+                                     (qp/process-query
+                                      (-> query
+                                          (lib/breakout (field "attrs → plan"))
+                                          (lib/aggregate (lib/sum (field "counts → clicks")))))))))
+         (testing "a row without the key gives NULL, not the default value of the type"
+           (is (= [[1] [3]]
+                  (rows (-> query
+                            (lib/with-fields [(field "id")])
+                            (lib/filter (lib/is-null (field "counts → views")))
+                            (lib/order-by (field "id")))))))
+         (testing "a key with a quote"
+           (is (= [[3]]
+                  (rows (-> query
+                            (lib/with-fields [(field "id")])
+                            (lib/filter (lib/= (field "attrs → it's") "q")))))))
+         (testing "in a nested query"
+           (is (= [["pro" 2]]
+                  (rows (-> query
+                            (lib/breakout (field "attrs → plan"))
+                            (lib/aggregate (lib/count))
+                            lib/append-stage
+                            (as-> q (lib/filter q (lib/= (first (lib/filterable-columns q)) "pro"))))))))))))
   (testing "with JSON unfolding off, maps are not unfolded"
     (mt/test-driver :clickhouse
       (do-with-events-table!
