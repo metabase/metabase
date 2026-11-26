@@ -401,7 +401,7 @@ describe("metabot > finish reason", () => {
 });
 
 describe("metabot > text blocks", () => {
-  // the stored turn keeps one part per text block, so a reload shows them apart
+  // the live answer must show each text block apart, as a reload of the stored turn does
   it("should show each text block of a response as its own part", async () => {
     setup();
     mockAgentEndpoint({
