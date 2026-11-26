@@ -129,6 +129,18 @@
   []
   (reset! (:status (mdb.connection/current-application-db)) ::setup-finished))
 
+(defn recompile-h2-views!
+  "Recompile every view of the H2 app DB on `conn`, which H2 leaves invalid when a script restore creates a view before
+  a table it reads (https://github.com/h2database/h2database/issues/3942)."
+  [^java.sql.Connection conn]
+  (with-open [stmt (.createStatement conn)]
+    (let [view-names (with-open [rs (.executeQuery stmt (str "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.VIEWS "
+                                                             "WHERE TABLE_SCHEMA = 'PUBLIC'"))]
+                       (loop [acc []]
+                         (if (.next rs) (recur (conj acc (.getString rs 1))) acc)))]
+      (doseq [view-name view-names]
+        (.execute stmt (format "ALTER VIEW \"%s\" RECOMPILE" view-name))))))
+
 (defn verify-application-db-connection!
   "Open a connection to the bound application DB and check its server version. Throws on failure.
   Does *not* run migrations or any encryption checks — use [[setup-db!]] for the full bootstrap.
