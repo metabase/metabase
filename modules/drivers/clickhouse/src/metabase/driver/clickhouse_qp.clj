@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.string :as str]
+   [flatland.ordered.map :as ordered-map]
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
@@ -706,11 +707,12 @@
     (.getHostAddress inet-address)))
 
 (defn- value->clojure
-  "Convert a non-nil value inside a tuple, of any type that has no tuples in it."
+  "Convert a non-nil value of a type with no tuples in it, e.g. `Map`, `JSON` or `Variant`. JDBC gives Java maps, lists
+  and arrays, which the results cache cannot read. A map keeps the order of its keys."
   [value]
   (cond
     (instance? Map value)
-    (into {} (map (fn [[k v]] [k (some-> v value->clojure)])) value)
+    (into (ordered-map/ordered-map) (map (fn [[k v]] [k (some-> v value->clojure)])) value)
 
     (or (instance? List value) (.isArray (class value)))
     (mapv #(some-> % value->clojure) value)
@@ -743,7 +745,7 @@
       map-value-type
       (let [convert (value-converter map-value-type)]
         (fn [value]
-          (into {} (map (fn [[k v]] [k (some-> v convert)])) value)))
+          (into (ordered-map/ordered-map) (map (fn [[k v]] [k (some-> v convert)])) value)))
 
       tuple-elem-types
       (let [converters (mapv value-converter tuple-elem-types)
@@ -773,12 +775,15 @@
       (= normalized-db-type "ipv6")
       (fn [] (ipv6-column->string rs i))
 
-      (str/starts-with? normalized-db-type "tuple")
+      ;; the types of the values come from the type of the column
+      (or (str/starts-with? normalized-db-type "tuple")
+          (str/starts-with? normalized-db-type "map("))
       (let [convert (value-converter db-type)]
         (fn [] (some-> (.getObject rs i) convert)))
 
+      ;; e.g. JSON and Variant
       :else
-      (fn [] (.getObject rs i)))))
+      (fn [] (some-> (.getObject rs i) value->clojure)))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/VARCHAR]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
