@@ -410,10 +410,13 @@
   extend the outer query's, so `:source-cte` refs inside the join resolve against either scope."
   [outer-query :- ::lib.schema/query
    join        :- ::lib.schema.join/join]
-  (-> outer-query
-      (assoc :stages (:stages join))
-      (dissoc :ctes)
-      (m/assoc-some :ctes (not-empty (into (vec (:ctes outer-query)) (:ctes join))))))
+  (let [outer-ctes (vec (:ctes outer-query))
+        outer-uuids (into #{} (map :lib/uuid) outer-ctes)
+        all-ctes (into outer-ctes (remove (comp outer-uuids :lib/uuid)) (:ctes join))]
+    (-> outer-query
+        (assoc :stages (:stages join))
+        (dissoc :ctes)
+        (m/assoc-some :ctes (not-empty all-ctes)))))
 
 (mu/defn drop-later-stages :- ::lib.schema/query
   "Drop any stages in the `query` that come after `stage-number`."

@@ -384,9 +384,9 @@
 (defmethod audit/spec :model/TableUserSettings [_model]
   {:track          [:table_id]
    :track-redacted [:caveats :caveats_set :collection_id :data_authority :data_layer :data_layer_set :data_source
-                    :data_source_set :description :description_set :display_name :entity_type :field_order
-                    :is_published :owner_email :owner_user_id :points_of_interest :points_of_interest_set
-                    :show_in_getting_started :visibility_type :visibility_type_set]
+                    :data_source_set :description :description_set :display_name :entity_type :event_settings
+                    :field_order :is_published :owner_email :owner_user_id :points_of_interest
+                    :points_of_interest_set :show_in_getting_started :visibility_type :visibility_type_set]
    :skip           []
    :topics         {}
    :subject        (fn [{:keys [object previous-object]}]
