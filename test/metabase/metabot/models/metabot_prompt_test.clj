@@ -37,6 +37,19 @@
           (is (=? {:model :model :prompt "How many now?"}
                   (t2/select-one :model/MetabotPrompt :id id))))))))
 
+(deftest update-batch-that-returns-to-the-stored-card-test
+  (testing "a batch that moves a prompt to another Card and back keeps the stored Card and model"
+    (mt/with-temp [:model/Card    {metric-id :id}  {:type :metric}
+                   :model/Card    {model-id :id}   {:type :model}
+                   :model/Metabot {metabot-id :id} {:name "Test Metabot"}]
+      (mt/with-model-cleanup [:model/MetabotPrompt]
+        (let [id (:id (first (metabot-prompt/create-metabot-prompts!
+                              [{:metabot_id metabot-id :card_id metric-id :prompt "How many?"}])))]
+          (metabot-prompt/update-metabot-prompts! [{:id id :card_id model-id}
+                                                   {:id id :card_id metric-id}])
+          (is (=? {:card_id metric-id :model :metric}
+                  (t2/select-one :model/MetabotPrompt :id id))))))))
+
 (deftest write-function-statement-counts-do-not-grow-with-rows-test
   (mt/with-temp [:model/Card    {card-id :id}    {:type :metric}
                  :model/Metabot {metabot-id :id} {:name "Test Metabot"}]

@@ -58,13 +58,18 @@
   A row that repeats its stored `card_id` keeps the stored model."
   [rows id->stored]
   (let [rows         (filterv (comp id->stored :id) rows)
-        ;; A SerDes import repeats the stored Card. Deriving the model again for it would change the model without the
-        ;; Card once the Card changed type, which the before-update hook refuses.
         card-change? (fn [{:keys [id] :as row}]
-                       (and (contains? row :card_id)
-                            (not= (:card_id row) (:card_id (id->stored id)))))
-        card-types   (card-types-of (filter card-change? rows))]
-    (mapv #(cond-> % (card-change? %) (assoc :model (card-types (:card_id %)))) rows)))
+                       (not= (:card_id row) (:card_id (id->stored id))))
+        card-types   (card-types-of (filter card-change? (filter :card_id rows)))]
+    (mapv (fn [{:keys [id card_id] :as row}]
+            (cond-> row
+              ;; A SerDes import repeats the stored Card. Deriving the model again for it would change the model
+              ;; without the Card once the Card changed type, which the before-update hook refuses. Carrying the stored
+              ;; model, rather than none, keeps the last row for a prompt consistent when a batch repeats the prompt.
+              card_id (assoc :model (if (card-change? row)
+                                      (card-types card_id)
+                                      (:model (id->stored id))))))
+          rows)))
 
 (mu/defn update-metabot-prompts! :- :nil
   "Apply the changes in each of `rows`, the id of a MetabotPrompt and the columns to set, in one transaction, setting
