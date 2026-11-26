@@ -410,9 +410,9 @@
   extend the outer query's, so `:source-cte` refs inside the join resolve against either scope."
   [outer-query :- ::lib.schema/query
    join        :- ::lib.schema.join/join]
-  (let [outer-ctes (vec (:ctes outer-query))
-        outer-uuids (into #{} (map :lib/uuid) outer-ctes)
-        all-ctes (into outer-ctes (remove (comp outer-uuids :lib/uuid)) (:ctes join))]
+  (let [join-cte-names (into #{} (map :cte-name) (:ctes join))
+        visible-outer-ctes (filterv (complement (comp join-cte-names :cte-name)) (:ctes outer-query))
+        all-ctes (into visible-outer-ctes (:ctes join))]
     (-> outer-query
         (assoc :stages (:stages join))
         (dissoc :ctes)
