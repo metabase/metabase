@@ -219,7 +219,8 @@
    [:has_more_values       {:optional true} [:maybe :boolean]]
    [:type                  {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:hash_key              {:optional true} [:maybe :string]]
-   [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]])
+   [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:last_scanned_at       {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::field-values.create
   "What a caller gives to create a FieldValues: the columns of an update without the `:id`, and its Field."

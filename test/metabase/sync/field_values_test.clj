@@ -677,3 +677,65 @@
               (sync.field-values/rescan-field-values-for-table! table)
               (is (not= ["XX"] (stored)))
               (is (= 10 (count (stored)))))))))))
+
+(deftest ^:synchronized scan-records-when-it-read-each-list-test
+  (testing "each scan records when it read a list, also when the list did not change"
+    (mt/dataset test-data
+      (let [table      (t2/select-one :model/Table :id (mt/id :venues))
+            fv         #(t2/select-one :model/FieldValues :field_id (mt/id :venues :price) :type :full)
+            _          (sync.field-values/update-field-values-for-table! table)
+            first-scan (:last_scanned_at (fv))
+            updated-at (:updated_at (fv))]
+        (is (some? first-scan))
+        (t2/update! (t2/table-name :model/FieldValues) {:id (:id (fv))}
+                    {:last_scanned_at (t/minus (t/offset-date-time) (t/days 2))})
+        (sync.field-values/update-field-values-for-table! table)
+        (testing "the second scan found no change, and still records its time"
+          (is (t/after? (:last_scanned_at (fv)) (t/minus (t/offset-date-time) (t/hours 1)))))
+        (testing "the record does not change `updated_at`"
+          (is (= updated-at (:updated_at (fv)))))))))
+
+(deftest ^:synchronized scheduled-scan-reads-too-large-lists-weekly-test
+  (testing "the scheduled scan reads a list that was too large at its last scan once a week"
+    (mt/dataset test-data
+      (let [table   (t2/select-one :model/Table :id (mt/id :people))
+            fv-id   (t2/select-one-pk :model/FieldValues :field_id (mt/id :people :state) :type :full)
+            ;; `people.state` was too large at a scan `days-ago`, or at no scan when nil
+            scanned (fn [days-ago]
+                      (t2/update! (t2/table-name :model/FieldValues) {:id fv-id}
+                                  {:has_more_values true
+                                   :values          "[\"XX\"]"
+                                   :last_used_at    (t/offset-date-time)
+                                   :last_scanned_at (some->> days-ago t/days (t/minus (t/offset-date-time)))}))
+            probed  #(:probed (% table))
+            scan    sync.field-values/update-field-values-for-table!
+            rescan  sync.field-values/rescan-field-values-for-table!]
+        (mt/with-temp-vals-in-db :model/FieldValues fv-id {:has_more_values true
+                                                           :values          ["XX"]
+                                                           :last_used_at    (t/offset-date-time)
+                                                           :last_scanned_at nil}
+          (let [all  (do (scanned 8) (probed scan))
+                read? #(not= ["XX"] (t2/select-one-fn :values :model/FieldValues :id fv-id))]
+            (testing "scanned 2 days ago: not read"
+              (scanned 2)
+              (is (= (dec all) (probed scan)))
+              (is (not (read?))))
+            (testing "scanned a little less than 7 days ago, as by the scan a week before: read"
+              (t2/update! (t2/table-name :model/FieldValues) {:id fv-id}
+                          {:has_more_values true
+                           :values          "[\"XX\"]"
+                           :last_scanned_at (t/plus (t/minus (t/offset-date-time) (t/days 7)) (t/minutes 5))})
+              (is (= all (probed scan)))
+              (is (read?)))
+            (testing "scanned 8 days ago: read"
+              (scanned 8)
+              (is (= all (probed scan)))
+              (is (read?)))
+            (testing "never scanned: read"
+              (scanned nil)
+              (is (= all (probed scan)))
+              (is (read?)))
+            (testing "a manual rescan reads it also when it was scanned 2 days ago"
+              (scanned 2)
+              (rescan table)
+              (is (read?)))))))))
