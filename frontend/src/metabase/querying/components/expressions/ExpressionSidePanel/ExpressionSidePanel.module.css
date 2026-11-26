@@ -24,7 +24,8 @@
   background-color: var(--mb-color-background_surface-primary);
 }
 
-/* Top row: "Docs" (or the back button and "Function") and the close button */
+/* Top row: "List of expressions" (or the back button and the function's
+   name) and the close button */
 .header {
   display: flex;
   align-items: center;
@@ -32,7 +33,7 @@
   padding: var(--mantine-spacing-xl);
 }
 
-/* The back button and "Function", 16px apart */
+/* The back button and the function's name, 16px apart */
 .headerStart {
   display: flex;
   align-items: center;

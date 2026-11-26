@@ -1,6 +1,6 @@
 /**
  * Version F: a copy of `metabase/querying/expressions/suggestions/suggest.ts`
- * with a permanent "Open the docs" row at the end of the list, and without the
+ * with a permanent "Open list of expressions" row at the end of the list, and without the
  * quiet on a request in words (requests have their own AI mode in B).
  */
 import {
@@ -78,7 +78,7 @@ export type SuggestOptionsB = {
   isDocsOpen?: () => boolean;
 };
 
-/** The `type` of the "Open the docs" row, which the list draws on its own. */
+/** The `type` of the "Open list of expressions" row, which the list draws on its own. */
 export const DOCS_SUGGESTION_TYPE = "docs";
 
 export function suggestionsB(options: SuggestOptionsB) {
@@ -123,7 +123,7 @@ export function suggestionsB(options: SuggestOptionsB) {
 }
 
 /**
- * The "Open the docs" row, after every other option. Its range is empty, so
+ * The "Open list of expressions" row, after every other option. Its range is empty, so
  * it's sorted like an option that matches nothing typed, and the low boost
  * puts it after the others. Inside a function, like `case(`, it opens the
  * page of that function.
@@ -133,7 +133,7 @@ function suggestDocs(
 ): CompletionSource {
   const option: ExpressionSuggestion = {
     type: DOCS_SUGGESTION_TYPE,
-    label: t`Open docs`,
+    label: t`Open list of expressions`,
     icon: "reference",
     boost: -99,
     apply: (view) => {

@@ -139,6 +139,8 @@ Pills B and C (Figma nodes 361:2521, 361:2582) are used only in the custom colum
 - 2026-11-25 — SQL hint: the `IN (…)` fix skips `AND in(…)`, the in() function. Why: "Apply all" with 3 or more fixes ran the rule again on the in() of the first round and gave `in(isNull(…), AND, …)`.
 - 2026-11-25 — SQL hint: when the text has fixes but no SQL syntax (`==`, `&&`, `csat_score`), the title is "Check the syntax" and the message says "syntax from other languages". Why: `==` and `&&` are not SQL, so "Looks like SQL" was wrong there.
 - 2026-11-25 — SQL hint without the AI (no provider, or the "without an AI provider" setting): when our own fixes give a valid expression, the hint ends with "Convert to a custom expression" in place of "Fix with AI". When they don't, the hint has no action. Why: Roman's simpler hint only offered the AI, so instances without it got no help. The hint still doesn't list the parts to fix.
+- 2026-11-26 — The docs side panel's function page is titled with the function's name ("case"), not "Function". Applies to every version, since they share the panel.
+- 2026-11-26 — The docs are called "list of expressions" in the UI: the side panel's title is "List of expressions", the info button's tooltip is "Open list of expressions" or "Close list of expressions", and the last row of the suggestions is "Open list of expressions".
 
 ## Settings
 - `expression-hide-ai` — behave as without an AI provider.

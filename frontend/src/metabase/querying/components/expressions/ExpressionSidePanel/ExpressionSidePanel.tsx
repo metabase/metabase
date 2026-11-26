@@ -136,7 +136,7 @@ export function ExpressionSidePanel({
           finds it scrolled where it was. */}
       <div className={S.page} aria-hidden={openFunction != null}>
         <div className={S.header}>
-          <h4 className={S.title}>{t`Docs`}</h4>
+          <h4 className={S.title}>{t`List of expressions`}</h4>
           {closeButton}
         </div>
 
@@ -145,7 +145,7 @@ export function ExpressionSidePanel({
             value={search}
             placeholder={t`Search`}
             leftSection={<Icon name="search" size={12} />}
-            aria-label={t`Search the docs`}
+            aria-label={t`Search the list of expressions`}
             autoFocus
             onChange={(event: ChangeEvent<HTMLInputElement>) =>
               setSearch(event.target.value)
@@ -209,7 +209,7 @@ export function ExpressionSidePanel({
               >
                 <Icon name="arrow_left" size={12} />
               </ActionIcon>
-              <h4 className={S.title}>{t`Function`}</h4>
+              <h4 className={S.title}>{openFunction.displayName}</h4>
             </div>
             {closeButton}
           </div>
@@ -240,6 +240,7 @@ function getOpenFunction(name: string | undefined, database?: Database) {
   }
   return {
     name: clause.name,
+    displayName: clause.displayName,
     isDisabled: !hasRequiredFeature(database, clause.requiresFeature),
   };
 }

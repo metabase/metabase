@@ -13,7 +13,9 @@ type DocsButtonProps = {
  * closes the docs side panel.
  */
 export function DocsButton({ isOpen, onToggle }: DocsButtonProps) {
-  const label = isOpen ? t`Close the docs` : t`Open the docs`;
+  const label = isOpen
+    ? t`Close list of expressions`
+    : t`Open list of expressions`;
   return (
     <Tooltip label={label}>
       <ActionIcon
