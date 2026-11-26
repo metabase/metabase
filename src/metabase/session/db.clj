@@ -2,7 +2,6 @@
   "Application database queries for the session module, so that no other namespace in the module runs a query itself
   (model definitions still use `toucan2.core`)."
   (:require
-   [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.db :as auth-identity.db]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -259,34 +258,31 @@
   "The person and the admin of the preview with `token-hash`, or nil when there is none, it has expired, its person is
   no longer an active non-admin user (a stand-in user is never active), its admin's Session is no longer live, or its
   admin is no longer an admin. The person's fields are the ones a Session's lookup returns."
-  [token-hash                   :- :string
-   liveness                     :- ::session.schema/liveness-params
-   enable-advanced-permissions? :- :boolean]
+  [token-hash :- :string
+   liveness   :- ::session.schema/liveness-params]
   (let [now (h2x/current-datetime-honeysql-form (:db-type liveness))]
     (t2/query-one
-     (cond-> {:select    [[:person.id :metabase-user-id]
-                          [:person.is_superuser :is-superuser?]
-                          [:person.is_data_analyst :is-data-analyst?]
-                          [:person.locale :user-locale]
-                          [:preview.admin_user_id :previewing-admin-id]]
-              :from      [[:core_session :session]]
-              :join      [[:permission_preview_session :preview] [:= :preview.admin_session_id :session.id]]
-              :left-join (into session.query/session-left-joins
-                               [[:core_user :person] [:= :person.id :preview.user_id]])
-              :where     (into [:and
-                                [:= :preview.token_hash token-hash]
-                                [:> :preview.expires_at now]
-                                ;; a stand-in user is inactive by design
-                                [:or
-                                 [:= :person.is_active true]
-                                 [:= :person.type "permission-preview"]]
-                                [:= :person.is_superuser false]
-                                [:= :user.is_superuser true]]
-                               (session.query/live-session-conditions liveness))
-              :limit     [:inline 1]}
-       enable-advanced-permissions?
-       (-> (sql.helpers/select [:pgm.is_group_manager :is-group-manager?])
-           (sql.helpers/left-join [:permissions_group_membership :pgm]
-                                  [:and
-                                   [:= :pgm.user_id :person.id]
-                                   [:is :pgm.is_group_manager true]]))))))
+     {:select    [[:person.id :metabase-user-id]
+                  [:person.is_superuser :is-superuser?]
+                  [:person.is_data_analyst :is-data-analyst?]
+                  [:person.locale :user-locale]
+                  [:preview.admin_user_id :previewing-admin-id]
+                  [:pgm.is_group_manager :is-group-manager?]]
+      :from      [[:core_session :session]]
+      :join      [[:permission_preview_session :preview] [:= :preview.admin_session_id :session.id]]
+      :left-join (into session.query/session-left-joins
+                       [[:core_user :person] [:= :person.id :preview.user_id]
+                        [:permissions_group_membership :pgm] [:and
+                                                              [:= :pgm.user_id :person.id]
+                                                              [:is :pgm.is_group_manager true]]])
+      :where     (into [:and
+                        [:= :preview.token_hash token-hash]
+                        [:> :preview.expires_at now]
+                        ;; a stand-in user is inactive by design
+                        [:or
+                         [:= :person.is_active true]
+                         [:= :person.type "permission-preview"]]
+                        [:= :person.is_superuser false]
+                        [:= :user.is_superuser true]]
+                       (session.query/live-session-conditions liveness))
+      :limit     [:inline 1]})))

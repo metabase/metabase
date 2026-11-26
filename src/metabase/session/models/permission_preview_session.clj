@@ -105,13 +105,13 @@
 
 (mu/defn preview-user-info
   "The user info of a request that carries the preview token `token`, with `:previewing-admin-id` the admin, or nil
-  when there is no such live preview: unknown, expired, its person gone or deactivated, its admin's Session ended, or
-  its admin demoted."
+  when there is no such live preview: unknown, expired, its person gone or deactivated, its admin's Session ended, its
+  admin demoted, or the instance without advanced permissions."
   [token :- :string]
-  (when (str/starts-with? token token-prefix)
+  (when (and (str/starts-with? token token-prefix)
+             (premium-features/enable-advanced-permissions?))
     (some-> (session.db/permission-preview-user-info (hash-token token)
-                                                     (session.query/liveness-params)
-                                                     (premium-features/enable-advanced-permissions?))
+                                                     (session.query/liveness-params))
             (update :is-group-manager? boolean)
             (assoc :embedding/auth-method "preview"))))
 

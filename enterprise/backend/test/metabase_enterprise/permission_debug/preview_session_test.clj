@@ -205,6 +205,14 @@
           (is (= "preview-token-invalid"
                  (:error-code (as-preview token :get 401 "user/current")))))))))
 
+(deftest lost-advanced-permissions-voids-the-preview-test
+  (let [{:keys [token]} (start-preview! (insert-admin-session!) (mt/user->id :rasta))]
+    (is (= "rasta@metabase.com" (:email (as-preview token :get 200 "user/current"))))
+    (testing "once the instance loses advanced permissions, the token is refused"
+      (mt/with-premium-features #{}
+        (is (= "preview-token-invalid"
+               (:error-code (as-preview token :get 401 "user/current"))))))))
+
 (deftest deactivated-person-voids-the-preview-test
   (mt/with-temp [:model/User {user-id :id} {}]
     (let [{:keys [token]} (start-preview! (insert-admin-session!) user-id)]
