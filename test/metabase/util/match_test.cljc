@@ -537,6 +537,12 @@
   (t/testing "a default clause in match-all still sees scalars"
     (t/is (= [[:a 1] :a 1]
              (match/match-all [:a 1] [:x] :x _ &match))))
+  #?(:clj
+     (t/testing "match walks look inside eductions, which are sequential but not collections"
+       (let [form {:a (eduction (map identity) [[:field 1 nil]])}]
+         (t/is (= 1 (match/match-one form [:field id _] id)))
+         (t/is (= [1] (match/match-many form (_ :guard int?) &match)))
+         (t/is (nil? (match/match-one (eduction (map identity) [:x :y]) [a _] a))))))
   (t/testing "patterns without a length or key check give the same answer for a scalar with or without a default"
     (t/is (= (match/match-one :x [] :hit _ :miss)
              (match/match-one :x [] :hit)))

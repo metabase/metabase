@@ -91,11 +91,11 @@
   (every? (comp colls-only-pattern? first) pairs))
 
 (defn- skip-non-colls
-  "Return `step`, the code a walk runs on each value `&match`, made to return `skipped` instead for a value that isn't a
-  collection when `colls-only?` is true."
+  "Return `step`, the code a walk runs on each value `&match`, made to return `skipped` instead for a value the walk
+  doesn't look inside (see [[metabase.util.match.impl/walkable?]]) when `colls-only?` is true."
   [colls-only? step skipped]
   (if colls-only?
-    `(if (coll? ~'&match) ~step ~skipped)
+    `(if (metabase.util.match.impl/walkable? ~'&match) ~step ~skipped)
     step))
 
 (declare process-clauses)

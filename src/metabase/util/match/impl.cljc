@@ -12,9 +12,15 @@
     (update-in m ks f)))
 
 (defn sequential!
-  "Return nil if `obj` is not a sequential collection (vector, list, seq), otherwise return `obj` unchanged."
+  "Return nil if `obj` is not a sequential collection (vector, list, seq), otherwise return `obj` unchanged.
+  A sequential value that isn't a collection, such as an eduction, gives nil, since Clojure can't count it."
   [obj]
-  (when (sequential? obj) obj))
+  (when (and (sequential? obj) (coll? obj)) obj))
+
+(defn walkable?
+  "Return true if a match walk looks inside `x`: a collection, or a sequential value such as an eduction."
+  [x]
+  (or (coll? x) (sequential? x)))
 
 (defn drop-rest
   "Return the elements of a sequential `coll` after the first `n`, for the `& rest` part of a vector pattern. Vectors
@@ -70,7 +76,7 @@
   [match-fn form clause-parents]
   {:pre [(fn? match-fn)]}
   (cond
-    (not (coll? form))
+    (not (walkable? form))
     nil
 
     ;; Records may implement their own reduce (e.g. toucan2's IdentityQuery reduces over its rows), so go through
