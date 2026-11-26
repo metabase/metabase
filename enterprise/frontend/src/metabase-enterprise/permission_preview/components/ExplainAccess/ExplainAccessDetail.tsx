@@ -84,7 +84,7 @@ interface CollectionDetailProps {
 function CollectionDetail({ collection, target }: CollectionDetailProps) {
   const who = capitalize(getSubject(target));
   const name = getCollectionName(collection, target);
-  const source = getSourceText(collection.groups);
+  const source = getSourceTextIfGroupsDiffer(collection.groups);
   const sentence =
     collection.value === "none"
       ? t`${who} can't open the ${name} collection.`
@@ -215,6 +215,7 @@ function TableDetail({ table, permission, target, reasons }: TableDetailProps) {
         rowsFilteredGroupIds={enforcedSandboxes.map(
           (sandbox) => sandbox["group-id"],
         )}
+        isCreateQueries={permission === "create-queries"}
       />
     </>
   );
@@ -253,7 +254,11 @@ function getResultSentence(
   const who = capitalize(getSubject(target));
   const tableName = table.name;
   const database = table["db-name"];
-  const source = getSourceText(table[permission].groups);
+  const { groups } = table[permission];
+  const source =
+    permission === "create-queries"
+      ? getSourceText(groups)
+      : getSourceTextIfGroupsDiffer(groups);
   const suffix = source ? `, ${source}` : "";
 
   if (permission === "view-data") {
@@ -286,6 +291,10 @@ function getResultSentence(
 
   const value = getDownloadLabel(table["download-results"].value);
   return t`${who} has Download results set to ${value} on ${tableName}${suffix}.`;
+}
+
+function getSourceTextIfGroupsDiffer(groups: PermissionDebugGroupValue[]) {
+  return getSharedValue(groups) === undefined ? getSourceText(groups) : null;
 }
 
 interface ResultCardProps {
@@ -344,6 +353,8 @@ interface GroupsCardProps {
   isNothing: (value: string) => boolean;
   nothingText?: string;
   rowsFilteredGroupIds?: number[];
+  /** Its badges sit beside the value, and show even when the groups all agree */
+  isCreateQueries?: boolean;
 }
 
 function GroupsCard({
@@ -354,6 +365,7 @@ function GroupsCard({
   isNothing,
   nothingText,
   rowsFilteredGroupIds = [],
+  isCreateQueries = false,
 }: GroupsCardProps) {
   const subject = capitalize(getSubject(target));
   const ordered = [
@@ -362,34 +374,44 @@ function GroupsCard({
   ];
   const isNothingEverywhere =
     groups.length > 0 && groups.every((group) => isNothing(group.value));
-  const sharedValue = groups.every((group) => group.value === groups[0]?.value)
-    ? groups[0]?.value
-    : undefined;
+  const sharedValue = getSharedValue(groups);
 
   return (
     <SheetCard title={t`Groups`}>
       <Stack gap="lg" py="sm">
-        {ordered.map((group) => (
-          <Flex
-            key={group["group-id"]}
-            gap="sm"
-            align="flex-start"
-            justify="space-between"
-            wrap="wrap"
-          >
-            <BodyText>{group["group-name"]}</BodyText>
-            <Flex gap="sm" align="center">
-              {group["applies?"] && <Badge variant="light">{t`Applies`}</Badge>}
-              <PlainStatus
-                status={
-                  rowsFilteredGroupIds.includes(group["group-id"])
-                    ? getTableStatusDisplay("filtered")
-                    : getStatus(group.value)
-                }
-              />
+        {ordered.map((group) => {
+          const isMarked =
+            group["applies?"] && (isCreateQueries || sharedValue === undefined);
+          const badge = isMarked && (
+            <Badge variant="light" flex="none">
+              {t`Applies`}
+            </Badge>
+          );
+          return (
+            <Flex
+              key={group["group-id"]}
+              gap="sm"
+              align="flex-start"
+              justify="space-between"
+              wrap="wrap"
+            >
+              <Flex gap="sm" align="center" data-testid="group-name">
+                <BodyText>{group["group-name"]}</BodyText>
+                {!isCreateQueries && badge}
+              </Flex>
+              <Flex gap="sm" align="center">
+                {isCreateQueries && badge}
+                <PlainStatus
+                  status={
+                    rowsFilteredGroupIds.includes(group["group-id"])
+                      ? getTableStatusDisplay("filtered")
+                      : getStatus(group.value)
+                  }
+                />
+              </Flex>
             </Flex>
-          </Flex>
-        ))}
+          );
+        })}
         <BodyText>
           {isNothingEverywhere && nothingText
             ? nothingText
@@ -400,4 +422,11 @@ function GroupsCard({
       </Stack>
     </SheetCard>
   );
+}
+
+/** The value every group gives, one group alone included, or undefined when they differ */
+function getSharedValue(groups: PermissionDebugGroupValue[]) {
+  return groups.every((group) => group.value === groups[0]?.value)
+    ? groups[0]?.value
+    : undefined;
 }

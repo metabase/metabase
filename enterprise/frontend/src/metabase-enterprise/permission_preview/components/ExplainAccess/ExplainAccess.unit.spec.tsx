@@ -50,7 +50,7 @@ const SALES_GROUP: PreviewTarget = {
 type Answers = Partial<
   Record<
     PermissionDebugAction,
-    PermissionDebugAnswer | Promise<PermissionDebugAnswer>
+    PermissionDebugAnswer | Promise<PermissionDebugAnswer> | number
   >
 >;
 
@@ -114,6 +114,13 @@ function setup({
   return { onClose, showItem };
 }
 
+/** What each group's row shows on its name's side, in the rows' order */
+function getGroupNameTexts() {
+  return screen
+    .getAllByTestId("group-name")
+    .map((element) => element.textContent);
+}
+
 /** The row whose status button is named `statusName` */
 function getRow(statusName: string) {
   return checkNotNull(
@@ -142,6 +149,17 @@ describe("ExplainAccess", () => {
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("says it can't explain the access, with no verdict, when the run check fails", async () => {
+    setup({ answers: { "card/query": 500 } });
+
+    expect(
+      await screen.findByText("Couldn't explain this access."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Sandy Sales can see this question."),
+    ).not.toBeInTheDocument();
   });
 
   describe("allowed", () => {
@@ -573,7 +591,7 @@ describe("ExplainAccess", () => {
 
       expect(
         screen.getByText(
-          "Sandy Sales has Download results set to Up to 1 million rows on Orders, from Sales.",
+          "Sandy Sales has Download results set to Up to 1 million rows on Orders.",
         ),
       ).toBeVisible();
       expect(screen.getByText("Groups")).toBeVisible();
@@ -1431,6 +1449,133 @@ describe("ExplainAccess", () => {
         ),
       ).toBeInTheDocument();
     });
+
+    it("lists every winning group first, badged after its name, and names them all", async () => {
+      setup({
+        answers: {
+          "card/read": createAnswer({
+            reasons: {
+              collection: createCollection({
+                groups: [
+                  createGroupValue("All Users", "none"),
+                  createGroupValue("Sales", "curate", true),
+                  createGroupValue("Support", "curate", true),
+                ],
+              }),
+            },
+          }),
+        },
+      });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Sales reports, Curate" }),
+      );
+
+      expect(
+        screen.getByText(
+          "Sandy Sales has Curate access to the Sales reports collection, from Sales, Support.",
+        ),
+      ).toBeInTheDocument();
+      expect(getGroupNameTexts()).toEqual([
+        "SalesApplies",
+        "SupportApplies",
+        "All Users",
+      ]);
+    });
+
+    it("badges a table's winning View data group after its name, and names it", async () => {
+      setup({
+        answers: {
+          "card/query": createAnswer({
+            reasons: {
+              collection: createCollection(),
+              tables: [createTable()],
+            },
+          }),
+        },
+      });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Orders, Full access" }),
+      );
+
+      expect(
+        screen.getByText(
+          "Sandy Sales has View data set to Can view on Orders, from Sales.",
+        ),
+      ).toBeInTheDocument();
+      expect(getGroupNameTexts()).toEqual(["SalesApplies", "All Users"]);
+    });
+
+    it("shows no Applies badge and no from when every group gives the same value", async () => {
+      setup({
+        answers: {
+          "card/read": createAnswer({
+            reasons: {
+              collection: createCollection({
+                groups: [
+                  createGroupValue("Sales", "curate", true),
+                  createGroupValue("All Users", "curate", true),
+                ],
+              }),
+            },
+          }),
+        },
+      });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Sales reports, Curate" }),
+      );
+
+      expect(
+        screen.getByText(
+          "Sandy Sales has Curate access to the Sales reports collection.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Applies")).not.toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Sandy Sales has Collection access set to Curate in every group they're in.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps each create queries badge beside the value when the groups agree", async () => {
+      setup({
+        answers: {
+          "card/query": createAnswer({
+            reasons: {
+              collection: createCollection(),
+              tables: [
+                createTable({
+                  "create-queries": {
+                    value: "query-builder",
+                    groups: [
+                      createGroupValue("Sales", "query-builder", true),
+                      createGroupValue("All Users", "query-builder", true),
+                    ],
+                  },
+                }),
+              ],
+            },
+          }),
+        },
+      });
+
+      await userEvent.click(
+        await screen.findByRole("button", {
+          name: "Orders, Query builder only",
+        }),
+      );
+
+      expect(
+        screen.getByText(
+          "Sandy Sales can explore Orders with the query builder, but not with native queries, from Sales, All Users.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getAllByText("Applies")).toHaveLength(2);
+      expect(getGroupNameTexts()).toEqual(["Sales", "All Users"]);
+    });
   });
 
   describe("a collection", () => {
@@ -1864,6 +2009,30 @@ describe("ExplainAccess", () => {
       ).toBeVisible();
       expect(
         screen.queryByRole("button", { name: "Back" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows Loading for the next item until its answer arrives, with no previous verdict", async () => {
+      const answer = defer<PermissionDebugAnswer>();
+      fetchMock.get(
+        "path:/api/card/34",
+        createMockCard({ id: 34, name: "Another question" }),
+      );
+      fetchMock.get({
+        url: "path:/api/ee/permission_debug",
+        query: { model_id: "34" },
+        response: answer.promise,
+      });
+      const { showItem } = setup({ answers: withTables });
+      expect(
+        await screen.findByText("Sandy Sales can see this question."),
+      ).toBeInTheDocument();
+
+      showItem("question/34");
+
+      expect(await screen.findByText("Loading...")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Sandy Sales can see this question."),
       ).not.toBeInTheDocument();
     });
   });
