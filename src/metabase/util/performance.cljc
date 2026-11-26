@@ -560,10 +560,15 @@
 (defn- walk*
   [inner inner-val outer form]
   (cond
+    ;; Most nodes in a query are keywords, strings and numbers, so they get one check instead of one per branch.
+    (not (coll? form))
+    (outer form)
+
     ;; Records may implement their own reduce (e.g. toucan2's IdentityQuery reduces over its rows), so walk their
     ;; entries through `seq` instead of `reduce-kv`.
     (record? form)
-    (let [new-keys (volatile! (transient #{}))]
+    ;; `new-keys` holds the keys written so far, and is only created once a key changes.
+    (let [new-keys (volatile! nil)]
       (-> (reduce (fn [r e]
                     (let [k  (key e)
                           v  (val e)
@@ -573,7 +578,7 @@
                         (if (identical? v' v)
                           r
                           (assoc r k v'))
-                        (do (vswap! new-keys conj! k')
+                        (do (vswap! new-keys #(conj! (or % (transient #{})) k'))
                             (if (contains? @new-keys k)
                               (assoc r k' v')
                               (-> r (dissoc k) (assoc k' v')))))))
@@ -582,7 +587,8 @@
           outer))
 
     (map? form)
-    (let [new-keys (volatile! (transient #{}))]
+    ;; `new-keys` holds the keys written so far, and is only created once a key changes.
+    (let [new-keys (volatile! nil)]
       (-> (reduce-kv (fn [m k v]
                        (let [k' (inner k)
                              v' (if inner-val (inner-val k v) (inner v))]
@@ -590,7 +596,7 @@
                            (if (identical? v' v)
                              m
                              (assoc+ m k' v'))
-                           (do (vswap! new-keys conj! k')
+                           (do (vswap! new-keys #(conj! (or % (transient #{})) k'))
                                (if (contains? @new-keys k)
                                  (assoc+ m k' v')
                                  (-> m (dissoc+ k) (assoc+ k' v')))))))
@@ -620,8 +626,7 @@
                             nil form)]
       (outer (if form' (add-original-meta form' form) form)))
 
-    (coll? form) (outer (add-original-meta (into (empty form) (map inner) form) form))
-    :else (outer form)))
+    :else (outer (add-original-meta (into (empty form) (map inner) form) form))))
 
 (defn walk
   "Drop-in replacement for `clojure.walk/walk`. Optimized for efficiency and has the following behavior differences:
