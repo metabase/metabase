@@ -340,8 +340,8 @@
   (testing "with run_query and the dashboard card runner, the model is told which one applies dashboard filters"
     (let [rendered (render-internal-template all-yes-perms
                                              ["construct_notebook_query" "run_query" "run_dashboard_card"])]
-      (is (re-find #"\n\nTo read a card on the dashboard the user is viewing[^\n]*\n\n"
-                   rendered)))))
+      (is (re-find #"\n\nTo read a card on the dashboard the user is viewing[^\n]*\n\n" rendered))
+      (is (re-find #"or a dashboard are not applied when you run its query with `run_query`" rendered)))))
 
 (deftest ^:parallel prompt-answers-questions-about-the-screen-from-it-test
   (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query" "run_query"])]
