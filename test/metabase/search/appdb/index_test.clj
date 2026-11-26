@@ -571,7 +571,9 @@
    "document"           #{"action" "model_index_value" "report_card"}
    "exploration"        #{"action" "document" "model_index_value" "report_card"}
    "report_card"        #{"action" "model_index_value"}
-   "report_dashboard"   #{"action" "model_index_value" "report_card"}})
+   "report_dashboard"   #{"action" "model_index_value" "report_card"}
+   "remote_sync_worktree" #{"action" "collection" "data_app" "document" "exploration" "measure" "model_index_value"
+                            "report_card" "report_dashboard" "segment" "transform"}})
 
 (deftest search-model-cascade-test
   (is (= model->deleted-descendants
