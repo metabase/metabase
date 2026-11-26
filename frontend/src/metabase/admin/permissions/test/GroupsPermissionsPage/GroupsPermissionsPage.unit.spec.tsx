@@ -144,7 +144,7 @@ describe("GroupsPermissionsPage", () => {
 
     it("marks a database with routing enabled in the breadcrumbs of the group's table list", async () => {
       await setup({
-        databases: [ROUTED_DATABASE],
+        databases: [TEST_DATABASE, ROUTED_DATABASE],
         initialRoute: `/admin/permissions/data/group/${TEST_GROUPS[1].id}/database/${ROUTED_DATABASE.id}`,
       });
 

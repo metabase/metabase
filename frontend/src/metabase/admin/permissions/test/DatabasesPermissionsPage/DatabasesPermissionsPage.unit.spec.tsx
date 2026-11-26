@@ -174,7 +174,10 @@ describe("DatabasesPermissionsPage", () => {
     });
 
     it("marks a database with routing enabled in the breadcrumbs", async () => {
-      await setup({ databases: [ROUTED_DATABASE] });
+      await setup({
+        databases: [TEST_DATABASE, ROUTED_DATABASE],
+        initialRoute: `/admin/permissions/data/database/${ROUTED_DATABASE.id}`,
+      });
 
       expect(
         within(screen.getByTestId("permissions-editor-breadcrumbs")).getByText(
