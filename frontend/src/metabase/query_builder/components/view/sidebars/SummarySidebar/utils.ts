@@ -18,6 +18,7 @@ import type {
 } from "./types";
 
 const DEFAULT_OPERATOR_SHORT_NAMES = ["sum", "distinct"];
+const COUNT_OPERATOR_SHORT_NAME = "count";
 type DimensionBucketOptions = Pick<
   SummaryDimensionItem,
   "bucketOptions" | "initialBucketOptionCount"
@@ -234,12 +235,16 @@ function getValueItem(
   if (selectedOperator == null) {
     return { ...base, kind: entityKind ?? "expression" };
   }
+  if (!Lib.displayInfo(query, stageIndex, selectedOperator).requiresColumn) {
+    return { ...base, kind: "count" };
+  }
   // the operator's columns carry the selection; `Lib.aggregationColumn` is the result column
   const column = Lib.aggregationOperatorColumns(selectedOperator).find(
     (column) => Lib.displayInfo(query, stageIndex, column).selected,
   );
   if (column == null) {
-    return { ...base, kind: "count" };
+    // the operator aggregates a formula, like `Sum([Total] * 2)`
+    return { ...base, kind: "expression" };
   }
   return {
     ...base,
@@ -433,6 +438,16 @@ function getMeasureKey(
   return Lib.displayInfo(query, stageIndex, measure).name;
 }
 
+function hasCountOfRows(query: Lib.Query, stageIndex: number): boolean {
+  const operators = Lib.availableAggregationOperators(query, stageIndex);
+  return Lib.aggregations(query, stageIndex).some((clause) =>
+    Lib.selectedAggregationOperators(operators, clause).some((operator) => {
+      const info = Lib.displayInfo(query, stageIndex, operator);
+      return info.selected && info.shortName === COUNT_OPERATOR_SHORT_NAME;
+    }),
+  );
+}
+
 function hasValue(
   query: Lib.Query,
   stageIndex: number,
@@ -440,9 +455,7 @@ function hasValue(
 ): boolean {
   switch (field.kind) {
     case "count":
-      return getValueItems(query, stageIndex).some(
-        (item) => item.kind === "count",
-      );
+      return hasCountOfRows(query, stageIndex);
     case "metric": {
       const key = getMetricKey(query, stageIndex, field.metric);
       return Lib.availableMetrics(query, stageIndex).some(
