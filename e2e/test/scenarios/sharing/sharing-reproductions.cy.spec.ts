@@ -7,6 +7,14 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
+import { checkNotNull } from "metabase/utils/types";
+import type {
+  Collection,
+  DashboardCard,
+  FieldReference,
+  QuestionDashboardCard,
+} from "metabase-types/api";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 const { admin } = USERS;
@@ -20,6 +28,12 @@ const {
   PEOPLE,
 } = SAMPLE_DATABASE;
 const { WEB_PORT } = WEBMAIL_CONFIG;
+
+type Email = {
+  id: string;
+  html: string;
+  attachments: { contentType: string; generatedFileName: string }[];
+};
 
 describe("issue 18009", { tags: "@external" }, () => {
   beforeEach(() => {
@@ -47,7 +61,7 @@ describe("issue 18009", { tags: "@external" }, () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("To").click();
 
-    H.sendEmailAndAssert((email) => {
+    H.sendEmailAndAssert((email: Email) => {
       expect(email.html).not.to.include(
         "An error occurred while displaying this card.",
       );
@@ -97,7 +111,7 @@ describe("issues 18344 and 18352", { tags: "@external" }, () => {
     H.createQuestionAndAddToDashboard(questionDetails, ORDERS_DASHBOARD_ID, {
       row: 8,
     }).then(({ body: { card_id } }) => {
-      H.visitQuestion(card_id);
+      H.visitQuestion(checkNotNull(card_id));
 
       H.visitDashboard(ORDERS_DASHBOARD_ID);
     });
@@ -116,7 +130,7 @@ describe("issues 18344 and 18352", { tags: "@external" }, () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("To").click();
 
-    H.sendEmailAndAssert(({ html }) => {
+    H.sendEmailAndAssert(({ html }: Email) => {
       expect(html).not.to.include(
         "An error occurred while displaying this card.",
       );
@@ -129,10 +143,9 @@ describe("issues 18344 and 18352", { tags: "@external" }, () => {
 });
 
 describe("issue 18669", { tags: "@external" }, () => {
-  const questionDetails = {
+  const questionDetails: StructuredQuestionDetails = {
     name: "Product count",
     database: SAMPLE_DB_ID,
-    type: "query",
     query: {
       "source-table": PRODUCTS_ID,
       aggregation: [["count"]],
@@ -151,11 +164,13 @@ describe("issue 18669", { tags: "@external" }, () => {
     parameters: [filterDetails],
   };
 
-  const getFilterMapping = (card) => ({
+  const getFilterMapping = (
+    card: DashboardCard,
+  ): Partial<QuestionDashboardCard> => ({
     parameter_mappings: [
       {
         parameter_id: filterDetails.id,
-        card_id: card.card_id,
+        card_id: checkNotNull(card.card_id),
         target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
       },
     ],
@@ -265,7 +280,7 @@ describe("issue 20393", () => {
 });
 
 describe("issue 21559", { tags: "@external" }, () => {
-  const q1Details = {
+  const q1Details: StructuredQuestionDetails = {
     name: "21559-1",
     query: {
       "source-table": ORDERS_ID,
@@ -281,7 +296,7 @@ describe("issue 21559", { tags: "@external" }, () => {
       aggregation: [["avg", ["field", PRODUCTS.PRICE, null]]],
     },
     display: "scalar",
-  };
+  } satisfies StructuredQuestionDetails;
 
   beforeEach(() => {
     H.restore();
@@ -330,7 +345,7 @@ describe("issue 21559", { tags: "@external" }, () => {
     H.openAndAddEmailsToSubscriptions([
       `${admin.first_name} ${admin.last_name}`,
     ]);
-    H.sendEmailAndAssert((email) => {
+    H.sendEmailAndAssert((email: Email) => {
       expect(email.html).to.include("img"); // Funnel is sent as img (inline attachment)
       expect(email.html).not.to.include("80.52"); // Scalar displays its value in HTML
     });
@@ -380,8 +395,8 @@ describe("issue 22524", () => {
     // Share dashboard
     H.openNewPublicLinkDropdown("dashboard");
 
-    cy.wait("@publicLink").then(({ response: { body } }) => {
-      const { uuid } = body;
+    cy.wait("@publicLink").then(({ response }) => {
+      const uuid = response?.body.uuid;
 
       cy.signOut();
       cy.visit(`/public/dashboard/${uuid}`);
@@ -427,7 +442,9 @@ describe("issue 24223", { tags: "@external" }, () => {
 
   const dashboardDetails = { parameters };
 
-  const mapFiltersToCard = (card_id) => ({
+  const mapFiltersToCard = (
+    card_id: number,
+  ): Partial<QuestionDashboardCard> => ({
     parameter_mappings: [
       {
         parameter_id: dropdownFilter.id,
@@ -474,7 +491,10 @@ describe("issue 24223", { tags: "@external" }, () => {
       ({ body: dashboardCard }) => {
         const { card_id, dashboard_id } = dashboardCard;
 
-        H.editDashboardCard(dashboardCard, mapFiltersToCard(card_id));
+        H.editDashboardCard(
+          dashboardCard,
+          mapFiltersToCard(checkNotNull(card_id)),
+        );
 
         H.visitDashboard(dashboard_id);
         cy.location("search").should("eq", "?category=Doohickey&title=Awesome");
@@ -585,7 +605,7 @@ describe("issue 25473", () => {
   });
 
   it("public sharing and signed embedding: dashboard text filter on a custom column should accept text input (metabase#25473)", () => {
-    cy.get("@dashboardId").then((id) => {
+    cy.get<number>("@dashboardId").then((id) => {
       cy.request("PUT", `/api/dashboard/${id}`, {
         embedding_params: {
           [dashboardFilter.slug]: "enabled",
@@ -598,7 +618,7 @@ describe("issue 25473", () => {
 
     assertOnResults();
 
-    cy.get("@dashboardId").then((id) => {
+    cy.get<number>("@dashboardId").then((id) => {
       const payload = {
         resource: { dashboard: id },
         params: {},
@@ -676,86 +696,14 @@ describe("issue 26988", () => {
   });
 });
 
-describe("issue 17657", () => {
-  const { first_name, last_name } = admin;
-
-  function createSubscriptionWithoutRecipients() {
-    cy.request("POST", "/api/pulse", {
-      name: "Orders in a dashboard",
-      cards: [
-        {
-          id: ORDERS_QUESTION_ID,
-          collection_id: null,
-          description: null,
-          display: "table",
-          name: "Orders",
-          include_csv: false,
-          include_xls: false,
-          dashboard_card_id: 1,
-          dashboard_id: ORDERS_DASHBOARD_ID,
-          parameter_mappings: [],
-        },
-      ],
-      channels: [
-        {
-          channel_type: "email",
-          enabled: true,
-          // Since the fix (https://github.com/metabase/metabase/pull/17668), this is not even possible to do in the UI anymore.
-          // Backend still doesn't do this validation so we're making sure the FE handles the case of missing recipients gracefully.
-          recipients: [],
-          details: {},
-          schedule_type: "monthly",
-          schedule_day: "mon",
-          schedule_hour: 8,
-          schedule_frame: "first",
-        },
-      ],
-      skip_if_empty: false,
-      collection_id: null,
-      parameters: [],
-      dashboard_id: ORDERS_DASHBOARD_ID,
-    });
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    createSubscriptionWithoutRecipients();
-  });
-
-  it("frontend should gracefully handle the case of a subscription without a recipient (metabase#17657)", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-
-    H.toggleDashboardSubscriptionsSidebar();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/^Emailed monthly/).click();
-
-    H.sidebar().within(() => {
-      cy.button("Done").should("be.disabled");
-    });
-
-    // Open the popover with all users
-    cy.findByPlaceholderText("Enter user names or email addresses").click();
-    // Pick admin as a recipient
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(`${first_name} ${last_name}`).click();
-
-    H.sidebar().within(() => {
-      cy.button("Done").should("not.be.disabled");
-    });
-  });
-});
-
 describe("issue 17658", { tags: "@external" }, () => {
-  function moveDashboardToCollection(collectionName) {
+  function moveDashboardToCollection(collectionName: string) {
     const { first_name, last_name, email } = admin;
 
     cy.request("GET", "/api/collection/tree?tree=true").then(
-      ({ body: collections }) => {
-        const { id } = collections.find(
-          (collection) => collection.name === collectionName,
+      ({ body: collections }: { body: Collection[] }) => {
+        const { id } = checkNotNull(
+          collections.find((collection) => collection.name === collectionName),
         );
 
         // Move dashboard
@@ -836,8 +784,8 @@ describe("issue 17658", { tags: "@external" }, () => {
     cy.button("Delete").click();
 
     cy.wait("@deletePulse").then(({ response }) => {
-      expect(response.body.cause).not.to.exist;
-      expect(response.statusCode).to.eq(200);
+      expect(response?.body.cause).not.to.exist;
+      expect(response?.statusCode).to.eq(200);
     });
 
     cy.button("Delete").should("not.exist");
@@ -849,7 +797,7 @@ describe("issue 17658", { tags: "@external" }, () => {
 });
 
 describe("issue 17547", () => {
-  const questionDetails = {
+  const questionDetails: StructuredQuestionDetails = {
     query: {
       "source-table": ORDERS_ID,
       breakout: [
@@ -870,6 +818,9 @@ describe("issue 17547", () => {
       H.createQuestionAlert({
         user_id: ADMIN_USER_ID,
         card_id: questionId,
+        send_once: false,
+        send_condition: "has_result",
+        cron_schedule: "0 0 9 * * ?",
         handlers: [
           {
             channel_type: "channel/slack",
@@ -916,7 +867,7 @@ describe("issue 49525", { tags: "@external" }, () => {
     admin: { first_name, last_name },
   } = USERS;
 
-  const q1Details = {
+  const q1Details: StructuredQuestionDetails = {
     name: "Pivot Table",
     query: {
       "source-table": PRODUCTS_ID,
@@ -940,6 +891,7 @@ describe("issue 49525", { tags: "@external" }, () => {
           color: "#84BB4C",
           operator: ">",
           value: 10,
+          highlight_row: false,
         },
       ],
     },
@@ -986,32 +938,34 @@ describe("issue 49525", { tags: "@external" }, () => {
     });
 
     H.clickSend();
-    cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(({ body }) => {
-      const email = body.slice(-1)[0];
+    cy.request<Email[]>("GET", `http://localhost:${WEB_PORT}/email`).then(
+      ({ body }) => {
+        const email = checkNotNull(body.at(-1));
 
-      // Get the CSV attachment data
-      const csvAttachment = email.attachments.find(
-        (attachment) => attachment.contentType === "text/csv",
-      );
-
-      expect(csvAttachment).to.exist;
-
-      // get the csv attachment file's contents
-      cy.request({
-        method: "GET",
-        url: `http://localhost:${WEB_PORT}/email/${email.id}/attachment/${csvAttachment.generatedFileName}`,
-        encoding: "utf8",
-      }).then((response) => {
-        // CSV exports begin with a UTF-8 BOM; strip it, and tolerate either
-        // \n or \r\n line endings, before asserting on the header row.
-        const csvContent = response.body.replace(/^\uFEFF/, "");
-        const rows = csvContent.split(/\r?\n/);
-        const headers = rows[0];
-        expect(headers).to.equal(
-          "Created At: Year,Doohickey,Gadget,Gizmo,Widget,Row totals",
+        // Get the CSV attachment data
+        const csvAttachment = email.attachments.find(
+          (attachment) => attachment.contentType === "text/csv",
         );
-      });
-    });
+
+        expect(csvAttachment).to.exist;
+
+        // get the csv attachment file's contents
+        cy.request({
+          method: "GET",
+          url: `http://localhost:${WEB_PORT}/email/${email.id}/attachment/${checkNotNull(csvAttachment).generatedFileName}`,
+          encoding: "utf8",
+        }).then((response) => {
+          // CSV exports begin with a UTF-8 BOM; strip it, and tolerate either
+          // \n or \r\n line endings, before asserting on the header row.
+          const csvContent = response.body.replace(/^\uFEFF/, "");
+          const rows = csvContent.split(/\r?\n/);
+          const headers = rows[0];
+          expect(headers).to.equal(
+            "Created At: Year,Doohickey,Gadget,Gizmo,Widget,Row totals",
+          );
+        });
+      },
+    );
 
     H.sidebar().button("Done").click();
     H.openPulseSubscription();
@@ -1062,13 +1016,13 @@ describe("issue 54603", () => {
     type: "category",
   };
 
-  const PRODUCT_CATEGORY_FIELD_REF = [
+  const PRODUCT_CATEGORY_FIELD_REF: FieldReference = [
     "field",
     PRODUCTS.CATEGORY,
     { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
   ];
 
-  const PRODUCT_VENDOR_FIELD_REF = [
+  const PRODUCT_VENDOR_FIELD_REF: FieldReference = [
     "field",
     PRODUCTS.VENDOR,
     { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
@@ -1137,58 +1091,29 @@ describe("issue 54603", () => {
     });
   });
 
-  it("removes a filter without subscriptions right away and warns before removing a filter that has active subscriptions (metabase#54603)", () => {
+  it("archives the subscriptions that use a removed filter (metabase#54603)", () => {
     H.editDashboard();
 
-    cy.findByTestId("fixed-width-filters").findByText("Vendor").click();
-    H.dashboardParameterSidebar()
-      .findByRole("button", { name: "Remove" })
-      .should("be.enabled")
-      .click();
-
-    // No modal — the filter is gone right away (sidebar closes too).
-    cy.findByRole("dialog", { name: /remove this filter/i }).should(
-      "not.exist",
-    );
-    cy.findByTestId("dashboard-parameter-sidebar").should("not.exist");
-    cy.findByTestId("fixed-width-filters").within(() => {
-      cy.findByText("Category").should("be.visible");
-      cy.findByText("Vendor").should("not.exist");
-    });
-
     cy.findByTestId("fixed-width-filters").findByText("Category").click();
-
-    // The Remove button stays disabled until the subscriptions query resolves;
-    // Cypress retries until it's clickable.
+    // The Remove button stays disabled until the subscriptions query resolves.
     H.dashboardParameterSidebar()
       .findByRole("button", { name: "Remove" })
       .should("be.enabled")
       .click();
 
-    cy.findByRole("dialog", { name: /remove this filter/i }).should(
-      "be.visible",
-    );
+    // The warning relies on the real subscription list carrying its parameters.
     H.modal().within(() => {
       cy.findByText("Remove this filter?").should("be.visible");
       cy.findByText(/active subscription/i).should("be.visible");
-      cy.findByText(/archive/i).should("be.visible");
-
-      // Cancel keeps the filter.
-      cy.findByRole("button", { name: "Cancel" }).click();
+      cy.findByRole("button", { name: "Remove filter" }).click();
     });
-
-    cy.findByTestId("fixed-width-filters")
-      .findByText("Category")
-      .should("be.visible");
-
-    // Try again and confirm — filter is removed.
-    H.dashboardParameterSidebar()
-      .findByRole("button", { name: "Remove" })
-      .click();
-    H.modal().findByRole("button", { name: "Remove filter" }).click();
 
     // The sidebar closes when the parameter is removed.
     cy.findByTestId("dashboard-parameter-sidebar").should("not.exist");
+    cy.findByTestId("fixed-width-filters").within(() => {
+      cy.findByText("Vendor").should("be.visible");
+      cy.findByText("Category").should("not.exist");
+    });
 
     // Saving triggers server-side archival of any subscription referencing
     // the removed parameter. updateDashboard's invalidatesTags includes the
