@@ -7,9 +7,11 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.search.scoring :as ee-scoring]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.search.appdb.scoring-test :as appdb.scoring-test]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.search.scoring :as search.scoring]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -164,6 +166,15 @@
     (testing "includes both if has both features"
       (mt/with-premium-features #{:official-collections :content-verification}
         (is (set/subset? #{"official collection score" "verified"} (score-result-names)))))))
+
+(deftest additional-scorers-follow-the-app-db-type-test
+  (testing "The curation scorers cast for the app DB type of the search, not of the one the namespace loaded with"
+    (mt/with-premium-features #{:official-collections :content-verification}
+      (doseq [db-type [:mysql :postgres]]
+        (mt/with-dynamic-fn-redefs [mdb/db-type (constantly db-type)]
+          (is (= {:official-collection (search.scoring/truthy db-type :official_collection)
+                  :verified            (search.scoring/truthy db-type :verified)}
+                 (#'ee-scoring/additional-scorers))))))))
 
 (deftest appdb-official-collection-test
   (appdb.scoring-test/with-index-contents

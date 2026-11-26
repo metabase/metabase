@@ -41,6 +41,39 @@ summary: Changes to the Metabase driver interface, listed by release.
   timezone when the database supports `:set-timezone`. A driver that overrides the method without calling the
   `:sql-jdbc` one should set it too, or a data test reads dates in whatever timezone its pooled connection last had.
 
+- Row actions (the implicit actions of models and Data Apps, and table editing) now reach drivers through three new
+  multimethods, one row at a time:
+
+  - `metabase.driver/action-create-row!` `[driver database {:keys [table-id pk-columns row]}]` inserts a row and returns
+    it as stored.
+  - `metabase.driver/action-update-row!` `[driver database {:keys [table-id pk row]}]` updates the one row whose primary
+    key is `pk`, and returns `{:before row, :after row}`.
+  - `metabase.driver/action-delete-row!` `[driver database {:keys [table-id pk]}]` deletes the one row whose primary
+    key is `pk`, and returns `{:before row}`.
+
+  Rows and primary keys are maps of column name to value. A driver that supports `:actions` implements all three;
+  `:sql-jdbc` has implementations that most JDBC drivers can use as they are. Drivers no longer implement
+  `metabase.actions.core/perform-action!*` for `:model.row/*` or `:table.row/*`.
+
+- The inputs of the `:model.row/*` actions have changed. Each one names its Table and the primary key of its row,
+  instead of carrying a legacy MBQL query: `{:database id, :table-id id, :create-row row}` for `:model.row/create`,
+  `{:database id, :table-id id, :pk pk, :update-row row}` for `:model.row/update`, and
+  `{:database id, :table-id id, :pk pk}` for `:model.row/delete`, where `pk` maps each primary key column's name to
+  its value. A driver that still implements `metabase.actions.core/perform-action!*` for a `:model.row/*` action gets
+  these inputs, and needs updating.
+
+- `metabase.driver.sql-jdbc.actions/prepare-query*` is deprecated, and no longer called; it is kept only so that
+  drivers that implement it still load. It was only used to add `RETURNING *` to an insert; to do that, implement
+  `metabase.driver/action-create-row!` with
+  `(metabase.driver.sql-jdbc.actions/create-row! driver database args {:returning? true})`, as Postgres does.
+
+- Added new driver feature flag `:actions/bulk`, which says whether a row action may act on several rows in one call.
+  Without it such a call fails with a 400. Drivers that support it should make the whole call atomic. It is true for
+  every `:sql-jdbc` driver that supports `:actions`, since the `:sql-jdbc` implementation runs the call in one
+  transaction; turn it off for a `:sql-jdbc` driver whose row methods don't run on that transaction's connection.
+  Table editing (`:actions/data-editing`) acts on several rows at once, so a driver that supports it should support
+  `:actions/bulk` too.
+
 - Added new driver feature flag `:jdbc/set-max-rows`, which says whether `metabase.driver/query-on-connection` may cap
   a query's rows with `Statement.setMaxRows`. It is true for every `:sql-jdbc` driver except Redshift, where a capped
   query in a data-test run left the transaction aborted. Without it, the query streams and the reader stops at the cap.
