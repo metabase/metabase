@@ -2,6 +2,8 @@
    filter expression bar. Every token is the same height. */
 
 .bar {
+  --connector-margin: var(--mantine-spacing-xxs);
+
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -66,7 +68,7 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  margin: 0 var(--mantine-spacing-xxs);
+  margin-inline: var(--connector-margin);
   padding: var(--mantine-spacing-xxs) var(--mantine-spacing-xs);
   border: 0;
   border-radius: var(--mantine-radius-md);
@@ -269,6 +271,30 @@
 .input::placeholder {
   color: var(--mb-color-text-secondary);
   font-weight: normal;
+}
+
+.input.inputCaretHidden {
+  caret-color: transparent;
+}
+
+.caretSlot {
+  position: relative;
+}
+
+.caretAfterConnector {
+  --caret-gap-start: var(--connector-margin);
+}
+
+.caretBeforeConnector {
+  --caret-gap-end: var(--connector-margin);
+}
+
+/* Include connector margins in the caret's visual gap without affecting layout. */
+.caretSlot .input {
+  position: absolute;
+  inset-inline-start: calc(-1 * var(--caret-gap-start, 0px));
+  width: calc(100% + var(--caret-gap-start, 0px) + var(--caret-gap-end, 0px));
+  text-align: center;
 }
 
 /* Inside a pill's part the input is the part's own text. */

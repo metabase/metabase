@@ -536,6 +536,7 @@ export function DefinitionEditor({
       }
       hasError={formula.some((token) => hasProblem(token.key))}
       renderToken={renderFormulaToken}
+      isConnector={(token) => token.kind !== "term"}
       getItems={getFormulaItems}
       onPick={pickFormulaItem}
       onKeyChar={handleFormulaChar}

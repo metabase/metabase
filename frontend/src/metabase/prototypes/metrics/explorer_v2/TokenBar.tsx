@@ -91,6 +91,7 @@ type TokenBarProps<T extends { key: string }> = {
   /** A red outline, for a definition that doesn't add up. */
   hasError?: boolean;
   renderToken: (token: T, state: TokenState) => ReactNode;
+  isConnector?: (token: T) => boolean;
   /** What the dropdown offers for the typed text at the caret. */
   getItems: (query: string, caret: number) => BarItem[];
   /** Applies a picked item; returns the caret afterwards. */
@@ -129,6 +130,7 @@ export function TokenBar<T extends { key: string }>({
   placeholder,
   hasError = false,
   renderToken,
+  isConnector,
   getItems,
   onPick,
   onKeyChar,
@@ -167,8 +169,8 @@ export function TokenBar<T extends { key: string }>({
   );
   const items = getItems(query, clampedCaret);
   const list = useSuggestionList(items, query);
-  const isDropdownOpen =
-    isFocused && selected == null && partSel == null && items.length > 0;
+  const hasSelection = selected != null || partSel != null;
+  const isDropdownOpen = isFocused && !hasSelection && items.length > 0;
 
   const moveCaret = (next: number) => {
     setCaret(Math.max(0, Math.min(tokens.length, next)));
@@ -329,6 +331,9 @@ export function TokenBar<T extends { key: string }>({
   const showPlaceholder = tokens.length === 0 && inputHostKey == null;
   const hostIndex = tokens.findIndex((token) => token.key === inputHostKey);
   const isHosted = hostIndex !== -1;
+  const isEmptyCaret = !query && !showPlaceholder && !isHosted;
+  const previousToken = tokens[clampedCaret - 1];
+  const nextToken = tokens[clampedCaret];
 
   // One input node for the whole bar, placed with `order`, so moving the
   // caret never remounts it and never drops focus. Slots: 3i is the gap
@@ -384,7 +389,15 @@ export function TokenBar<T extends { key: string }>({
           )}
           <span
             ref={draftRef}
-            className={cx(S.slot, { [S.draftSeg]: isHosted })}
+            className={cx(S.slot, {
+              [S.draftSeg]: isHosted,
+              [S.gap]: isEmptyCaret,
+              [S.caretSlot]: isEmptyCaret,
+              [S.caretAfterConnector]:
+                isEmptyCaret && previousToken && isConnector?.(previousToken),
+              [S.caretBeforeConnector]:
+                isEmptyCaret && nextToken && isConnector?.(nextToken),
+            })}
             style={{
               order: isHosted ? 3 * hostIndex + 2 : 3 * clampedCaret,
             }}
@@ -392,7 +405,7 @@ export function TokenBar<T extends { key: string }>({
             {isHosted && hostPrefix}
             <input
               ref={inputRef}
-              className={S.input}
+              className={cx(S.input, { [S.inputCaretHidden]: hasSelection })}
               value={query}
               placeholder={showPlaceholder ? placeholder : ""}
               size={showPlaceholder && !query ? placeholder.length : 1}
@@ -400,6 +413,7 @@ export function TokenBar<T extends { key: string }>({
               onChange={(event) => {
                 setQuery(event.target.value);
                 setSelected(null);
+                setPartSel(null);
               }}
               onKeyDown={handleKeyDown}
               onFocus={() => setIsFocused(true)}
