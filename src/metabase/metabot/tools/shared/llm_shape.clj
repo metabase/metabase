@@ -499,15 +499,28 @@
           "```json\n" (json/encode join {:pretty true}) "\n```\n\n"
           (format-join-required-dimensions-table dimensions)))))
 
+(def ^:private max-metric-definition-filters-length
+  "Cap on the filters of a metric's definition, as written in the prompt."
+  1000)
+
+(defn- metric-definition-filters-text
+  "The filters of a metric's definition joined into one line, cut to [[max-metric-definition-filters-length]]
+  characters, or nil when there are none."
+  [definition-filters]
+  (some-> (not-empty definition-filters)
+          (->> (str/join "; "))
+          (truncate max-metric-definition-filters-length)))
+
 (defn metric->xml
   "Format a metric as XML for the LLM.
 
-  Include its database name, portable entity ID, and the source required to use it in `construct_notebook_query`.
-  The source is identified by `base_table_fully_qualified_name` or `source_card_portable_entity_id`.
-  When no source is usable, include `source_unavailable` instead."
+  Include its database name, portable entity ID, the source required to use it in `construct_notebook_query`, and the
+  filters in its definition. The source is identified by `base_table_fully_qualified_name` or
+  `source_card_portable_entity_id`. When no source is usable, include `source_unavailable` instead."
   [{:keys [id name description verified queryable-dimensions join-required-dimensions collection
            default_time_dimension_field_name database_name base_table_portable_fk
-           portable_entity_id source_card_name source_card_portable_entity_id source_unavailable]}]
+           portable_entity_id source_card_name source_card_portable_entity_id source_unavailable]
+    definition-filters :definition_filters}]
   (render-llm-template
    :metric
    {:metric_id                     (str id)
@@ -528,7 +541,8 @@
     :metric_dimensions_table       (when (seq queryable-dimensions)
                                      (format-metric-dimensions-table queryable-dimensions))
     :metric_join_required_xml      (when (seq join-required-dimensions)
-                                     (format-metric-join-required-dimensions join-required-dimensions))}))
+                                     (format-metric-join-required-dimensions join-required-dimensions))
+    :metric_definition_filters     (metric-definition-filters-text definition-filters)}))
 
 (defn table->xml
   "Format table for LLM consumption.
@@ -924,10 +938,12 @@
 
    Metric results also identify the source to use with `[metric, {}, <portable_entity_id>]` in an aggregation.
    `base_table_fully_qualified_name` and `database_name` identify a table source; `source_card_portable_entity_id`
-   identifies a card source. `source_unavailable` means that no usable source can be offered."
+   identifies a card source. `source_unavailable` means that no usable source can be offered. Metric results also
+   list the filters in their definition, when there are any."
   [{:keys [id type name description verified official curated can_write data_authority data_layer collection
            database_id database_name database_engine database_schema portable_entity_id
-           base_table_portable_fk source_card_name source_card_portable_entity_id source_unavailable]}]
+           base_table_portable_fk source_card_name source_card_portable_entity_id source_unavailable]
+    definition-filters :definition_filters}]
   (let [fqn (cond
               (#{"table" :table} type)
               (when name (fully-qualified-name database_schema name))
@@ -961,6 +977,7 @@
       :search_data_authority (when (and data_authority (not= "unconfigured" (clojure.core/name data_authority)))
                                (clojure.core/name data_authority))
       :search_description description
+      :search_definition_filters (metric-definition-filters-text definition-filters)
       :search_collection_name (:name collection)
       :search_database_id (when database_id (str database_id))
       :search_database_name database_name

@@ -4,9 +4,11 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.search-models :as metabot.search-models]
    [metabase.metabot.tmpl :as te]
@@ -173,15 +175,17 @@
                                     r))))))
 
 (defn- enrich-with-metric-sources
-  "Add the source required to use each metric in the search results.
+  "Add the source required to use each metric in the search results, and the filters in its definition.
 
   Return base-table fields, source-card fields, or `:source_unavailable`, as selected by
   [[metabase.metabot.tools.util/metric-required-source]]. Check table query access or card read access separately
-  from access to the metric itself.
+  from access to the metric itself. A metric with a usable source also gets `:definition_filters`, as returned by
+  [[metabase.metabot.tools.util/metric-definition-filters]].
 
   Requires `:database_name` on each result (see [[enrich-with-database-engines]]) to build portable FKs.
   Query count is fixed per search call, except that a multi-stage metric defined on a card also reads the cards it is
-  built on."
+  built on, and that describing the filters reads the metadata of their columns and the permissions on their tables,
+  cached across the results."
   [results]
   (let [metric-ids (->> results (filter #(= "metric" (:type %))) (keep :id) distinct)
         card-id->source (when (seq metric-ids)
@@ -210,15 +214,26 @@
                               (comp (filter mi/can-query?)
                                     (map (juxt :id #(select-keys % [:id :schema :name]))))
                               (t2/hydrate (metabot.db/table-schema-rows table-ids) :can_query)))]
-    (cond->> results
-      (seq metric-ids)
-      (mapv (fn [{:keys [id type database_name] :as result}]
-              (if (= "metric" type)
-                (merge result (metabot.tools.u/metric-source-fields
-                               {:source-card   (get source-card-id->row (get metric-id->source-card-id id))
-                                :source-table  (get table-id->row (get metric-id->table-id id))
-                                :database-name database_name}))
-                result))))))
+    (if (empty? metric-ids)
+      results
+      (metabot.perms/with-cache
+        (lib-be/with-metadata-provider-cache
+          (mapv (fn [{:keys [id type database_id database_name] :as result}]
+                  (if (= "metric" type)
+                    (let [source-card  (get source-card-id->row (get metric-id->source-card-id id))
+                          source-table (get table-id->row (get metric-id->table-id id))
+                          ;; The filters name columns of the source, so describe them only when the source is usable.
+                          filters      (when (or source-card source-table)
+                                         (metabot.tools.u/metric-definition-filters
+                                          (some-> database_id lib-be/application-database-metadata-provider)
+                                          (get card-id->source id)))]
+                      (cond-> (merge result (metabot.tools.u/metric-source-fields
+                                             {:source-card   source-card
+                                              :source-table  source-table
+                                              :database-name database_name}))
+                        filters (assoc :definition_filters filters)))
+                    result))
+                results))))))
 
 (defn- enrich-with-measure-segment-base-tables
   "Attach `:base_table_portable_fk` (`[database_name schema table]`) to measure and segment results.

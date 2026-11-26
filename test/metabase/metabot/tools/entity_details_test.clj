@@ -482,6 +482,79 @@
                                :queryable-dimensions
                                :segments]))))))))))
 
+(defn- orders-count-metric-query
+  "A query counting orders, with `filters` built from the metadata provider `mp`."
+  [mp & filters]
+  (-> (reduce lib/filter (lib/query mp (lib.metadata/table mp (mt/id :orders))) filters)
+      (lib/aggregate (lib/count))))
+
+(deftest get-metric-details-definition-filters-test
+  (let [mp    (mt/metadata-provider)
+        total (lib.metadata/field mp (mt/id :orders :total))]
+    (mt/with-temp [:model/Card {filtered-id :id} {:dataset_query (orders-count-metric-query mp (lib/> total 100))
+                                                  :database_id   (mt/id)
+                                                  :name          "Filtered metric"
+                                                  :type          :metric}
+                   :model/Card {unfiltered-id :id} {:dataset_query (orders-count-metric-query mp)
+                                                    :database_id   (mt/id)
+                                                    :name          "Unfiltered metric"
+                                                    :type          :metric}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [details (fn [metric-id]
+                        (:structured-output (entity-details/get-metric-details {:metric-id                  metric-id
+                                                                                :with-queryable-dimensions? false
+                                                                                :with-field-values?         false})))]
+          (testing "metric details list the filters in the metric's definition"
+            (is (= ["Total is greater than 100"] (:definition_filters (details filtered-id)))))
+          (testing "a metric without filters has no definition filters"
+            (is (not (contains? (details unfiltered-id) :definition_filters)))))))))
+
+(deftest get-metric-details-hides-definition-filters-of-unreadable-base-table-test
+  (testing "metric details do not describe the filters of a metric whose base table the user cannot read"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {metric-id :id} {:dataset_query (orders-count-metric-query
+                                                                  mp (lib/> (lib.metadata/field mp (mt/id :orders :total)) 100))
+                                                  :database_id   (mt/id)
+                                                  :name          "Restricted filtered metric"
+                                                  :type          :metric}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [output (:structured-output (entity-details/get-metric-details {:metric-id          metric-id
+                                                                                 :with-field-values? false}))]
+              (is (= metric-id (:id output)) "collection access still makes the metric readable")
+              (is (not (contains? output :definition_filters))))))))))
+
+(deftest get-metric-details-hides-definition-filters-on-unqueryable-columns-test
+  (testing "metric details do not name a filter on a column of a table the user cannot query"
+    (let [mp       (mt/metadata-provider)
+          category (m/find-first #(= (mt/id :products :category) (:id %))
+                                 (lib/filterable-columns (lib/query mp (lib.metadata/table mp (mt/id :orders)))))]
+      (mt/with-temp [:model/Card {metric-id :id} {:dataset_query (orders-count-metric-query
+                                                                  mp
+                                                                  (lib/> (lib.metadata/field mp (mt/id :orders :total)) 100)
+                                                                  (lib/= category "Widget"))
+                                                  :database_id   (mt/id)
+                                                  :name          "Cross-table filtered metric"
+                                                  :type          :metric}]
+        (let [details (fn []
+                        (:structured-output (entity-details/get-metric-details {:metric-id          metric-id
+                                                                                :with-field-values? false})))]
+          (testing "an admin sees both filters"
+            (mt/with-current-user (mt/user->id :crowberto)
+              (let [filters (:definition_filters (details))]
+                (is (= "Total is greater than 100" (first filters)))
+                (is (str/includes? (second filters) "Widget")))))
+          (testing "a user who can query only ORDERS sees that a second filter exists, but not its column or value"
+            (mt/with-no-data-perms-for-all-users!
+              (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+              (perms/set-table-permission! (perms-group/all-users) (mt/id :orders)
+                                           :perms/create-queries :query-builder-and-native)
+              (mt/with-current-user (mt/user->id :rasta)
+                (let [output (details)]
+                  (is (= ["Total is greater than 100" "a filter on a column the current user cannot see"]
+                         (:definition_filters output)))
+                  (is (not (str/includes? (pr-str output) "Widget"))))))))))))
+
 (deftest get-metric-details-card-based-metric-surfaces-source-card-test
   (testing "Metric details name the source card required by a single-stage card metric"
     (mt/with-temp [:model/Card {question-id :id, question-eid :entity_id}

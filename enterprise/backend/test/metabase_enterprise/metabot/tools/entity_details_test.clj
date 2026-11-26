@@ -111,6 +111,24 @@
                 (t2/update! :model/Card :id (:card_id sandbox) {:result_metadata nil}))
               (is (empty? (metric-dimensions))))))))))
 
+(deftest sandboxed-metric-definition-filters-test
+  (testing "metric details do not name a filter on a column that a sandbox hides"
+    (met/with-gtaps! {:gtaps {:venues {:query (sandbox.tu/restricted-column-query (mt/id))}}}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {metric-id :id} {:name          "Sandboxed filtered metric"
+                                                    :type          :metric
+                                                    :database_id   (mt/id)
+                                                    :table_id      (mt/id :venues)
+                                                    :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                       (lib/filter (lib/= (lib.metadata/field mp (mt/id :venues :category_id)) 7))
+                                                                       (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 2))
+                                                                       (lib/aggregate (lib/count)))}]
+          (let [output (:structured-output (entity-details/get-metric-details {:metric-id          metric-id
+                                                                               :with-field-values? false}))]
+            (is (= ["Category ID is 7" "a filter on a column the current user cannot see"]
+                   (:definition_filters output)))
+            (is (not (str/includes? (str/lower-case (pr-str output)) "price")))))))))
+
 (deftest sandboxed-metric-dimension-through-one-visible-fk-test
   (testing "a card metric whose sandbox hides one of two FK columns to a table gives a Reference that builds"
     ;; PRICE becomes a second FK from VENUES to CATEGORIES. The sandbox returns CATEGORY_ID but not PRICE, so the

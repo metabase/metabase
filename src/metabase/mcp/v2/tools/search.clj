@@ -106,7 +106,8 @@
              :base_table_schema      "x"
              :source_card_id         1
              :source_card_name       "x"
-             :source_unavailable     true}})
+             :source_unavailable     true
+             :definition_filters     ["x"]}})
 
 ;;; --------------------------------------------- Collection paths -------------------------------------------------
 

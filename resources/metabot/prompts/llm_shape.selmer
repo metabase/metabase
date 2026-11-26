@@ -47,7 +47,10 @@ Default Time Dimension Field: {{metric_default_time_dimension}}
 {% endif %}
 
 ### Metric Description
-{{metric_description}}
+{{metric_description}}{% if metric_definition_filters %}
+
+### Filters in the Metric's Definition
+This metric's definition includes these filters, so all of its values cover only the rows that pass them: {{metric_definition_filters}}{% endif %}
 {% if metric_dimensions_table %}
 ### Dimensions
 The following dimensions can be used for filter- or group-by operations:
@@ -302,6 +305,8 @@ or jargon that may be relevant to the user's questions.
 <{{search_tag_name}} id="{{search_id}}"{% if search_uri %} uri="{{search_uri}}"{% endif %} name="{{search_name}}"{% if search_has_curated %} is_curated="{{search_curated}}"{% endif %}{% if search_has_verified %} is_verified="{{search_verified}}"{% endif %}{% if search_has_official %} is_official="{{search_official}}"{% endif %}{% if search_has_can_write %} can_write="{{search_can_write}}"{% endif %}{% if search_data_layer %} data_layer="{{search_data_layer}}"{% endif %}{% if search_data_authority %} data_authority="{{search_data_authority}}"{% endif %}{% if search_database_id %} database_id="{{search_database_id}}"{% endif %}{% if search_database_name %} database_name="{{search_database_name}}"{% endif %}{% if search_database_engine %} database_engine="{{search_database_engine}}"{% endif %}{% if search_sql_unavailable %} sql_unavailable="true"{% endif %}{% if search_fqn %} fully_qualified_name="{{search_fqn}}"{% endif %}{% if search_base_table_fqn %} base_table_fully_qualified_name="{{search_base_table_fqn}}"{% endif %}{% if search_source_card_entity_id %} source_card_portable_entity_id="{{search_source_card_entity_id}}"{% if search_source_card_name %} source_card_name="{{search_source_card_name}}"{% endif %}{% endif %}{% if search_source_unavailable %} source_unavailable="true"{% endif %}{% if search_portable_entity_id %} portable_entity_id="{{search_portable_entity_id}}"{% endif %}>
 {% if search_description %}
 {{search_description}}
+{% endif %}{% if search_definition_filters %}
+Filters in its definition (all of its values cover only the rows that pass them): {{search_definition_filters}}
 {% endif %}
 {% if search_collection_name %}
 Collection: {{search_collection_name}}

@@ -702,6 +702,36 @@
         (is (not (str/includes? xml "base_table_fully_qualified_name")))
         (is (not (str/includes? xml "source_card_portable_entity_id")))))))
 
+(deftest ^:parallel metric->xml-definition-filters-test
+  (let [metric {:id 1 :name "Revenue" :description "Revenue across all product lines"}]
+    (testing "the filters in a metric's definition follow its description"
+      (is (str/includes? (llm-shape/metric->xml (assoc metric :definition_filters ["Created At is in the previous 3 years"
+                                                                                   "Status is completed"]))
+                         (str "Revenue across all product lines\n\n"
+                              "### Filters in the Metric's Definition\n"
+                              "This metric's definition includes these filters, so all of its values cover only the rows "
+                              "that pass them: Created At is in the previous 3 years; Status is completed"))))
+    (testing "a metric without filters has no filters section"
+      (is (not (str/includes? (llm-shape/metric->xml metric) "Filters in")))
+      (is (= (llm-shape/metric->xml metric)
+             (llm-shape/metric->xml (assoc metric :definition_filters [])))))
+    (testing "long filters are cut"
+      (let [xml (llm-shape/metric->xml (assoc metric :definition_filters [(apply str (repeat 2000 "x"))]))]
+        (is (str/includes? xml (str (apply str (repeat 1000 "x")) "...")))
+        (is (not (str/includes? xml (apply str (repeat 1001 "x")))))))))
+
+(deftest ^:parallel search-result->xml-metric-definition-filters-test
+  (let [result {:id 100 :type :metric :name "Revenue" :description "Revenue across all product lines"}]
+    (testing "a metric search result lists the filters in its definition"
+      (is (str/includes? (llm-shape/search-result->xml
+                          (assoc result :definition_filters ["Created At is in the previous 3 years"]))
+                         (str "Filters in its definition (all of its values cover only the rows that pass them): "
+                              "Created At is in the previous 3 years"))))
+    (testing "a metric search result without filters has no filters line"
+      (is (not (str/includes? (llm-shape/search-result->xml result) "Filters in")))
+      (is (= (llm-shape/search-result->xml result)
+             (llm-shape/search-result->xml (assoc result :definition_filters nil)))))))
+
 (deftest ^:parallel search-result->xml-test-2
   (testing "table search result includes database_id, database_engine, and fully_qualified_name"
     (let [result {:id 133
