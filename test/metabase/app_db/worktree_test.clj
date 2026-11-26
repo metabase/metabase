@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.worktree :as mdb.worktree]
+   [metabase.config.core :as config]
    [metabase.models.resolution :as models.resolution]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.test.fixtures :as fixtures]
@@ -299,51 +300,54 @@
       (paths table) (str " (" (str/join ", " (paths table)) ")"))))
 
 (deftest synced-content-tables-are-scoped-test
-  (models.resolution/load-all-models!)
-  (testing "every synced content table has worktree_id and its models derive :hook/worktree-id"
-    (let [schema (app-db-schema)
-          roots  (set/difference (set/intersection (content-roots) (set (keys schema)))
-                                 (tables-of synced-table-allowlist))
-          bad    (mismatches schema (hooked-tables) roots (constantly :scoped) {})]
-      (is (empty? bad) (str "Synced content tables that are not scoped:\n" (str/join "\n" bad))))))
+  (when config/ee-available?
+    (models.resolution/load-all-models!)
+    (testing "every synced content table has worktree_id and its models derive :hook/worktree-id"
+      (let [schema (app-db-schema)
+            roots  (set/difference (set/intersection (content-roots) (set (keys schema)))
+                                   (tables-of synced-table-allowlist))
+            bad    (mismatches schema (hooked-tables) roots (constantly :scoped) {})]
+        (is (empty? bad) (str "Synced content tables that are not scoped:\n" (str/join "\n" bad)))))))
 
 (deftest tables-referencing-synced-content-are-scoped-test
-  (models.resolution/load-all-models!)
-  (testing "every table reaching synced content through foreign keys has worktree_id and the hook"
-    (let [schema (app-db-schema)
-          roots  (content-roots)
-          paths  (select-keys (paths-to-content schema roots (tables-of referencing-table-allowlist)) (keys schema))
-          tables (set/difference (set/intersection (set (keys paths)) (model-tables))
-                                 roots
-                                 (tables-of referencing-table-allowlist))
-          bad    (mismatches schema (hooked-tables) tables (constantly :scoped) paths)]
-      (is (empty? bad) (str "Tables reaching synced content that are not scoped:\n" (str/join "\n" bad))))))
+  (when config/ee-available?
+    (models.resolution/load-all-models!)
+    (testing "every table reaching synced content through foreign keys has worktree_id and the hook"
+      (let [schema (app-db-schema)
+            roots  (content-roots)
+            paths  (select-keys (paths-to-content schema roots (tables-of referencing-table-allowlist)) (keys schema))
+            tables (set/difference (set/intersection (set (keys paths)) (model-tables))
+                                   roots
+                                   (tables-of referencing-table-allowlist))
+            bad    (mismatches schema (hooked-tables) tables (constantly :scoped) paths)]
+        (is (empty? bad) (str "Tables reaching synced content that are not scoped:\n" (str/join "\n" bad)))))))
 
 (deftest remaining-tables-match-decisions-test
-  (models.resolution/load-all-models!)
-  (testing "every remaining app DB table with a model is in exactly one decision set and matches it"
-    (let [schema    (app-db-schema)
-          hooked    (hooked-tables)
-          roots     (content-roots)
-          reaching  (set (keys (paths-to-content schema roots (tables-of referencing-table-allowlist))))
-          remaining (set/difference (set/intersection (set (keys schema)) (model-tables)) roots reaching)
-          decisions (update-vals {:scoped             scoped-tables
-                                  :unscoped           unscoped-tables
-                                  :worktree-reference worktree-reference-tables}
-                                 tables-of)
-          listed    (reduce into #{} (vals decisions))
-          expected  (into {} (for [[d tables] decisions, table tables] [table d]))]
-      (is (= (count listed) (reduce + (map count (vals decisions))))
-          (str "Tables in more than one decision set:\n"
-               (str/join "\n" (sort (for [[table n] (frequencies (mapcat seq (vals decisions))) :when (> n 1)] table)))))
-      (is (empty? (set/difference remaining listed))
-          (str "Tables whose models are in no decision set:\n"
-               (str/join "\n" (for [table (sort (set/difference remaining listed))]
-                                (format "%s %s" (pr-str table) (decision schema hooked table))))))
-      (is (empty? (set/difference listed remaining))
-          (str "Stale entries of the decision sets:\n" (str/join "\n" (sort (set/difference listed remaining)))))
-      (let [bad (mismatches schema hooked (set/intersection remaining listed) expected {})]
-        (is (empty? bad) (str "Tables that do not match their decision:\n" (str/join "\n" bad)))))))
+  (when config/ee-available?
+    (models.resolution/load-all-models!)
+    (testing "every remaining app DB table with a model is in exactly one decision set and matches it"
+      (let [schema    (app-db-schema)
+            hooked    (hooked-tables)
+            roots     (content-roots)
+            reaching  (set (keys (paths-to-content schema roots (tables-of referencing-table-allowlist))))
+            remaining (set/difference (set/intersection (set (keys schema)) (model-tables)) roots reaching)
+            decisions (update-vals {:scoped             scoped-tables
+                                    :unscoped           unscoped-tables
+                                    :worktree-reference worktree-reference-tables}
+                                   tables-of)
+            listed    (reduce into #{} (vals decisions))
+            expected  (into {} (for [[d tables] decisions, table tables] [table d]))]
+        (is (= (count listed) (reduce + (map count (vals decisions))))
+            (str "Tables in more than one decision set:\n"
+                 (str/join "\n" (sort (for [[table n] (frequencies (mapcat seq (vals decisions))) :when (> n 1)] table)))))
+        (is (empty? (set/difference remaining listed))
+            (str "Tables whose models are in no decision set:\n"
+                 (str/join "\n" (for [table (sort (set/difference remaining listed))]
+                                  (format "%s %s" (pr-str table) (decision schema hooked table))))))
+        (is (empty? (set/difference listed remaining))
+            (str "Stale entries of the decision sets:\n" (str/join "\n" (sort (set/difference listed remaining)))))
+        (let [bad (mismatches schema hooked (set/intersection remaining listed) expected {})]
+          (is (empty? bad) (str "Tables that do not match their decision:\n" (str/join "\n" bad))))))))
 
 (defn- worktree-id-default
   "The default of the `worktree_id` column of `table`, as the app DB reports it."
@@ -399,17 +403,17 @@
             [table (u/upper-case-en table)]))))
 
 (deftest worktree-unique-keys-include-worktree-id-test
-  (models.resolution/load-all-models!)
-  (testing "every unique key but the primary key of a table with worktree_id includes worktree_id"
-    (let [schema (app-db-schema)
-          bad    (for [table      (sort (set/difference (set/intersection (worktree-tables schema) (model-tables))
-                                                        (tables-of unique-key-allowlist)))
-                       :let       [pk (primary-key table)]
-                       unique-key (get-in schema [table :unique-keys])
-                       :when      (and (not= pk unique-key)
-                                       (not (contains? unique-key "worktree_id")))]
-                   (format "%s: %s" table (str/join ", " (sort unique-key))))]
-      (is (empty? bad) (str "Unique keys without worktree_id:\n" (str/join "\n" bad))))))
+  (when config/ee-available?
+    (models.resolution/load-all-models!)
+    (testing "every unique key but the primary key of a table with worktree_id includes worktree_id"
+      (let [schema (app-db-schema)
+            bad    (for [table      (sort (set/difference (worktree-tables schema) (tables-of unique-key-allowlist)))
+                         :let       [pk (primary-key table)]
+                         unique-key (get-in schema [table :unique-keys])
+                         :when      (and (not= pk unique-key)
+                                         (not (contains? unique-key "worktree_id")))]
+                     (format "%s: %s" table (str/join ", " (sort unique-key))))]
+        (is (empty? bad) (str "Unique keys without worktree_id:\n" (str/join "\n" bad)))))))
 
 (deftest worktree-foreign-keys-are-composite-test
   (testing "a non-null foreign key between two tables with worktree_id has a composite one with worktree_id first"

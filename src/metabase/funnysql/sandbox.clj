@@ -217,7 +217,8 @@
     (expr ctx v)
 
     (:update :delete-from :merge-into :columns :key :on-conflict :do-nothing :for :limit :offset :create-table
-             :with-columns :engine :character-set :collate :drop-table)
+             :with-columns :engine :character-set :collate :drop-table
+             :analyze-table)
     v
 
     (throw (ex-info (format "sandbox-query doesn't support the clause %s" (pr-str k)) {:clause k}))))
