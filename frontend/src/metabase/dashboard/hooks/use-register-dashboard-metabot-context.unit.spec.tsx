@@ -136,6 +136,29 @@ describe("useRegisterDashboardMetabotContext", () => {
     );
   });
 
+  it("sends an empty value as null, as the dashboard runs it", async () => {
+    const onContext = setup({
+      parameterValues: { name: "", category: [] },
+    });
+
+    await waitFor(() =>
+      expect(onContext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_is_viewing: [
+            {
+              type: "dashboard",
+              id: 42,
+              parameters: [
+                { id: "name", value: null },
+                { id: "category", value: null },
+              ],
+            },
+          ],
+        }),
+      ),
+    );
+  });
+
   it("sends the applied values, not unapplied drafts", async () => {
     const onContext = setup({
       parameterValues: { category: ["Gizmo"] },
