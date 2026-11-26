@@ -114,9 +114,11 @@
     :model/MetabotFeedback
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
+    :model/MetabotLlmCall
     :model/MetabotMessage
     :model/MetabotPermissions
     :model/MetabotSourceFeedback
+    :model/MetabotToolCall
     :model/MetabotUsedTable
     :model/OAuthAccessToken
     :model/OAuthAuthorizationCode
