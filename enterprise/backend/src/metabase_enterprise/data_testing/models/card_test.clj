@@ -2,19 +2,16 @@
   "`:model/CardTest`: a saved test of one card."
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
-   [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
-   [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.card :as data-testing.subject.card]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase-enterprise.data-testing.util :as data-testing.util]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.core :as revisions]
@@ -41,55 +38,6 @@
    :inputs       (data-testing.util/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.util/json-column ::data-testing.schema/expectations)})
 
-(methodical/defmethod t2/batched-hydrate [:model/CardTest :last_run]
-  "Add the newest run, or nil, to each card test."
-  [_model _k card-tests]
-  (data-testing.models/with-last-runs :card card-tests))
-
-;;; ------------------------------------------------- Permissions --------------------------------------------------
-
-(methodical/defmethod t2/batched-hydrate [:model/CardTest :can_read]
-  "Add whether the current user can read the card of each card test, loading the cards at once."
-  [_model k card-tests]
-  (data-testing.models/with-readable-subjects k card-tests :card_id
-    (data-testing.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) card-tests))))
-
-(defn- card-database-id
-  "The id of the Database of the query of `card`."
-  [card]
-  (data-testing.models/query-database-id (:dataset_query card)))
-
-(methodical/defmethod t2/batched-hydrate [:model/CardTest :can_write]
-  "Add whether the current user may edit each card test: they may edit its card, loading the cards at once."
-  [_model k card-tests]
-  (vec (data-testing.models/assoc-subject-answers
-        card-tests k
-        {:subject-key   :card_id
-         :subjects      (data-testing.db/cards-by-ids
-                         (into [] (comp (remove nil?) (keep :card_id) (distinct)) card-tests))
-         :subject-k     :can_write
-         :subject-check mi/can-write?})))
-
-(methodical/defmethod t2/batched-hydrate [:model/CardTest :can_query]
-  "Add whether the current user may run each card test: they read it and may run its card, as its `:can_query`
-  says, loading the cards at once."
-  [_model k card-tests]
-  (vec (data-testing.models/assoc-can-query
-        card-tests k :card_id
-        (data-testing.db/cards-by-ids (into [] (comp (remove nil?) (keep :card_id) (distinct)) card-tests)))))
-
-(defmethod mi/can-create? :model/CardTest
-  [_model instance]
-  (data-testing.models/can-create-test? (some-> (:card_id instance) data-testing.db/card) card-database-id))
-
-(defmethod mi/can-update? :model/CardTest
-  [instance changes]
-  (data-testing.models/can-update-test? instance changes
-                                        {:subject-key  :card_id
-                                         :load-subject data-testing.db/card
-                                         :db-id        card-database-id
-                                         :writable?    (mi/can-write? instance)}))
-
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
 (mu/defn testable-card :- [:maybe :map]
@@ -104,20 +52,6 @@
   [card-id    :- ::lib.schema.id/card
    definition :- ::data-testing.runner/definition]
   (data-testing.runner/validate-test :card (testable-card card-id) definition))
-
-(mu/defn check-edit :- :nil
-  "Throws the typed refusal of an edit that sets the keys `edited-keys` of a card test and leaves it as `edited`. An
-  edit that sets the card or what a run reads is refused as a new test like `edited` would be. Any other edit is
-  refused when the card is archived."
-  [edited      :- [:map [:card_id ::lib.schema.id/card]]
-   edited-keys :- [:sequential :keyword]]
-  (if (data-testing.models/validates-edit? :card_id edited-keys)
-    (validate-test (:card_id edited) (data-testing.runner/test-definition edited))
-    (let [card (data-testing.db/card (:card_id edited))]
-      ;; A new test of an archived card with no query is refused for having no query; so is this edit.
-      (when (:archived card)
-        (data-testing.subject.card/check-testable card))
-      (data-testing.subject/check-not-archived :card card))))
 
 (defmethod data-testing.test-type/spec :card [_test-type]
   {:model      :model/CardTest
@@ -163,16 +97,22 @@
   [id _user-id snapshot]
   (update-card-tests! [(assoc snapshot :id id)] {:writer :revert}))
 
-(defn- check-revert
-  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
-  [id _user-id snapshot]
-  (data-testing.models/check-revert-available)
-  (data-testing.errors/refusing
-   "card-test"
-   #(check-edit snapshot (data-testing.models/reverted-keys (data-testing.db/card-test id) snapshot)))
-  snapshot)
-
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defn- card-database-id
+  "The id of the Database of the query of `card`."
+  [card]
+  (data-testing.models/query-database-id (:dataset_query card)))
+
+(defmethod data-testing.models/saved-test-spec :model/CardTest [_model]
+  {:test-type         :card
+   :subject-key       :card_id
+   :subject           data-testing.db/card
+   :subjects          data-testing.db/cards-by-ids
+   :database-id       card-database-id
+   :validate-test     validate-test
+   :check-testable    data-testing.subject.card/check-testable
+   :refuses-archived? true})
 
 (defmethod app-db-copy/spec :model/CardTest [_model]
   {:skip? false})
@@ -199,7 +139,7 @@
    :skip          [:creator_id :entity_id]
    :schema        ::data-testing.schema/card-test.revision
    :authorize     :snapshot
-   :before-revert check-revert
+   :before-revert #(data-testing.models/check-revert :model/CardTest %1 %2 %3)
    :revert!       revert-card-test!})
 
 (defmethod audit/spec :model/CardTest [_model]
