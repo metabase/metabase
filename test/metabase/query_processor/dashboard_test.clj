@@ -33,12 +33,15 @@
                             (qp/process-query (assoc query :info info))))
            options)))
 
-(defn- resolve-params-for-query [dashboard-id card-id dashcard-id params]
-  (#'qp.dashboard/resolve-params-for-query (t2/select-one :model/Dashboard :id dashboard-id)
-                                           (t2/select-one :model/DashboardCard :id dashcard-id)
-                                           card-id
-                                           params
-                                           true))
+(defn- resolve-params-for-query
+  ([dashboard-id card-id dashcard-id params]
+   (resolve-params-for-query dashboard-id card-id dashcard-id params true))
+  ([dashboard-id card-id dashcard-id params save-last-used?]
+   (#'qp.dashboard/resolve-params-for-query (t2/select-one :model/Dashboard :id dashboard-id)
+                                            (t2/select-one :model/DashboardCard :id dashcard-id)
+                                            card-id
+                                            params
+                                            save-last-used?)))
 
 (defn- count-of-orders-by-created-at-query []
   (let [mp         (mt/metadata-provider)
@@ -119,12 +122,7 @@
                                                      {card-id :id}      :card
                                                      {dashcard-id :id}  :dashcard}]
       (let [stored  (atom [])
-            resolve (fn [save?]
-                      (#'qp.dashboard/resolve-params-for-query (t2/select-one :model/Dashboard :id dashboard-id)
-                                                               (t2/select-one :model/DashboardCard :id dashcard-id)
-                                                               card-id
-                                                               [{:id "_PRICE_", :value 4}]
-                                                               save?))]
+            resolve #(resolve-params-for-query dashboard-id card-id dashcard-id [{:id "_PRICE_", :value 4}] %)]
         (mt/with-dynamic-fn-redefs [user-parameter-value/store! (fn [_user-id _dashboard-id params]
                                                                   (swap! stored into params))]
           (mt/with-current-user (mt/user->id :rasta)
