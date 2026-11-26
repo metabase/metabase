@@ -60,7 +60,10 @@ const DASHCARD_ID = 1;
 const CARD_ID = 1;
 const DASHCARD_QUERY_PATH = `path:/api/public/dashboard/${MOCK_UUID}/dashcard/${DASHCARD_ID}/card/${CARD_ID}`;
 
-type QueryParameter = Pick<Parameter, "id"> & { value?: unknown };
+type QueryParameter = Pick<Parameter, "id"> & {
+  type?: unknown;
+  value?: unknown;
+};
 
 function getQueryParameters(url: string): unknown {
   return JSON.parse(new URL(url).searchParams.get("parameters") ?? "[]");
@@ -70,15 +73,18 @@ function isQueryParameterList(value: unknown): value is QueryParameter[] {
   return Array.isArray(value);
 }
 
-/** Answers the count for the text filter value the request carries, as the backend filters the rows. */
+/** Answers the count for the text filter the request carries, as the backend filters the rows. */
 function setupFilteredCountEndpoint() {
   fetchMock.get(DASHCARD_QUERY_PATH, (call) => {
     const parameters = getQueryParameters(call.url);
-    const textValue = isQueryParameterList(parameters)
-      ? parameters.find((parameter) => parameter.id === TEXT_FILTER.id)?.value
+    const textFilter = isQueryParameterList(parameters)
+      ? parameters.find((parameter) => parameter.id === TEXT_FILTER.id)
       : undefined;
+    // the backend rejects a value whose type does not match the dashboard parameter
     const isDoohickey =
-      Array.isArray(textValue) && textValue.includes("Doohickey");
+      textFilter?.type === "string/=" &&
+      Array.isArray(textFilter.value) &&
+      textFilter.value.includes("Doohickey");
 
     return createMockDataset({
       data: createMockDatasetData({
@@ -177,7 +183,11 @@ describe("PublicOrEmbeddedDashboardPage (public link)", () => {
         await screen.findByText(String(COUNT_DOOHICKEY)),
       ).toBeInTheDocument();
       expect(getDashcardQueryParameters().at(-1)).toEqual([
-        expect.objectContaining({ id: TEXT_FILTER.id, value: ["Doohickey"] }),
+        expect.objectContaining({
+          id: TEXT_FILTER.id,
+          type: "string/=",
+          value: ["Doohickey"],
+        }),
       ]);
     });
 
@@ -213,7 +223,11 @@ describe("PublicOrEmbeddedDashboardPage (public link)", () => {
         screen.queryByTestId("filter-apply-toast"),
       ).not.toBeInTheDocument();
       expect(getDashcardQueryParameters().at(-1)).toEqual([
-        expect.objectContaining({ id: TEXT_FILTER.id, value: ["Doohickey"] }),
+        expect.objectContaining({
+          id: TEXT_FILTER.id,
+          type: "string/=",
+          value: ["Doohickey"],
+        }),
       ]);
     });
 
@@ -255,7 +269,11 @@ describe("PublicOrEmbeddedDashboardPage (public link)", () => {
       expect(screen.getByTestId("parameter-widget")).toHaveTextContent("002");
       await waitFor(() =>
         expect(getDashcardQueryParameters().at(-1)).toEqual([
-          expect.objectContaining({ id: TEXT_FILTER.id, value: ["002"] }),
+          expect.objectContaining({
+            id: TEXT_FILTER.id,
+            type: "string/=",
+            value: ["002"],
+          }),
         ]),
       );
       await waitFor(() =>
