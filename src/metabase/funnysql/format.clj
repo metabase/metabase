@@ -871,6 +871,16 @@
   (expr! query context)
   (append-sql! context " IN BOOLEAN MODE)"))
 
+(defn- call-system-variable!
+  "Compile MySQL's session system variable `@@name`, splicing the name, which must be a word."
+  [[_ variable] context]
+  (when-not (= (engine context) :mysql)
+    (throw (ex-info "A system variable requires MySQL" {:variable variable})))
+  (when-not (re-matches #"^\w+$" (name variable))
+    (throw (ex-info "Invalid system variable" {:variable variable})))
+  (append-sql! context "@@")
+  (append-sql! context (name variable)))
+
 (defn- call-function!
   "Compile a call of a whitelisted plain SQL function, `f(args...)`."
   [[f & args] context]
@@ -918,6 +928,7 @@
     :escape            (call-escape! form context)
     :position          (call-position! form context)
     :match-against     (call-match-against! form context)
+    :system-variable   (call-system-variable! form context)
     :call              (call-call! form context)
 
     (:< :<= :> :>= :like :ilike :not-like :regexp :is :is-not)

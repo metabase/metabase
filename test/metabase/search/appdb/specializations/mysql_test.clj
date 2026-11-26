@@ -290,7 +290,7 @@
 
 (deftest explicit-innodb-engine-test
   (t2/with-connection [_conn]
-    (let [original (:engine (t2/query-one ["SELECT @@default_storage_engine AS engine"]))
+    (let [original (:engine (t2/query-one {:select [[[:system-variable :default_storage_engine] :engine]]}))
           table    (keyword (str "fts_probe_" (str/replace (str (random-uuid)) "-" "")))]
       (try
         (t2/query ["SET SESSION default_storage_engine = MyISAM"])

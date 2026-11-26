@@ -133,7 +133,7 @@
       (with-index-contents
         [{:model "card", :id 1, :name "orders"}]
         (t2/with-connection [_conn]
-          (let [{:keys [collation]} (t2/query-one ["SELECT @@collation_connection AS collation"])]
+          (let [{:keys [collation]} (t2/query-one {:select [[[:system-variable :collation_connection] :collation]]})]
             (t2/query ["SET SESSION collation_connection = 'utf8mb4_general_ci'"])
             (try
               (is (= [["card" 1 "orders"]] (search-results* "orders")))

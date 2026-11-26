@@ -306,6 +306,10 @@
   "`[:match-against column query]`, MySQL's `MATCH (column) AGAINST (query IN BOOLEAN MODE)`."
   (call-schema [:= :match-against] ::identifier expr))
 
+(mr/def ::call.system-variable
+  "`[:system-variable name]`, MySQL's session system variable `@@name`."
+  [:tuple [:= :system-variable] :keyword])
+
 (def ^:private function-arities
   "Each whitelisted plain SQL function as `[f min-args max-args]`, `nil` meaning any number."
   [[:abs 1 1]
@@ -436,6 +440,7 @@
     :escape                  ::call.escape
     :position                ::call.position
     :match-against           ::call.match-against
+    :system-variable         ::call.system-variable
     :call                    ::call.call
     honey.sql.pg-ops/atat    ::call.full-text-match}
    (zipmap [:< :<= :> :>= :like :ilike :not-like :regexp :is :is-not] (repeat ::call.comparison))

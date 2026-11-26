@@ -1716,3 +1716,13 @@
   (doseq [option [:character-set :collate]]
     (is (thrown? clojure.lang.ExceptionInfo
                  (funnysql.format/format {option (keyword "utf8mb4; DROP TABLE card")} :mysql)))))
+
+(deftest ^:parallel mysql-system-variable-test
+  (is (= ["SELECT @@max_allowed_packet AS `max_allowed_packet`"]
+         (funnysql.format/format {:select [[[:system-variable :max_allowed_packet] :max_allowed_packet]]} :mysql)))
+  (testing "the name must be a word"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql.format/format [:system-variable (keyword "x; DROP TABLE card")] :mysql))))
+  (doseq [engine [:h2 :postgres]]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (funnysql.format/format [:system-variable :max_allowed_packet] engine)))))
