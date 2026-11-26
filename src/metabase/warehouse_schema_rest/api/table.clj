@@ -2,6 +2,9 @@
   "/api/table endpoints."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.util :as mut]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -36,6 +39,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses.models.database :as database]
    [metabase.xrays.core :as xrays]
@@ -182,8 +186,36 @@
                                (fn [response]
                                  (dissoc response :json_query :context :cached :average_execution_time))))))))))
 
-(def ^:private table-update-entries
-  "User-settable Table columns, as optional `:map` entries."
+(defn- check-definition-request
+  "Returns `definition`, or throws a 400 when it has a key outside `allowed` or a value that is not an integer or null.
+  It runs before the request decoder, which would drop an unknown key and turn a Field name into null."
+  [column allowed definition]
+  (when (map? definition)
+    (let [throw-invalid (fn [message]
+                          (throw (ex-info message {:status-code 400 :errors {column message}})))]
+      (when-not (every? allowed (keys definition))
+        (throw-invalid (tru "{0} may only have the keys {1}" (name column) (str/join ", " (sort (map name allowed))))))
+      (when-some [k (some (fn [[k v]] (when-not (or (nil? v) (int? v)) k)) definition)]
+        (throw-invalid (tru "{0} {1} must be an id" (name column) (name k))))))
+  definition)
+
+(defn- definition-request-schema
+  "The registered closed `:map` `schema`, the value of `column`, as a request schema that refuses a key it does not
+  list rather than dropping it, and a value that is not an integer or null."
+  [column schema]
+  (let [schema (mc/deref-all (mr/schema schema))]
+    (mut/update-properties schema assoc :decode/api (partial check-definition-request column (set (mut/keys schema))))))
+
+(def ^:private HistoryDefinition
+  "Schema for a Table's `history_definition` in a request."
+  (definition-request-schema :history_definition ::warehouse-schema.schema/history-definition))
+
+(def ^:private EavDefinition
+  "Schema for a Table's `eav_definition` in a request."
+  (definition-request-schema :eav_definition ::warehouse-schema.schema/eav-definition))
+
+(def ^:private common-table-update-entries
+  "User-settable Table columns common to both the single and the bulk update body."
   [[:display_name            {:optional true} [:maybe ms/NonBlankString]]
    [:entity_type             {:optional true} [:maybe EntityType]]
    [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
@@ -199,15 +231,32 @@
    [:owner_user_id           {:optional true} [:maybe :int]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]])
 
+(def ^:private single-table-update-entries
+  "User-settable Table columns accepted in only the single-table update body."
+  ;; Some of these simply do not make sense for a bulk update, e.g. :history_definition or :eav_definition. Others
+  ;; *could* be included in [[common-table-update-entries]], but the `PUT /api/table` endpoint is deprecated, so
+  ;; prefer adding new entries here to avoid expanding a deprecated API.
+  [[:table_role         {:optional true} [:maybe ::warehouse-schema.schema/table-role]]
+   [:grain              {:optional true} [:maybe ::warehouse-schema.schema/grain]]
+   [:grain_description  {:optional true} [:maybe :string]]
+   [:period_granularity {:optional true} [:maybe ::warehouse-schema.schema/period-granularity]]
+   [:mutability         {:optional true} [:maybe ::warehouse-schema.schema/mutability]]
+   [:load_strategy      {:optional true} [:maybe ::warehouse-schema.schema/load-strategy]]
+   [:scd_type           {:optional true} [:maybe ::warehouse-schema.schema/scd-type]]
+   [:history_definition {:optional true} [:maybe HistoryDefinition]]
+   [:eav_definition     {:optional true} [:maybe EavDefinition]]])
+
 (def ^:private TableUpdateBodySingle
   "Body of `PUT /api/table/:id`."
-  (into [:map {:closed true}] table-update-entries))
+  (into [:map {:closed true}]
+        (concat common-table-update-entries
+                single-table-update-entries)))
 
 (def ^:private TableUpdateBodyBulk
   "Body of the deprecated `PUT /api/table/`."
   (into [:map {:closed true}
          [:ids [:sequential ms/PositiveInt]]]
-        table-update-entries))
+        common-table-update-entries))
 
 (mu/defn ^:private update-existing-tables!
   "Takes the existing tables and the changes, updates them all in the database with one write of their user settings,
@@ -218,7 +267,9 @@
                          (u/select-keys-when
                           :non-nil [:display_name :show_in_getting_started :entity_type :field_order :collection_id]
                           :present [:description :caveats :points_of_interest :visibility_type
-                                    :data_layer :data_authority :data_source :owner_email :owner_user_id])
+                                    :data_layer :data_authority :data_source :owner_email :owner_user_id
+                                    :table_role :grain :grain_description :period_granularity :mutability
+                                    :load_strategy :scd_type :history_definition :eav_definition])
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]

@@ -279,6 +279,11 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (set (app-db/select-batched #(t2/select-pks-set :model/Field :table_id [:in %]) table-ids)))
 
+(mu/defn field-table-ids :- [:map-of ::lib.schema.id/field ::lib.schema.id/table]
+  "The Table id of each of the Fields with `field-ids`, by Field id."
+  [field-ids :- [:set ::lib.schema.id/field]]
+  (app-db/select-batched-map #(t2/select-pk->fn :table_id :model/Field :id [:in %]) field-ids))
+
 (mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
   "The Database id of each of the Tables with `table-ids`, by Table id."
   [table-ids :- [:set ::lib.schema.id/table]]

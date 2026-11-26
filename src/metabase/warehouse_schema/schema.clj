@@ -16,6 +16,10 @@
   "A Table's `table_role`: a role in [[metabase.types.core/table-role-hierarchy]]."
   [:ref ::lib.schema.metadata/table.table-role])
 
+(mr/def ::grain
+  "A Table's `grain`, the noun for one of its rows, such as \"order line\"."
+  [:string {:max 254}])
+
 (mr/def ::period-granularity
   "A Table's `period_granularity`."
   [:ref ::lib.schema.metadata/table.period-granularity])
@@ -324,7 +328,7 @@
    [:data_layer_set          {:optional true} :boolean]
    [:data_source_set         {:optional true} :boolean]
    [:table_role              {:optional true} [:maybe ::table-role]]
-   [:grain                   {:optional true} [:maybe [:string {:max 254}]]]
+   [:grain                   {:optional true} [:maybe ::grain]]
    [:grain_description       {:optional true} [:maybe :string]]
    [:period_granularity      {:optional true} [:maybe ::period-granularity]]
    [:mutability              {:optional true} [:maybe ::mutability]]
@@ -402,7 +406,7 @@
    [:owner_user_id           {:optional true} [:maybe ::lib.schema.id/user-or-older-export-id]]
    [:transform_target        {:optional true} [:maybe :boolean]]
    [:table_role              {:optional true} [:maybe ::table-role]]
-   [:grain                   {:optional true} [:maybe [:string {:max 254}]]]
+   [:grain                   {:optional true} [:maybe ::grain]]
    [:grain_description       {:optional true} [:maybe :string]]
    [:period_granularity      {:optional true} [:maybe ::period-granularity]]
    [:mutability              {:optional true} [:maybe ::mutability]]
