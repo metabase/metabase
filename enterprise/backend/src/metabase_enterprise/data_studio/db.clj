@@ -114,7 +114,7 @@
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id [:auto/param collection-id]))
+  (t2/select-one :model/Collection :id collection-id))
 
 (mu/defn collections
   "The Collections with `collection-ids`."
@@ -133,7 +133,7 @@
 (mu/defn user-name-and-email
   "The id, first name, last name, and email of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :first_name :last_name :email] :id [:auto/param user-id]))
+  (t2/select-one [:model/User :id :first_name :last_name :email] :id user-id))
 
 (mu/defn publish-tables!
   "Publish the Tables with `table-ids` into the Collection with `collection-id`, returning the number updated."

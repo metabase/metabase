@@ -64,8 +64,17 @@ describe("TableSection", () => {
       });
     });
 
-    it("should expose the schema viewer in the actions menu", async () => {
-      setup();
+    it("should expose the schema viewer for this table in the actions menu", async () => {
+      const database = createMockDatabase({ id: 7 });
+      setup({
+        database,
+        table: createMockTable({
+          id: 42,
+          db_id: 7,
+          schema: "analytics",
+          db: database,
+        }),
+      });
 
       await userEvent.click(
         screen.getByRole("button", { name: "More actions" }),
@@ -73,7 +82,10 @@ describe("TableSection", () => {
 
       expect(
         await screen.findByRole("menuitem", { name: /View schema/ }),
-      ).toBeInTheDocument();
+      ).toHaveAttribute(
+        "href",
+        "/data-studio/schema-viewer?database-id=7&schema=analytics&table-ids=42",
+      );
     });
 
     it("should not expose sync actions when the database is datawarehouse attached", () => {

@@ -10,7 +10,7 @@
   "Rows of `:metered_as` and `:cnt` of the TransformRuns that succeeded on `date`."
   [date :- ms/TemporalInstant]
   (t2/query {:select   [:r.metered_as [[:count :r.id] :cnt]]
-             :from     [[:transform_run :r]]
+             :from     [[(t2/table-name :model/TransformRun) :r]]
              :where    [:and
                         [:= :r.status "succeeded"]
                         [:= [:cast :r.end_time :date] [:cast date :date]]]

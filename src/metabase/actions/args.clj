@@ -1,9 +1,8 @@
 (ns ^:instrument/always metabase.actions.args
   (:require
+   [medley.core :as m]
    [metabase.actions.db :as actions.db]
    [metabase.actions.hierarchy :as actions.hierarchy]
-   ;; legacy usage, do not use this in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util :as u]
@@ -57,36 +56,39 @@
 (mr/def ::row
   [:map-of :string [:ref ::lib.schema.parameter/parameter.value]])
 
-;;; Common base schema for all CRUD model row Actions. All CRUD model row Actions at least require
+;;; The primary key of one row: the value of each primary key column, by column name.
+
+(mr/def ::pk
+  [:map-of {:min 1} :string [:ref ::lib.schema.parameter/parameter.value.scalar]])
+
+;;; Common base schema for all CRUD model row Actions, which act on one row of a Table. All of them at least require
 ;;;
-;;;    {:database <id>, :query {:source-table <id>}}
+;;;    {:database <id>, :table-id <id>}
 
-(mr/def ::query
-  [:map {:closed true} [:source-table ::lib.schema.id/table]])
-
-(mr/def ::query.filtered
-  [:map {:closed true}
-   [:source-table ::lib.schema.id/table]
-   [:filter :metabase.legacy-mbql.schema/Filter]])
-
-(mr/def ::crud.row.common
+(mr/def ::model.row.common
   [:merge
    ::common
-   [:map
-    [:type {:optional true} [:= :query]]
-    [:query ::query]]])
+   [:map [:table-id ::lib.schema.id/table]]])
+
+(defn- normalize-model-row-arg-map
+  "String keys for the columns of the `:pk`, `:create-row` and `:update-row` of a `:model.row/*` arg map."
+  [arg-map]
+  (reduce (fn [arg-map k]
+            (m/update-existing arg-map k update-keys u/qualified-name))
+          arg-map
+          [:pk :create-row :update-row]))
 
 ;;;; `:model.row/create`
 
-;;; row/create requires at least
+;;; row/create requires
 ;;;
 ;;;    {:database   <id>
-;;;     :query      {:source-table <id>, :filter <mbql-filter-clause>}
+;;;     :table-id   <id>
 ;;;     :create-row <map>}
 
 (mr/def ::model.row.create
   [:merge
-   ::crud.row.common
+   ::model.row.common
    [:map [:create-row ::row]]])
 
 (defmethod action-arg-map-schema :model.row/create
@@ -94,50 +96,53 @@
   ::model.row.create)
 
 (defmethod normalize-action-arg-map :model.row/create
-  [_action query]
-  (mbql.normalize/normalize-or-throw query))
+  [_action arg-map]
+  (normalize-model-row-arg-map arg-map))
 
 ;;;; `:model.row/update`
 
-;;; row/update requires at least
+;;; row/update requires
 ;;;
 ;;;    {:database   <id>
-;;;     :query      {:source-table <id>, :filter <mbql-filter-clause>}
+;;;     :table-id   <id>
+;;;     :pk         <map>
 ;;;     :update-row <map>}
 
 (mr/def ::model.row.update
   [:merge
-   ::crud.row.common
-   [:map [:update-row ::row]
-    [:query ::query.filtered]]])
+   ::model.row.common
+   [:map
+    [:pk         ::pk]
+    [:update-row ::row]]])
 
 (defmethod action-arg-map-schema :model.row/update
   [_action]
   ::model.row.update)
 
 (defmethod normalize-action-arg-map :model.row/update
-  [_action query]
-  (mbql.normalize/normalize-or-throw query))
+  [_action arg-map]
+  (normalize-model-row-arg-map arg-map))
 
 ;;;; `:model.row/delete`
 
-;;; row/delete requires at least
+;;; row/delete requires
 ;;;
 ;;;    {:database <id>
-;;;     :query    {:source-table <id>, :filter <mbql-filter-clause>}}
+;;;     :table-id <id>
+;;;     :pk       <map>}
 
 (mr/def ::model.row.delete
   [:merge
-   ::crud.row.common
-   [:map [:query ::query.filtered]]])
+   ::model.row.common
+   [:map [:pk ::pk]]])
 
 (defmethod action-arg-map-schema :model.row/delete
   [_action]
   ::model.row.delete)
 
 (defmethod normalize-action-arg-map :model.row/delete
-  [_action query]
-  (mbql.normalize/normalize-or-throw query))
+  [_action arg-map]
+  (normalize-model-row-arg-map arg-map))
 
 ;;;; Table actions
 
@@ -181,14 +186,6 @@
    :table-id table-id
    :row      (update-keys (or row row-arg) u/qualified-name)})
 
-(mr/def ::implicit
-  [:map {:closed true}
-   [:database   ::lib.schema.id/database]
-   [:type       [:= :query]]
-   [:query      [:or ::query ::query.filtered]]
-   [:create-row {:optional true} ::row]
-   [:update-row {:optional true} ::row]])
-
 (mr/def ::table.insert
   [:map {:closed true}
    [:database ::lib.schema.id/database]
@@ -209,6 +206,5 @@
    ::model.row.delete
    ::table.common
    ::data-grid.row.input
-   ::implicit
    ::table.insert
    [:= {} {}]])

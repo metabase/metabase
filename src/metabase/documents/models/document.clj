@@ -57,6 +57,7 @@
 
 (doto :model/Document
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
@@ -245,7 +246,7 @@
   permission on the fields the parameter targets name."
   [{query :dataset_query :as card}]
   (api/create-check :model/Card card)
-  (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
+  (query-perms/check-run-permissions-for-queries [(dissoc query :query-permissions/perms)])
   (card/check-parameter-source-card-permissions (:parameters card))
   (query-perms/check-parameter-field-permissions
    (into []

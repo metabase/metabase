@@ -1,0 +1,241 @@
+# Merging the labeled UI version-bump PR publishes the smoke-tested tarball and tags the merge commit.
+#
+# npm trusted publisher registration for @metabase/ui must match:
+#   repository: metabase/metabase, workflow: release-ui-package.yml, environment: ui-package-release
+#   Allowed actions: npm publish. Restrict the GitHub environment to master before registration.
+name: Release UI Package
+run-name: Release @metabase/ui from ${{ github.ref_name }}${{ inputs.dry_run && ' (dry run)' || '' }}
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+    paths:
+      - 'frontend/ui-package/package.json'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and smoke-test only: skip npm publish and git tag push"
+        type: boolean
+        required: false
+        default: true
+
+concurrency:
+  group: release-ui-package
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+# An explicit shell turns on pipefail, so a failing `script | tee` fails the step.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  determine-release:
+    if: >-
+      ${{ github.repository == 'metabase/metabase' && github.ref == 'refs/heads/master' &&
+          (github.event_name == 'workflow_dispatch' ||
+           (github.event.pull_request.merged == true &&
+            github.event.pull_request.head.repo.full_name == github.repository &&
+            contains(github.event.pull_request.labels.*.name, 'ui-release-trigger'))) }}
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      npm_tag: ${{ steps.resolve.outputs.npm_tag }}
+      git_tag: ${{ steps.resolve.outputs.git_tag }}
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Resolve release from package.json
+        id: resolve
+        run: ./bin/ui-package/resolve-release.sh | tee -a "$GITHUB_OUTPUT"
+
+      - name: Fail if the release could not be resolved
+        env:
+          VERSION: ${{ steps.resolve.outputs.version }}
+          NPM_TAG: ${{ steps.resolve.outputs.npm_tag }}
+          GIT_TAG: ${{ steps.resolve.outputs.git_tag }}
+        run: |
+          if [ -z "$VERSION" ] || [ -z "$NPM_TAG" ] || [ -z "$GIT_TAG" ]; then
+            echo "::error::Could not resolve version, npm tag and git tag from frontend/ui-package/package.json"
+            exit 1
+          fi
+
+      - name: Fail if git tag already exists on the remote
+        env:
+          GIT_TAG: ${{ steps.resolve.outputs.git_tag }}
+        run: |
+          # Assigned on its own line so a failed lookup stops the job instead of reading as "no tag".
+          EXISTING=$(git ls-remote --tags origin "refs/tags/$GIT_TAG")
+          if [ -n "$EXISTING" ]; then
+            echo "::error::Git tag '$GIT_TAG' already exists. Bump version in frontend/ui-package/package.json and land a new PR."
+            exit 1
+          fi
+
+      # A package that is not on npm yet answers E404, which is fine for its first release.
+      - name: Fail if version already exists on npm
+        env:
+          VERSION: ${{ steps.resolve.outputs.version }}
+        run: |
+          if PUBLISHED=$(npm view "@metabase/ui@$VERSION" version 2>npm-view.err); then
+            if [ -n "$PUBLISHED" ]; then
+              echo "::error::Version '$VERSION' already exists on npm. Bump version in frontend/ui-package/package.json and land a new PR."
+              exit 1
+            fi
+          elif ! grep -q "E404" npm-view.err; then
+            echo "::error::Could not check npm for @metabase/ui@$VERSION: $(cat npm-view.err)"
+            exit 1
+          fi
+
+  smoke:
+    needs: determine-release
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      # apply-patches stays on: the package build fails on an unpatched Mantine.
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+        with:
+          apply-patches: "true"
+
+      # Builds, checks, packs one tarball and tests that tarball in Chromium.
+      - name: Build and smoke-test the package
+        run: bun run smoke-ui-package -- --with-deps
+
+      - name: Name the artifact
+        id: artifact
+        env:
+          VERSION: ${{ needs.determine-release.outputs.version }}
+          SHA: ${{ github.sha }}
+          ATTEMPT: ${{ github.run_attempt }}
+        run: echo "name=metabase-ui-$VERSION-${SHA::7}-attempt-$ATTEMPT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload packed tarball
+        id: upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: frontend/ui-package/.pack/*.tgz
+          # .pack is a hidden directory, which the action skips by default.
+          include-hidden-files: true
+          if-no-files-found: error
+          # 90 days is the repo default and the most a public repo allows: time for a manual first publish.
+          retention-days: 90
+
+      - name: Workflow summary
+        env:
+          VERSION: ${{ needs.determine-release.outputs.version }}
+          NPM_TAG: ${{ needs.determine-release.outputs.npm_tag }}
+          GIT_TAG: ${{ needs.determine-release.outputs.git_tag }}
+          ARTIFACT: ${{ steps.artifact.outputs.name }}
+          COMMIT: ${{ github.sha }}
+          DRY_RUN: ${{ inputs.dry_run || false }}
+        run: |
+          {
+            echo "## Release @metabase/ui"
+            echo ""
+            echo "- **Version**: \`$VERSION\`"
+            echo "- **npm tag**: \`$NPM_TAG\`"
+            echo "- **git tag**: \`$GIT_TAG\`"
+            echo "- **Commit**: \`$COMMIT\`"
+            echo "- **Dry run**: \`$DRY_RUN\`"
+            echo "- **Artifact**: \`$ARTIFACT\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Confirm dry run
+        if: ${{ inputs.dry_run }}
+        run: echo "dry_run=true; skipping publish and tag jobs"
+
+  publish:
+    needs: [determine-release, smoke]
+    if: ${{ !inputs.dry_run && github.ref == 'refs/heads/master' }}
+    environment: ui-package-release
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    permissions:
+      id-token: write # OIDC handshake for npm trusted publishing
+      actions: read # actions/download-artifact reads the Actions API via GITHUB_TOKEN
+    steps:
+      - name: Download the smoke-tested tarball
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ needs.smoke.outputs.artifact-id }}
+          merge-multiple: true
+          path: pack
+
+      # Trusted publishing requires npm >= 11.5.1 and Node >= 22.14.0.
+      # Node 22.x ships npm 10.x, so pin Node 24.x which ships npm 11.x.
+      - name: Setup Node.js for npm publish with trusted publishing
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish the tarball to NPM
+        env:
+          NPM_TAG: ${{ needs.determine-release.outputs.npm_tag }}
+          VERSION: ${{ needs.determine-release.outputs.version }}
+        run: |
+          shopt -s nullglob
+          FILES=(./pack/*.tgz)
+          if [ "${#FILES[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one tarball in pack/, got ${#FILES[@]}"
+            exit 1
+          fi
+          MANIFEST=$(tar -xzOf "${FILES[0]}" package/package.json)
+          PACKED_NAME=$(jq -r .name <<< "$MANIFEST")
+          if [ "$PACKED_NAME" != "@metabase/ui" ]; then
+            echo "::error::Tarball package name '$PACKED_NAME' does not match @metabase/ui"
+            exit 1
+          fi
+          PACKED_VERSION=$(jq -r .version <<< "$MANIFEST")
+          if [ "$PACKED_VERSION" != "$VERSION" ]; then
+            echo "::error::Tarball version '$PACKED_VERSION' does not match release version '$VERSION'"
+            exit 1
+          fi
+          case "$NPM_TAG" in
+            latest) TAG_ARGS=() ;;
+            canary) TAG_ARGS=(--tag canary) ;;
+            *) echo "::error::Unexpected npm tag '$NPM_TAG'"; exit 1 ;;
+          esac
+          npm publish "${FILES[0]}" --access public "${TAG_ARGS[@]}"
+
+  tag-git:
+    needs: [determine-release, publish]
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    # The tag is pushed with the automation user's token, as the other release workflows do.
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the released commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Configure git identity
+        run: |
+          git config user.name "Metabase Automation"
+          git config user.email "github-automation@metabase.com"
+
+      - name: Create and push git tag
+        env:
+          GIT_TAG: ${{ needs.determine-release.outputs.git_tag }}
+          VERSION: ${{ needs.determine-release.outputs.version }}
+        run: |
+          git tag -a "$GIT_TAG" -m "@metabase/ui $VERSION"
+          git push origin "$GIT_TAG"

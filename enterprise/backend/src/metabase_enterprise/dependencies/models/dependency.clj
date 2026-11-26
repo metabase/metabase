@@ -33,6 +33,7 @@
 (methodical/defmethod t2/table-name :model/Dependency [_model] :dependency)
 
 (derive :model/Dependency :metabase/model)
+(derive :model/Dependency :hook/worktree-id)
 
 (t2/deftransforms :model/Dependency
   {:from_entity_type mi/transform-keyword

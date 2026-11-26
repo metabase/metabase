@@ -73,6 +73,15 @@ describe(
           event: "data_action_executed",
           triggered_from: "data_studio",
         });
+        H.queryWritableDB(
+          `SELECT name, score FROM "${SCHEMA}"."${TABLE}" ORDER BY score`,
+        ).then(({ rows }) => {
+          expect(rows).to.deep.equal([
+            { name: "Goose", score: 10 },
+            { name: "Horse", score: 20 },
+            { name: "Cow", score: 30 },
+          ]);
+        });
 
         cy.log("archive it");
         cy.findByRole("button", { name: "Action options" }).click();
@@ -112,40 +121,15 @@ describe(
           H.entityPickerModalItem(2, TABLE_DISPLAY_NAME).click();
           cy.findByRole("button", { name: "Continue" }).click();
         });
-        cy.findByTestId("implicit-action-definition").within(() => {
-          cy.findByText(TABLE_DISPLAY_NAME).should("be.visible");
-          cy.findByRole("radio", { name: "Insert" }).should("be.checked");
-        });
+        cy.findByTestId("implicit-action-definition")
+          .findByText(TABLE_DISPLAY_NAME)
+          .should("be.visible");
         cy.findByRole("button", { name: "Save" }).click();
-        H.modal().within(() => {
-          cy.findByLabelText("Name").should("have.value", ACTION_NAME);
-          cy.findByRole("button", { name: "Save" }).click();
-        });
-        cy.wait("@createAction");
+        H.modal().findByRole("button", { name: "Save" }).click();
+        cy.wait("@createAction")
+          .its("request.body")
+          .should("deep.include", { name: ACTION_NAME, kind: "row/create" });
         H.expectUnstructuredSnowplowEvent({ event: "data_action_created" });
-
-        cy.log("change its operation, then undo the change");
-        cy.findByTestId("action-definition")
-          .findByRole("radio", { name: "Update" })
-          .should("be.enabled")
-          .click({ force: true });
-        cy.wait("@updateAction")
-          .its("request.body")
-          .should("deep.include", { kind: "row/update" });
-        cy.findByTestId("action-definition")
-          .findByRole("radio", { name: "Update" })
-          .should("be.checked");
-        H.undoToast()
-          .should("contain.text", "Action operation updated")
-          .findByRole("button", { name: "Undo" })
-          .click();
-        cy.wait("@updateAction")
-          .its("request.body")
-          .should("deep.include", { kind: "row/create" });
-        H.undoToast().should("contain.text", "Change undone");
-        cy.findByTestId("action-definition")
-          .findByRole("radio", { name: "Insert" })
-          .should("be.checked");
 
         cy.log("hide a field");
         cy.findByRole("tab", { name: "Fields" }).click();

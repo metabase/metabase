@@ -189,7 +189,10 @@ Unit tests use an enforced file naming convention `<test-suite-name>.unit.spec.j
 ```
 bun run test-unit # Run all tests at once
 bun run test-unit-watch # Watch for file changes
+bun run test-unit-jest # Run all tests on jest's own runner
 ```
+
+`test-unit` runs the tests through jest on the faster runner in `frontend/test/harness`. Use `test-unit-jest` for coverage, or to check a test that behaves differently on the two runners.
 
 ## Backend development
 

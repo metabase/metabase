@@ -213,6 +213,7 @@
 (methodical/defmethod t2/table-name :model/Revision [_model] :revision)
 
 (derive :model/Revision :metabase/model)
+(derive :model/Revision :hook/worktree-id)
 
 (defn publish-created!
   "Publish the create event of the Revisions `rows`, one change per entity that they record, named by `:model` and

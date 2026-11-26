@@ -7,6 +7,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.schema :as model-persistence.schema]
    [metabase.tracing.core :as tracing]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -35,10 +36,10 @@
                                     [:db.name :database_name]
                                     [:col.id :collection_id] [:col.name :collection_name]
                                     [:col.authority_level :collection_authority_level]]
-                        :from      [[:persisted_info :p]]
-                        :left-join [[:metabase_database :db] [:= :db.id :p.database_id]
-                                    [:report_card :c]        [:= :c.id :p.card_id]
-                                    [:collection :col]       [:= :c.collection_id :col.id]]
+                        :from      [[(t2/table-name :model/PersistedInfo) :p]]
+                        :left-join [[(t2/table-name :model/Database) :db] [:= :db.id :p.database_id]
+                                    [(t2/table-name :model/Card) :c]        [:= :c.id :p.card_id]
+                                    [(t2/table-name :model/Collection) :col]       [:= :c.collection_id :col.id]]
                         :where     [:and
                                     [:= :c.type "model"]
                                     [:= :c.archived false]]
@@ -54,15 +55,15 @@
   Card has been deleted — the records [[metabase.model-persistence.task.persist-refresh]] may unpersist."
   [states :- [:set :string]]
   (let [hsql {:select    [:p.*]
-              :from      [[:persisted_info :p]]
-              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+              :from      [[(t2/table-name :model/PersistedInfo) :p]]
+              :left-join [[(t2/table-name :model/Card) :c] [:= :c.id :p.card_id]]
               :where     [:or
                           [:and
                            [:in :state states]
                            ;; Buffer deletions for an hour if the prune job happens soon after setting
                            ;; state: 1. so people have a chance to change their mind, 2. so a query
                            ;; running against the cache doesn't get ripped out.
-                           [:< :state_change_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
+                           [:< :state_change_at [:date-add :%now -1 :hour]]]
                           [:= :c.type "question"]
                           [:= :c.archived true]
                           ;; card_id is set to null when the corresponding card is deleted
@@ -76,8 +77,8 @@
   [database-id :- ::lib.schema.id/database
    states      :- [:set :string]]
   (let [hsql {:select    [:p.* :c.type :c.archived :c.name]
-              :from      [[:persisted_info :p]]
-              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
+              :from      [[(t2/table-name :model/PersistedInfo) :p]]
+              :left-join [[(t2/table-name :model/Card) :c] [:= :c.id :p.card_id]]
               :where     [:and
                           [:= :p.database_id database-id]
                           [:in :p.state states]
@@ -133,8 +134,8 @@
   [database-ids :- [:or [:set ::lib.schema.id/database] [:sequential ::lib.schema.id/database]]]
   (if (empty? database-ids)
     0
-    (transduce (map #(t2/count :model/PersistedInfo {:from [[:persisted_info :p]]
-                                                     :join [[:report_card :c] [:= :c.id :p.card_id]]
+    (transduce (map #(t2/count :model/PersistedInfo {:from [[(t2/table-name :model/PersistedInfo) :p]]
+                                                     :join [[(t2/table-name :model/Card) :c] [:= :c.id :p.card_id]]
                                                      :where [:and
                                                              [:in :p.database_id %]
                                                              [:= :c.type "model"]
@@ -224,7 +225,7 @@
   [database-id :- ::lib.schema.id/database
    state       :- :string]
   (t2/query-one
-   {:update [:persisted_info]
+   {:update [(t2/table-name :model/PersistedInfo)]
     :where [:and
             [:= :database_id database-id]
             [:= :state "deletable"]]
@@ -241,8 +242,8 @@
                       [:= :type "model"]
                       [:not [:exists ^:allow-subquery
                              {:select [1]
-                              :from [:persisted_info]
-                              :where [:= :persisted_info.card_id :report_card.id]}]]]}))
+                              :from [(t2/table-name :model/PersistedInfo)]
+                              :where [:= (u/qualified-key (t2/table-name :model/PersistedInfo) :card_id) (u/qualified-key (t2/table-name :model/Card) :id)]}]]]}))
 
 (mu/defn card
   "The Card with `card-id`, or nil."

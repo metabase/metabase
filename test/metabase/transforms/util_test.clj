@@ -95,7 +95,7 @@
             db-id (mt/id)
             schema-name (when (get-method sql.tx/session-schema driver)
                           (sql.tx/session-schema driver))
-            table-name (keyword "test_column_order")
+            table-name (keyword (str "test_column_order_" (subs (str (random-uuid)) 0 8)))
             qualified-table-name (if schema-name
                                    (keyword schema-name (name table-name))
                                    table-name)

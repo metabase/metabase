@@ -13,6 +13,7 @@
 (methodical/defmethod t2/table-name :model/DataTestRun [_model] :data_test_run)
 
 (derive :model/DataTestRun :metabase/model)
+(derive :model/DataTestRun :hook/worktree-id)
 
 (t2/deftransforms :model/DataTestRun
   {:status    mi/transform-keyword

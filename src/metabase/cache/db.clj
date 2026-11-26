@@ -66,7 +66,7 @@
 (mu/defn cache-config
   "The CacheConfig with primary key `pk`, or nil."
   [pk :- ms/PositiveInt]
-  (t2/select-one :model/CacheConfig :id [:auto/param pk]))
+  (t2/select-one :model/CacheConfig :id pk))
 
 (mu/defn root-ttl-cache-config
   "The root TTL CacheConfig, or nil."
@@ -77,8 +77,8 @@
   "Convert a sort column to the appropriate SQL order-by expression."
   [sort-column]
   (case sort-column
-    :name       [:coalesce :report_card.name :report_dashboard.name]
-    :collection [:coalesce :report_card.collection_id :report_dashboard.collection_id]
+    :name       [:coalesce :card.name :dashboard.name]
+    :collection [:coalesce :card.collection_id :dashboard.collection_id]
     :policy     :cache_config.strategy))
 
 (defn- base-query
@@ -86,34 +86,35 @@
   [models collection id]
   (if id
     {:select [:cache_config.*]
-     :from   [:cache_config]
+     :from   [[(t2/table-name :model/CacheConfig) :cache_config]]
      :where  [:and [:in :model models] [:= :model_id id]]}
     {:select    [:cache_config.*
-                 [[:coalesce :report_card.name :report_dashboard.name] :item_name]
-                 [[:coalesce :report_card.collection_id :report_dashboard.collection_id] :collection_id]
+                 [[:coalesce :card.name :dashboard.name] :item_name]
+                 [[:coalesce :card.collection_id :dashboard.collection_id] :collection_id]
                  [:collection.name :collection_name]
                  [:collection.authority_level :collection_authority_level]
                  [:collection.type :collection_type]]
-     :from      [:cache_config]
-     :left-join [:report_card      [:and
-                                    [:= :model "question"]
-                                    [:= :model_id :report_card.id]
-                                    (when collection
-                                      [:= :report_card.collection_id collection])]
-                 :report_dashboard [:and
-                                    [:= :model "dashboard"]
-                                    [:= :model_id :report_dashboard.id]
-                                    (when collection
-                                      [:= :report_dashboard.collection_id collection])]
-                 :collection       [:= :collection.id
-                                    [:coalesce :report_card.collection_id
-                                     :report_dashboard.collection_id]]]
+     :from      [[(t2/table-name :model/CacheConfig) :cache_config]]
+     :left-join [[(t2/table-name :model/Card) :card]
+                 [:and
+                  [:= :model "question"]
+                  [:= :model_id :card.id]
+                  (when collection
+                    [:= :card.collection_id collection])]
+                 [(t2/table-name :model/Dashboard) :dashboard]
+                 [:and
+                  [:= :model "dashboard"]
+                  [:= :model_id :dashboard.id]
+                  (when collection
+                    [:= :dashboard.collection_id collection])]
+                 [(t2/table-name :model/Collection) :collection]
+                 [:= :collection.id [:coalesce :card.collection_id :dashboard.collection_id]]]
      :where     [:and
                  [:in :model models]
                  [:case
-                  [:= :model "question"]  [:!= :report_card.id nil]
-                  [:= :model "dashboard"] [:!= :report_dashboard.id nil]
-                  :else                             true]]}))
+                  [:= :model "question"]  [:!= :card.id nil]
+                  [:= :model "dashboard"] [:!= :dashboard.id nil]
+                  :else                   true]]}))
 
 (mu/defn cache-configs-page
   "The CacheConfigs of `models` in `collection` (or of the entity with `id`), with the name and Collection of the

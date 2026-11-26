@@ -27,6 +27,7 @@
 
 (doto :model/TableIndex
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/timestamped?))
 
 (def ^:private transform-structured

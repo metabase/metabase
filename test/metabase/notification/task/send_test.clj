@@ -151,7 +151,7 @@
         (testing "deletes triggers for subscriptions that no longer exist"
           (let [subscription-id (first (t2/select-pks-vec :model/NotificationSubscription
                                                           :notification_id (:id notification)))]
-            (t2/delete! :notification_subscription :id subscription-id)
+            (t2/delete! (t2/table-name :model/NotificationSubscription) :id subscription-id)
             (testing "sanity check that it has trigger before"
               (is (not-empty (notification.tu/send-notification-triggers subscription-id))))
             (notification.task.send-trigger/init-send-notification-triggers!)

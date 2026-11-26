@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
+   [metabase.lib-be.core :as lib-be]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
@@ -60,6 +61,11 @@
   (tool {:name "happy" :description "Always works."
          :args [:map {:closed true} [:n :int]]}
         (fn [{:keys [n]} ctx] {:output (str "got " n " in " (:profile-id ctx))})))
+
+(def ^:private provider-cache-tool
+  (tool {:name "provider_cache" :description "Says whether a metadata provider cache is bound."
+         :args [:map {:closed true}]}
+        (fn [_ _] {:output (str "cache: " (some? (lib-be/metadata-provider-cache)))})))
 
 (def ^:private recoverable-tool
   (tool {:name "boom" :description "Raises a declared recoverable error."
@@ -140,7 +146,7 @@
     (compose [_ entries _ctx] (tools/concatenated entries))))
 
 (def ^:private entries
-  (tools/entries [happy-tool recoverable-tool unrecoverable-tool silent-unrecoverable-tool
+  (tools/entries [happy-tool provider-cache-tool recoverable-tool unrecoverable-tool silent-unrecoverable-tool
                   crashing-tool jvm-failing-tool writing-tool bad-shape-tool scoped-tool memory-tool object-tool
                   multi-item-tool]))
 
@@ -174,6 +180,11 @@
 
 (deftest ^:parallel ctx-is-passed-to-the-handler-test
   (is (= {:output "got 1 in :nlq"} (invoke (ctx {:profile-id :nlq}) "happy" {:n 1}))))
+
+(deftest ^:parallel tool-call-has-metadata-provider-cache-test
+  (testing "a tool runs with one metadata provider cache for its whole call"
+    (is (nil? (lib-be/metadata-provider-cache)))
+    (is (= {:output "cache: true"} (invoke "provider_cache" {})))))
 
 (deftest ^:parallel memory-reaches-every-tool-test
   (testing "there is no per-tool memory allowlist: a tool gets the atom when the run has one"

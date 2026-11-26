@@ -65,12 +65,17 @@
   nil)
 
 (defn- collect-text-from-parts
-  "Collect all text content from parts into a single string."
+  "The text of `parts` as one string, with the text blocks separated by a blank line.
+
+  Example: the parts `\"First \"` and `\"point.\"` of block `t1` and `\"Second point.\"` of block `t2` give
+  `\"First point.\\n\\nSecond point.\"`. A text block that is only whitespace is left out."
   [parts]
   (->> parts
+       (into [] (streaming/combine-text-parts-xf))
        (filter #(= :text (:type %)))
        (map :text)
-       (str/join "")))
+       (remove str/blank?)
+       (str/join "\n\n")))
 
 (defn- summarize-tool-ios
   "Summarize tool inputs and outputs from parts."
@@ -433,20 +438,22 @@
    parts))
 
 (defn- step-parts
-  "The `parts` of an iteration, with each run of text parts merged into one part and no text that is only whitespace.
+  "The `parts` of an iteration, each text block merged; blank text stays, and the request drops it.
 
   Examples:
-  `[{:type :text :text \"Let me \"} {:type :text :text \"check.\"} {:type :tool-input ...}]` becomes
-  `[{:type :text :text \"Let me check.\"} {:type :tool-input ...}]`, and
-  `[{:type :text :text \"\\n\\n\"} {:type :tool-input ...}]` becomes `[{:type :tool-input ...}]`."
+
+  - The deltas `[{:type :text :id \"t1\" :text \"Let me \"} {:type :text :id \"t1\" :text \"check.\"}
+    {:type :tool-input ...}]` become `[{:type :text :id \"t1\" :text \"Let me check.\"} {:type :tool-input ...}]`.
+  - The parts `[{:type :text :id \"t1\" :text \"First.\"} {:type :text :id \"t2\" :text \"Second.\"}]` have two ids, so
+    they stay two parts.
+
+  Blank text is text that is only whitespace. [[messages/sent-part?]] is the one place that drops it before the
+  request goes to a provider adapter."
   [parts]
-  (into []
-        ;; Memory must keep the parts in the form that [[metabase.metabot.persistence/history]] replays in the next
-        ;; turn. Text streams as one part per delta. When memory keeps the deltas or the blank text, the next turn's
-        ;; history does not start with the bytes that this turn sent, and the provider's prompt cache misses.
-        (comp (streaming/combine-text-parts-xf)
-              (remove #(and (= :text (:type %)) (str/blank? (:text %)))))
-        parts))
+  ;; Memory must keep each text block as one part, as the stored turn does (both use `combine-text-parts-xf`).
+  ;; Text streams as one part per delta. When memory keeps the deltas, the next turn's history does not start with
+  ;; the bytes that this turn sent, and the provider's prompt cache misses.
+  (into [] (streaming/combine-text-parts-xf) parts))
 
 (defn- update-memory
   "Update memory with parts from an iteration."

@@ -91,8 +91,8 @@
               broken     (-> exported
                              (assoc :entity_id (eid \w) :name "serdes broken")
                              (update :dashcards (partial mapv #(assoc % :entity_id (eid \u) :card_id (eid \m)))))
-              top-log    (max-id :change_log)
-              top-rev    (max-id :revision)]
+              top-log    (max-id (t2/table-name :model/ChangeLog))
+              top-rev    (max-id (t2/table-name :model/Revision))]
           (try
             (mt/with-current-user (mt/user->id :crowberto)
               (is (= 1 (count (load-all [good broken] :continue-on-error true)))))
@@ -102,7 +102,7 @@
               (when config/ee-available?
                 (is (= #{good-id}
                        (into #{} (map :row_id) (t2/query {:select [:row_id]
-                                                          :from   [:change_log]
+                                                          :from   [(t2/table-name :model/ChangeLog)]
                                                           :where  [:and [:> :id top-log] [:= :table_name "report_dashboard"]]})))))
               (is (= #{good-id}
                      (t2/select-fn-set :model_id :model/Revision :model "Dashboard" :id [:> top-rev]))))

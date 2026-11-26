@@ -2,8 +2,6 @@
   "Application database queries for the product feedback module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
-   [metabase.app-db.core :as mdb]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -12,16 +10,16 @@
   2 months, with at least 10 Cards (2 native), and at least 1 Dashboard. When `only-superusers?` is true, only
   superusers are considered."
   [only-superusers? :- :boolean]
-  (let [created-after (h2x/add-interval-honeysql-form (mdb/db-type) :%now -2 :month)]
+  (let [created-after [:date-add :%now -2 :month]]
     (t2/query {:select [[:u.email :email]
                         [:u.date_joined :created_at]
                         [:u.first_name :first_name]
                         [[:count [:distinct [:case [:= :d.archived false] :d.id]]] :num_dashboards]
                         [[:count [:distinct [:case [:and [:= :rc.type "question"] [:= :rc.archived false]] :rc.id]]] :num_questions]
                         [[:count [:distinct [:case [:and [:= :rc.type "model"] [:= :rc.archived false]] :rc.id]]] :num_models]]
-               :from [[:core_user :u]]
-               :join [[:report_card :rc] [:= :rc.creator_id :u.id]
-                      [:report_dashboard :d] [:= :d.creator_id :u.id]]
+               :from [[(t2/table-name :model/User) :u]]
+               :join [[(t2/table-name :model/Card) :rc] [:= :rc.creator_id :u.id]
+                      [(t2/table-name :model/Dashboard) :d] [:= :d.creator_id :u.id]]
                :where [:and
                        [:>= :rc.created_at created-after]
                        [:>= :d.created_at created-after]

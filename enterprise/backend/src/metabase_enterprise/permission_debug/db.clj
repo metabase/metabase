@@ -26,8 +26,8 @@
    :join   [[(perms/select-tables-and-groups-granting-perm
               {:user-id user-id :is-superuser? false :is-data-analyst? false}
               permissions-blocking) :perm_grant] [:= :blocked.id :perm_grant.id]
-            [:metabase_database :db] [:= :blocked.db_id :db.id]
-            [:permissions_group :pg] [:= :perm_grant.group_id :pg.id]]
+            [(t2/table-name :model/Database) :db] [:= :blocked.db_id :db.id]
+            [(t2/table-name :model/PermissionsGroup) :pg] [:= :perm_grant.group_id :pg.id]]
    :where  [:and tables-expr
             [:not (perms/visible-tables-filter-clause
                    :blocked.id

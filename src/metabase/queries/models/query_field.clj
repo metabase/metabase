@@ -7,6 +7,7 @@
 (methodical/defmethod t2/table-name :model/QueryField [_model] :query_field)
 
 (derive :model/QueryField :metabase/model)
+(derive :model/QueryField :hook/worktree-id)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

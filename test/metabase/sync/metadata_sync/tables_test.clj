@@ -203,7 +203,7 @@
                  :model/Field    _              {:table_id table-id :name "song" :base_type :type/Text}
                  :model/Field    {twin :id}     {:table_id table-id :name "song_twin" :base_type :type/Text}]
     ;; a legacy duplicate has the name of another Field; H2's unique index refuses that, so only the flag is set here
-    (t2/query-one {:update :metabase_field :set {:is_defective_duplicate true} :where [:= :id twin]})
+    (t2/query-one {:update (t2/table-name :model/Field) :set {:is_defective_duplicate true} :where [:= :id twin]})
     (testing "a Field marked as a defective duplicate is not sent, so a path is sent once"
       (is (= [["song"]] (mapv :path (:fields (get (entries db-id) ["public" "wrens"]))))))
     (testing "and it does not weigh in the Field counts"

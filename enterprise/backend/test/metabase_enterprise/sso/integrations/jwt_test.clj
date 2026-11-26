@@ -564,7 +564,7 @@
           (testing "a string group name is bound as a parameter"
             (#'providers.jwt/group-names->ids ["developers"])
             (let [[query & params] (sql/format {:select [:id]
-                                                :from   [:permissions_group]
+                                                :from   [(t2/table-name :model/PermissionsGroup)]
                                                 :where  [:in :name @captured]})]
               (is (str/includes? query "IN (?)"))
               (is (= ["developers"] params))))
@@ -573,7 +573,7 @@
             (#'providers.jwt/group-names->ids ["developers" {:select :x}])
             (is (= #{"developers"} (set @captured)))
             (let [[query & params] (sql/format {:select [:id]
-                                                :from   [:permissions_group]
+                                                :from   [(t2/table-name :model/PermissionsGroup)]
                                                 :where  [:in :name @captured]})]
               (is (str/includes? query "IN (?)"))
               (is (= ["developers"] params))
@@ -730,7 +730,7 @@
       (mt/with-additional-premium-features #{:tenants}
         (mt/with-temporary-setting-values [use-tenants true]
           (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}]
-            (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
+            (mt/with-model-cleanup [:model/User :model/Tenant :model/Collection]
               (let [response (client/client-real-response :get 302 "/auth/sso"
                                                           {:request-options {:redirect-strategy :none}}
                                                           :return_to default-redirect-uri
@@ -1451,7 +1451,7 @@
         (with-jwt-default-setup!
           (mt/with-additional-premium-features #{:tenants}
             (mt/with-temporary-setting-values [use-tenants true]
-              (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
+              (mt/with-model-cleanup [:model/User :model/Tenant :model/Collection]
                 (let [response (client/client-real-response :get 302 "/auth/sso"
                                                             {:request-options {:redirect-strategy :none}}
                                                             :return_to default-redirect-uri
@@ -1500,7 +1500,7 @@
         (with-jwt-default-setup!
           (mt/with-additional-premium-features #{:tenants}
             (mt/with-temporary-setting-values [use-tenants true]
-              (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
+              (mt/with-model-cleanup [:model/User :model/Tenant :model/Collection]
                 (let [response (client/client-real-response :get 302 "/auth/sso"
                                                             {:request-options {:redirect-strategy :none}}
                                                             :return_to default-redirect-uri

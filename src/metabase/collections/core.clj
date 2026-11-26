@@ -38,6 +38,7 @@
   slugify
   transforms-ns
   trash-collection-id
+  ensure-trash-collection!
   data-apps-ns
   data-actions-ns
   default-allowed-namespaces]

@@ -31,8 +31,9 @@
   [model :- ::public-sharing.reach/public-link-model
    id    :- ms/PositiveInt]
   ;; sorted so the database named is deterministic
-  (when-let [database-id (m/find-first database-routing/refuses-anonymous-access?
-                                       (sort (public-sharing.reach/databases-reached-by-public-link model id)))]
+  (when-let [database-id (let [database-ids (sort (public-sharing.reach/databases-reached-by-public-link model id))]
+                           (m/find-first (database-routing/anonymous-access-refusing-database-ids database-ids)
+                                         database-ids))]
     (let [database-name (public-sharing.db/database-name database-id)]
       {:message  (tru (str "{0} has database routing enabled and does not allow anonymous access, so a public link"
                            " on it would return no data.")

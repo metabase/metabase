@@ -148,7 +148,7 @@
 
 (t2/define-after-select :model/Field
   [field]
-  (dissoc field :is_defective_duplicate :unique_field_helper))
+  (dissoc field :is_defective_duplicate :unique_field_helper :worktree_id))
 
 (defn- enforce-effective-type-invariant
   "GHY-3388 invariant: a Field row with no coercion_strategy must have effective_type=base_type.

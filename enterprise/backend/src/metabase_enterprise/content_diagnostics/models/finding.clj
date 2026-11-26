@@ -16,7 +16,8 @@
 (methodical/defmethod t2/table-name :model/ContentDiagnosticsFinding [_model] :content_diagnostics_finding)
 
 (doto :model/ContentDiagnosticsFinding
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/worktree-id))
 
 (t2/deftransforms :model/ContentDiagnosticsFinding
   {:entity_type  mi/transform-keyword
@@ -66,13 +67,13 @@
                                      (keep (fn [[entity-type ids]]
                                              (when (seq ids)
                                                [:and
-                                                [:= :entity_type [:auto/param (name entity-type)]]
-                                                [:in :entity_id [:auto/param (vec ids)]]])))
+                                                [:= :entity_type (name entity-type)]
+                                                [:in :entity_id (vec ids)]])))
                                      entity-ids-by-type)
                          (seq collection-ids)
                          (into (common/entity-collection-clauses
                                 archived-types
-                                (fn [_etype coll-col] [:in coll-col [:auto/param (vec collection-ids)]]))))]
+                                (fn [_etype coll-col] [:in coll-col (vec collection-ids)]))))]
     (when (seq clauses)
       (cd.db/invalidate-findings-where! [:and [:= :invalidated_at nil] (into [:or] clauses)]))))
 

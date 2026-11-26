@@ -26,11 +26,12 @@
       (set (filter some? (concat normal-indexes-field-ids nested-indexes-field-ids))))))
 
 (defn maybe-sync-indexes-for-table!
-  "Sync the indexes for `table` if the driver supports storing index info."
-  [database table]
+  "Sync the indexes for `table` if the driver supports storing index info, with the
+  [[fetch-metadata/table-remapper]] `remap-table` of `database`."
+  [database table remap-table]
   (if (driver.u/supports? (driver.u/database->driver database) :index-info database)
     (sync-util/with-error-handling (format "Error syncing Indexes for %s" (sync-util/name-for-logging table))
-      (let [indexes                    (fetch-metadata/index-metadata database table)
+      (let [indexes                    (fetch-metadata/index-metadata database table remap-table)
             indexed-field-ids          (indexes->field-ids (:id table) indexes)
             existing-indexed-field-ids (sync.db/indexed-field-ids-for-table (:id table))
             [removing adding]          (data/diff existing-indexed-field-ids indexed-field-ids)]
@@ -101,8 +102,9 @@
   (if (driver.u/supports? (driver.u/database->driver database) :index-info database)
     (if (driver.u/supports? (driver.u/database->driver database) :describe-indexes database)
       (sync-all-indexes! database)
-      (transduce (map #(maybe-sync-indexes-for-table! database %))
-                 (partial merge-with +)
-                 empty-stats
-                 (sync-util/reducible-sync-tables database)))
+      (let [remap-table (fetch-metadata/table-remapper database)]
+        (transduce (map #(maybe-sync-indexes-for-table! database % remap-table))
+                   (partial merge-with +)
+                   empty-stats
+                   (sync-util/reducible-sync-tables database))))
     empty-stats))

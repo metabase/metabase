@@ -180,9 +180,9 @@
 (defn- resolve-measure-link
   "Resolve a metabase://measure/{id} link to the measure's Data Studio page, or nil when the measure is
   unknown."
-  [entity-id]
+  [entity-id measure-table-ids]
   (let [measure-id (parse-long entity-id)
-        table-id   (some-> measure-id metabot.db/measure-table-id)]
+        table-id   (get measure-table-ids measure-id)]
     (if table-id
       (str "/data-studio/library/tables/" table-id "/measures/" measure-id)
       (log/warn "Measure not found for link resolution" {:measure-id entity-id}))))
@@ -190,15 +190,41 @@
 (defn- resolve-segment-link
   "Resolve a metabase://segment/{id} link to an ad-hoc question on the segment's table filtered by the
   segment, or nil when the segment is unknown."
-  [entity-id]
-  (let [segment-id (parse-long entity-id)
-        table-id   (some-> segment-id metabot.db/segment-table-id)
-        db-id      (some-> table-id metabot.db/table-database-id)]
+  [entity-id segment-tables]
+  (let [segment-id                       (parse-long entity-id)
+        {table-id :table_id db-id :db_id} (get segment-tables segment-id)]
     (if db-id
       (str "/question#?db=" db-id "&table=" table-id "&segment=" segment-id)
       (log/warn "Segment not found for link resolution" {:segment-id entity-id}))))
 
 ;;; Main Link Resolution
+
+(defn- uri-type-and-id
+  "The entity type and ID of the metabase:// URI `uri`, or nil when it is not one or either part is blank."
+  [uri]
+  (when (and uri (str/starts-with? uri "metabase://"))
+    (let [[entity-type entity-id] (str/split (subs uri 11) #"/" 2)]
+      (when-not (or (str/blank? entity-type) (str/blank? entity-id))
+        [entity-type entity-id]))))
+
+(defn- uri-entity-ids
+  "The positive numeric IDs of the URIs among `uris` whose entity type is `entity-type`."
+  [entity-type uris]
+  (into #{}
+        (comp (keep uri-type-and-id)
+              (keep (fn [[uri-type entity-id]]
+                      (when (= uri-type entity-type)
+                        (parse-long entity-id))))
+              (filter pos-int?))
+        uris))
+
+(defn- link-entities
+  "The Table IDs of the measures and the Table and Database IDs of the segments that `uris` name, read once."
+  [uris]
+  (let [measure-ids (uri-entity-ids "measure" uris)
+        segment-ids (uri-entity-ids "segment" uris)]
+    {:measure-table-ids (when (seq measure-ids) (metabot.db/measure-table-ids measure-ids))
+     :segment-tables    (when (seq segment-ids) (metabot.db/segment-tables segment-ids))}))
 
 (defn resolve-metabase-uri
   "Resolve a metabase:// URI to a proper Metabase URL.
@@ -219,20 +245,21 @@
   Types that map to an entity path also open a query or chart from this conversation when `{id}` is its ID. See
   [[resolve-entity-or-conversation-link]].
 
+  `entities` is what [[link-entities]] returns for the URIs of the text; without it, this reads them for `uri` alone.
+
   Returns the resolved URL or nil if resolution fails."
-  [uri queries-state charts-state]
-  (when (and uri (str/starts-with? uri "metabase://"))
-    (let [path (subs uri 11) ; Remove "metabase://"
-          [entity-type entity-id] (str/split path #"/" 2)]
-      (when-not (or (str/blank? entity-type) (str/blank? entity-id))
-        (case entity-type
-          "query"    (resolve-query-link entity-id queries-state)
-          "chart"    (resolve-chart-link entity-id charts-state queries-state)
-          "measure"  (resolve-measure-link entity-id)
-          "segment"  (resolve-segment-link entity-id)
-          (if-let [entity-path (get link-type-paths entity-type)]
-            (resolve-entity-or-conversation-link entity-path entity-id charts-state queries-state)
-            (log/warn "Unknown entity type for link" {:type entity-type :id entity-id})))))))
+  ([uri queries-state charts-state]
+   (resolve-metabase-uri uri queries-state charts-state (link-entities [uri])))
+  ([uri queries-state charts-state {:keys [measure-table-ids segment-tables]}]
+   (when-let [[entity-type entity-id] (uri-type-and-id uri)]
+     (case entity-type
+       "query"    (resolve-query-link entity-id queries-state)
+       "chart"    (resolve-chart-link entity-id charts-state queries-state)
+       "measure"  (resolve-measure-link entity-id measure-table-ids)
+       "segment"  (resolve-segment-link entity-id segment-tables)
+       (if-let [entity-path (get link-type-paths entity-type)]
+         (resolve-entity-or-conversation-link entity-path entity-id charts-state queries-state)
+         (log/warn "Unknown entity type for link" {:type entity-type :id entity-id}))))))
 
 ;;; Markdown Link Processing
 
@@ -254,17 +281,18 @@
   Returns the text with all resolvable links replaced."
   [text queries-state charts-state link-registry-atom]
   (when (string? text)
-    (str/replace text link-pattern
-                 (fn [[_ link-text url]]
-                   (if (str/starts-with? url "metabase://")
-                     (if-let [resolved (resolve-metabase-uri url queries-state charts-state)]
-                       (do
-                         (swap! link-registry-atom assoc resolved url)
-                         (str "[" link-text "](" resolved ")"))
-                       (do
-                         (log/warn "Failed to resolve link URL" {:url url})
-                         link-text))
-                     (str "[" link-text "](" url ")"))))))
+    (let [entities (link-entities (map #(nth % 2) (re-seq link-pattern text)))]
+      (str/replace text link-pattern
+                   (fn [[_ link-text url]]
+                     (if (str/starts-with? url "metabase://")
+                       (if-let [resolved (resolve-metabase-uri url queries-state charts-state entities)]
+                         (do
+                           (swap! link-registry-atom assoc resolved url)
+                           (str "[" link-text "](" resolved ")"))
+                         (do
+                           (log/warn "Failed to resolve link URL" {:url url})
+                           link-text))
+                       (str "[" link-text "](" url ")")))))))
 
 ;;; Link Inversion
 
@@ -306,8 +334,8 @@
 
 (defn- resolve-slack-link
   "Resolve a single Slack-format metabase:// link match. Returns the replacement string."
-  [queries charts link-registry-atom [_ url link-text]]
-  (if-let [resolved (resolve-metabase-uri url queries charts)]
+  [queries charts entities link-registry-atom [_ url link-text]]
+  (if-let [resolved (resolve-metabase-uri url queries charts entities)]
     (let [absolute-url (str (system/site-url) resolved)]
       (swap! link-registry-atom assoc absolute-url url)
       (if link-text
@@ -324,7 +352,8 @@
   Every successful resolution is recorded so that resolved URLs can later
   be inverted back to metabase:// URIs (see [[invert-slack-links]])."
   [text queries charts link-registry-atom]
-  (str/replace text slack-link-pattern (partial resolve-slack-link queries charts link-registry-atom)))
+  (let [entities (link-entities (map second (re-seq slack-link-pattern text)))]
+    (str/replace text slack-link-pattern (partial resolve-slack-link queries charts entities link-registry-atom))))
 
 (def ^:private slack-url-link-pattern
   "Regex matching a Slack-format link <url|text> with any HTTP(S) URL."

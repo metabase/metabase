@@ -71,7 +71,7 @@
 
 (defn- check-case!
   "Index `case`'s documents, then check the keyword arm, the vector arm, and their union.
-  A semantic rewrite in a comparison is checked against the vector arm alone."
+  A semantic rewrite in a comparison is checked against each arm."
   [{:keys [id config docs expect query comparisons] :as case} index frozen]
   (mt/with-temporary-setting-values [search-language config]
     ;; Temporary cards keep the semantic engine's read-permission checks live.
@@ -99,10 +99,11 @@
              (is (= (fixtures/expected-hybrid-hits case)
                     (hybrid-hits! index query id->label))))
            (doseq [comparison rewrites
-                   :let [{:keys [query hits]} (fixtures/comparison-spec case comparison :semantic)]]
-             (testing (str id " / " (:focus comparison) " semantic vector arm")
-               (is (= hits (sql-arm-hits! index (query-vector query) (search-context query)
-                                          id->label :vector)))))))))))
+                   :let [{:keys [query hits keyword]} (get-in comparison [:alternatives :semantic])]
+                   arm        [:vector :keyword]]
+             (testing (str id " / " (:focus comparison) " semantic " (name arm) " arm")
+               (is (= (set (if (= arm :vector) hits keyword))
+                      (sql-arm-hits! index (query-vector query) (search-context query) id->label arm)))))))))))
 
 (deftest semantic-query-semantics-test
   (mt/with-premium-features #{:semantic-search}

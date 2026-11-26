@@ -657,7 +657,7 @@
                                            {:dataset_query {:database (mt/id)
                                                             :type     "native"
                                                             :native   {:query "UPDATE categories SET name = 'x' WHERE id = 1"}}})))
-          (t2/query-one {:update :query_action :set {:dataset_query "{}"} :where [:= :action_id id]})
+          (t2/query-one {:update (t2/table-name :model/QueryAction) :set {:dataset_query "{}"} :where [:= :action_id id]})
           (is (some? (mt/user-http-request :crowberto :get 200 path)))
           (is (=? {:name "Renamed"}
                   (mt/user-http-request :crowberto :put 200 path {:name "Renamed"}))))))))

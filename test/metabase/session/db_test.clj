@@ -76,7 +76,7 @@
                                          ["saml-name-id-format" nil {:saml_name_id_format [:upper "abc"]}]
                                          ["expires-at" [:now] {}]]]
           (testing label
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Marked a whole operator form"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SAML values must be strings|expires_at must be a temporal value"
                                   (session.db/insert-session! (merge {:id          (session/generate-session-id)
                                                                       :user_id     user-id
                                                                       :session_key (session/generate-session-key)

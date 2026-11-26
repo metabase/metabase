@@ -622,8 +622,8 @@ describe("TransformInspectPage", () => {
         within(columnDistributionsTab).getByTestId("lens-tab-loader"),
       ).toBeInTheDocument();
 
-      expect(await screen.findAllByTestId("visualization-root")).toHaveLength(
-        4,
+      await waitFor(() =>
+        expect(screen.getAllByTestId("visualization-root")).toHaveLength(4),
       );
       await waitFor(() =>
         expect(

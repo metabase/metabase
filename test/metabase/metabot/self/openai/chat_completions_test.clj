@@ -154,6 +154,39 @@
             (chat-completions/parts->cc-messages
              [{:type :tool-input :id "call-1" :function "search" :arguments {:query "revenue"}}])))))
 
+(deftest ^:parallel parts->cc-messages-text-blocks-test
+  (let [call {:type :tool-input :id "c1" :function "f" :arguments {}}]
+    (testing "two text blocks of one step are sent as two paragraphs, not joined with nothing between them"
+      (is (=? [{:role "assistant" :content "First I read a skill.\n\nThen I count the orders."}]
+              (chat-completions/parts->cc-messages
+               [{:type :text :text "First I read a skill."}
+                {:type :text :text "Then I count the orders."}
+                call]))))
+    (testing "text written after a tool call is a paragraph of its own too"
+      (is (=? [{:role "assistant" :content "Let me look that up.\n\nThis may take a moment."}]
+              (chat-completions/parts->cc-messages
+               [{:type :text :text "Let me look that up."}
+                call
+                {:type :text :text "This may take a moment."}]))))
+    (testing "the empty content of a reasoning message adds no paragraph break"
+      (is (=? [{:role "assistant" :content "First.\n\nSecond." :reasoning_content "ab"}]
+              (chat-completions/parts->cc-messages
+               [{:type :reasoning :id "r1" :text "a"}
+                {:type :text :text "First."}
+                {:type :reasoning :id "r2" :text "b"}
+                {:type :text :text "Second."}
+                call]
+               {:reasoning-part->message (fn [part] {:role "assistant" :content "" :reasoning_content (:text part)})}))))
+    (testing "chunk-array content keeps each text block as a chunk of its own"
+      (is (=? [{:role    "assistant"
+                :content [{:type "thinking"} {:type "text" :text "First."} {:type "text" :text "Second."}]}]
+              (chat-completions/parts->cc-messages
+               [{:type :reasoning :id "r1" :text "a"}
+                {:type :text :text "First."}
+                {:type :text :text "Second."}
+                call]
+               {:reasoning-part->message (fn [part] {:role "assistant" :content [{:type "thinking" :thinking [(:text part)]}]})}))))))
+
 (deftest ^:parallel parts->cc-messages-tool-result-test
   (testing "tool output becomes tool role message"
     (is (=? [{:role         "tool"

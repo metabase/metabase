@@ -335,7 +335,8 @@
    :docs-page         "databases/users-roles-privileges"
    :docs-anchor       "recommended-setup"
    :requires-restart? false
-   :applicable?       (constantly true)
+   ;; paused until a writable connection no longer needs the Advanced transforms add-on (GDGT-3564, GDGT-3565)
+   :applicable?       (constantly false)
    :refresh           read-only-connections/refresh
    :run               #(read-only-connections/items (stored-result :read-only-connections))})
 

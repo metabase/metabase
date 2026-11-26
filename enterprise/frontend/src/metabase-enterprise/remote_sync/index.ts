@@ -7,6 +7,8 @@ import { SettingsModal } from "./components/SettingsModal";
 import { SettingsNavItem } from "./components/SettingsNavItem";
 import { SettingsPage } from "./components/SettingsPage";
 import { SetupMenuItem } from "./components/SetupMenuItem";
+import { WorktreesNavItem } from "./components/WorktreesNavItem";
+import { getDataStudioRoutes } from "./routes";
 import { getIsRemoteSyncReadOnly, getIsRemoteSyncVisible } from "./selectors";
 
 export function initializePlugin() {
@@ -16,6 +18,8 @@ export function initializePlugin() {
     PLUGIN_REMOTE_SYNC.SettingsPage = SettingsPage;
     PLUGIN_REMOTE_SYNC.SettingsModal = SettingsModal;
     PLUGIN_REMOTE_SYNC.SetupMenuItem = SetupMenuItem;
+    PLUGIN_REMOTE_SYNC.WorktreesNavItem = WorktreesNavItem;
+    PLUGIN_REMOTE_SYNC.getDataStudioRoutes = getDataStudioRoutes;
     PLUGIN_REMOTE_SYNC.AppBarControls = AppBarControls;
     PLUGIN_REMOTE_SYNC.ChangesBadge = ChangesBadge;
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly = getIsRemoteSyncReadOnly;

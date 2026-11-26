@@ -305,7 +305,9 @@ describe("processChatResponse", () => {
       id: "r1",
       delta: "let me check the orders table ",
     });
-    expect(config.onTextPart.mock.calls).toEqual([["Here is the answer."]]);
+    expect(config.onTextPart.mock.calls).toEqual([
+      ["Here is the answer.", "t1"],
+    ]);
     const pacingWaits = setTimeoutSpy.mock.calls.filter(
       ([, delayMs]) => delayMs === 10,
     );

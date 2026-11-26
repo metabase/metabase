@@ -83,15 +83,38 @@
                                   {:type :tool-input :id "t1"}]))))
 
 (deftest step-parts-test
-  (testing "memory keeps text as history replays it: deltas merged first, blank text dropped after"
-    (let [tool-input {:type :tool-input :id "t1" :function "search" :arguments {}}]
-      (is (= [{:type :text :text "Hello world"} tool-input]
-             (#'agent/step-parts [{:type :text :text "Hello"}
-                                  {:type :text :text " "}
-                                  {:type :text :text "world"}
+  (testing "memory keeps each text block as one part, blank text too: the request builder drops the blank text"
+    (let [tool-input {:type :tool-input :id "c1" :function "search" :arguments {}}]
+      (is (= [{:type :text :id "t1" :text "Hello world"} tool-input {:type :text :id "t2" :text "\n\n"}]
+             (#'agent/step-parts [{:type :text :id "t1" :text "Hello"}
+                                  {:type :text :id "t1" :text " "}
+                                  {:type :text :id "t1" :text "world"}
                                   tool-input
-                                  {:type :text :text "\n"}
-                                  {:type :text :text "\n"}]))))))
+                                  {:type :text :id "t2" :text "\n"}
+                                  {:type :text :id "t2" :text "\n"}])))))
+  (testing "two text blocks next to each other stay two parts"
+    (let [parts [{:type :text :id "t1" :text "First."}
+                 {:type :text :id "t2" :text "Second."}]]
+      (is (= parts (#'agent/step-parts parts))))))
+
+(deftest collect-text-from-parts-test
+  (testing "the deltas of one text block join with nothing, and two text blocks join as two paragraphs"
+    (is (= "First point.\n\nSecond point."
+           (#'agent/collect-text-from-parts [{:type :text :id "t1" :text "First "}
+                                             {:type :text :id "t1" :text "point."}
+                                             {:type :reasoning :id "r1" :text "Next."}
+                                             {:type :text :id "t2" :text "Second point."}
+                                             {:type :tool-input :id "c1" :function "search" :arguments {}}]))))
+  (testing "a text block that is only whitespace adds no blank line"
+    (is (= "a\n\nb"
+           (#'agent/collect-text-from-parts [{:type :text :id "t1" :text "a"}
+                                             {:type :text :id "t2" :text "\n"}
+                                             {:type :text :id "t3" :text "b"}])))
+    (is (= "Let me check.\n\nDone."
+           (#'agent/collect-text-from-parts [{:type :text :id "t1" :text "Let me check."}
+                                             {:type :text :id "t2" :text "\n\n"}
+                                             {:type :tool-input :id "c1" :function "search" :arguments {}}
+                                             {:type :text :id "t3" :text "Done."}])))))
 
 (deftest should-continue-test
   (let [max-iter 3

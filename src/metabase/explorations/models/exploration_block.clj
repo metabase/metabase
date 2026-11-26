@@ -26,6 +26,7 @@
 
 (doto :model/ExplorationBlock
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/timestamped?))
 
 (defn- keywordize-dim-types

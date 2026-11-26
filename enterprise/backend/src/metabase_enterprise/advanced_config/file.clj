@@ -81,10 +81,9 @@
   ```
 
   Replaces the template with the value of an environment variable. The template consisting of two parts: the word
-  `env` and then the name of an environment variable. It uses [[environ.core/env]] under the hood, after passing the
-  symbol thru [[csk/->kebab-case-keyword]]. This means it is case-insensitive and `lisp-case`/`snake_case`
-  insensitive, and Java system properties are supported as well, provided you replace dots in their names with slashes
-  or underscores. In other words, this works as well:
+  `env` and then the name of an environment variable. It uses [[environ.core/env]] under the hood, after normalizing
+  the symbol the same way environ normalizes names. This means it is case-insensitive and `lisp-case`/`snake_case`
+  insensitive, and Java system properties are supported as well. In other words, this works as well:
 
   ```yaml
   # Java system property user.dir
@@ -191,9 +190,18 @@
   (throw (ex-info (trs "Don''t know how to expand template form: {0}" (pr-str form))
                   {:form form})))
 
+;; Verbatim copy of the private `environ.core/keywordize`, which builds the keys of [[environ.core/env]]. Lookups
+;; must normalize names the same way. `file-test/keywordize-matches-environ-test` checks it hasn't drifted.
+#_{:clj-kondo/ignore [:discouraged-var]} ; must use the default locale, like environ does
+(defn- keywordize [s]
+  (-> (str/lower-case s)
+      (str/replace "_" "-")
+      (str/replace "." "-")
+      (keyword)))
+
 (defmethod expand-parsed-template-form 'env
   [[_template-type env-var-name]]
-  (get *env* (keyword (u/->kebab-case-en env-var-name))))
+  (get *env* (keywordize env-var-name)))
 
 (defmulti ^:private expand-template-str-part
   {:arglists '([part])}

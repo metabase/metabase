@@ -184,12 +184,12 @@
   "Calls `thunk` with the names of the built-in TransformTags set aside, since a tag made custom takes its translated name,
   and restores them."
   [thunk]
-  (let [stored (t2/query {:select [:id :name] :from [:transform_tag] :where [:not= :built_in_type nil]})]
+  (let [stored (t2/query {:select [:id :name] :from [(t2/table-name :model/TransformTag)] :where [:not= :built_in_type nil]})]
     (try
-      (run! (fn [{:keys [id]}] (t2/query-one {:update :transform_tag :set {:name (str "set-aside " id)} :where [:= :id id]})) stored)
+      (run! (fn [{:keys [id]}] (t2/query-one {:update (t2/table-name :model/TransformTag) :set {:name (str "set-aside " id)} :where [:= :id id]})) stored)
       (thunk)
       (finally
-        (run! (fn [{:keys [id name]}] (t2/query-one {:update :transform_tag :set {:name name} :where [:= :id id]})) stored)))))
+        (run! (fn [{:keys [id name]}] (t2/query-one {:update (t2/table-name :model/TransformTag) :set {:name name} :where [:= :id id]})) stored)))))
 
 (defmacro ^:private with-built-in-names-freed [& body]
   `(do-with-built-in-names-freed! (fn [] ~@body)))

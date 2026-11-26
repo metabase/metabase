@@ -20,7 +20,7 @@
 
 (methodical/defmethod t2/table-name :model/PythonLibrary [_model] :python_library)
 
-(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
+(doseq [trait [:metabase/model :hook/worktree-id :hook/timestamped? :hook/entity-id]]
   (derive :model/PythonLibrary trait))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
@@ -133,6 +133,17 @@
   [ids :- [:sequential ms/PositiveInt]]
   (mdb/delete-batched! :model/PythonLibrary ids {:before-delete publish-python-library-deletes}))
 
+(defn ensure-default-python-library!
+  "Create the default `common.py` PythonLibrary of the remote sync worktree this thread works in, as the migrations
+  that added it created the main app's, unless it has the library by entity id, wherever it moved, retrying once
+  after a concurrent call created it."
+  []
+  (mdb/with-conflict-retry
+    (t2/with-transaction [_conn]
+      (when-not (transforms-python.db/python-library-exists? builtin-entity-id)
+        (create-python-libraries! [{:path "common.py" :source "" :entity_id builtin-entity-id :is_default true}]))))
+  nil)
+
 (mu/defn update-python-library-source!
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
   [path   :- :string
@@ -173,4 +184,5 @@
   [_model]
   {:name                 :path
    :synced-items         transforms-python.db/synced-python-library-items
-   :synced-filter-clause transforms-python.db/synced-python-libraries-clause})
+   :synced-filter-clause transforms-python.db/synced-python-libraries-clause
+   :ensure-built-ins     ensure-default-python-library!})
