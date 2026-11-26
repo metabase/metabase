@@ -193,7 +193,7 @@ export function setup({
     );
   }
 
-  renderWithProviders(<Wrapper />);
+  const { unmount } = renderWithProviders(<Wrapper />);
 
   function getLastQuery() {
     const [lastCall] = onQueryChange.mock.calls.slice(-1);
@@ -212,7 +212,7 @@ export function setup({
     return pivotChange;
   }
 
-  return { onQueryChange, getLastQuery, getLastPivotChange };
+  return { onQueryChange, getLastQuery, getLastPivotChange, unmount };
 }
 
 export function createQueryWithMetric() {

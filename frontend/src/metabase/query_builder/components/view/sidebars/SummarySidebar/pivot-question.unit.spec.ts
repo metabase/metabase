@@ -188,6 +188,75 @@ describe("getSummaryQuestion", () => {
     expect(syncedSettings["pivot_table.column_split"]).toEqual(columnSplit);
   });
 
+  it("keeps a renamed Rows formula in the rows of the column split that updateQuestion syncs", () => {
+    const question = createQuestion({
+      display: "pivot",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              expressions: [
+                {
+                  name: "Order date",
+                  value: {
+                    type: "operator",
+                    operator: "datetime-add",
+                    args: [
+                      { type: "column", name: "CREATED_AT" },
+                      { type: "literal", value: 1 },
+                      { type: "literal", value: "day" },
+                    ],
+                  },
+                },
+              ],
+              aggregations: [{ type: "operator", operator: "count" }],
+              breakouts: [
+                ORDERS_CREATED_AT,
+                { type: "column", name: "Order date", unit: "year" },
+              ],
+            },
+          ],
+        }),
+      ),
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: ["CREATED_AT", "Order date"],
+          columns: [],
+          values: ["count"],
+        },
+      },
+    });
+    const query = question.query();
+    const [expression] = Lib.expressions(query, STAGE_INDEX);
+    const nextQuery = Lib.replaceClause(
+      query,
+      STAGE_INDEX,
+      expression,
+      Lib.withExpressionName(expression, "Ship day"),
+    );
+    const columnSplit = {
+      rows: ["CREATED_AT", "Ship day"],
+      columns: [],
+      values: ["count"],
+    };
+
+    const nextQuestion = getSummaryQuestion(question, nextQuery, {
+      type: "show",
+      columnSplit,
+    });
+
+    const syncedSettings = syncVizSettingsWithQuery(
+      nextQuestion.settings(),
+      nextQuery,
+      query,
+    );
+    expect(syncedSettings["pivot_table.column_split"]).toEqual(columnSplit);
+    expect(
+      getPivotColumnSplit(nextQuestion.setSettings(syncedSettings)),
+    ).toEqual(columnSplit);
+  });
+
   it("unlocks the display and takes the default one when the pivot table is hidden", () => {
     const question = createQuestion({
       display: "pivot",

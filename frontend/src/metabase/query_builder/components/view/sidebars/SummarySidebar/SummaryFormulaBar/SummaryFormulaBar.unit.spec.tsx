@@ -38,12 +38,15 @@ import type {
   Card,
   ColumnNameColumnSplitSetting,
   Database,
+  DatabaseFeature,
+  Measure,
   TestOperatorSpec,
   TestQuerySpec,
 } from "metabase-types/api";
 import {
   COMMON_DATABASE_FEATURES,
   createMockCard,
+  createMockMeasure,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -58,7 +61,7 @@ import {
   FormulaBarSlotTarget,
 } from "../../../FormulaBar";
 import { SummarySidebar } from "../SummarySidebar";
-import type { SummaryWellId } from "../types";
+import type { SummaryPivotChange, SummaryWellId } from "../types";
 import { getDimensionItems, getValueItems } from "../utils";
 
 jest.unmock("@uiw/react-codemirror");
@@ -118,7 +121,38 @@ function sumOf(name: string): TestOperatorSpec {
   };
 }
 
+const REVENUE_METRIC = createMockCard({
+  id: 1,
+  name: "Revenue",
+  type: "metric",
+  table_id: ORDERS_ID,
+  dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [sumOf("SUBTOTAL")],
+      },
+    ],
+  }),
+});
+
+const ORDER_COUNT_MEASURE = createMockMeasure({
+  id: 1,
+  name: "Order count",
+  table_id: ORDERS_ID,
+  definition: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "operator", operator: "count" }],
+      },
+    ],
+  }),
+});
+
 type SetupOpts = {
+  metrics?: Card[];
+  measures?: Measure[];
   stageIndex?: number;
   database?: Database;
   databaseResponse?: Promise<Database>;
@@ -128,6 +162,8 @@ type SetupOpts = {
 };
 
 async function setup({
+  metrics,
+  measures,
   database = createSampleDatabase(),
   databaseResponse,
   stageIndex = -1,
@@ -146,8 +182,13 @@ async function setup({
     setupDatabaseEndpoints(database);
   }
   setupUserMetabotPermissionsEndpoint();
-  const onQueryChange = jest.fn<void, [Lib.Query]>();
-  const metadata = createMockMetadata({ databases: [database] });
+
+  const onQueryChange = jest.fn<void, [Lib.Query, SummaryPivotChange?]>();
+  const metadata = createMockMetadata({
+    databases: [database],
+    questions: metrics,
+    measures,
+  });
   let savedCard = createMockCard({
     dataset_query: Lib.toJsQuery(initialQuery),
   });
@@ -188,7 +229,7 @@ async function setup({
               if (pivotChange?.type === "hide") {
                 setPivotColumnSplit(undefined);
               }
-              onQueryChange(nextQuery);
+              onQueryChange(nextQuery, pivotChange);
             }}
           />
         )}
@@ -677,6 +718,51 @@ describe("summary formula handoff", () => {
     expect(input).toHaveValue("=Count()");
   });
 
+  it.each<{
+    wellId: SummaryWellId;
+    feature: DatabaseFeature;
+    source: string;
+    functionName: string;
+  }>([
+    {
+      wellId: "values",
+      feature: "percentile-aggregations",
+      source: "Percentile([Total], 0.9)",
+      functionName: "Percentile",
+    },
+    {
+      wellId: "columns",
+      feature: "regex",
+      source: 'regexExtract([Product → Category], "^W")',
+      functionName: "regexExtract",
+    },
+  ])(
+    "flags $functionName in the $wellId well when the database lacks $feature, and leaves the summary alone",
+    async ({ wellId, feature, source, functionName }) => {
+      const { onQueryChange } = await setup({
+        database: createSampleDatabase({
+          features: COMMON_DATABASE_FEATURES.filter((name) => name !== feature),
+        }),
+      });
+      fireEvent.change(getInput(wellId), { target: { value: `=${source}` } });
+      await screen.findByRole("textbox", { name: "Formula" });
+
+      await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        `Unsupported function ${functionName}`,
+      );
+      expect(getEditor()?.state.doc.toString()).toBe(source);
+      expect(
+        within(screen.getByTestId(`summary-well-${wellId}`)).getByTestId(
+          "summary-well-draft-formula",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("summary-well-item")).not.toBeInTheDocument();
+      expect(onQueryChange).not.toHaveBeenCalled();
+    },
+  );
+
   it("keeps equals text in the typeahead when formulas are unsupported", async () => {
     const { onQueryChange } = await setup({
       database: createSampleDatabase({ features: [] }),
@@ -686,6 +772,126 @@ describe("summary formula handoff", () => {
     expect(input).toHaveValue("=test");
     expect(screen.queryByTestId("formula-editor")).not.toBeInTheDocument();
     expect(onQueryChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("formula modes of the wells", () => {
+  const AGGREGATION_IN_GROUPING =
+    "Aggregations like Sum are not allowed when building a custom expression";
+  const UNKNOWN_REVENUE = "Unknown column: Revenue";
+
+  it.each<{ wellId: SummaryWellId; source: string; message: string }>([
+    {
+      wellId: "values",
+      source: "[Total] * 2",
+      message:
+        "No aggregation found in: Total. Use functions like Sum() or custom Metrics",
+    },
+    {
+      wellId: "columns",
+      source: "Sum([Total])",
+      message: AGGREGATION_IN_GROUPING,
+    },
+    {
+      wellId: "rows",
+      source: "Sum([Total])",
+      message: AGGREGATION_IN_GROUPING,
+    },
+    { wellId: "columns", source: "[Revenue]", message: UNKNOWN_REVENUE },
+    { wellId: "rows", source: "[Revenue]", message: UNKNOWN_REVENUE },
+    {
+      wellId: "columns",
+      source: "[Order count] + 1",
+      message: "Unknown column: Order count",
+    },
+  ])(
+    "rejects $source in the $wellId well and leaves the summary alone",
+    async ({ wellId, source, message }) => {
+      const { onQueryChange } = await setup({
+        metrics: [REVENUE_METRIC],
+        measures: [ORDER_COUNT_MEASURE],
+      });
+      if (wellId === "rows") {
+        await userEvent.click(
+          screen.getByRole("button", { name: "Pivot into rows and columns" }),
+        );
+      }
+      const changeCount = onQueryChange.mock.calls.length;
+      fireEvent.change(getInput(wellId), { target: { value: `=${source}` } });
+      await screen.findByRole("textbox", { name: "Formula" });
+
+      await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+      expect(screen.getByRole("alert")).toHaveTextContent(message);
+      expect(getEditor()?.state.doc.toString()).toBe(source);
+      expect(
+        within(screen.getByTestId(`summary-well-${wellId}`)).getByTestId(
+          "summary-well-draft-formula",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("summary-well-item")).not.toBeInTheDocument();
+      expect(onQueryChange).toHaveBeenCalledTimes(changeCount);
+    },
+  );
+
+  it.each<{
+    wellId: SummaryWellId;
+    source: string;
+    values: string[];
+    dimensions: string[];
+  }>([
+    {
+      wellId: "values",
+      source: "Sum([Total])",
+      values: ["Sum(Total)"],
+      dimensions: [],
+    },
+    {
+      wellId: "columns",
+      source: "[Total] * 2",
+      values: ["Count"],
+      dimensions: ["Total * 2"],
+    },
+  ])(
+    "adds $source to the $wellId well",
+    async ({ wellId, source, values, dimensions }) => {
+      await setup();
+
+      await addFormula(wellId, source);
+
+      expect(getChipLabels("values")).toEqual(values);
+      expect(getChipLabels("columns")).toEqual(dimensions);
+    },
+  );
+
+  it("adds a Summarize by formula that refers to a metric and a measure", async () => {
+    const { onQueryChange } = await setup({
+      metrics: [REVENUE_METRIC],
+      measures: [ORDER_COUNT_MEASURE],
+    });
+
+    await addFormula("values", "[Revenue] / [Order count]");
+
+    expect(getChipLabels("values")).toEqual(["Revenue / Order count"]);
+    expect(getChipLabels("columns")).toEqual([]);
+    expect(onQueryChange).toHaveBeenCalledTimes(1);
+    const [query] = onQueryChange.mock.calls[0];
+    expect(Lib.toJsQuery(query)).toMatchObject({
+      stages: [
+        {
+          aggregation: [
+            [
+              "/",
+              expect.objectContaining({
+                "display-name": "Revenue / Order count",
+              }),
+              ["metric", expect.anything(), REVENUE_METRIC.id],
+              ["measure", expect.anything(), ORDER_COUNT_MEASURE.id],
+            ],
+          ],
+        },
+      ],
+    });
   });
 });
 
@@ -818,6 +1024,121 @@ describe("formulas in Rows", () => {
     );
     expect(getChipLabels("rows")).toEqual(["Order date: Year"]);
     expect(getChipLabels("columns")).toEqual([]);
+  });
+
+  const ROWS_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        ...FORMULA_QUERY_SPEC.stages[0],
+        breakouts: [
+          { type: "column", name: "CREATED_AT", unit: "month" },
+          { type: "column", name: "Order date", unit: "year" },
+          { type: "column", name: "QUANTITY" },
+        ],
+      },
+    ],
+  });
+
+  function setupRowsQuery() {
+    return setup({
+      query: ROWS_QUERY,
+      generatedExpressions: [
+        makeSummaryFormula(ROWS_QUERY, -1, "Order date"),
+      ].filter(isNotNull),
+      pivotColumnSplit: {
+        rows: ["CREATED_AT", "Order date"],
+        columns: ["QUANTITY"],
+        values: ["Sum total"],
+      },
+    });
+  }
+
+  function getRowsChipName(text: string) {
+    return within(screen.getByTestId("summary-well-rows")).getByText(text);
+  }
+
+  async function renameRowsChip(text: string, name: string, nextName: string) {
+    await userEvent.dblClick(getRowsChipName(text));
+    const input = screen.getByRole("textbox", { name: `Rename ${name}` });
+    await userEvent.clear(input);
+    await userEvent.type(input, `${nextName}{Enter}`);
+  }
+
+  it("renames a formula chip in Rows and keeps it in Rows, in its place", async () => {
+    const { onQueryChange } = await setupRowsQuery();
+    expect(getChipLabels("rows")).toEqual([
+      "Created At: Month",
+      "Order date: Year",
+    ]);
+
+    await renameRowsChip("Order date:", "Order date", "Ship day");
+
+    expect(getChipLabels("rows")).toEqual([
+      "Created At: Month",
+      "Ship day: Year",
+    ]);
+    expect(getChipLabels("columns")).toEqual(["Quantity"]);
+    expect(onQueryChange).toHaveBeenCalledTimes(1);
+    const [[nextQuery, pivotChange]] = onQueryChange.mock.calls;
+    expect(
+      Lib.expressions(nextQuery, -1).map(
+        (expression) => Lib.displayInfo(nextQuery, -1, expression).displayName,
+      ),
+    ).toEqual(["Ship day"]);
+    expect(
+      await format(Lib.expressions(nextQuery, -1)[0], {
+        query: nextQuery,
+        stageIndex: -1,
+      }),
+    ).toBe('datetimeAdd([Created At], 1, "day")');
+    expect(pivotChange).toEqual({
+      type: "show",
+      columnSplit: {
+        rows: ["CREATED_AT", "Ship day"],
+        columns: ["QUANTITY"],
+        values: ["Sum total"],
+      },
+    });
+  });
+
+  it("offers no rename to a Rows chip that is not a formula", async () => {
+    await setupRowsQuery();
+
+    await userEvent.dblClick(getRowsChipName("Created At:"));
+
+    expect(
+      screen.queryByRole("textbox", { name: /^Rename/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renames a formula that was written in Rows, and still removes its column with the chip", async () => {
+    const { onQueryChange } = await setup();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Pivot into rows and columns" }),
+    );
+    await addFormula("rows", "[Total] * 2");
+    expect(getChipLabels("rows")).toEqual(["Total * 2"]);
+
+    await renameRowsChip("Total * 2", "Total * 2", "Double");
+
+    expect(getChipLabels("rows")).toEqual(["Double"]);
+    expect(getChipLabels("columns")).toEqual([]);
+    const [renamedQuery] = onQueryChange.mock.calls.slice(-1)[0];
+    expect(
+      Lib.expressions(renamedQuery, -1).map(
+        (expression) =>
+          Lib.displayInfo(renamedQuery, -1, expression).displayName,
+      ),
+    ).toEqual(["Double"]);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Double" }),
+    );
+
+    expect(getChipLabels("rows")).toEqual([]);
+    const [clearedQuery] = onQueryChange.mock.calls.slice(-1)[0];
+    expect(Lib.breakouts(clearedQuery, -1)).toHaveLength(0);
+    expect(Lib.expressions(clearedQuery, -1)).toHaveLength(0);
   });
 });
 

@@ -24,11 +24,13 @@ import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
+  Database,
   DatasetColumn,
   RowValues,
   TestNamedExpressionSpec,
 } from "metabase-types/api";
 import {
+  COMMON_DATABASE_FEATURES,
   createMockCard,
   createMockCategoryColumn,
   createMockColumn,
@@ -130,6 +132,7 @@ function Harness({
 }
 
 type SetupOpts = {
+  apiDatabase?: Database;
   question?: Question;
   columns?: DatasetColumn[];
   rows?: RowValues[];
@@ -155,6 +158,7 @@ function CompetingFormulaBar({
 }
 
 function setup({
+  apiDatabase = database,
   question = defaultQuestion,
   columns = defaultColumns,
   rows = [[10]],
@@ -163,7 +167,7 @@ function setup({
   withSlot = true,
   withCompetingBar = false,
 }: SetupOpts = {}) {
-  setupDatabaseEndpoints(database);
+  setupDatabaseEndpoints(apiDatabase);
   const onQuestionChange = jest.fn<void, [Question, ColumnFormulaChange]>();
   const onEditSummaryFormula = jest.fn<void, [Lib.ExpressionClause]>();
   const renderHarness = (active: boolean, currentQuestion = question) => (
@@ -375,6 +379,24 @@ describe("column formula bar", () => {
       ],
     });
     await expectClosed();
+  });
+
+  it("flags a function the database doesn't support and keeps the draft open", async () => {
+    const source = 'regexExtract([Product → Category], "^W")';
+    const { onQuestionChange } = setup({
+      apiDatabase: createSampleDatabase({
+        features: COMMON_DATABASE_FEATURES.filter((name) => name !== "regex"),
+      }),
+    });
+    const { textbox, view } = await openFormula(source);
+
+    fireEvent.keyDown(textbox, { key: "Enter", ctrlKey: true });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Unsupported function regexExtract",
+    );
+    expect(view?.state.doc.toString()).toBe(source);
+    expect(onQuestionChange).not.toHaveBeenCalled();
   });
 
   it("discards the draft when the query builder leaves view mode", async () => {

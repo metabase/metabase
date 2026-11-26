@@ -17,7 +17,12 @@ import {
   SAMPLE_DATABASE,
   SAMPLE_PROVIDER,
 } from "metabase-lib/test-helpers";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
+import type { DatabaseFeature } from "metabase-types/api";
+import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { FormulaEditor } from "./FormulaEditor";
 import type { FormulaEditorProps, NamedExpression } from "./types";
@@ -25,8 +30,68 @@ import type { FormulaEditorProps, NamedExpression } from "./types";
 jest.unmock("@uiw/react-codemirror");
 
 type SetupOpts = Partial<
-  Pick<FormulaEditorProps, "initialSource" | "query" | "expressionIndex">
+  Pick<
+    FormulaEditorProps,
+    | "initialSource"
+    | "database"
+    | "expressionMode"
+    | "query"
+    | "expressionIndex"
+  >
 >;
+
+type FeatureCase = Required<Pick<SetupOpts, "expressionMode">> & {
+  feature: DatabaseFeature;
+  source: string;
+  functionName: string;
+};
+
+const FEATURE_CASES: FeatureCase[] = [
+  {
+    expressionMode: "aggregation",
+    feature: "percentile-aggregations",
+    source: "Percentile([Total], 0.9)",
+    functionName: "Percentile",
+  },
+  {
+    expressionMode: "aggregation",
+    feature: "percentile-aggregations",
+    source: "Sum([Total]) / Median([Total])",
+    functionName: "Median",
+  },
+  {
+    expressionMode: "aggregation",
+    feature: "standard-deviation-aggregations",
+    source: "StandardDeviation([Total])",
+    functionName: "StandardDeviation",
+  },
+  {
+    expressionMode: "expression",
+    feature: "regex",
+    source: 'regexExtract([Product → Category], "^W")',
+    functionName: "regexExtract",
+  },
+  {
+    expressionMode: "expression",
+    feature: "datetime-diff",
+    source: 'datetimeDiff([Created At], [Product → Created At], "day") + 1',
+    functionName: "datetimeDiff",
+  },
+];
+
+function getFeaturesWithout(feature: DatabaseFeature) {
+  return COMMON_DATABASE_FEATURES.filter((name) => name !== feature);
+}
+
+function createDatabaseWithout(feature: DatabaseFeature) {
+  return createSampleDatabase({ features: getFeaturesWithout(feature) });
+}
+
+function createDatabaseWith(feature: DatabaseFeature) {
+  return createSampleDatabase({
+    features: [...getFeaturesWithout(feature), feature],
+  });
+}
 
 async function setup(options: SetupOpts = {}) {
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
@@ -212,6 +277,66 @@ describe("FormulaEditor", () => {
     await userEvent.keyboard("{Control>}z{/Control}");
     expect(view.state.doc.toString()).toBe(source);
     expect(view.state.selection.eq(selection)).toBe(true);
+  });
+
+  describe("functions the database doesn't support", () => {
+    it.each(FEATURE_CASES)(
+      "flags $functionName in $source without $feature, and adds nothing",
+      async ({ expressionMode, feature, source, functionName }) => {
+        const { onSubmit } = await setup({
+          initialSource: source,
+          expressionMode,
+          database: createDatabaseWithout(feature),
+        });
+
+        await userEvent.click(
+          screen.getByRole("button", { name: "Add column" }),
+        );
+
+        expect(screen.getByRole("alert")).toHaveTextContent(
+          `Unsupported function ${functionName}`,
+        );
+        expect(onSubmit).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(FEATURE_CASES)(
+      "adds $source when the database has $feature",
+      async ({ expressionMode, feature, source }) => {
+        const { onSubmit } = await setup({
+          initialSource: source,
+          expressionMode,
+          database: createDatabaseWith(feature),
+        });
+
+        await userEvent.click(
+          screen.getByRole("button", { name: "Add column" }),
+        );
+
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+        expect(onSubmit).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    it("drops the flag once the function is replaced, and adds the formula", async () => {
+      const { view, onSubmit } = await setup({
+        initialSource: "Median([Total])",
+        expressionMode: "aggregation",
+        database: createDatabaseWithout("percentile-aggregations"),
+      });
+      await userEvent.click(screen.getByRole("button", { name: "Add column" }));
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Unsupported function Median",
+      );
+
+      await replaceFormula(view, "Average([Total])");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Add column" }));
+
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      const [[{ name }]] = onSubmit.mock.calls;
+      expect(name).toBe("Average(Total)");
+    });
   });
 
   describe("completion", () => {
