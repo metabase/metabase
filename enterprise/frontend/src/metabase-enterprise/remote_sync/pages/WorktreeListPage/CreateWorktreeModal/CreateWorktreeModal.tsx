@@ -12,12 +12,10 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import {
-  Alert,
   Box,
   Button,
   FocusTrap,
   Group,
-  Icon,
   Modal,
   SelectItem,
   Stack,
@@ -44,40 +42,29 @@ const INITIAL_VALUES: CreateWorktreeValues = { branch: "" };
 
 type CreateWorktreeModalProps = {
   opened: boolean;
-  isFirstWorktree: boolean;
   onCreate: (worktree: RemoteSyncWorktree) => void;
   onClose: () => void;
 };
 
 export function CreateWorktreeModal({
   opened,
-  isFirstWorktree,
   onCreate,
   onClose,
 }: CreateWorktreeModalProps) {
   return (
     <Modal opened={opened} title={t`New worktree`} onClose={onClose}>
       <FocusTrap.InitialFocus />
-      <CreateWorktreeForm
-        isFirstWorktree={isFirstWorktree}
-        onCreate={onCreate}
-        onClose={onClose}
-      />
+      <CreateWorktreeForm onCreate={onCreate} onClose={onClose} />
     </Modal>
   );
 }
 
 type CreateWorktreeFormProps = {
-  isFirstWorktree: boolean;
   onCreate: (worktree: RemoteSyncWorktree) => void;
   onClose: () => void;
 };
 
-function CreateWorktreeForm({
-  isFirstWorktree,
-  onCreate,
-  onClose,
-}: CreateWorktreeFormProps) {
+function CreateWorktreeForm({ onCreate, onClose }: CreateWorktreeFormProps) {
   const { data, isLoading } = useGetRemoteSyncBranchesQuery();
   const [createBranch] = useCreateBranchMutation();
   const [createWorktree] = useCreateWorktreeMutation();
@@ -101,11 +88,6 @@ function CreateWorktreeForm({
       <Form>
         <Stack gap="lg">
           <BranchSelect branches={branches} isLoading={isLoading} />
-          {isFirstWorktree && (
-            <Alert variant="light" icon={<Icon name="info" />}>
-              {t`This is the first worktree, so creating it turns row-level security on for the application database, which then filters its rows by worktree.`}
-            </Alert>
-          )}
           <Group>
             <Box flex={1}>
               <FormErrorMessage />

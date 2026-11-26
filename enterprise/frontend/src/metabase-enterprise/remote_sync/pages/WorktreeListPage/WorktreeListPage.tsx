@@ -94,14 +94,12 @@ function WorktreeList() {
       )}
       <CreateWorktreeModal
         opened={isCreateModalOpened}
-        isFirstWorktree={worktrees.length === 0}
         onCreate={handleCreate}
         onClose={() => setIsCreateModalOpened(false)}
       />
       {worktreeToDelete != null && (
         <DeleteWorktreeModal
           worktree={worktreeToDelete}
-          isLastWorktree={worktrees.length === 1}
           onDelete={() => setWorktreeToDelete(null)}
           onClose={() => setWorktreeToDelete(null)}
         />
