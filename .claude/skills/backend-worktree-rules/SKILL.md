@@ -70,11 +70,14 @@ writes its value.
 `metabase.app-db.worktree/*scope*` is the worktree a thread works in: `{:type :main}` by default,
 `{:type :worktree :worktree-id n}`, or `{:type :all}`. Bind it with `mdb/with-worktree-scope`; requests bind it from
 `remote_sync_worktree_user` or the `X-Metabase-Worktree-Id` header, and `{:type :all}` while no worktree but the
-default one exists. Setup, migrations and the app DB copy run in `{:type :all}`.
+default one exists and the instance is not a workspace. Setup, migrations, the app DB copy and sync run in
+`{:type :all}`.
 
 Every Honey SQL query a model compiles goes through `sandbox-worktree-query` (`metabase.app-db.query`), which never
-queries: it gives `funnysql/sandbox-query` a `worktree_id` row filter for each hooked table, plus, in a worktree other
-than the default one, `v_worktree_table`/`v_worktree_field` in place of `metabase_table`/`metabase_field`. The sandbox
+queries: it gives `funnysql/sandbox-query` a `worktree_id` row filter for each hooked table, plus, in the main app and
+every worktree, `v_worktree_table`/`v_worktree_field` in place of `metabase_table`/`metabase_field`. The views apply
+the worktree's user settings and its workspace table remappings: a copy shows under the name of the table it shadows,
+which it hides, and another worktree's copies are hidden. Writes go to the stored tables. The sandbox
 filters reads (FROM, joins, subqueries, CTEs, unions), UPDATE and DELETE, and MERGE ON/KEY, and writes the value into
 inserted rows. It throws for `[:param ...]` values, a CTE named like a filtered table, an INSERT without a column list
 or selecting `*`, and an upsert with RETURNING. The hooked-table list is built once by `init-worktree-tables!` in

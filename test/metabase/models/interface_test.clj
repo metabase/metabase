@@ -5,12 +5,12 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.timeline.models.timeline :as timeline]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -397,55 +397,35 @@
              (second (mt/with-partition-size 2
                        (hydrate (cards 5)))))))))
 
-(def ^:private test-worktree-branch
-  "The branch of the worktree the worktree insert and update tests create."
-  "interface-test-worktree")
-
-(defn- stored-worktree-id
-  "The `worktree_id` stored for the Timeline with `timeline-id`, read across every worktree."
-  [timeline-id]
-  (mdb/with-worktree-scope {:type :all}
-    (t2/select-one-fn :worktree_id :timeline :id timeline-id)))
-
-(defn- do-with-test-worktree!
-  "Call `f` with the id of a worktree created for it, deleting the worktree and its rows afterwards."
-  [f]
-  (let [worktree-id (t2/insert-returning-pk! :remote_sync_worktree {:branch test-worktree-branch})]
-    (try
-      (f worktree-id)
-      (finally
-        (t2/delete! :remote_sync_worktree :id worktree-id)))))
-
-(defn- create-timeline!
-  "The id of a Timeline named `timeline-name` created through its write function in `scope`."
-  [scope timeline-name]
-  (mdb/with-worktree-scope scope
-    (:id (first (timeline/create-timelines! [{:name timeline-name :creator_id (mt/user->id :rasta)}])))))
+(defn- scopes-seeing
+  "The keys of `scopes`, a map of keys to scopes, in which a thread selects the Timeline with `timeline-id`."
+  [scopes timeline-id]
+  (into #{}
+        (keep (fn [[k scope]]
+                (when (mdb/with-worktree-scope scope (t2/exists? :model/Timeline :id timeline-id))
+                  k)))
+        scopes))
 
 (deftest insert-sets-worktree-id-from-scope-test
-  (do-with-test-worktree!
-   (fn [worktree-id]
-     (doseq [[scope expected] [[{:type :main} mdb/default-worktree-id]
-                               [{:type :worktree :worktree-id worktree-id} worktree-id]
-                               [{:type :all} mdb/default-worktree-id]]]
-       (testing (str "insert in scope " (pr-str scope))
-         (let [timeline-id (create-timeline! scope "Worktree hook timeline")]
-           (try
-             (is (= expected (stored-worktree-id timeline-id)))
-             (finally
-               (mdb/with-worktree-scope {:type :all}
-                 (t2/delete! :timeline :id timeline-id))))))))))
+  (when config/ee-available?
+    (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "interface-test-worktree"}]
+      (let [scopes {:main {:type :main} :worktree {:type :worktree :worktree-id worktree-id}}]
+        (doseq [[scope seen-in] [[{:type :main} #{:main}]
+                                 [{:type :worktree :worktree-id worktree-id} #{:worktree}]
+                                 [{:type :all} #{:main}]]]
+          (testing (str "insert in scope " (pr-str scope))
+            (mdb/with-worktree-scope scope
+              (mt/with-temp [:model/Timeline {timeline-id :id} {}]
+                (is (= seen-in (scopes-seeing scopes timeline-id)))))))))))
 
 (deftest update-refuses-worktree-id-change-test
-  (do-with-test-worktree!
-   (fn [worktree-id]
-     (let [timeline-id (create-timeline! {:type :main} "Worktree hook update timeline")]
-       (try
-         (testing "update changing worktree_id throws"
-           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"sandbox column :worktree_id"
-                                 (t2/update! :model/Timeline :id timeline-id {:worktree_id worktree-id}))))
-         (testing "stored worktree_id is unchanged"
-           (is (= mdb/default-worktree-id (stored-worktree-id timeline-id))))
-         (finally
-           (mdb/with-worktree-scope {:type :all}
-             (t2/delete! :timeline :id timeline-id))))))))
+  (when config/ee-available?
+    (mt/with-temp [:model/RemoteSyncWorktree {worktree-id :id} {:branch "interface-test-worktree"}
+                   :model/Timeline           {timeline-id :id} {}]
+      (testing "update changing worktree_id throws"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"sandbox column :worktree_id"
+                              (t2/update! :model/Timeline :id timeline-id {:worktree_id worktree-id}))))
+      (testing "row stays in the main app"
+        (is (= #{:main} (scopes-seeing {:main     {:type :main}
+                                        :worktree {:type :worktree :worktree-id worktree-id}}
+                                       timeline-id)))))))

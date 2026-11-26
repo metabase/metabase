@@ -51,7 +51,6 @@
    [metabase-enterprise.workspaces.models.table-remapping]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase.driver :as driver]
-   [metabase.driver.connection :as driver.conn]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.sql-tools.core :as sql-tools]
@@ -356,13 +355,6 @@
   [db-id from-spec]
   (remap-table db-id from-spec))
 
-(defenterprise workspace-table-remapper
-  "The [[table-remapper]] of the Database with `db-id`, ungated on premium features like
-  [[workspace-remap-schema+name]]."
-  :feature :none
-  [db-id]
-  (table-remapper db-id))
-
 (defn all-mappings-for-db
   "Return all remappings for a given database as a map of `from-spec` to `to-spec`,
    each a `::table-spec` (`{:db :schema :table}`).
@@ -372,178 +364,6 @@
    [[metabase-enterprise.workspaces.query-processor.middleware]]."
   [database-id]
   (ws.remapping/remappings-for-db database-id))
-
-(defenterprise table-remappings-exist?
-  "Enterprise impl of the sync predicate. Like the other sync hooks, deliberately ungated on premium features:
-   if rows exist they must be respected, regardless of current token state."
-  :feature :none
-  [db-id]
-  ;; The store's `exists?` check, not [[ws.remapping/enabled-for-db?]]: sync must not honour `*skip-remapping?*`.
-  (boolean (ws.remapping/enabled-for-db?* ws.remapping/*remapping-store* db-id)))
-
-(defenterprise filter-workspace-side-tables
-  "Enterprise impl of the table-list filter. Drops tuples whose `(schema, name)`
-   matches the to-side of any active `TableRemapping` row for `db-id`. Workspace
-   isolation tables show up in `describe-database` because the connection has
-   GRANT on the isolation schema, but they must not become `:model/Table` rows —
-   canonical Tables back them via remap. Like the read-side hook, deliberately
-   ungated on premium features: if rows exist, the filter must apply. See DEV-1898."
-  :feature :none
-  [tuples db-id]
-  ;; Storage rows carry the `""` sentinel for absent slots; sync tuples carry
-  ;; `nil` (e.g. MySQL `:schema` is always nil). Denormalize both sides so the
-  ;; comparison matches across the boundary.
-  (let [to-pairs (into #{}
-                       (map (fn [to-spec] [(denormalize-level (:schema to-spec)) (:table to-spec)]))
-                       (vals (all-mappings-for-db db-id)))]
-    (if (empty? to-pairs)
-      tuples
-      (into #{} (remove (fn [t] (contains? to-pairs [(denormalize-level (:schema t)) (:name t)]))) tuples))))
-
-(defenterprise expand-schema-names-with-workspace
-  "Enterprise impl: augment a `:schema-names` list with `to_schema` values for
-   any active remap row whose `from_schema` matches one of the input schemas.
-   Lets sync's FK fetch reach the workspace-isolated warehouse tables that
-   physically back canonical Tables on a workspace child."
-  :feature :none
-  [schema-names db-id]
-  (if (empty? schema-names)
-    schema-names
-    (let [from->to (into {}
-                         (map (fn [[from-spec to-spec]]
-                                [(:schema from-spec) (:schema to-spec)]))
-                         (all-mappings-for-db db-id))
-          extras   (into #{} (keep from->to) schema-names)]
-      (vec (distinct (concat schema-names extras))))))
-
-(defn- iso-db-swap-maps-for-fk-probe
-  "Return a seq of swap-maps to apply per `describe-fks` invocation. Each entry is
-   either `{:db <iso-db>}` (run describe-fks with the JDBC connection pointed at
-   that iso DB) or nil (run with no swap, against the canonical connection).
-
-   When the database has any active remap rows whose `to_db` differs from the
-   canonical bound database (today: MySQL workspaces with cross-DB swaps), return
-   only the iso swap-maps -- on a workspace child the canonical DB holds no real
-   tables, so probing it would waste a round-trip and the rows it returns wouldn't
-   correspond to any `:model/Table`. Otherwise return a single nil entry so the
-   probe runs once against the canonical connection, preserving non-workspace
-   behavior.
-
-   3-slot engines (BigQuery, SQL Server) populate `:db` on both sides of the
-   remap row but the canonical `:db` already routes through the existing
-   connection, so the iso `:db` matches canonical and this collapses to the
-   single-canonical-run path."
-  [db-id]
-  (let [mappings (all-mappings-for-db db-id)
-        iso-dbs  (when (seq mappings)
-                   (let [canonical-db (-> (ws.db/database db-id) :details :db)]
-                     (into #{}
-                           (comp (map (comp denormalize-level :db second))
-                                 (remove nil?)
-                                 (remove #(= % canonical-db)))
-                           mappings)))]
-    (if (seq iso-dbs)
-      (map (fn [iso-db] {:db iso-db}) iso-dbs)
-      [nil])))
-
-(defenterprise call-with-fk-probe-iso-dbs
-  "Enterprise impl: invoke `f` once for the canonical bound DB, then once for each
-   distinct iso `:db` differing from the canonical, each iteration inside a
-   `with-swapped-connection-details` scope. Returns a vector of `f`'s results so
-   the caller can concatenate row batches before back-translation.
-
-   Cross-DB MySQL workspaces store the iso table in a different bound database
-   than the canonical one. Without a per-iso-DB describe-fks call, the JDBC
-   connection only ever talks to the canonical DB and the iso DB's FK rows go
-   undiscovered."
-  :feature :none
-  [db-id f]
-  (mapv (fn [swap-map]
-          (if swap-map
-            (driver.conn/with-swapped-connection-details db-id swap-map
-              (f))
-            (f)))
-        (iso-db-swap-maps-for-fk-probe db-id)))
-
-(defenterprise inject-workspace-canonical-tuples
-  "Enterprise impl: augment a `describe-database` result with synthetic
-   canonical-side `(from_schema, from_table_name)` tuples for every active
-   remap row. Without this, `sync-tables-and-database!` would diff app-db's
-   canonical Table rows against a `describe-database` result that excludes
-   them (the canonical name only exists virtually, backed by the workspace
-   warehouse table). The diff would then retire those rows on every sync.
-
-   Adds one synthetic tuple per remap row, whether or not the canonical
-   tuple is already present (`into` deduplicates; tuples are equal by value).
-   Tuples carry only `:schema` and `:name` -- the only fields the
-   `sync-tables-and-database!` diff keys on."
-  :feature :none
-  [tuples db-id]
-  ;; Storage rows carry the `""` sentinel for absent slots; the sync diff
-  ;; matches against `nil`-schema tuples on schema-less drivers (MySQL). Use
-  ;; `denormalize-level` so synthetic tuples match the diff key shape.
-  (let [mappings (all-mappings-for-db db-id)]
-    (if (empty? mappings)
-      tuples
-      (let [synthetic (into #{}
-                            (map (fn [[from-spec _]]
-                                   {:schema (denormalize-level (:schema from-spec))
-                                    :name   (:table from-spec)}))
-                            mappings)]
-        (into tuples synthetic)))))
-
-(defenterprise rewrite-fk-result-canonical
-  "Enterprise impl: walk an FK-result collection, rewriting workspace-side
-   `(schema, name)` pairs back to canonical `(from_schema, from_table_name)`
-   on both fk-side and pk-side. Rows whose pairs don't match any active
-   `to_*` tuple pass through unchanged — used for FKs to non-remapped tables
-   and for the legacy `describe-table-fks` fallback whose fk-side is already
-   canonical."
-  :feature :none
-  [rows db-id]
-  ;; Storage `:schema` is the `""` sentinel for absent slots; FK-result rows
-  ;; carry `nil` on schema-less drivers (MySQL). Denormalize on both sides of
-  ;; the lookup so the rewrite matches across the boundary. Output `:schema`
-  ;; values come from the canonical from-spec — also denormalized.
-  (let [to->from (into {}
-                       (map (fn [[from-spec to-spec]]
-                              [[(denormalize-level (:schema to-spec)) (:table to-spec)]
-                               [(denormalize-level (:schema from-spec)) (:table from-spec)]]))
-                       (all-mappings-for-db db-id))]
-    (if (empty? to->from)
-      rows
-      (mapv (fn [row]
-              (let [fk-key [(denormalize-level (:fk-table-schema row)) (:fk-table-name row)]
-                    pk-key [(denormalize-level (:pk-table-schema row)) (:pk-table-name row)]]
-                (cond-> row
-                  (contains? to->from fk-key)
-                  (assoc :fk-table-schema (first (to->from fk-key))
-                         :fk-table-name   (second (to->from fk-key)))
-                  (contains? to->from pk-key)
-                  (assoc :pk-table-schema (first (to->from pk-key))
-                         :pk-table-name   (second (to->from pk-key))))))
-            rows))))
-
-(defenterprise canonical-schema+name
-  "Enterprise impl: invert an active workspace remapping. Given a workspace-side
-   `to-spec` (`{:db :schema :name}`), return a `{:db :schema :name}` map for the
-   canonical table if a TableRemapping row records that pair as the destination
-   of a canonical table; nil otherwise. Mirror of `workspace-remap-schema+name`
-   for write-side paths that already have the rewritten target on hand and need
-   the canonical slot before touching `:model/Table` rows.
-
-   Driver-aware: matches against the slots the driver actually emits, so an
-   engine like MySQL (whose canonical and isolated tables differ at `:db` rather
-   than `:schema`) inverts correctly. Output `:db` / `:schema` slots are nil
-   when the driver doesn't populate them, so the empty-string sentinel never
-   leaks above this boundary."
-  :feature :none
-  [db-id to-spec]
-  (let [mappings (all-mappings-for-db db-id)]
-    (when (seq mappings)
-      (when-let [driver (some-> (ws.db/database-engine db-id) keyword)]
-        (some-> (isolated->canonical driver mappings (consumer-shape->spec to-spec))
-                spec->consumer-shape)))))
 
 (defenterprise call-with-display-context
   "Enterprise impl: bind `ws.remapping/*skip-remapping?*` true around `thunk` so Phase 1

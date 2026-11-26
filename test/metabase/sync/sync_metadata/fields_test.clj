@@ -875,10 +875,10 @@
          (let [original (mt/original-fn #'fetch-metadata/include-nested-fields-for-table)
                field-count #(t2/count :model/Field :table_id (t2/select-one-pk :model/Table :db_id db-id :name %))]
            (mt/with-dynamic-fn-redefs [fetch-metadata/include-nested-fields-for-table
-                                       (fn [fields database table remap-table]
+                                       (fn [fields database table]
                                          (if (= "T1" (:name table))
                                            (throw (ex-info "boom" {}))
-                                           (original fields database table remap-table)))]
+                                           (original fields database table)))]
              (mt/with-log-messages-for-level [messages [metabase.sync.sync-metadata.fields :warn]]
                (is (= {:total-fields 16 :updated-fields 12}
                       (sync-fields/sync-fields! (driver.u/lib-database db-id))))

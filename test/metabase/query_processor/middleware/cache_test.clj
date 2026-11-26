@@ -9,12 +9,14 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.app-db.core :as mdb]
    [metabase.cache.core]
    [metabase.cache.models.cache-config :as cache-config]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.permissions.core :as perms]
@@ -1058,3 +1060,14 @@
           "Stale-only keys from @final-metadata are still deep-merged in")
       (is (= [[1] [2]] (get-in result [:data :rows]))
           "Replayed cached rows are preserved"))))
+
+(deftest cache-key-differs-per-worktree-test
+  (let [mp        (mt/metadata-provider)
+        query     (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        key-in    (fn [scope] (vec (mdb/with-worktree-scope scope (#'cache/cache-key query))))
+        main-key  (key-in {:type :main})]
+    (testing "the main app keys a query by its hash alone, as before worktrees"
+      (is (= (vec (qp.util/query-hash query)) main-key)))
+    (testing "each worktree keys the same query differently, so it never serves another's results"
+      (is (not= main-key (key-in {:type :worktree :worktree-id 2})))
+      (is (not= (key-in {:type :worktree :worktree-id 2}) (key-in {:type :worktree :worktree-id 3}))))))

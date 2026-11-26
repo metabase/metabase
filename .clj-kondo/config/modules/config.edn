@@ -2913,7 +2913,8 @@
            tracing
            users
            util
-           util.config}
+           util.config
+           workspaces}
    :model-imports #{:model/ApiKey :model/PermissionsGroupMembership :model/User}}
 
   session

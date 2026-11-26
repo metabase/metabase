@@ -21,10 +21,8 @@
    [metabase.query-processor :as qp]
    [metabase.settings.core :as setting]
    [metabase.sync.fetch-metadata :as fetch-metadata]
-   [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.util.malli.fn :as mu.fn]
-   [metabase.workspaces.table-remapping :as oss.table-remapping]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -65,37 +63,6 @@
         (is (zero? (call-count #((ws.middleware/apply-workspace-sql-remapping (fn [_query _rff] :ok))
                                  {:database (mt/id) :qp/compiled {:query "SELECT 1"}}
                                  identity))))))))
-
-(deftest sync-hooks-cost-no-statements-test
-  (with-no-remappings!
-    (fn []
-      (let [db-id (mt/id)
-            spec  {:db nil :schema "PUBLIC" :name "VENUES"}]
-        (is (zero? (call-count
-                    #(do
-                       (oss.table-remapping/table-remappings-exist? db-id)
-                       (oss.table-remapping/workspace-remap-schema+name db-id spec)
-                       ((oss.table-remapping/workspace-table-remapper db-id) spec)
-                       (oss.table-remapping/canonical-schema+name db-id spec)
-                       (oss.table-remapping/filter-workspace-side-tables #{spec} db-id)
-                       (oss.table-remapping/inject-workspace-canonical-tuples #{spec} db-id)
-                       (oss.table-remapping/expand-schema-names-with-workspace ["PUBLIC"] db-id)
-                       (oss.table-remapping/rewrite-fk-result-canonical [] db-id)
-                       (oss.table-remapping/call-with-fk-probe-iso-dbs db-id (constantly nil))))))))))
-
-(deftest sync-costs-no-remapping-statements-test
-  (testing "metadata sync makes the same app-DB statements as with the OSS fallbacks of the workspace hooks"
-    (with-no-remappings!
-      (fn []
-        (let [sync! #(sync-metadata/sync-db-metadata! (mt/id))]
-          (sync!)
-          (is (= (call-count #(mt/with-dynamic-fn-redefs [oss.table-remapping/table-remappings-exist?             (constantly false)
-                                                          oss.table-remapping/workspace-remap-schema+name        (constantly nil)
-                                                          oss.table-remapping/workspace-table-remapper           (constantly (constantly nil))
-                                                          oss.table-remapping/filter-workspace-side-tables       (fn [tuples _] tuples)
-                                                          oss.table-remapping/inject-workspace-canonical-tuples  (fn [tuples _] tuples)]
-                                (sync!)))
-                 (call-count sync!))))))))
 
 (deftest fk-sync-streams-test
   (testing "without remappings, FK sync hands back the driver's reducible as is, unrealized"

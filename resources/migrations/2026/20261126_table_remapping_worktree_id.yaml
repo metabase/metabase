@@ -1,0 +1,129 @@
+## Table remappings of workspaces belong to a remote sync worktree, like the content that uses them.
+
+databaseChangeLog:
+  - changeSet:
+      id: trw1co
+      author: ranquild
+      comment: Add worktree_id to table_remapping, the remote sync worktree whose queries the remapping redirects
+      changes:
+        - addColumn:
+            tableName: table_remapping
+            columns:
+              - column:
+                  name: worktree_id
+                  type: int
+                  defaultValueNumeric: 1
+                  remarks: The remote sync worktree whose queries the remapping redirects
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: trw2ix
+      author: ranquild
+      comment: Index table_remapping.worktree_id before its foreign key, so MySQL makes no index of its own
+      changes:
+        - createIndex:
+            tableName: table_remapping
+            indexName: idx_table_remapping_worktree_id
+            columns:
+              - column:
+                  name: worktree_id
+
+  - changeSet:
+      id: trw3fk
+      author: ranquild
+      comment: FK table_remapping.worktree_id -> remote_sync_worktree.id, deleting a worktree's remappings with it
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: table_remapping
+            baseColumnNames: worktree_id
+            referencedTableName: remote_sync_worktree
+            referencedColumnNames: id
+            constraintName: fk_table_remapping_worktree_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: trw4uq
+      author: ranquild
+      comment: Make the unique keys of table_remapping unique per worktree, ending them with worktree_id; on H2 the database_id foreign key is added again around them, since H2 hands a dropped key's index to it
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE table_remapping DROP CONSTRAINT idx_unique_table_remapping_source;
+              ALTER TABLE table_remapping ADD CONSTRAINT idx_unique_table_remapping_source UNIQUE (database_id, from_db, from_schema, from_table_name, worktree_id);
+              ALTER TABLE table_remapping DROP CONSTRAINT idx_unique_table_remapping_target;
+              ALTER TABLE table_remapping ADD CONSTRAINT idx_unique_table_remapping_target UNIQUE (database_id, to_db, to_schema, to_table_name, worktree_id);
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE table_remapping DROP INDEX idx_unique_table_remapping_source, ADD CONSTRAINT idx_unique_table_remapping_source UNIQUE (database_id, from_db, from_schema, from_table_name, worktree_id);
+              ALTER TABLE table_remapping DROP INDEX idx_unique_table_remapping_target, ADD CONSTRAINT idx_unique_table_remapping_target UNIQUE (database_id, to_db, to_schema, to_table_name, worktree_id);
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE table_remapping DROP CONSTRAINT fk_table_remapping_database_id;
+              ALTER TABLE table_remapping DROP CONSTRAINT idx_unique_table_remapping_source;
+              ALTER TABLE table_remapping ADD CONSTRAINT idx_unique_table_remapping_source UNIQUE (database_id, from_db, from_schema, from_table_name, worktree_id);
+              ALTER TABLE table_remapping DROP CONSTRAINT idx_unique_table_remapping_target;
+              ALTER TABLE table_remapping ADD CONSTRAINT idx_unique_table_remapping_target UNIQUE (database_id, to_db, to_schema, to_table_name, worktree_id);
+              ALTER TABLE table_remapping ADD CONSTRAINT fk_table_remapping_database_id FOREIGN KEY (database_id) REFERENCES metabase_database (id) ON DELETE CASCADE;
+      rollback:
+        - sql:
+            sql: DELETE FROM table_remapping WHERE worktree_id <> 1
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE table_remapping DROP CONSTRAINT idx_unique_table_remapping_source;
+              ALTER TABLE table_remapping ADD CONSTRAINT idx_unique_table_remapping_source UNIQUE (database_id, from_db, from_schema, from_table_name);
+              ALTER TABLE table_remapping DROP CONSTRAINT idx_unique_table_remapping_target;
+              ALTER TABLE table_remapping ADD CONSTRAINT idx_unique_table_remapping_target UNIQUE (database_id, to_db, to_schema, to_table_name);
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE table_remapping DROP INDEX idx_unique_table_remapping_source, ADD CONSTRAINT idx_unique_table_remapping_source UNIQUE (database_id, from_db, from_schema, from_table_name);
+              ALTER TABLE table_remapping DROP INDEX idx_unique_table_remapping_target, ADD CONSTRAINT idx_unique_table_remapping_target UNIQUE (database_id, to_db, to_schema, to_table_name);
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE table_remapping DROP CONSTRAINT fk_table_remapping_database_id;
+              ALTER TABLE table_remapping DROP CONSTRAINT idx_unique_table_remapping_source;
+              ALTER TABLE table_remapping ADD CONSTRAINT idx_unique_table_remapping_source UNIQUE (database_id, from_db, from_schema, from_table_name);
+              ALTER TABLE table_remapping DROP CONSTRAINT idx_unique_table_remapping_target;
+              ALTER TABLE table_remapping ADD CONSTRAINT idx_unique_table_remapping_target UNIQUE (database_id, to_db, to_schema, to_table_name);
+              ALTER TABLE table_remapping ADD CONSTRAINT fk_table_remapping_database_id FOREIGN KEY (database_id) REFERENCES metabase_database (id) ON DELETE CASCADE;
+
+  - changeSet:
+      id: trw6vt
+      author: ranquild
+      comment: Replace v_worktree_table with one that applies each worktree's table remappings, showing a workspace copy under the name of the table it shadows
+      changes:
+        - sqlFile:
+            dbms: postgresql,h2
+            path: ../worktree_views/table/v2/worktree_table.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../worktree_views/table/v2/worktree_table_mysql.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: DROP VIEW v_worktree_table
+        - sqlFile:
+            path: ../worktree_views/table/v1/worktree_table.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: trw7vf
+      author: ranquild
+      comment: Replace v_worktree_field with one that keeps only the fields of the tables v_worktree_table shows to each worktree
+      changes:
+        - sqlFile:
+            path: ../worktree_views/field/v2/worktree_field.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: DROP VIEW v_worktree_field
+        - sqlFile:
+            path: ../worktree_views/field/v1/worktree_field.sql
+            relativeToChangelogFile: true

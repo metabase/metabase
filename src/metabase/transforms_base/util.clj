@@ -632,32 +632,13 @@
 
 (mu/defn record-workspace-target-remapping! :- :nil
   "Record the workspace `TableRemapping` for a transform whose target [[resolve-workspace-target]]
-  rewrote to a workspace copy. The post-run sync in [[complete-execution!]] syncs the canonical table, and
-  reads the workspace copy's metadata through it. A no-op for a transform that wasn't rewritten."
+  rewrote to a workspace copy, whose Table row [[complete-execution!]] syncs. A no-op for a transform that wasn't
+  rewritten."
   [transform :- ::transforms-base.schema/transform]
   (when-let [canonical (:workspace-canonical-target transform)]
     (transforms-base.workspace-hooks/record-workspace-target-remapping!
      (transforms-base.i/target-db-id transform) canonical))
   nil)
-
-(defn- canonicalize-target
-  "If `target` is workspace-rewritten (i.e. its `(schema, name)` matches the
-   to-side of an active TableRemapping for `db-id`), return `target` with
-   `:schema` and `:name` swapped back to canonical. Else return `target`
-   unchanged. The transform pipeline mutates `:target.schema` to the workspace
-   output schema in `metabase.transforms.execute/resolve-target` so writes
-   land in isolation; `:model/Table` rows must stay at the canonical schema,
-   so we invert here.
-
-   `canonical-schema+name` returns a `{:db :schema :name}` map with slot
-   values already normalized to `:model/Table` row vocabulary (nil for
-   engines that don't emit a slot, string otherwise) — directly usable as a
-   Table-row predicate without further translation."
-  [db-id target]
-  (let [lookup-spec {:db (:db target) :schema (:schema target) :name (:name target)}]
-    (if-let [{:keys [db schema name]} (ws.table-remapping/canonical-schema+name db-id lookup-spec)]
-      (assoc target :db db :schema schema :name name)
-      target)))
 
 (mu/defn- sync-table!
   ([database :- ::lib.schema.metadata/database
@@ -666,21 +647,20 @@
   ([database          :- ::lib.schema.metadata/database
     target            :- ::transforms-base.schema/synced-target
     {:keys [create?]} :- [:maybe [:map {:closed true} [:create? {:optional true} :boolean]]]]
-   (let [target (canonicalize-target (:id database) target)]
-     (when-let [table (or (target-table (:id database) target)
-                          (when create?
-                            (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
-       ;; If the table has nil schema, check if the physical table actually lives under
-       ;; the driver's default schema. If so, fix the Table record before syncing.
-       (let [table (if (nil? (:schema table))
-                     (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
-                       (do (table/update-tables! [{:id (:id table) :schema actual-schema}])
-                           (-> (transforms-base.db/table (:id table))
-                               (t2/hydrate :db)))
-                       table)
-                     table)]
-         (sync/sync-table! table)
-         table)))))
+   (when-let [table (or (target-table (:id database) target)
+                        (when create?
+                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
+     ;; If the table has nil schema, check if the physical table actually lives under
+     ;; the driver's default schema. If so, fix the Table record before syncing.
+     (let [table (if (nil? (:schema table))
+                   (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
+                     (do (table/update-tables! [{:id (:id table) :schema actual-schema}])
+                         (-> (transforms-base.db/table (:id table))
+                             (t2/hydrate :db)))
+                     table)
+                   table)]
+       (sync/sync-table! table)
+       table))))
 
 (mu/defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
@@ -748,11 +728,7 @@
   canonical table when workspace mode is off, and throws a 400 when workspace mode is on. A throw
   leaves the warehouse and the app-db Table row unchanged.
 
-  The app-db Table row to deactivate is the canonical `:target`, since that is what sync
-  surfaces. It is deactivated when the drop names the canonical table, and when a
-  `table_remapping` row records the copy the row stands in for. With no such row (every run
-  failed), for a database with a workspace schema, the Table row is the live canonical warehouse
-  table, which the drop did not touch, so it stays active."
+  The app-db Table row deactivated is the one of the table the drop names, the copy in a workspace."
   [{:keys [id target], :as transform} :- ::transforms-base.schema/transform]
   (when target
     (let [database-id (transforms-base.i/target-db-id transform)]
@@ -762,13 +738,8 @@
           (let [target      (update target :type keyword)
                 drop-target (isolated-drop-target database-id target)]
             (driver/drop-transform-target! driver database drop-target)
-            (if (or (= drop-target target)
-                    (ws.table-remapping/workspace-remap-schema+name
-                     database-id {:db (:db target) :schema (:schema target) :name (:name target)}))
-              (do (log/info "Deactivating  target " (pr-str target) "for transform" id)
-                  (deactivate-table! database target))
-              (log/infof "Not deactivating target %s for transform %d: no remapping records a workspace copy behind it"
-                         (pr-str target) id)))
+            (log/info "Deactivating target" (pr-str drop-target) "for transform" id)
+            (deactivate-table! database drop-target))
           (log/warnf "Skipping drop of transform target %s for transform %d: database %d not found"
                      (pr-str target) id database-id))))))
 
@@ -925,19 +896,6 @@
             (apply-index-outcomes!
              (reconcile/classify-index-outcomes managed (reconcile/warehouse-key-set warehouse-indexes)))))))))
 
-(defn- canonical-sync-target
-  "The target [[complete-execution!]] syncs. For a workspace-rewritten transform that is the canonical target the run
-   recorded at its start. The remap row maps the written copy back to the canonical table in `:model/Table` row
-   vocabulary (nil `:db` and `:schema` on MySQL, whose Table rows carry neither). When the row is gone, the recorded
-   canonical target is used as it is, and the written copy is never synced."
-  [db-id {:keys [target] canonical :workspace-canonical-target}]
-  (if canonical
-    (let [row-target (canonicalize-target db-id target)]
-      (if (= row-target target)
-        canonical
-        (merge canonical (select-keys row-target [:db :schema :name]))))
-    target))
-
 (mu/defn complete-execution! :- :nil
   "Post-processing steps after a transform has been executed successfully.
 
@@ -957,9 +915,7 @@
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
         database (driver.u/lib-database db-id)
-        ;; Sync the canonical target the run recorded at its start, not the workspace copy mapped back through the
-        ;; remap row: a schema change may have deleted that row since the run recorded it.
-        table (sync-target! (canonical-sync-target db-id transform) database)]
+        table (sync-target! target database)]
     ;; Sync target table and set target_table_id on transform
     (when table
       (update-transform! (:id transform) {:target_table_id (:id table)}))

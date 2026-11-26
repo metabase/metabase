@@ -62,8 +62,8 @@
                                 (descendants :hook/worktree-id))))
 
 (def ^:private view-substitutions
-  "The views a query in a worktree other than the default one reads in place of the Table and Field tables, which
-  overlay them with the worktree's user settings."
+  "The views a query reads in place of the Table and Field tables, which overlay them with the worktree's user settings
+  and table remappings."
   {:metabase_table :v_worktree_table
    :metabase_field :v_worktree_field})
 
@@ -73,14 +73,9 @@
    worktree-id :- pos-int?]
   (into {} (map (fn [table] [table {:column :worktree_id :value worktree-id}])) tables))
 
-(mu/defn- main-options :- ::funnysql.schema/sandbox.options
-  "The options that keep a query to the rows of the main app, which reads the stored Table and Field rows."
-  []
-  {:row-filters (row-filters (vec @worktree-tables) default-worktree-id)})
-
-(mu/defn- worktree-options :- ::funnysql.schema/sandbox.options
+(mu/defn- view-options :- ::funnysql.schema/sandbox.options
   "The options that keep a query to the rows of the worktree with `worktree-id`, reading Tables and Fields through the
-  views that overlay them with its user settings."
+  views that overlay them with its user settings and its table remappings."
   [worktree-id :- pos-int?]
   {:table-substitutions view-substitutions
    :row-filters         (row-filters (into (vec @worktree-tables) (vals view-substitutions)) worktree-id)})
@@ -91,5 +86,5 @@
   [query :- ::funnysql.schema/query]
   (case (if @worktree-tables (:type *scope*) :all)
     :all      (if config/is-prod? query (funnysql/sandbox-query (mdb.connection/db-type) query {}))
-    :main     (funnysql/sandbox-query (mdb.connection/db-type) query (main-options))
-    :worktree (funnysql/sandbox-query (mdb.connection/db-type) query (worktree-options (:worktree-id *scope*)))))
+    :main     (funnysql/sandbox-query (mdb.connection/db-type) query (view-options default-worktree-id))
+    :worktree (funnysql/sandbox-query (mdb.connection/db-type) query (view-options (:worktree-id *scope*)))))

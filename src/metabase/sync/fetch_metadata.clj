@@ -5,7 +5,6 @@
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
-   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.util :as driver.u]
    [metabase.sync.db :as sync.db]
@@ -13,44 +12,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.fn :as mu.fn]
-   [metabase.workspaces.table-remapping :as ws.table-remapping]))
-
-(defn table-remapper
-  "The function of a Table's `{:schema :name}` to its workspace remap on `database`, read once for all its Tables, which
-  throws on each call what that read threw."
-  [database]
-  (try
-    (ws.table-remapping/workspace-table-remapper (:id database))
-    (catch Throwable e
-      (fn [_from-spec]
-        (throw e)))))
-
-(defn- effective-table-spec
-  "The `{:db :schema :name}` that `remap-table` gives for `schema` and `table-name`, or the canonical coordinates with
-  a nil `:db` when there is no remap."
-  [remap-table schema table-name]
-  (let [from-spec {:schema schema :name table-name}]
-    (or (remap-table from-spec)
-        {:db nil :schema schema :name table-name})))
-
-(defn- do-with-effective-table
-  "Resolve the workspace remap for `table` on `database` with `remap-table`, then call `f` with an
-  `{:db :schema :name}` map of effective coordinates.
-
-  When the resolved `:db` differs from the canonical bound DB (true for engines like
-  MySQL whose iso namespace is a *different* database, not just a different schema),
-  installs a `:db` swap via [[driver.conn/with-swapped-connection-details]] so the
-  driver-side `describe-fields`/`describe-table`/`describe-indexes` SQL filters and
-  connects to the iso DB. Schema-having drivers (Postgres etc.) keep `:db` at the
-  canonical value and skip the swap."
-  [database remap-table table f]
-  (let [{effective-db :db :as spec} (effective-table-spec remap-table (:schema table) (:name table))
-        canonical-db (-> database :details :db)]
-    (if (and effective-db (not= effective-db canonical-db))
-      (driver.conn/with-swapped-connection-details (:id database) {:db effective-db}
-        (f spec))
-      (f spec))))
+   [metabase.util.malli.fn :as mu.fn]))
 
 (defmacro log-if-error
   "Logs an error message if an exception is thrown while executing the body. The sync step that catches the exception
@@ -74,35 +36,25 @@
       (driver/describe-database driver database))))
 
 (defn include-nested-fields-for-table
-  "`fields` with the nested field columns of `table`, read from the warehouse location that `remap-table` gives."
-  [fields database table remap-table]
+  "`fields` with the nested field columns of `table`."
+  [fields database table]
   (let [driver (driver.u/database->driver database)]
-    (do-with-effective-table
-     database remap-table table
-     (fn [{effective-schema :schema effective-name :name}]
-       (let [effective-table (assoc table :schema effective-schema :name effective-name)]
-         (cond-> fields
-           (driver.u/supports? driver :nested-field-columns database)
-           (set/union (sql-jdbc.sync/describe-nested-field-columns driver database effective-table))))))))
+    (cond-> fields
+      (driver.u/supports? driver :nested-field-columns database)
+      (set/union (sql-jdbc.sync/describe-nested-field-columns driver database table)))))
 
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
-  "The Fields of `table`, read from the warehouse with [[driver/describe-fields]] or [[driver/describe-table]] at the
-  location that `remap-table`, the [[table-remapper]] of `database`, gives."
-  [database    :- i/DatabaseInstance
-   table       :- i/TableInstance
-   remap-table :- ifn?]
+  "The Fields of `table`, read from the warehouse with [[driver/describe-fields]] or [[driver/describe-table]]."
+  [database :- i/DatabaseInstance
+   table    :- i/TableInstance]
   (log-if-error "table-fields-metadata"
     (let [driver (driver.u/database->driver database)]
-      (do-with-effective-table
-       database remap-table table
-       (fn [{effective-schema :schema effective-name :name}]
-         (let [effective-table (assoc table :schema effective-schema :name effective-name)]
-           (if (driver.u/supports? driver :describe-fields database)
-             (set (driver/describe-fields driver
-                                          database
-                                          :table-names [effective-name]
-                                          :schema-names [effective-schema]))
-             (:fields (driver/describe-table driver database effective-table)))))))))
+      (if (driver.u/supports? driver :describe-fields database)
+        (set (driver/describe-fields driver
+                                     database
+                                     :table-names [(:name table)]
+                                     :schema-names [(:schema table)]))
+        (:fields (driver/describe-table driver database table))))))
 
 (def ^:private describe-table-batch-size
   "How many Tables [[describe-fields-using-describe-table]] reads from the app DB at a time."
@@ -113,15 +65,14 @@
   instead. Also includes nested field column metadata."
   [_driver database & {:keys [schema-names table-names]}]
   ;; Realize everything in a vector to close the connection. But only keep the ids because the maps can hog memory.
-  (let [table-ids   (mapv :id (sync-util/reducible-sync-tables database :schema-names schema-names :table-names table-names))
-        remap-table (table-remapper database)]
+  (let [table-ids (mapv :id (sync-util/reducible-sync-tables database :schema-names schema-names :table-names table-names))]
     (eduction
      (comp
       (partition-all describe-table-batch-size)
       (mapcat #(sync.db/tables-by-schema-and-name (vec %)))
       (mapcat (fn [table]
                 (try
-                  (let [table-fields (table-fields-metadata database table remap-table)]
+                  (let [table-fields (table-fields-metadata database table)]
                     ;; Realize the fields from this table (from `table-fields-metadata`) immediately to ensure the
                     ;; connection is closed before moving to the next table.
                     (mapv #(assoc % :table-schema (:schema table) :table-name (:name table))
@@ -153,54 +104,22 @@
         (mu.fn/instrument-ns? *ns*)
         (eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %)))))))
 
-(defn- workspace-fk-metadata
-  "[[driver/describe-fks]] on a database with table remappings. Expands `:schema-names` to include
-  workspace-isolation schemas so the driver finds FKs on the physical tables that back canonical Tables, then
-  back-translates workspace-side identifiers in the result so the rows match canonical Table rows in app-db."
-  [driver database args]
-  (let [db-id          (:id database)
-        expanded-args  (cond-> args
-                         (:schema-names args)
-                         (update :schema-names ws.table-remapping/expand-schema-names-with-workspace db-id))
-        ;; Workspace cross-DB swaps (today: MySQL whose iso table lives in a
-        ;; *different* bound database than the canonical) need describe-fks to
-        ;; run with the JDBC connection pointed at the iso DB. Loop per iso-DB
-        ;; via the workspace hook and concatenate row results.
-        row-batches    (ws.table-remapping/call-with-fk-probe-iso-dbs
-                        db-id
-                        (fn []
-                          (into [] (driver/describe-fks driver
-                                                        database
-                                                        expanded-args))))
-        raw-rows       (vec (mapcat identity row-batches))]
-    (ws.table-remapping/rewrite-fk-result-canonical raw-rows db-id)))
-
 (mu/defn fk-metadata
-  "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema.
-
-  On a database with table remappings, see [[workspace-fk-metadata]]. Otherwise the driver's reducible is returned
-  as is, so it streams."
+  "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema. The
+  driver's reducible is returned as is, so it streams."
   [database     :- i/DatabaseInstance
    & {:as args} :- [:maybe ::driver/describe-fks.options]]
   (log-if-error "fk-metadata"
     (let [driver (driver.u/database->driver database)]
       (when (driver.u/supports? driver :metadata/key-constraints database)
-        (cond->> (if (ws.table-remapping/table-remappings-exist? (:id database))
-                   (workspace-fk-metadata driver database args)
-                   (driver/describe-fks driver database args))
+        (cond->> (driver/describe-fks driver database args)
           ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
           (mu.fn/instrument-ns? *ns*)
           (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %))))))))
 
 (mu/defn index-metadata :- [:maybe i/TableIndexMetadata]
-  "The indexes of `table`, read from the warehouse table that `remap-table`, the [[table-remapper]] of
-  `database`, gives."
-  [database    :- i/DatabaseInstance
-   table       :- i/TableInstance
-   remap-table :- ifn?]
+  "The indexes of `table`, read from the warehouse."
+  [database :- i/DatabaseInstance
+   table    :- i/TableInstance]
   (log-if-error "index-metadata"
-    (do-with-effective-table
-     database remap-table table
-     (fn [{effective-schema :schema effective-name :name}]
-       (let [effective-table (assoc table :schema effective-schema :name effective-name)]
-         (driver/describe-table-indexes (driver.u/database->driver database) database effective-table))))))
+    (driver/describe-table-indexes (driver.u/database->driver database) database table)))

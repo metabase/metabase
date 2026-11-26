@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.models.resolution :as models.resolution]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -26,10 +27,10 @@
 (def ^:private referencing-table-allowlist
   "The models of tables reaching synced content through foreign keys without `worktree_id` and the hook; scope such a table unless a
   decision keeps it instance-wide."
-  #{;; Metabot tables stay unscoped; its card_id references report_card.
-    :model/MetabotPrompt
-    ;; Metabot tables stay unscoped; collection_id references collection.
+  #{;; Metabot tables stay unscoped; collection_id references collection.
     :model/Metabot
+    ;; Metabot tables stay unscoped; its card_id references report_card.
+    :model/MetabotPrompt
     ;; tenants aren't scoped yet; tenant_collection_id references collection
     :model/Tenant})
 
@@ -37,7 +38,14 @@
   "The models of other tables, with `worktree_id` and the hook; scope a table whose rows belong to one worktree's
   content: logs of content activity, polymorphic references to content such as revisions, view logs, recent views and
   comments, and per-worktree caches."
-  #{;; They point at content polymorphically, by model and id or entity id, without a foreign key.
+  #{;; They are dependency and analysis records keyed by entity ids.
+    :model/AnalysisFinding
+    :model/AnalysisFindingError
+    :model/AnalysisFindingStatus
+    :model/Dependency
+    :model/DependencyStatus
+    :model/ResultMetadataStatus
+    ;; They point at content polymorphically, by model and id or entity id, without a foreign key.
     :model/AuditLog
     :model/BookmarkOrdering
     :model/CacheConfig
@@ -48,31 +56,26 @@
     :model/RecentViews
     :model/Revision
     :model/ViewLog
-    ;; They are dependency and analysis records keyed by entity ids.
-    :model/AnalysisFinding
-    :model/AnalysisFindingError
-    :model/AnalysisFindingStatus
-    :model/Dependency
-    :model/DependencyStatus
-    :model/ResultMetadataStatus
-    ;; They are source replacement records keyed by entity ids.
-    :model/SourceDimensionDaily
-    :model/SourceDimensionProfileDaily
-    :model/SourceMetricDaily
-    :model/ReplacementRun
-    :model/SourceSegmentCompositeDaily
-    :model/SourceSegmentDaily
-    ;; They are notifications whose payload names content polymorphically.
-    :model/Notification
-    :model/NotificationHandler
-    :model/NotificationRecipient
-    :model/NotificationSubscription
     ;; They are runs and logs of each worktree.
     :model/DataTestRun
     :model/QueryExecution
     :model/RemoteSyncTask
     :model/TaskHistory
-    :model/TaskRun})
+    :model/TaskRun
+    ;; They are notifications whose payload names content polymorphically.
+    :model/Notification
+    :model/NotificationHandler
+    :model/NotificationRecipient
+    :model/NotificationSubscription
+    ;; They are source replacement records keyed by entity ids.
+    :model/ReplacementRun
+    :model/SourceDimensionDaily
+    :model/SourceDimensionProfileDaily
+    :model/SourceMetricDaily
+    :model/SourceSegmentCompositeDaily
+    :model/SourceSegmentDaily
+    ;; Workspace table remappings redirect the queries of one worktree, whose views show its copies.
+    :model/TableRemapping})
 
 (def ^:private unscoped-tables
   "The models of other tables, without `worktree_id` or the hook; leave instance-wide data unscoped."
@@ -90,15 +93,15 @@
     :model/CollectionPermissionGraphRevision
     :model/ConnectionImpersonation
     :model/ContentTranslation
-    :model/Session
-    :model/User
     :model/CustomVizPlugin
-    :model/DataComplexityScore
-    :model/Undo
-    :model/DataPermissions
+    :model/Database
     :model/DatabaseRouter
+    :model/DataComplexityScore
+    :model/DataPermissions
     :model/EmbeddingSdkReact18Host
     :model/EmbeddingTheme
+    :model/Field
+    :model/FieldValues
     :model/ImpersonationQueryCache
     :model/LoginHistory
     :model/McpFeedback
@@ -106,10 +109,6 @@
     :model/McpQueryHandle
     :model/McpSessionLog
     :model/McpToolCallLog
-    :model/Database
-    :model/Field
-    :model/FieldValues
-    :model/Table
     :model/MetabotConversation
     :model/MetabotFeedback
     :model/MetabotGroupLimit
@@ -135,14 +134,17 @@
     :model/Secret
     :model/SecurityAdvisory
     :model/SemanticSearchTokenTracking
+    :model/Session
     :model/Setting
     :model/SqlParsingShadowDifference
     :model/SsoRelayState
     :model/StoredResult
     :model/SupportAccessGrantLog
-    :model/TableRemapping
+    :model/Table
     :model/TransformJob
     :model/TransformJobRun
+    :model/Undo
+    :model/User
     :model/UserKeyValue
     :model/Workspace
     :model/WorkspaceDatabase})
@@ -361,9 +363,10 @@
                value)))))
 
 (deftest default-worktree-is-default-worktree-id-test
-  (testing "app DB holds exactly one default worktree, whose id is default-worktree-id"
-    (is (= [mdb/default-worktree-id]
-           (t2/select-fn-vec :id :remote_sync_worktree :is_default true))))
+  (when config/ee-available?
+    (testing "app DB holds exactly one default worktree, whose id is default-worktree-id"
+      (is (= [mdb/default-worktree-id]
+             (t2/select-fn-vec :id :model/RemoteSyncWorktree :is_default true)))))
   (testing "worktree_id columns default to default-worktree-id"
     (is (= (str mdb/default-worktree-id)
            (some-> (worktree-id-default "collection") (str/replace #"[^0-9]" ""))))))
@@ -452,3 +455,57 @@
     (testing "every constraint has a name, since a changeset can name a generated one only through a lookup"
       (let [bad (generated-constraint-names)]
         (is (empty? bad) (str "Constraints with generated names:\n" (str/join "\n" bad)))))))
+
+(defn- tables-seen
+  "The `[table-key schema name]` of each of the Tables `table-ids`, a map of keys to ids, that a thread in `scope`
+  selects."
+  [scope table-ids]
+  (let [id->key (set/map-invert table-ids)]
+    (mdb/with-worktree-scope scope
+      (into #{}
+            (map (fn [{:keys [id schema name]}] [(id->key id) schema name]))
+            (t2/select :model/Table :id [:in (vec (vals table-ids))])))))
+
+(defn- field-tables-seen
+  "The keys of the Tables `table-ids`, a map of keys to ids, whose Fields a thread in `scope` selects."
+  [scope table-ids]
+  (let [id->key (set/map-invert table-ids)]
+    (mdb/with-worktree-scope scope
+      (t2/select-fn-set (comp id->key :table_id) :model/Field :table_id [:in (vec (vals table-ids))]))))
+
+(deftest worktree-views-apply-table-remappings-test
+  (when config/ee-available?
+    (testing "each worktree sees its own copies under the names of the tables they shadow, and no other worktree's"
+      (mt/with-temp [:model/Database {db-id :id}       {}
+                     :model/Table    {orders :id}      {:db_id db-id :schema "zzv" :name "orders"}
+                     :model/Table    {orders-copy :id} {:db_id db-id :schema "ws_w" :name "zzv__orders"}
+                     :model/Table    {new-copy :id}    {:db_id db-id :schema "ws_w" :name "zzv__new"}
+                     :model/Table    {items :id}       {:db_id db-id :schema "zzv" :name "items"}
+                     :model/Table    {items-copy :id}  {:db_id db-id :schema "ws_main" :name "zzv__items"}
+                     :model/Field    _                 {:table_id orders :name "id"}
+                     :model/Field    _                 {:table_id orders-copy :name "id"}
+                     :model/Field    _                 {:table_id new-copy :name "id"}
+                     :model/Field    _                 {:table_id items :name "id"}
+                     :model/Field    _                 {:table_id items-copy :name "id"}
+                     :model/RemoteSyncWorktree {worktree-id :id} {:branch "worktree-views-test"}]
+        (let [worktree  {:type :worktree :worktree-id worktree-id}
+              table-ids {:orders orders :orders-copy orders-copy :new-copy new-copy :items items
+                         :items-copy items-copy}
+              remapping (fn [from-name to-schema to-name]
+                          {:database_id db-id :from_schema "zzv" :from_table_name from-name
+                           :to_schema to-schema :to_table_name to-name})]
+          (mdb/with-worktree-scope worktree
+            (mt/with-temp [:model/TableRemapping _ (remapping "orders" "ws_w" "zzv__orders")
+                           :model/TableRemapping _ (remapping "new" "ws_w" "zzv__new")]
+              (mdb/with-worktree-scope {:type :main}
+                (mt/with-temp [:model/TableRemapping _ (remapping "items" "ws_main" "zzv__items")]
+                  (testing "in the worktree, its copies replace orders and add new, and the main app's copy stays hidden"
+                    (is (= #{[:orders-copy "zzv" "orders"] [:new-copy "zzv" "new"] [:items "zzv" "items"]}
+                           (tables-seen worktree table-ids)))
+                    (is (= #{:orders-copy :new-copy :items}
+                           (field-tables-seen worktree table-ids))))
+                  (testing "in the main app, its copy replaces items, and the worktree's copies stay hidden"
+                    (is (= #{[:orders "zzv" "orders"] [:items-copy "zzv" "items"]}
+                           (tables-seen {:type :main} table-ids)))
+                    (is (= #{:orders :items-copy}
+                           (field-tables-seen {:type :main} table-ids)))))))))))))

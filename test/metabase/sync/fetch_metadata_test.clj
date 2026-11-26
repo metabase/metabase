@@ -3,11 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.fetch-metadata :as fetch-metadata]
-   [metabase.sync.sync-metadata :as sync-metadata]
-   [metabase.sync.sync-metadata.fks :as sync-fks]
-   [metabase.test :as mt]
-   [metabase.workspaces.table-remapping :as ws.table-remapping]
-   [toucan2.core :as t2])
+   [metabase.test :as mt])
   (:import
    (com.mchange.v2.resourcepool CannotAcquireResourceException)
    (java.sql SQLException)))
@@ -21,7 +17,7 @@
   (let [attempted (atom 0)
         ;; outside the redef: the first `mt/db` creates and syncs the test DB, which must not see the failures
         db        (lib.metadata/database (mt/metadata-provider))]
-    (mt/with-dynamic-fn-redefs [fetch-metadata/table-fields-metadata (fn [_database _table _remap-table]
+    (mt/with-dynamic-fn-redefs [fetch-metadata/table-fields-metadata (fn [_database _table]
                                                                        (swap! attempted inc)
                                                                        (throw e))]
       (let [threw? (try
@@ -60,20 +56,3 @@
                (mt/with-log-messages-for-level [messages [metabase.sync.fetch-metadata-test :debug]]
                  (is (thrown? Throwable (fetch-metadata/log-if-error "test" (throw e))))
                  (mapv :level (messages)))))))))
-
-(deftest table-remapper-defers-failed-read-test
-  (let [database (mt/db)
-        venues   (t2/select-one :model/Table :id (mt/id :venues))]
-    (mt/with-dynamic-fn-redefs [ws.table-remapping/workspace-table-remapper (fn [_db-id] (throw (ex-info "no remappings" {})))]
-      (testing "table-remapper returns a function that throws what the read threw"
-        (let [remap-table (fetch-metadata/table-remapper database)]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no remappings"
-                                (remap-table {:schema "PUBLIC" :name "VENUES"})))))
-      (testing "sync-table-metadata! still reaches its foreign key step"
-        (let [fk-syncs (atom 0)
-              original (mt/original-fn #'sync-fks/sync-fks-for-table!)]
-          (mt/with-dynamic-fn-redefs [sync-fks/sync-fks-for-table! (fn [& args]
-                                                                     (swap! fk-syncs inc)
-                                                                     (apply original args))]
-            (sync-metadata/sync-table-metadata! venues)
-            (is (= 1 @fk-syncs))))))))

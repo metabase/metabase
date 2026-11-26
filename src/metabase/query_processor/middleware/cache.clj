@@ -9,9 +9,11 @@
   about how the cache backends themselves."
   (:refer-clojure :exclude [get-in])
   (:require
+   [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.app-db.core :as mdb]
    [metabase.batch-processing.core :as grouper]
    [metabase.cache.core :as cache]
    [metabase.config.core :as config]
@@ -355,6 +357,15 @@
           (fn [metadata]
             (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))
 
+(defn- cache-key
+  "The cache key of `query`, the query hash mixed with the id of the remote sync worktree this thread works in, whose
+  content and table remappings can give the query other results, and the query hash alone in the main app."
+  ^bytes [query]
+  (let [query-hash (qp.util/query-hash query)]
+    (if-let [worktree-id (:worktree-id (mdb/worktree-scope))]
+      (buddy-hash/sha3-256 (byte-array (concat query-hash (.getBytes (str worktree-id) "UTF-8"))))
+      query-hash)))
+
 (mu/defn- run-query-with-cache :- :any
   [qp                                                 :- fn?
    {:keys [cache-strategy middleware], :as query} :- ::qp.schema/any-query
@@ -362,7 +373,7 @@
   ;; Query will already have `info.hash` if it's a userland query. It's not the same hash, because this is calculated
   ;; after normalization, instead of before. This is necessary to make caching work properly with sandboxed users, see
   ;; #14388.
-  (let [query-hash      (qp.util/query-hash query)
+  (let [query-hash      (cache-key query)
         [status result] (maybe-serve-cached-results (:ignore-cached-results? middleware) query-hash cache-strategy rff)]
     (case status
       (::fresh ::stale) result

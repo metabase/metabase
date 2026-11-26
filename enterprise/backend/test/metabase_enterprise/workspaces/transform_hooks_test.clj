@@ -18,9 +18,7 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.util :as transforms.u]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -405,9 +403,9 @@
                                        {:schema "LEFTOVER_COPY" :table "OFF_WS_DROP_COPY"})
       (let [target {:type :table :schema "PUBLIC" :name "OFF_WS_DROP"}]
         (is (= {:dropped     [{:type :table :schema "LEFTOVER_COPY" :name "OFF_WS_DROP_COPY"}]
-                :deactivated [target]}
+                :deactivated [{:type :table :schema "LEFTOVER_COPY" :name "OFF_WS_DROP_COPY"}]}
                (record-deletion! target))
-            "the row's copy is dropped, never the canonical table, and the canonical Table row is deactivated"))
+            "the row's copy is dropped and its Table row deactivated, never the canonical table"))
       (finally
         (ws.table-remapping/clear-mappings-for-db! (mt/id))))))
 
@@ -430,14 +428,14 @@
                                            {:schema "ws_old_schema" :table "PUBLIC__STALE_ROW"})
           (let [target {:type :table :schema "PUBLIC" :name "STALE_ROW"}]
             (is (= {:dropped     [{:type :table :schema "ws_old_schema" :name "PUBLIC__STALE_ROW"}]
-                    :deactivated [target]}
+                    :deactivated [{:type :table :schema "ws_old_schema" :name "PUBLIC__STALE_ROW"}]}
                    (record-deletion! target))
                 "the row's copy in the old schema is dropped, not a table in the current workspace schema"))
           (finally
             (ws.table-remapping/clear-mappings-for-db! (mt/id))))))))
 
 (deftest delete-in-workspace-without-a-remap-row-drops-the-computed-copy-test
-  (testing "in a workspace with no remap row, the copy the transform would write to is dropped and the canonical Table row stays"
+  (testing "in a workspace with no remap row, the copy the transform would write to is dropped and its Table row deactivated"
     (with-instance-workspace-for-db! "ws_current_schema"
       (fn []
         (ws.table-remapping/clear-mappings-for-db! (mt/id))
@@ -445,7 +443,7 @@
               {:keys [dropped deactivated]} (record-deletion! target)]
           (is (= ["ws_current_schema"] (map :schema dropped)))
           (is (not= (:name target) (:name (first dropped))))
-          (is (empty? deactivated)))))))
+          (is (= dropped deactivated)))))))
 
 (deftest delete-off-workspace-drops-the-copy-a-remap-row-names-pg-test
   (testing "Postgres, off workspace mode: with a canonical table, a copy and a remap row, the delete drops the copy and keeps the canonical table"
@@ -845,50 +843,3 @@
                     (deliver proceed true)))
                 (is (nil? (real-read (mt/id))) "premise: the schema is cleared")
                 (is (not= canonical (deref call 30000 ::timeout)))))))))))
-
-(deftest run-whose-remappings-are-deleted-before-its-sync-registers-no-workspace-table-test
-  (testing "a run whose database's remap rows are deleted by a schema change between its record and its sync keeps
-            the Table rows at the canonical schema"
-    (mt/test-driver :h2
-      (mt/with-premium-features #{:workspaces :transforms-basic :hosting}
-        (let [transform  (atom nil)
-              copy-name  "PUBLIC__WS_SYNC_RACE"
-              table-rows #(t2/select-fn-set :schema :model/Table :db_id (mt/id) :name [:in ["WS_SYNC_RACE" copy-name]])
-              ;; the warehouse write is stubbed (H2 has no :transforms/table); the record and the post-run sync are real
-              run!       #(with-redefs [driver/schema-exists?           (constantly true)
-                                        transforms-base.i/execute-base! (constantly {:status :succeeded})]
-                            (transforms.execute/execute! @transform {:run-method :manual}))]
-          (with-instance-workspace-for-db! "ws_sync_race_a"
-            (fn []
-              (try
-                (ws.table-remapping/clear-mappings-for-db! (mt/id))
-                (reset! transform (t2/insert-returning-instance!
-                                   :model/Transform
-                                   {:name   "ws-sync-race"
-                                    :source {:type :query :query (lib/native-query (mt/metadata-provider) "SELECT 1 AS X")}
-                                    :target {:type :table :schema "PUBLIC" :name "WS_SYNC_RACE"}}))
-                (testing "control: with no schema change during the run, the Table row is the canonical one"
-                  (run!)
-                  (is (= :succeeded (t2/select-one-fn :status :model/TransformRun :transform_id (:id @transform)
-                                                      {:order-by [[:id :desc]]})))
-                  (is (= #{"PUBLIC"} (table-rows))))
-                (let [real-succeed (mt/original-fn #'transform-run/succeed-started-run!)]
-                  (mt/with-dynamic-fn-redefs [transform-run/succeed-started-run!
-                                              (fn [& args]
-                                                (u/prog1 (apply real-succeed args)
-                                                  (mt/user-http-request :crowberto :put 200 (str "database/" (mt/id))
-                                                                        {:settings {:database-workspace-schema "ws_sync_race_b"}})))]
-                    (run!)))
-                (is (zero? (t2/count :model/TableRemapping :database_id (mt/id)))
-                    "premise: the schema change deleted the remap rows")
-                (is (= #{"PUBLIC"} (table-rows))
-                    "no Table row is registered for the workspace copy")
-                (is (= "PUBLIC" (t2/select-one-fn :schema :model/Table :id (t2/select-one-fn :target_table_id :model/Transform
-                                                                                             :id (:id @transform))))
-                    "the transform's target table is still the canonical one")
-                (finally
-                  (when-let [{transform-id :id} @transform]
-                    (t2/delete! :model/TransformRun :transform_id transform-id)
-                    (t2/delete! :model/Transform :id transform-id))
-                  (t2/delete! :model/Table :db_id (mt/id) :name [:in ["WS_SYNC_RACE" copy-name]])
-                  (ws.table-remapping/clear-mappings-for-db! (mt/id)))))))))))

@@ -30,7 +30,8 @@
 
 (doto :model/TableRemapping
   (derive :metabase/model)
-  (derive :hook/created-at-timestamped?))
+  (derive :hook/created-at-timestamped?)
+  (derive :hook/worktree-id))
 
 (def ^:private sentinel-columns
   "Columns that use `\"\"` as the empty-slot sentinel in storage."

@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.core :as mdb]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -318,7 +319,8 @@
 (mu/defn- do-sync-operation*
   "Shared core of [[do-sync-operation]] and [[do-explicit-sync-operation]]. Runs the sync work `f`
   wrapped in the surrounding machinery (task-history, events, logging, duplicate-op prevention).
-  Performs no eligibility gating itself — the public wrappers decide whether to call it."
+  Performs no eligibility gating itself — the public wrappers decide whether to call it. Sync runs across every
+  remote sync worktree, so it reads and writes the stored Table and Field rows, never the worktree views."
   [operation :- :keyword                ; something like `:sync-metadata` or `:refingerprint`
    database  :- i/DatabaseInstance
    message   :- ms/NonBlankString
@@ -340,7 +342,8 @@
                          (with-db-logging-disabled
                           (sync-in-context database
                                            (partial do-with-error-handling (format "Error in sync step %s" message) f))))))
-              result (database-routing/with-anonymous-router-access (sync-fn))]
+              result (mdb/with-worktree-scope {:type :all}
+                       (database-routing/with-anonymous-router-access (sync-fn)))]
           (when (instance? Throwable result)
             (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
           result)))))
