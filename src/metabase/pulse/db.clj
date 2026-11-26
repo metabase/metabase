@@ -174,7 +174,7 @@
   (t2/select :model/Pulse
              {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
               :from            [[(t2/table-name :model/Pulse) :p]]
-              :left-join       (concat
+              :left-join       (into
                                 [[(t2/table-name :model/Dashboard) :d] [:= :p.dashboard_id :d.id]]
                                 (when user-id
                                   [[(t2/table-name :model/PulseChannel) :pchan]         [:= :p.id :pchan.pulse_id]
