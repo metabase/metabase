@@ -121,8 +121,8 @@ type TokenBarProps<T extends { key: string }> = {
 /**
  * Prototype: a flat row of tokens with one caret, after the filter expression
  * bar. Type to get suggestions, Enter or Tab picks, arrows move the caret,
- * Backspace selects the token before the caret and a second Backspace deletes
- * it, Enter on a selected token edits it. Everything is also clickable.
+ * Backspace deletes the token before the caret, Enter on a selected token
+ * edits it. Everything is also clickable.
  */
 export function TokenBar<T extends { key: string }>({
   tokens,
@@ -286,10 +286,17 @@ export function TokenBar<T extends { key: string }>({
         moveCaret(onDelete(selected));
         return;
       }
-      if (event.key === "Backspace" && clampedCaret > 0) {
-        setSelected(clampedCaret - 1);
-      } else if (event.key === "Delete" && clampedCaret < tokens.length) {
-        setSelected(clampedCaret);
+      const target =
+        event.key === "Backspace" ? clampedCaret - 1 : clampedCaret;
+      if (target < 0 || target >= tokens.length) {
+        return;
+      }
+      // A pill with filters loses its last filter first, then goes itself.
+      const lastPart = partsOf(target).at(-1);
+      if (event.key === "Backspace" && lastPart != null && onDeletePart) {
+        moveCaret(onDeletePart(target, lastPart));
+      } else {
+        moveCaret(onDelete(target));
       }
       return;
     }

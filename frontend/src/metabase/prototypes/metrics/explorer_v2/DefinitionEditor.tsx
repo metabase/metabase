@@ -381,6 +381,10 @@ export function DefinitionEditor({
                 finish();
               }}
               onCancel={(isEscape) => cancel(isEscape)}
+              onBackspaceEmpty={() => {
+                removeToken(token.key);
+                finish();
+              }}
             />
           </span>
         ) : pillActions === "menu" ? (
