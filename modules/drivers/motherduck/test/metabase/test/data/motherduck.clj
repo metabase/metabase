@@ -312,15 +312,20 @@
   shared-dataset-tables
   (atom {}))
 
+(defn- dataset-table-names
+  "Names of the tables in the definition of `dbdef`, as they are named in the database."
+  [dbdef]
+  (into #{}
+        (map #(ddl.i/format-name :motherduck (:table-name %)))
+        (:table-definitions dbdef)))
+
 (defn- remember-shared-dataset-tables!
   "Records the table names of `dbdef` under its shared database name, if `dbdef` is static."
   [dbdef]
   (when (static? dbdef)
     (swap! shared-dataset-tables assoc
            (qualified-db-name dbdef)
-           (into #{}
-                 (map #(ddl.i/format-name :motherduck (:table-name %)))
-                 (:table-definitions dbdef)))))
+           (dataset-table-names dbdef))))
 
 (defn- first-sync-tables
   "Returns `tables` limited to those in the dataset definition when `database` is a shared dataset that has not
@@ -340,6 +345,28 @@
   [driver database]
   (update (original-describe-database driver database) :tables #(first-sync-tables database %)))
 
+(defn- shared-db-complete?
+  "Does the existing shared database of `dbdef` have every table of its definition? Other tests may add tables to it,
+  so extra tables don't count."
+  [driver dbdef]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   (spec/dbdef->spec driver :db dbdef)
+   {:write? false}
+   (fn [^Connection conn]
+     (with-open [stmt (.createStatement conn)
+                 rset (.executeQuery stmt (str "SELECT table_name FROM duckdb_tables() "
+                                               "WHERE database_name = current_database()"))]
+       (let [present (into #{} (map :table_name) (resultset-seq rset))]
+         (every? present (dataset-table-names dbdef)))))))
+
+(defn- shared-db-loaded?
+  "Has the shared database of `dbdef` been published with all of its tables? Existing is not enough: a shared database
+  that lacks its tables would otherwise be reused, and fail every job, until the next UTC day."
+  [driver dbdef]
+  (and (database-exists? (qualified-db-name dbdef))
+       (shared-db-complete? driver dbdef)))
+
 (defn- load-db! [driver dbdef options]
   (apply load-data/create-db! driver (update dbdef :table-definitions parents-first) options))
 
@@ -348,7 +375,10 @@
   zero-copy clone. Other jobs therefore see the shared database complete or not at all, never half-loaded.
 
   Two jobs that miss the same dataset at the same time both load it, and the second clone is a no-op. Loading twice
-  is the price of not needing a lock between jobs."
+  is the price of not needing a lock between jobs.
+
+  A shared database that exists but lacks tables of its definition is dropped and cloned again. Check it again right
+  before the drop, so that a job never drops a complete copy that another job published in the meantime."
   [driver dbdef options]
   (let [shared  (qualified-db-name dbdef)
         staging (sql.tu.unique-prefix/unique-prefix (str "staging_" (:database-name dbdef)))]
@@ -360,6 +390,10 @@
                     (assoc :database-name staging)
                     (update :options dissoc :static))
                 options)
+      (when (and (database-exists? shared)
+                 (not (shared-db-complete? driver dbdef)))
+        (log/warnf "Shared database %s lacks tables of its dataset; replacing it" shared)
+        (execute-on-server! (format "DROP DATABASE IF EXISTS \"%s\" CASCADE;" shared)))
       (execute-on-server! (format "CREATE DATABASE IF NOT EXISTS \"%s\" FROM \"%s\";" shared staging))
       (finally
         (try
@@ -390,8 +424,7 @@
   ;; The test harness calls this method before the first sync of every dataset.
   (remember-shared-dataset-tables! dbdef)
   (if (static? dbdef)
-    ;; A shared database exists only once its load has finished; see create-shared-db!.
-    (database-exists? (qualified-db-name dbdef))
+    (shared-db-loaded? driver dbdef)
     (do
       ;; Include reused datasets in cleanup, even when create-db! does not run.
       (swap! created-databases conj (qualified-db-name dbdef))

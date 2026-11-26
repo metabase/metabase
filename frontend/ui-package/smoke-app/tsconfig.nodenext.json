@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noUncheckedSideEffectImports": true,
+    // @mantine/hooks ships extensionless .d.mts imports, which fail under NodeNext regardless of us.
+    "skipLibCheck": true
+  },
+  "include": ["src/types.test-d.tsx"]
+}
