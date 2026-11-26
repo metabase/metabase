@@ -835,7 +835,12 @@
                     " FROM all_tab_col_statistics c"
                     " JOIN all_tab_statistics t ON t.owner = c.owner AND t.table_name = c.table_name"
                     " AND t.partition_name IS NULL AND t.object_type = 'TABLE'"
-                    " WHERE c.owner = ? AND c.table_name = ? AND t.stale_stats = 'NO' AND t.num_rows IS NOT NULL")
+                    " WHERE c.owner = ? AND c.table_name = ? AND t.stale_stats = 'NO' AND t.num_rows IS NOT NULL"
+                    " AND t.global_stats = 'YES'"
+                    ;; a gather of some columns writes a new row count and keeps the old statistics of the others
+                    " AND c.last_analyzed >= t.last_analyzed"
+                    ;; real-time statistics add a second row for a column, of the changes since the gather
+                    " AND (c.notes IS NULL OR c.notes NOT LIKE '%STATS_ON_CONVENTIONAL_DML%')")
                (:schema table) (:name table)]
               {:timeout table-statistics-timeout-seconds}))
 
@@ -847,7 +852,7 @@
         rows  (some-> num_rows long)]
     {:global (cond-> {}
                (and nulls rows (pos? rows))
-               (assoc :nil% (/ nulls (double rows)))
+               (assoc :nil% (min 1.0 (/ nulls (double rows))))
 
                (some-> num_distinct pos?)
                (assoc :distinct-count (+ (long num_distinct) (if (some-> nulls pos?) 1 0))))}))

@@ -1018,6 +1018,13 @@
            (is (= 1000 (get-in answer [:fields (:id b) :fingerprint :global :distinct-count])))
            (is (= {:source :catalog :kind :estimate} (get-in answer [:fields (:id a) :origin])))
            (is (= {:value 1000 :origin {:source :catalog :kind :estimate}} (:row-count answer)))))))
+    (testing "only the row count when that is what is wanted, and nothing that is not wanted"
+      (do-with-stats-table!
+       true
+       (fn [database _spec _qname table fields]
+         (is (= {:row-count {:value 1000 :origin {:source :catalog :kind :estimate}}}
+                (driver/table-statistics :oracle database table fields {:max-cost :metadata :want #{:row-count}})))
+         (is (= {} (driver/table-statistics :oracle database table fields {:max-cost :metadata :want #{:values}}))))))
     (testing "a table with no statistics: nothing"
       (do-with-stats-table!
        false
