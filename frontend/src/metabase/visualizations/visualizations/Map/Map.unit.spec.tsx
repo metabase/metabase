@@ -516,10 +516,10 @@ describe("Map", () => {
         }),
       );
 
-      await waitFor(() => expect(getGridCells()).toHaveLength(2));
       expect(
-        screen.queryByText(/Cannot read properties of undefined/),
+        screen.queryByRole("img", { name: "warning icon" }),
       ).not.toBeInTheDocument();
+      await waitFor(() => expect(getGridCells()).toHaveLength(2));
     });
   });
 });
