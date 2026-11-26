@@ -3,7 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
+import { Route } from "metabase/router";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -27,6 +29,8 @@ const fullPermissionsUser: Partial<User> = {
   },
 };
 
+const METRIC_COLLECTION_ID = 7;
+
 const setup = ({
   user,
   dataCollectionId = 2,
@@ -41,14 +45,27 @@ const setup = ({
   });
   setupEnterprisePlugins();
   const utils = renderWithProviders(
-    <CreateMenu
-      metricCollectionId={1}
-      dataCollectionId={dataCollectionId}
-      canWriteToDataCollection={canWriteToDataCollection}
-      canWriteToMetricCollection={canWriteToMetricCollection}
-    />,
+    <>
+      <Route
+        path="/data-studio/library"
+        element={
+          <CreateMenu
+            metricCollectionId={METRIC_COLLECTION_ID}
+            dataCollectionId={dataCollectionId}
+            canWriteToDataCollection={canWriteToDataCollection}
+            canWriteToMetricCollection={canWriteToMetricCollection}
+          />
+        }
+      />
+      <Route
+        path="/data-studio/library/metrics/new"
+        element={<h1>New metric page</h1>}
+      />
+    </>,
     {
       storeInitialState: state,
+      withRouter: true,
+      initialRoute: "/data-studio/library",
     },
   );
 
@@ -56,6 +73,38 @@ const setup = ({
 };
 
 describe("CreateMenu", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("tracks metric_create_started and opens the new metric page in the Metrics collection", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+    const { router } = setup({ user: fullPermissionsUser });
+
+    await userEvent.click(screen.getByRole("button", { name: /New/ }));
+    const metricItem = screen.getByRole("menuitem", { name: /Metric/ });
+    expect(metricItem).toHaveAttribute(
+      "href",
+      `/data-studio/library/metrics/new?collectionId=${METRIC_COLLECTION_ID}`,
+    );
+    expect(trackSimpleEvent).not.toHaveBeenCalled();
+    await userEvent.click(metricItem);
+
+    expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "metric_create_started",
+      triggered_from: "data_studio_library",
+    });
+    expect(
+      await screen.findByRole("heading", { name: "New metric page" }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(router?.location.search).toBe(
+        `?collectionId=${METRIC_COLLECTION_ID}`,
+      );
+    });
+  });
+
   it("renders all options for admins", async () => {
     setup({ user: fullPermissionsUser });
 

@@ -91,8 +91,23 @@ describe("MetricCachingModal", () => {
 
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.called("path:/api/cache", { method: "PUT" }),
-      ).toBe(true);
+        fetchMock.callHistory.calls("path:/api/cache", { method: "PUT" }),
+      ).toHaveLength(1);
+    });
+    const putBody: unknown = JSON.parse(
+      String(
+        fetchMock.callHistory.lastCall("path:/api/cache", { method: "PUT" })
+          ?.options.body,
+      ),
+    );
+    expect(putBody).toEqual({
+      model: "question",
+      model_id: 19,
+      strategy: expect.objectContaining({
+        type: "duration",
+        duration: 24,
+        unit: "hours",
+      }),
     });
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
