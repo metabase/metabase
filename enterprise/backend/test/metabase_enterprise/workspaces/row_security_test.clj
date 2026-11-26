@@ -5,6 +5,7 @@
    [metabase-enterprise.serialization.test-util :as serdes.tu]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -116,15 +117,14 @@
     ((requiring-resolve 'metabase-enterprise.workspaces.request-workspace-test/do-with-request-workspace)
      (fn [{:keys [workspace-id db-id]}]
        (mt/with-temp [:model/Table {shared :id} {:db_id db-id :schema "public" :name "shared_orders" :active true}]
+         (workspaces.tu/with-workspace-worktree [worktree-id workspace-id]
          (let [owned   (mdb/with-workspace-id workspace-id
                          (t2/insert-returning-pk! :model/Table {:db_id db-id :schema "public" :name "ws_only_orders"
                                                                 :active true}))
                _       (mdb/with-workspace-id workspace-id
                          (t2/insert! :model/Field {:table_id owned :name "ws_only_total" :base_type :type/Integer
                                                    :database_type "int4"}))
-               headers (fn [ws-id] {:request-options {:headers (cond-> {}
-                                                                 ws-id (assoc "x-metabase-workspace-id"
-                                                                              (str ws-id)))}})
+               headers (fn [ws-id] (workspaces.tu/worktree-request (when ws-id worktree-id)))
                names   (fn [ws-id]
                          {:schema       (set (map :name (mt/user-http-request :crowberto :get 200
                                                                               (format "database/%d/schema/public" db-id)
@@ -158,7 +158,7 @@
                  (is (= #{"shared_orders" "ws_only_orders"} (set (map :name (mcp-tables [shared owned])))))
                  (is (= #{"shared_orders" "ws_only_orders"} (set (map :name (metabot-tables db-id))))))
                (is (= #{"shared_orders"} (set (map :name (mcp-tables [shared owned])))))
-               (is (= #{"shared_orders"} (set (map :name (metabot-tables db-id)))))))))))))
+               (is (= #{"shared_orders"} (set (map :name (metabot-tables db-id))))))))))))))
 
 (deftest a-selected-table-or-field-has-no-workspace-id-test
   (testing "the workspace that owns a row is the app DB's business: a selected Table or Field does not have it, so no
@@ -177,8 +177,9 @@
                owned-field (mdb/with-workspace-id workspace-id
                              (t2/insert-returning-pk! :model/Field {:table_id owned :name "ws_only_total"
                                                                     :base_type :type/Integer :database_type "int4"}))
-               headers     {:request-options {:headers {"x-metabase-workspace-id" (str workspace-id)}}}
-               get         (fn [path] (mt/user-http-request :crowberto :get 200 path headers))]
+               get         (fn [path] (workspaces.tu/with-workspace-worktree [worktree-id workspace-id]
+                                         (mt/user-http-request :crowberto :get 200 path
+                                                               (workspaces.tu/worktree-request worktree-id))))]
            (testing "the API"
              (is (not (contains? (get (format "table/%d" owned)) :workspace_id)))
              (let [metadata (get (format "table/%d/query_metadata" owned))]

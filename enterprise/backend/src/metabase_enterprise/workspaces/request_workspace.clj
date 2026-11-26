@@ -1,7 +1,7 @@
 (ns metabase-enterprise.workspaces.request-workspace
-  "The workspace that a request names with its `X-Metabase-Workspace-Id` header, as its queries and transforms use it:
-   for each of its provisioned Databases, the output schema and the login. Every new warehouse connection of such a
-   request reads it, so this process caches it for a few seconds.
+  "The workspace a request works in, which the remote sync worktree of the request names, as its queries and transforms
+   use it: for each of its provisioned Databases, the output schema and the login. Every new warehouse connection of
+   such a request reads it, so this process caches it for a few seconds.
 
    A leaf namespace, so that the WorkspaceDatabase model can drop the cache when a row changes."
   (:require

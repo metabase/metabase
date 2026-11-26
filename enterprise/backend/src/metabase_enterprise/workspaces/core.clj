@@ -20,9 +20,9 @@
      Workspace-aware code (transform target rewriting, table-remapping QP middleware)
      reads them via [[workspace-mode?]] / [[db-workspace-namespace]].
 
-   - **Request-side state.** On an instance that manages workspaces, a superuser's
-     request can name one of them with its `X-Metabase-Workspace-Id` header. The request
-     then works in that workspace ([[current-workspace]] with `:mode :bound`): each
+   - **Request-side state.** On an instance that manages workspaces, a remote sync
+     worktree can name one of them, and each request in that worktree
+     ([[metabase.server.middleware.worktree]]) then works in that workspace ([[current-workspace]] with `:mode :bound`): each
      provisioned database connects with the workspace's login and writes to its output
      namespace, and the workspace has table remappings and copy metadata of its own.
 

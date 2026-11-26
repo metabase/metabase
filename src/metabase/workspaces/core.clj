@@ -5,8 +5,8 @@
 
    1. **Workspace mode** — a state of the current thread. True iff the EE
       `workspaces-enabled` setting is on, which makes the whole instance a workspace,
-      or the current request names a workspace of this instance with its
-      `X-Metabase-Workspace-Id` header ([[current-workspace-id]]). The
+      or the current request works in a remote sync worktree that names a workspace of
+      this instance ([[current-workspace-id]]). The
       `workspace-mode?` predicate; `workspace-bound?` tells the second case.
 
    2. **Workspace-managed database** — a *database-scoped state*. True iff the
@@ -94,8 +94,8 @@
 ;;; workspace too, so row-level security shows them the workspace's rows.
 
 (defn current-workspace-id
-  "The id of the workspace the current request names with its `X-Metabase-Workspace-Id` header
-  ([[metabase.server.middleware.workspace]]), or nil when it names none. Threads that `bound-fn` starts, such as a
+  "The id of the workspace the current request works in, which the remote sync worktree it works in names
+  ([[metabase.server.middleware.worktree]]), or nil when it works in none. Threads that `bound-fn` starts, such as a
   transform run's, keep it."
   []
   (mdb/workspace-id))

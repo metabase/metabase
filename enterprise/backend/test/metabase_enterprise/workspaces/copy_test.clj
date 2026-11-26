@@ -11,6 +11,7 @@
    [metabase-enterprise.workspaces.request-workspace :as ws.request-workspace]
    [metabase-enterprise.workspaces.request-workspace-test :as request-workspace-test]
    [metabase-enterprise.workspaces.row-security-test :as row-security-test]
+   [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
@@ -168,21 +169,22 @@
   (do-with-orders!
    (fn [{:keys [workspace-id db-id table-id field-ids]}]
      (record! workspace-id db-id table-id changed-columns)
-     (let [path    (format "table/%d/query_metadata" table-id)
-           headers {:request-options {:headers {"x-metabase-workspace-id" (str workspace-id)}}}]
-       (testing "without the header, the shared fields"
-         (is (= #{"id" "name" "first" "created"}
-                (set (map :name (:fields (mt/user-http-request :crowberto :get 200 path)))))))
-       (testing "in the workspace, the copy's fields"
-         (let [fields (:fields (mt/user-http-request :crowberto :get 200 path headers))]
-           (is (= ["id" "created" "total"] (map :name fields)))
-           (is (=? {:id (field-ids "created") :base_type "type/DateTime" :coercion_strategy nil}
-                   (second fields)))))
-       (testing "a retired column the workspace owns stays out"
-         (workspaces/with-workspace-id workspace-id
-           (t2/update! :model/Field {:table_id table-id :name "total"} {:visibility_type :retired}))
-         (is (= ["id" "created"]
-                (map :name (:fields (mt/user-http-request :crowberto :get 200 path headers))))))))))
+     (workspaces.tu/with-workspace-worktree [worktree-id workspace-id]
+       (let [path    (format "table/%d/query_metadata" table-id)
+             headers (workspaces.tu/worktree-request worktree-id)]
+         (testing "in the main app, the shared fields"
+           (is (= #{"id" "name" "first" "created"}
+                  (set (map :name (:fields (mt/user-http-request :crowberto :get 200 path)))))))
+         (testing "in the worktree of the workspace, the copy's fields"
+           (let [fields (:fields (mt/user-http-request :crowberto :get 200 path headers))]
+             (is (= ["id" "created" "total"] (map :name fields)))
+             (is (=? {:id (field-ids "created") :base_type "type/DateTime" :coercion_strategy nil}
+                     (second fields)))))
+         (testing "a retired column the workspace owns stays out"
+           (workspaces/with-workspace-id workspace-id
+             (t2/update! :model/Field {:table_id table-id :name "total"} {:visibility_type :retired}))
+           (is (= ["id" "created"]
+                  (map :name (:fields (mt/user-http-request :crowberto :get 200 path headers)))))))))))
 
 (deftest deprovisioned-database-loses-its-copy-rows-test
   (do-with-orders!

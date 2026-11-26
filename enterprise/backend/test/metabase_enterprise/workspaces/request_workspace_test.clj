@@ -1,5 +1,6 @@
 (ns metabase-enterprise.workspaces.request-workspace-test
-  "A request that names a workspace with its `X-Metabase-Workspace-Id` header: what its queries and transforms use."
+  "A request that works in a workspace, through the remote sync worktree that names it: what its queries and
+  transforms use."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.core :as ws]
