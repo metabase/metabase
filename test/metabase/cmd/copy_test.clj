@@ -111,6 +111,27 @@
         (finally
           (run! shutdown! [source target]))))))
 
+(deftest copy-metabot-llm-call-clears-usage-log-id-test
+  (testing "copying an LLM call row clears its usage_log_id, since AI usage logs are not copied"
+    (let [source (h2-data-source)
+          target (h2-data-source)]
+      (try
+        (mdb.setup/setup-db! :h2 source {:manage-encryption-state? false})
+        (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY FALSE"])
+        (jdbc/execute! {:datasource source}
+                       (sql/format {:insert-into (t2/table-name :model/MetabotLlmCall)
+                                    :columns     [:attempt :started_at :status :usage_log_id]
+                                    :values      [[1 [:now] "success" 999]]}
+                                   {:quoted false}))
+        (jdbc/execute! {:datasource source} ["SET REFERENTIAL_INTEGRITY TRUE"])
+        (copy/copy! :h2 source :h2 target)
+        (is (= [{:attempt 1, :status "success", :usage_log_id nil}]
+               (jdbc/query {:datasource target} (sql/format {:select [:attempt :status :usage_log_id]
+                                                             :from   [(t2/table-name :model/MetabotLlmCall)]}
+                                                            {:quoted false}))))
+        (finally
+          (run! shutdown! [source target]))))))
+
 (deftest copy-does-not-copy-sessions-test
   ;; Check that `copy/copy!` excludes :model/Session. For the rest of the models whose spec skips them, we just verify
   ;; they are not present in `copy/entities` (see `all-models-accounted-for-test`).
@@ -176,7 +197,9 @@
   ;; OSS cannot create tenants and does not copy them, so only EE-created dumps are affected.
   #{{:child_table "core_user", :parent_table "tenant"}
     ;; Sessions aren't copied and the LoginHistory copy spec clears `login_history.session_id`.
-    {:child_table "login_history", :parent_table "core_session"}})
+    {:child_table "login_history", :parent_table "core_session"}
+    ;; AI usage logs aren't copied and the MetabotLlmCall copy spec clears `metabot_llm_call.usage_log_id`.
+    {:child_table "metabot_llm_call", :parent_table "ai_usage_log"}})
 
 (def ^:private fk-graph-sql
   "Foreign keys from the test's H2 database."

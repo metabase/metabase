@@ -4,6 +4,7 @@
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
+   [metabase.metabot.app-db-copy :as metabot.app-db-copy]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.util.malli :as mu]
@@ -45,4 +46,5 @@
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/MetabotLlmCall [_model]
-  {:skip? false})
+  {:skip?     false
+   :transform metabot.app-db-copy/transform-metabot-llm-call})
