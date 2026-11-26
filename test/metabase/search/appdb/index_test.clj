@@ -572,16 +572,17 @@
    "document"           #{"action" "model_index_value" "report_card"}
    "exploration"        #{"action" "document" "model_index_value" "report_card"}
    "report_card"        #{"action" "model_index_value"}
-   "report_dashboard"   #{"action" "model_index_value" "report_card"}})
+   "report_dashboard"   #{"action" "model_index_value" "report_card"}
+   "remote_sync_worktree" #{"action" "collection" "document" "exploration" "measure" "model_index_value" "report_card"
+                            "report_dashboard" "segment" "transform"}})
 
 (def ^:private ee-model->deleted-descendants
   "The cascades of [[model->deleted-descendants]] that only the models of EE add."
-  {"remote_sync_worktree" #{"action" "collection" "data_app" "document" "exploration" "measure" "model_index_value"
-                            "report_card" "report_dashboard" "segment" "transform"}})
+  {"remote_sync_worktree" #{"data_app"}})
 
 (deftest search-model-cascade-test
-  (is (= (cond-> model->deleted-descendants
-           config/ee-available? (merge ee-model->deleted-descendants))
+  (is (= (cond->> model->deleted-descendants
+           config/ee-available? (merge-with into ee-model->deleted-descendants))
          (mt/with-empty-h2-app-db!
            (let [table->children    (u.conn/app-db-cascading-deletes (mdb/app-db) (map t2/table-name (descendants :metabase/model)))
                  table->sub-tables  (into {} (for [[t cs] table->children] [t (map :child-table cs)]))
