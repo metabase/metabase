@@ -28,6 +28,8 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import { ROUTED_DATABASE } from "../routed-database";
 const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
 const TEST_DATABASE = createSampleDatabase();
@@ -41,18 +43,26 @@ const TEST_GROUPS = [
   }),
 ];
 
+interface SetupOpts {
+  initialRoute?: string;
+  databases?: Database[];
+}
+
 const setup = async ({
   initialRoute = `/admin/permissions/data/group/${TEST_GROUPS[1].id}`,
   databases = [TEST_DATABASE],
-}: { initialRoute?: string; databases?: Database[] } = {}) => {
+}: SetupOpts = {}) => {
   setupDatabasesEndpoints(databases);
   setupPermissionsGraphEndpoints(TEST_GROUPS, databases);
   setupGroupsEndpoint(TEST_GROUPS);
 
-  fetchMock.get(
-    `path:/api/database/${TEST_DATABASE.id}/metadata`,
-    TEST_DATABASE,
-  );
+  // GET /api/database/:id/metadata does not return router_user_attribute
+  databases.forEach((database) => {
+    fetchMock.get(`path:/api/database/${database.id}/metadata`, {
+      ...database,
+      router_user_attribute: undefined,
+    });
+  });
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
@@ -118,6 +128,31 @@ describe("GroupsPermissionsPage", () => {
 
       expect(screen.getByText("Cancel")).toBeInTheDocument();
       expect(screen.getByText("Save changes")).toBeInTheDocument();
+    });
+  });
+
+  describe("database routing", () => {
+    it("marks a database with routing enabled in the group's database list", async () => {
+      await setup({ databases: [ROUTED_DATABASE] });
+
+      expect(
+        within(screen.getByTestId("permission-table")).getByText(
+          "(Database routing enabled)",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("marks a database with routing enabled in the breadcrumbs of the group's table list", async () => {
+      await setup({
+        databases: [ROUTED_DATABASE],
+        initialRoute: `/admin/permissions/data/group/${TEST_GROUPS[1].id}/database/${ROUTED_DATABASE.id}`,
+      });
+
+      expect(
+        within(
+          await screen.findByTestId("permissions-editor-breadcrumbs"),
+        ).getByText("(Database routing enabled)"),
+      ).toBeInTheDocument();
     });
   });
 
