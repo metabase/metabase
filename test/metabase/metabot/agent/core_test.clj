@@ -100,7 +100,17 @@
                                              {:type :text :id "t1" :text "point."}
                                              {:type :reasoning :id "r1" :text "Next."}
                                              {:type :text :id "t2" :text "Second point."}
-                                             {:type :tool-input :id "c1" :function "search" :arguments {}}])))))
+                                             {:type :tool-input :id "c1" :function "search" :arguments {}}]))))
+  (testing "a text block that is only whitespace adds no blank line"
+    (is (= "a\n\nb"
+           (#'agent/collect-text-from-parts [{:type :text :id "t1" :text "a"}
+                                             {:type :text :id "t2" :text "\n"}
+                                             {:type :text :id "t3" :text "b"}])))
+    (is (= "Let me check.\n\nDone."
+           (#'agent/collect-text-from-parts [{:type :text :id "t1" :text "Let me check."}
+                                             {:type :text :id "t2" :text "\n\n"}
+                                             {:type :tool-input :id "c1" :function "search" :arguments {}}
+                                             {:type :text :id "t3" :text "Done."}])))))
 
 (deftest should-continue-test
   (let [max-iter 3
