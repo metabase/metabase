@@ -1529,7 +1529,9 @@
           (let [{:keys [sqls]} (sample table {:rows 20 :runs 4 :row-count 100 :seed 1})
                 runs-sql       (last (filter #(str/includes? % "UNION ALL") sqls))
                 spec           (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
-                plan           (jdbc/query spec (into [(str "EXPLAIN " runs-sql)] (last @params)))
+                ;; the tabular plan: a MySQL server can default to another `explain_format`; MariaDB has no such option
+                explain        (if (mysql/mariadb? (mt/db)) "EXPLAIN " "EXPLAIN FORMAT=TRADITIONAL ")
+                plan           (jdbc/query spec (into [(str explain runs-sql)] (last @params)))
                 venue-rows     (filter #(= "venues" (:table %)) plan)]
             (is (not (str/includes? runs-sql "1048575")))
             (is (= 4 (count venue-rows)))
