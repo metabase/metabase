@@ -20,6 +20,14 @@
   [_db-id _from-spec]
   nil)
 
+(defenterprise workspace-table-remapper
+  "A function of a canonical `{:db :schema :name}` to what [[workspace-remap-schema+name]] returns for it on the
+  Database with `db-id`, with the remappings read once for every Table of the Database; the OSS fallback maps every
+  Table to nil."
+  metabase-enterprise.workspaces.table-remapping
+  [_db-id]
+  (constantly nil))
+
 (defenterprise table-remappings-exist?
   "Whether the Database with `db-id` has any TableRemapping. OSS fallback is false."
   metabase-enterprise.workspaces.table-remapping

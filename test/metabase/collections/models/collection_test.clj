@@ -419,7 +419,7 @@
                     :is-data-analyst? (boolean api/*is-data-analyst?*)}
          options   (merge {:root-namespace nil} visibility-config)]
      (cond-> (t2/select-pks-set :model/Collection
-                                {:where (perms/visible-collections-filter-clause :collection.id user-info options)})
+                                {:where (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Collection) :id) user-info options)})
        (seq (t2/query {:select [[[:inline 1] :one]]
                        :from   [[^:allow-subquery {:select [[[:case [:= [:inline 1] [:inline 0]] [:inline 1]] :collection_id]]} :row]]
                        :where  (perms/visible-collections-filter-clause :row.collection_id user-info options)}))

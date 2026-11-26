@@ -480,7 +480,29 @@
 (defn- create-or-update-user!
   [provider request]
   (let [existing-user (:user request)
-        user-data     (:user-data request)]
+        user-data     (:user-data request)
+        {:keys [email first_name last_name sso_source provider-id tenant_id is_active]} user-data]
+    (when-not (or (nil? user-data) (string? email))
+      (throw (ex-info "email must be a string" {:email email})))
+    (when-not (every? #(or (nil? %) (string? %)) [first_name last_name provider-id])
+      (throw (ex-info "first name, last name and provider id must be strings" {:first_name  first_name
+                                                                               :last_name   last_name
+                                                                               :provider-id provider-id})))
+    (when-not (or (nil? sso_source) (keyword? sso_source) (string? sso_source))
+      (throw (ex-info "sso_source must be a keyword or a string" {:sso_source sso_source})))
+    (when-not (or (nil? tenant_id) (pos-int? tenant_id))
+      (throw (ex-info "tenant_id must be a positive integer" {:tenant_id tenant_id})))
+    (when-not (or (nil? is_active) (boolean? is_active))
+      (throw (ex-info "is_active must be a boolean" {:is_active is_active})))
+    (doseq [k [:login_attributes :jwt_attributes]
+            :let [attributes (get user-data k)]]
+      (when-not (or (nil? attributes)
+                    (and (map? attributes)
+                         (every? (fn [[attr-key attr-value]]
+                                   (and (or (string? attr-key) (keyword? attr-key))
+                                        (or (nil? attr-value) (string? attr-value) (number? attr-value) (boolean? attr-value))))
+                                 attributes)))
+        (throw (ex-info "user attributes must map names to scalar values" {k attributes}))))
     (cond
       existing-user
       {:user              (cond-> existing-user

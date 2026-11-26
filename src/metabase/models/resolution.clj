@@ -29,6 +29,7 @@
     :model/Card                              metabase.queries.models.card
     :model/CardTest                          metabase-enterprise.data-testing.models.card-test
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
+    :model/ChangeLog                         metabase.change-log.models.change-log
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
     :model/CloudMigration                    metabase.cloud-migration.models.cloud-migration

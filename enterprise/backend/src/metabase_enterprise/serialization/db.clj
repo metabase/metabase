@@ -30,7 +30,7 @@
   [model :- :keyword
    pks   :- [:sequential ms/PositiveInt]]
   (let [pk (first (t2/primary-keys model))]
-    (into #{} (mdb/select-batched #(t2/select-fn-set pk [model pk] pk [:in [:auto/param %]]) pks))))
+    (into #{} (mdb/select-batched #(t2/select-fn-set pk [model pk] pk [:in %]) pks))))
 
 (mu/defn root-collections-for-user
   "The top-level non-analytics Collections that are not personal or belong to the User with `user-id`."
@@ -87,7 +87,7 @@
    entity-ids :- [:sequential :string]]
   (let [pk (first (t2/primary-keys model))]
     (mdb/select-batched-map #(t2/select-fn->fn :entity_id pk [model pk :entity_id]
-                                               :entity_id [:in [:auto/param %]])
+                                               :entity_id [:in %])
                             entity-ids)))
 
 (mu/defn ids-for-export :- [:set :any]
@@ -108,7 +108,7 @@
                (fn [collection-ids]
                  (t2/select-pks-set :model/Collection
                                     {:where [:and
-                                             (into [:or [:in :id [:auto/param collection-ids]]]
+                                             (into [:or [:in :id collection-ids]]
                                                    (map (fn [id] [:like :location (str "%/" id "/%")]))
                                                    collection-ids)
                                              (when unarchived-only? [:= :archived false])]}))

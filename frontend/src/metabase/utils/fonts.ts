@@ -1,3 +1,4 @@
+import type { FontFile } from "metabase-types/api";
 import type { MetabaseFontFamily } from "metabase-types/api/fonts";
 
 type PredefinedFontName = Exclude<MetabaseFontFamily, "Custom">;
@@ -60,4 +61,21 @@ export function getFontFamilyValue(font: string): string {
       : "sans-serif";
 
   return [...families.map((name) => JSON.stringify(name)), fallback].join(", ");
+}
+
+/** The `@font-face` rules for the instance's custom font files. */
+export function getCustomFontFaceStyles(fontFiles: FontFile[] | null): string {
+  return (fontFiles ?? [])
+    .map(
+      (file) => `
+        @font-face {
+          font-family: "Custom";
+          src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
+          font-weight: ${file.fontWeight};
+          font-style: normal;
+          font-display: swap;
+        }
+      `,
+    )
+    .join("\n");
 }

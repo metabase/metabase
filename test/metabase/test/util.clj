@@ -644,7 +644,7 @@
 (defn- raw-setting
   "The `setting` row for `setting-k` as it sits in the table, or nil."
   [setting-k]
-  (t2/select-one [:setting :value :value_with_aad] :key setting-k))
+  (t2/select-one [(t2/table-name :model/Setting) :value :value_with_aad] :key setting-k))
 
 (defn- upsert-raw-setting!
   "Write `value` for `setting-k` straight into the table, bypassing the model and so any setter: `value` bare, and
@@ -654,18 +654,18 @@
     (let [row {:value          value
                :value_with_aad (encryption/maybe-encrypt value {:aad (mdb.setting/setting-aad setting-k)})}]
       (if original
-        (t2/update! :setting :key setting-k row)
-        (t2/insert! :setting (assoc row :key setting-k))))
+        (t2/update! (t2/table-name :model/Setting) :key setting-k row)
+        (t2/insert! (t2/table-name :model/Setting) (assoc row :key setting-k))))
     (when original
-      (t2/delete! :setting :key setting-k)))
+      (t2/delete! (t2/table-name :model/Setting) :key setting-k)))
   (setting.cache/restore-cache!))
 
 (defn- restore-raw-setting!
   "Put back the row [[raw-setting]] found, byte for byte, or remove the one written over nothing."
   [original setting-k]
   (if original
-    (t2/update! :setting :key setting-k original)
-    (t2/delete! :setting :key setting-k))
+    (t2/update! (t2/table-name :model/Setting) :key setting-k original)
+    (t2/delete! (t2/table-name :model/Setting) :key setting-k))
   (setting.cache/restore-cache!))
 
 (defn do-with-temporary-setting-value!

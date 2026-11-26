@@ -219,10 +219,7 @@
                  :recipient-count 1
                  :already-broken? false
                  :readable?       true}
-                {:id              unreadable-id
-                 :parameters      [{:id "gone"}]
-                 :already-broken? false
-                 :readable?       false}]
+                {:readable? false}]
                (mt/with-current-user (mt/user->id :rasta)
                  (pulse.broken-subscriptions/handle-broken-subscriptions!
                   dash-id
@@ -310,7 +307,7 @@
               (is (= (set ids) (t2/select-pks-set :model/Pulse :id [:in ids] :archived true))))))))))
 
 (deftest handle-broken-subscriptions-unreadable-test
-  (testing "a subscription the user cannot read is archived and reported without creator, channels and recipients, among readable ones"
+  (testing "a subscription the user cannot read is archived and only counted, among readable ones"
     (mt/with-fake-inbox
       (mt/with-model-cleanup [:model/Pulse]
         (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Sales"}]
@@ -322,6 +319,5 @@
             (doseq [id readable]
               (is (=? {:readable? true :creator-name "Rasta Toucan" :channels [:email :slack] :recipient-count 3}
                       (by-id id))))
-            (doseq [id unreadable]
-              (is (= {:id id :parameters [{:id "gone"}] :already-broken? false :readable? false}
-                     (by-id id))))))))))
+            (is (= (repeat (count unreadable) {:readable? false})
+                   (remove :readable? archived)))))))))

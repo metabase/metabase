@@ -2,14 +2,12 @@
   ;; TODO (Cam 10/30/25) -- Move this somewhere better
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.core :as mdb]
    [metabase.initialization-status.core :as init-status]
    [metabase.server.middleware.session :as mw.session]
    [metabase.session.core :as session]
    [metabase.session.task.session-cleanup :as session-cleanup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -163,12 +161,12 @@
             (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
           (testing "Session with last_active_at older than timeout should be expired"
             (t2/query-one {:update (t2/table-name :model/Session)
-                           :set    {:last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -301 :second)}
+                           :set    {:last_active_at [:date-add :%now -301 :second]}
                            :where  [:= :key_hashed key-hashed]})
             (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))
           (testing "Session with last_active_at just within timeout should be valid"
             (t2/query-one {:update (t2/table-name :model/Session)
-                           :set    {:last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -299 :second)}
+                           :set    {:last_active_at [:date-add :%now -299 :second]}
                            :where  [:= :key_hashed key-hashed]})
             (is (some? (#'mw.session/current-user-info-for-session session-key nil)))))))))
 
@@ -186,7 +184,7 @@
             (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
           (testing "old session with NULL last_active_at should be expired"
             (t2/query-one {:update (t2/table-name :model/Session)
-                           :set    {:created_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -301 :second)}
+                           :set    {:created_at [:date-add :%now -301 :second]}
                            :where  [:= :key_hashed key-hashed]})
             (is (nil? (#'mw.session/current-user-info-for-session session-key nil)))))))))
 
@@ -233,7 +231,7 @@
             (t2/insert! (t2/table-name :model/Session)
                         {:id idle-id :key_hashed idle-key :user_id user-id
                          :created_at :%now
-                         :last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -600 :second)})
+                         :last_active_at [:date-add :%now -600 :second]})
             ;; Session with no activity tracking (NULL last_active_at), created recently
             (t2/insert! (t2/table-name :model/Session)
                         {:id no-activity-id :key_hashed no-activity-key :user_id user-id

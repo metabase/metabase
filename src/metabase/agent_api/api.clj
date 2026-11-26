@@ -846,7 +846,7 @@
                         (personal-collection-id))]
     (when validate-query!
       (validate-query! dataset-query))
-    (query-perms/check-run-permissions-for-query dataset-query)
+    (query-perms/check-run-permissions-for-queries [dataset-query])
     (let [card {:name                   card-name
                 :type                   card-type
                 :dataset_query          dataset-query
@@ -911,7 +911,7 @@
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
     (when (api/column-will-change? (:dataset_query card-before-update) (get card-updates :dataset_query ::api/not-provided))
-      (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))
+      (query-perms/check-run-permissions-for-queries [(:dataset_query card-updates)]))
     (t2/with-transaction [_conn]
       (collection/maybe-reconcile-collection-position!
        (select-keys card-before-update [:collection_id :collection_position])

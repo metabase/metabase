@@ -141,7 +141,7 @@
         (testing "and the column persists as a string in the database"
           (is (= "provisioned"
                  (:status (t2/query-one {:select [:status]
-                                         :from   [:workspace_database]
+                                         :from   [(t2/table-name :model/WorkspaceDatabase)]
                                          :where  [:= :workspace_id (:id created)]})))))))))
 
 (deftest status-can-be-updated-test

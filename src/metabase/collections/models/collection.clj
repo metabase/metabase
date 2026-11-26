@@ -17,6 +17,7 @@
    [metabase.config.core :as config]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -27,7 +28,6 @@
    [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -1150,11 +1150,11 @@
         [:like (->col "location") (str (children-location parent-coll) "%")]
         ;; but NOT a child of any OTHER visible collection.
         [:not [:exists ^:allow-subquery {:select 1
-                                         :from [[:collection :c2]]
+                                         :from [[(t2/table-name :model/Collection) :c2]]
                                          :where [:and
                                                  (perms/visible-collections-filter-clause :c2.id (api/current-user-info)
                                                                                           visibility-config)
-                                                 [:= (->col "location") [:concat :c2.location :c2.id (h2x/literal "/")]]
+                                                 [:= (->col "location") [:concat :c2.location :c2.id [:literal "/"]]]
                                                  (when-not (collection.root/is-root-collection? parent-coll)
                                                    [:not= :c2.id [:inline (u/the-id parent-coll)]])]}]]])]))
 
@@ -1362,7 +1362,7 @@
   [collection             :- CollectionWithLocationAndIDOrRoot
    collection-table-alias :- :keyword
    visibility-config      :- CollectionVisibilityConfig
-   & additional-honeysql-where-clauses :- [:* ::h2x/honeysql-expr]]
+   & additional-honeysql-where-clauses :- [:* ::funnysql.schema/expr]]
   (into
    [:and
     (effective-child-of-filter-clause collection collection-table-alias visibility-config)
@@ -1400,9 +1400,9 @@
    access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
   [collection :- CollectionWithLocationAndIDOrRoot
    visibility-config :- CollectionVisibilityConfig
-   & additional-honeysql-where-clauses :- [:* ::h2x/honeysql-expr]]
+   & additional-honeysql-where-clauses :- [:* ::funnysql.schema/expr]]
   ^:allow-subquery {:select [:id :name :description :type]
-                    :from   [[:collection :col]]
+                    :from   [[(t2/table-name :model/Collection) :col]]
                     :where  (apply effective-children-where-clause collection :col visibility-config additional-honeysql-where-clauses)})
 
 (mu/defn- effective-children* :- [:set (ms/InstanceOf :model/Collection)]
@@ -1929,7 +1929,7 @@
 
 (defmethod mi/non-internal-filter-clause :model/Collection
   [_model alias]
-  (let [maybe-alias #(h2x/identifier :field (name alias) %)]
+  (let [maybe-alias #(u/qualified-key (name alias) %)]
     [:and
      [:or [:= (maybe-alias :type) nil]
       [:and
@@ -2025,8 +2025,8 @@
              (can-write-all-collections-or-root? [new-id] {:root-namespace nil})))))
 
 (defmulti allowed-namespaces
-  "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in. By default, only the
-  default namespace (namespace = `nil`)."
+  "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in.
+  Models without their own method get [[default-allowed-namespaces]]."
   {:arglists '([model])}
   t2.protocols/dispatch-value)
 
@@ -2053,12 +2053,26 @@
   [_ _]
   true)
 
+(def searchable-namespaces
+  "The Collection namespaces search indexes, with the content inside them.
+  Kept apart from [[default-allowed-namespaces]]: where content may be saved and what search finds are separate
+  decisions, so a new placement namespace isn't indexed by accident."
+  #{nil :analytics :shared-tenant-collection :tenant-specific})
+
+(defn searchable-namespace-clause
+  "HoneySQL clause matching rows whose `namespace-column` holds one of the [[searchable-namespaces]].
+  The appdb and in-place engines also hide `analytics` content at query time unless the audit app is enabled."
+  [namespace-column]
+  (into [:or]
+        (for [collection-namespace searchable-namespaces]
+          [:= namespace-column (some-> collection-namespace name)])))
+
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
   `allowed-namespaces`), or throw an Exception.
 
-    ;; Cards can only go in Collections in the default namespace (namespace = nil)
-    (check-collection-namespace Card new-collection-id)
+    ;; Snippets can only go in Collections in the `snippets` namespace
+    (check-collection-namespace :model/NativeQuerySnippet new-collection-id)
 
   `collection` is a Collection id or the row [[content-parent]] gives."
   [model collection]
@@ -2433,8 +2447,8 @@
   (let [ids (into [] (remove nil?) collection-ids)]
     (cond
       (empty? ids)                        [:= :collection_id nil]
-      (not-any? nil? collection-ids)      [:in :collection_id [:auto/param ids]]
-      :else                               [:or [:= :collection_id nil] [:in :collection_id [:auto/param ids]]])))
+      (not-any? nil? collection-ids)      [:in :collection_id ids]
+      :else                               [:or [:= :collection_id nil] [:in :collection_id ids]])))
 
 (defn- shift-after-move
   "`state`, the Collection and position of the positioned rows by `[model id]`, after the Card `card-key` leaves the
@@ -3182,10 +3196,7 @@
                    ;; results pass through `metabase.search.impl/add-collection-effective-location`.
                    ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
                    :location                   true}
-    :where [:or [:= :namespace nil]
-            [:= :namespace "analytics"]
-            [:= :namespace "shared-tenant-collection"]
-            [:= :namespace "tenant-specific"]]
+    :where        (searchable-namespace-clause :namespace)
     ;; depends on the current user, used for rendering and ranking
     ;; TODO not sure this is what it'll look like
     :bookmark     [:model/CollectionBookmark [:and

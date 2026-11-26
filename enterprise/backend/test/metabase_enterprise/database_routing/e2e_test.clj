@@ -187,7 +187,7 @@
                   ;; Grant the destination perms via a raw insert that bypasses the model hook.
                   ;; Normally impossible: destinations never carry data_permissions rows.
                   ;; Proves a non-superuser's perms don't matter — only the routing guard rejects the query.
-                  (t2/query {:insert-into :data_permissions
+                  (t2/query {:insert-into (t2/table-name :model/DataPermissions)
                              :values      [{:group_id   (:id (perms-group/all-users))
                                             :perm_type  "perms/view-data"
                                             :perm_value "unrestricted"

@@ -1,7 +1,6 @@
 (ns metabase.app-db.liquibase
   "High-level Clojure wrapper around relevant parts of the Liquibase API."
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations]
@@ -85,10 +84,7 @@
   (if (fresh-install? conn database)
     changelog-file
     (let [{latest-migration :id, latest-filename :filename}
-          ;; `orderexecuted` breaks ties between rows sharing a `dateexecuted` (e.g. MySQL second precision)
-          (first (jdbc/query {:connection conn}
-                             [(format "select id, filename from %s order by dateexecuted desc, orderexecuted desc limit 1"
-                                      (.getDatabaseChangeLogTableName database))]))
+          (app-db.db/newest-changelog-row conn (versions/table-key (.getDatabaseChangeLogTableName database)))
           ;; major version parsed from a legacy "vNN.*" id, or nil for version-less (year-directory) ids
           major (some-> (re-find #"^v(\d+)\." (str latest-migration)) second parse-long)]
       (cond
@@ -511,9 +507,9 @@
   other ids are candidates. A candidate is left alone when this changelog has no matching `[author id]`, or has that
   identity in several files and therefore cannot identify the original filename safely."
   [^Connection conn ^Liquibase liquibase changelog-table]
-  (let [stray (->> (jdbc/query {:connection conn}
-                               [(format "SELECT id, author FROM %s WHERE filename IN (?, ?) AND id NOT LIKE 'v%%'" changelog-table)
-                                legacy-migrations-file update001-migrations-file])
+  (let [stray (->> (app-db.db/unversioned-changelog-rows-in-files conn
+                                                                  (versions/table-key changelog-table)
+                                                                  [legacy-migrations-file update001-migrations-file])
                    (remove #(re-matches #"\d+" (:id %))))]
     (when (seq stray)
       (let [paths-of (reduce (fn [paths ^ChangeSet cs]
@@ -529,9 +525,7 @@
             (let [path (first paths)]
               (log/warnf "Restoring the changelog filename of version-less changeset %s to %s (an older Metabase version had consolidated it into the legacy changelog file)"
                          id path)
-              (jdbc/execute! {:connection conn}
-                             [(format "UPDATE %s SET filename = ? WHERE id = ? AND author = ?" changelog-table)
-                              path id author]))
+              (app-db.db/update-changelog-filename! conn (versions/table-key changelog-table) id author path))
 
             (< 1 (count paths))
             (log/warnf (str "Cannot safely restore the changelog filename of version-less changeset %s by author %s: "
@@ -553,22 +547,15 @@
   Also see https://github.com/metabase/metabase/pull/34400"
   [conn :- (ms/InstanceOfClass Connection)
    liquibase :- (ms/InstanceOfClass Liquibase)]
-  (let [liquibase-table-name (changelog-table-name liquibase)
-        conn-spec            {:connection conn}]
+  (let [liquibase-table-name (changelog-table-name liquibase)]
     (when-not (fresh-install? conn (.getDatabase ^Liquibase liquibase))
       ;; The UPDATE runs on every non-fresh boot: it is an idempotent no-op once filenames are consolidated, and the
       ;; filenames of pre-consolidation installs are too varied to guard on reliably. It assumes we have never moved
       ;; the boundary between the two files, i.e. that update-migrations still start from v45.
       (log/info "Updating liquibase table to reflect consolidated changeset filenames")
       (with-scope-locked liquibase
-        (jdbc/execute!
-         conn-spec
-         [(format (str "UPDATE %s SET FILENAME = CASE WHEN ID = ? THEN ? WHEN ID < ? THEN ? WHEN ID < ? THEN ? "
-                       "ELSE FILENAME END WHERE FILENAME NOT LIKE ?")
-                  liquibase-table-name)
-          "v00.00-000" update001-migrations-file
-          "v45.00-001" legacy-migrations-file
-          "v56.0000-00-00T00:00:00" update001-migrations-file
-          ;; version-less migrations live in a year directory: `migrations/2026/...` (see [[year-directory-migration?]])
-          "%/____/%"])
+        (app-db.db/consolidate-changelog-filenames! conn
+                                                    (versions/table-key liquibase-table-name)
+                                                    legacy-migrations-file
+                                                    update001-migrations-file)
         (repair-version-less-filenames! conn liquibase liquibase-table-name)))))

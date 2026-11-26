@@ -25,7 +25,7 @@
     (encryption-test/with-secret-key "secret"
       (mt/with-model-cleanup [:model/Channel]
         (let [channel (t2/insert-returning-instance! :model/Channel notification.tu/default-can-connect-channel)]
-          (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details :channel :id (:id channel)))))))))
+          (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details (t2/table-name :model/Channel) :id (:id channel)))))))))
 
 (deftest channel-details-json-encoding-test
   (testing "JSON-encoding a Channel includes :details only for callers who can write it"

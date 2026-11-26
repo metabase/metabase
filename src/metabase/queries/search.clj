@@ -6,7 +6,9 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.revisions.sql :as revisions.sql]
-   [metabase.search.core :as search]))
+   [metabase.search.core :as search]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,8 +30,8 @@
                   :creator-id           true
                   :dashboard-id         true
                   :dashboardcard-count  ^:allow-subquery {:select [:%count.*]
-                                                          :from   [:report_dashboardcard]
-                                                          :where  [:= :report_dashboardcard.card_id :this.id]}
+                                                          :from   [(t2/table-name :model/DashboardCard)]
+                                                          :where  [:= (u/qualified-key (t2/table-name :model/DashboardCard) :card_id) :this.id]}
                   :database-id          true
                   :last-viewed-at       :last_used_at
                   :native-query         {:fn maybe-extract-native-query
@@ -56,10 +58,9 @@
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]
                                        [:= :bookmark.user_id :current_user/id]]]
-   :where [:and [:or [:= :collection.namespace nil]
-                 [:= :collection.namespace "shared-tenant-collection"]
-                 [:= :collection.namespace "tenant-specific"]]
-           [:= :this.document_id nil]]
+   :where        [:and
+                  (collection/searchable-namespace-clause :collection.namespace)
+                  [:= :this.document_id nil]]
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and
                                                 [:= :r.model_id :this.id]

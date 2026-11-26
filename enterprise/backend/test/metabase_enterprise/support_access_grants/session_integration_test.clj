@@ -89,7 +89,7 @@
                                                             :user_id support-user-id
                                                             :provider "support-access-grant")
                         sessions          (t2/query {:select [:auth_identity_id]
-                                                     :from   [:core_session]
+                                                     :from   [(t2/table-name :model/Session)]
                                                      :where  [:= :user_id support-user-id]})]
                     (is (= 1 (count sessions))
                         "the redeemed grant left exactly one session")

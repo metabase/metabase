@@ -45,13 +45,13 @@
                 (seq date) (conj (date-range-expr :c.created_at date))
                 (and group-id (not= group-id (:id (perms/all-users-group))))
                 (conj [:exists ^:allow-subquery {:select [1]
-                                                 :from   [[:permissions_group_membership :pgm]]
+                                                 :from   [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
                                                  :where  [:and
                                                           [:= :pgm.user_id :c.user_id]
                                                           [:= :pgm.group_id group-id]]}])
                 tenant-id
                 (conj [:exists ^:allow-subquery {:select [1]
-                                                 :from   [[:core_user :u]]
+                                                 :from   [[(t2/table-name :model/User) :u]]
                                                  :where  [:and
                                                           [:= :u.id :c.user_id]
                                                           [:= :u.tenant_id tenant-id]]}]))
@@ -67,45 +67,64 @@
    "title"             [:c.title]
    "message_count"     [:message_count]
    "total_tokens"      [:total_tokens]
+   "uncached_tokens"   [:uncached_tokens]
    "cache_read_tokens" [:cache_read_tokens]
    "user"              [[:lower [:min :u.first_name]]
                         [:lower [:min :u.last_name]]]
    "profile_id"        [:profile_id]
    "ip_address"        [:c.ip_address]})
 
-(def ^:private conversation-list-select
+(defn- usage-sum-expr
+  "Sum of the `ai_usage_log` column `col` over the LLM calls of a conversation. The split of the tokens into prompt,
+  completion, and cache read is only recorded per LLM call in `ai_usage_log` (`metabot_message` stores one total), so
+  this is a correlated subquery rather than another one-to-many join, which would fan out against the
+  `metabot_message` join and inflate every other aggregate."
+  [col]
+  [:coalesce
+   ^:allow-subquery {:select [[[:sum col]]]
+                     :from   [[(t2/table-name :model/AiUsageLog) :aul]]
+                     :where  [:= :aul.conversation_id :c.id]}
+   0])
+
+(defn- uncached-tokens-expr
+  "The tokens of one `ai_usage_log` row that were not served from the provider cache: the input tokens
+  (`prompt-col` minus `cache-read-col`) plus the output tokens (`completion-col`). `prompt_tokens` holds the cache
+  read tokens for every provider; the clamp only guards against a row that breaks that rule."
+  [prompt-col cache-read-col completion-col]
+  [:+ [:greatest [:- prompt-col [:coalesce cache-read-col 0]] 0] completion-col])
+
+(defn- token-usage-columns
+  "The uncached and cache read token columns of a conversation aliased `:c`."
+  []
+  [[(usage-sum-expr (uncached-tokens-expr :aul.prompt_tokens :aul.cache_read_tokens :aul.completion_tokens))
+    :uncached_tokens]
+   [(usage-sum-expr :aul.cache_read_tokens) :cache_read_tokens]])
+
+(defn- conversation-list-select
   "Conversation rows with aggregate stats, including deleted attempts. Messages
    a fork copied in from its origin are counted here — the list describes the
    thread as the reader sees it. `v_metabot_conversations.new_message_count` is
    the usage-metric counterpart that leaves them out."
-  {:select    [:c.*
-               [[:count :m.id] :message_count]
-               [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
-               [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
-               [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
-               [[:max :m.created_at] :last_message_at]
-               [^:allow-subquery {:select   [:mm.profile_id]
-                                  :from     [[:metabot_message :mm]]
-                                  :where    [:and
-                                             [:= :mm.conversation_id :c.id]
-                                             [:= :mm.role "assistant"]]
-                                  :order-by [[:mm.created_at :asc] [:mm.id :asc]]
-                                  :limit    1}
-                :profile_id]
-               ;; Cache tokens are only recorded per LLM call in `ai_usage_log`
-               ;; (`metabot_message` stores prompt+completion only), so this is a
-               ;; correlated subquery rather than another one-to-many join, which
-               ;; would fan out against the `metabot_message` join and inflate
-               ;; every aggregate above.
-               [[:coalesce
-                 ^:allow-subquery {:select [[[:sum :aul.cache_read_tokens]]]
-                                   :from   [[:ai_usage_log :aul]]
-                                   :where  [:= :aul.conversation_id :c.id]}
-                 0]
-                :cache_read_tokens]]
-   :from      [[:metabot_conversation :c]]
-   :left-join [[:metabot_message :m] [:= :m.conversation_id :c.id]
-               [:core_user :u]       [:= :u.id :c.user_id]]
+  []
+  {:select    (into
+               [:c.*
+                [[:count :m.id] :message_count]
+                [[:count [:case [:= :m.role "user"] 1]] :user_message_count]
+                [[:count [:case [:= :m.role "assistant"] 1]] :assistant_message_count]
+                [[:coalesce [:sum :m.total_tokens] 0] :total_tokens]
+                [[:max :m.created_at] :last_message_at]
+                [^:allow-subquery {:select   [:mm.profile_id]
+                                   :from     [[(t2/table-name :model/MetabotMessage) :mm]]
+                                   :where    [:and
+                                              [:= :mm.conversation_id :c.id]
+                                              [:= :mm.role "assistant"]]
+                                   :order-by [[:mm.created_at :asc] [:mm.id :asc]]
+                                   :limit    1}
+                 :profile_id]]
+               (token-usage-columns))
+   :from      [[(t2/table-name :model/MetabotConversation) :c]]
+   :left-join [[(t2/table-name :model/MetabotMessage) :m] [:= :m.conversation_id :c.id]
+               [(t2/table-name :model/User) :u]       [:= :u.id :c.user_id]]
    :group-by  [:c.id]})
 
 (mu/defn list-conversations
@@ -127,7 +146,7 @@
         order-by   (conj (mapv #(vector % sort-direction) sort-exprs)
                          [:c.id :asc])]
     (t2/select :model/MetabotConversation
-               (cond-> (assoc conversation-list-select
+               (cond-> (assoc (conversation-list-select)
                               :order-by order-by
                               :limit    limit
                               :offset   offset)
@@ -144,8 +163,19 @@
        [:date      {:optional true} [:maybe :string]]]]
   (let [where (conversation-list-expr {:user-id user-id :group-id group-id :tenant-id tenant-id :date date})]
     (:count (t2/query-one (cond-> {:select [[[:count :*] :count]]
-                                   :from   [[:metabot_conversation :c]]}
+                                   :from   [[(t2/table-name :model/MetabotConversation) :c]]}
                             where (assoc :where where))))))
+
+(mu/defn token-usage-for-conversation :- [:map
+                                          [:uncached_tokens   ms/IntGreaterThanOrEqualToZero]
+                                          [:cache_read_tokens ms/IntGreaterThanOrEqualToZero]]
+  "The token sums of the LLM calls of the MetabotConversation with `conversation-id`: the input and output tokens
+  not served from the provider cache, and the cache read tokens. The list reads the same [[token-usage-columns]]."
+  [conversation-id :- :string]
+  (update-vals (t2/query-one {:select (token-usage-columns)
+                              :from   [[(t2/table-name :model/MetabotConversation) :c]]
+                              :where  [:= :c.id conversation-id]})
+               long))
 
 (mu/defn messages-for-conversation
   "The MetabotMessages of the MetabotConversation with `conversation-id`, oldest first."
@@ -163,18 +193,18 @@
   "The MetabotFeedback rows on the messages of the MetabotConversation with `conversation-id`, oldest first."
   [conversation-id :- :string]
   (t2/select :model/MetabotFeedback
-             {:select   [:metabot_feedback.id
-                         :metabot_feedback.message_id
-                         :metabot_feedback.user_id
+             {:select   [:mf.id
+                         :mf.message_id
+                         :mf.user_id
                          [:mm.external_id :external_id]
-                         :metabot_feedback.positive
-                         :metabot_feedback.issue_type
-                         :metabot_feedback.freeform_feedback
-                         :metabot_feedback.created_at
-                         :metabot_feedback.updated_at]
-              :from     [:metabot_feedback]
-              :join     [[:metabot_message :mm] [:= :mm.id :metabot_feedback.message_id]]
+                         :mf.positive
+                         :mf.issue_type
+                         :mf.freeform_feedback
+                         :mf.created_at
+                         :mf.updated_at]
+              :from     [[(t2/table-name :model/MetabotFeedback) :mf]]
+              :join     [[(t2/table-name :model/MetabotMessage) :mm] [:= :mm.id :mf.message_id]]
               :where    [:= :mm.conversation_id conversation-id]
-              :order-by [[:metabot_feedback.created_at :asc]
-                         [:metabot_feedback.message_id :asc]
-                         [:metabot_feedback.user_id :asc]]}))
+              :order-by [[:mf.created_at :asc]
+                         [:mf.message_id :asc]
+                         [:mf.user_id :asc]]}))

@@ -174,8 +174,8 @@
                                                            {:request-options {:headers {"x-api-key"
                                                                                         (:unmasked_key api-key)}}}))
               state    (fn [user-id]
-                         [(t2/select-one :core_user :id user-id)
-                          (t2/select :auth_identity :user_id user-id {:order-by [:id]})])]
+                         [(t2/select-one (t2/table-name :model/User) :id user-id)
+                          (t2/select (t2/table-name :model/AuthIdentity) :user_id user-id {:order-by [:id]})])]
           (doseq [{:keys [id email]} [key-user
                                       (t2/select-one [:model/User :id :email] :id config/internal-mb-user-id)]]
             (testing email

@@ -120,8 +120,8 @@ Custom migrations are append-only, must be idempotent and resumable, and must ba
 lock on a large table for the whole run. They run inside a transaction and must use table names, never `:model/*` or
 other application code: that code changes after the migration ships and breaks it (some older migrations use
 `:model/*`; don't copy them). Decrypt encrypted columns such as `metabase_database.details` and `setting.value`
-before reading them. The `metabase.app-db.*` module, custom migrations included, is exempt from the `<module>.db`
-rule.
+before reading them. Custom migrations are exempt from the `<module>.db` rule; the rest of the `app-db` module
+runs its queries in `metabase.app-db.db`.
 
 ## Testing a migration
 

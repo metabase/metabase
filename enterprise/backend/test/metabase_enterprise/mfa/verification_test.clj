@@ -181,14 +181,14 @@
                                              :provider    "totp"
                                              :confirmed_at (t/instant)
                                              :credentials  {:secret secret}}))
-          (let [ai-id     (t2/select-one-fn :id :auth_identity :user_id user-id :provider "totp")
-                raw       (t2/select-one-fn :credentials :auth_identity :id ai-id)
+          (let [ai-id     (t2/select-one-fn :id (t2/table-name :model/AuthIdentity) :user_id user-id :provider "totp")
+                raw       (t2/select-one-fn :credentials (t2/table-name :model/AuthIdentity) :id ai-id)
                 plaintext (encryption-test/with-secret-key k1
                             (encryption/maybe-decrypt-accepting-plaintext raw))
                 rotated   (encryption-test/with-secret-key k2
                             (encryption/maybe-encrypt plaintext))]
             (is (encryption/possibly-encrypted-string? raw) "sanity: stored under key A as ciphertext")
-            (t2/update! :auth_identity :id ai-id {:credentials rotated}))
+            (t2/update! (t2/table-name :model/AuthIdentity) :id ai-id {:credentials rotated}))
           (encryption-test/with-secret-key k2
             (is (true? (boolean (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti))))
                 "the rotated enrollment verifies under the new key"))
@@ -220,7 +220,7 @@
               (is (thrown? Exception
                            (verification/verify-attempt! user-id (totp/generate-code secret) (fresh-jti)))))
             (testing "the enrollment row survives the failed attempt"
-              (is (= 1 (t2/count :auth_identity :user_id user-id :provider "totp"))))
+              (is (= 1 (t2/count (t2/table-name :model/AuthIdentity) :user_id user-id :provider "totp"))))
             (testing "disable! deletes without decrypting, so the admin escape hatch works"
               (is (true? (enrollment/disable! user-id)))
-              (is (zero? (t2/count :auth_identity :user_id user-id :provider "totp"))))))))))
+              (is (zero? (t2/count (t2/table-name :model/AuthIdentity) :user_id user-id :provider "totp"))))))))))

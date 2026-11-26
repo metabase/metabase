@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.classloader.core :as classloader]
+   [metabase.mq.db :as mq.db]
    [metabase.mq.listener :as listener]
    [metabase.mq.quartz-affinity :as affinity]
    [metabase.mq.queue.concurrency :as q.concurrency]
@@ -77,15 +78,17 @@
 (defn- seed! [sched rows]
   (let [now (epoch-ms)]
     (doseq [[jn jg] rows]
-      (t2/query (str "INSERT INTO QRTZ_JOB_DETAILS (sched_name,job_name,job_group,job_class_name,is_durable,is_nonconcurrent,is_update_data,requests_recovery)"
-                     " VALUES ('" sched "','" jn "','" jg "','x.Job',true,false,false,false)"))
-      (t2/query (str "INSERT INTO QRTZ_TRIGGERS (sched_name,trigger_name,trigger_group,job_name,job_group,next_fire_time,priority,trigger_state,trigger_type,start_time,misfire_instr)"
-                     " VALUES ('" sched "','" jn "','" jg "','" jn "','" jg "'," (- now 60000)
-                     ",5,'WAITING','SIMPLE'," (- now 120000) ",-1)")))))
+      (t2/query {:insert-into (mq.db/quartz-table :QRTZ_JOB_DETAILS)
+                 :values      [{:sched_name sched :job_name jn :job_group jg :job_class_name "x.Job"
+                                :is_durable true :is_nonconcurrent false :is_update_data false :requests_recovery false}]})
+      (t2/query {:insert-into (mq.db/quartz-table :QRTZ_TRIGGERS)
+                 :values      [{:sched_name sched :trigger_name jn :trigger_group jg :job_name jn :job_group jg
+                                :next_fire_time (- now 60000) :priority 5 :trigger_state "WAITING" :trigger_type "SIMPLE"
+                                :start_time (- now 120000) :misfire_instr -1}]}))))
 
 (defn- cleanup! [sched]
-  (t2/query (str "DELETE FROM QRTZ_TRIGGERS WHERE sched_name='" sched "'"))
-  (t2/query (str "DELETE FROM QRTZ_JOB_DETAILS WHERE sched_name='" sched "'")))
+  (t2/query {:delete-from (mq.db/quartz-table :QRTZ_TRIGGERS) :where [:= :sched_name sched]})
+  (t2/query {:delete-from (mq.db/quartz-table :QRTZ_JOB_DETAILS) :where [:= :sched_name sched]}))
 
 ;; Stand in for the delegate's protected `rtp`: substitute {0}=table prefix, {1}=sched-name literal for
 ;; this test's isolated sched, using Quartz's own (MessageFormat-based) helper — so the query is exactly

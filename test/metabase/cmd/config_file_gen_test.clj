@@ -1,7 +1,9 @@
 (ns metabase.cmd.config-file-gen-test
   (:require
    [clojure.test :refer :all]
-   [metabase.cmd.config-file-gen :refer [config-file-settings create-settings-map]]))
+   [metabase.cmd.config-file-gen :refer [config-file-settings create-settings-map]]
+   [metabase.cmd.env-var-dox :as dox]
+   [metabase.settings.core :as setting]))
 
 (def example-settings '({:database-local :never,
                          :cache? true,
@@ -83,6 +85,26 @@
                          :feature nil,
                          :namespace metabase.system.settings,
                          :munged-name "deprecated-setting",
+                         :visibility :public}
+                        {:database-local :never,
+                         :cache? true,
+                         :user-local :never,
+                         :init nil,
+                         :default true,
+                         :name :some-setting-enabled?,
+                         :export? false,
+                         :type :boolean,
+                         :enabled? nil,
+                         :encryption :never,
+                         :deprecated nil,
+                         :audit :getter,
+                         :sensitive? false,
+                         :tag java.lang.Boolean,
+                         :on-change nil,
+                         :doc nil,
+                         :feature nil,
+                         :namespace metabase.system.settings,
+                         :munged-name "some-setting-enabled",
                          :visibility :public}))
 
 (def ^:private read-only-setting
@@ -115,7 +137,9 @@
 (def settings-map
   {:admin-email nil
    :aggregated-query-row-limit nil
-   :anon-tracking-enabled true})
+   :anon-tracking-enabled true
+   ;; the config file loader looks settings up by exact name, so the `?` must stay
+   :some-setting-enabled? true})
 
 (deftest test-config-template
   (testing "Setting map for config file is formatted as expected."
@@ -167,3 +191,14 @@
                      (map :munged-name)
                      set)]
       (is (contains? names "metabot-chat-system-prompt")))))
+
+(deftest config-file-template-keys-are-registered-settings-test
+  (testing "Each key in the config file template is a setting name that the config file loader can find"
+    (let [settings (dox/get-settings #{"metabase.channel.settings" "metabase.metabot.settings"})
+          ks       (keys (create-settings-map (config-file-settings settings)))]
+      (testing "including settings whose name ends in `?`"
+        (is (some #{:bcc-enabled?} ks))
+        (is (some #{:metabot-enabled?} ks)))
+      (doseq [k ks]
+        (is (setting/registered? k)
+            (str k " is not a registered setting, so a config file can't set it"))))))

@@ -243,17 +243,19 @@
                    metadata))))))
 
 (defn- keep-local-metadata
-  "The imported `row` of an existing Card without a `:result_metadata` or `:database_id` to import keeping the local
-  ones, which export leaves out of the cards whose query derives them."
+  "The imported `row` of an existing Card without a `:result_metadata`, `:database_id` or `:type` to import keeping the
+  local ones, which export leaves out of the cards whose query derives them or the YAML does not set."
   [row]
   (cond-> row
     (nil? (:result_metadata row)) (dissoc :result_metadata)
-    (nil? (:database_id row))     (dissoc :database_id)))
+    (nil? (:database_id row))     (dissoc :database_id)
+    (nil? (:type row))            (dissoc :type)))
 
 (defn new-card-row
-  "The imported `row` of a new Card, its model metadata applied."
+  "The imported `row` of a new Card, its model metadata applied and without a `:type` the YAML does not set."
   [row]
-  (with-model-metadata row nil))
+  (cond-> (with-model-metadata row nil)
+    (nil? (:type row)) (dissoc :type)))
 
 (defn updated-card-row
   "The imported `row` of the Card `local`, holding its primary key and the columns that change, keeping the local

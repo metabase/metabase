@@ -275,8 +275,9 @@
           1)))))
 
 (mu/defn upsert-table-user-settings-for-tables!
-  "[[upsert-table-user-settings!]] for every Table in `table-ids`, with one statement per kind for the settings and one for
-  the rows."
+  "Applies [[upsert-table-user-settings!]] to every Table in `table-ids`.
+  It inserts the missing settings rows and updates the existing ones, once per distinct change.
+  Settings rows the change leaves empty are deleted, and the Tables are updated."
   [table-ids :- [:set ::lib.schema.id/table]
    settings  :- (mut/dissoc ::warehouse-schema.schema/table-user-settings.update :id)]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]

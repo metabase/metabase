@@ -265,7 +265,7 @@
                                         (regular-user-info (mt/user->id :rasta))
                                         {:perms/view-data      :unrestricted
                                          :perms/create-queries :query-builder}
-                                        [:coalesce :id :metabase_table.id])))))))
+                                        [:coalesce :id (u/qualified-key (t2/table-name :model/Table) :id)])))))))
 
 (deftest visible-tables-filter-clause-qualified-keyword-test
   (testing "Filter clause works with qualified keyword for table ID"
@@ -287,7 +287,7 @@
                                         (regular-user-info (mt/user->id :rasta))
                                         {:perms/view-data      :unrestricted
                                          :perms/create-queries :query-builder}
-                                        :metabase_table.id)))))))
+                                        (u/qualified-key (t2/table-name :model/Table) :id))))))))
 
 (deftest visible-tables-filter-clause-view-data-only-test
   (testing "Non-superuser requiring only :view-data :unrestricted sees tables with that permission"
@@ -445,7 +445,7 @@
                                            (regular-user-info (mt/user->id :rasta))
                                            {:perms/view-data      :unrestricted
                                             :perms/create-queries :query-builder}
-                                           [:coalesce :id :metabase_table.id]))))))
+                                           [:coalesce :id (u/qualified-key (t2/table-name :model/Table) :id)]))))))
 
 (deftest visible-tables-filter-clause-db-level-qualified-keyword-test
   (testing "Filter clause with qualified keyword works for DB-level permissions"
@@ -458,7 +458,7 @@
                                            (regular-user-info (mt/user->id :rasta))
                                            {:perms/view-data      :unrestricted
                                             :perms/create-queries :query-builder}
-                                           :metabase_table.id))))))
+                                           (u/qualified-key (t2/table-name :model/Table) :id)))))))
 
 (deftest visible-tables-filter-clause-db-level-view-only-test
   (testing "Non-superuser requiring only :view-data :unrestricted sees all tables with DB-level unrestricted"
@@ -767,7 +767,7 @@
     (testing "via the DB-level column default when before-insert is bypassed (raw insert)"
       ;; Exercises the non-model insert path, guarding the migration that asserts the DB-level defaults.
       (mt/with-temp [:model/Database {db-id :id} {}]
-        (t2/query-one {:insert-into :metabase_table
+        (t2/query-one {:insert-into (t2/table-name :model/Table)
                        :values      [{:name       "raw-insert-probe"
                                       :db_id      db-id
                                       :active     true

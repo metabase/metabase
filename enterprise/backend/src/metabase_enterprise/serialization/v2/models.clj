@@ -90,6 +90,7 @@
    :model/BookmarkOrdering
    :model/CacheConfig
    :model/CardBookmark
+   :model/ChangeLog
    :model/ChannelTemplate
    :model/CloudMigration
    :model/CollectionBookmark

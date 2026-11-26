@@ -27,17 +27,26 @@ export function takeFileResult(): FileResult {
 }
 
 /**
- * Keeps the console output of the running test, to show only if that test
- * fails, so a passing run prints nothing. A spec that spies on the console
- * wraps these functions and still sees every call.
+ * Keeps the console output of the file for jest's reporters, unless the run
+ * is silent, and of the running test for the details of its failure. A spec
+ * that spies on the console wraps these functions and still sees every call.
  */
 export function captureConsole(): void {
+  const keepsFileOutput = process.env.NT_KEEP_CONSOLE === "1";
   for (const method of CONSOLE_METHODS) {
     console[method] = (...args: unknown[]) => {
-      if (testOutput === null || testOutput.size > OUTPUT_LIMIT_CHARACTERS) {
+      const keepsTestOutput =
+        testOutput !== null && testOutput.size <= OUTPUT_LIMIT_CHARACTERS;
+      if (!keepsFileOutput && !keepsTestOutput) {
         return;
       }
       const text = format(...args);
+      if (keepsFileOutput) {
+        fileResult.console.push({ message: text, origin: "", type: method });
+      }
+      if (testOutput === null || !keepsTestOutput) {
+        return;
+      }
       testOutput.size += text.length;
       testOutput.lines.push(`console.${method}: ${text}`);
     };
@@ -186,5 +195,6 @@ function createFileResult(): FileResult {
     todoTests: [],
     failures: [],
     suiteErrors: [],
+    console: [],
   };
 }

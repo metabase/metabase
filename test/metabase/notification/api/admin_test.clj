@@ -59,7 +59,7 @@
                                        :notification_id inactive-id :status :failed
                                        :started_at (t/instant) :ended_at (t/instant)}]
         ;; Legacy alerts can lack creators, but new alert validation requires a creator ID.
-        (t2/query {:update :notification :set {:creator_id nil} :where [:= :id creatorless-id]})
+        (t2/query {:update (t2/table-name :model/Notification) :set {:creator_id nil} :where [:= :id creatorless-id]})
         (is (= {:all (+ all-total 4), :failing (inc failing-total), :ownerless (+ ownerless-total 2)}
                (mt/user-http-request :crowberto :get 200 "notification/admin/counts")))
         (is (= {:all (+ all-total 4), :failing (inc failing-total), :ownerless (+ ownerless-total 2)}

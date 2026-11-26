@@ -26,7 +26,7 @@
 (mu/defn channel
   "The Channel with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Channel :id [:auto/param id]))
+  (t2/select-one :model/Channel :id id))
 
 (defn- text-type
   "The SQL type to cast a text parameter to, for the app DB."
@@ -43,7 +43,7 @@
   [new-name :- [:maybe :string]]
   [:substring
    [:concat "DEACTIVATED_" :id " " (if new-name
-                                     [:cast [:auto/param new-name] (text-type)]
+                                     [:cast new-name (text-type)]
                                      :name)]
    1 254])
 
@@ -74,11 +74,11 @@
   "The ids of the Users belonging to a PermissionsGroup that holds `permission-path`."
   [permission-path :- :string]
   (app-db/query {:select   [:pgm.user_id]
-                 :from     [[:permissions_group_membership :pgm]]
-                 :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
+                 :from     [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                 :join     [[(t2/table-name :model/PermissionsGroup) :pg] [:= :pgm.group_id :pg.id]]
                  :where    [:exists ^:allow-subquery
                             {:select [1]
-                             :from   [[:permissions :p]]
+                             :from   [[(t2/table-name :model/Permissions) :p]]
                              :where  [:and
                                       [:= :p.group_id :pg.id]
                                       [:= :p.object permission-path]]}]

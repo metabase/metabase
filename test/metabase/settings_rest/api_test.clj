@@ -448,7 +448,7 @@
       (mt/with-temp [:model/User {user-id :id} {}]
         ;; a `settings` column that is encrypted the way the column expects but whose contents aren't JSON: the
         ;; transform hands back the raw column value (a String) instead of a map
-        (t2/query {:update :core_user
+        (t2/query {:update (t2/table-name :model/User)
                    :set    {:settings (encryption/maybe-encrypt "not-json")}
                    :where  [:= :id user-id]})
         (mt/user-http-request user-id :put 204 "setting/test-user-local-only-setting" {:value "NEW"})

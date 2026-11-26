@@ -160,7 +160,7 @@
             :type :metric
             :dataset_query (metric-query b-id)}]
           ;; close the cycle A -> B -> A with a raw update, which the Card hooks would refuse
-          (t2/update! :report_card :id a-id {:dataset_query (t2/select-one-fn :dataset_query :report_card :id c-id)})
+          (t2/update! (t2/table-name :model/Card) :id a-id {:dataset_query (t2/select-one-fn :dataset_query (t2/table-name :model/Card) :id c-id)})
           (let [result (#'search.ingestion/execute-all-function-attrs
                         (search.spec/search-model-spec "card")
                         {:dataset_query (json/encode (metric-query a-id))

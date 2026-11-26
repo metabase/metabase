@@ -43,16 +43,15 @@
 ;;; ------------------------------------------------ Response ------------------------------------------------------
 
 (defn- archived-subscription-row
-  "An archived subscription as the result shows it, from the `:archived-subscriptions` effect of
-   [[dashboard-write/write!]].
-   Its creator, channels and recipient count are left out unless the user can read it."
-  [{:keys [id parameters already-broken? readable? creator-name channels recipient-count]}]
-  (cond-> {:id             id
-           :filters        parameters
-           :already_broken already-broken?}
-    readable? (assoc :creator         creator-name
-                     :channels        channels
-                     :recipient_count recipient-count)))
+  "A readable archived subscription as the result shows it, from the `:archived-subscriptions` effect of
+   [[dashboard-write/write!]]."
+  [{:keys [id parameters already-broken? creator-name channels recipient-count]}]
+  {:id              id
+   :filters         parameters
+   :already_broken  already-broken?
+   :creator         creator-name
+   :channels        channels
+   :recipient_count recipient-count})
 
 (defn- dashboard-row
   "The projection row for `dash`, the dashboard [[dashboard-write/write!]] returns, saved or not.
@@ -161,8 +160,8 @@
   add_heading, add_link, add_iframe, add_action, duplicate_card, replace_card, move, resize, remove,
   set_series, patch_dashcard, add_tab, rename_tab, move_tab, duplicate_tab, remove_tab, add_parameter,
   update_parameter, remove_parameter, move_parameter, wire_parameter, unwire_parameter. Before your first
-  add_parameter or wire_parameter, read learn(\"dashboard-filters\") unless already loaded — parameter types,
-  target grammar, linked filters, value sources; learn(\"dashboard-layout\") covers the 24-column grid,
+  add_parameter, remove_parameter or wire_parameter, read learn(\"dashboard-filters\") unless already loaded —
+  parameter types, target grammar, linked filters, value sources; learn(\"dashboard-layout\") covers the 24-column grid,
   per-display default sizes, and layout conventions. validate_only: true returns the layout the ops would
   produce without writing — but per-field parameter-mapping permission checks run only on the real save, so a
   clean dry run can still be rejected. A card that move, resize or an explicit position puts over others pushes
@@ -206,13 +205,15 @@
          :keys [stored]
          {:keys [pushed-dashcard-ids dropped-connections archived-subscriptions]} :effects} written
         dropped    (visible-connections stored dash dropped-connections)
-        archived   (mapv archived-subscription-row archived-subscriptions)]
+        ;; Unreadable subscriptions only add to the count.
+        listed     (into [] (comp (filter :readable?) (map archived-subscription-row)) archived-subscriptions)]
     (common/success-content
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                         (cond-> (projections/project :dashboard :concise (dashboard-row dash))
-                          (seq pushed-dashcard-ids) (assoc :pushed_dashcard_ids pushed-dashcard-ids)
-                          (seq dropped)             (assoc :dropped_connections dropped)
-                          (seq archived)            (assoc :archived_subscriptions      archived
-                                                           :archived_subscription_count (count archived)))
+                          (seq pushed-dashcard-ids)    (assoc :pushed_dashcard_ids pushed-dashcard-ids)
+                          (seq dropped)                (assoc :dropped_connections dropped)
+                          (seq listed)                 (assoc :archived_subscriptions listed)
+                          (seq archived-subscriptions) (assoc :archived_subscription_count
+                                                              (count archived-subscriptions)))
                         ;; A token that can't read the dashboard back still learns that subscriptions were archived.
                         [:archived_subscription_count]))))

@@ -63,7 +63,7 @@
 (mu/defn- hydrated-measure [id :- ms/PositiveInt
                             include-orphaned? :- :boolean]
   (api/read-check (measures.db/measure id))
-  (metrics/sync-dimensions! :metadata/measure id)
+  (metrics/sync-dimensions! :metadata/measure [id])
   (cond-> (-> (t2/hydrate (measures.db/measure id) :creator)
               metrics/filter-dimensions-for-user)
     (not include-orphaned?) metrics/without-orphaned-dimensions))

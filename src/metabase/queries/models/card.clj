@@ -67,7 +67,6 @@
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -173,12 +172,27 @@
   (derive :hook/entity-id))
 
 (defn- summary-card-snapshots
-  "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it
-  is not one or has none. Such a card renders only those snapshots — a composite links its own plus one per source —
-  so it is gated on their artifact verdicts rather than on the Summary's content gate over every thread."
-  [card document]
-  (when (and (:exploration_id document) (:id card))
-    (not-empty (queries.db/stored-result-gate-inputs-for-card (:id card)))))
+  "The snapshots of those of `cards` that are ephemeral Cards of an exploration Summary, which render only their own
+  snapshots, by Card id, read together; `document-id` finds the parent Document of a Card in `documents`."
+  [cards document-id documents]
+  (let [card-ids (into []
+                       (comp (filter #(and (:id %) (:exploration_id (get documents (document-id %)))))
+                             (map :id)
+                             (distinct))
+                       cards)]
+    (if (seq card-ids)
+      (into {}
+            (filter (comp seq val))
+            (queries.db/stored-result-gate-inputs-for-cards card-ids))
+      {})))
+
+(defn- snapshot-verdicts
+  "Whether the current user may be served each of the snapshots in `id->snapshots`, by snapshot, answered together."
+  [id->snapshots]
+  (let [snapshots (into [] (comp (mapcat val) (distinct)) id->snapshots)]
+    (zipmap snapshots (cached-result/cached-result-view-answers
+                       snapshots
+                       {:share-token-reads? true}))))
 
 (defn- parent-documents
   "The parent Documents of `cards`, hydrated with the permission `k`, as `{:document-id f, :documents {id document}}`,
@@ -220,7 +234,11 @@
         {:keys [document-id documents]} (parent-documents rows :can_read)
         summary-readable                (delay (collection/content-readable-collection-ids
                                                 (map :collection_id (vals documents))
-                                                {:root-namespace nil, :audit-rules? false}))]
+                                                {:root-namespace nil, :audit-rules? false}))
+        id->snapshots                   (summary-card-snapshots (filter #(contains? readable (:collection_id %)) rows)
+                                                                document-id
+                                                                documents)
+        verdicts                        (delay (snapshot-verdicts id->snapshots))]
     (for [card cards]
       (when card
         (vary-meta card assoc :can_read
@@ -229,9 +247,9 @@
                          (let [id (document-id card)]
                            (or (nil? id)
                                (when-let [document (get documents id)]
-                                 (if-let [snapshots (summary-card-snapshots card document)]
+                                 (if-let [snapshots (get id->snapshots (:id card))]
                                    (and (contains? @summary-readable (:collection_id document))
-                                        (every? cached-result/viewer-can-view-cached-result? snapshots))
+                                        (every? @verdicts snapshots))
                                    (mi/can-read? document))))))))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :can_query]
@@ -277,10 +295,10 @@
   [:and
    [:= :type "metric"]
    [:= :archived false]
-   (perms/visible-collections-filter-clause :report_card.collection_id (api/current-user-info) {:include-trash-collection? false
-                                                                                                :include-archived-items    :exclude
-                                                                                                :permission-level          :read
-                                                                                                :root-namespace            nil})])
+   (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Card) :collection_id) (api/current-user-info) {:include-trash-collection? false
+                                                                                                                                  :include-archived-items    :exclude
+                                                                                                                                  :permission-level          :read
+                                                                                                                                  :root-namespace            nil})])
 
 (mu/defn- source-card-id :- [:maybe ::lib.schema.id/card]
   [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
@@ -1346,7 +1364,7 @@
 
 (defmethod mi/non-internal-filter-clause :model/Card
   [_model alias]
-  [:not= (h2x/identifier :field alias :creator_id) config/internal-mb-user-id])
+  [:not= (u/qualified-key alias :creator_id) config/internal-mb-user-id])
 
 (defn sole-dashboard-id
   "Given a card, returns the dashboard_id of the *sole* dashboard it's in, or `nil` if it's not in exactly one dashboard."
@@ -1786,13 +1804,23 @@
     (when (seq all)
       (actions.models/delete-actions! (actions.models/action-ids-of-models all)))))
 
+(def ^:private alert-content-columns
+  "The columns of a Card whose change can invalidate the alerts of the Card."
+  [:display :visualization_settings :dataset_query])
+
+(defn- change-invalidates-alerts?
+  "Whether `changes` to the Card `before` touch what its alerts depend on and invalidate them, `after` holding the Cards
+  by id as they are after their writes."
+  [before changes after]
+  (and (some #(contains? changes %) alert-content-columns)
+       (pulse/card-change-invalidates-alerts? before (get after (:id before)))))
+
 (defn- delete-alerts-of-changed-cards!
   "Deletes the alerts of the Cards among `updates` that their change from `before` to `after` invalidates."
   [updates after]
   (let [ids (into []
                   (keep (fn [{:keys [before changes]}]
-                          (when (and (some #(contains? changes %) [:display :visualization_settings :dataset_query])
-                                     (pulse/card-change-invalidates-alerts? before (get after (:id before))))
+                          (when (change-invalidates-alerts? before changes after)
                             (:id before))))
                   updates)]
     (when (seq ids)
@@ -1955,8 +1983,8 @@
             all-dep-ids))))
 
 (def ^:private alert-affecting-columns
-  "The columns of a Card whose change can delete the alerts of the Card."
-  [:archived :display :visualization_settings :dataset_query])
+  "The columns of a Card whose change can delete its alerts: archiving, and the columns that can invalidate them."
+  (conj alert-content-columns :archived))
 
 (defn- assoc-updated-result-metadata
   "`[updates futures]`: the `updates`, each of a Card that gives a query with the result metadata of the query when
@@ -2022,16 +2050,19 @@
 
 (defn- notify-stopped-alerts!
   "Tells the recipients of `notifications`, those of the alerts of the Cards among `entries` read before the change,
-  that the alerts were deleted by the Cards being archived on their own or changed in a way that invalidates them."
+  once the change commits, that the alerts were deleted by the Cards being archived on their own or changed in a way
+  that invalidates them."
   [entries after notifications actor]
-  (pulse/notify-alerts-deleted!
-   actor
-   (for [{:keys [before changes]} entries
-         :let                     [id (:id before)]
-         :when                    (seq (get notifications id))
-         :when                    (or (not (:archived changes))
-                                      (boolean (get changes :archived_directly (:archived_directly before))))]
-     [before (or (get after id) (merge before changes)) (get notifications id)])))
+  (mdb/do-after-commit
+   #(pulse/notify-alerts-deleted!
+     actor
+     (for [{:keys [before changes]} entries
+           :let                     [id (:id before)]
+           :when                    (seq (get notifications id))
+           :when                    (or (change-invalidates-alerts? before changes after)
+                                        (and (:archived changes)
+                                             (get changes :archived_directly (:archived_directly before))))]
+       [before (or (get after id) (merge before changes)) (get notifications id)]))))
 
 (defn- cascade-database-changes!
   "Updates the Cards that use a Card among `entries` whose Database changes as a source, transitively, so that the
@@ -2441,14 +2472,17 @@
   (invalidate-cached-results! card-ids invalidated-at))
 
 (mu/defn link-to-metabot-conversation! :- :int
-  "Record that the Card with `card-id` was saved from the MetabotConversation with `conversation-id` as `chart-id`, in
-  the change log and in one statement that publishes no event, returning the number updated."
-  [card-id         :- ::lib.schema.id/card
-   conversation-id :- :string
-   chart-id        :- :string]
-  (t2/with-transaction [_conn]
-    (change-log/log-rows! :model/Card :update :id card-id)
-    (queries.db/set-card-metabot-chart! card-id conversation-id chart-id)))
+  "Record that the Card of each `[card-id chart-id]` of `card-chart-ids` was saved from the MetabotConversation with
+  `conversation-id` as its chart, in the change log and in one statement per Card that publishes no event, returning
+  the number updated."
+  [conversation-id :- :string
+   card-chart-ids  :- [:sequential [:tuple ::lib.schema.id/card :string]]]
+  (if (empty? card-chart-ids)
+    0
+    (t2/with-transaction [_conn]
+      (change-log/log-changes! :model/Card :update (mapv (fn [[card-id _]] {:id card-id}) card-chart-ids))
+      (transduce (map (fn [[card-id chart-id]] (queries.db/set-card-metabot-chart! card-id conversation-id chart-id)))
+                 + 0 card-chart-ids))))
 
 (defmethod qp.card-writes/touch-last-used! :model/Card
   [_model card-id->timestamp]
