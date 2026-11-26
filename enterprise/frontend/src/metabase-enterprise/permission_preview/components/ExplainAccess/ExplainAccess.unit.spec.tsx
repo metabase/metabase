@@ -810,7 +810,26 @@ describe("ExplainAccess", () => {
 
       expect(
         await screen.findByRole("button", {
-          name: "Orders, Products, Query builder only",
+          name: "2 tables, Query builder only",
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it("names the table on the Exploring row when there is one", async () => {
+      setup({
+        answers: {
+          "card/query": createAnswer({
+            reasons: {
+              collection: createCollection(),
+              tables: [createTable()],
+            },
+          }),
+        },
+      });
+
+      expect(
+        await screen.findByRole("button", {
+          name: "Orders, Query builder only",
         }),
       ).toBeInTheDocument();
     });
@@ -830,7 +849,10 @@ describe("ExplainAccess", () => {
         },
       });
 
-      const fold = await screen.findByRole("button", { name: /2 tables/ });
+      const fold = await screen.findByRole("button", {
+        name: /2 tables/,
+        expanded: false,
+      });
       expect(screen.getAllByText("Full access")).toHaveLength(1);
       expect(
         screen.queryByRole("button", { name: "Orders, Full access" }),
@@ -918,7 +940,7 @@ describe("ExplainAccess", () => {
 
       expect(
         await screen.findByRole("button", {
-          name: "Orders, Products, Varies by table",
+          name: "2 tables, Varies by table",
         }),
       ).toBeInTheDocument();
     });
@@ -1211,7 +1233,7 @@ describe("ExplainAccess", () => {
       it("names each table with its database on the Exploring row", async () => {
         await setupDataCard();
 
-        await userEvent.hover(screen.getByText("Orders, Products"));
+        await userEvent.hover(screen.getByText("2 tables"));
 
         expect(await screen.findByRole("tooltip")).toHaveTextContent(
           "Orders · Sample Database, Products · Sample Database",

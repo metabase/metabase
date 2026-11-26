@@ -416,7 +416,8 @@ function ExploringCard({ item, tables, onOpen }: ExploringCardProps) {
     tables,
     (table) => table["create-queries"].value,
   );
-  const names = tables.map((table) => table.name).join(", ");
+  const names =
+    tables.length === 1 ? tables[0].name : t`${tables.length} tables`;
   const [first] = values;
   const isShared = values.length === 1;
 
