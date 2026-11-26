@@ -128,7 +128,7 @@ describe("scenarios > public > dashboard", () => {
     }),
   );
 
-  it("should default to a fixed width and respect a full width dashboard", () => {
+  it("should default to a fixed width, respect a full width dashboard, and support #theme=dark (metabase#65731)", () => {
     cy.get<number>("@dashboardId").then((id) => {
       H.visitPublicDashboard(id);
 
@@ -136,10 +136,17 @@ describe("scenarios > public > dashboard", () => {
       H.assertDashboardFixedWidth();
 
       cy.request("PUT", `/api/dashboard/${id}`, { width: "full" });
-      H.visitPublicDashboard(id);
+      H.visitPublicDashboard(id, { params: {}, hash: { theme: "dark" } });
 
       H.assertDashboardFullWidth();
     });
+
+    cy.log("dark theme should have white text");
+    cy.findByRole("heading", { name: "Test Dashboard" }).should(
+      "have.css",
+      "color",
+      "rgba(255, 255, 255, 0.95)",
+    );
   });
 
   it("should respect click behavior", () => {
@@ -368,6 +375,27 @@ describe("scenarios > public > question", () => {
         cy.get("[data-testid=cell-data]").contains("Hudson Borer");
       });
     });
+  });
+  it("should support #theme=dark (metabase#65731)", () => {
+    const questionName = "Orders Theme Test";
+    H.createQuestion({
+      name: questionName,
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    }).then(({ body: { id } }) => {
+      H.visitPublicQuestion(id, {
+        params: {},
+        hash: {
+          theme: "dark",
+        },
+      });
+    });
+
+    cy.log("dark theme should have white text");
+    cy.findByRole("heading", {
+      name: questionName,
+    }).should("have.css", "color", "rgba(255, 255, 255, 0.95)");
   });
 });
 
