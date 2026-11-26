@@ -9,17 +9,20 @@ function getLlmCallsLabel({ llm_calls }: MessageTiming): string | null {
   if (count === 0) {
     return null;
   }
-  const calls = ngettext(msgid`${count} LLM call`, `${count} LLM calls`, count);
   const durations = llm_calls.flatMap(({ duration_ms }) =>
     duration_ms == null ? [] : [duration_ms],
   );
   if (durations.length === 0) {
-    return calls;
+    return ngettext(msgid`${count} LLM call`, `${count} LLM calls`, count);
   }
   const duration = formatDurationLong(
     durations.reduce((sum, durationMs) => sum + durationMs, 0),
   );
-  return t`${calls} (${duration})`;
+  return ngettext(
+    msgid`${count} LLM call (${duration})`,
+    `${count} LLM calls (${duration})`,
+    count,
+  );
 }
 
 function getToolCallsLabel({ tool_calls }: MessageTiming): string | null {
