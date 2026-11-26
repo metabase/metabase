@@ -71,6 +71,7 @@ type NavTabId =
   | "data-sources"
   | "models"
   | "data"
+  | "personal"
   | "external-collections"
   | "explorations"
   | "data-apps"
@@ -158,6 +159,10 @@ export function TabsNavbarView({
   // orders the git-off ones to match.
   const isVariantC = variant === "modern-nav-c";
   const isVariantCWithGit = isVariantC && isGitIntegrationEnabled;
+  const isVariantD = variant === "modern-nav-d";
+  // PROTOTYPE: "Modern nav - D" has C's Data tab (with git: Official/Other
+  // subheadings; without: Databases, Metrics, Models).
+  const hasVariantCDataTab = isVariantC || isVariantD;
   // The Library's Metrics and Datasets sections, for B's and D's tabs of
   // those names.
   const metricsSection = findLibrarySection(collections, "library-metrics");
@@ -172,6 +177,18 @@ export function TabsNavbarView({
     collections,
     sharedTenantCollections,
   );
+  // PROTOTYPE: D lists your personal collection under its own Personal tab,
+  // so its Shared tree leaves it out.
+  const personalCollection = regularCollections.find(
+    (collection) =>
+      collection.personal_owner_id != null &&
+      collection.personal_owner_id === currentUserId,
+  );
+  const sharedCollections = isVariantD
+    ? regularCollections.filter(
+        (collection) => collection !== personalCollection,
+      )
+    : regularCollections;
   const [
     addDataModalOpened,
     { open: openAddDataModal, close: closeAddDataModal },
@@ -247,31 +264,28 @@ export function TabsNavbarView({
   };
   const tabs: NavTab[] = isVariantCWithGit
     ? // PROTOTYPE: C puts the collections first (Official, then the rest as
-      // plain "Collections", then External) and Bookmarks right after them.
+      // "Shared", then External), then Data and AI conversations, with
+      // Bookmarks last.
       [
-        {
-          ...sectionTabs[0],
-          label: t`Official collections`,
-          icon: "folder_bookmark",
-        },
-        { id: "explorations", label: t`Collections`, icon: "folder" },
+        { ...sectionTabs[0], label: t`Official`, icon: "folder_bookmark" },
+        { id: "explorations", label: t`Shared`, icon: "folder" },
         ...externalCollectionsTabs,
-        bookmarksTab,
         { ...dataTab, icon: "grid_2x2_check" },
         aiConversationsTab,
+        bookmarksTab,
       ]
     : isVariantC
       ? // PROTOTYPE: C without git puts Getting Started first, then follows
-        // its git-on order (collections, External, Bookmarks, Data, AI
-        // conversations), with Data apps right after Collections.
+        // its git-on order (collections, External, Data, AI conversations,
+        // Bookmarks), with Data apps right after Collections.
         [
           ...sectionTabs.filter((tab) => tab.id === "getting-started"),
           sectionTabs[0],
           ...sectionTabs.filter((tab) => tab.id === "data-apps"),
           ...externalCollectionsTabs,
-          bookmarksTab,
           { ...dataTab, icon: "grid_2x2" },
           aiConversationsTab,
+          bookmarksTab,
         ]
       : [
           sectionTabs[0],
@@ -283,49 +297,40 @@ export function TabsNavbarView({
             ),
         ];
 
-  // PROTOTYPE: "Modern nav - D" groups its tabs under Collections, Data and
-  // More. Data's tabs open their pages (Metrics and Datasets also list their
-  // subfolders). Tabs that only show in some setups (External, Data apps,
-  // Getting Started) join the group they fit.
+  // PROTOTYPE: "Modern nav - D" groups its tabs under Collections and More.
+  // Collections splits Official and Shared (with git), plus your Personal
+  // collection on its own; More starts with C's Data tab. Tabs that only show
+  // in some setups (External, Data apps, Getting Started) join the group they
+  // fit.
   function getVariantDTabGroups(): NavTabGroup[] {
     const externalTabs = externalCollectionsTabs.map((tab) => ({
       ...tab,
       label: t`External`,
     }));
+    const personalTabs: NavTab[] = personalCollection
+      ? [{ id: "personal", label: t`Personal`, icon: "person" }]
+      : [];
     const collectionTabs: NavTab[] = isGitIntegrationEnabled
       ? [
-          { id: "home", label: t`Official`, icon: "dashboard" },
+          { id: "home", label: t`Official`, icon: "folder_bookmark" },
           ...externalTabs,
-          { id: "explorations", label: t`Other`, icon: "files" },
+          { id: "explorations", label: t`Shared`, icon: "folder" },
+          ...personalTabs,
         ]
       : [
-          { id: "collections", label: t`All collections`, icon: "folder" },
+          { id: "collections", label: t`Shared`, icon: "folder" },
           ...externalTabs,
+          ...personalTabs,
         ];
     return [
       { heading: t`Collections`, tabs: collectionTabs },
       {
-        heading: c("A noun, shown in the sidebar as a navigation link").t`Data`,
-        tabs: [
-          { id: "metrics", label: t`Metrics`, icon: "metric" },
-          ...(datasetsSection
-            ? [{ id: "datasets", label: t`Datasets`, icon: "table" } as const]
-            : []),
-          ...(hasDataAccess
-            ? [
-                {
-                  id: "data-sources",
-                  label: t`Data sources`,
-                  icon: "database",
-                } as const,
-              ]
-            : []),
-          { id: "models", label: t`Models`, icon: "model" },
-        ],
-      },
-      {
         heading: t`More`,
         tabs: [
+          {
+            ...dataTab,
+            icon: isGitIntegrationEnabled ? "grid_2x2_check" : "grid_2x2",
+          },
           aiConversationsTab,
           bookmarksTab,
           ...sectionTabs.filter(
@@ -410,6 +415,9 @@ export function TabsNavbarView({
       )
       .with("data-sources", () => BROWSE_DATABASES_URL)
       .with("models", () => BROWSE_MODELS_URL)
+      .with("personal", () =>
+        personalCollection ? Urls.collection(personalCollection) : undefined,
+      )
       .otherwise(() => undefined);
 
   // Nothing to list (and no divider) when the section has no subfolders.
@@ -478,7 +486,7 @@ export function TabsNavbarView({
     <>
       {newFolderButton}
       <Tree
-        data={regularCollections}
+        data={sharedCollections}
         selectedId={collectionItem?.id}
         onSelect={onItemSelect}
         TreeNode={SidebarCollectionLink}
@@ -530,6 +538,34 @@ export function TabsNavbarView({
     .with("collections", "explorations", () => (
       <NavTabSection>{collectionsList}</NavTabSection>
     ))
+    // D's Personal: the tab opens your personal collection, and lists its
+    // subfolders, plus the way to other users' personal collections.
+    .with("personal", () => {
+      const subfolders = personalCollection?.children ?? [];
+      if (subfolders.length === 0 && !showOtherUsersCollections) {
+        return null;
+      }
+      return (
+        <NavTabSection>
+          <Tree
+            data={subfolders}
+            selectedId={collectionItem?.id}
+            onSelect={onItemSelect}
+            TreeNode={SidebarCollectionLink}
+            role="tree"
+          />
+          {showOtherUsersCollections && (
+            <SidebarLink
+              icon="group"
+              url={OTHER_USERS_COLLECTIONS_URL}
+              isSelected={collectionItem?.id === "users"}
+            >
+              {t`Other users' personal collections`}
+            </SidebarLink>
+          )}
+        </NavTabSection>
+      );
+    })
     // The Library's sections: the tab opens the section, and lists its
     // subfolders. Without Library metrics, Metrics opens Browse metrics.
     .with("metrics", () =>
@@ -562,9 +598,9 @@ export function TabsNavbarView({
             nonEntityItem={nonEntityItem}
             hasDataAccess={hasDataAccess}
             onItemSelect={onItemSelect}
-            withSubheadings={isVariantCWithGit}
+            withSubheadings={isGitIntegrationEnabled && hasVariantCDataTab}
           />
-        ) : isVariantC ? (
+        ) : hasVariantCDataTab ? (
           // PROTOTYPE: "Modern nav - C" without git puts Databases first,
           // leaves out the Library's Datasets, and its Metrics always opens
           // Browse metrics (which lists the metrics outside synced
