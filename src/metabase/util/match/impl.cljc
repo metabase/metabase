@@ -15,12 +15,15 @@
   "Return nil if `obj` is not a sequential collection (vector, list, seq), otherwise return `obj` unchanged.
   A sequential value that isn't a collection, such as an eduction, gives nil, since Clojure can't count it."
   [obj]
-  (when (and (sequential? obj) (coll? obj)) obj))
+  (when (and (coll? obj) (sequential? obj)) obj))
 
 (defn walkable?
-  "Return true if a match walk looks inside `x`: a collection, or a sequential value such as an eduction."
+  "Return true if a match walk looks inside `x`: a collection or an eduction."
+  ;; Inlined in Clojure, since it runs on every value a walk visits. An eduction is the one sequential value in core
+  ;; that isn't a collection, and a check for its class is cheaper on a keyword or a string than `sequential?`.
+  #?(:clj {:inline (fn [x] `(let [x# ~x] (or (coll? x#) (instance? clojure.core.Eduction x#))))})
   [x]
-  (or (coll? x) (sequential? x)))
+  (or (coll? x) (instance? #?(:clj clojure.core.Eduction :cljs Eduction) x)))
 
 (defn drop-rest
   "Return the elements of a sequential `coll` after the first `n`, for the `& rest` part of a vector pattern. Vectors
@@ -76,6 +79,7 @@
   [match-fn form clause-parents]
   {:pre [(fn? match-fn)]}
   (cond
+    ;; This check comes first because most values in a query are keywords, strings and numbers.
     (not (walkable? form))
     nil
 
