@@ -335,7 +335,13 @@
       (is (re-find #"# You can see results only by running a query" rendered))
       (is (re-find #"To read a saved question or model, run it with `run_query`" rendered))
       (is (re-find #"pass `show_chart: false` to `construct_notebook_query`, so the user" rendered))
-      (is (not (re-find #"you cannot see query results" rendered))))))
+      (is (not (re-find #"you cannot see query results" rendered)))
+      (is (not (re-find #"run_dashboard_card" rendered)))))
+  (testing "with run_query and the dashboard card runner, the model is told which one applies dashboard filters"
+    (let [rendered (render-internal-template all-yes-perms
+                                             ["construct_notebook_query" "run_query" "run_dashboard_card"])]
+      (is (re-find #"\n\nTo read a card on the dashboard the user is viewing[^\n]*\n\n"
+                   rendered)))))
 
 (deftest ^:parallel prompt-answers-questions-about-the-screen-from-it-test
   (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query" "run_query"])]
