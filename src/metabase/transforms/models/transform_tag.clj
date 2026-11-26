@@ -68,19 +68,33 @@
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
-(mu/defn tag-id->writable :- [:map-of ms/PositiveInt :boolean]
-  "The map from each of `tag-ids` to whether the current user writes every Transform it tags, a tag of no Transform
-  being writable, in a fixed number of queries."
-  [tag-ids :- [:set ms/PositiveInt]]
+(mu/defn- tag-id->permitted :- [:map-of ms/PositiveInt :boolean]
+  "The map from each of `tag-ids` to whether the current user holds permission `k` on every Transform it tags, as
+  `permitted?` reads it, a tag of no Transform being permitted, in a fixed number of queries."
+  [k          :- [:enum :can_write :can_query]
+   permitted? :- ifn?
+   tag-ids    :- [:set ms/PositiveInt]]
   (let [links      (when (seq tag-ids)
                      (transforms.db/transform-tag-links-for-tags tag-ids))
         transforms (when (seq links)
                      (transforms.db/transforms (into #{} (map :transform_id) links)))
-        writable   (into {} (map (juxt :id mi/can-write?)) (t2/hydrate transforms :can_write))]
+        permitted  (into {} (map (juxt :id (comp boolean permitted?))) (t2/hydrate transforms k))]
     (reduce (fn [acc {:keys [tag_id transform_id]}]
-              (update acc tag_id #(and (not (false? %)) (get writable transform_id false))))
+              (update acc tag_id #(and (not (false? %)) (get permitted transform_id false))))
             (zipmap tag-ids (repeat true))
             links)))
+
+(mu/defn tag-id->writable :- [:map-of ms/PositiveInt :boolean]
+  "The map from each of `tag-ids` to whether the current user writes every Transform it tags, a tag of no Transform
+  being writable, in a fixed number of queries."
+  [tag-ids :- [:set ms/PositiveInt]]
+  (tag-id->permitted :can_write mi/can-write? tag-ids))
+
+(mu/defn tag-id->runnable :- [:map-of ms/PositiveInt :boolean]
+  "The map from each of `tag-ids` to whether the current user runs every Transform it tags, as its `:can_query` says,
+  a tag of no Transform being runnable, in a fixed number of queries."
+  [tag-ids :- [:set ms/PositiveInt]]
+  (tag-id->permitted :can_query mi/can-query? tag-ids))
 
 (defmethod mi/can-create? :model/TransformTag
   [_model _instance]
@@ -107,11 +121,11 @@
     (mapv #(assoc % k (boolean (and open? (or api/*is-superuser?* (get by-transform (:id %) false))))) tags)))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformTag :can_run]
-  "Add :can_run to transform tags. Returns true if all transforms associated with the tag can be written by the current user."
+  "Add :can_run to transform tags. Returns true if the current user can run all transforms associated with the tag."
   [_model _k tags]
   (if-not (seq tags)
     tags
-    (let [tag-id->can-run (tag-id->writable (into #{} (map :id) tags))]
+    (let [tag-id->can-run (tag-id->runnable (into #{} (map :id) tags))]
       (mapv #(assoc % :can_run (get tag-id->can-run (:id %) true)) tags))))
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------

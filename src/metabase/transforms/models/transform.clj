@@ -287,7 +287,7 @@
   "The predicate each permission key of a transform is answered with."
   {:can_read    (fn [transform models-cache _db-perms] (transform-readable? transform models-cache))
    :can_write   transform-deletable?
-   :can_query   (fn [transform models-cache _db-perms] (transform-readable? transform models-cache))})
+   :can_query   transform-writable?})
 
 (mu/defn assoc-permissions :- [:sequential [:maybe :map]]
   "Attach each of the permissions `ks` (`:can_read`, `:can_write`, `:can_query`) to each of `transforms`, all
@@ -296,7 +296,7 @@
   [transforms   :- [:sequential [:maybe ::instance]]
    models-cache :- ::transforms.u/source-models
    ks           :- [:sequential [:enum :can_read :can_write :can_query]]]
-  (let [db-perms (if (or api/*is-superuser?* (every? #{:can_read :can_query} ks))
+  (let [db-perms (if (or api/*is-superuser?* (every? #{:can_read} ks))
                    {:transforms {} :create-queries {}}
                    (prefetch-database-permissions (into [] (remove nil?) transforms)))]
     (reduce (fn [acc k]
@@ -322,7 +322,8 @@
   (hydrate-permissions transforms [:can_write]))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_query]
-  "Whether the current user can query each of `transforms`, which is whether they can read it."
+  "Whether the current user can run each of `transforms`, which needs write permission on it, though not an instance
+  where remote sync keeps it read-only."
   [_model _k transforms]
   (hydrate-permissions transforms [:can_query]))
 

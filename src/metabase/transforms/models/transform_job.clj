@@ -124,22 +124,39 @@
   (let [answer (boolean (api/entitled-data-analyst?))]
     (mapv #(vary-meta % assoc k answer) jobs)))
 
-(methodical/defmethod t2/batched-hydrate [:model/TransformJob :can_query]
-  "Whether the current user may run each of `jobs`, which needs read access to it."
-  [_model k jobs]
-  (for [job (t2/hydrate jobs :can_read)]
-    (when job
-      (assoc job k (mi/can-read? job)))))
+(defn- with-tag-ids
+  "`jobs`, with `:tag_ids` loaded on each saved one that lacks them."
+  [jobs]
+  (let [missing (filterv #(and (:id %) (not (contains? % :tag_ids))) jobs)
+        loaded  (when (seq missing)
+                  (u/index-by :id (t2/hydrate missing :tag_ids)))]
+    (mapv #(get loaded (:id %) %) jobs)))
+
+(defn- assoc-tag-permission
+  "Attach `k` to each of `jobs`: true for a superuser, and for a data analyst when `tag-id->permitted` answers true for
+  every tag of the job. Loads the jobs' `:tag_ids` when they are missing, and checks every tag of every job at once."
+  [k jobs tag-id->permitted]
+  (let [jobs     (with-tag-ids jobs)
+        analyst? (and (not api/*is-superuser?*) (api/entitled-data-analyst?))
+        by-tag   (if analyst?
+                   (tag-id->permitted (into #{} (mapcat :tag_ids) jobs))
+                   {})]
+    (mapv (fn [job]
+            (when job
+              (assoc job k (boolean (or api/*is-superuser?*
+                                        (and analyst? (every? by-tag (:tag_ids job))))))))
+          jobs)))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformJob :can_write]
+  "Whether the current user may write each of `jobs`: they write every Transform its tags carry."
   [_model k jobs]
-  (let [lookup? (and (not api/*is-superuser?*) (api/entitled-data-analyst?) (seq jobs))
-        by-tag  (when lookup?
-                  (transform-tag/tag-id->writable (into #{} (mapcat :tag_ids) jobs)))]
-    (mapv (fn [job]
-            (assoc job k (boolean (or api/*is-superuser?*
-                                      (and lookup? (every? #(get by-tag % true) (:tag_ids job)))))))
-          jobs)))
+  (assoc-tag-permission k jobs transform-tag/tag-id->writable))
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformJob :can_query]
+  "Whether the current user may run each of `jobs`: they run every Transform its tags carry, which works on an
+  instance where remote sync keeps synced content read-only."
+  [_model k jobs]
+  (assoc-tag-permission k jobs transform-tag/tag-id->runnable))
 
 (mi/define-batched-hydration-method tag-ids
   :tag_ids

@@ -26,11 +26,13 @@ summary: Breaking changes to the Metabase API, listed by release.
   and `GET /api/table/:id`. The transform that writes to a table is the hydrated `transform` of the table, and a
   transform names its table as `target_table_id`.
 
-- `POST /api/transform/:id/run-dag`, `POST /api/transform/:id/cancel`, `POST /api/transform/:id/reset-checkpoint`,
-  `POST /api/transform-dag-run/:run-id/cancel`, `POST /api/transform-job/:job-id/run` and
-  `POST /api/transform-job/:job-id/runs/:run-id/cancel` need read access to the transform or job, as
-  `POST /api/transform/:id/run` does, instead of write access. They also work on an instance where remote sync keeps
-  synced content read-only.
+- `POST /api/transform/:id/run` needs the permissions that writing the transform needs (transforms permission on its
+  databases, and native query permission for a native transform), instead of read access only. Like
+  `POST /api/transform/:id/run-dag`, `POST /api/transform/:id/cancel`, `POST /api/transform/:id/reset-checkpoint`
+  and `POST /api/transform-dag-run/:run-id/cancel`, it also works on an instance where remote sync keeps synced
+  content read-only. `POST /api/transform-job/:job-id/run` and `POST /api/transform-job/:job-id/runs/:run-id/cancel`
+  need those permissions on every transform the job's tags carry, and also work on such an instance. Transforms and
+  jobs answer `can_query` with whether the current user may run them.
 
 - `POST /api/database` and `PUT /api/database/:id` no longer accept `provider_name`. Metabase derives it from the
   engine and the host, and ignores a value in the request.

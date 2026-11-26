@@ -317,24 +317,27 @@
       (with-transforms-api-users! [user]
         (testing "returns the created run id"
           (mt/with-model-cleanup [:model/TransformJobRun]
-            (mt/with-temp [:model/TransformTag tag {:name "execute-test-tag"}
-                           :model/TransformJob job {:name "To Execute" :schedule "0 0 0 * * ?"}
-                           :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}
-                           :model/Transform transform {:name "To Run"}
-                           :model/TransformTransformTag _ {:transform_id (:id transform) :tag_id (:id tag) :position 0}]
-              (let [called (promise)]
-                (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [run-id & _]
-                                                                   (deliver called run-id)
-                                                                   {::jobs/status :succeeded})]
-                  (let [response (mt/user-http-request user :post 202 (str "transform-job/" (:id job) "/run"))]
-                    (is (= "Job run started" (:message response)))
-                    (is (pos-int? (:job_run_id response)))
-                    (is (= (:job_run_id response) (deref called 5000 ::timed-out)))
-                    (let [run (t2/select-one :model/TransformJobRun :id (:job_run_id response))]
-                      (is (= (:id job) (:job_id run)))
-                      (testing "the job's name and entity_id are snapshotted on the run"
-                        (is (= "To Execute" (:job_name run)))
-                        (is (= (:entity_id job) (:job_entity_id run)))))))))))
+            (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                            :perms/create-queries :query-builder-and-native}
+                (mt/with-temp [:model/TransformTag tag {:name "execute-test-tag"}
+                               :model/TransformJob job {:name "To Execute" :schedule "0 0 0 * * ?"}
+                               :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}
+                               :model/Transform transform {:name "To Run"}
+                               :model/TransformTransformTag _ {:transform_id (:id transform) :tag_id (:id tag) :position 0}]
+                  (let [called (promise)]
+                    (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [run-id & _]
+                                                                       (deliver called run-id)
+                                                                       {::jobs/status :succeeded})]
+                      (let [response (mt/user-http-request user :post 202 (str "transform-job/" (:id job) "/run"))]
+                        (is (= "Job run started" (:message response)))
+                        (is (pos-int? (:job_run_id response)))
+                        (is (= (:job_run_id response) (deref called 5000 ::timed-out)))
+                        (let [run (t2/select-one :model/TransformJobRun :id (:job_run_id response))]
+                          (is (= (:id job) (:job_id run)))
+                          (testing "the job's name and entity_id are snapshotted on the run"
+                            (is (= "To Execute" (:job_name run)))
+                            (is (= (:entity_id job) (:job_entity_id run)))))))))))))
         (testing "returns a nil run id when the job has no transforms"
           (mt/with-temp [:model/TransformJob job {:name "Empty Job" :schedule "0 0 0 * * ?"}]
             (let [response (mt/user-http-request user :post 202 (str "transform-job/" (:id job) "/run"))]
@@ -590,8 +593,8 @@
             (mt/user-http-request user :post 404 (str "transform-job/" job-id "/runs/999999/cancel"))
             (mt/user-http-request user :post 404 (str "transform-job/" other-job-id "/runs/" run-id "/cancel"))))))))
 
-(deftest cancel-job-run-requires-read-permission-test
-  (testing "POST /api/transform-job/:job-id/runs/:run-id/cancel requires read permission on the job"
+(deftest cancel-job-run-requires-run-permission-test
+  (testing "POST /api/transform-job/:job-id/runs/:run-id/cancel requires permission to run the job"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/TransformJob {job-id :id} {:name "Auth Test" :schedule "0 0 0 * * ?"}
                      :model/TransformJobRun {run-id :id} {:job_id     job-id
@@ -602,8 +605,8 @@
         (mt/user-http-request :rasta :post 403
                               (str "transform-job/" job-id "/runs/" run-id "/cancel"))))))
 
-(deftest job-run-endpoints-need-read-access-to-job-test
-  (testing "running a job and canceling its run need read access to the job, not write access"
+(deftest job-run-endpoints-need-run-access-to-job-test
+  (testing "running a job and canceling its run need permission to run every transform the job's tags carry"
     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
       (mt/with-premium-features #{:advanced-permissions :transforms-basic}
         (mt/with-temp [:model/Transform                {transform-id :id} {:name "Tagged"}
@@ -626,12 +629,19 @@
              (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms :no}
                (testing "premise: the analyst cannot write the job"
                  (mt/user-http-request :lucky :put 403 (str "transform-job/" job-id) {:name "Renamed"}))
-               (testing "responses say the analyst may run the job"
-                 (is (true? (:can_query (mt/user-http-request :lucky :get 200 (str "transform-job/" job-id)))))
-                 (is (true? (:can_query (some #(when (= job-id (:id %)) %)
-                                              (mt/user-http-request :lucky :get 200 "transform-job"))))))
-               (testing "an analyst who reads the job, on an instance where remote sync keeps synced content read-only"
+               (testing "responses say the analyst may not run the job"
+                 (is (false? (:can_query (mt/user-http-request :lucky :get 200 (str "transform-job/" job-id)))))
+                 (is (false? (:can_query (some #(when (= job-id (:id %)) %)
+                                               (mt/user-http-request :lucky :get 200 "transform-job"))))))
+               (testing "an analyst who reads the job but cannot run its transforms is refused"
+                 (mt/user-http-request :lucky :post 403 (str "transform-job/" job-id "/run"))
+                 (mt/user-http-request :lucky :post 403 (str "transform-job/" job-id "/runs/" run-id "/cancel"))
+                 (is (= :started (t2/select-one-fn :status :model/TransformJobRun :id run-id)))))
+             (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :yes
+                                                                           :perms/create-queries :query-builder-and-native}
+               (testing "an analyst who runs the job's transforms, on an instance where remote sync keeps synced content read-only"
                  (mt/with-dynamic-fn-redefs [remote-sync/read-only? (constantly true)]
+                   (is (true? (:can_query (mt/user-http-request :lucky :get 200 (str "transform-job/" job-id)))))
                    (mt/user-http-request :lucky :post 204 (str "transform-job/" job-id "/runs/" run-id "/cancel"))
                    (is (= :canceled (t2/select-one-fn :status :model/TransformJobRun :id run-id)))
                    (mt/with-model-cleanup [:model/TransformJobRun]
