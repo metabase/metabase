@@ -13,6 +13,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -374,6 +375,9 @@
   [_model]
   {:synced-items         data-testing.db/synced-transform-test-items
    :synced-filter-clause data-testing.db/synced-transform-tests-clause})
+
+(defmethod eid-translation/spec :model/TransformTest [_model]
+  {:names [:transform-test]})
 
 (defmethod revisions/spec :model/TransformTest [_model]
   {:track         revision-columns

@@ -225,11 +225,11 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
-  "Get `Card` with ID. Returns the MBQL query (`dataset_query`) as MBQL 5."
+  "Get `Card` with ID, a numeric id or an entity id. Returns the MBQL query (`dataset_query`) as MBQL 5."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (get-card (eid-translation/->id-or-404 :card id)))
+                    [:id ms/IdOrEntityId]]]
+  (get-card (eid-translation/->id-or-404 :model/Card id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -474,7 +474,7 @@
    [:description            {:optional true} [:maybe ms/NonBlankString]]
    [:display                CardDisplay]
    [:visualization_settings CardVisualizationSettings]
-   [:collection_id          {:optional true} [:maybe [:or ms/PositiveInt ms/NanoIdString]]]
+   [:collection_id          {:optional true} [:maybe ms/IdOrEntityId]]
    [:collection_position    {:optional true} [:maybe ms/PositiveInt]]
    [:result_metadata        {:optional true} [:maybe [:ref ::lib.schema.metadata/card.result-metadata]]]
    [:cache_ttl              {:optional true} [:maybe ms/PositiveInt]]
@@ -518,7 +518,7 @@
   (let [source-card (some->> source-card-id (api/read-check :model/Card))
         card        (cond-> (dissoc card :source_card_id)
                       (some? collection-id)
-                      (update :collection_id #(eid-translation/->id-or-404 :collection %)))
+                      (update :collection_id #(eid-translation/->id-or-404 :model/Collection %)))
         query       (:dataset_query card)]
     ;; Parameter permissions run BEFORE the create stack: the parameter-specific 403 names neither
     ;; the table nor its ids, while the generic run-permissions error carries the query (and its
@@ -702,13 +702,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
-  "Update a `Card`."
+  "Update a `Card`. `id` is a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+                    [:id ms/IdOrEntityId]]
    {delete-old-dashcards? :delete_old_dashcards} :- [:map {:closed true}
                                                      [:delete_old_dashcards {:optional true} [:maybe :boolean]]]
    body :- CardUpdateSchema]
-  (update-card! id body (boolean delete-old-dashcards?)))
+  (update-card! (eid-translation/->id-or-404 :model/Card id) body (boolean delete-old-dashcards?)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -721,17 +721,18 @@
   "Get all of the required query metadata for a card."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)]
+                    [:id ms/IdOrEntityId]]]
+  (let [resolved-id (eid-translation/->id-or-404 :model/Card id)]
     (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
-  "Hard delete a Card. To soft delete, use `PUT /api/queries/:id`"
-  [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (let [card (api/write-check :model/Card id)]
+  "Hard delete a Card, by a numeric id or an entity id. To soft delete, use `PUT /api/queries/:id`"
+  [{id-or-entity-id :id} :- [:map {:closed true}
+                             [:id ms/IdOrEntityId]]]
+  (let [id   (eid-translation/->id-or-404 :model/Card id-or-entity-id)
+        card (api/write-check :model/Card id)]
     (api/check-403 (queries/can-delete? card))
     (queries.card/delete-cards! [id]))
   api/generic-204-no-content)
@@ -825,7 +826,7 @@
   and optionally re-sorts the rows via the `sort` body param."
   {:scope api-scope/data-app}
   [{:keys [card-id]} :- [:map {:closed true}
-                         [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
+                         [:card-id ms/IdOrEntityId]]
    _query-params
    {:keys [parameters ignore_cache dashboard_id stored_result_id sort]}
    :- [:map {:closed true}
@@ -836,7 +837,7 @@
        [:sort               {:optional true}
         [:maybe [:enum "value_asc" "value_desc" "label_asc" "label_desc"]]]]
    request]
-  (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)
+  (let [resolved-card-id (eid-translation/->id-or-404 :model/Card card-id)
         _                (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-card-id))
         card             (api/check-404 (queries-rest.db/card resolved-card-id))]
     (if stored_result_id

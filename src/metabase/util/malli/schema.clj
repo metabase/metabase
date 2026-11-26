@@ -410,6 +410,13 @@
    [:re {:api/regex #"[A-Za-z0-9_\-]{21}"} #"^[A-Za-z0-9_\-]{21}$"]
    (deferred-tru "String must be a valid 21-character NanoID string.")))
 
+;; A plain `def` rather than `mr/def`: a registered schema becomes a named component of the OpenAPI spec, changing it
+;; and the types generated from it.
+(def IdOrEntityId
+  "Schema for a row named by its positive integer id or by its 21-character entity id, which
+  [[metabase.eid-translation.core/->id-or-404]] translates."
+  [:or PositiveInt NanoIdString])
+
 (def UUIDString
   "Schema for a UUID string"
   (mu/with-api-error-message

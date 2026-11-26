@@ -514,3 +514,22 @@
               (is (= "No inputs" (t2/select-one-fn :name :model/CardTest :id test-id)))))
           (finally
             (t2/delete! :model/CardTest :id test-id)))))))
+
+(deftest card-test-entity-id-test
+  (mt/with-premium-features #{:transforms-testing}
+    (testing "GET, PUT and DELETE /api/ee/card-test/:id accept an entity id"
+      (mt/with-temp [:model/Card     {card-id :id}                       {}
+                     :model/CardTest {test-id :id entity-id :entity_id} {:card_id card-id :name "Entity id test"}]
+        (testing "GET"
+          (is (=? {:id test-id :name "Entity id test"}
+                  (mt/user-http-request :crowberto :get 200 (str "ee/card-test/" entity-id)))))
+        (testing "PUT"
+          (is (=? {:id test-id :name "Renamed by entity id"}
+                  (mt/user-http-request :crowberto :put 200 (str "ee/card-test/" entity-id)
+                                        {:name "Renamed by entity id"}))))
+        (testing "an unknown entity id is a 404"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 "ee/card-test/aaaaaaaaaaaaaaaaaaaaa"))))
+        (testing "DELETE"
+          (mt/user-http-request :crowberto :delete 204 (str "ee/card-test/" entity-id))
+          (is (not (t2/exists? :model/CardTest :id test-id))))))))

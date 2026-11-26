@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -227,3 +228,6 @@
   {:synced-items           transforms.db/synced-transform-tag-items
    :synced-filter-clause   transforms.db/synced-transform-tags-clause
    :built-in-filter-clause transforms.db/built-in-transform-tags-clause})
+
+(defmethod eid-translation/spec :model/TransformTag [_model]
+  {:names [:transform-tag]})

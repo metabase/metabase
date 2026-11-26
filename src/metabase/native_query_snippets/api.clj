@@ -4,6 +4,7 @@
    [clojure.data :as data]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
@@ -48,10 +49,10 @@
 ;; resolve snippet names while rendering a native question, whereas fetching one by id is the
 ;; Data Studio snippet editor (`useGetSnippetQuery`), which a data app does not render.
 (api.macros/defendpoint :get "/:id"
-  "Fetch native query snippet with ID."
+  "Fetch native query snippet with ID, a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
-  (get-native-query-snippet id))
+                    [:id ms/IdOrEntityId]]]
+  (get-native-query-snippet (eid-translation/->id-or-404 :model/NativeQuerySnippet id)))
 
 (defn- check-snippet-name-is-unique [snippet-name]
   (when (native-query-snippets.db/snippet-name-exists? snippet-name)
@@ -101,9 +102,9 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
-  "Update an existing `NativeQuerySnippet`."
+  "Update an existing `NativeQuerySnippet`. `id` is a numeric id or an entity id."
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]
+                    [:id ms/IdOrEntityId]]
    _query-params
    body :- [:map {:closed true}
             [:archived      {:optional true} [:maybe :boolean]]
@@ -111,4 +112,4 @@
             [:description   {:optional true} [:maybe :string]]
             [:name          {:optional true} [:maybe native-query-snippet/NativeQuerySnippetName]]
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (check-perms-and-update-snippet! id body))
+  (check-perms-and-update-snippet! (eid-translation/->id-or-404 :model/NativeQuerySnippet id) body))

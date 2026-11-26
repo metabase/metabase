@@ -2480,6 +2480,32 @@
               (is (=? {:name "Edited" :last_checkpoint_value "9" :target_table_id table-id}
                       (t2/select-one :model/Transform :id id))))))))))
 
+(deftest transform-entity-id-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (testing "GET and DELETE /api/transform/:id accept an entity id"
+      (mt/with-temp [:model/Transform {transform-id :id entity-id :entity_id} {:name "Entity id transform"}]
+        (testing "GET"
+          (is (=? {:id transform-id :name "Entity id transform"}
+                  (mt/user-http-request :crowberto :get 200 (str "transform/" entity-id)))))
+        (testing "an unknown entity id is a 404"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 "transform/aaaaaaaaaaaaaaaaaaaaa"))))
+        (testing "DELETE"
+          (mt/user-http-request :crowberto :delete 204 (str "transform/" entity-id))
+          (is (not (t2/exists? :model/Transform :id transform-id))))))
+    (testing "PUT /api/transform/:id accepts an entity id"
+      ;; An update checks that the database supports the transform, so it needs a driver that does.
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/with-temp [:model/Transform {transform-id :id entity-id :entity_id}
+                       {:name   "Entity id transform"
+                        :source {:type  :query
+                                 :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                        :target {:type "table"
+                                 :name (mt/random-name)}}]
+          (is (=? {:id transform-id :name "Renamed by entity id"}
+                  (mt/user-http-request :crowberto :put 200 (str "transform/" entity-id)
+                                        {:name "Renamed by entity id"}))))))))
+
 (deftest list-transforms-statement-count-test
   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]

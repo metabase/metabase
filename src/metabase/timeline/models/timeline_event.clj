@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -210,3 +211,6 @@
 (defmethod remote-sync/spec :model/TimelineEvent
   [_model]
   {:synced-filter-clause timeline.db/synced-timeline-events-clause})
+
+(defmethod eid-translation/spec :model/TimelineEvent [_model]
+  {:names [:timeline-event]})

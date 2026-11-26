@@ -7144,3 +7144,17 @@
                              (call-count))))]
           (replace! 1)
           (is (= (replace! 2) (replace! 6))))))))
+
+(deftest dashboard-write-entity-id-test
+  (testing "PUT and DELETE /api/dashboard/:id accept an entity id"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id entity-id :entity_id} {:name "Entity id dashboard"}]
+      (testing "PUT"
+        (is (=? {:id dashboard-id :name "Renamed by entity id"}
+                (mt/user-http-request :crowberto :put 200 (str "dashboard/" entity-id)
+                                      {:name "Renamed by entity id"}))))
+      (testing "an unknown entity id is a 404"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :delete 404 "dashboard/aaaaaaaaaaaaaaaaaaaaa"))))
+      (testing "DELETE"
+        (mt/user-http-request :crowberto :delete 204 (str "dashboard/" entity-id))
+        (is (not (t2/exists? :model/Dashboard :id dashboard-id)))))))

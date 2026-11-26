@@ -499,6 +499,26 @@
           (finally
             (t2/delete! :model/TransformTest :id test-id)))))))
 
+(deftest transform-test-entity-id-test
+  (data-testing.test-util/with-transforms-enabled data-testing.test-util/data-analyst-features
+    (testing "GET, PUT and DELETE /api/ee/transform-test/:id accept an entity id"
+      (mt/with-temp [:model/Transform     {transform-id :id}                  {}
+                     :model/TransformTest {test-id :id entity-id :entity_id} {:transform_id transform-id
+                                                                              :name         "Entity id test"}]
+        (testing "GET"
+          (is (=? {:id test-id :name "Entity id test"}
+                  (mt/user-http-request :crowberto :get 200 (str "ee/transform-test/" entity-id)))))
+        (testing "PUT"
+          (is (=? {:id test-id :name "Renamed by entity id"}
+                  (mt/user-http-request :crowberto :put 200 (str "ee/transform-test/" entity-id)
+                                        {:name "Renamed by entity id"}))))
+        (testing "an unknown entity id is a 404"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 "ee/transform-test/aaaaaaaaaaaaaaaaaaaaa"))))
+        (testing "DELETE"
+          (mt/user-http-request :crowberto :delete 204 (str "ee/transform-test/" entity-id))
+          (is (not (t2/exists? :model/TransformTest :id test-id))))))))
+
 (deftest list-transform-tests-statement-count-test
   (data-testing.test-util/with-transforms-enabled #{:transforms-testing :transforms :transforms-basic :advanced-permissions}
     (mt/with-model-cleanup [:model/Transform :model/TransformTest]

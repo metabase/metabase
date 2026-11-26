@@ -468,3 +468,17 @@
         (testing "the sync is not an update by the reader"
           (is (= [] (t2/select :model/AuditLog :id [:> before])))
           (is (= revs (t2/count :model/Revision :model "Measure" :model_id id))))))))
+
+(deftest measure-entity-id-test
+  (testing "GET and PUT /api/measure/:id accept an entity id"
+    (mt/with-temp [:model/Measure {measure-id :id entity-id :entity_id} {:name "Entity id measure"}]
+      (testing "GET"
+        (is (=? {:id measure-id :name "Entity id measure"}
+                (mt/user-http-request :crowberto :get 200 (str "measure/" entity-id)))))
+      (testing "PUT"
+        (is (=? {:id measure-id :name "Renamed by entity id"}
+                (mt/user-http-request :crowberto :put 200 (str "measure/" entity-id)
+                                      {:name "Renamed by entity id" :revision_message "rename"}))))
+      (testing "an unknown entity id is a 404"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :get 404 "measure/aaaaaaaaaaaaaaaaaaaaa")))))))

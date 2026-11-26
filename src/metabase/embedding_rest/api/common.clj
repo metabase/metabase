@@ -65,15 +65,12 @@
   decoded JWT or the query string."
   [:map-of :string ParamValue])
 
-(def ^:private ResourceId
-  [:or ms/PositiveInt ms/NanoIdString])
-
 (def UnsignedToken
   "The decoded, but not necessarily resource-id-translated, payload of an embedding JWT, whose other claims (`exp`, `iat`, ...) belong to the embedding application."
   [:map {:closed false, :description "embedding JWT claims"}
    [:resource          {:optional true} [:map {:closed true}
-                                         [:question  {:optional true} ResourceId]
-                                         [:dashboard {:optional true} ResourceId]]]
+                                         [:question  {:optional true} ms/IdOrEntityId]
+                                         [:dashboard {:optional true} ms/IdOrEntityId]]]
    [:params            {:optional true} SlugValueMap]
    [:_embedding_params {:optional true} SlugValueMap]])
 

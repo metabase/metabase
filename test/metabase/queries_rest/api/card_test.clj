@@ -6535,3 +6535,16 @@
                             (call-count))))]
           (refuse! 1)
           (is (= (refuse! 2) (refuse! 6))))))))
+
+(deftest card-write-entity-id-test
+  (testing "PUT and DELETE /api/card/:id accept an entity id"
+    (mt/with-temp [:model/Card {card-id :id entity-id :entity_id} {:name "Entity id card"}]
+      (testing "PUT"
+        (is (=? {:id card-id :name "Renamed by entity id"}
+                (mt/user-http-request :crowberto :put 200 (str "card/" entity-id) {:name "Renamed by entity id"}))))
+      (testing "an unknown entity id is a 404"
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :put 404 "card/aaaaaaaaaaaaaaaaaaaaa" {:name "x"}))))
+      (testing "DELETE"
+        (mt/user-http-request :crowberto :delete 204 (str "card/" entity-id))
+        (is (not (t2/exists? :model/Card :id card-id)))))))
