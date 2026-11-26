@@ -18,11 +18,13 @@ export type Shape =
       indexes: ShapeIndex[];
     }
   | { kind: "array"; from: ts.Type; element: Shape }
+  | { kind: "tuple"; from: ts.Type; elements: Shape[]; exactLength?: number }
   /** A query array, sent as one value per item. */
   | { kind: "items"; from: ts.Type; elements: Shape[] }
   | { kind: "union"; members: readonly Shape[] };
 
 export interface ShapeField {
+  initializer?: ts.Expression | undefined;
   name: string;
   shape: Shape;
   optional: boolean;
@@ -55,6 +57,8 @@ export function describeShape(checker: ts.TypeChecker, view: Shape): string {
     switch (view.kind) {
       case "text":
         return JSON.stringify(view.text);
+      case "tuple":
+        return `[${view.elements.map(describe).join(", ")}]`;
       case "items":
         return `(${describe(unionShape(view.elements))})[]`;
       case "type":

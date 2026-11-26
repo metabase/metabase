@@ -418,7 +418,22 @@ function resolveEndpoint(
     };
   }
   const clientRoute = `${rtk.method} ${rtk.url.path}`;
-  const candidates = operations.get(routeKey(rtk.method, rtk.url.path)) ?? [];
+  const key = routeKey(rtk.method, rtk.url.path);
+  const segments = key.split("/");
+  // Prefer an exact route (e.g. /api/setting/available) over /api/setting/{key}.
+  const candidates =
+    operations.get(key) ??
+    [...operations.entries()].flatMap(([pattern, matches]) => {
+      const parts = pattern.split("/");
+      return parts.length === segments.length &&
+        parts.every(
+          (part, i) =>
+            part === segments[i] ||
+            (part === "{}" && segments[i] && !segments[i].includes("{")),
+        )
+        ? matches
+        : [];
+    });
   if (candidates.length > 1) {
     return { unverified: `Ambiguous backend operations for ${clientRoute}` };
   }
@@ -501,7 +516,11 @@ function checkResponse(
         context,
         "response",
         `${route} response ${success.name}`,
-        typeShape(checker.getTypeOfSymbolAtLocation(success, generated)),
+        typeShape(
+          success.name === "204"
+            ? checker.getNullType()
+            : checker.getTypeOfSymbolAtLocation(success, generated),
+        ),
         frontendResponse,
         node,
       ),
@@ -611,7 +630,37 @@ function checkPathParameters(
   const pathNames = [...operation.path.matchAll(/\{([^}]+)\}/g)].map(
     (match) => match[1],
   );
-  if (pathNames.length !== client.pathParameters.length) {
+  const dynamic = [...client.pathParameters];
+  const segments = client.path.split("/");
+  const parameters = operation.path.split("/").flatMap((segment, index) => {
+    const names = [...segment.matchAll(/\{[^}]+\}/g)];
+    const actual = segments[index];
+    if (
+      names.length === 1 &&
+      actual &&
+      !actual.includes("{param}") &&
+      /^\{[^}]+\}$/.test(segment)
+    ) {
+      try {
+        const text = decodeURIComponent(actual);
+        if (text === "." || text === ".." || /[?#\\]/.test(actual)) {
+          return [];
+        }
+        return [
+          {
+            source: "literal path segment",
+            values: [{ kind: "text" as const, text }],
+            notes: [],
+            unverified: undefined,
+          },
+        ];
+      } catch {
+        return [];
+      }
+    }
+    return dynamic.splice(0, names.length);
+  });
+  if (pathNames.length !== parameters.length || dynamic.length) {
     return [
       {
         kind: "request",
@@ -625,7 +674,7 @@ function checkPathParameters(
   }
   return pathNames.map((name, index): Check => {
     const part = `path.${index}`;
-    const parameter = client.pathParameters[index];
+    const parameter = parameters[index];
     const expected =
       pathType && name
         ? propertyType(
@@ -673,5 +722,22 @@ function pathParameterVerdict(
             }
           : compareShape(context, "request", location, value, expected, node),
       );
+  if (
+    verdicts.every((verdict) => verdict.status === "compatible") &&
+    parameter.values.some(
+      (value) =>
+        value.kind === "type" &&
+        unionMembers(context.checker, value.type).some(
+          (part) => (part.flags & ts.TypeFlags.String) !== 0,
+        ),
+    )
+  ) {
+    verdicts.push({
+      status: "unverified",
+      diagnostics: [
+        `$: ${parameter.source} accepts unrestricted strings, including empty and dot segments that change the route`,
+      ],
+    });
+  }
   return combineVerdicts(verdicts, parameter.notes);
 }

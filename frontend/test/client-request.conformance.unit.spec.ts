@@ -821,7 +821,31 @@ describe("modelClientRequest against the real API client", () => {
         method: "POST",
         body: { kind: "json", value: { x: 1 } },
       }),
-      projected({ method: "POST", body: [{ x: ["number"] }] }),
+      projected({ method: "POST", body: [{ x: ["null", "number"] }] }),
+    ],
+    [
+      "should send a non-finite number as JSON null",
+      {
+        endpoint:
+          '{query:(amount:number)=>({method:"POST",url:"/api/x",body:{amount}})}',
+        argument: "Number.POSITIVE_INFINITY",
+      },
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { amount: null } },
+      }),
+      projected({ method: "POST", body: [{ amount: ["null", "number"] }] }),
+    ],
+    [
+      "should send an undeclared key from a spread rest binding",
+      {
+        declarations: "const input = { id: 1, unexpected: 2 };",
+        endpoint:
+          '{query:({id,...rest}:{id:number})=>({url:"/api/x",params:{...rest}})}',
+        argument: "input",
+      },
+      sentRequest({ query: [["unexpected", "2"]] }),
+      projected({ query: "unverified" }),
     ],
     [
       "should send a Date body field as the text its toJSON gives",
@@ -1114,7 +1138,7 @@ describe("modelClientRequest against the real API client", () => {
       }),
       projected({
         method: "POST",
-        body: [{ inner: ["{ a?: string; b: number; }"] }],
+        body: [{ inner: ["{ a?: string; b: number | null; }"] }],
       }),
     ],
     [

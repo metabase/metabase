@@ -32,6 +32,7 @@ import {
   isPrototypeMember,
   jsonField,
   jsonView,
+  propertyInitializer,
   stringShapes,
 } from "./value-conversion";
 
@@ -233,20 +234,52 @@ function describeValues(checker: ts.TypeChecker, values: Shape[]): string {
   return describeShape(checker, unionShape(values));
 }
 
-function isObjectRest(checker: ts.TypeChecker, expression: ts.Expression) {
+function emptyObjectRest(
+  checker: ts.TypeChecker,
+  expression: ts.Expression,
+  seen = new Set<ts.Expression>(),
+): ts.Expression | undefined {
+  expression = unwrap(expression);
+  if (seen.has(expression)) {
+    return undefined;
+  }
+  seen.add(expression);
+  if (ts.isObjectLiteralExpression(expression)) {
+    for (const property of expression.properties) {
+      if (ts.isSpreadAssignment(property)) {
+        const rest = emptyObjectRest(checker, property.expression, seen);
+        if (rest) {
+          return rest;
+        }
+      }
+    }
+  }
   if (!ts.isIdentifier(expression)) {
-    return false;
+    return undefined;
   }
   const symbol = ts.isShorthandPropertyAssignment(expression.parent)
     ? checker.getShorthandAssignmentValueSymbol(expression.parent)
     : checker.getSymbolAtLocation(expression);
   const declaration = symbol?.valueDeclaration;
-  return (
-    declaration !== undefined &&
+  if (
+    declaration &&
+    ts.isVariableDeclaration(declaration) &&
+    declaration.initializer
+  ) {
+    return emptyObjectRest(checker, declaration.initializer, seen);
+  }
+  if (
+    declaration &&
     ts.isBindingElement(declaration) &&
-    declaration.dotDotDotToken !== undefined &&
+    declaration.dotDotDotToken &&
     ts.isObjectBindingPattern(declaration.parent)
-  );
+  ) {
+    const type = checker.getTypeAtLocation(declaration.name);
+    if (!properties(type).length && !checker.getIndexInfosOfType(type).length) {
+      return expression;
+    }
+  }
+  return undefined;
 }
 
 interface CopiedPayload {
@@ -314,12 +347,13 @@ function typePayload(
     (property) => !own.includes(property),
   );
   const indexes = checker.getIndexInfosOfType(type);
-  if (!exact && !own.length && !indexes.length && !dropped.length) {
+  const rest = emptyObjectRest(checker, expression);
+  if (rest || (!exact && !own.length && !indexes.length && !dropped.length)) {
     return {
       payload: { kind: "type", type },
       notes: [],
-      unverified: isObjectRest(checker, expression)
-        ? `${channel === "params" ? "the query parameters come" : "the body comes"} from the object rest ${expression.getText()}, which has no declared properties and carries whatever keys the caller passed beyond the destructured ones (${channel === "params" ? "appendQueryParameters" : "JSON.stringify"})`
+      unverified: rest
+        ? `${channel === "params" ? "the query parameters come" : "the body comes"} from the object rest ${rest.getText()}, which has no declared properties and carries whatever keys the caller passed beyond the destructured ones (${channel === "params" ? "appendQueryParameters" : "JSON.stringify"})`
         : undefined,
     };
   }
@@ -331,6 +365,7 @@ function typePayload(
         shape: typeShape(checker.getTypeOfSymbolAtLocation(property, at)),
         optional: (property.flags & ts.SymbolFlags.Optional) !== 0,
         declaration: symbolDeclaration(property),
+        initializer: propertyInitializer(property, expression),
       })),
       indexes: indexes.map((index) => ({
         keyType: index.keyType,

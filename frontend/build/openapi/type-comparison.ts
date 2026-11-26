@@ -265,7 +265,11 @@ function textReadings(checker: ts.TypeChecker, text: string): ts.Type[] {
   if (text === "false") {
     readings.push(checker.getFalseType());
   }
-  if (text !== "" && String(Number(text)) === text) {
+  if (
+    text !== "" &&
+    Number.isFinite(Number(text)) &&
+    String(Number(text)) === text
+  ) {
     readings.push(checker.getNumberLiteralType(Number(text)));
   }
   return readings;
@@ -537,7 +541,7 @@ class ShapeComparator {
       target.isUnion() &&
       objectTargets.length > 0
     ) {
-      const sentTypes = variants.flatMap((variant) => {
+      const sentTypes = (siblings ?? variants).flatMap((variant) => {
         const type = shapeType(variant);
         return type ? [type] : [];
       });
@@ -623,8 +627,9 @@ class ShapeComparator {
           ];
         }
         return [];
+      case "tuple":
       case "items":
-        return this.compareQueryItems(sent, target, objectTargets, position);
+        return this.compareArrayItems(sent, target, objectTargets, position);
       case "type":
         if (!isObjectLike(sent.type)) {
           return this.checker.isTypeAssignableTo(sent.type, target)
@@ -678,8 +683,8 @@ class ShapeComparator {
       : [];
   }
 
-  private compareQueryItems(
-    sent: Extract<Shape, { kind: "items" }>,
+  private compareArrayItems(
+    sent: Extract<Shape, { kind: "items" | "tuple" }>,
     target: ts.Type,
     objectTargets: ts.Type[],
     position: WalkPosition,
@@ -696,32 +701,48 @@ class ShapeComparator {
     const [array] = arrays;
     const item = unionShape(sent.elements);
     if (array && isTupleReference(this.checker, array)) {
-      if (!isTupleReference(this.checker, sent.from)) {
-        return [this.notAssignable(position, sent, target)];
-      }
-      const sourceTuple = sent.from.target;
-      const targetTuple = array.target;
-      if (
-        (sourceTuple.combinedFlags | targetTuple.combinedFlags) &
-        ts.ElementFlags.Variable
-      ) {
-        if (
-          sourceTuple.elementFlags.join() !== targetTuple.elementFlags.join()
-        ) {
+      if (sent.kind === "tuple" && sent.exactLength !== undefined) {
+        if (array.target.combinedFlags & ts.ElementFlags.Variable) {
           return [
             {
               status: "unverified",
               position,
-              detail:
-                "cannot align repeated query parameters with different variadic tuple layouts",
+              detail: "cannot align a JSON array literal with a variadic tuple",
             },
           ];
         }
-      } else if (
-        sourceTuple.minLength < targetTuple.minLength ||
-        sourceTuple.fixedLength > targetTuple.fixedLength
-      ) {
+        if (
+          sent.exactLength < array.target.minLength ||
+          sent.exactLength > array.target.fixedLength
+        ) {
+          return [this.notAssignable(position, sent, target)];
+        }
+      } else if (!isTupleReference(this.checker, sent.from)) {
         return [this.notAssignable(position, sent, target)];
+      } else {
+        const sourceTuple = sent.from.target;
+        const targetTuple = array.target;
+        if (
+          (sourceTuple.combinedFlags | targetTuple.combinedFlags) &
+          ts.ElementFlags.Variable
+        ) {
+          if (
+            sourceTuple.elementFlags.join() !== targetTuple.elementFlags.join()
+          ) {
+            return [
+              {
+                status: "unverified",
+                position,
+                detail: "cannot align different variadic tuple layouts",
+              },
+            ];
+          }
+        } else if (
+          sourceTuple.minLength < targetTuple.minLength ||
+          sourceTuple.fixedLength > targetTuple.fixedLength
+        ) {
+          return [this.notAssignable(position, sent, target)];
+        }
       }
       const targets = elementTypes(this.checker, array);
       return sent.elements.flatMap((element, i) => {
@@ -838,11 +859,28 @@ class ShapeComparator {
       return issues;
     }
     if (sentElement && memberElement) {
-      return this.visit(sentElement, memberElement, {
-        path: `${path}[]`,
-        declaration: undefined,
-        depth: depth + 1,
-      });
+      const elements =
+        this.direction.to === "frontend"
+          ? siblings.flatMap((sibling) => {
+              const type = shapeType(sibling);
+              const element = shapeElement(this.checker, sibling);
+              return type &&
+                element &&
+                this.checker.isTypeAssignableTo(type, member)
+                ? sentVariants(this.checker, element)
+                : [];
+            })
+          : [];
+      return this.visit(
+        sentElement,
+        memberElement,
+        {
+          path: `${path}[]`,
+          declaration: undefined,
+          depth: depth + 1,
+        },
+        elements.length ? elements : undefined,
+      );
     }
     // A declared type is what TypeScript compares; a shape the client assembled has no whole to compare.
     const assignable =
@@ -999,6 +1037,17 @@ class ShapeComparator {
             targetDeclaration: symbolDeclaration(property),
             depth: depth + 1,
           },
+          siblingShapes.length
+            ? [
+                ...sentVariants(this.checker, found.shape),
+                ...siblingShapes.flatMap((sibling) => {
+                  const field = sibling.fields.find(
+                    (candidate) => candidate.name === property.name,
+                  );
+                  return field ? sentVariants(this.checker, field.shape) : [];
+                }),
+              ]
+            : undefined,
         ),
       );
     }
@@ -1058,13 +1107,26 @@ class ShapeComparator {
   ): ShapeIssue[] {
     const { path, depth } = position;
     const problems: ShapeIssue[] = [];
+    const covers = (domain: { keyType: ts.Type }, keys: { keyType: ts.Type }) =>
+      indexAccepts(this.checker, keys.keyType, domain.keyType);
     for (const index of shape.indexes) {
-      const accepting = targetIndexes.filter((candidate) =>
-        indexAccepts(this.checker, index.keyType, candidate.keyType),
-      );
+      const accepting = targetIndexes.filter((target) => covers(target, index));
       const indexPath = `${path}[key]`;
       if (accepting.length) {
-        for (const candidate of accepting) {
+        // A more specific source signature determines the values sent in its own key domain.
+        const overrides = shape.indexes.filter(
+          (other) => covers(index, other) && !covers(other, index),
+        );
+        const narrower =
+          this.direction.from === "frontend"
+            ? targetIndexes.filter(
+                (target) =>
+                  !covers(target, index) &&
+                  covers(index, target) &&
+                  !overrides.some((source) => covers(source, target)),
+              )
+            : [];
+        for (const candidate of [...accepting, ...narrower]) {
           problems.push(
             ...this.visit(index.shape, candidate.type, {
               path: indexPath,
@@ -1210,6 +1272,7 @@ function reachChildren(
     case "array":
       reach(shape.element, { path: `${path}[]`, declaration: undefined }, next);
       return;
+    case "tuple":
     case "items":
       reach(
         unionShape(shape.elements),
@@ -1302,6 +1365,7 @@ function unconstrainedPositions(
         return;
       case "object":
       case "array":
+      case "tuple":
       case "items":
         if (visited.has(shape)) {
           return;

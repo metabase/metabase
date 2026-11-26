@@ -217,7 +217,7 @@
   {:closed true}
   (let [base-spec (open-api-spec handler "/api")]
     (-> base-spec
-        (update :paths update-vals #(cond-> % (:get %) (update :get with-paging-parameters)))
+        (update :paths update-vals #(update-vals % with-paging-parameters))
         (assoc :openapi "3.1.0"
                :info    {:title   "Metabase API"
                          :version (:tag config/mb-version-info)

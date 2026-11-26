@@ -12,7 +12,24 @@ import {
   properties,
   typeText,
   unionMembers,
+  unwrap,
 } from "./typescript-utils";
+
+export function propertyInitializer(
+  property: ts.Symbol,
+  object: ts.Expression | undefined,
+): ts.Expression | undefined {
+  const declaration = property.valueDeclaration;
+  if (!object || !declaration || declaration.parent !== object) {
+    return undefined;
+  }
+  if (ts.isPropertyAssignment(declaration)) {
+    return declaration.initializer;
+  }
+  return ts.isShorthandPropertyAssignment(declaration)
+    ? declaration.name
+    : undefined;
+}
 
 export function isPrototypeMember(property: ts.Symbol): boolean {
   if (property.name.startsWith("__@")) {
@@ -109,9 +126,6 @@ function isTextLike(type: ts.Type): boolean {
 /** The text sent on the wire and the primitive types the backend can read it as. */
 export function stringShapes(checker: ts.TypeChecker, type: ts.Type): Shape[] {
   return unionMembers(checker, type).map((part): Shape => {
-    if (part.isStringLiteral()) {
-      return { kind: "type", type: part };
-    }
     const text = singleText(checker, part);
     if (text !== undefined) {
       return { kind: "text", text };
@@ -134,6 +148,30 @@ export function stringShapes(checker: ts.TypeChecker, type: ts.Type): Shape[] {
   });
 }
 
+function jsonUnion(shapes: Shape[]): Shape {
+  // A union can reach null through multiple conversions (e.g. undefined and NaN in an array).
+  let hasNull = false;
+  return unionShape(
+    shapes
+      .flatMap((shape) => (shape.kind === "union" ? shape.members : [shape]))
+      .filter((shape) => {
+        if (
+          !(
+            shape.kind === "null" ||
+            (shape.kind === "type" && shape.type.flags & ts.TypeFlags.Null)
+          )
+        ) {
+          return true;
+        }
+        if (hasNull) {
+          return false;
+        }
+        hasNull = true;
+        return true;
+      }),
+  );
+}
+
 function omittedByJson(type: ts.Type): boolean {
   return (
     (type.flags &
@@ -142,6 +180,40 @@ function omittedByJson(type: ts.Type): boolean {
         ts.TypeFlags.ESSymbolLike)) !==
       0 || type.getCallSignatures().length > 0
   );
+}
+
+// Object-literal properties often widen to number even when their initializer has a literal type.
+function numberInitializer(
+  checker: ts.TypeChecker,
+  expression: ts.Expression,
+): Shape | undefined {
+  expression = unwrap(expression);
+  const type = checker.getTypeAtLocation(expression);
+  if (type.isNumberLiteral()) {
+    return Number.isFinite(type.value)
+      ? { kind: "type", type }
+      : { kind: "null", from: type };
+  }
+  if (
+    ts.isPrefixUnaryExpression(expression) &&
+    (expression.operator === ts.SyntaxKind.MinusToken ||
+      expression.operator === ts.SyntaxKind.PlusToken)
+  ) {
+    const operand = numberInitializer(checker, expression.operand);
+    if (operand?.kind === "null") {
+      return operand;
+    }
+  }
+  const symbol = checker.getSymbolAtLocation(
+    ts.isPropertyAccessExpression(expression) ? expression.name : expression,
+  );
+  return symbol?.valueDeclaration &&
+    isLibDeclaration(symbol.valueDeclaration) &&
+    ["NaN", "Infinity", "POSITIVE_INFINITY", "NEGATIVE_INFINITY"].includes(
+      symbol.name,
+    )
+    ? { kind: "null", from: type }
+    : undefined;
 }
 
 export function jsonField(
@@ -171,6 +243,7 @@ export function jsonField(
     };
   }
   const { type } = field.shape;
+  const expression = field.initializer && unwrap(field.initializer);
   const parts = unionMembers(checker, type);
   const kept = parts.filter((part) => !omittedByJson(part));
   if (!kept.length) {
@@ -178,7 +251,9 @@ export function jsonField(
   }
   const omitsValues = kept.length < parts.length;
   const values = omitsValues ? kept : [type];
-  const views = values.map((value) => jsonView(checker, value, walk));
+  const views = values.map((value) =>
+    jsonView(checker, value, walk, expression),
+  );
   const convertsValues = views.some(
     (view, index) => view.kind !== "type" || view.type !== values[index],
   );
@@ -194,7 +269,7 @@ export function jsonField(
   return {
     field: {
       ...field,
-      shape: unionShape(views),
+      shape: jsonUnion(views),
       optional: field.optional || omitsValues,
     },
     preservesType,
@@ -223,13 +298,14 @@ export function jsonView(
   checker: ts.TypeChecker,
   type: ts.Type,
   walk: JsonWalk,
+  expression?: ts.Expression,
 ): Shape {
   if (++walk.steps > walk.stepLimit || walk.active.size > walk.depthLimit) {
     throw new TypeWalkError(
       `JSON modelling exceeded its type walk budget at ${typeText(checker, type)}`,
     );
   }
-  const cached = walk.complete.get(type);
+  const cached = !expression && walk.complete.get(type);
   if (cached) {
     return cached;
   }
@@ -246,7 +322,7 @@ export function jsonView(
   walk.active.set(type, walk.active.size);
   const before = walk.backEdges;
   try {
-    const view = buildShape(checker, type, walk);
+    const view = buildShape(checker, type, walk, expression);
     if (
       walk.recursive.has(type) &&
       (view.kind !== "type" || view.type !== type)
@@ -259,7 +335,7 @@ export function jsonView(
       };
     }
     // A provisional reference depends on the active frames at its first visit.
-    if (before === walk.backEdges) {
+    if (!expression && before === walk.backEdges) {
       walk.complete.set(type, view);
     }
     return view;
@@ -269,19 +345,83 @@ export function jsonView(
   }
 }
 
+function jsonElement(
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  walk: JsonWalk,
+  expression?: ts.Expression,
+): Shape {
+  const members = unionMembers(checker, type);
+  const views = members.map(
+    (part): Shape =>
+      omittedByJson(part)
+        ? { kind: "null", from: part }
+        : jsonView(checker, part, walk, expression),
+  );
+  return views.every(
+    (view, i) => view.kind === "type" && view.type === members[i],
+  )
+    ? { kind: "type", type }
+    : jsonUnion(views);
+}
+
 function buildShape(
   checker: ts.TypeChecker,
   type: ts.Type,
   walk: JsonWalk,
+  expression?: ts.Expression,
 ): Shape {
+  if (
+    expression &&
+    ts.isArrayLiteralExpression(expression) &&
+    expression.elements.every(
+      (element) =>
+        !ts.isSpreadElement(element) && !ts.isOmittedExpression(element),
+    )
+  ) {
+    const elements = expression.elements.map((element) =>
+      jsonElement(
+        checker,
+        checker.getTypeAtLocation(element),
+        walk,
+        unwrap(element),
+      ),
+    );
+    return {
+      kind: "tuple",
+      from: type,
+      elements,
+      exactLength: elements.length,
+    };
+  }
   const members = unionMembers(checker, type);
   if (members.length > 1) {
-    const views = members.map((member) => jsonView(checker, member, walk));
+    const nullable = members.some((member) => member.flags & ts.TypeFlags.Null);
+    const views = members.map(
+      (member): Shape =>
+        nullable && member.flags & ts.TypeFlags.Number
+          ? { kind: "type", type: member }
+          : jsonView(checker, member, walk),
+    );
     return views.every(
       (view, index) => view.kind === "type" && view.type === members[index],
     )
       ? { kind: "type", type }
-      : unionShape(views);
+      : jsonUnion(views);
+  }
+  if (type.isNumberLiteral() && !Number.isFinite(type.value)) {
+    return { kind: "null", from: type };
+  }
+  if (type.flags & ts.TypeFlags.Number) {
+    const known = expression && numberInitializer(checker, expression);
+    if (known) {
+      return known;
+    }
+    // JSON.stringify converts NaN and either infinity to null.
+    return jsonUnion([
+      { kind: "type", type },
+      { kind: "null", from: type },
+    ]);
   }
   if (type.flags & ts.TypeFlags.BigIntLike) {
     return {
@@ -332,35 +472,36 @@ function buildShape(
         ts.isInterfaceDeclaration(declaration.parent) &&
         declaration.parent.name.text === "Date",
     )
-      ? unionShape([result, { kind: "null", from: type }])
+      ? jsonUnion([result, { kind: "null", from: type }])
       : result;
   }
   if (omittedByJson(type)) {
     return { kind: "type", type };
   }
   if (checker.isArrayType(type) || checker.isTupleType(type)) {
-    const parts = elementTypes(checker, type).flatMap((element) =>
-      unionMembers(checker, element),
+    const types = elementTypes(checker, type);
+    const elements = types.map((element) =>
+      jsonElement(checker, element, walk),
     );
-    const views = parts.map(
-      (part): Shape =>
-        omittedByJson(part)
-          ? { kind: "null", from: part }
-          : jsonView(checker, part, walk),
-    );
-    return views.every(
-      (view, index) => view.kind === "type" && view.type === parts[index],
-    )
-      ? { kind: "type", type }
-      : { kind: "array", from: type, element: unionShape(views) };
+    if (
+      elements.every(
+        (view, i) => view.kind === "type" && view.type === types[i],
+      )
+    ) {
+      return { kind: "type", type };
+    }
+    return checker.isTupleType(type)
+      ? { kind: "tuple", from: type, elements }
+      : { kind: "array", from: type, element: jsonUnion(elements) };
   }
-  return jsonObjectShape(checker, type, walk);
+  return jsonObjectShape(checker, type, walk, expression);
 }
 
 function jsonObjectShape(
   checker: ts.TypeChecker,
   type: ts.Type,
   walk: JsonWalk,
+  expression?: ts.Expression,
 ): Shape {
   if (isAugmentedLibType(type)) {
     return {
@@ -410,6 +551,7 @@ function jsonObjectShape(
           shape: { kind: "type", type: checker.getTypeOfSymbol(property) },
           optional: (property.flags & ts.SymbolFlags.Optional) !== 0,
           declaration: property.declarations?.[0],
+          initializer: propertyInitializer(property, expression),
         },
         walk,
       ) ?? []

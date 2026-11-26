@@ -13,7 +13,7 @@ import {
 after(cleanupFixtures);
 
 // The API Contracts workflow runs this after generating declarations from this revision's backend.
-test("checks requests against the generated measure, dashboard, cache and glossary operations", () => {
+test("checks the client against generated backend operations", () => {
   const { program, files, root } = programFrom(
     {
       "endpoint.ts": `${ENDPOINT_BUILDER}
@@ -23,6 +23,21 @@ test("checks requests against the generated measure, dashboard, cache and glossa
         }),
         optionalDashboardBody: builder.query<void, void>({
           query: () => ({ method: "POST", url: "/api/dashboard/save" }),
+        }),
+        dashboardPage: builder.query<void, void>({
+          query: () => ({ method: "POST", url: "/api/dashboard/save", params: {limit: 2} }),
+        }),
+        timezones: builder.query<void, void>({
+          query: () => "/api/setting/available-timezones",
+        }),
+        deleteAction: builder.query<null, number>({
+          query: id => ({ method:"DELETE", url: \`/api/action/\${id}\` }),
+        }),
+        archived: builder.query<void, void>({
+          query: () => ({url: "/api/action", params: {archived: "true" as const}}),
+        }),
+        badTable: builder.query<void, void>({
+          query: () => ({method:"POST", url:"/api/mt/gtap/validate",body:{table_id:NaN}}),
         }),
         cachePage: builder.query<void, void>({
           query: () => ({ url: "/api/cache", params: { limit: 10, offset: 20 } }),
@@ -44,6 +59,11 @@ test("checks requests against the generated measure, dashboard, cache and glossa
   const expected = {
     "api:missingMeasureBody:request.body": "mismatch",
     "api:optionalDashboardBody:request.body": "compatible",
+    "api:dashboardPage:request.query": "compatible",
+    "api:timezones:request.path.0": "compatible",
+    "api:deleteAction:response.204": "compatible",
+    "api:archived:request.query": "compatible",
+    "api:badTable:request.body": "mismatch",
     "api:cachePage:request.query": "compatible",
     "api:glossarySearch:request.query": "compatible",
   };

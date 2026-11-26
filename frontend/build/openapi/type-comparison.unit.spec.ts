@@ -70,6 +70,31 @@ describe("type comparison", () => {
       expect(result.message).toContain("$.title");
     },
   );
+  it.each([
+    ["{ a?: number; b?: string }", "compatible"],
+    ["{ a?: number; b?: string; missing?: number }", "mismatch"],
+    ["{ a?: number; b?: number }", "mismatch"],
+  ])(
+    "should track fields across nested response branches for %s",
+    (row, status) => {
+      expect(
+        compare({
+          frontend: `{ row: ${row} }`,
+          backend: "{ row: { a: number } } | { row: { b: string } }",
+        }).status,
+      ).toBe(status);
+    },
+  );
+
+  it("should keep nested union field coverage inside arrays", () => {
+    expect(
+      compare({
+        backend: "{rows:{a:number}[]}|{rows:{b:string}[]}",
+        frontend: "{rows:{a?:number;b?:string}[]}",
+      }).status,
+    ).toBe("compatible");
+  });
+
   it("should check response tuple rest fields", () => {
     expect(
       compare({

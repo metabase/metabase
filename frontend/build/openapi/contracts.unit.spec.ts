@@ -707,8 +707,8 @@ describe("type printing order", () => {
       resultFor(written, "request.query")?.message,
     );
     expect(resultFor(written, "request.query")?.message.split("\n  ")).toEqual([
-      '$.schema (endpoint.ts:14): frontend type "s" is not assignable to backend type "p" | "q" | "r" | undefined',
-      '$.schema (endpoint.ts:14): frontend type "t" is not assignable to backend type "p" | "q" | "r" | undefined',
+      '$.schema (endpoint.ts:14): frontend value "s" is not assignable to backend type "p" | "q" | "r" | undefined',
+      '$.schema (endpoint.ts:14): frontend value "t" is not assignable to backend type "p" | "q" | "r" | undefined',
     ]);
   });
 
@@ -910,13 +910,13 @@ describe("request comparison rules", () => {
     [
       "should handle optional symbol without a false verdict",
       "{ inner: { a?: string | symbol; b: number } }",
-      "{ inner: { a?: string; b: number } }",
+      "{ inner: { a?: string; b: number | null } }",
       "compatible",
     ],
     [
       "should handle optional function without a false verdict",
       "{ inner: { a?: string | (() => void); b: number } }",
-      "{ inner: { a?: string; b: number } }",
+      "{ inner: { a?: string; b: number | null } }",
       "compatible",
     ],
     [
@@ -934,7 +934,7 @@ describe("request comparison rules", () => {
     [
       "should handle own getter without a false verdict",
       "{ inner: { get a(): number } }",
-      "{ inner: { a: number } }",
+      "{ inner: { a: number | null } }",
       "compatible",
     ],
   ])("%s", (_name, argument, backendBody, status) => {
@@ -1102,6 +1102,98 @@ describe("request comparison rules", () => {
     });
     expect(resultFor(results, "request.body")?.status).toBe(status);
   });
+  it.each([
+    ['({id,...rest}) => ({url:"/api/user",params:{...rest}})', "unverified"],
+    [
+      '({id,...rest}) => {const alias=rest;return {url:"/api/user",params:{limit:1,...alias}}}',
+      "unverified",
+    ],
+    ['() => ({url:"/api/user",params:{limit:1}})', "compatible"],
+  ])("should track undeclared rest keys in %s", (query, status) => {
+    const results = check({
+      frontend,
+      backend: operation({ query: "query?: {limit?:number}" }),
+      endpoint: request("{id:number}", query),
+    });
+    expect(resultFor(results, "request.query")?.status).toBe(status);
+  });
+
+  it.each([
+    ["Record<string,string>", "mismatch"],
+    ["{[k:string]:string|number;[k:`amount${string}`]:number}", "compatible"],
+  ])(
+    "should check broad source indexes against a restricted target domain for %s",
+    (argument, status) => {
+      const body =
+        "{[k:string]:string|number|null;[k:`amount${string}`]:number|null}";
+      const results = check({
+        frontend,
+        backend: operation({ method: "Post", body: `body: ${body}` }),
+        endpoint: request(
+          argument,
+          'body=>({method:"POST",url:"/api/user",body})',
+        ),
+      });
+      expect(resultFor(results, "request.body")?.status).toBe(status);
+    },
+  );
+
+  it.each([
+    ["[Date,2]", "[string|null,number]", "compatible"],
+    ["[Date,number]", "[string|null,number|null]", "compatible"],
+    ["[Date,number]", "[string|null,number]", "mismatch"],
+    ["[Date,2]", "[number,string|null]", "mismatch"],
+    ["[Date,2]", "[string,number]", "mismatch"],
+  ])(
+    "should preserve JSON tuple positions for %s against %s",
+    (input, tuple, status) => {
+      const results = check({
+        frontend,
+        backend: operation({ method: "Post", body: `body: {entry:${tuple}}` }),
+        endpoint: request(
+          input,
+          'entry=>({method:"POST",url:"/api/user",body:{entry}})',
+        ),
+      });
+      expect(resultFor(results, "request.body")?.status).toBe(status);
+    },
+  );
+
+  it.each([
+    "v=>({url:`/api/user/${v}`})",
+    'v=>({url:"/api/user/:v",params:{v}})',
+  ])("should flag route-changing values of string in %s", (query) => {
+    const results = check({
+      frontend,
+      backend: operation({ url: "/api/user/{id}", path: "path:{id:string}" }),
+      endpoint: request("string", query),
+    });
+    expect(resultFor(results, "request.path.0")?.status).toBe("unverified");
+  });
+
+  it.each([
+    ["1", "compatible"],
+    ["NaN", "mismatch"],
+    ["Number.NEGATIVE_INFINITY", "mismatch"],
+    ["arg", "mismatch"],
+  ])(
+    "should check the JSON value of %s against a required number",
+    (value, status) => {
+      const results = check({
+        frontend,
+        backend: operation({
+          method: "Post",
+          body: "body: {values: number[]}",
+        }),
+        endpoint: request(
+          "number",
+          `arg => ({url:"/api/user",method:"POST",body:{values:[${value}]}})`,
+        ),
+      });
+      expect(resultFor(results, "request.body")?.status).toBe(status);
+    },
+  );
+
   it("should apply numeric and string index declarations to a copied JSON body", () => {
     const results = check({
       frontend,
@@ -1116,6 +1208,38 @@ describe("request comparison rules", () => {
     });
     expect(resultFor(results, "request.body")?.status).toBe("mismatch");
   });
+  it("should prefer a literal route and leave ambiguous templates unverified", () => {
+    const exact = operation({ url: "/api/user/me" });
+    const byName = operation({
+      url: "/api/user/{name}",
+      path: "path:{name:string}",
+    }).replaceAll("GetUser", "GetNamedUser");
+    const byId = byName
+      .replaceAll("GetNamedUser", "GetUserById")
+      .replaceAll("{name}", "{id}");
+    const endpoint = request("void", '()=>"/api/user/me"');
+    const literal = check({ frontend, backend: exact + byName, endpoint });
+    expect(resultFor(literal, "request.query")?.status).toBe("compatible");
+    expect(resultFor(literal, "request.path.0")).toBeUndefined();
+    const ambiguous = check({ frontend, backend: byName + byId, endpoint });
+    expect(resultFor(ambiguous, "endpoint")?.message).toContain(
+      "Ambiguous backend operations",
+    );
+  });
+
+  it("should validate a literal and a dynamic path parameter in their route positions", () => {
+    const results = check({
+      frontend,
+      backend: operation({
+        url: "/api/{id}/{name}",
+        path: "path:{id:number;name:string}",
+      }),
+      endpoint: request('"ok"', "name=>({url:`/api/bad/${name}`})"),
+    });
+    expect(resultFor(results, "request.path.0")?.status).toBe("mismatch");
+    expect(resultFor(results, "request.path.1")?.status).toBe("compatible");
+  });
+
   it("should reject an empty path segment typed as a literal", () => {
     const results = check({
       frontend,
@@ -1223,7 +1347,7 @@ describe("request comparison rules", () => {
   it("should compare a recursive JSON body from the declared type at the point it recurs", () => {
     const recursive = (backend: string) =>
       check({
-        frontend: `${frontend} interface TreeNode { id: number; children: TreeNode[] }`,
+        frontend: `${frontend} interface TreeNode { id: 1; children: TreeNode[] }`,
         backend: `export type BackendNode = ${backend}; ${operation({ method: "Post", body: "body: BackendNode" })}`,
         endpoint: request(
           "TreeNode",
@@ -1231,10 +1355,8 @@ describe("request comparison rules", () => {
         ),
       });
     expect(
-      resultFor(
-        recursive("{ id: number; children: BackendNode[] }"),
-        "request.body",
-      )?.status,
+      resultFor(recursive("{ id: 1; children: BackendNode[] }"), "request.body")
+        ?.status,
     ).toBe("compatible");
     expect(
       resultFor(
