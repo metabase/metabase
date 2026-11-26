@@ -1,0 +1,1 @@
+export { DataCheckResultCard } from "./DataCheckResultCard";
