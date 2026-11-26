@@ -321,19 +321,30 @@
       (is (= "variant works"
              (format "variant works" {}))))))
 
+(def ^:private json-col
+  {:name         "J"
+   :display_name "J"
+   :base_type    :type/JSON})
+
 (deftest json-formatting-test
   (testing "Map values in JSON columns are formatted as JSON"
-    (doseq [col [{:name "J", :display_name "J", :base_type :type/JSON}
-                 {:name "J", :display_name "J", :base_type :type/*, :effective_type :type/JSON}]]
+    (doseq [col [json-col
+                 (assoc json-col :base_type :type/* :effective_type :type/JSON)]]
       (let [format (formatter/create-formatter "UTC" col {})]
         (is (= "{\"a.b\":1,\"c\":[\"x\",\"y\"]}"
                (format (java.util.LinkedHashMap. {"a.b" 1, "c" ["x" "y"]}))))
         (is (= "{\"a\":{\"b\":1}}"
                (format {:a {:b 1}}))))))
-  (testing "String values in JSON columns do not change"
-    (let [format (formatter/create-formatter "UTC" {:name "J", :display_name "J", :base_type :type/JSON} {})]
+  (testing "String values and NULL in JSON columns do not change"
+    (let [format (formatter/create-formatter "UTC" json-col {})]
       (is (= "{\"a\": 1}"
-             (str (format "{\"a\": 1}")))))))
+             (str (format "{\"a\": 1}"))))
+      (is (= ""
+             (str (format nil))))))
+  (testing "Without formatting, JSON column values do not change"
+    (let [format (formatter/create-formatter "UTC" json-col {} false)]
+      (doseq [value [nil {"a" 1} "{\"a\": 1}"]]
+        (is (= value (format value)))))))
 
 (deftest global-settings-should-not-override-column-settings-test
   (testing "Column settings should take precedence over global currency settings"
