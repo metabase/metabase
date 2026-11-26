@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { CopyTextInput } from "./CopyTextInput";
 
@@ -18,6 +18,17 @@ describe("CopyTextInput", () => {
       "https://example.com",
     );
     expect(onCopied).toHaveBeenCalled();
+  });
+
+  it("announces the copy to screen readers", async () => {
+    renderWithProviders(<CopyTextInput value="https://example.com" />);
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("");
+
+    await userEvent.click(screen.getByTestId("copy-button"));
+
+    await waitFor(() => expect(status).toHaveTextContent("Copied!"));
   });
 
   it("does not render the copy button when there is nothing to copy", () => {

@@ -37,12 +37,14 @@
                           (str file-stem "-" (if (= weight 400) "regular" "700"))
                           (str file-stem "-" (if (= weight 400) "Regular" "Bold"))))
         css-font-name (css-escape-font-name font-name)
-        face          (fn [weight]
-                        (when-let [path (u.fonts/hashed-font-url-path font-name (stem-for weight) "woff2")]
+        faces         (fn [weight]
+                        (for [{:keys [path unicode-range]} (u.fonts/font-face-sources font-name (stem-for weight) "woff2")]
                           (str "@font-face { font-family: '" css-font-name "'; font-weight: " weight
                                "; font-style: normal; font-display: swap;"
-                               " src: url('" (absolute-url path) "') format('woff2'); }\n")))]
-    (str (face 400) (face 700))))
+                               " src: url('" (absolute-url path) "') format('woff2');"
+                               (when unicode-range (str " unicode-range: " unicode-range ";"))
+                               " }\n")))]
+    (str/join (concat (faces 400) (faces 700)))))
 
 (def ^:private default-logo-url "app/assets/img/logo.svg")
 

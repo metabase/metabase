@@ -193,15 +193,38 @@
     (sequential? x)        (map fix-namespaced-values x)
     :else                  x))
 
+(defn- mbql5->js
+  "Serialize MBQL 5 (a query or a clause) to plain JS objects and arrays, keeping the namespaces of keywords."
+  [x]
+  (cond
+    (map? x)
+    (-> (reduce-kv (fn [m k v]
+                     (assoc m (mbql5->js k) (mbql5->js v)))
+                   {}
+                   x)
+        clj->js)
+
+    (sequential? x)
+    (-> (mapv mbql5->js x)
+        clj->js)
+
+    (qualified-keyword? x)
+    (str (namespace x) "/" (name x))
+
+    (simple-keyword? x)
+    (name x)
+
+    :else
+    (clj->js x)))
+
 (defn ^:export xray-cell-query
-  "Returns the filter of the last stage of `a-query` as a legacy clause in vanilla JSON form, the cell query of an automatic
-  dashboard URL, or nil when the stage has no filter."
+  "Returns the filters of the last stage of `a-query` as one MBQL 5 filter clause in vanilla JSON form, the cell query
+  of an automatic dashboard URL, or nil when the stage has no filters. Several filters are combined with `:and`."
   [a-query]
-  ;; existing usage -- do not use going forward
-  (some-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL a-query)
-          (get-in [:query :filter])
-          fix-namespaced-values
-          (clj->js :keyword-fn u/qualified-name)))
+  (when-let [filters (not-empty (lib.core/filters a-query -1))]
+    (mbql5->js (if (next filters)
+                 (apply lib.core/and filters)
+                 (first filters)))))
 
 (defn ^:export append-stage
   "Adds a new, blank *stage* to the provided `query`.
@@ -2754,30 +2777,9 @@
 (defn ^:export to-js-query
   "Serialize a query to a plain JS object."
   [cljs-query]
-  (letfn [(->js [x]
-            (cond
-              (map? x)
-              (-> (reduce-kv (fn [m k v]
-                               (assoc m (->js k) (->js v)))
-                             {}
-                             x)
-                  clj->js)
-
-              (sequential? x)
-              (-> (mapv ->js x)
-                  clj->js)
-
-              (qualified-keyword? x)
-              (str (namespace x) "/" (name x))
-
-              (simple-keyword? x)
-              (name x)
-
-              :else
-              (clj->js x)))]
-    (-> cljs-query
-        lib.core/prepare-for-serialization
-        ->js)))
+  (-> cljs-query
+      lib.core/prepare-for-serialization
+      mbql5->js))
 
 ;;; TODO (Cam 10/8/25) -- I'm starting to think that we should just have this be a Cljs-specific implementation
 ;;; of [[metabase.lib.query/query-method]], then you can just use the normal `lib/query` with a JS map and things will
