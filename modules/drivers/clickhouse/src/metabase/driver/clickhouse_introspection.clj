@@ -229,16 +229,30 @@
       (when (every? some? elements)
         elements))))
 
+(defn unfolded-map-value-type
+  "The value type of `database-type` if it is a `Map` that JSON unfolding unfolds, or else nil: a map with `String` keys
+  and a value type that can be `NULL`. Each key of such a map is a field of its own."
+  [database-type]
+  (when-let [[key-type value-type] (type-arguments "Map" database-type)]
+    (when (and (#{"String" "LowCardinality(String)"} key-type)
+               (not (re-find #"^(?:Array|Map|Tuple|Nested|JSON|Variant|Dynamic|Object|LowCardinality|Nullable|\w*AggregateFunction)\b"
+                             value-type)))
+      value-type)))
+
 (defn- ^:private is-db-required?
   [field]
   (not (str/starts-with? (get field :database-type) "Nullable")))
 
 (defmethod driver/describe-table :clickhouse
-  [_driver database table]
+  [driver database table]
   (let [table-metadata (sql-jdbc.sync/describe-table :clickhouse database table)
         filtered-fields (for [field (:fields table-metadata)
-                              :let [updated-field (update field :database-required
-                                                          (fn [_] (is-db-required? field)))]
+                              :let [updated-field (cond-> (assoc field :database-required (is-db-required? field))
+                                                    ;; its keys are fields, as for a JSON column
+                                                    (and (unfolded-map-value-type (:database-type field))
+                                                         (driver/database-supports? driver :nested-field-columns database))
+                                                    (assoc :visibility-type :details-only
+                                                           :preview-display false))]
                               ;; Skip all AggregateFunction (but keeping SimpleAggregateFunction) columns
                               ;; JDBC does not support that and it crashes the data browser
                               :when (not (re-matches #"^AggregateFunction\(.+$"

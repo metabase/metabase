@@ -6,7 +6,7 @@
    [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.clickhouse-introspection]
+   [metabase.driver.clickhouse-introspection :as clickhouse-introspection]
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
@@ -22,6 +22,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.quoting :refer [dot-qualified quote-identifier with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
@@ -263,6 +264,58 @@
                    (last (h2x/identifier->components field))]))
               json-field-identifiers)
    pk-identifiers))
+
+(defn- map-key-fields
+  "The nested field columns of the keys of the `Map` columns of `table` that JSON unfolding unfolds (see
+  [[clickhouse-introspection/unfolded-map-value-type]]). The keys come from a sample of rows, as for JSON columns, and
+  the type of each key's field from the value type of the map."
+  [driver database table]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^java.sql.Connection conn]
+     ;; the map columns from `system.columns`, which is cheaper than describing the whole table again
+     (let [map-fields (filter #(clickhouse-introspection/unfolded-map-value-type (:database-type %))
+                              (jdbc/query {:connection conn}
+                                          [(str "SELECT name, type AS `database-type` FROM system.columns"
+                                                " WHERE database = ? AND table = ? AND startsWith(type, 'Map(')")
+                                           (:schema table) (:name table)]
+                                          {:identifiers identity :keywordize? true}))]
+       (when (seq map-fields)
+         (let [table-identifier (h2x/identifier :table (:schema table) (:name table))
+               pk-identifiers   (perf/mapv #(h2x/identifier :field %)
+                                           (sql-jdbc.describe-table/get-table-pks driver conn nil table))]
+           (into #{}
+                 (comp
+                  (mapcat
+                   (fn [{column :name, database-type :database-type}]
+                     (let [value-type (clickhouse-introspection/unfolded-map-value-type database-type)
+                           base-type  (sql-jdbc.sync/database-type->base-type driver value-type)
+                           column-id  (h2x/identifier :field column)
+                           query      {:select-distinct [[[:'arrayJoin [:'mapKeys column-id]] :k]]
+                                       :from            [[(sample-rows-honeysql table-identifier [[column-id column]] pk-identifiers)
+                                                          :sample]]
+                                       :order-by        [[:k :asc]]
+                                       :limit           [:inline sql-jdbc.describe-table/max-nested-field-columns]}]
+                       (for [{map-key :k} (jdbc/query {:connection conn} (sql.qp/format-honeysql driver query))]
+                         {:name              (str column " → " map-key)
+                          :database-type     value-type
+                          :base-type         base-type
+                          :database-position 0
+                          :json-unfolding    false
+                          :visibility-type   :normal
+                          :nfc-path          [column map-key]}))))
+                  (take sql-jdbc.describe-table/max-nested-field-columns))
+                 map-fields)))))))
+
+(defmethod sql-jdbc.sync/describe-nested-field-columns :clickhouse
+  [driver database table]
+  (into ((get-method sql-jdbc.sync/describe-nested-field-columns :sql-jdbc) driver database table)
+        ;; a failure here would stop the sync of all the fields of the table, so log it and leave out the map keys
+        (try
+          (map-key-fields driver database table)
+          (catch Exception e
+            (log/warnf e "Cannot sample the Map keys of %s" (pr-str (:name table)))
+            nil))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
   (let [{:keys [cloud single-node]} (clickhouse-version/dbms-version db)]
