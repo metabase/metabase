@@ -24,4 +24,5 @@
   ensure-built-ins!
   non-default-worktree-exists?
   user-worktree-id
-  worktree-by-id])
+  worktree-by-id
+  worktree-names-a-workspace?])

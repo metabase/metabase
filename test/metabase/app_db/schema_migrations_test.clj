@@ -5685,6 +5685,32 @@
           (is (thrown? Exception (t2/insert! :metabase_field (field shared {}))))
           (is (empty? (t2/query {:select [[1 :one]] :from [:pg_policy] :where [:= :polname "workspace"]}))))))))
 
+(deftest worktree-workspace-test
+  (impl/test-migrations ["oajnng" "c6o5cx"] [migrate!]
+    (let [ws-id    (fn [n] (t2/insert-returning-pk! :workspace {:name n :created_at :%now :updated_at :%now}))
+          worktree (fn [branch] (t2/insert-returning-pk! :remote_sync_worktree {:branch branch :created_at :%now
+                                                                                :updated_at :%now}))
+          wt-1     (worktree "wt-1")
+          wt-2     (worktree "wt-2")
+          boundary (with-open [conn (.getConnection (mdb/data-source))]
+                     (liquibase/with-liquibase [liquibase conn]
+                       (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))]
+      (migrate!)
+      (testing "an existing worktree works in no workspace"
+        (is (nil? (t2/select-one-fn :workspace_id :remote_sync_worktree :id wt-1))))
+      (let [ws-a (ws-id "a")]
+        (testing "a workspace is the workspace of at most one worktree"
+          (t2/update! :remote_sync_worktree :id wt-1 {:workspace_id ws-a})
+          (is (thrown? Exception (t2/update! :remote_sync_worktree :id wt-2 {:workspace_id ws-a}))))
+        (testing "deleting the workspace leaves the worktree, with no workspace"
+          (t2/delete! :workspace :id ws-a)
+          (is (= [nil] (t2/select-fn-vec :workspace_id :remote_sync_worktree :id wt-1)))))
+      (with-open [conn (.getConnection (mdb/data-source))]
+        (liquibase/with-liquibase [liquibase conn]
+          (rollback/rollback-to-deployment! conn liquibase boundary)))
+      (testing "rollback drops the column"
+        (is (not (contains? (t2/select-one :remote_sync_worktree :id wt-1) :workspace_id)))))))
+
 (deftest drop-table-transform-id-test
   (impl/test-migrations ["nqeyec" "p7c3vn"] [migrate!]
     (let [user-id    (t2/insert-returning-pk! :core_user {:first_name  "Test"

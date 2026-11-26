@@ -7,6 +7,7 @@
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -360,3 +361,9 @@
               (is (false? (ws/workspace-mode?))))
             (finally
               (ws/clear-instance-workspace!))))))))
+
+(deftest request-workspaces-stay-on-while-a-worktree-names-a-workspace-test
+  (testing "request-workspaces-enabled can't turn off while a worktree names a workspace: its requests would be refused"
+    (mt/with-dynamic-fn-redefs [remote-sync/worktree-names-a-workspace? (constantly true)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A worktree works in a workspace"
+                            (ws.settings/request-workspaces-enabled! false))))))

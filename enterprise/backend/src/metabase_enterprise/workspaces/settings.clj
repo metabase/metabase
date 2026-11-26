@@ -3,6 +3,7 @@
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
    [metabase.app-db.core :as mdb]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
@@ -82,15 +83,19 @@
         (when (ws.db/row-security-bypassed?)
           (throw (ex-info (tru "Workspaces that a request names need an application database user that row-level security applies to, not a superuser or a user with BYPASSRLS.")
                           {:status-code 400}))))
-      (when (and (= :postgres (mdb/db-type)) (ws.db/workspace-owned-rows-exist?))
-        (throw (ex-info (tru "Workspaces own Tables or Fields, which every connection would see without row-level security. Delete those workspaces first.")
-                        {:status-code 400}))))
+      (do
+        (when (remote-sync/worktree-names-a-workspace?)
+          (throw (ex-info (tru "A worktree works in a workspace, and its requests would be refused without row-level security. Clear the workspace of each worktree first.")
+                          {:status-code 400})))
+        (when (and (= :postgres (mdb/db-type)) (ws.db/workspace-owned-rows-exist?))
+          (throw (ex-info (tru "Workspaces own Tables or Fields, which every connection would see without row-level security. Delete those workspaces first.")
+                          {:status-code 400})))))
     (when (= :postgres (mdb/db-type))
       (ws.db/set-row-security! new-value))
     (setting/set-value-of-type! :boolean :request-workspaces-enabled new-value)))
 
 (defsetting request-workspaces-enabled
-  (deferred-tru "Whether a superuser''s request can name a workspace of this instance with the `X-Metabase-Workspace-Id` header. Turning it on turns on PostgreSQL row-level security on `metabase_table` and `metabase_field`, so each workspace sees only the Tables and Fields it shares or owns. It needs a PostgreSQL application database whose user row-level security applies to. With it on, `pg_dump` of the application database by its owner needs `--enable-row-security`. It can''t turn off while workspaces own Tables or Fields.")
+  (deferred-tru "Whether a request can work in a workspace of this instance, through the remote sync worktree it works in when that worktree names the workspace. Turning it on turns on PostgreSQL row-level security on `metabase_table` and `metabase_field`, so each workspace sees only the Tables and Fields it shares or owns. It needs a PostgreSQL application database whose user row-level security applies to. With it on, `pg_dump` of the application database by its owner needs `--enable-row-security`. It can''t turn off while workspaces own Tables or Fields, or while a worktree names a workspace. While it is off, as when an environment variable turns it off, the requests of a worktree that names a workspace are refused.")
   :type       :boolean
   :default    false
   :visibility :admin

@@ -4744,6 +4744,7 @@
            transforms.schema
            util
            warehouses.schema
+           workspaces
            enterprise/data-testing
            enterprise/serialization
            enterprise/transforms.python}
@@ -5126,6 +5127,7 @@
            permissions
            premium-features
            query-processor
+           remote-sync
            sample-data
            server
            settings
