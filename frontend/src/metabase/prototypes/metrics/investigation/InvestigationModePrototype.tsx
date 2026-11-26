@@ -15,14 +15,13 @@ import {
 import cx from "classnames";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
+import { useListCardsQuery, useListMeasuresQuery } from "metabase/api";
 import { PillTabNavigation } from "metabase/common/components/PillTabNavigation";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import {
   PaneHeader,
   PanelHeaderTitle,
 } from "metabase/common/data-studio/components/PaneHeader";
-import { useDispatch } from "metabase/redux";
-import { addUndo } from "metabase/redux/undo";
 import {
   ActionIcon,
   Badge,
@@ -37,6 +36,7 @@ import {
   Select,
   Stack,
   Text,
+  Tooltip,
   UnstyledButton,
   useColorScheme,
 } from "metabase/ui";
@@ -282,7 +282,10 @@ function Investigation() {
         selectedPath.has(edge.source) && selectedPath.has(edge.target),
     },
   }));
-  const comparison = period === "yoy" ? "last November" : "October";
+  const comparison =
+    { month: "last month", quarter: "last quarter", yoy: "last year" }[
+      period
+    ] ?? "last month";
 
   return (
     <InvestigationContext.Provider
@@ -301,31 +304,12 @@ function Investigation() {
                 style={{ zIndex: 5 }}
               >
                 <Select
-                  w={260}
+                  w={220}
                   data={PERIODS}
                   value={period}
                   onChange={(value) => value && setPeriod(value)}
                   leftSection={<FixedSizeIcon name="calendar" />}
                 />
-                {filter && (
-                  <Badge
-                    size="lg"
-                    variant="light"
-                    rightSection={
-                      <ActionIcon
-                        size="xs"
-                        variant="transparent"
-                        aria-label="Remove filter"
-                        onClick={() => setFilter(null)}
-                      >
-                        <FixedSizeIcon name="close" size={10} />
-                      </ActionIcon>
-                    }
-                    style={{ textTransform: "none" }}
-                  >
-                    {filter.prefix} {filter.label}
-                  </Badge>
-                )}
               </Group>
               <TreeCanvas nodes={graph.nodes} edges={edges} />
             </Box>
@@ -443,25 +427,32 @@ function NodeCard({ data }: NodeProps<CardNode>) {
           {node.name}
         </Box>
         {data.driverShare != null && (
-          <Badge
-            variant="light"
-            color="brand"
-            style={{ textTransform: "none" }}
+          <Tooltip
+            label={`Explains most of ${NODES[pathTo(node.id).at(-2) ?? ROOT_ID].name}'s change`}
           >
-            Biggest driver · {Math.round(data.driverShare * 100)}%
-          </Badge>
+            <Badge
+              variant="light"
+              color="brand"
+              style={{ textTransform: "none" }}
+            >
+              Biggest driver
+            </Badge>
+          </Tooltip>
         )}
       </Group>
       <Group className={T.row} px="lg" py="sm" gap="md" wrap="nowrap">
         <Stack gap={0} flex={1} miw={0}>
           <Text fz={22} fw={700} lh={1.2} c="text-primary">
-            {formatValue(node, view.current)}
+            {formatValue(node, node.current)}
           </Text>
-          <Delta delta={view.delta} size="xs" />
+          <Delta
+            delta={(node.current - node.previous) / node.previous}
+            size="xs"
+          />
         </Stack>
         <Box w={96} c="core-brand">
           <LineChart
-            values={sparklineOf(seriesOf(node, view.scale))}
+            values={sparklineOf(seriesOf(node, 1))}
             width={96}
             height={32}
             showAxes={false}
@@ -469,7 +460,6 @@ function NodeCard({ data }: NodeProps<CardNode>) {
         </Box>
       </Group>
       <Group className={T.row} px="lg" gap="sm" wrap="nowrap">
-        <FixedSizeIcon name="insight" c="text-secondary" size={14} />
         <Text fz="sm" c="text-secondary" className={T.truncate} flex={1}>
           {view.verdict}
         </Text>
@@ -556,7 +546,6 @@ function SidePanel({
   onFilter: (filter: Filter | null) => void;
   onClose: () => void;
 }) {
-  const dispatch = useDispatch();
   const [tabId, setTabId] = useState(node.breakouts[0].id);
   const view = viewOf(node, filter);
   const tab =
@@ -570,28 +559,14 @@ function SidePanel({
     .sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact));
   const maxImpact = Math.max(...rows.map((row) => Math.abs(row.impact)), 1e-9);
 
-  const carried = [
-    node.name,
-    `by ${tab.label}`,
-    filter ? `filtered to ${filter.prefix} ${filter.label}` : null,
-  ]
-    .filter(Boolean)
-    .join(", ");
-
-  const openInExplorer = () =>
-    dispatch(
-      addUndo({
-        icon: "external",
-        message: `Would open the Metric Explorer with ${carried}.`,
-      }),
-    );
+  const explorerUrl = useExplorerUrl(node.name);
 
   return (
     <Box className={S.panel}>
       <Group className={S.panelSection} px="xl" py="md" wrap="nowrap">
         <FixedSizeIcon
           name={node.kind === "metric" ? "metric" : "ruler"}
-          c="core-brand"
+          c={node.kind === "metric" ? "core-brand" : "core-summarize"}
         />
         <Stack gap={0} flex={1} miw={0}>
           <Text fw={700} fz="lg">
@@ -610,9 +585,9 @@ function SidePanel({
         <Stack gap="xs">
           <Group gap="sm" align="baseline">
             <Text fz={24} fw={700} lh={1.1}>
-              {formatValue(node, view.current)}
+              {formatValue(node, node.current)}
             </Text>
-            <Delta delta={view.delta} />
+            <Delta delta={(node.current - node.previous) / node.previous} />
             <Text fz="sm" c="text-secondary">
               vs {comparison}
             </Text>
@@ -621,10 +596,7 @@ function SidePanel({
         </Stack>
 
         <Box>
-          <TrendChart
-            values={seriesOf(node, view.scale)}
-            annotation={node.annotation}
-          />
+          <TrendChart values={seriesOf(node, 1)} annotation={node.annotation} />
           {node.annotation.label && (
             <Text fz="xs" c="text-secondary" mt="xs">
               {node.annotation.label}
@@ -643,10 +615,6 @@ function SidePanel({
               label: breakout.label,
             }))}
           />
-          <Text fz="xs" c="text-secondary">
-            Ranked by contribution to the change. Click a value to focus the
-            tree on it.
-          </Text>
           <Stack gap={2}>
             {rows.map((row) => {
               const active =
@@ -715,11 +683,30 @@ function SidePanel({
         <Button
           variant="default"
           leftSection={<FixedSizeIcon name="external" />}
-          onClick={openInExplorer}
+          component="a"
+          href={explorerUrl}
+          target="_blank"
         >
           Open in Metric Explorer
         </Button>
       </Stack>
     </Box>
   );
+}
+
+/**
+ * The Explorer URL for the Sample Database metric or measure with this name,
+ * or the empty Explorer when the local instance has neither.
+ */
+function useExplorerUrl(name: string): string {
+  const { data: cards = [] } = useListCardsQuery({ f: "all" });
+  const { data: measures = [] } = useListMeasuresQuery();
+  const metric = cards.find(
+    (card) => card.type === "metric" && !card.archived && card.name === name,
+  );
+  if (metric) {
+    return `/explore?metricId=${metric.id}`;
+  }
+  const measure = measures.find((candidate) => candidate.name === name);
+  return measure ? `/explore?measureId=${measure.id}` : "/explore";
 }

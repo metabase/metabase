@@ -18,7 +18,7 @@ export type Breakout = {
 export type BreakoutTab = {
   id: string;
   label: string;
-  /** Filter chip prefix, e.g. "Country is". */
+  /** Filter chip prefix, e.g. "Region is". */
   filterPrefix: string;
   items: Breakout[];
 };
@@ -42,9 +42,9 @@ export type InvestigationNode = {
 };
 
 export const PERIODS = [
-  { value: "month", label: "This month vs last month" },
-  { value: "quarter", label: "This quarter vs last quarter" },
-  { value: "yoy", label: "This month vs same month last year" },
+  { value: "month", label: "Month over month" },
+  { value: "quarter", label: "Quarter over quarter" },
+  { value: "yoy", label: "Year over year" },
 ];
 
 /** 14 months, ending in the current one. */
@@ -73,7 +73,7 @@ const tab = (
 ): BreakoutTab => ({ id, label, filterPrefix, items });
 
 const uniform = (delta: number): BreakoutTab[] => [
-  tab("country", "Country", "Country is", [
+  tab("region", "Region", "Region is", [
     { label: "EU", share: 0.35, delta: delta - 0.004 },
     { label: "US", share: 0.45, delta: delta + 0.003 },
     { label: "APAC", share: 0.12, delta: delta + 0.002 },
@@ -104,7 +104,7 @@ const eu = (
   channel: [number, number, number, number],
   segments: [number, number, number, number],
 ): BreakoutTab[] => [
-  tab("country", "Country", "Country is", [
+  tab("region", "Region", "Region is", [
     { label: "EU", share: 0.35, delta: euDelta },
     { label: "US", share: 0.45, delta: usDelta },
     { label: "APAC", share: 0.12, delta: -0.01 },
@@ -144,7 +144,7 @@ export const NODES: Record<string, InvestigationNode> = {
       { id: "discounts", op: "−" },
     ],
     verdict: "Split: EU −15%, US +1%",
-    annotation: { kind: "break", label: "Trend broke in November" },
+    annotation: { kind: "none" },
     breakouts: eu(
       -0.15,
       0.012,
@@ -166,7 +166,7 @@ export const NODES: Record<string, InvestigationNode> = {
       { id: "aov", op: "×" },
     ],
     verdict: "Split: EU −14%, US +2%",
-    annotation: { kind: "break", label: "Trend broke in November" },
+    annotation: { kind: "none" },
     breakouts: eu(
       -0.14,
       0.015,
@@ -213,7 +213,7 @@ export const NODES: Record<string, InvestigationNode> = {
       { id: "returningOrders", op: "+" },
     ],
     verdict: "Split: EU −15%, US +1%",
-    annotation: { kind: "break", label: "Trend broke in November" },
+    annotation: { kind: "none" },
     breakouts: eu(
       -0.15,
       0.01,
