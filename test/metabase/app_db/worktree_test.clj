@@ -145,7 +145,10 @@
     :model/TransformJobRun
     :model/UserKeyValue
     :model/Workspace
-    :model/WorkspaceDatabase})
+    :model/WorkspaceDatabase
+    ;; Keyed by a workspace, which is not a worktree.
+    :model/WorkspaceFieldCopy
+    :model/WorkspaceTableCopy})
 
 (def ^:private worktree-reference-tables
   "The models of other tables, with `worktree_id` but without the hook, since the column names a worktree rather than

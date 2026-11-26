@@ -214,6 +214,17 @@
   [worktree-id :- ms/PositiveInt]
   (t2/select-one-fn :branch :model/RemoteSyncWorktree :id worktree-id))
 
+(mu/defn workspace-worktree-id :- [:maybe ms/PositiveInt]
+  "The id of the worktree that names the workspace with `workspace-id`, or nil."
+  [workspace-id :- ms/PositiveInt]
+  (t2/select-one-pk :model/RemoteSyncWorktree :workspace_id workspace-id))
+
+(defenterprise worktree-names-a-workspace?
+  "Whether a worktree names a workspace that its requests work in."
+  :feature :none
+  []
+  (t2/exists? :model/RemoteSyncWorktree :workspace_id [:not= nil]))
+
 (mu/defn insert-worktree! :- ::remote-sync.schema/worktree
   "Insert the worktree `worktree` and return it."
   [worktree :- ::remote-sync.schema/worktree.update]

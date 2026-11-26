@@ -52,6 +52,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.util :as t2.util]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -274,13 +275,16 @@
 
 (mu/defn sync-fields-for-table!
   "Sync the Fields of `table` into the application database, reading them from the warehouse location that
-  `remap-table` gives, by default the [[fetch-metadata/table-remapper]] of `database`."
+  `remap-table` gives, by default the [[fetch-metadata/table-remapper]] of `database`, built in the workspace that
+  owns `table`, or in none for a shared one, where it runs. A caller that passes `remap-table` runs it in that
+  workspace itself ([[workspaces/in-workspace-of]])."
   ([table :- i/TableInstance]
    (sync-fields-for-table! (driver.u/lib-database (:db_id table)) table))
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
-   (sync-fields-for-table! database table (fetch-metadata/table-remapper database)))
+   (workspaces/in-workspace-of :metabase_table table
+                               (sync-fields-for-table! database table (fetch-metadata/table-remapper database))))
 
   ([database    :- i/DatabaseInstance
     table       :- i/TableInstance

@@ -2,13 +2,16 @@
   (:require
    [malli.util :as mut]
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.request-workspace :as ws.request-workspace]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as app-db]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.models.database :as database]
@@ -76,18 +79,26 @@
        vec))
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
+;;;
+;;; A request in the workspace of its worktree reads its WorkspaceDatabases from a cache, which every write drops after
+;;; the commit, not at once: another thread that reads before the commit would cache the rows as they were before it.
+
+(defn- invalidate-request-workspaces! []
+  (app-db/do-after-commit ws.request-workspace/invalidate!))
 
 (mu/defn create-workspace-databases!
   "Insert `rows`."
   [rows :- [:sequential ::ws.db/workspace-database.create]]
-  (ws.db/insert-workspace-databases! rows))
+  (u/prog1 (ws.db/insert-workspace-databases! rows)
+    (invalidate-request-workspaces!)))
 
 (mu/defn update-workspace-database!
   "Apply `changes` to the WorkspaceDatabase with `workspace-database-id`."
   [workspace-database-id :- ms/PositiveInt
    changes               :- (mut/select-keys ::ws.db/workspace-database.update
                                              [:output_namespace :database_details :status :updated_at])]
-  (ws.db/update-workspace-database! workspace-database-id changes))
+  (u/prog1 (ws.db/update-workspace-database! workspace-database-id changes)
+    (invalidate-request-workspaces!)))
 
 (mu/defn transition-workspace-database!
   "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status` if it is `from-status`, and its
@@ -95,7 +106,8 @@
   [workspace-database-id :- ms/PositiveInt
    from-status           :- ::ws.db/status
    to-status             :- ::ws.db/status]
-  (ws.db/transition-workspace-database! workspace-database-id from-status to-status))
+  (u/prog1 (ws.db/transition-workspace-database! workspace-database-id from-status to-status)
+    (invalidate-request-workspaces!)))
 
 (mu/defn transition-workspace-database-at!
   "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status`, and its `updated_at` to
@@ -105,7 +117,8 @@
    from-status           :- ::ws.db/status
    to-status             :- ::ws.db/status
    updated-at            :- (ms/InstanceOfClass java.time.OffsetDateTime)]
-  (ws.db/transition-workspace-database-at! workspace-database-id from-status to-status updated-at))
+  (u/prog1 (ws.db/transition-workspace-database-at! workspace-database-id from-status to-status updated-at)
+    (invalidate-request-workspaces!)))
 
 (mu/defn transition-workspace-databases!
   "Set the status of every WorkspaceDatabase of the Workspace with `workspace-id` that is `from-status` to
@@ -113,17 +126,20 @@
   [workspace-id :- ms/PositiveInt
    from-status  :- ::ws.db/status
    to-status    :- ::ws.db/status]
-  (ws.db/transition-workspace-databases! workspace-id from-status to-status))
+  (u/prog1 (ws.db/transition-workspace-databases! workspace-id from-status to-status)
+    (invalidate-request-workspaces!)))
 
 (mu/defn delete-workspace-database!
   "Delete the WorkspaceDatabase with `workspace-database-id`."
   [workspace-database-id :- ms/PositiveInt]
-  (ws.db/delete-workspace-database! workspace-database-id))
+  (u/prog1 (ws.db/delete-workspace-database! workspace-database-id)
+    (invalidate-request-workspaces!)))
 
 (mu/defn delete-workspace-databases!
   "Delete the WorkspaceDatabases with ids in `workspace-database-ids`."
   [workspace-database-ids :- [:sequential ms/PositiveInt]]
-  (ws.db/delete-workspace-databases! workspace-database-ids))
+  (u/prog1 (ws.db/delete-workspace-databases! workspace-database-ids)
+    (invalidate-request-workspaces!)))
 
 (mu/defn delete-workspace-databases-of-databases! :- :nil
   "Delete the `:unprovisioned` WorkspaceDatabases of the Databases with `database-ids`, as those Databases are deleted,
@@ -137,6 +153,7 @@
                     {:status-code 409
                      :database_id db-id})))
   (ws.db/delete-unprovisioned-workspace-databases-of-databases! database-ids)
+  (invalidate-request-workspaces!)
   nil)
 
 (defmethod database/delete-for-databases! :model/WorkspaceDatabase

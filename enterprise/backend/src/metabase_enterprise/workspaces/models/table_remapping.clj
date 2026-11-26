@@ -105,41 +105,47 @@
     (app-db/do-after-commit invalidate-database-ids!)))
 
 (mu/defn upsert-table-remapping!
-  "Make the TableRemapping of the Database with `database-id` from `from-spec` point at `to-spec`."
-  [database-id :- ms/PositiveInt
-   from-spec   :- ::ws.db/table-spec
-   to-spec     :- ::ws.db/table-spec]
+  "Make the TableRemapping of `workspace-id` (nil for the instance's own) of the Database with `database-id` from
+  `from-spec` point at `to-spec`."
+  [database-id  :- ms/PositiveInt
+   workspace-id :- ::ws.db/workspace-id
+   from-spec    :- ::ws.db/table-spec
+   to-spec      :- ::ws.db/table-spec]
   (t2/with-transaction [_conn]
-    (u/prog1 (ws.db/upsert-table-remapping! database-id from-spec to-spec)
+    (u/prog1 (ws.db/upsert-table-remapping! database-id workspace-id from-spec to-spec)
       (invalidate! [database-id]))))
 
 (mu/defn delete-table-remapping!
-  "Delete the TableRemapping of the Database with `database-id` whose source is `from-spec`, returning the number of
-  rows deleted."
-  [database-id :- ms/PositiveInt
-   from-spec   :- ::ws.db/table-spec]
+  "Delete the TableRemapping of `workspace-id` (nil for the instance's own) of the Database with `database-id` whose
+  source is `from-spec`, returning the number of rows deleted."
+  [database-id  :- ms/PositiveInt
+   workspace-id :- ::ws.db/workspace-id
+   from-spec    :- ::ws.db/table-spec]
   (t2/with-transaction [_conn]
-    (u/prog1 (ws.db/delete-table-remapping! database-id from-spec)
+    (u/prog1 (ws.db/delete-table-remapping! database-id workspace-id from-spec)
       (when (pos? <>) (invalidate! [database-id])))))
 
 (mu/defn delete-table-remappings-of-database!
-  "Delete the TableRemappings of the Database with `database-id`, returning the number of rows deleted."
-  [database-id :- ms/PositiveInt]
+  "Delete the TableRemappings of `workspace-id` (nil for the instance's own) of the Database with `database-id`,
+  returning the number of rows deleted."
+  [database-id  :- ms/PositiveInt
+   workspace-id :- ::ws.db/workspace-id]
   (t2/with-transaction [_conn]
-    (u/prog1 (ws.db/delete-table-remappings-of-database! database-id)
+    (u/prog1 (ws.db/delete-table-remappings-of-database! database-id workspace-id)
       (when (pos? <>) (invalidate! [database-id])))))
 
 (mu/defn delete-table-remappings-of-databases!
-  "Delete the TableRemappings of the Databases with `database-ids` in one statement, returning the number of rows
-  deleted."
-  [database-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  "Delete the TableRemappings of `workspace-id` (nil for the instance's own) of the Databases with `database-ids` in
+  one statement, returning the number of rows deleted."
+  [database-ids :- [:sequential {:min 1} ms/PositiveInt]
+   workspace-id :- ::ws.db/workspace-id]
   (t2/with-transaction [_conn]
-    (u/prog1 (ws.db/delete-table-remappings-of-databases! database-ids)
+    (u/prog1 (ws.db/delete-table-remappings-of-databases! database-ids workspace-id)
       (when (pos? <>) (invalidate! database-ids)))))
 
 (mu/defn delete-table-remappings-into!
   "Delete the TableRemappings of the Database with `database-id` whose target is in the `(to-db, to-schema)`
-  namespace, returning the number of rows deleted."
+  namespace, in every workspace, returning the number of rows deleted."
   [database-id :- ms/PositiveInt
    to-db       :- :string
    to-schema   :- :string]
@@ -147,12 +153,20 @@
     (u/prog1 (ws.db/delete-table-remappings-into! database-id to-db to-schema)
       (when (pos? <>) (invalidate! [database-id])))))
 
-(mu/defn delete-all-table-remappings!
-  "Delete every TableRemapping."
+(mu/defn delete-workspace-table-remappings!
+  "Delete the TableRemappings of the workspace with `workspace-id`, returning the number of rows deleted."
+  [workspace-id :- ms/PositiveInt]
+  (t2/with-transaction [_conn]
+    (let [database-ids (ws.db/workspace-table-remapping-database-ids workspace-id)]
+      (u/prog1 (ws.db/delete-workspace-table-remappings! workspace-id)
+        (invalidate! database-ids)))))
+
+(mu/defn delete-instance-table-remappings!
+  "Delete the instance's own TableRemappings, and none of the workspaces of worktrees."
   []
   (t2/with-transaction [_conn]
     (let [database-ids (ws.db/table-remapping-database-ids)]
-      (u/prog1 (ws.db/delete-all-table-remappings!)
+      (u/prog1 (ws.db/delete-instance-table-remappings!)
         (invalidate! database-ids)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

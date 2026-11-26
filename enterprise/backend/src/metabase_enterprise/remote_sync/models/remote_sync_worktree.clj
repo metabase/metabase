@@ -11,6 +11,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -104,4 +105,27 @@
     (remote-sync.db/delete-checkout! user-id)
     (when worktree-id
       (remote-sync.db/insert-checkout! user-id worktree-id)))
+  nil)
+
+(defn- check-worktree-workspace
+  "Throw unless the worktree with `worktree-id` can name the workspace with `workspace-id`:
+
+  - requests can work in the workspace: the `request-workspaces-enabled` setting is on, on a PostgreSQL application
+    database that row-level security applies to, and every database of the workspace is provisioned (400)
+  - no other worktree names it (409)"
+  [worktree-id workspace-id]
+  (when-let [problem (workspaces/request-workspace-problem workspace-id)]
+    (throw (ex-info problem {:status-code 400})))
+  (when-let [other-id (remote-sync.db/workspace-worktree-id workspace-id)]
+    (when-not (= other-id worktree-id)
+      (throw (ex-info (tru "Another worktree works in that workspace.") {:status-code 409})))))
+
+(mu/defn set-worktree-workspace! :- :nil
+  "Make the requests of the worktree with `worktree-id` work in the workspace with `workspace-id`, or in none when it is
+  nil. Clearing it needs no check."
+  [worktree-id  :- ms/PositiveInt
+   workspace-id :- [:maybe ms/PositiveInt]]
+  (when workspace-id
+    (check-worktree-workspace worktree-id workspace-id))
+  (remote-sync.db/update-worktree! worktree-id {:workspace_id workspace-id})
   nil)

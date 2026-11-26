@@ -340,8 +340,8 @@
             (write-workspaces-enabled-as-another-node! "false")
             (is (ws/workspace-mode?) "premise: this node still has the old value cached")
             (let [deletes (atom 0)
-                  real    (mt/original-fn #'ws.db/delete-all-table-remappings!)]
-              (mt/with-dynamic-fn-redefs [ws.db/delete-all-table-remappings! (fn [] (swap! deletes inc) (real))]
+                  real    (mt/original-fn #'ws.db/delete-instance-table-remappings!)]
+              (mt/with-dynamic-fn-redefs [ws.db/delete-instance-table-remappings! (fn [] (swap! deletes inc) (real))]
                 (try
                   (t2/with-transaction [_]
                     (setting/restore-cache!)

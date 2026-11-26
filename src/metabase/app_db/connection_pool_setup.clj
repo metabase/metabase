@@ -2,6 +2,7 @@
   "Code for creating the connection pool for the application DB and setting it as the default Toucan connection."
   (:require
    [java-time.api :as t]
+   [metabase.app-db.workspace :as mdb.workspace]
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.util.connection :as u.connection]
@@ -30,13 +31,20 @@
   []
   (recent-activity?* @latest-activity recent-window-duration))
 
-(defn- postgres-connection? [^java.sql.Connection connection]
-  (.isWrapperFor connection org.postgresql.jdbc.PgConnection))
+(defn- postgres-connection? [connection]
+  (mdb.workspace/postgres-connection? connection))
 
 ;;; I spun these out into separate functions so we can picc up changes to them in the REPL -- Cam
 
-(defn- on-acquire [_connection]
-  (reset! latest-activity (t/offset-date-time)))
+(defn- execute! [^java.sql.Connection connection ^String sql]
+  (with-open [stmt (.createStatement connection)]
+    (.execute stmt sql)))
+
+(defn- on-acquire [connection]
+  (reset! latest-activity (t/offset-date-time))
+  (when (postgres-connection? connection)
+    (execute! connection mdb.workspace/no-workspace-sql)
+    (mdb.workspace/record-setting! connection mdb.workspace/no-workspace-sql)))
 
 (defn- on-check-in [^java.sql.Connection connection]
   (reset! latest-activity (t/offset-date-time))
@@ -45,12 +53,19 @@
   ;; https://www.postgresql.org/docs/current/sql-discard.html for more info about what this does and
   ;; https://metaboat.slack.com/archives/C05MPF0TM3L/p1748538414384029?thread_ts=1748507464.051999&cid=C05MPF0TM3L for
   ;; rationale behind why we're doing it -- Cam
+  ;; It also puts the connection in no workspace ([[mdb.workspace/check-in-sql]]).
   (when (postgres-connection? connection)
-    (with-open [stmt (.createStatement connection)]
-      (.execute stmt "DISCARD ALL;"))))
+    (execute! connection mdb.workspace/check-in-sql)
+    (mdb.workspace/record-setting! connection mdb.workspace/no-workspace-sql)))
 
-(defn- on-check-out [_connection]
-  (reset! latest-activity (t/offset-date-time)))
+(defn- on-check-out
+  "Puts a Postgres `connection` in the workspace of the thread that checks it out ([[mdb.workspace/*workspace-id*]]).
+  Check-in leaves it in no workspace, so a thread in none checks out with no extra statement."
+  [connection]
+  (reset! latest-activity (t/offset-date-time))
+  (when-let [sql (and (postgres-connection? connection) (mdb.workspace/checkout-sql))]
+    (execute! connection sql)
+    (mdb.workspace/record-setting! connection sql)))
 
 (defn- on-destroy [_connection]
   ;; no-op

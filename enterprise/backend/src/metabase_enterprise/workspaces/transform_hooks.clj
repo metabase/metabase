@@ -37,23 +37,30 @@
    [[record-workspace-target-remapping!]] records later points at the same place.
 
    On a non-workspace instance the canonical target passes through unchanged. On a
-   workspace instance, throws a 400 when the database has no `database-workspace-schema`,
-   so that no production table is used as a transform's target: written, checked for
-   existence, or dropped.
+   workspace instance, throws a 400 when the database has no `database-workspace-schema`, or, in the workspace of the
+   request's worktree, is not a provisioned database of that workspace, so that no production table is used as a
+   transform's target: written, checked for existence, or dropped.
 
    Deliberately ungated on premium features: a token expiry shouldn't silently cause
    workspace transforms to overwrite production tables. If a `WorkspaceDatabase` is
    provisioned, the rewrite must apply."
   :feature :none
   [db-id target]
-  ;; Read the workspace schema once and decide from that read. A second read could see a schema cleared since the
-  ;; first, and return the canonical target on a workspace instance.
-  (let [workspace-ns (ws/db-workspace-namespace db-id)]
+  ;; Read the workspace and its schema once, and decide from that read. A second read could see a schema cleared
+  ;; since the first, and return the canonical target on a workspace instance. A thread in a workspace that is
+  ;; gone throws here ([[ws/current-workspace]]).
+  (let [mode         (:mode (ws/current-workspace))
+        workspace-ns (when mode (ws/db-workspace-namespace db-id))]
     (cond
       (some? workspace-ns)
       (retarget target (ws.table-remapping/transform-target-remapping db-id target))
 
-      (ws/workspace-mode?)
+      (= :bound mode)
+      (throw (ex-info (tru "Database {0} is not a provisioned database of the workspace of the request''s worktree, so its transforms have no safe target."
+                           db-id)
+                      {:status-code 400 :database-id db-id}))
+
+      (= :sidecar mode)
       (throw (ex-info (tru "Database {0} has no workspace schema (`database-workspace-schema`), and this instance is a workspace, so its transforms have no safe target."
                            db-id)
                       {:status-code 400 :database-id db-id}))

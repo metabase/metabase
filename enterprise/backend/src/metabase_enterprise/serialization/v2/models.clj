@@ -203,4 +203,6 @@
    :model/UserParameterValue
    :model/ViewLog
    :model/Workspace
-   :model/WorkspaceDatabase])
+   :model/WorkspaceDatabase
+   :model/WorkspaceFieldCopy
+   :model/WorkspaceTableCopy])

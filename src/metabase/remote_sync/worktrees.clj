@@ -20,6 +20,13 @@
   [_user-id]
   nil)
 
+(defenterprise worktree-names-a-workspace?
+  "Whether a worktree names a workspace that its requests work in, which none does without the enterprise remote sync
+  module."
+  metabase-enterprise.remote-sync.db
+  []
+  false)
+
 (defenterprise worktree-by-id
   "The worktree with `worktree-id`, or nil."
   metabase-enterprise.remote-sync.db

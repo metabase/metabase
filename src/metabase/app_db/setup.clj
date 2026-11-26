@@ -20,6 +20,7 @@
    [metabase.app-db.liquibase.rollback :as rollback]
    [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.app-db.workspace :as mdb.workspace]
    [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.funnysql.core :as funnysql]
@@ -325,7 +326,9 @@
      (u/with-us-locale
        (binding [config/*disable-setting-cache* true
                  custom-migrations/*create-sample-content* create-sample-content?
-                 mdb.worktree/*scope* {:type :all}]
+                 ;; migrations and setup read and write the rows of every worktree and every workspace
+                 mdb.worktree/*scope*                       {:type :all}
+                 mdb.workspace/*workspace-id*               :all]
          (mdb.connection/with-application-db
            (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
            ;; Migrations ask whether this is MariaDB while Liquibase holds a connection. Answering now spares them a

@@ -1,0 +1,443 @@
+## Workspaces that a request names with its X-Metabase-Workspace-Id header.
+##
+## - Each such workspace has its own table remappings, keyed by table_remapping.workspace_id. 0 stands for the
+##   instance's own remappings: a unique key needs a value that is not null, as from_db's empty string is.
+## - workspace_table_copy and workspace_field_copy hold how a workspace's copies, which its transforms write, differ
+##   from the Tables and Fields that every workspace shares: a shared Table or Field the workspace does not see
+##   (active = false), and the types of a column the copy gives another type.
+## - metabase_table.workspace_id and metabase_field.workspace_id name the workspace that owns a Table or Field that
+##   only it has, or are null for a shared one. On Postgres, a policy shows a connection the shared rows and those of
+##   its workspace (the metabase.workspace_id setting, see metabase.app-db.workspace). The migration creates the
+##   policies but leaves row-level security off: the request-workspaces-enabled setting turns it on, because a plain
+##   pg_dump by a table owner that is not a superuser fails under FORCE ROW LEVEL SECURITY.
+
+databaseChangeLog:
+  - changeSet:
+      id: pb1zul
+      author: nvoxland
+      comment: Add table_remapping.workspace_id, the workspace that a request names whose remapping it is, or 0 for the instance's own
+      changes:
+        - addColumn:
+            tableName: table_remapping
+            columns:
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: The workspace that a request names whose remapping this is, or 0 for the instance's own
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: bl0f8r
+      author: nvoxland
+      comment: A source table has one remapping in each workspace
+      changes:
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_workspace_source
+            columnNames: database_id, from_db, from_schema, from_table_name, workspace_id
+
+  - changeSet:
+      id: szkprm
+      author: nvoxland
+      comment: Drop the unique key of a source table across workspaces, which idx_unique_table_remapping_workspace_source replaces
+      changes:
+        - dropUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_source
+      rollback:
+        # The old key allows one remapping of a source table in all: keep the instance's own.
+        - sql:
+            sql: DELETE FROM table_remapping WHERE workspace_id <> 0
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_source
+            columnNames: database_id, from_db, from_schema, from_table_name
+
+  - changeSet:
+      id: c0oit1
+      author: nvoxland
+      comment: Add workspace_table_copy, whether a Table that every workspace shares is active in a workspace that holds a copy of it
+      changes:
+        - createTable:
+            tableName: workspace_table_copy
+            remarks: Whether a Table that every workspace shares is active in a workspace that holds a copy of it
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Unique ID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: The workspace that holds the copy
+                  constraints:
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: The shared Table the copy is a copy of
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  remarks: Whether the Table is active in the workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: The timestamp of when the row was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: The timestamp of when the row was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: us3cup
+      author: nvoxland
+      comment: A Table has one copy row in each workspace
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_table_copy
+            constraintName: idx_unique_workspace_table_copy
+            columnNames: workspace_id, table_id
+
+  - changeSet:
+      id: ny7rds
+      author: nvoxland
+      comment: Delete a workspace's table copy rows with the workspace
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_table_copy
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_workspace_table_copy_workspace_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: kcykuw
+      author: nvoxland
+      comment: Delete a Table's copy rows with the Table
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_table_copy
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_workspace_table_copy_table_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: akdoun
+      author: nvoxland
+      comment: Index workspace_table_copy.table_id, for the deletes of a Table
+      changes:
+        - createIndex:
+            tableName: workspace_table_copy
+            indexName: idx_workspace_table_copy_table_id
+            columns:
+              - column:
+                  name: table_id
+
+  - changeSet:
+      id: sfxxgu
+      author: nvoxland
+      comment: Add workspace_field_copy, a Field that every workspace shares as a workspace's copy of its Table has it
+      changes:
+        - createTable:
+            tableName: workspace_field_copy
+            remarks: A Field that every workspace shares as a workspace's copy of its Table has it
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Unique ID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: The workspace that holds the copy
+                  constraints:
+                    nullable: false
+              - column:
+                  name: field_id
+                  type: int
+                  remarks: The shared Field, which is inactive when only copies have the column
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  remarks: Whether the copy has the column
+                  constraints:
+                    nullable: false
+              - column:
+                  name: base_type
+                  type: varchar(255)
+                  remarks: The base type of the column in the copy
+              - column:
+                  name: effective_type
+                  type: varchar(255)
+                  remarks: The effective type of the column in the copy
+              - column:
+                  name: database_type
+                  type: ${text.type}
+                  remarks: The database type of the column in the copy
+              - column:
+                  name: database_position
+                  type: int
+                  remarks: The position of the column in the copy
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: The timestamp of when the row was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: The timestamp of when the row was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: nbtmqc
+      author: nvoxland
+      comment: A Field has one copy row in each workspace
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_field_copy
+            constraintName: idx_unique_workspace_field_copy
+            columnNames: workspace_id, field_id
+
+  - changeSet:
+      id: b2v9td
+      author: nvoxland
+      comment: Delete a workspace's field copy rows with the workspace
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_field_copy
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_workspace_field_copy_workspace_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: kdrrqm
+      author: nvoxland
+      comment: Delete a Field's copy rows with the Field
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_field_copy
+            baseColumnNames: field_id
+            referencedTableName: metabase_field
+            referencedColumnNames: id
+            constraintName: fk_workspace_field_copy_field_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: nkybxe
+      author: nvoxland
+      comment: Index workspace_field_copy.field_id, for the deletes of a Field
+      changes:
+        - createIndex:
+            tableName: workspace_field_copy
+            indexName: idx_workspace_field_copy_field_id
+            columns:
+              - column:
+                  name: field_id
+
+  - changeSet:
+      id: 1st6ml
+      author: nvoxland
+      comment: Add metabase_table.workspace_id, the workspace that owns a Table that only it has, or null for a shared one
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: The workspace that owns this Table, which only it has, or null for a shared one
+
+  - changeSet:
+      id: lkp4rq
+      author: nvoxland
+      comment: Add metabase_field.workspace_id, the workspace that owns a Field that only it has, or null for a shared one
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: The workspace that owns this Field, which only it has, or null for a shared one
+
+  - changeSet:
+      id: 2fe5vs
+      author: nvoxland
+      comment: Index metabase_table.workspace_id, for the deletes of a workspace
+      changes:
+        - createIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+
+  - changeSet:
+      id: s00uoq
+      author: nvoxland
+      comment: Index metabase_field.workspace_id, for the deletes of a workspace
+      changes:
+        - createIndex:
+            tableName: metabase_field
+            indexName: idx_metabase_field_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+
+  - changeSet:
+      id: i40dw6
+      author: nvoxland
+      comment: Delete the Tables a workspace owns with the workspace
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_metabase_table_workspace_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: ukx1g9
+      author: nvoxland
+      comment: Delete the Fields a workspace owns with the workspace
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_field
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_metabase_field_workspace_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: q1nx3v
+      author: nvoxland
+      comment: Add metabase_workspace_id(), the workspace the metabase.workspace_id setting of a connection names, 0 for none, or null for every workspace when it is unset or empty
+      dbms: postgresql
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE FUNCTION metabase_workspace_id() RETURNS INTEGER LANGUAGE sql STABLE AS
+                $$ SELECT NULLIF(current_setting('metabase.workspace_id', true), '')::INTEGER $$;
+      rollback:
+        - sql:
+            sql: DROP FUNCTION metabase_workspace_id();
+
+  - changeSet:
+      id: oa0r9l
+      author: nvoxland
+      comment: Put a new Table or Field in the workspace of the connection that inserts it
+      dbms: postgresql
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE metabase_table ALTER COLUMN workspace_id SET DEFAULT NULLIF(metabase_workspace_id(), 0);
+              ALTER TABLE metabase_field ALTER COLUMN workspace_id SET DEFAULT NULLIF(metabase_workspace_id(), 0);
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE metabase_table ALTER COLUMN workspace_id DROP DEFAULT;
+              ALTER TABLE metabase_field ALTER COLUMN workspace_id DROP DEFAULT;
+
+  - changeSet:
+      id: 8qs2a2
+      author: nvoxland
+      comment: Make the unique keys of Tables and Fields unique in each workspace, with the shared rows as workspace 0
+      dbms: postgresql
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE metabase_table DROP CONSTRAINT idx_uniq_table_db_id_schema_name;
+              CREATE UNIQUE INDEX idx_uniq_table_db_id_schema_name ON metabase_table (db_id, schema, name, (COALESCE(workspace_id, 0)));
+              DROP INDEX idx_uniq_table_db_id_schema_name_2col;
+              CREATE UNIQUE INDEX idx_uniq_table_db_id_schema_name_2col ON metabase_table (db_id, name, (COALESCE(workspace_id, 0))) WHERE schema IS NULL;
+              ALTER TABLE metabase_table DROP CONSTRAINT idx_unique_table;
+              CREATE UNIQUE INDEX idx_unique_table ON metabase_table (db_id, name, unique_table_helper, (COALESCE(workspace_id, 0)));
+              ALTER TABLE metabase_field DROP CONSTRAINT idx_unique_field;
+              CREATE UNIQUE INDEX idx_unique_field ON metabase_field (name, table_id, unique_field_helper, (COALESCE(workspace_id, 0)));
+      rollback:
+        # The old keys allow one row for each key in all: keep the shared rows.
+        - sql:
+            sql: |
+              DELETE FROM metabase_field WHERE workspace_id IS NOT NULL;
+              DELETE FROM metabase_table WHERE workspace_id IS NOT NULL;
+              DROP INDEX idx_unique_field;
+              ALTER TABLE metabase_field ADD CONSTRAINT idx_unique_field UNIQUE (name, table_id, unique_field_helper);
+              DROP INDEX idx_unique_table;
+              ALTER TABLE metabase_table ADD CONSTRAINT idx_unique_table UNIQUE (db_id, name, unique_table_helper);
+              DROP INDEX idx_uniq_table_db_id_schema_name_2col;
+              CREATE UNIQUE INDEX idx_uniq_table_db_id_schema_name_2col ON metabase_table (db_id, name) WHERE schema IS NULL;
+              DROP INDEX idx_uniq_table_db_id_schema_name;
+              ALTER TABLE metabase_table ADD CONSTRAINT idx_uniq_table_db_id_schema_name UNIQUE (db_id, schema, name);
+
+  - changeSet:
+      id: 4h9x6r
+      author: nvoxland
+      comment: Show a connection the shared Tables and Fields that its workspace does not hide, and those its workspace owns, or every row when its metabase.workspace_id setting is unset or empty. Row-level security stays off until the request-workspaces-enabled setting turns it on.
+      dbms: postgresql
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE POLICY workspace ON metabase_table USING (
+                (SELECT metabase_workspace_id()) IS NULL
+                OR (workspace_id IS NULL
+                    AND ((SELECT metabase_workspace_id()) = 0
+                         OR NOT EXISTS (SELECT 1 FROM workspace_table_copy c
+                                        WHERE c.table_id = metabase_table.id
+                                          AND c.workspace_id = (SELECT metabase_workspace_id())
+                                          AND NOT c.active)))
+                OR workspace_id = (SELECT metabase_workspace_id()));
+              CREATE POLICY workspace ON metabase_field USING (
+                (SELECT metabase_workspace_id()) IS NULL
+                OR (workspace_id IS NULL
+                    AND ((SELECT metabase_workspace_id()) = 0
+                         OR NOT EXISTS (SELECT 1 FROM workspace_field_copy c
+                                        WHERE c.field_id = metabase_field.id
+                                          AND c.workspace_id = (SELECT metabase_workspace_id())
+                                          AND NOT c.active)))
+                OR workspace_id = (SELECT metabase_workspace_id()));
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE metabase_table NO FORCE ROW LEVEL SECURITY;
+              ALTER TABLE metabase_table DISABLE ROW LEVEL SECURITY;
+              ALTER TABLE metabase_field NO FORCE ROW LEVEL SECURITY;
+              ALTER TABLE metabase_field DISABLE ROW LEVEL SECURITY;
+              DROP POLICY workspace ON metabase_table;
+              DROP POLICY workspace ON metabase_field;

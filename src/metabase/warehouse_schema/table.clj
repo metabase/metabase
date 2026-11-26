@@ -8,6 +8,7 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.core :as warehouses]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -75,6 +76,11 @@
     (into #{} (map :id) (filter-tables-by-data-model-perms tables))
     #{}))
 
+(defn- hydrate-query-metadata-fields
+  "`fields` hydrated as query metadata hydrates the `:fields` of a Table."
+  [fields]
+  (t2/hydrate fields [:target :has_field_values] :has_field_values :dimensions :name_field))
+
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
@@ -91,6 +97,7 @@
     (-> table
         (update :collection nil-if-unreadable)
         (#(apply t2/hydrate % hydration-keys))
+        (#(first (workspaces/apply-copy-metadata [%] hydrate-query-metadata-fields)))
         (m/dissoc-in [:db :details])
         format-fields-for-response
         present-table
@@ -113,7 +120,8 @@
      (let [tables (t2/hydrate (warehouse-schema.db/tables ids) :can_read)
            tables (filter can-access-table-for-query-metadata? tables)
            sensitive-table-ids (sensitive-fields-table-ids include-sensitive-fields? tables)
-           tables (t2/hydrate tables [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :measures :metrics)]
+           tables (-> (t2/hydrate tables [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :measures :metrics)
+                      (workspaces/apply-copy-metadata hydrate-query-metadata-fields))]
        (for [table tables
              :let [excluded-visibility-types (cond-> #{}
                                                (not include-hidden-fields?)

@@ -193,10 +193,9 @@
               ;; (e.g. BQ dataset deleted, SA delete throws) still leaves app-DB
               ;; in a "workspace no longer routes queries" state. Without this,
               ;; future queries against canonical tables would rewrite to an iso
-              ;; namespace that no longer exists and 500 in the QP. The unique
-              ;; constraint on `(database_id, from_*)` prevents two workspaces on
-              ;; the same DB from remapping the same canonical table, so scoping
-              ;; by iso namespace alone is correct.
+              ;; namespace that no longer exists and 500 in the QP. Each workspace
+              ;; has iso namespaces of its own, so scoping by iso namespace alone
+              ;; is correct.
               ;;
               ;; Rebind `*current-connectable*` to nil so the DELETE runs on a
               ;; fresh autocommit connection outside the workspace-database lock's
@@ -205,7 +204,9 @@
               (binding [t2.connection/*current-connectable* nil]
                 (ws.remapping-cleanup/clear-mappings-for-iso! db
                                                               (:database_id wsd)
-                                                              (:output_namespace wsd)))))
+                                                              (:output_namespace wsd))
+                ;; The copies were in the iso namespace too.
+                (ws.db/delete-copies-of-database! (:workspace_id wsd) (:database_id wsd)))))
           (workspace-database/update-workspace-database! workspace-database-id
                                                          {:output_namespace ""
                                                           :database_details {}
@@ -319,7 +320,8 @@
               ;; QP. Fresh autocommit connection to survive any surrounding tx rollback
               ;; (mirrors `deprovision-workspace-database!`).
               (binding [t2.connection/*current-connectable* nil]
-                (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema))))
+                (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema)
+                (ws.db/delete-copies-of-database! (:workspace_id wsd) (:database_id wsd)))))
           (workspace-database/delete-workspace-database! (:id wsd))
           nil)))))
 

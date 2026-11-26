@@ -1,0 +1,39 @@
+## A remote sync worktree can name the workspace its requests work in: a workspace is the workspace of at most one
+## worktree, and deleting it leaves the worktree with none.
+
+databaseChangeLog:
+  - changeSet:
+      id: oajnng
+      author: nvoxland
+      comment: Add remote_sync_worktree.workspace_id, the workspace the requests of the worktree work in, or null for none
+      changes:
+        - addColumn:
+            tableName: remote_sync_worktree
+            columns:
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: The workspace the requests of the worktree work in, or null for none
+
+  - changeSet:
+      id: egmu35
+      author: nvoxland
+      comment: A workspace is the workspace of at most one worktree
+      changes:
+        - addUniqueConstraint:
+            tableName: remote_sync_worktree
+            columnNames: workspace_id
+            constraintName: idx_unique_remote_sync_worktree_workspace_id
+
+  - changeSet:
+      id: c6o5cx
+      author: nvoxland
+      comment: Keep a worktree, with no workspace, when its workspace is deleted
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: remote_sync_worktree
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_remote_sync_worktree_workspace_id
+            onDelete: SET NULL

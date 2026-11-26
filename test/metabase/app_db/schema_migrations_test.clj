@@ -5562,6 +5562,155 @@
             (is (= [true false false]
                    (mapv #(t2/select-one-fn :archived_directly table :id %) ids)))))))))
 
+(deftest request-workspaces-test
+  (impl/test-migrations ["pb1zul"] [migrate!]
+    (let [db-id     (t2/insert-returning-pk! :metabase_database {:name "db" :engine "postgres" :details "{}"
+                                                                 :created_at :%now :updated_at :%now})
+          remapping (fn [workspace-id to-table]
+                      (cond-> {:database_id db-id
+                               :from_db "" :from_schema "public" :from_table_name "orders"
+                               :to_db "" :to_schema (str "mb__isolation_" workspace-id) :to_table_name to-table}
+                        workspace-id (assoc :workspace_id workspace-id)))
+          boundary  (with-open [conn (.getConnection (mdb/data-source))]
+                      (liquibase/with-liquibase [liquibase conn]
+                        (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))]
+      (t2/insert! :table_remapping (remapping nil "public__orders"))
+      (migrate!)
+      (testing "an existing remapping is the instance's own"
+        (is (= [0] (t2/select-fn-vec :workspace_id :table_remapping))))
+      (testing "each workspace can remap a source table once"
+        (t2/insert! :table_remapping (remapping 1 "public__orders"))
+        (t2/insert! :table_remapping (remapping 2 "public__orders"))
+        (is (thrown? Exception (t2/insert! :table_remapping (remapping 1 "public__orders_2"))))
+        (is (thrown? Exception (t2/insert! :table_remapping (assoc (remapping 0 "public__orders_2")
+                                                                   :to_schema "other")))))
+      (let [ws-id      (t2/insert-returning-pk! :workspace {:name "ws" :created_at :%now :updated_at :%now})
+            table-id   (t2/insert-returning-pk! :metabase_table {:db_id db-id :name "orders" :active false
+                                                                 :created_at :%now :updated_at :%now})
+            field-id   (fn [field-name]
+                         (t2/insert-returning-pk! :metabase_field {:table_id table-id :name field-name
+                                                                   :base_type "type/Integer" :database_type "integer"
+                                                                   :active false :created_at :%now :updated_at :%now}))
+            id-1       (field-id "id")
+            id-2       (field-id "total")
+            field-copy (fn [field-id] {:workspace_id ws-id :field_id field-id :active true :base_type "type/Text"})]
+        (testing "a workspace has one copy row of a Table and of a Field"
+          (t2/insert! :workspace_table_copy {:workspace_id ws-id :table_id table-id :active true})
+          (t2/insert! :workspace_field_copy [(field-copy id-1) (field-copy id-2)])
+          (is (thrown? Exception (t2/insert! :workspace_table_copy {:workspace_id ws-id :table_id table-id :active true})))
+          (is (thrown? Exception (t2/insert! :workspace_field_copy (field-copy id-1)))))
+        (testing "a Field's copy rows are deleted with it"
+          (t2/delete! :metabase_field :id id-2)
+          (is (= [id-1] (t2/select-fn-vec :field_id :workspace_field_copy))))
+        (testing "a workspace's copy rows are deleted with it"
+          (t2/delete! :workspace :id ws-id)
+          (is (not (t2/exists? :workspace_table_copy)))
+          (is (not (t2/exists? :workspace_field_copy)))))
+      (with-open [conn (.getConnection (mdb/data-source))]
+        (liquibase/with-liquibase [liquibase conn]
+          (rollback/rollback-to-deployment! conn liquibase boundary)))
+      (testing "rollback keeps only the instance's own remappings, and drops the column"
+        (is (= [{:to_schema "mb__isolation_"}] (t2/select [:table_remapping :to_schema])))
+        (is (not (contains? (t2/select-one :table_remapping) :workspace_id))))
+      (testing "rollback drops the copy tables"
+        (is (thrown? Exception (t2/select :workspace_table_copy)))
+        (is (thrown? Exception (t2/select :workspace_field_copy))))
+      (testing "rollback restores the unique key of a source table"
+        (is (thrown? Exception (t2/insert! :table_remapping (assoc (remapping nil "public__orders_2")
+                                                                   :to_schema "other"))))))))
+
+(deftest request-workspace-owned-tables-and-fields-test
+  (impl/test-migrations ["1st6ml"] [migrate!]
+    (let [db-id    (t2/insert-returning-pk! :metabase_database {:name "db" :engine "postgres" :details "{}"
+                                                                :created_at :%now :updated_at :%now})
+          ws-id    (t2/insert-returning-pk! :workspace {:name "ws" :created_at :%now :updated_at :%now})
+          table    (fn [m] (merge {:db_id db-id :schema "public" :name "orders" :active true
+                                   :created_at :%now :updated_at :%now} m))
+          field    (fn [table-id m] (merge {:table_id table-id :name "total" :base_type "type/Integer"
+                                            :database_type "integer" :active true
+                                            :created_at :%now :updated_at :%now} m))
+          shared   (t2/insert-returning-pk! :metabase_table (table {}))
+          boundary (with-open [conn (.getConnection (mdb/data-source))]
+                     (liquibase/with-liquibase [liquibase conn]
+                       (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))]
+      (t2/insert! :metabase_field (field shared {}))
+      (migrate!)
+      (testing "existing Tables and Fields are shared"
+        (is (= [nil] (t2/select-fn-vec :workspace_id :metabase_table)))
+        (is (= [nil] (t2/select-fn-vec :workspace_id :metabase_field))))
+      (when (= :postgres (mdb/db-type))
+        (testing "a Table or Field a connection inserts is in the connection's workspace"
+          (with-open [conn (.getConnection (mdb/data-source))]
+            (jdbc/execute! {:connection conn} [(format "SET metabase.workspace_id = '%d'" ws-id)])
+            (jdbc/execute! {:connection conn}
+                           ["INSERT INTO metabase_table (db_id, schema, name, active, created_at, updated_at)
+                             VALUES (?, 'public', 'only_ws', true, now(), now())" db-id])
+            (jdbc/execute! {:connection conn} ["SET metabase.workspace_id = '0'"])
+            (jdbc/execute! {:connection conn}
+                           ["INSERT INTO metabase_table (db_id, schema, name, active, created_at, updated_at)
+                             VALUES (?, 'public', 'shared_2', true, now(), now())" db-id]))
+          (is (= ws-id (t2/select-one-fn :workspace_id :metabase_table :name "only_ws")))
+          (is (nil? (t2/select-one-fn :workspace_id :metabase_table :name "shared_2"))))
+        (testing "a workspace can own a Table or Field with the key of a shared one"
+          (let [owned (t2/insert-returning-pk! :metabase_table (table {:workspace_id ws-id}))]
+            (t2/insert! :metabase_field (field shared {:workspace_id ws-id}))
+            (t2/insert! :metabase_field (field owned {:workspace_id ws-id}))
+            (is (thrown? Exception (t2/insert! :metabase_table (table {}))))
+            (is (thrown? Exception (t2/insert! :metabase_table (table {:workspace_id ws-id}))))
+            (is (thrown? Exception (t2/insert! :metabase_field (field shared {}))))
+            (is (thrown? Exception (t2/insert! :metabase_field (field shared {:workspace_id ws-id}))))))
+        (testing "the policies are in place, and row-level security is off"
+          (is (= #{"metabase_table" "metabase_field"}
+                 (set (map :t (t2/query {:select [[[:cast [:cast :polrelid :regclass] :text] :t]]
+                                         :from   [:pg_policy]
+                                         :where  [:= :polname "workspace"]})))))
+          (is (= [false false]
+                 (map :relrowsecurity (t2/query {:select [:relrowsecurity]
+                                                 :from   [:pg_class]
+                                                 :where  [:in :relname ["metabase_table" "metabase_field"]]}))))))
+      (testing "a workspace's Tables and Fields are deleted with it"
+        (t2/insert! :metabase_table (table {:name "owned_2" :workspace_id ws-id}))
+        (t2/delete! :workspace :id ws-id)
+        (is (= [nil] (distinct (t2/select-fn-vec :workspace_id :metabase_table))))
+        (is (= [nil] (distinct (t2/select-fn-vec :workspace_id :metabase_field)))))
+      (with-open [conn (.getConnection (mdb/data-source))]
+        (liquibase/with-liquibase [liquibase conn]
+          (rollback/rollback-to-deployment! conn liquibase boundary)))
+      (testing "rollback drops the columns"
+        (is (not (contains? (t2/select-one :metabase_table) :workspace_id)))
+        (is (not (contains? (t2/select-one :metabase_field) :workspace_id))))
+      (when (= :postgres (mdb/db-type))
+        (testing "rollback restores the unique keys and drops the policies"
+          (is (thrown? Exception (t2/insert! :metabase_table (table {}))))
+          (is (thrown? Exception (t2/insert! :metabase_field (field shared {}))))
+          (is (empty? (t2/query {:select [[1 :one]] :from [:pg_policy] :where [:= :polname "workspace"]}))))))))
+
+(deftest worktree-workspace-test
+  (impl/test-migrations ["oajnng" "c6o5cx"] [migrate!]
+    (let [ws-id    (fn [n] (t2/insert-returning-pk! :workspace {:name n :created_at :%now :updated_at :%now}))
+          worktree (fn [branch] (t2/insert-returning-pk! :remote_sync_worktree {:branch branch :created_at :%now
+                                                                                :updated_at :%now}))
+          wt-1     (worktree "wt-1")
+          wt-2     (worktree "wt-2")
+          boundary (with-open [conn (.getConnection (mdb/data-source))]
+                     (liquibase/with-liquibase [liquibase conn]
+                       (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))]
+      (migrate!)
+      (testing "an existing worktree works in no workspace"
+        (is (nil? (t2/select-one-fn :workspace_id :remote_sync_worktree :id wt-1))))
+      (let [ws-a (ws-id "a")]
+        (testing "a workspace is the workspace of at most one worktree"
+          (t2/update! :remote_sync_worktree :id wt-1 {:workspace_id ws-a})
+          (is (thrown? Exception (t2/update! :remote_sync_worktree :id wt-2 {:workspace_id ws-a}))))
+        (testing "deleting the workspace leaves the worktree, with no workspace"
+          (t2/delete! :workspace :id ws-a)
+          (is (= [nil] (t2/select-fn-vec :workspace_id :remote_sync_worktree :id wt-1)))))
+      (with-open [conn (.getConnection (mdb/data-source))]
+        (liquibase/with-liquibase [liquibase conn]
+          (rollback/rollback-to-deployment! conn liquibase boundary)))
+      (testing "rollback drops the column"
+        (is (not (contains? (t2/select-one :remote_sync_worktree :id wt-1) :workspace_id)))))))
+
 (deftest drop-table-transform-id-test
   (impl/test-migrations ["nqeyec" "p7c3vn"] [migrate!]
     (let [user-id    (t2/insert-returning-pk! :core_user {:first_name  "Test"

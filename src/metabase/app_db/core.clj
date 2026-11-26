@@ -23,6 +23,7 @@
    [metabase.app-db.query-cancelation]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
+   [metabase.app-db.workspace :as mdb.workspace]
    [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.global-system.mutable-component :as mc]
@@ -115,7 +116,11 @@
  [metabase.app-db.query-cancelation
   query-canceled-exception?]
  [liquibase
-  changelog-by-id])
+  changelog-by-id]
+ [mdb.workspace
+  do-with-workspace-id
+  with-workspace-id
+  workspace-id])
 
 ;; TODO -- consider whether we can just do this automatically when `getConnection` is called on
 ;; the application DB (or its data source)
@@ -219,3 +224,13 @@
               (config/config-bool :mb-enable-test-endpoints)))
   (mc/swap! (mdb.connection/application-db-handle)
             assoc :id (swap! mdb.connection/application-db-counter inc)))
+
+(defn owner-workspace-id
+  "The id of the workspace that owns the row with `id` of the app DB table `table` (`:metabase_table` or
+  `:metabase_field`), or nil for a row every workspace shares. The owner is not a key of a selected Table or Field, so
+  that no API response or export has it. Reads across every workspace, so a thread in another workspace, or in none,
+  gets it too. Nil, with no query, in a process where no thread ever worked in a workspace: such a process holds no
+  row that a workspace owns."
+  [table id]
+  (when (and id (mdb.workspace/ever-in-a-workspace?))
+    (mdb.workspace/do-with-workspace-id :all #(mdb.db/row-workspace-id table id))))

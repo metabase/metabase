@@ -2,7 +2,8 @@
   "The OSS namespace for database routing."
   (:require
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]))
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
+   [metabase.workspaces.core :as workspaces]))
 
 (defenterprise-schema routed-database :- [:maybe ::lib.schema.metadata/database]
   "The Lib metadata of the destination Database that the current user's connections to the Lib metadata `database` go
@@ -18,11 +19,18 @@
   [thunk]
   (thunk))
 
+(defn do-as-shared-work
+  "Impl for [[with-anonymous-router-access]]."
+  [thunk]
+  (workspaces/without-workspace
+   (do-with-anonymous-router-access thunk)))
+
 (defmacro with-anonymous-router-access
   "Runs body with no current user, so that work whose results every user shares, such as sync or a guest embed, always
-  hits the router database."
+  hits the router database. For the same reason, it runs in no workspace of a worktree
+  ([[workspaces/without-workspace]]): it reads each Database as the Database itself, with its own login."
   [& body]
-  `(do-with-anonymous-router-access (fn [] ~@body)))
+  `(do-as-shared-work (fn [] ~@body)))
 
 (defenterprise do-with-database-routing-off-if-granted
   "OSS version, does nothing"

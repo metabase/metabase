@@ -20,6 +20,12 @@
      Workspace-aware code (transform target rewriting, table-remapping QP middleware)
      reads them via [[workspace-mode?]] / [[db-workspace-namespace]].
 
+   - **Request-side state.** On an instance that manages workspaces, a remote sync
+     worktree can name one of them, and each request in that worktree
+     ([[metabase.server.middleware.worktree]]) then works in that workspace ([[current-workspace]] with `:mode :bound`): each
+     provisioned database connects with the workspace's login and writes to its output
+     namespace, and the workspace has table remappings and copy metadata of its own.
+
    Per-database lifecycle for the manager-side rows. A create inserts every row
    `provisioning`. Each status, what it means, and what leaves it:
 
@@ -65,12 +71,15 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase-enterprise.workspaces.copy :as ws.copy]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
+   [metabase-enterprise.workspaces.request-workspace :as ws.request-workspace]
    [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase.app-db.core :as app-db]
    [metabase.app-db.sql-errors :as sql-errors]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -84,6 +93,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.models.database :as database]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -218,8 +228,9 @@
         (let [changed (filterv #(not= (get schemas (:id %)) (database-workspace-schema %)) databases)]
           (database/update-databases! (mapv #(workspace-schema-row % (get schemas (:id %))) changed) {:databases changed})
           ;; Rows pointing at the old schema would keep redirecting reads there.
+          ;; Only the instance's own rows: the workspaces of worktrees remap into schemas of their own.
           (when (seq changed)
-            (table-remapping/delete-table-remappings-of-databases! (mapv :id changed))))
+            (table-remapping/delete-table-remappings-of-databases! (mapv :id changed) nil)))
         (ws.settings/workspaces-enabled! true)))
     (catch Throwable e
       ;; The setter puts the flag in this process's settings cache before the commit, and a rollback does not
@@ -229,10 +240,11 @@
   nil)
 
 (defn delete-stale-table-remappings!
-  "Delete, in one statement, the remap rows of each Database of `changes`, `{:previous-object :object}` maps of its
-  row before and after a write, whose `database-workspace-schema` the write changed from one it had. Those rows point
-  at the old schema and would keep redirecting reads there. A database that had no schema has no rows of its own, and
-  keeps the ones an upgrade carried over."
+  "Delete, in one statement, the instance's own remap rows of each Database of `changes`, `{:previous-object :object}`
+  maps of its row before and after a write, whose `database-workspace-schema` the write changed from one it had. Those
+  rows point at the old schema and would keep redirecting reads there. A database that had no schema has no rows of
+  its own, and keeps the ones an upgrade carried over. The rows of the workspaces of worktrees stay: they point
+  at schemas of their own."
   [changes]
   (when-let [database-ids (not-empty (into []
                                            (comp (filter (fn [{:keys [previous-object object]}]
@@ -241,19 +253,18 @@
                                                                       (database-workspace-schema object)))))
                                                  (map (comp :id :object)))
                                            changes))]
-    (table-remapping/delete-table-remappings-of-databases! database-ids))
+    (table-remapping/delete-table-remappings-of-databases! database-ids nil))
   nil)
 
 (defn clear-instance-workspace!
-  "Turn `workspaces-enabled` off and delete every `:model/TableRemapping` row.
-   Leaves each database's `database-workspace-schema` in place; it has no effect
-   while the instance is not a workspace. Throws a 400 when `MB_WORKSPACES_ENABLED=true`,
-   since that value wins over the stored one."
+  "Turn `workspaces-enabled` off and delete the instance's own `:model/TableRemapping` rows. The rows of the workspaces
+   of worktrees stay. Leaves each database's `database-workspace-schema` in place; it has no effect while the instance
+   is not a workspace. Throws a 400 when `MB_WORKSPACES_ENABLED=true`, since that value wins over the stored one."
   []
   (ws.settings/workspaces-enabled! false)
   ;; The setting's setter deletes the remap rows only when the value changes. Delete
   ;; them here too, so that rows left while the setting was already off also go.
-  (table-remapping/delete-all-table-remappings!)
+  (table-remapping/delete-instance-table-remappings!)
   nil)
 
 (defn translate-instance-workspace-setting!
@@ -284,18 +295,142 @@
       (ws.settings/instance-workspace! nil)))
   nil)
 
+(defn current-workspace
+  "The workspace the current thread works in, or nil:
+
+   - `{:mode :sidecar}` while the `workspaces-enabled` setting makes this whole instance a workspace. Each Database
+     then names its output schema in its `database-workspace-schema` setting, and connects with its own details.
+   - The workspace of the current request's worktree ([[workspaces/current-workspace-id]]), as
+     [[ws.request-workspace/request-workspace]] gives it, with `:mode :bound`.
+
+   The two do not meet: an instance with workspaces of its own can't turn `workspaces-enabled` on, and a request on a
+   sidecar can't work in the workspace of a worktree ([[request-workspace-problem]]). [[workspace-mode?]],
+   [[db-workspace-namespace]] and [[workspace-connection-details]] read this.
+
+   Throws when the thread works in a workspace that does not exist, for example one deleted while a transform of it
+   runs: the thread must not go on as if it named none, with the Databases' own logins and production targets."
+  []
+  (cond
+    (ws.settings/workspaces-enabled)
+    {:mode :sidecar}
+
+    (workspaces/current-workspace-id)
+    (let [workspace-id (workspaces/current-workspace-id)]
+      (or (ws.request-workspace/request-workspace workspace-id)
+          (throw (ex-info (tru "There is no workspace {0}." (str workspace-id))
+                          {:status-code 400 :workspace-id workspace-id}))))))
+
+(defn- bound-database
+  "The entry of the Database with `database-id` in the workspace `workspace` that the request names
+  ([[ws.request-workspace/request-workspace]]), or nil when it is not one of the workspace's Databases. Throws when it
+  is one that is not provisioned: its output schema and login may not exist, and the Database's own must not be used."
+  [{:keys [workspace-id databases unprovisioned-database-ids]} database-id]
+  (when (contains? unprovisioned-database-ids database-id)
+    (throw (ex-info (tru "Database {0} of workspace {1} is not provisioned." (str database-id) (str workspace-id))
+                    {:status-code 400 :database-id database-id :workspace-id workspace-id})))
+  (get databases database-id))
+
+(defn- workspace-problem
+  "Why a request can't work in the workspace with `workspace-id` because of the workspace, or nil."
+  [workspace-id]
+  (let [{:keys [databases unprovisioned-database-ids] :as workspace} (ws.request-workspace/request-workspace workspace-id)]
+    (cond
+      (nil? workspace)
+      (tru "There is no workspace {0}." (str workspace-id))
+
+      (and (empty? databases) (empty? unprovisioned-database-ids))
+      (tru "Workspace {0} has no databases." (str workspace-id))
+
+      (seq unprovisioned-database-ids)
+      (tru "Workspace {0} has databases that are not provisioned." (str workspace-id))
+
+      :else
+      (some :problem (vals databases)))))
+
+(defn- row-security-problem
+  "Why the app DB can't keep the Tables and Fields of workspaces apart, or nil when it can: a request in a workspace
+  must not see another's, and one in none must see only the shared ones."
+  []
+  (cond
+    (not (ws.settings/request-workspaces-enabled))
+    (tru "A worktree can''t work in a workspace until the request-workspaces-enabled setting is on.")
+
+    (not= :postgres (app-db/db-type))
+    (tru "A worktree can work in a workspace only on a PostgreSQL application database.")
+
+    (ws.db/row-security-bypassed?)
+    (tru "A worktree can work in a workspace only with an application database user that row-level security applies to, not a superuser or a user with BYPASSRLS.")
+
+    (not (ws.db/row-security-forced?))
+    (tru "A worktree can''t work in a workspace: row-level security is off on metabase_table or metabase_field. Turn the request-workspaces-enabled setting off and on again.")))
+
+(defenterprise request-workspace-problem
+  "EE impl: why a request can't work in the workspace with `workspace-id`, or nil when it can. It can when the app DB
+   keeps the rows of workspaces apart ([[row-security-problem]]), every database of the workspace is provisioned, and
+   the workspace's login is the only login of each ([[metabase-enterprise.workspaces.login/login-problem]])."
+  :feature :workspaces
+  [workspace-id]
+  (if (ws.settings/workspaces-enabled)
+    (tru "This instance is a workspace, so a worktree can''t work in another one.")
+    (or (workspace-problem workspace-id)
+        (row-security-problem))))
+
 (defenterprise workspace-mode?
-  "EE impl: true iff this instance is a workspace (the `workspaces-enabled` setting
-   is on). Single source of truth for gating features that conflict with workspace
-   remapping (DB routing, impersonation, writeback, CSV upload, model persistence).
-   Use [[db-workspace-namespace]] when you need per-database scoping.
+  "EE impl: true iff the current thread works in a workspace ([[current-workspace]]): this whole instance is one, or
+   the current request works in the workspace of its worktree. Single source of truth for gating features that conflict
+   with workspace remapping (DB routing, impersonation, writeback, CSV upload, model persistence). Use
+   [[db-workspace-namespace]] when you need per-database scoping.
 
    Deliberately ungated on premium features: a workspace instance may boot from
    `config.yml` or env vars *before* its token is installed; if it is a workspace,
    we refuse incompatible features regardless of token state."
   :feature :none
   []
-  (ws.settings/workspaces-enabled))
+  (some? (current-workspace)))
+
+(defenterprise workspace-bound?
+  "EE impl: true when the current request works in a workspace that it names, rather than in the instance's own.
+   Ungated like [[workspace-mode?]]."
+  :feature :none
+  []
+  (= :bound (:mode (current-workspace))))
+
+(defenterprise sync-copy-of-table!
+  "EE impl: in the workspace of the request's worktree, record how the copy of the shared `table` differs from the
+   shared metadata ([[ws.copy/record-copy!]]) and return true. Return false for a Table the workspace owns, which the
+   standard sync fills in the workspace, and outside a workspace. Ungated like [[workspace-mode?]]."
+  :feature :none
+  [database table]
+  (if-let [workspace-id (when (and (workspace-bound?) (nil? (workspaces/owner-workspace-id :metabase_table table)))
+                          (workspaces/current-workspace-id))]
+    (do (ws.copy/record-copy! workspace-id database table)
+        true)
+    false))
+
+(defenterprise apply-copy-metadata
+  "EE impl: in the workspace of the request's worktree, `tables` with the workspace's copy rows over them
+   ([[ws.copy/apply-to-tables]]); elsewhere `tables`. Ungated like [[workspace-mode?]]."
+  :feature :none
+  [tables hydrate-fields]
+  (if-let [workspace-id (when (workspace-bound?) (workspaces/current-workspace-id))]
+    (ws.copy/apply-to-tables workspace-id tables hydrate-fields)
+    tables))
+
+(defenterprise workspace-connection-details
+  "EE impl: the connection details the current workspace uses for the Database with `database-id`, over that
+   Database's own details, or nil. A sidecar's Databases already hold its workspace's login, so they get nil. In the
+   workspace of a request's worktree, each of the workspace's provisioned Databases gets the workspace's login. Throws
+   when that login would not be the only one ([[metabase-enterprise.workspaces.login/login-problem]]): the connection
+   would log in as the parent. Ungated like [[workspace-mode?]]."
+  :feature :none
+  [database-id]
+  (when-let [{:keys [mode] :as workspace} (current-workspace)]
+    (case mode
+      :sidecar nil
+      :bound   (when-let [{:keys [details problem]} (bound-database workspace database-id)]
+                 (when problem
+                   (throw (ex-info problem {:status-code 400 :database-id database-id})))
+                 details))))
 
 (defenterprise workspace-database-exists?
   "EE impl: whether any WorkspaceDatabase row references the Database with `database-id`.
@@ -307,19 +442,25 @@
 
 (defn db-workspace-namespace
   "Return the workspace output namespace map `{:db ?, :schema ?}` for `db-id`, or
-   `nil` when this instance is not a workspace or the database has no
-   `database-workspace-schema`. Either key may be absent depending on the driver's
+   `nil` when the current thread works in no workspace ([[current-workspace]]), or the database has no
+   `database-workspace-schema`, or is not a database of the workspace of the request's worktree. Throws for a database
+   of that workspace that is not provisioned. Either key may be absent depending on the driver's
    `qualified-name-components`."
   [db-id]
-  (when (ws.settings/workspaces-enabled)
-    (when-let [database (ws.db/database db-id)]
-      (some->> (database-workspace-schema database)
-               (expand-output-namespace database)))))
+  (when-let [{:keys [mode] :as workspace} (current-workspace)]
+    (case mode
+      :sidecar (when-let [database (ws.db/database db-id)]
+                 (some->> (database-workspace-schema database)
+                          (expand-output-namespace database)))
+      :bound   (when-let [output-namespace (:output-namespace (bound-database workspace db-id))]
+                 (when-let [database (ws.db/database db-id)]
+                   (expand-output-namespace database output-namespace))))))
 
 (defn list-remappings
-  "Return all TableRemapping rows, ordered by id."
+  "Return the TableRemapping rows of the current workspace, ordered by id: those of the workspace of the request's
+   worktree, or else the instance's own."
   []
-  (ws.db/table-remappings))
+  (ws.db/table-remappings (workspaces/current-workspace-id)))
 
 ;;; ------------------------------------- Manager-side helpers ------------------------------------------------
 
@@ -736,5 +877,7 @@
   [id]
   (assert-workspace-exists id)
   (teardown-workspace-databases! id)
+  ;; The teardown clears the remappings into each isolation schema. Any other row of the workspace goes with it too.
+  (table-remapping/delete-workspace-table-remappings! id)
   (workspace/delete-workspace! id)
   nil)

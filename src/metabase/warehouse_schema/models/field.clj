@@ -148,7 +148,8 @@
 
 (t2/define-after-select :model/Field
   [field]
-  (dissoc field :is_defective_duplicate :unique_field_helper :worktree_id))
+  ;; the workspace that owns a Field stays in the app DB: see [[metabase.app-db.core/owner-workspace-id]]
+  (dissoc field :is_defective_duplicate :unique_field_helper :worktree_id :workspace_id))
 
 (defn- enforce-effective-type-invariant
   "GHY-3388 invariant: a Field row with no coercion_strategy must have effective_type=base_type.
@@ -827,7 +828,7 @@
            :nfc_path :database_required :json_unfolding :database_is_auto_increment :database_partitioned
            :database_is_pk :database_is_nullable :database_is_generated :database_default :data_sensitivity]
    :skip  [:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
-           :is_defective_duplicate :unique_field_helper]})
+           :is_defective_duplicate :unique_field_helper :workspace_id]})
 
 (defmethod serialization/spec :model/Field [_]
   {:schema        ::warehouse-schema.schema/external-field
@@ -839,7 +840,7 @@
                    :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type
                    :settings :visibility_type]
    :skip          [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
-                   :is_defective_duplicate :unique_field_helper]
+                   :is_defective_duplicate :unique_field_helper :workspace_id]
    :children      {:dimensions :model/Dimension}
    :transform     {:table_id           serialization/table-transform
                    :fk_target_field_id serialization/field-transform

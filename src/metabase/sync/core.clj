@@ -4,6 +4,7 @@
   (:require
    [metabase.sync.analyze]
    [metabase.sync.analyze.data-sensitivity]
+   [metabase.sync.fetch-metadata]
    [metabase.sync.field-values]
    [metabase.sync.sync]
    [metabase.sync.sync-metadata]
@@ -15,6 +16,7 @@
 (comment
   metabase.sync.analyze/keep-me
   metabase.sync.analyze.data-sensitivity/keep-me
+  metabase.sync.fetch-metadata/keep-me
   metabase.sync.field-values/keep-me
   metabase.sync.sync/keep-me
   metabase.sync.sync-metadata/keep-me
@@ -28,6 +30,9 @@
  [metabase.sync.analyze.data-sensitivity
   reset-data-sensitivity!
   scan-data-sensitivity!]
+ [metabase.sync.fetch-metadata
+  table-fields-metadata
+  table-remapper]
  [metabase.sync.field-values
   update-field-values!
   update-field-values-for-table!]

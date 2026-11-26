@@ -42,6 +42,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouses.schema :as warehouses.schema]
+   [metabase.workspaces.core :as workspaces]
    [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2])
   (:import
@@ -659,6 +660,13 @@
       (assoc target :db db :schema schema :name name)
       target)))
 
+(defn- shared-table-in-workspace?
+  "Whether `table` is a shared Table that a run in the workspace of the request's worktree wrote the workspace's copy
+  of. A run must not change such a Table; it may change a Table that the workspace owns."
+  [table]
+  (and (workspaces/workspace-bound?)
+       (nil? (workspaces/owner-workspace-id :metabase_table table))))
+
 (mu/defn- sync-table!
   ([database :- ::lib.schema.metadata/database
     target   :- ::transforms-base.schema/synced-target]
@@ -668,18 +676,25 @@
     {:keys [create?]} :- [:maybe [:map {:closed true} [:create? {:optional true} :boolean]]]]
    (let [target (canonicalize-target (:id database) target)]
      (when-let [table (or (target-table (:id database) target)
+                          ;; In the workspace of the request's worktree, a new Table is the workspace's own: the app DB
+                          ;; puts it in the workspace of the connection that inserts it.
                           (when create?
                             (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
        ;; If the table has nil schema, check if the physical table actually lives under
-       ;; the driver's default schema. If so, fix the Table record before syncing.
-       (let [table (if (nil? (:schema table))
+       ;; the driver's default schema. If so, fix the Table record before syncing. Not in a workspace that the request
+       ;; names: the Table is shared, and the copy is not the physical table.
+       (let [table (if (and (nil? (:schema table)) (not (workspaces/workspace-bound?)))
                      (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
                        (do (table/update-tables! [{:id (:id table) :schema actual-schema}])
                            (-> (transforms-base.db/table (:id table))
                                (t2/hydrate :db)))
                        table)
                      table)]
-         (sync/sync-table! table)
+         ;; In the workspace of the request's worktree, the copy of a shared Table is recorded for the workspace, and
+         ;; the shared Table and Fields are not synced from it. A Table the workspace owns syncs as usual, in the
+         ;; workspace.
+         (when-not (workspaces/sync-copy-of-table! database table)
+           (sync/sync-table! table))
          table)))))
 
 (mu/defn activate-table-and-mark-computed!
@@ -691,7 +706,8 @@
                                                 :data_source :metabase-transform
                                                 :is_writable false)
                                 {:create? true})]
-    (when-not (:active table)
+    ;; A shared Table stays as production has it in the workspace of the request's worktree.
+    (when-not (or (:active table) (shared-table-in-workspace? table))
       (table/update-tables! [{:id (:id table) :active true}]))
     table))
 

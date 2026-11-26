@@ -19,7 +19,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
-   [metabase.warehouse-schema.models.field-values :as field-values]))
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.workspaces.core :as workspaces]))
 
 (defn- result->delta [result]
   (cond
@@ -166,13 +167,17 @@
 
 (defn- sync-fields-of-tables!
   "Fetch distinct values for the Fields of each of `tables`, by `table-id->fields`, each Table's Database by
-  `table-database`, and write their FieldValues at once, returning the counts of outcomes."
+  `table-database`, and write their FieldValues at once, returning the counts of outcomes. The values are fetched in
+  the workspace this thread works in, which the caller sets to the one that owns the Tables
+  ([[workspaces/in-workspace-of]]): router access alone would leave it."
   [tables table-database table-id->fields fvs-map]
-  (let [fetched (lib-be/with-metadata-provider-cache
-                  (mapv (fn [table]
-                          (database-routing/with-anonymous-router-access
-                            (table-field-values-changes (table-database table) table (table-id->fields (:id table)) fvs-map)))
-                        tables))]
+  (let [workspace-id (workspaces/current-workspace-id)
+        fetched      (lib-be/with-metadata-provider-cache
+                       (mapv (fn [table]
+                               (database-routing/with-anonymous-router-access
+                                 (workspaces/with-workspace-id workspace-id
+                                   (table-field-values-changes (table-database table) table (table-id->fields (:id table)) fvs-map))))
+                             tables))]
     (assoc (save-changes! (into [] (mapcat :changes) fetched))
            :queries (transduce (map :queries) + 0 fetched))))
 
@@ -254,9 +259,11 @@
 (mu/defn update-field-values-for-table!
   "Update the FieldValues for all Fields (as needed) for `table`.
   SQL drivers use a single UNION ALL query covering every list-eligible field with an active
-  FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries."
+  FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries. They are read in the workspace
+  that owns `table`, or in none for a shared one ([[workspaces/in-workspace-of]])."
   ([table :- i/TableInstance]
-   (update-field-values-for-table! (driver.u/lib-database (:db_id table)) table))
+   (workspaces/in-workspace-of :metabase_table table
+                               (update-field-values-for-table! (driver.u/lib-database (:db_id table)) table)))
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]

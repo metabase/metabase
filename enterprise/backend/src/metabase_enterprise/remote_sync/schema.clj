@@ -225,6 +225,7 @@
    [:branch     :string]
    [:is_default :boolean]
    [:creator_id [:maybe ms/PositiveInt]]
+   [:workspace_id {:optional true} [:maybe ms/PositiveInt]]
    [:created_at ms/TemporalInstant]
    [:updated_at ms/TemporalInstant]
    [:creator    {:optional true} [:maybe ::worktree-user]]
@@ -233,5 +234,6 @@
 (mr/def ::worktree.update
   "The columns of a worktree a create or update sets."
   [:map {:closed true}
-   [:branch     {:optional true} ms/NonBlankString]
-   [:creator_id {:optional true} [:maybe ms/PositiveInt]]])
+   [:branch       {:optional true} ms/NonBlankString]
+   [:creator_id   {:optional true} [:maybe ms/PositiveInt]]
+   [:workspace_id {:optional true} [:maybe ms/PositiveInt]]])

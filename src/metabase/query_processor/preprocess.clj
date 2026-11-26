@@ -64,6 +64,7 @@
    #'qp.perms.preprocess/record-referenced-card-ids
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
+   #'qp.middleware.enterprise/apply-workspace-copy-metadata
    #'prefetch-metadata/prefetch-metadata
    #'fetch-source-query/resolve-source-cards
    #'drop-fields-in-summaries/drop-fields-in-summaries

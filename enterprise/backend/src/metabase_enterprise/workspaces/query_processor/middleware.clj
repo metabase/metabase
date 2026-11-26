@@ -62,18 +62,22 @@
      - Phase 2: ~150ms per query when remappings exist (SQLGlot via GraalPy roundtrip).
        Amortized against query execution time, which is usually >150ms anyway."
   (:require
+   [metabase-enterprise.workspaces.core :as ws.core]
+   [metabase-enterprise.workspaces.query-processor.copy-metadata :as ws.copy-metadata]
    [metabase-enterprise.workspaces.remapping.core :as ws.remapping]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    ;; the remapping middleware swaps a remapping metadata provider into the QP store mid-preprocess
    ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.query-processor.store :as qp.store]))
+   [metabase.query-processor.store :as qp.store]
+   [metabase.workspaces.core :as workspaces]))
 
 (set! *warn-on-reflection* true)
 
@@ -140,6 +144,50 @@
       (qp.store/with-metadata-provider remapping-mp))))
 
 ;;; --------------------------------------- Phase 1: Preprocessing (MBQL only) ------------------------------------
+
+(defn- request-workspace-id
+  "The id of the workspace of the request's worktree, when the Database with `db-id` is one of its provisioned
+  databases, or nil."
+  [db-id]
+  (when-let [{:keys [mode workspace-id databases]} (ws.core/current-workspace)]
+    (when (and (= :bound mode) (contains? databases db-id))
+      workspace-id)))
+
+(defn- cached-copy-metadata-provider
+  "The provider that [[apply-workspace-copy-metadata]] made over `mp` for the workspace with `workspace-id` and the
+  Database with `db-id`, as `mp`'s cache holds it, or nil."
+  [mp workspace-id db-id]
+  (when (lib.metadata.protocols/cached-metadata-provider-with-cache? mp)
+    (lib.metadata.protocols/cached-value mp [::copy-metadata-provider workspace-id db-id] nil)))
+
+(defenterprise apply-workspace-copy-metadata
+  "**Workspace copy metadata — preprocess.** In the workspace of the request's worktree, wrap the query's metadata
+   provider with the workspace's type rows for the query's Database
+   ([[ws.copy-metadata/copy-metadata-provider]]), in the QP store and on the query, so every later middleware, and
+   the remapping of [[apply-workspace-remapping]], reads the types of the copy's columns. Row-level security already
+   gives the provider the copy's columns.
+
+   It runs before any middleware reads metadata, such as the coercion of a column.
+
+   A nested preprocess, as of a metric or a sandbox, gets the provider that this made, and leaves it as it is. One
+   that gets a provider over it, as the remapping makes, wraps it again from the type rows that the first read cached.
+
+   `:feature :none`, like [[apply-workspace-remapping]]: a workspace isolates its data whatever the token."
+  :feature :none
+  [{db-id :database, mp :lib/metadata, :as query}]
+  (if-let [workspace-id (when (and (pos-int? db-id) (workspaces/workspace-bound?))
+                          (request-workspace-id db-id))]
+    (if (identical? mp (cached-copy-metadata-provider mp workspace-id db-id))
+      query
+      (if-let [copy-mp (ws.copy-metadata/copy-metadata-provider mp workspace-id db-id)]
+        (do
+          (when (lib.metadata.protocols/cached-metadata-provider-with-cache? mp)
+            (lib.metadata.protocols/cache-value! mp [::copy-metadata-provider workspace-id db-id] copy-mp))
+          (binding [qp.store/*DANGER-allow-replacing-metadata-provider* true]
+            (qp.store/with-metadata-provider copy-mp))
+          (assoc query :lib/metadata copy-mp))
+        query))
+    query))
 
 (defenterprise apply-workspace-remapping
   "**Phase 1 — preprocess.** Mutate cached table metadata so every QP middleware between here

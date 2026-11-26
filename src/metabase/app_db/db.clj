@@ -24,6 +24,12 @@
 
 ;;; ---------------------------------------------------- Queries -----------------------------------------------------
 
+(defn row-workspace-id
+  "The `workspace_id` of the row with `id` of the app DB table `table` (`:metabase_table` or `:metabase_field`), as the
+  current thread's connection sees it."
+  [table id]
+  (:workspace_id (t2/query-one {:select [:workspace_id] :from [table] :where [:= :id id]})))
+
 (defn query
   "Replacement for [[toucan.db/query]] -- uses Honey SQL 2 instead of Honey SQL 1, to ease the transition to the
   former (and to Toucan 2).

@@ -77,6 +77,14 @@
   [query]
   query)
 
+(defenterprise apply-workspace-copy-metadata
+  "**Workspace copy metadata — preprocess, before any middleware reads metadata.** In the workspace of the request's
+   worktree, puts the workspace's copy rows over the metadata of the query's Database: the copy's columns and types, and
+   the Tables only the workspace has. See the EE impl namespace."
+  metabase-enterprise.workspaces.query-processor.middleware
+  [query]
+  query)
+
 (defenterprise apply-workspace-remapping
   "**Workspace remapping, Phase 1 — preprocess.** Mutates cached MBQL table metadata so
    downstream middleware and HoneySQL compilation see workspace identifiers.

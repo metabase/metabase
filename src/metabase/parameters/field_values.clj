@@ -7,6 +7,7 @@
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (declare get-or-create-field-values! get-or-create-field-values-with-hash-input!)
@@ -42,10 +43,13 @@
 
 (defn- database-hash-input
   "The part of the [[hash-input-for-field-values]] of a Field of the Database with `database-id` that depends only on
-  the Database: its impersonation and routing context for the current user."
+  the Database and the request: its impersonation and routing context for the current user, and the workspace of the
+  request's worktree, whose copies the values are read from."
   [database-id]
   (merge (field-values/hash-input-for-impersonation database-id)
-         (field-values/hash-input-for-database-routing database-id)))
+         (field-values/hash-input-for-database-routing database-id)
+         (when-let [workspace-id (workspaces/current-workspace-id)]
+           {:workspace-id workspace-id})))
 
 (defn- hash-input-in-database
   "The [[hash-input-for-field-values]] of `field`, `database-input` being the [[database-hash-input]] of its Database."
@@ -70,6 +74,7 @@
     - impersonation context.
     - linked-filter constraints (optionally provided).
     - database routing context.
+    - the workspace of the request's worktree, whose copies the values are read from.
     - `extra`, if any — a caller-supplied map whose entries affect query shape but aren't part of
       constraints (e.g. chain-filter's `:via-path`/`:fk-pairs` hints from the card's joins).
 

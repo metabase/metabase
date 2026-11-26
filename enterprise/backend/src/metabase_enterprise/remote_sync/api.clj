@@ -371,6 +371,19 @@
       (api/check-400 (protocol/version repo branch) (tru "The branch {0} doesn''t exist in the repository." branch))
       (present-worktree (t2/hydrate (remote-sync-worktree/create-remote-sync-worktree! worktree) :creator :users)))))
 
+(api.macros/defendpoint :put "/worktree/:id" :- ::remote-sync.schema/worktree
+  "Make the requests of the worktree with `id` work in the workspace with `workspace_id`, or in none when it is null: its
+  queries and transforms then use that workspace's warehouse logins, output schemas and table remappings. A workspace
+  is the workspace of at most one worktree, and requests can work in it only while the `request-workspaces-enabled`
+  setting is on."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
+   _query
+   {:keys [workspace_id]} :- [:map {:closed true}
+                              [:workspace_id [:maybe ms/PositiveInt]]]]
+  (let [worktree (api/write-check (remote-sync.db/worktree id))]
+    (remote-sync-worktree/set-worktree-workspace! (:id worktree) workspace_id)
+    (present-worktree (t2/hydrate (remote-sync.db/worktree id) :creator :users))))
+
 (api.macros/defendpoint :delete "/worktree/:id" :- ::api/generic-204-no-content
   "Delete the worktree with `id` and its content, moving the users working in it to the main app."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]

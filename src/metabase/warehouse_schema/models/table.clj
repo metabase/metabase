@@ -276,7 +276,8 @@
 
 (t2/define-after-select :model/Table
   [table]
-  (dissoc table :is_defective_duplicate :unique_table_helper :worktree_id))
+  ;; the workspace that owns a Table stays in the app DB: see [[metabase.app-db.core/owner-workspace-id]]
+  (dissoc table :is_defective_duplicate :unique_table_helper :worktree_id :workspace_id))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -661,7 +662,7 @@
            :caveats :show_in_getting_started :field_order :is_upload :database_require_filter :estimated_row_count
            :deactivated_at :archived_at :is_writable :data_authority :data_source :data_layer :owner_email
            :owner_user_id :transform_target]
-   :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper]})
+   :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper :workspace_id]})
 
 (defmethod serialization/spec :model/Table [_]
   {:schema              ::warehouse-schema.schema/external-table
@@ -671,7 +672,7 @@
                          :database_require_filter :is_writable :data_authority :data_source :data_layer
                          :owner_email]
    :skip                [:estimated_row_count :initial_sync_status :view_count :transform_target
-                         :is_defective_duplicate :unique_table_helper]
+                         :is_defective_duplicate :unique_table_helper :workspace_id]
    :transform           {:archived_at    serialization/date-transform
                          :deactivated_at serialization/date-transform
                          :db_id          serialization/database-transform
@@ -692,7 +693,7 @@
                     :is_upload :is_writable :owner_email :owner_user_id :points_of_interest :schema
                     :show_in_getting_started :transform_target :unique_table_helper
                     :visibility_type]
-   :skip           [:view_count]
+   :skip           [:view_count :workspace_id]
    :topics         {}})
 
 (defmethod search/spec :model/Table

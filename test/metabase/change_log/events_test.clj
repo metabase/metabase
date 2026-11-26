@@ -480,7 +480,9 @@
     :model/UserParameterValue
     :model/ViewLog
     :model/Workspace
-    :model/WorkspaceDatabase})
+    :model/WorkspaceDatabase
+    :model/WorkspaceFieldCopy
+    :model/WorkspaceTableCopy})
 
 (deftest tracked-models-test
   (let [models (set (spec-test-util/load-models!))]
