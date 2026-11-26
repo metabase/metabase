@@ -61,6 +61,7 @@ export function ResizableSummaryPanel({
     >
       <Box
         className={S.content}
+        component="aside"
         data-resizing={isResizing || undefined}
         data-testid="summary-panel"
       >

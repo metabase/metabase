@@ -25,11 +25,11 @@ export function DimensionBucketMenu({
   const isHiddenBucketSelected =
     selectedIndex >= initialBucketOptionCount &&
     selectedIndex < bucketOptions.length - 1;
-  const hasMoreButton =
+  const showMoreButton =
     bucketOptions.length > initialBucketOptionCount &&
     !isExpanded &&
     !isHiddenBucketSelected;
-  const visibleOptions = hasMoreButton
+  const visibleOptions = showMoreButton
     ? bucketOptions.slice(0, initialBucketOptionCount)
     : bucketOptions;
 
@@ -60,7 +60,7 @@ export function DimensionBucketMenu({
             {option.displayName}
           </Menu.Item>
         ))}
-        {hasMoreButton && (
+        {showMoreButton && (
           <Menu.Item
             c="core-brand"
             closeMenuOnClick={false}

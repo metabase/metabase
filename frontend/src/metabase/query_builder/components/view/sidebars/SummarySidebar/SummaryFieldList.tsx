@@ -239,7 +239,12 @@ function FieldListItem({
             color="text-secondary"
           />
         ) : (
-          <Icon name={item.icon} c="text-secondary" aria-hidden />
+          <Icon
+            className={S.fieldItemIcon}
+            name={item.icon}
+            c="text-secondary"
+            aria-hidden
+          />
         )}
         <MatchedLabel label={item.name} searchText={searchText} />
         <Icon name="grabber" className={S.grabber} aria-hidden />

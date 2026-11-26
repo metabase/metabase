@@ -86,9 +86,10 @@
 .wellField .wellFieldInput,
 .wellField .wellFieldInput:only-child {
   flex: 1 1 8rem;
-  min-width: 8rem;
+  min-width: min(8rem, 100%);
   height: var(--well-field-height);
   margin: 0;
+  text-overflow: ellipsis;
   cursor: text;
 }
 
@@ -394,6 +395,10 @@
   &:focus-visible {
     outline-offset: -2px;
   }
+}
+
+.fieldItemIcon {
+  flex-shrink: 0;
 }
 
 .grabber {
