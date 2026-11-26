@@ -52,6 +52,19 @@ function getColumnSplitToSync(
 }
 
 /**
+ * The stage that the sidebar summarizes: the last one with a summary, or the last stage of a
+ * query without one.
+ */
+export function getSummaryStageIndex(query: Lib.Query): number {
+  const summaryStageIndex = Lib.stageIndexes(query).findLast(
+    (stageIndex) =>
+      Lib.aggregations(query, stageIndex).length > 0 ||
+      Lib.breakouts(query, stageIndex).length > 0,
+  );
+  return summaryStageIndex ?? STAGE_INDEX;
+}
+
+/**
  * Whether the question can show a pivot table of the summary in the stage. No stage can come
  * after the summary, because the column split is about the columns of the last stage. The
  * database must support pivot tables, and the check passes while the database is not loaded.
@@ -151,17 +164,19 @@ function shouldResetDefaultGraphDimensions(
   nextQuestion: Question,
 ): boolean {
   const dimensions = nextQuestion.settings()["graph.dimensions"];
-  const query = nextQuestion.query();
+  const query = question.query();
+  const nextQuery = nextQuestion.query();
+  const nextStageIndex = getSummaryStageIndex(nextQuery);
   const display = nextQuestion.display();
   return (
     dimensions?.length === 1 &&
     isCartesianChart(display) &&
     getMaxDimensionsSupported(display) >= 2 &&
-    Lib.breakouts(query, STAGE_INDEX).length === 2 &&
-    Lib.aggregations(query, STAGE_INDEX).length === 1 &&
+    Lib.breakouts(nextQuery, nextStageIndex).length === 2 &&
+    Lib.aggregations(nextQuery, nextStageIndex).length === 1 &&
     _.isEqual(
       dimensions,
-      getResultColumnNames(question.query(), STAGE_INDEX).breakoutNames,
+      getResultColumnNames(query, getSummaryStageIndex(query)).breakoutNames,
     )
   );
 }
@@ -172,6 +187,7 @@ export function getSummaryQuestion(
   pivotChange?: SummaryPivotChange,
 ): Question {
   const nextQuestion = question.setQuery(nextQuery);
+  const stageIndex = getSummaryStageIndex(nextQuery);
   if (pivotChange?.type === "show") {
     return nextQuestion
       .setDisplay("pivot")
@@ -185,10 +201,10 @@ export function getSummaryQuestion(
       });
   }
   if (pivotChange?.type === "hide") {
-    return nextQuestion.setDisplayIsLocked(false).setDefaultDisplay();
+    return nextQuestion.setDisplayIsLocked(false).setDefaultDisplay(stageIndex);
   }
 
-  const summaryQuestion = nextQuestion.setDefaultDisplay();
+  const summaryQuestion = nextQuestion.setDefaultDisplay(stageIndex);
 
   if (shouldResetDefaultGraphDimensions(question, summaryQuestion)) {
     return summaryQuestion.setSettings(

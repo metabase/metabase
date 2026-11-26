@@ -3,4 +3,5 @@ export {
   canPivotSummary,
   getPivotColumnSplit,
   getSummaryQuestion,
+  getSummaryStageIndex,
 } from "./pivot-question";

@@ -48,6 +48,25 @@ import {
 const STAGE_INDEX = -1;
 const GROUPING_WELL_IDS: SummaryDimensionWellId[] = ["columns", "rows"];
 
+type TestAggregation = NonNullable<
+  TestQuerySpec["stages"][number]["aggregations"]
+>[number];
+
+const SUM_OF_DOUBLE_TOTAL: TestAggregation = {
+  type: "operator",
+  operator: "sum",
+  args: [
+    {
+      type: "operator",
+      operator: "*",
+      args: [
+        { type: "column", name: "TOTAL" },
+        { type: "literal", value: 2 },
+      ],
+    },
+  ],
+};
+
 function createOrdersQuery(spec: TestQuerySpec = DEFAULT_TEST_QUERY) {
   return Lib.createTestQuery(SAMPLE_PROVIDER, spec);
 }
@@ -524,6 +543,25 @@ describe("getValueItems", () => {
       ["expression", "Sum of Total × 2"],
     ]);
   });
+
+  it("tells an aggregation of a formula apart from a count", () => {
+    const query = createOrdersQuery({
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [
+            SUM_OF_DOUBLE_TOTAL,
+            { type: "operator", operator: "cum-count" },
+          ],
+        },
+      ],
+    });
+
+    expect(getValueLabels(query)).toEqual([
+      ["expression", "Sum of Total × 2"],
+      ["count", "Cumulative count"],
+    ]);
+  });
 });
 
 describe("chip keys", () => {
@@ -923,6 +961,36 @@ describe("addField", () => {
         addField(withAll, STAGE_INDEX, "values", orderCount),
         withAll,
       ),
+    ).toBe(true);
+  });
+
+  it.each<{ name: string; aggregation: TestAggregation; label: string[] }>([
+    {
+      name: "an aggregation of a formula",
+      aggregation: SUM_OF_DOUBLE_TOTAL,
+      label: ["expression", "Sum of Total × 2"],
+    },
+    {
+      name: "a cumulative count",
+      aggregation: { type: "operator", operator: "cum-count" },
+      label: ["count", "Cumulative count"],
+    },
+  ])("adds Count of rows once next to $name", ({ aggregation, label }) => {
+    const query = createOrdersQuery({
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [aggregation],
+        },
+      ],
+    });
+    const count: SummaryField = { kind: "count" };
+
+    const withCount = addField(query, STAGE_INDEX, "values", count);
+
+    expect(getValueLabels(withCount)).toEqual([label, ["count", "Count"]]);
+    expect(
+      isSameQuery(addField(withCount, STAGE_INDEX, "values", count), withCount),
     ).toBe(true);
   });
 
