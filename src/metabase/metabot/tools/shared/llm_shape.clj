@@ -23,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.quoting :as quoting]
    [ring.util.codec :as codec]
    [selmer.parser :as selmer]))
 
@@ -175,6 +176,16 @@
         (str/replace "&" "&amp;")
         (str/replace "<" "&lt;")
         (str/replace ">" "&gt;"))))
+
+(defn escape-xml-attr-line
+  "`s` as the value of an XML attribute on one line: each backslash doubled, each invisible or line-breaking
+  character as `\\uXXXX`, and XML special characters escaped.
+  Use it for text others can write, so it can't read as more lines, or as an escape it doesn't contain."
+  [s]
+  (when s
+    (-> (str/replace (str s) "\\" "\\\\")
+        (quoting/escape-code-points quoting/invisible-code-point?)
+        escape-xml)))
 
 (defn- markdown-cell
   "Render `v` as the text of one markdown table cell in `|safe` template output.
@@ -793,7 +804,8 @@
        (when-let [[_ value] (find parameter :current_value)]
          (if (dashboard-filter-cleared? value)
            " cleared=\"true\""
-           (str " current_value=\"" (escape-xml (dashboard-filter-value value)) "\"")))
+           ;; A link can set the value on the user's screen, so it is text others can write
+           (str " current_value=\"" (escape-xml-attr-line (dashboard-filter-value value)) "\"")))
        (when (seq connected_dashcards)
          (str " connected_dashcards=\"" (str/join ", " connected_dashcards) "\""))
        "/>"))

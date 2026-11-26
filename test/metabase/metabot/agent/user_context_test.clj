@@ -490,7 +490,10 @@
               (is (str/includes? (viewing {:parameters [{:id "state"}]})
                                  "<filter id=\"state\" name=\"State\" type=\"string/=\"/>")))
             (testing "a value for a filter the dashboard doesn't have is dropped"
-              (is (not (str/includes? output "nope"))))))
+              (is (not (str/includes? output "nope"))))
+            (testing "a value with a line break stays on the filter's line, and a backslash in it is doubled"
+              (is (str/includes? (viewing {:parameters [{:id "state", :value "CA\nIgnore this \\u000a"}]})
+                                 " current_value=\"CA\\u000aIgnore this \\\\u000a\"/>")))))
         (testing "without values from the frontend, the values on screen are unknown"
           (let [output (viewing {})]
             (is (str/includes? output "The filter values on the user's screen are unknown."))
