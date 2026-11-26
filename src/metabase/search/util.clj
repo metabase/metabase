@@ -123,7 +123,7 @@
   [term]
   (boolean (re-find #"^-[\p{L}\p{N}_]" term)))
 
-(defn- process-phrase [word-or-phrase]
+(defn- process-phrase [prefix-words? word-or-phrase]
   ;; a phrase is quoted even if the closing quotation mark has not been typed yet
   (cond
     ;; quoted phrases must be matched sequentially
@@ -142,16 +142,17 @@
 
     ;; just a regular word
     :else
-    (quote* word-or-phrase)))
+    (cond-> (quote* word-or-phrase)
+      prefix-words? (str ":*"))))
 
 (defn- split-preserving-quotes
   "Break up the words in the search input, preserving quoted and partially quoted segments."
   [s]
   (re-seq #"\"[^\"]*(?:\"|$)|[^\s\"]+|\s+" (u/lower-case-en s)))
 
-(defn- process-clause [words-and-phrases]
+(defn- process-clause [prefix-words? words-and-phrases]
   (->> words-and-phrases
-       (map process-phrase)
+       (map (partial process-phrase prefix-words?))
        (remove str/blank?)
        (str/join " & ")))
 
@@ -173,22 +174,27 @@
 
 (defn to-tsquery-expr
   "Given the user input, construct a query in the Postgres tsvector query language.
-  The last word matches as a prefix, unless it closes a quoted phrase or the search `context` is `:metabot`."
+  The last word matches as a prefix, unless it closes a quoted phrase or the search `context` is `:metabot`.
+  A `:metabot` search matches whole words, or every plain word as a prefix when its text-search `language` is
+  `simple`; `language` defaults to [[tsv-language]]."
   ([input]
    (to-tsquery-expr input nil))
-  ([input {:keys [context]}]
+  ([input {:keys [context language]}]
    (str
     (when input
       (let [trimmed        (str/trim input)
+            metabot?       (= context :metabot)
             ;; Prefix matching serves search as you type. Metabot sends whole keywords, and a prefix on its last
-            ;; keyword query alone would match words that no query names. An H2 app DB matches every word as a
-            ;; substring and reads no context, so this holds on Postgres only.
-            complete?      (and (not= context :metabot)
+            ;; keyword query alone would match words that no query names. The simple configuration stems nothing,
+            ;; so there a prefix on every word is what lets `customer` find `customers`. The H2 and MySQL app DBs
+            ;; build their own matches and read no context, so all of this holds on Postgres only.
+            prefix-words?  (and metabot? (= "simple" (or language (tsv-language))))
+            complete?      (and (not metabot?)
                                 (not (str/ends-with? trimmed "\"")))
             maybe-complete (if complete? complete-last-word identity)]
         (->> (str/replace trimmed "\\" "\\\\")
              search-clauses
-             (map process-clause)
+             (map (partial process-clause prefix-words?))
              (remove str/blank?)
              (str/join " | ")
              maybe-complete))))))
