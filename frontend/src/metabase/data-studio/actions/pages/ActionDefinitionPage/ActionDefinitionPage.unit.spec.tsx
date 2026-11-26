@@ -100,8 +100,10 @@ function setupSavedAction(initialAction: WritebackImplicitQueryAction) {
   fetchMock.modifyRoute("action-2-get", { response: () => savedAction });
   fetchMock.modifyRoute("action-2-put", {
     response: ({ options }) => {
-      const changes = JSON.parse(String(options.body));
-      savedAction = { ...savedAction, ...changes };
+      const changes: unknown = JSON.parse(String(options.body));
+      if (typeof changes === "object" && changes !== null) {
+        savedAction = { ...savedAction, ...changes };
+      }
       return savedAction;
     },
   });
@@ -118,7 +120,7 @@ async function waitForActionReload(loadCountBefore: number) {
   await act(() => fetchMock.callHistory.flush(true));
 }
 
-function getLastUpdate() {
+function getLastUpdate(): unknown {
   const body = fetchMock.callHistory.lastCall("action-2-put")?.options?.body;
   return body == null ? undefined : JSON.parse(String(body));
 }
