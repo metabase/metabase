@@ -87,3 +87,8 @@ export type SummaryDragItem =
       item: SummaryDimensionItem;
       wellId: SummaryDimensionWellId;
     };
+
+export type BreakoutListItem = Lib.ColumnDisplayInfo & {
+  column: Lib.ColumnMetadata;
+  breakout?: Lib.BreakoutClause;
+};

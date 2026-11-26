@@ -6,6 +6,7 @@ import * as Lib from "metabase-lib";
 import type { IconName } from "metabase-types/api";
 
 import type {
+  BreakoutListItem,
   SummaryBucketOption,
   SummaryDimensionItem,
   SummaryDragItem,
@@ -741,4 +742,22 @@ export function changeDimensionBucket(
     option.column,
   );
   return areQueriesEqual(query, nextQuery) ? query : nextQuery;
+}
+
+export function getBreakoutListItem(
+  query: Lib.Query,
+  stageIndex: number,
+  breakout: Lib.BreakoutClause,
+): BreakoutListItem | undefined {
+  const column = Lib.breakoutColumn(query, stageIndex, breakout);
+  if (column == null) {
+    return;
+  }
+
+  const columnWithoutBucketing = Lib.withBinning(
+    Lib.withTemporalBucket(column, null),
+    null,
+  );
+  const columnInfo = Lib.displayInfo(query, stageIndex, columnWithoutBucketing);
+  return { ...columnInfo, column, breakout };
 }
