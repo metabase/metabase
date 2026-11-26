@@ -20,7 +20,7 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest locale-change-reindexes-after-commit-test
-  (when (= :postgres (mdb/db-type))
+  (when (contains? #{:mysql :postgres} (mdb/db-type))
     (let [reindex-connectable (promise)]
       (with-redefs [search.engine/reindex! (fn [& _] (deliver reindex-connectable t2.conn/*current-connectable*))]
         (t2/with-transaction [_conn]

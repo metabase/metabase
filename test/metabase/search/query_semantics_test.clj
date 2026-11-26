@@ -76,6 +76,7 @@
     (case (mdb/db-type)
       :h2       :appdb-h2
       :postgres :appdb-postgres
+      :mysql    :appdb-mysql
       nil)))
 
 (deftest identical-query-semantics-test
@@ -96,3 +97,13 @@
         (when dialect
           (let [{:keys [query hits]} (fixtures/comparison-spec case comparison dialect)]
             (check-appdb-query! config docs query hits)))))))
+
+(deftest unicode-negation-test
+  (when (#{:mysql :postgres} (mdb/db-type))
+    (let [docs {:A {:name "Éclair sales"}
+                :B {:name "Revenue"}
+                :C {:name "订单状态"}}]
+      (doseq [[query expected] [["-éclair" #{:B :C}]
+                                ["-订单" #{:A :B}]]]
+        (testing query
+          (check-appdb-query! "simple" docs query expected))))))
