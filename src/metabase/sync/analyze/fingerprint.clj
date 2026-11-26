@@ -142,13 +142,18 @@
 (defn- catalog-value
   "The value of a fingerprint part at `path` from the sample's `sample-value` and the catalog's `catalog-value` of the
   kind `kind`, or nil to keep the sample's. The catalog's distinct count and nil fraction describe the whole table, so
-  they replace the sample's, except a distinct count of 0, which a catalog gives when it does not count NULL. A range
+  they replace the sample's, except a distinct count of 0, which a catalog gives when it does not count NULL. A
+  distinct count that is not exact is at least the sample's, which counted the values it saw: an old estimate can be
+  below it. A range
   from a catalog that is not exact only widens the sample's. Other parts come from the catalog only when it is exact."
   [path sample-value catalog-value kind]
   (let [k (peek path)]
     (cond
       (nil? catalog-value)                         nil
-      (= path [:global :distinct-count])           (when (pos? catalog-value) catalog-value)
+      (= path [:global :distinct-count])           (when (pos? catalog-value)
+                                                     (if (or (= kind :exact) (not (number? sample-value)))
+                                                       catalog-value
+                                                       (max catalog-value sample-value)))
       (= path [:global :nil%])                     catalog-value
       (= kind :exact)                              catalog-value
       (and (range-keys k) (number? sample-value)
