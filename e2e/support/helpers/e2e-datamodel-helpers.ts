@@ -137,6 +137,7 @@ export const DataModel = {
     getBreadcrumb: getMeasureEditorBreadcrumb,
     getDefinitionTab: getMeasureEditorDefinitionTab,
     getRevisionHistoryTab: getMeasureEditorRevisionHistoryTab,
+    getDependenciesTab: getMeasureEditorDependenciesTab,
   },
   MeasureRevisionHistory: {
     get: getMeasureRevisionHistory,
@@ -754,6 +755,10 @@ function getMeasureEditorDefinitionTab() {
 
 function getMeasureEditorRevisionHistoryTab() {
   return cy.findByTestId("measure-pane-header").findByText("Revision history");
+}
+
+function getMeasureEditorDependenciesTab() {
+  return cy.findByTestId("measure-pane-header").findByText("Dependencies");
 }
 
 function getMeasureRevisionHistory() {

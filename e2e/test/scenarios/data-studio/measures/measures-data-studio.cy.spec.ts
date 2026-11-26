@@ -113,6 +113,19 @@ describe("scenarios > data studio > data model > measures", () => {
         .should("be.visible");
     });
 
+    cy.log("verify the dependency graph of the measure");
+    MeasureEditor.getDependenciesTab().click();
+    cy.get<number>("@measureId").then((measureId) => {
+      cy.url().should(
+        "include",
+        `${getMeasuresBaseUrl(ORDERS_ID)}/${measureId}/dependencies`,
+      );
+    });
+    H.DependencyGraph.graph().should("be.visible");
+    H.DependencyGraph.graph()
+      .findByText("Test Measure Updated")
+      .should("be.visible");
+
     cy.log("verify the renamed measure in the query builder");
     verifyMeasureInQueryBuilder("Test Measure Updated");
 
