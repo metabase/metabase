@@ -63,6 +63,8 @@ export type BarItem = {
   disabled?: boolean;
   /** Behind an info icon that shows on hover, like how a measure is calculated. */
   info?: string;
+  /** Shown like a button, in bold brand colour, like New segment. */
+  isAction?: boolean;
 };
 
 /** An option whose id starts with this fills the input instead of picking, like a filter's column. */
@@ -551,7 +553,10 @@ export function SuggestionList({
             </div>
           )}
           <button
-            className={cx(S.option, { [S.optionActive]: index === highlight })}
+            className={cx(S.option, {
+              [S.optionActive]: index === highlight,
+              [S.optionAction]: item.isAction,
+            })}
             data-option-index={index}
             disabled={item.disabled}
             // Keep focus in the input while clicking an option.

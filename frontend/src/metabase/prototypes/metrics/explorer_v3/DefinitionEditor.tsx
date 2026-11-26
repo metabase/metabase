@@ -42,6 +42,16 @@ export type SegmentPlacement = "inline" | "panel";
 
 type Term = Extract<FormulaToken, { kind: "term" }>;
 
+/** One pill's segment in the row under the bar. */
+type PanelToken = {
+  key: string;
+  termKey: string;
+  segmentId: string;
+  measure: string;
+};
+
+const PANEL_SEP = "::";
+
 /**
  * The definition of a metric: math over measures in a keyboard-first bar,
  * each pill filtered only by segments, plus filters on the whole metric.
@@ -88,23 +98,20 @@ export function DefinitionEditor({
   const [filterHost, setFilterHost] = useState<string | null>(null);
   // The row under the bar: open while it has filters or was just opened.
   const [isWhereOpen, setIsWhereOpen] = useState(false);
-  // Panel placement: the pill whose segments the row under the bar shows.
-  const [panelTermKey, setPanelTermKey] = useState<string | null>(null);
-  const panelTerm = formula.find(
-    (token): token is Term =>
-      token.kind === "term" && token.key === panelTermKey,
-  );
-  const showWhere = where.length > 0 || isWhereOpen;
+  // Panel placement: the row under the bar lists every pill's segments.
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const terms = formula.filter((token): token is Term => token.kind === "term");
+  const segmentCount = terms.reduce((n, term) => n + term.filters.length, 0);
+  const showWhere = !isPanel && (where.length > 0 || isWhereOpen);
   useEffect(() => {
     if (isWhereOpen) {
       whereInput.current?.focus();
     }
   }, [isWhereOpen]);
-  useEffect(() => {
-    if (panelTermKey != null) {
-      segmentInput.current?.focus();
-    }
-  }, [panelTermKey]);
+  const openPanel = () => {
+    setIsPanelOpen(true);
+    requestAnimationFrame(() => segmentInput.current?.focus());
+  };
   const [editing, setEditing] = useState<Editing | null>(null);
 
   const problem = findProblem(formula, measureName) ?? extraProblem ?? null;
@@ -135,15 +142,12 @@ export function DefinitionEditor({
 
   const removeToken = (key: string) => {
     setFormula(formula.filter((t) => t.key !== key));
-    if (key === panelTermKey) {
-      setPanelTermKey(null);
-    }
   };
 
   /** Inline: the caret attaches to the pill. Panel: the pill's segments open below. */
   const startFilter = (key: string) => {
     if (isPanel) {
-      setPanelTermKey(key);
+      openPanel();
       return;
     }
     setFilterHost(key);
@@ -343,11 +347,10 @@ export function DefinitionEditor({
     }
 
     const name = measureName(token.measureId);
-    const isPanelTerm = isPanel && token.key === panelTermKey;
     return (
       <span
         className={cx(S.pill, {
-          [S.selected]: isSelected || isPanelTerm,
+          [S.selected]: isSelected,
           [S.pillHost]: isHost,
           [S.error]: isError,
         })}
@@ -369,15 +372,9 @@ export function DefinitionEditor({
             className={cx(S.seg, S.segMeasure, {
               [S.partSelected]: selectedPart === "measure",
             })}
-            onClick={() => setPanelTermKey(isPanelTerm ? null : token.key)}
+            onClick={() => setEditing({ key: token.key, part: "measure" })}
           >
             {name}
-            {token.filters.length > 0 && (
-              <span className={S.segmentCount}>
-                <Icon name="filter" size={10} />
-                {token.filters.length}
-              </span>
-            )}
           </button>
         ) : (
           <Menu position="bottom-start" offset={8}>
@@ -543,13 +540,14 @@ export function DefinitionEditor({
   );
 
   const renderSegmentToken = (
-    token: { key: string },
+    token: PanelToken,
     { isSelected }: { isSelected: boolean },
   ) => (
     <span className={cx(S.pill, { [S.selected]: isSelected })}>
-      <span className={cx(S.seg, S.segFilter)}>
-        <Icon name="segment" size={12} />
-        {segmentName(token.key)}
+      <span className={S.seg}>
+        <span className={S.panelMeasure}>{token.measure}</span>
+        <span className={S.pipe}>·</span>
+        <span className={S.segFilter}>{segmentName(token.segmentId)}</span>
       </span>
       <Icon
         name="close"
@@ -559,11 +557,7 @@ export function DefinitionEditor({
         onMouseDown={(event) => event.preventDefault()}
         onClick={(event) => {
           event.stopPropagation();
-          if (panelTerm) {
-            updateTerm(panelTerm.key, (filters) =>
-              filters.filter((f) => f !== token.key),
-            );
-          }
+          removeSegment(token);
         }}
       />
     </span>
@@ -648,24 +642,49 @@ export function DefinitionEditor({
     />
   );
 
-  const panelName = panelTerm ? measureName(panelTerm.measureId) : "";
-  const segmentBar = panelTerm && (
+  const panelTokens: PanelToken[] = terms.flatMap((term) =>
+    term.filters.map((segmentId) => ({
+      key: `${term.key}${PANEL_SEP}${segmentId}`,
+      termKey: term.key,
+      segmentId,
+      measure: measureName(term.measureId),
+    })),
+  );
+  const removeSegment = ({ termKey, segmentId }: PanelToken) =>
+    updateTerm(termKey, (filters) => filters.filter((f) => f !== segmentId));
+
+  // Each pill's segments under its name, each with its own New segment.
+  const getPanelItems = (query: string): BarItem[] =>
+    terms.flatMap((term) =>
+      segmentsForTerm(term.measureId, query, term.filters).map((item) => {
+        const isNew = item.id.startsWith(NEW_SEGMENT_PREFIX);
+        return {
+          ...item,
+          id: `${term.key}${PANEL_SEP}${item.id}`,
+          section: measureName(term.measureId),
+          sectionIcon: undefined,
+          isAction: isNew,
+        };
+      }),
+    );
+
+  const segmentBar = (
     <TokenBar
-      key={panelTerm.key}
-      tokens={panelTerm.filters.map((id) => ({ key: id }))}
+      tokens={panelTokens}
       inputRef={segmentInput}
-      placeholder={`Add a segment to ${panelName}`}
+      placeholder="Filter by segment"
       renderToken={renderSegmentToken}
-      title="Add a segment"
-      getItems={(query) =>
-        segmentsForTerm(panelTerm.measureId, query, panelTerm.filters)
-      }
+      getItems={getPanelItems}
       onPick={(item, caret) => {
-        addSegment(panelTerm.key, item);
+        const at = item.id.indexOf(PANEL_SEP);
+        addSegment(item.id.slice(0, at), {
+          ...item,
+          id: item.id.slice(at + PANEL_SEP.length),
+        });
         return caret + 1;
       }}
       onDelete={(index) => {
-        updateTerm(panelTerm.key, (filters) => filters.toSpliced(index, 1));
+        removeSegment(panelTokens[index]);
         return index;
       }}
       onOpenToken={() => undefined}
@@ -678,18 +697,41 @@ export function DefinitionEditor({
     </Text>
   );
 
-  const filterButton = !showWhere && !panelTerm && (
-    <Tooltip label="Filter the whole metric">
+  const filterButton = isPanel ? (
+    <Tooltip label={isPanelOpen ? "Hide filters" : "Show filters"}>
       <ActionIcon
         mt="sm"
+        w="auto"
+        px="xs"
         variant="subtle"
         c="text-filter"
-        aria-label="Filter the whole metric"
-        onClick={() => setIsWhereOpen(true)}
+        aria-label="Filter"
+        onClick={() => (isPanelOpen ? setIsPanelOpen(false) : openPanel())}
       >
-        <Icon name="filter_plus" />
+        <Group gap={4} wrap="nowrap">
+          <Icon name="filter" />
+          {segmentCount > 0 && (
+            <Text size="sm" fw="bold" c="text-filter">
+              {segmentCount}
+            </Text>
+          )}
+        </Group>
       </ActionIcon>
     </Tooltip>
+  ) : (
+    !showWhere && (
+      <Tooltip label="Filter the whole metric">
+        <ActionIcon
+          mt="sm"
+          variant="subtle"
+          c="text-filter"
+          aria-label="Filter the whole metric"
+          onClick={() => setIsWhereOpen(true)}
+        >
+          <Icon name="filter_plus" />
+        </ActionIcon>
+      </Tooltip>
+    )
   );
 
   return (
@@ -701,33 +743,15 @@ export function DefinitionEditor({
           </Box>
           {filterButton}
         </Group>
-        {panelTerm ? (
+        {isPanel && isPanelOpen && (
           <Box className={S.explorerFilters} bg="background_page-filter">
-            <Group gap="xs" wrap="nowrap" align="center" pl="md" pr="sm">
-              <Text size="sm" fw="bold" c="text-secondary" className={S.nowrap}>
-                {`Segments on ${panelName}`}
-              </Text>
-              <Box flex={1} miw={0}>
-                {segmentBar}
-              </Box>
-              <Tooltip label="Back to filters on the whole metric">
-                <ActionIcon
-                  variant="subtle"
-                  c="text-secondary"
-                  aria-label="Close"
-                  onClick={() => setPanelTermKey(null)}
-                >
-                  <Icon name="close" />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
+            {segmentBar}
           </Box>
-        ) : (
-          showWhere && (
-            <Box className={S.explorerFilters} bg="background_page-filter">
-              {whereBar}
-            </Box>
-          )
+        )}
+        {showWhere && (
+          <Box className={S.explorerFilters} bg="background_page-filter">
+            {whereBar}
+          </Box>
         )}
       </Box>
       {problemText}

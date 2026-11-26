@@ -484,3 +484,21 @@
 .nowrap {
   white-space: nowrap;
 }
+
+.optionAction,
+.optionAction .optionIcon {
+  color: var(--mb-color-brand);
+  font-weight: bold;
+}
+
+.panelMeasure {
+  color: var(--mb-color-text-secondary);
+  font-weight: bold;
+}
+
+/* A token bar inside a standard input, like the New segment conditions. */
+.inputBar .bar {
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+}

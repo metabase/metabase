@@ -125,6 +125,7 @@ export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
     description:
       "A pill is filtered only by named segments, picked from its table or created on the spot, so the definition reads left to right.",
     group: "Iteration 2",
+    draft: true,
     Component: SegmentsPrototype,
   },
   {
