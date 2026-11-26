@@ -752,9 +752,9 @@
             convert    (fn [value]
                          (map (fn [convert v] (some-> v convert)) converters value))]
         (if named-elements
-          (fn [value]
-            ;; an array map keeps the order of the elements
-            (apply array-map (interleave (map first named-elements) (convert value))))
+          (let [names (map first named-elements)]
+            (fn [value]
+              (into (ordered-map/ordered-map) (map vector names (convert value)))))
           (comp vec convert)))
 
       ;; JDBC reads these as an internal class, which the results cache cannot read
