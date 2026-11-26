@@ -759,12 +759,20 @@
 
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
+(defn scan-time
+  "The time to record for a scan that starts now, for [[record-scans!]]: the time of the application database, whose
+  clock also stamps `last_used_at`."
+  []
+  (warehouse-schema.db/app-db-now))
+
 (mu/defn record-scans! :- :nil
-  "Record that sync read the values of the Fields with `field-ids` from the warehouse now, on their full FieldValues.
-  It does not change their values, so it publishes no update event."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
+  "Record that a scan that started at `scanned-at`, from [[scan-time]], read the values of the Fields with `field-ids`
+  from the warehouse, on their full FieldValues. The time is the start of the scan, not its end, so a use of a list
+  while the scan runs is after the scan. It does not change their values, so it publishes no update event."
+  [field-ids  :- [:sequential ::lib.schema.id/field]
+   scanned-at :- ms/TemporalInstant]
   (when (seq field-ids)
-    (warehouse-schema.db/stamp-full-field-values-scanned! field-ids))
+    (warehouse-schema.db/stamp-full-field-values-scanned! field-ids scanned-at))
   nil)
 
 (mu/defn delete-field-values! :- :nil

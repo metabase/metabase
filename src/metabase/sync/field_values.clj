@@ -144,21 +144,22 @@
                       fields)})))
 
 (defn- record-scan-times!
-  "Record the time of the scan on the lists of the Fields of `pairs`, each a Field and its outcome, that the scan read
-  and that still have a list."
-  [pairs]
+  "Record `scanned-at`, the time the scan started, on the lists of the Fields of `pairs`, each a Field and its outcome,
+  that the scan read and that still have a list."
+  [pairs scanned-at]
   (let [field-ids (into []
                         (comp (remove (fn [[_ outcome]]
                                         (or (instance? Throwable outcome) (= ::field-values/fv-deleted outcome))))
                               (map (comp :id first)))
                         pairs)]
     (sync-util/with-error-handling "Error recording the time of the field values scan"
-      (field-values/record-scans! field-ids))))
+      (field-values/record-scans! field-ids scanned-at))))
 
 (defn- save-changes!
   "Write the changes of `pairs`, each a Field and its change or a Throwable, at once, or Field by Field when that
-  fails, record the time of the scan on the lists it read, and return the counts of their outcomes."
-  [pairs]
+  fails, record `scanned-at`, the time the scan started, on the lists it read, and return the counts of their
+  outcomes."
+  [pairs scanned-at]
   (let [ok      (into [] (remove (comp #(instance? Throwable %) second)) pairs)
         saved?  (and (next ok)
                      (not (instance? Throwable (sync-util/rethrow-fatal
@@ -174,7 +175,7 @@
                                                    (sync.updates/save-field-values-changes! [(:id field)] [change])
                                                    (:result change))))
         outcomes (mapv outcome pairs)]
-    (record-scan-times! (map vector (map first pairs) outcomes))
+    (record-scan-times! (map vector (map first pairs) outcomes) scanned-at)
     (transduce (map result->delta)
                (partial merge-with +)
                (assoc empty-counts :probed (count pairs))
@@ -185,13 +186,14 @@
   `table-database`, and write their FieldValues at once, returning the counts of outcomes. `opts` as for
   [[table-field-values-changes]]."
   [tables table-database table-id->fields fvs-map opts]
-  (let [fetched (lib-be/with-metadata-provider-cache
-                  (mapv (fn [table]
-                          (database-routing/with-anonymous-router-access
-                            (table-field-values-changes (table-database table) table (table-id->fields (:id table))
-                                                        fvs-map opts)))
-                        tables))]
-    (assoc (save-changes! (into [] (mapcat :changes) fetched))
+  (let [scanned-at (field-values/scan-time)
+        fetched    (lib-be/with-metadata-provider-cache
+                     (mapv (fn [table]
+                             (database-routing/with-anonymous-router-access
+                               (table-field-values-changes (table-database table) table (table-id->fields (:id table))
+                                                           fvs-map opts)))
+                           tables))]
+    (assoc (save-changes! (into [] (mapcat :changes) fetched) scanned-at)
            :queries (transduce (map :queries) + 0 fetched))))
 
 (defn sync-fields-grouped-by-table!
@@ -266,15 +268,18 @@
                (t/after? (t/plus (t/minus (t/offset-date-time) too-large-scan-period) scan-time-margin)))))
 
 (mr/def ::scan-options
+  "`:rescan?` is a scan a user asked for. `:only-used?` is the scheduled scan of a Database, which reads only the lists
+  used since their last scan when the Database has that setting."
   [:map {:closed true}
-   [:rescan? :boolean]])
+   [:rescan?    :boolean]
+   [:only-used? {:optional true} :boolean]])
 
 (mu/defn- update-field-values-for-tables!
   "Update the FieldValues of the Fields of `tables` that need it, reading their Fields and FieldValues together, with
   one UNION ALL query per Table on SQL drivers and one DISTINCT query per Field elsewhere. The scheduled scan reads a
-  list that was too large at its last scan only once in [[too-large-scan-period]], and, for a Database with the
-  setting [[sync.settings/scan-only-used-field-values]], only the lists used since their last scan. A manual rescan
-  (`:rescan?`) reads every list, and also stores again the lists that are still too large."
+  list that was too large at its last scan only once in [[too-large-scan-period]]. With `:only-used?`, for a Database
+  with the setting [[sync.settings/scan-only-used-field-values]], it reads only the lists used since their last scan.
+  A manual rescan (`:rescan?`) reads every list, and also stores again the lists that are still too large."
   [database :- i/DatabaseInstance
    tables   :- [:sequential i/TableInstance]
    opts     :- ::scan-options]
@@ -293,7 +298,9 @@
         clear-counts      (clear-field-values! to-clear)
         fvs-map           (field-values/batched-get-latest-full-field-values (map u/the-id to-sync))
         last-used-at      (field-values/fields-last-used-at (vec (vals fvs-map)))
-        used              (when (and (not (:rescan? opts)) (sync.settings/scan-only-used-lists? database))
+        used              (when (and (:only-used? opts)
+                                     (not (:rescan? opts))
+                                     (sync.settings/scan-only-used-lists? database))
                             (field-values/used-since-last-scan (vec (vals fvs-map))))
         due?              (fn [field]
                             (let [fv (get fvs-map (u/the-id field))]
@@ -404,7 +411,7 @@
   "Update the advanced FieldValues (distinct values for categories and certain other fields that are shown
    in widgets like filters) for the Tables in the Database with `database-id` (as needed)."
   [database-id :- ::lib.schema.id/database]
-  (scan-field-values! database-id {:rescan? false}))
+  (scan-field-values! database-id {:rescan? false :only-used? true}))
 
 (mu/defn rescan-field-values!
   "[[update-field-values!]] for a rescan a user asked for: lists that are still too large are stored again too."
