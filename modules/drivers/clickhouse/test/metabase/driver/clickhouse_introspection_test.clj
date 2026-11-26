@@ -500,11 +500,17 @@
      :name "table2",
      :schema "metabase_db_scan_test"}})
 
+(defn- without-estimates
+  "`tables`, as `describe-database` gives them, without their row count estimates."
+  [tables]
+  (into #{} (map #(dissoc % :estimated_row_count)) tables))
+
 (deftest ^:parallel clickhouse-describe-database-single
   (mt/test-driver :clickhouse
     (mt/dataset metabase_db_scan_test
       (is (= {:tables test-tables}
-             (driver/describe-database :clickhouse (lib.metadata/database (mt/metadata-provider))))))))
+             (update (driver/describe-database :clickhouse (lib.metadata/database (mt/metadata-provider)))
+                     :tables without-estimates))))))
 
 (deftest ^:parallel clickhouse-describe-database-all
   (mt/test-driver :clickhouse
@@ -517,7 +523,7 @@
                                               {:database-name "default"})
                                              {:db-filters-type "all"})}]
         (let [describe-result (driver/describe-database :clickhouse (driver.u/ensure-lib-database db))
-              tables          (into #{} (:tables describe-result))]
+              tables          (without-estimates (:tables describe-result))]
           ;; check the existence of at least some test tables here
           (doseq [table test-tables]
             (is (contains? tables table)))
@@ -538,8 +544,8 @@
                              :details (merge (mt/dbdef->connection-details :clickhouse :db nil)
                                              {:db-filters-type "inclusion"
                                               :db-filters-patterns "metabase_db_scan_test, information_schema"})}]
-        (let [{:keys [tables] :as _describe-result}
-              (driver/describe-database :clickhouse (driver.u/ensure-lib-database db))
+        (let [tables        (without-estimates
+                             (:tables (driver/describe-database :clickhouse (driver.u/ensure-lib-database db))))
               tables-table  {:name        "tables"
                              :description nil
                              :schema      "information_schema"}
@@ -652,3 +658,36 @@
             (metabase.test.data.clickhouse/exec-statements
              [(format "DROP DATABASE IF EXISTS `%s`" db-name)]
              details)))))))
+
+(deftest table-row-count-estimates-test
+  (mt/test-driver :clickhouse
+    (let [database (lib.metadata/database (mt/metadata-provider))
+          venues   (t2/select-one :model/Table :id (mt/id :venues))
+          describe #(into [] (:tables (driver/describe-database :clickhouse database)))]
+      (testing "describe-database gives the row count of each table, from system.tables"
+        (is (= 100 (:estimated_row_count (some #(when (= [(:schema venues) (:name venues)] [(:schema %) (:name %)]) %)
+                                               (describe))))))
+      (testing "when the estimates cannot be read, the tables come without the key"
+        (mt/with-dynamic-fn-redefs [clickhouse-introspection/query-row-count-estimates
+                                    (fn [& _] (throw (ex-info "no estimates" {})))]
+          (let [tables (describe)]
+            (is (seq tables))
+            (is (not-any? #(contains? % :estimated_row_count) tables))))))))
+
+(deftest ^:parallel row-count-estimates-test
+  (testing "The counts by database and name, without the tables that have none or 0, as on Postgres and MySQL"
+    (is (= {["test_data" "venues"] 100
+            ["other" "venues"]     18000}
+           (#'clickhouse-introspection/row-count-estimates
+            [{:database "test_data" :name "venues" :total_rows 100}
+             {:database "other" :name "venues" :total_rows (biginteger 18000)}
+             {:database "test_data" :name "empty" :total_rows 0}
+             {:database "test_data" :name "a_view" :total_rows nil}])))))
+
+(deftest with-row-count-estimates-test
+  (testing "A table with no estimate gets nil, so that sync clears a stored one"
+    (mt/with-dynamic-fn-redefs [clickhouse-introspection/query-row-count-estimates (constantly {["d" "venues"] 100})]
+      (is (= #{{:schema "d" :name "venues" :estimated_row_count 100}
+               {:schema "d" :name "empty" :estimated_row_count nil}}
+             (into #{} (#'clickhouse-introspection/with-row-count-estimates
+                        :clickhouse nil [{:schema "d" :name "venues"} {:schema "d" :name "empty"}])))))))
