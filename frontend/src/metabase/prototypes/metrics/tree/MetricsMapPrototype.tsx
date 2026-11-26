@@ -47,8 +47,8 @@ import S from "./MetricTreeHiFi.module.css";
 import type { Operator } from "./MetricTreePrototype";
 import M from "./MetricsMap.module.css";
 
-const NODE_W = 300;
-const NODE_H = 150;
+export const NODE_W = 300;
+export const NODE_H = 150;
 const OP_RADIUS = 14;
 const OP_OFFSET = 32;
 
@@ -99,7 +99,7 @@ const metric = (
  * Every metric in the instance and the measures they use. A metric is math
  * over measures, other metrics, or a mix of both.
  */
-const KPIS: Record<string, KpiDef> = Object.fromEntries(
+export const KPIS: Record<string, KpiDef> = Object.fromEntries(
   [
     metric(
       "total-revenue",
@@ -248,7 +248,7 @@ const COUNT_LABEL = `${kindCount("metric")} metrics · ${kindCount("measure")} m
 const apply = (a: number, op: Operator, b: number) =>
   op === "+" ? a + b : op === "−" ? a - b : op === "×" ? a * b : a / b;
 
-function seriesOf(id: string): number[] {
+export function seriesOf(id: string): number[] {
   const def = KPIS[id];
   if (def.kind === "measure") {
     return def.series;
@@ -270,10 +270,10 @@ const FORMATTERS: Record<Format, (value: number) => string> = {
   percent: (value) => `${(value * 100).toFixed(1)}%`,
 };
 
-const formatKpi = (id: string, value: number) =>
+export const formatKpi = (id: string, value: number) =>
   FORMATTERS[KPIS[id].format](value);
 
-const inputsOf = (id: string) => {
+export const inputsOf = (id: string) => {
   const def = KPIS[id];
   return def.kind === "metric" ? def.inputs : [];
 };
@@ -281,7 +281,7 @@ const inputsOf = (id: string) => {
 const usedIn = (id: string) =>
   Object.values(KPIS).filter((def) => inputsOf(def.id).includes(id));
 
-const definitionOf = (id: string) => {
+export const definitionOf = (id: string) => {
   const def = KPIS[id];
   if (def.kind === "measure") {
     return def.source;
@@ -309,7 +309,7 @@ function collect(id: string, next: (id: string) => string[]): Set<string> {
 type KpiNodeData = { id: string; inputCount: number };
 type KpiNode = Node<KpiNodeData, "kpi">;
 type KpiEdgeData = { op: Operator | null; highlighted: boolean };
-type KpiEdge = Edge<KpiEdgeData, "kpi">;
+export type KpiEdge = Edge<KpiEdgeData, "kpi">;
 
 /**
  * Top down: a metric sits above the metrics it's built from. A metric used by
@@ -594,7 +594,7 @@ function KpiCard({ data }: NodeProps<KpiNode>) {
   );
 }
 
-function KpiEdgeLine(props: EdgeProps<KpiEdge>) {
+export function KpiEdgeLine(props: EdgeProps<KpiEdge>) {
   const highlighted = props.data?.highlighted ?? false;
   const op = props.data?.op ?? null;
   const stroke = highlighted

@@ -1,0 +1,486 @@
+/* Metric Explorer prototype: a keyboard-first definition bar, modelled on the
+   filter expression bar. Every token is the same height. */
+
+.bar {
+  --connector-margin: var(--mantine-spacing-xxs);
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: 0.375rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: var(--mb-color-background_page-secondary);
+  cursor: text;
+}
+
+/* Prototype: as in the filter row, the bar has no ring of its own; the caret
+   and the pills carry the filter colour. */
+.barFocused {
+  background: var(--mb-color-background_page-secondary);
+}
+
+/* Click targets between tokens: clicking one puts the caret there. */
+.gap {
+  align-self: stretch;
+  width: 6px;
+  flex: none;
+}
+
+.slot {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+
+/* Figma "Pill" from the filter bar: white with the xs_outline elevation,
+   1rem corners, parts that turn grey when hovered. */
+.pill {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.1875rem;
+  min-height: 1.625rem;
+  padding: 0.25rem 0.375rem 0.25rem 0.25rem;
+  border-radius: 1rem;
+  box-shadow: var(--mantine-shadow-xs_outline);
+  background: var(--mb-color-background_surface-primary);
+  color: var(--mb-color-text-primary);
+  font-size: 0.75rem;
+  line-height: 1.15;
+  cursor: pointer;
+}
+
+.pill:hover,
+.pill.selected {
+  box-shadow:
+    var(--mantine-shadow-xs_outline),
+    0 0 0 1px var(--mb-color-background_surface-primary),
+    0 0 0 2px var(--mb-color-core-filter);
+}
+
+/* + − × ÷ and parentheses: the filter bar's AND / OR, a small grey pill in monospace. */
+.connector {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin-inline: var(--connector-margin);
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-xs);
+  border: 0;
+  border-radius: var(--mantine-radius-md);
+  background: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-text-primary);
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 500;
+  line-height: 1.15;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 120ms;
+}
+
+.connector:hover {
+  background: var(--mb-color-background_surface-secondary-hover);
+}
+
+/* Hovered, a parenthesis is a close button: the label gives way to the icon. */
+.connectorIcon {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.connectorRemovable:hover .connectorLabel {
+  visibility: hidden;
+}
+
+.connectorRemovable:hover .connectorIcon {
+  display: inline-flex;
+}
+
+.connectorEditing {
+  background: var(--mb-color-background_surface-primary);
+  box-shadow:
+    0 0 0 1px var(--mb-color-background_surface-primary),
+    0 0 0 2px var(--mb-color-core-filter);
+  cursor: text;
+}
+
+.connector.selected {
+  box-shadow:
+    0 0 0 1px var(--mb-color-background_surface-primary),
+    0 0 0 2px var(--mb-color-core-filter);
+}
+
+/* A part of a pill: a button that edits that part, grey when hovered. */
+.seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-right: -2px;
+  padding: 0.125rem 0.25rem;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.seg:first-child {
+  border-radius: 0.5rem 2px 2px 0.5rem;
+}
+
+.seg:hover {
+  background: var(--mb-color-background_surface-secondary);
+}
+
+/* The part of a pill the arrow keys landed on: Enter edits it, Backspace removes it. */
+.seg.partSelected {
+  background: var(--mb-color-background_surface-secondary);
+  box-shadow: inset 0 0 0 1px var(--mb-color-core-filter);
+}
+
+/* The measure, like a filter's column: bold. */
+.segMeasure {
+  font-weight: bold;
+}
+
+/* A measure's filter, like a filter's values: bold in the strong filter colour. */
+.segFilter {
+  color: var(--mb-color-core-filter-strong);
+  font-weight: bold;
+}
+
+/* The part being edited: the draft pill's grey input. */
+.segEditing,
+.segEditing:hover {
+  background: var(--mb-color-background_surface-secondary);
+  cursor: text;
+}
+
+/* "|" between a measure and its filters, like a filter's operator. */
+.pipe {
+  color: var(--mb-color-text-secondary);
+  font-weight: normal;
+}
+
+/* Floats under a hovered measure pill, so the bar doesn't move: opens a
+   filter on that measure, like typing "|". */
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem 0.25rem 0.375rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 1rem;
+  background: var(--mb-color-background_surface-primary);
+  box-shadow: var(--mantine-shadow-sm);
+  color: var(--mb-color-core-filter-strong);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: bold;
+  line-height: 1.15;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.filterChip:hover {
+  background: var(--mb-color-background_surface-secondary);
+}
+
+.filterChipDropdown {
+  padding: 0;
+  border: 0;
+  border-radius: 1rem;
+  background: transparent;
+  box-shadow: none;
+}
+
+.removeIcon {
+  flex-shrink: 0;
+  box-sizing: content-box;
+  margin-left: 0.125rem;
+  margin-right: 2px;
+  color: var(--mb-color-icon-secondary);
+  cursor: pointer;
+}
+
+.removeIcon:hover {
+  color: var(--mb-color-text-primary);
+}
+
+/* A pill with a filter draft attached to its right edge: one pill in edit. */
+.pillHost,
+.pillHost:hover {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow:
+    0 0 0 1px var(--mb-color-background_surface-primary),
+    0 0 0 2px var(--mb-color-core-filter);
+}
+
+.pillHost .removeIcon {
+  display: none;
+}
+
+.draftSeg {
+  gap: 0.1875rem;
+  min-height: 1.625rem;
+  padding: 0.25rem 0.375rem 0.25rem 0;
+  border-radius: 0 1rem 1rem 0;
+  background: var(--mb-color-background_surface-primary);
+  box-shadow:
+    0 0 0 1px var(--mb-color-background_surface-primary),
+    0 0 0 2px var(--mb-color-core-filter);
+  clip-path: inset(-3px -3px -3px 0);
+  font-size: 0.75rem;
+}
+
+.draftSeg .input {
+  height: auto;
+  padding: 0.125rem 0.25rem;
+  border-radius: 2px;
+  background: var(--mb-color-background_surface-secondary);
+  font-size: 0.75rem;
+  font-weight: normal;
+}
+
+/* The caret's input: bold 14px text in the filter colour, as in the filter bar. */
+.input {
+  height: 1.5rem;
+  min-width: 2px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--mb-color-text-primary);
+  caret-color: var(--mb-color-core-filter);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.input::placeholder {
+  color: var(--mb-color-text-secondary);
+  font-weight: normal;
+}
+
+.input.inputCaretHidden {
+  caret-color: transparent;
+}
+
+.caretSlot {
+  position: relative;
+}
+
+.caretAfterConnector {
+  --caret-gap-start: var(--connector-margin);
+}
+
+.caretBeforeConnector {
+  --caret-gap-end: var(--connector-margin);
+}
+
+/* Include connector margins in the caret's visual gap without affecting layout. */
+.caretSlot .input {
+  position: absolute;
+  inset-inline-start: calc(-1 * var(--caret-gap-start, 0px));
+  width: calc(100% + var(--caret-gap-start, 0px) + var(--caret-gap-end, 0px));
+  text-align: center;
+}
+
+/* Inside a pill's part the input is the part's own text. */
+.seg .input,
+.connector .input {
+  height: auto;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/* The dropdown, after the filter bar's suggestion list. */
+.dropdown {
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.5rem;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  max-height: 20rem;
+  padding: var(--mantine-spacing-md);
+  overflow: auto;
+}
+
+.empty {
+  padding: var(--mantine-spacing-md);
+  color: var(--mb-color-text-secondary);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: 0 var(--mantine-spacing-sm) var(--mantine-spacing-xs);
+  color: var(--mb-color-text-primary);
+  font-weight: bold;
+}
+
+.sectionDivider {
+  margin-top: var(--mantine-spacing-sm);
+  padding-top: var(--mantine-spacing-sm);
+  border-top: 0.5px solid var(--mb-color-border-neutral);
+}
+
+.sectionIcon {
+  flex-shrink: 0;
+  color: var(--mb-color-core-brand);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  width: 100%;
+  padding: 0.25rem var(--mantine-spacing-sm);
+  border: 0;
+  border-radius: var(--mantine-radius-sm);
+  background: transparent;
+  color: var(--mb-color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:disabled {
+  color: var(--mb-color-text-disabled);
+  cursor: default;
+}
+
+.optionActive {
+  background: var(--mb-color-background_surface-hover);
+}
+
+.optionIcon {
+  flex-shrink: 0;
+  color: var(--mb-color-text-secondary);
+}
+
+.optionLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.optionDescription {
+  flex: none;
+  color: var(--mb-color-text-secondary);
+}
+
+.optionHint {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: var(--mantine-spacing-md);
+  color: var(--mb-color-text-secondary);
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 0.75rem;
+  font-variant-ligatures: none;
+}
+
+.tabHint {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0 0.25rem;
+  border-radius: 2px;
+  background-color: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.optionHint + .tabHint {
+  margin-left: 0;
+}
+
+/* An info icon that shows on a hovered or highlighted option; its tooltip explains it. */
+.optionInfo {
+  display: none;
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--mb-color-text-secondary);
+}
+
+.option:hover .optionInfo,
+.optionActive .optionInfo {
+  display: inline-flex;
+}
+
+.optionInfo:hover {
+  color: var(--mb-color-text-primary);
+}
+
+.optionInfo + .tabHint {
+  margin-left: 0;
+}
+
+/* A definition that doesn't add up: the tokens at fault get the error ring. */
+.barError {
+  box-shadow: inset 0 0 0 1px var(--mb-color-feedback-negative);
+}
+
+.pill.error,
+.connector.error {
+  box-shadow:
+    0 0 0 1px var(--mb-color-background_surface-primary),
+    0 0 0 2px var(--mb-color-feedback-negative);
+}
+
+/* The Metric Explorer's search box: one rounded grey box, the filters in a
+   tinted row at its bottom. The bars inside lose their own background. */
+.explorerBox {
+  border-radius: 1rem;
+  overflow: hidden;
+  background: var(--mb-color-background_page-secondary);
+}
+
+.explorerBox .bar {
+  border-radius: 0;
+  background: transparent;
+}
+
+.explorerFilters .bar {
+  min-height: 2.5rem;
+  padding-block: 0.375rem;
+}
+
+.title {
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm)
+    var(--mantine-spacing-sm);
+  color: var(--mb-color-text-secondary);
+  font-weight: bold;
+}
+
+/* A pill's segment count when they live in the panel under the bar: funnel + "2". */
+.segmentCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  margin-left: 0.25rem;
+  padding: 0 0.25rem;
+  border-radius: 0.5rem;
+  background: var(--mb-color-background_page-filter);
+  color: var(--mb-color-core-filter-strong);
+  font-size: 0.6875rem;
+}
+
+.nowrap {
+  white-space: nowrap;
+}

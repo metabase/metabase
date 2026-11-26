@@ -1,6 +1,7 @@
 import type { PrototypeDefinition } from "../types";
 
 import { BaselinePrototype } from "./baseline/BaselinePrototype";
+import { DimensionMappingPrototype } from "./dimension_mapping/DimensionMappingPrototype";
 import { ImprovedDimensionsPrototype } from "./dimensions/ImprovedDimensionsPrototype";
 import {
   MetricEditorBlocksPrototype,
@@ -8,10 +9,16 @@ import {
 } from "./explorer/MetricEditorPrototype";
 import { MetricExplorerPrototype } from "./explorer/MetricExplorerPrototype";
 import { MetricEditorPrototype as MetricEditorPrototypeV2 } from "./explorer_v2/MetricEditorPrototype";
+import {
+  PillFiltersPrototype,
+  SegmentsPrototype,
+} from "./explorer_v3/MetricEditorPrototype";
+import { InvestigationModePrototype } from "./investigation/InvestigationModePrototype";
 import { MetricDependencyTreePrototype } from "./tree/MetricDependencyTreePrototype";
 import { MetricTreeHiFiPrototype } from "./tree/MetricTreeHiFiPrototype";
 import { MetricTreePrototype } from "./tree/MetricTreePrototype";
 import { MetricsMapPrototype } from "./tree/MetricsMapPrototype";
+import { MetricsMapV2Prototype } from "./tree/MetricsMapV2Prototype";
 
 export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
   {
@@ -86,6 +93,46 @@ export const METRICS_PROTOTYPES: PrototypeDefinition[] = [
       "Dimensions in and not in the metric, in two sections on the left. Move them with the arrows, by dragging, or in bulk by checking several. A dimension is always selected, so its settings always fill the right.",
     group: "Iteration 1",
     Component: ImprovedDimensionsPrototype,
+  },
+  {
+    id: "investigation-mode",
+    name: "Investigation mode",
+    description:
+      "The Dependencies tab as a left-to-right walk from the metric into its parts, to find which branch caused a change. Select a node to break it out by its dimensions and segments; anything beyond the walk opens in the Metric Explorer.",
+    group: "Iteration 2",
+    Component: InvestigationModePrototype,
+  },
+  {
+    id: "metrics-map-v2",
+    name: "Metrics map v2",
+    description:
+      "The metrics map top-down, one metric at a time: pick the top metric and click cards to open what each is built from.",
+    group: "Iteration 2",
+    Component: MetricsMapV2Prototype,
+  },
+  {
+    id: "dimension-mapping",
+    name: "Dimension mapping",
+    description:
+      "Revenue per active user, over two unrelated tables: pick which column of each term every dimension reads, with the Metric Explorer's per-term selects, and which dimensions the metric publishes.",
+    group: "Iteration 2",
+    Component: DimensionMappingPrototype,
+  },
+  {
+    id: "segments",
+    name: "Segments",
+    description:
+      "A pill is filtered only by named segments, picked from its table or created on the spot, so the definition reads left to right.",
+    group: "Iteration 2",
+    Component: SegmentsPrototype,
+  },
+  {
+    id: "pill-filters-panel",
+    name: "Pill filters below the bar",
+    description:
+      "Select a pill and the panel below the bar shows its segments; the pill only shows a filter icon with a count. With nothing selected, the panel filters the whole metric.",
+    group: "Iteration 2",
+    Component: PillFiltersPrototype,
   },
   // Last, so /prototypes opens it.
   {
