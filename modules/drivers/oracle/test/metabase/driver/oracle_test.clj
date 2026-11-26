@@ -979,3 +979,38 @@
         (is (= [[1345 "Alice Connelly"]]
                (mt/formatted-rows [int str] result)
                (mt/formatted-rows [int str] (qp/process-query native-query))))))))
+
+(deftest table-row-count-estimates-test
+  (mt/test-driver :oracle
+    (let [database (lib.metadata/database (mt/metadata-provider))
+          venues   (t2/select-one :model/Table :id (mt/id :venues))
+          describe #(into [] (:tables (driver/describe-database :oracle database)))
+          find     (fn [tables] (m/find-first (comp #{(:name venues)} :name) tables))]
+      (testing "describe-database gives the row count estimate of each table, from the statistics in ALL_TABLES"
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+                       ;; quoted, since DBMS_STATS makes an unquoted name upper case
+                       ["BEGIN DBMS_STATS.GATHER_TABLE_STATS(?, ?); END;"
+                        (str \" (:schema venues) \") (str \" (:name venues) \")])
+        (is (= 100 (:estimated_row_count (find (describe))))))
+      (testing "when the estimates cannot be read, the tables come without them"
+        (mt/with-dynamic-fn-redefs [oracle/query-row-count-estimates (fn [_driver _conn] (throw (ex-info "no estimates" {})))]
+          (let [tables (describe)]
+            (is (seq tables))
+            (is (not-any? #(contains? % :estimated_row_count) tables))))))))
+
+(deftest ^:parallel row-count-estimates-test
+  (testing "The estimates by schema and name, without the tables that have none or 0, as on Postgres and MySQL"
+    (is (= {["MB_TEST" "venues"] 100
+            ["OTHER" "venues"]   18000}
+           (#'oracle/row-count-estimates [{:owner "MB_TEST" :table_name "venues" :num_rows 100M}
+                                          {:owner "OTHER" :table_name "venues" :num_rows 18000M}
+                                          {:owner "MB_TEST" :table_name "empty" :num_rows 0M}
+                                          {:owner "MB_TEST" :table_name "unanalyzed" :num_rows nil}])))))
+
+(deftest with-row-count-estimates-test
+  (testing "A table with no estimate gets nil, so that sync clears a stored one"
+    (mt/with-dynamic-fn-redefs [oracle/query-row-count-estimates (constantly {["MB_TEST" "venues"] 100})]
+      (is (= [{:schema "MB_TEST" :name "venues" :estimated_row_count 100}
+              {:schema "MB_TEST" :name "empty" :estimated_row_count nil}]
+             (into [] (#'oracle/with-row-count-estimates :oracle nil [{:schema "MB_TEST" :name "venues"}
+                                                                      {:schema "MB_TEST" :name "empty"}])))))))
