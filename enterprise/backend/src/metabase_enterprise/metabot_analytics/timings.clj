@@ -6,7 +6,8 @@
   A reply has no timing when nothing recorded one: a reply from before these records existed, and a reply that a
   fork copied (see [[metabase.metabot.call-records]])."
   (:require
-   [java-time.api :as t]))
+   [java-time.api :as t]
+   [metabase.metabot.persistence :as metabot.persistence]))
 
 (set! *warn-on-reflection* true)
 
@@ -45,7 +46,8 @@
   "The timings of the assistant MetabotMessages in `messages`, in the order of `messages`: one map for each message
   that has a `finished_at` or at least one of the MetabotLlmCalls `llm-calls` or MetabotToolCalls `tool-calls`.
   `:message_id` is the id of the message as the client knows it. `:duration_ms` is the time from the insert of the
-  message, at the start of the turn, to the end of the agent loop; nil while the turn runs."
+  message, at the start of the turn, to the end of the agent loop; nil while the turn runs. It is
+  [[metabot.persistence/elapsed-ms]], the number that the chat gets for the reply."
   [messages llm-calls tool-calls]
   (let [llm-calls-by-message  (group-by :message_id (sort-by :id llm-calls))
         tool-calls-by-message (group-by :message_id (sort-by :id tool-calls))]
@@ -58,7 +60,7 @@
                       {:message_id  (or external_id (str id))
                        :started_at  created_at
                        :finished_at finished_at
-                       :duration_ms (ms-between created_at finished_at)
+                       :duration_ms (metabot.persistence/elapsed-ms created_at finished_at)
                        :llm_calls   (mapv llm-call-timing message-llm-calls)
                        :tool_calls  (mapv tool-call-timing message-tool-calls)}))))
           messages)))
