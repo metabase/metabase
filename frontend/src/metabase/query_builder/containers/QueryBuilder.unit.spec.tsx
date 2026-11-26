@@ -5,6 +5,7 @@ import { setupJestCanvasMock } from "jest-canvas-mock";
 import _ from "underscore";
 
 import {
+  setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupCollectionItemsEndpoint,
@@ -77,6 +78,7 @@ import {
   TEST_TIME_SERIES_WITH_CUSTOM_DATE_BREAKOUT_CARD,
   TEST_TIME_SERIES_WITH_DATE_BREAKOUT_CARD,
   TEST_UNSAVED_STRUCTURED_CARD,
+  saveQuestion,
   setup,
   triggerNotebookQueryChange,
   waitForFaviconReady,
@@ -125,15 +127,58 @@ describe("QueryBuilder", () => {
         expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
       });
 
-      describe("visualizing a saved question from the notebook (metabase#13470)", () => {
+      describe("visualizing a just-saved question from the notebook (metabase#13470)", () => {
         mockGetBoundingClientRect();
 
-        async function setupSavedQuestionNotebook() {
+        const ORDERS_DATASET = createMockDataset({
+          data: createMockDatasetData({
+            cols: [
+              createOrdersIdDatasetColumn(),
+              createOrdersCreatedAtDatasetColumn(),
+            ],
+            rows: [
+              [1, "2027-11-17T10:00:00Z"],
+              [2, "2027-11-18T10:00:00Z"],
+            ],
+          }),
+          row_count: 2,
+        });
+
+        /**
+         * Saves a new question through the save modal, as the user would,
+         * then opens its notebook.
+         */
+        async function saveAndOpenNotebook() {
           const { router, store } = await setup({
-            card: TEST_STRUCTURED_CARD,
-            dataset: TEST_MODEL_DATASET,
-            initialRoute: `/question/${TEST_STRUCTURED_CARD.id}/notebook`,
+            card: TEST_UNSAVED_STRUCTURED_CARD,
+            dataset: ORDERS_DATASET,
           });
+          const savedCard = createMockCard({
+            id: 1,
+            name: "Orders",
+            dataset_query: TEST_UNSAVED_STRUCTURED_CARD.dataset_query,
+          });
+          setupCardsEndpoints([savedCard]);
+          setupCardQueryMetadataEndpoint(
+            savedCard,
+            createMockCardQueryMetadata({
+              databases: [createSampleDatabase()],
+            }),
+          );
+          setupCardQueryEndpoints(savedCard, ORDERS_DATASET);
+
+          await saveQuestion();
+          expect(
+            fetchMock.callHistory.called("card-create", { method: "POST" }),
+          ).toBe(true);
+          await waitFor(() =>
+            expect(router.location.pathname).toMatch(/^\/question\/1-/),
+          );
+
+          await userEvent.click(screen.getByTestId("notebook-button"));
+          await waitFor(() =>
+            expect(router.location.pathname).toContain("/notebook"),
+          );
           return { router, store };
         }
 
@@ -148,7 +193,7 @@ describe("QueryBuilder", () => {
         }
 
         it("does not offer to save the question when nothing changed", async () => {
-          const { router, store } = await setupSavedQuestionNotebook();
+          const { router, store } = await saveAndOpenNotebook();
 
           await visualize(store);
 
@@ -161,7 +206,7 @@ describe("QueryBuilder", () => {
         });
 
         it("offers to save the question after a change", async () => {
-          const { router, store } = await setupSavedQuestionNotebook();
+          const { router, store } = await saveAndOpenNotebook();
 
           await triggerNotebookQueryChange();
           await visualize(store);
