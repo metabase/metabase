@@ -2608,7 +2608,8 @@
   {:team       "Data Apps"
    :codeowners true
    :api  #{metabase.remote-sync.core metabase.remote-sync.schema}
-   :uses #{premium-features serialization util}}
+   :uses #{premium-features serialization util}
+   :model-imports #{:model/User}}
 
   replacement
   {:team "Data Apps"
@@ -2904,6 +2905,7 @@
            metabot.agent-api.usage
            premium-features
            query-processor
+           remote-sync
            request
            request.schema
            session
@@ -3576,6 +3578,7 @@
            models
            permissions
            premium-features
+           remote-sync
            request
            session
            sso

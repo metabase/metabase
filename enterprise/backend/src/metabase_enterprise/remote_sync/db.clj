@@ -5,12 +5,31 @@
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(defenterprise non-default-worktree-exists?
+  "Whether any worktree other than the default one exists."
+  :feature :remote-sync
+  []
+  (t2/exists? :model/RemoteSyncWorktree :is_default false))
+
+(defenterprise user-worktree-id
+  "The id of the worktree other than the default one the user with `user-id` checked out, or nil."
+  :feature :remote-sync
+  [user-id]
+  (t2/select-one-fn :worktree_id :model/RemoteSyncWorktreeUser :user_id user-id))
+
+(defenterprise worktree-by-id
+  "The worktree with `worktree-id`, or nil."
+  :feature :remote-sync
+  [worktree-id]
+  (t2/select-one :model/RemoteSyncWorktree :id worktree-id))
 
 (mu/defn synced-rows
   "The rows of `model` remote sync syncs with the columns its export takes, ordered by primary key."
