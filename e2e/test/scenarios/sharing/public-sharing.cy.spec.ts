@@ -37,6 +37,7 @@ describe("scenarios > admin > settings > public sharing", () => {
         .findByText(`${location.origin}${publicPath}`)
         .click();
       cy.url().should("eq", `${location.origin}${publicPath}`);
+      cy.wait("@getPublicCard").its("response.statusCode").should("eq", 200);
       cy.findByRole("heading", { name: QUESTION_NAME }).should("be.visible");
     });
 
@@ -67,10 +68,14 @@ describe("scenarios > admin > settings > public sharing", () => {
       .should("not.exist");
 
     cy.log("the public URL stops working");
+    // A fresh alias, so the wait cannot pick up a request from the first visit
+    cy.intercept("GET", "/api/public/card/*").as("getRevokedPublicCard");
     cy.get<string>("@publicPath").then((publicPath) => {
       cy.visit(publicPath);
     });
-    cy.wait("@getPublicCard").its("response.statusCode").should("eq", 404);
+    cy.wait("@getRevokedPublicCard")
+      .its("response.statusCode")
+      .should("eq", 404);
     cy.findByTestId("embed-frame").findByText("Not found").should("be.visible");
     cy.findByRole("heading", { name: QUESTION_NAME }).should("not.exist");
   });
