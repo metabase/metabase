@@ -33,9 +33,28 @@ jobs:
               return;
             }
 
+            const pullRequestNumber = context.payload.pull_request.number;
+            let mergeable = null;
+            for (let attempt = 0; attempt < 10 && mergeable === null; attempt++) {
+              if (attempt > 0) {
+                await new Promise((resolve) => setTimeout(resolve, 3000));
+              }
+              const { data: pullRequest } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pullRequestNumber,
+              });
+              mergeable = pullRequest.mergeable;
+            }
+
+            if (mergeable !== true) {
+              console.log(`Skipping, mergeable is ${mergeable}`);
+              return;
+            }
+
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
+              issue_number: pullRequestNumber,
               labels: ['metareview'],
             });
