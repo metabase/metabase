@@ -44,10 +44,11 @@ import {
 type Editing = { key: string; part: string };
 
 /**
- * How a pill offers to filter its measure: a chip that floats under the pill
- * on hover, or a menu that opens when the pill is clicked.
+ * How a pill offers to filter its measure: an icon that slides out of the
+ * pill on hover, a chip that floats under it on hover, or a menu that opens
+ * when the pill is clicked.
  */
-export type PillActions = "chip" | "menu";
+export type PillActions = "inline" | "chip" | "menu";
 
 /**
  * The definition of a metric: math over measures in a keyboard-first bar,
@@ -62,7 +63,7 @@ export function DefinitionEditor({
   whereFilters = (query, exclude) => search(FILTER_ITEMS, query, exclude),
   filtersForTerm = (_measureId, query, exclude) => whereFilters(query, exclude),
   extraProblem,
-  pillActions = "menu",
+  pillActions = "inline",
   segmentFilter,
   canNameFilter,
   onNameFilter,
@@ -481,6 +482,21 @@ export function DefinitionEditor({
                 )}
             </span>
           ),
+        )}
+        {pillActions === "inline" && (
+          <Tooltip label={`Filter ${name}`}>
+            <button
+              className={S.addFilter}
+              aria-label={`Filter ${name}`}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={(event) => {
+                event.stopPropagation();
+                startFilter(token.key);
+              }}
+            >
+              <Icon name="filter" size={12} />
+            </button>
+          </Tooltip>
         )}
         <Icon
           name="close"

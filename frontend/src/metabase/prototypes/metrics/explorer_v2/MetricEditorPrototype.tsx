@@ -95,6 +95,12 @@ import {
 
 const TABS = ["About", "Overview", "Definition", "Dimensions", "Dependencies"];
 const NEW_TABS = ["Definition", "Dimensions"];
+
+const PILL_ACTIONS: { value: PillActions; label: string }[] = [
+  { value: "inline", label: "Inline icon" },
+  { value: "menu", label: "Pill menu" },
+  { value: "chip", label: "Hover chip" },
+];
 const NEW = "new";
 const EXAMPLE = EXAMPLE_PARAM_PREFIX;
 
@@ -278,7 +284,7 @@ export function MetricEditorPrototype() {
   const navigate = useNavigate();
   const [view, setView] = useState<"list" | "metric">("metric");
   /** Prototype: the two ways a pill offers to filter its measure, to compare. */
-  const [pillActions, setPillActions] = useState<PillActions>("menu");
+  const [pillActions, setPillActions] = useState<PillActions>("inline");
   /** Saved definitions, by metric id or by the new metric's name. */
   const [saved, setSaved] = useState<Record<string, MetricDraft>>({});
 
@@ -311,16 +317,16 @@ export function MetricEditorPrototype() {
           activeId={example?.id}
           onSelect={(id) => open(`${EXAMPLE}${id}`)}
         />
-        <Group gap="sm" wrap="nowrap">
+        <Group gap="sm" wrap="nowrap" flex="none">
           <SegmentedControl
             value={pillActions}
             onChange={(value) =>
-              setPillActions(value === "chip" ? "chip" : "menu")
+              setPillActions(
+                PILL_ACTIONS.find((option) => option.value === value)?.value ??
+                  "inline",
+              )
             }
-            data={[
-              { value: "menu", label: "Pill menu" },
-              { value: "chip", label: "Hover chip" },
-            ]}
+            data={PILL_ACTIONS}
           />
           <SegmentedControl
             value={view}

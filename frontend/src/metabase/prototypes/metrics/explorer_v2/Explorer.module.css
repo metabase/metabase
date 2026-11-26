@@ -176,6 +176,53 @@
   font-weight: normal;
 }
 
+/* Slides out of a hovered measure pill: opens a filter on that measure, like
+   typing "|". Collapsed it takes no room, not even the pill's gap. */
+.addFilter {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  margin-left: -0.1875rem;
+  padding: 2px 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--mb-color-icon-secondary);
+  opacity: 0;
+  cursor: pointer;
+  transition:
+    width 160ms ease,
+    margin-left 160ms ease,
+    opacity 120ms ease;
+}
+
+/* A short wait before it opens, so sweeping across pills doesn't ripple. */
+.pill:hover .addFilter,
+.addFilter:focus-visible {
+  width: 1rem;
+  margin-left: 0;
+  opacity: 1;
+  transition-delay: 80ms;
+}
+
+.addFilter:hover {
+  background: var(--mb-color-background_surface-secondary);
+  color: var(--mb-color-core-filter);
+}
+
+.pill.pillHost .addFilter {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .addFilter {
+    transition: none;
+  }
+}
+
 /* Floats under a hovered measure pill, so the bar doesn't move: opens a
    filter on that measure, like typing "|". */
 .filterChip {
