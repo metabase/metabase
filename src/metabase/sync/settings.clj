@@ -85,7 +85,8 @@
   (deferred-tru
    (str "Whether the scheduled scan of the filter values of a database reads only the lists that someone used since "
         "their last scan."))
-  :visibility     :admin
+  ;; not `:admin`: whoever can edit the Database sets its scan mode, like `is_full_sync` and `is_on_demand`
+  :visibility     :authenticated
   :export?        true
   :type           :boolean
   :default        false
