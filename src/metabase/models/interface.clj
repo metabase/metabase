@@ -723,14 +723,14 @@
 
 (defn- check-not-sql-string
   "Throws when the Toucan query `query`, a SQL string or `[sql & params]` that is not run against a warehouse Database,
-  reads or writes rows, which an app-DB query must express in Honey SQL, unless Funny SQL compiled it."
+  reads or writes rows, which an app-DB query must express in Funny SQL, unless Funny SQL compiled it."
   [query]
   (let [sql (if (string? query) query (first query))]
     (when (and (string? sql)
                (not (:metabase.funnysql.core/compiled (meta query)))
                (not (instance-of? :model/Database t2.connection/*current-connectable*))
                (re-find row-statement-pattern sql))
-      (throw (ex-info (format (str "An app-DB query must be Honey SQL, not the SQL string %s; write it as a Honey SQL map "
+      (throw (ex-info (format (str "An app-DB query must be Funny SQL, not the SQL string %s; write it as a Funny SQL map "
                                    "with (t2/table-name :model/X) table names")
                               (pr-str sql))
                       {:sql sql})))))

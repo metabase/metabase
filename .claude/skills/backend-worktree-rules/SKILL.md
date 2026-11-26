@@ -50,8 +50,10 @@ ALTER TABLE dashboard_tab ADD CONSTRAINT fk_dashboard_tab_dashboard_wt
 A nullable reference, or one to a table without `worktree_id`, keeps only its plain foreign key.
 
 Every unique key but the primary key ends with `worktree_id`, since a worktree's copy repeats `entity_id`, names and
-paths. On H2 a key made with its table has a generated name: drop it with `EXECUTE IMMEDIATE` over
-`INFORMATION_SCHEMA`.
+paths. Every app DB constraint has a name, on H2 too. On H2, dropping a unique key hands its index to a foreign key on
+the same leading column, which keeps the old uniqueness: drop that foreign key first and add it again after the new key.
+`metabase.app-db.worktree-test` checks these rules, and that `v_worktree_table`/`v_worktree_field` have the columns of
+their tables plus `worktree_id`.
 
 ## Models and upserts
 
