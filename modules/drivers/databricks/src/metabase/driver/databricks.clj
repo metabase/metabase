@@ -342,7 +342,7 @@
   "The `UseThriftClient` value in `additional-options`, or 0."
   [additional-options]
   (or (some->> additional-options
-               (re-find #"(?i)(?:^|;)\s*UseThriftClient\s*=\s*(\d+)")
+               (re-find #"(?:^|;)UseThriftClient=(\d+)")
                second
                parse-long)
       0))
