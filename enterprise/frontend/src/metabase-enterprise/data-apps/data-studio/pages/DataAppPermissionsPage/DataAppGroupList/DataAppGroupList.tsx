@@ -3,23 +3,18 @@ import { t } from "ttag";
 
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import { useSetting } from "metabase/settings";
 import {
   Card,
-  Ellipsified,
   Flex,
-  Icon,
   TreeTable,
-  type TreeTableColumnDef,
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
 import { useGetDataAppGroupsQuery } from "metabase-enterprise/api";
-import type { DataApp, DataAppGroup, GroupId } from "metabase-types/api";
+import type { DataApp, GroupId } from "metabase-types/api";
 
-import { DataAppGroupDataAccess } from "./DataAppGroupDataAccess";
-import { DataAppGroupMenu } from "./DataAppGroupMenu";
+import { getColumns } from "./utils";
 
 type DataAppGroupListProps = {
   app: DataApp;
@@ -39,61 +34,8 @@ export function DataAppGroupList({
     error,
   } = useGetDataAppGroupsQuery(app.slug);
 
-  const columns = useMemo<TreeTableColumnDef<DataAppGroup>[]>(
-    () => [
-      {
-        id: "name",
-        accessorFn: (group) => getGroupNameLocalized(group),
-        header: t`Group name`,
-        minWidth: 200,
-        cell: ({ row }) => (
-          <Ellipsified>{getGroupNameLocalized(row.original)}</Ellipsified>
-        ),
-      },
-      {
-        id: "member_count",
-        accessorKey: "member_count",
-        header: t`Members`,
-        minWidth: 120,
-      },
-      {
-        id: "data_access",
-        header: t`Data access`,
-        minWidth: 200,
-        cell: ({ row }) => (
-          <DataAppGroupDataAccess app={app} group={row.original} />
-        ),
-      },
-      ...(isTenantsEnabled
-        ? [
-            {
-              id: "type",
-              header: t`Type`,
-              width: 80,
-              cell: ({ row }) => {
-                const label = row.original.is_tenant_group
-                  ? t`Tenant group`
-                  : t`Internal group`;
-
-                return (
-                  <Icon
-                    name={row.original.is_tenant_group ? "globe" : "group"}
-                    aria-label={label}
-                    tooltip={label}
-                    c="text-secondary"
-                  />
-                );
-              },
-            } satisfies TreeTableColumnDef<DataAppGroup>,
-          ]
-        : []),
-      {
-        id: "actions",
-        header: "",
-        width: 48,
-        cell: ({ row }) => <DataAppGroupMenu app={app} group={row.original} />,
-      },
-    ],
+  const columns = useMemo(
+    () => getColumns({ app, isTenantsEnabled }),
     [app, isTenantsEnabled],
   );
 

@@ -15,6 +15,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.sso.core :as sso]
@@ -392,6 +393,7 @@
    [:locale                     [:maybe :string]]
    [:tenant_id                  [:maybe ms/PositiveInt]]
    [:tenant_collection_id       [:maybe ms/PositiveInt]]
+   [:worktree                   [:maybe ::remote-sync.schema/worktree]]
    ;; nil for API-key users, who have no personal collection
    [:personal_collection_id     [:maybe ms/PositiveInt]]
    [:group_ids                  [:set ms/PositiveInt]]
@@ -410,7 +412,7 @@
       ;; endpoint's response
       (dissoc :type)
       (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id
-                  :has_used_password)
+                  :has_used_password :worktree)
       add-has-question-and-dashboard
       add-first-login
       add-query-permissions

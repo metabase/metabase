@@ -192,6 +192,10 @@ export function DataStudioLayout() {
             isNavbarOpened={isNavbarOpened}
             onClick={() => setIsRemoteSyncSettingsOpen(true)}
           />
+          <PLUGIN_REMOTE_SYNC.WorktreesNavItem
+            isNavbarOpened={isNavbarOpened}
+            isSelected={currentTab === "worktrees"}
+          />
           <PLUGIN_REMOTE_SYNC.SettingsModal
             opened={isRemoteSyncSettingsOpen}
             onClose={() => setIsRemoteSyncSettingsOpen(false)}

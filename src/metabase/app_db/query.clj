@@ -4,6 +4,7 @@
   (:refer-clojure :exclude [compile])
   (:require
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.funnysql.core :as funnysql]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -22,6 +23,12 @@
   [query-type model parsed-args resolved-query]
   (update-in (next-method query-type model parsed-args resolved-query)
              [:select 0 0 1] vary-meta assoc :allow-subquery true))
+
+(methodical/defmethod t2.pipeline/compile :around [:default :default clojure.lang.IPersistentMap]
+  "Keep a Honey SQL query, but no record such as Toucan's identity query, to the rows of the remote sync worktree this
+  thread works in before Funny SQL compiles it."
+  [query-type model query]
+  (next-method query-type model (cond-> query (not (record? query)) mdb.worktree/sandbox-worktree-query)))
 
 (methodical/defmethod t2.pipeline/build :before [:default :default String]
   "Throw on a lone string queried through a model, which Toucan runs as SQL text, as `(t2/select-one :model/X id)` does with a string `id`."

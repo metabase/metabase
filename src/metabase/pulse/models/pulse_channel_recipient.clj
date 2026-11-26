@@ -10,6 +10,7 @@
 (methodical/defmethod t2/table-name :model/PulseChannelRecipient [_model] :pulse_channel_recipient)
 
 (derive :model/PulseChannelRecipient :metabase/model)
+(derive :model/PulseChannelRecipient :hook/worktree-id)
 
 ;;; ------------------------------------------------------- Specs --------------------------------------------------------
 

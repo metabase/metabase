@@ -18,6 +18,7 @@
    :temporal_unit  mi/transform-keyword})
 
 (derive :model/SourceMetricDaily :metabase/model)
+(derive :model/SourceMetricDaily :hook/worktree-id)
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 

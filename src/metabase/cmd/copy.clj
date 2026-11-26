@@ -55,10 +55,12 @@
    we load instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before
    `Fields`."
   (concat
-   [:model/Channel
+   [:remote_sync_worktree
+    :model/Channel
     :model/ChannelTemplate
     :model/Database
     :model/User
+    :remote_sync_worktree_user
     :model/Setting
     :model/EmbeddingTheme
     :model/Table
@@ -225,8 +227,10 @@
 
 (def ^:private table-specs
   "The copy specs of the [[entities]] named by table, which have no model on some edition."
-  {:metabot_permissions {:skip?  false
-                         :select metabot-permissions-select}})
+  {:metabot_permissions       {:skip?  false
+                               :select metabot-permissions-select}
+   :remote_sync_worktree      {:skip? false}
+   :remote_sync_worktree_user {:skip? false}})
 
 (defn- entity-spec
   "The copy spec of an entry of [[entities]]."
@@ -469,8 +473,8 @@
                                             :where  [:and [:= :mp.group_id :pg.id] [:= :mp.perm_type perm-type]]}]]}]}
      {:quoted false})))
 
-(mu/defn copy!
-  "Copy data from a source application database into an empty destination application database."
+(mu/defn- copy-application-db!
+  "Impl for [[copy!]]."
   [source-db-type     :- [:enum :h2 :postgres :mysql]
    source-data-source :- (ms/InstanceOfClass javax.sql.DataSource)
    target-db-type     :- [:enum :h2 :postgres :mysql]
@@ -513,3 +517,13 @@
   (step (trs "Seeding metabot permissions for magic groups without any...")
     (doseq [statement (metabot-permissions-seed-queries)]
       (jdbc/execute! {:datasource target-data-source} statement))))
+
+(mu/defn copy!
+  "Copy data from a source application database into an empty destination application database, the rows of every
+  remote sync worktree included."
+  [source-db-type     :- [:enum :h2 :postgres :mysql]
+   source-data-source :- (ms/InstanceOfClass javax.sql.DataSource)
+   target-db-type     :- [:enum :h2 :postgres :mysql]
+   target-data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  (mdb/with-worktree-scope {:type :all}
+    (copy-application-db! source-db-type source-data-source target-db-type target-data-source)))

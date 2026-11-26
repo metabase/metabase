@@ -20,6 +20,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.mq.db :as mq.db]
+   [metabase.mq.impl :as mq.impl]
    [metabase.mq.payload :as payload]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.registry :as q.registry]
@@ -85,7 +86,7 @@
           rows (vec
                 (for [[channel msgs] by-channel
                       :let  [dedup    (q.registry/dedup-fn channel)
-                             deduped  (if dedup (dedup msgs) msgs)]
+                             deduped  (mq.impl/tag-worktree (if dedup (dedup msgs) msgs))]
                       :when (seq deduped)
                       chunk (partition-all (q.registry/max-batch-messages channel) deduped)
                       :let  [payload (payload/encode (vec chunk))

@@ -18,6 +18,7 @@
 
 (doto :model/ExplorationQuery
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 

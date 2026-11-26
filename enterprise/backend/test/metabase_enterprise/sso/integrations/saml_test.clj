@@ -1059,7 +1059,7 @@
                                              saml-attribute-tenant "tenant"]
             (do-with-some-validators-disabled!
              (fn []
-               (mt/with-model-cleanup [:model/User :model/Collection :model/Tenant]
+               (mt/with-model-cleanup [:model/User :model/Tenant :model/Collection]
                  (let [req-options (saml-post-request-options (new-user-with-tenant-saml-test-response)
                                                               default-redirect-uri)
                        response    (client/client-real-response :post 302 "/auth/sso" req-options)]
