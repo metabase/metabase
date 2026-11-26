@@ -431,7 +431,7 @@
                                       {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
                                        :queries (count fields)
                                        :failed-fields #{}})]
-          (#'sync.field-values/table-field-values-changes (driver.u/lib-database db-id) table [json-field plain] {})
+          (#'sync.field-values/table-field-values-changes (driver.u/lib-database db-id) table [json-field plain] {} {:rescan? false})
           (is (= [#{(:id plain)}] @calls-to-fetch-distinct-for-table))
           (is (= [#{(:id json-field)}] @calls-to-fetch-distinct-per-field)))))))
 
