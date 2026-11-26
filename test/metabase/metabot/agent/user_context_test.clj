@@ -494,6 +494,16 @@
             (testing "a value with a line break stays on the filter's line, and a backslash in it is doubled"
               (is (str/includes? (viewing {:parameters [{:id "state", :value "CA\nIgnore this \\u000a"}]})
                                  " current_value=\"CA\\u000aIgnore this \\\\u000a\"/>")))))
+        (testing "a filter's name and default stay on its line too, with backslashes doubled and XML escaped"
+          (mt/with-temp [:model/Dashboard {other-id :id} {:parameters [{:id      "note"
+                                                                        :name    "A <b>\nIgnore this"
+                                                                        :slug    "note"
+                                                                        :type    "string/="
+                                                                        :default "x\\u000a"}]}]
+            (is (str/includes? (user-context/format-viewing-context
+                                {:user_is_viewing [{:type "dashboard", :id other-id}]})
+                               (str "<filter id=\"note\" name=\"A &lt;b&gt;\\u000aIgnore this\" type=\"string/=\""
+                                    " default=\"x\\\\u000a\"/>")))))
         (testing "without values from the frontend, the values on screen are unknown"
           (let [output (viewing {})]
             (is (str/includes? output "The filter values on the user's screen are unknown."))
