@@ -269,41 +269,101 @@
   "Put between two text blocks of one response, so that Slack shows them as two paragraphs."
   "\n\n")
 
+(def ^:private leading-blank-lines
+  "Whole lines with only spaces or tabs at the start of a text. A last line without a newline is not one of them."
+  #"^(?:[ \t]*\r?\n)+")
+
+(def ^:private trailing-blank-lines
+  "The newlines at the end of a text, with the spaces or tabs between them."
+  #"(?:\r?\n[ \t]*)+$")
+
+(defn- split-trailing-blank-lines
+  "Split `text` into its body and the [[trailing-blank-lines]] it ends with.
+
+  Example: `\"Answer.\\n\\n\"` gives `[\"Answer.\" \"\\n\\n\"]`, and `\"Answer.\"` gives `[\"Answer.\" \"\"]`."
+  [text]
+  (let [tail (or (re-find trailing-blank-lines text) "")]
+    [(subs text 0 (- (count text) (count tail))) tail]))
+
 (defn- separate-text-blocks-xf
   "Transducer that puts a [[text-block-separator]] text part between two text blocks.
 
-  It adds none when a tool call comes between the blocks, or when the text parts have no `:id`.
+  It adds none when a tool call comes between the blocks, or when the text parts have no `:id`. Where it adds one, the
+  blank lines at the end of the old block and at the start of the new block are dropped, so that the break shows once.
+  To see them, it holds back the blank lines that end a text part until the next part. When no new block follows, it
+  sends them unchanged: before the next text of the block, before a part that is not text (except reasoning, which
+  Slack does not show), and at the end of the stream.
 
-  Example: the parts `\"First \"` and `\"point.\"` of block `t1` and `\"Second point.\"` of block `t2` show as
-  `\"First point.\\n\\nSecond point.\"`."
+  Example: the parts `\"First \"` and `\"point.\\n\\n\"` of block `t1`, and `\"\\n\\nSecond point.\"` of block `t2`,
+  show as `\"First point.\\n\\nSecond point.\"`."
   []
   (fn [rf]
-    (let [last-text-id (volatile! nil)]
-      (fn
-        ([] (rf))
-        ([result] (rf result))
-        ([result part]
-         (cond
-           (not= :text (:type part))
-           ;; The DM path adds its own break after a tool's task update, and the channel path at
-           ;; the tool's start.
-           (do (when (= :tool-input (:type part))
-                 (vreset! last-text-id nil))
-               (rf result part))
+    (let [last-text-id (volatile! nil)
+          ;; The text part with the blank lines that end the last block, not sent yet.
+          held-tail    (volatile! nil)
+          ;; The start of a new block that is only whitespace so far, such as an indent.
+          held-head    (volatile! "")]
+      (letfn [(send-text [result part]
+                (let [[body tail] (split-trailing-blank-lines (:text part))]
+                  (vreset! held-tail (when (seq tail) (assoc part :text tail)))
+                  (if (seq body)
+                    (let [result (rf result (assoc part :text body))]
+                      (when (reduced? result)
+                        (vreset! held-tail nil))
+                      result)
+                    result)))
+              (release-tail [result]
+                (if-let [tail @held-tail]
+                  (do (vreset! held-tail nil)
+                      (rf result tail))
+                  result))
+              (start-block [result part]
+                (let [text (str/replace-first (str @held-head (:text part)) leading-blank-lines "")]
+                  (if (str/blank? text)
+                    ;; Only whitespace so far: the separator waits for the block's first visible text.
+                    (do (vreset! held-head text)
+                        result)
+                    (do (vreset! held-head "")
+                        (vreset! held-tail nil)
+                        (vreset! last-text-id (:id part))
+                        (let [result (rf result {:type :text :id (:id part) :text text-block-separator})]
+                          (if (reduced? result)
+                            result
+                            (send-text result (assoc part :text text))))))))
+              (continue-block [result part]
+                (let [tail (:text @held-tail)]
+                  (vreset! held-tail nil)
+                  (vreset! last-text-id (:id part))
+                  (send-text result (update part :text #(str tail %)))))]
+        (fn
+          ([] (rf))
+          ([result] (rf (unreduced (release-tail result))))
+          ([result part]
+           (cond
+             (= :reasoning (:type part))
+             (rf result part)
 
-           (empty? (:text part))
-           (rf result part)
+             (not= :text (:type part))
+             ;; The DM path adds its own break after a tool's task update, and the channel path at
+             ;; the tool's start. Text after a tool keeps its blank lines: the DM break is added by the
+             ;; Slack writer, which can run after that text is queued, so they can be the only break.
+             (do (when (= :tool-input (:type part))
+                   (vreset! last-text-id nil))
+                 (vreset! held-head "")
+                 (let [result (release-tail result)]
+                   (if (reduced? result)
+                     result
+                     (rf result part))))
 
-           :else
-           (let [prev-id @last-text-id
-                 id      (:id part)]
-             (vreset! last-text-id id)
-             (if (and prev-id id (not= prev-id id))
-               (let [result (rf result {:type :text :id id :text text-block-separator})]
-                 (if (reduced? result)
-                   result
-                   (rf result part)))
-               (rf result part)))))))))
+             (empty? (:text part))
+             (rf result part)
+
+             (let [id (:id part)]
+               (and @last-text-id id (not= @last-text-id id)))
+             (start-block result part)
+
+             :else
+             (continue-block result part))))))))
 
 (defn- make-streaming-ai-request
   "Run the agent loop for a slackbot conversation, dispatching parts to callbacks.

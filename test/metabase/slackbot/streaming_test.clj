@@ -697,10 +697,10 @@
 (defn- dm-turn-with-parts!
   "Run a DM turn whose agent loop emits `parts`, with the turn's own persistence stubbed out.
 
-  Returns what the Slack client saw: `:appended` (every chunk of streamed text, joined),
-  `:task-updates` (every non-text chunk appended to the stream), `:blocks` (the finalized
-  `stop-stream` blocks), `:deleted` (the ts of every deleted message) and `:posts` (the text of
-  every posted message)."
+  Returns what the Slack client saw: `:appended` (every chunk of streamed text, joined with newlines),
+  `:chunks` (every chunk of streamed text, as sent), `:task-updates` (every non-text chunk appended to
+  the stream), `:blocks` (the finalized `stop-stream` blocks), `:deleted` (the ts of every deleted
+  message) and `:posts` (the text of every posted message)."
   [parts]
   (tu/with-slackbot-setup
     (let [event-body   tu/base-dm-event
@@ -730,6 +730,7 @@
                      :done?      true?
                      :timeout-ms 5000})
             {:appended     (str/join "\n" @append-text-calls)
+             :chunks       @append-text-calls
              :task-updates @task-updates
              :blocks       (:blocks (first @stop-stream-calls))
              :deleted      (mapv :ts @delete-calls)
@@ -873,6 +874,96 @@
            (channel-reply-texts! (concat [{:type :text :id "t1" :text "A."}]
                                          (tool-call "c1")))))))
 
+(defn- separated-texts
+  "The text of each text part that [[slackbot.streaming/separate-text-blocks-xf]] gives for `parts`, joined."
+  [parts]
+  (->> (into [] (#'slackbot.streaming/separate-text-blocks-xf) parts)
+       (filter #(= :text (:type %)))
+       (map :text)
+       str/join))
+
+(deftest ^:parallel separate-text-blocks-xf-drops-blank-lines-at-block-start-test
+  (testing "a block that starts with blank lines gets one separator, not two"
+    (is (= "Answer.\n\nMore."
+           (separated-texts [{:type :text :id "t1" :text "Answer."}
+                             {:type :text :id "t2" :text "\n\nMore."}])))
+    (testing "also when the blank lines are a part of their own"
+      (is (= "Answer.\n\nMore."
+             (separated-texts [{:type :text :id "t1" :text "Answer."}
+                               {:type :text :id "t2" :text "\n\n"}
+                               {:type :text :id "t2" :text "More."}])))))
+  (testing "text after a tool call keeps its blank lines, because the DM break there can come after it"
+    (is (= "A.\n\nB."
+           (separated-texts (concat [{:type :text :id "t1" :text "A."}]
+                                    (tool-call "c1")
+                                    [{:type :text :id "t2" :text "\n\nB."}])))))
+  (testing "an indent on the first line of a block stays"
+    (is (= "A.\n\n    code"
+           (separated-texts [{:type :text :id "t1" :text "A."}
+                             {:type :text :id "t2" :text "\n    code"}]))))
+  (testing "an indent that comes as a part of its own stays"
+    (is (= "A.\n\n    code"
+           (separated-texts [{:type :text :id "t1" :text "A."}
+                             {:type :text :id "t2" :text "    "}
+                             {:type :text :id "t2" :text "code"}]))))
+  (testing "a part of only spaces, then a newline, leaves no blank line"
+    (is (= "A.\n\nMore."
+           (separated-texts [{:type :text :id "t1" :text "A."}
+                             {:type :text :id "t2" :text "  "}
+                             {:type :text :id "t2" :text "\nMore."}]))))
+  (testing "a break inside one block stays"
+    (is (= "A.\n\nB."
+           (separated-texts [{:type :text :id "t1" :text "A."}
+                             {:type :text :id "t1" :text "\n\nB."}])))
+    (testing "also when it comes as a part of its own"
+      (is (= "A.\n\nB."
+             (separated-texts [{:type :text :id "t1" :text "A."}
+                               {:type :text :id "t1" :text "\n\n"}
+                               {:type :text :id "t1" :text "B."}]))))))
+
+(deftest ^:parallel separate-text-blocks-xf-drops-blank-lines-at-block-end-test
+  (testing "a block that ends with blank lines gets one separator, not two"
+    (is (= "Answer.\n\nMore."
+           (separated-texts [{:type :text :id "t1" :text "Answer.\n\n"}
+                             {:type :text :id "t2" :text "More."}])))
+    (testing "also when the blank lines are a part of their own"
+      (is (= "Answer.\n\nMore."
+             (separated-texts [{:type :text :id "t1" :text "Answer."}
+                               {:type :text :id "t1" :text "\n"}
+                               {:type :text :id "t1" :text "\n"}
+                               {:type :text :id "t2" :text "More."}]))))
+    (testing "also when the new block starts with blank lines too"
+      (is (= "Answer.\n\nMore."
+             (separated-texts [{:type :text :id "t1" :text "Answer.\n\n"}
+                               {:type :text :id "t2" :text "\n\nMore."}]))))
+    (testing "also with reasoning between the blocks"
+      (is (= "Answer.\n\nMore."
+             (separated-texts [{:type :text :id "t1" :text "Answer.\n\n"}
+                               {:type :reasoning :id "r1" :text "Next."}
+                               {:type :text :id "t2" :text "More."}])))))
+  (testing "blank lines that no new block follows are sent unchanged"
+    (testing "at the end of the stream"
+      (is (= "Answer.\n\n"
+             (separated-texts [{:type :text :id "t1" :text "Answer.\n\n"}]))))
+    (testing "before a tool call, in front of it"
+      (is (= [{:type :text :id "t1" :text "A."}
+              {:type :text :id "t1" :text "\n\n"}
+              {:type :tool-input :id "c1"}]
+             (into [] (#'slackbot.streaming/separate-text-blocks-xf)
+                   [{:type :text :id "t1" :text "A.\n\n"}
+                    {:type :tool-input :id "c1"}])))))
+  (testing "an early stop sends nothing after it"
+    (is (= [{:type :text :id "t1" :text "A."}]
+           (into [] (comp (#'slackbot.streaming/separate-text-blocks-xf) (take 1))
+                 [{:type :text :id "t1" :text "A.\n\n"}
+                  {:type :text :id "t2" :text "B."}])))))
+
+(deftest ^:synchronized slackbot-channel-drops-blank-lines-at-block-end-test
+  (testing "the channel reply shows a block that ends with blank lines, and the next block, with one break"
+    (is (= ["Answer.\n\nMore."]
+           (channel-reply-texts! [{:type :text :id "t1" :text "Answer.\n\n"}
+                                  {:type :text :id "t2" :text "More."}])))))
+
 (defn- context-texts
   "The mrkdwn text of every `context` block in `blocks`."
   [blocks]
@@ -997,6 +1088,13 @@
                 {:type "task_update" :id "call-1" :title "Running query" :status status}]
                task-updates))
         (is (= "\n\n" appended))))))
+
+(deftest ^:synchronized slackbot-dm-drops-blank-lines-at-block-end-test
+  (testing "the DM stream shows a block that ends with blank lines, and the next block, with one break"
+    (let [{:keys [chunks]} (dm-turn-with-parts! [{:type :text :id "t1" :text "Answer.\n\n"}
+                                                 {:type :text :id "t2" :text "More."}])]
+      (is (= "Answer.\n\nMore." (str/join chunks))
+          (pr-str chunks)))))
 
 (deftest ^:synchronized slackbot-dm-textless-reply-with-tool-progress-has-no-fallback-test
   (testing "a reply that showed tool progress is not an empty reply -- no fallback copy"
