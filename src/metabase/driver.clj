@@ -1143,6 +1143,16 @@
     ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
     :describe-is-generated
     ;;
+    ;; Does the engine stop reading as soon as a `SELECT DISTINCT ... LIMIT n` has `n` values? Then the scan of value
+    ;; lists uses that form instead of `GROUP BY ... LIMIT n`, which reads the whole table first. It matters for a field
+    ;; with more distinct values than a list holds. Defaults to false.
+    :field-values/distinct-stops-at-limit
+    ;;
+    ;; Can the engine use an index on a column when the scan of value lists reads the plain column, where a cast of
+    ;; the column in the `GROUP BY` stops it? Then the scan casts the values in an outer query. Only for a driver whose
+    ;; text cast is right for each type the scan reads. Defaults to false.
+    :field-values/group-by-plain-column
+    ;;
     ;; Does this driver support the workspace feature
     :workspace
     ;;

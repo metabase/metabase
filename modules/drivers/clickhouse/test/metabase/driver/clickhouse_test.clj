@@ -30,6 +30,7 @@
    [metabase.test.data.clickhouse :as ctd]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
+   [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -1731,3 +1732,21 @@
                (is (some? e))
                (is (false? (:workspace/cleanup? (ex-data e)))
                    (ex-message e))))))))))
+
+(deftest value-list-scan-uses-select-distinct-test
+  (mt/test-driver :clickhouse
+    (testing "ClickHouse stops a SELECT DISTINCT ... LIMIT at the limit, so the value-list scan uses that form"
+      (is (true? (driver.u/supports? :clickhouse :field-values/distinct-stops-at-limit (mt/db)))))
+    (testing "the scan returns the values of the GROUP BY form"
+      (let [table  (t2/select-one :model/Table :id (mt/id :people))
+            fields [(t2/select-one :model/Field :id (mt/id :people :email))
+                    (t2/select-one :model/Field :id (mt/id :people :source))
+                    (t2/select-one :model/Field :id (mt/id :people :state))]
+            scan   (fn [database]
+                     (mt/with-test-user :crowberto
+                       (update-vals (distinct-batch/run-distinct-batch :clickhouse table fields database)
+                                    (fn [{:keys [values raw-count]}]
+                                      ;; which values of a column with more than a list holds come back is arbitrary
+                                      (if (>= raw-count 1000) raw-count (sort values))))))]
+        (is (= (scan nil) (scan (mt/db))))
+        (is (= 1000 (get (scan (mt/db)) (mt/id :people :email))))))))

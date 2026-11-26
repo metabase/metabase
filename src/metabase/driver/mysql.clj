@@ -182,6 +182,12 @@
   [_driver _feat db]
   (and (driver.common/json-unfolding-default db) (not (mariadb? db))))
 
+;; MySQL and MariaDB stop a `SELECT DISTINCT ... LIMIT n` once they have `n` values, and read the whole table for a
+;; `GROUP BY ... LIMIT n`.
+(defmethod driver/database-supports? [:mysql :field-values/distinct-stops-at-limit]
+  [driver _feat _db]
+  (= driver :mysql))
+
 (defmethod driver/database-supports? [:mysql :table-privileges]
   [_driver _feat _db]
   ;; Disabled completely due to errors when dealing with partial revokes (metabase#38499)
@@ -194,6 +200,15 @@
        (mysql? db)))
 
 (defmethod driver/database-supports? [:mysql :regex/lookaheads-and-lookbehinds]
+  [driver _feat db]
+  (and (= driver :mysql)
+       (not (mariadb? db))))
+
+;; MySQL can read the groups of a plain column from an index on it, but must compute and sort a cast of the column
+;; for every row. MariaDB reads every row in both forms, so it keeps the cast. The column's collation then decides
+;; which values are equal: for most text columns it is NO PAD, so `'abc'` and `'abc '` are two values, where the
+;; cast to `CHAR` made them one.
+(defmethod driver/database-supports? [:mysql :field-values/group-by-plain-column]
   [driver _feat db]
   (and (= driver :mysql)
        (not (mariadb? db))))
@@ -487,9 +502,16 @@
 
 ;; MySQL/MariaDB `CAST` does not accept `TEXT` as a target type — the string cast target is
 ;; `CHAR`.
+;;
+;; A `BIT` value cast to `CHAR` is its raw byte, and the collation compares the bytes 0x00 and 0x01 as equal,
+;; so `GROUP BY CAST(bit_col AS CHAR)` puts true and false into one group. Adding 0 makes the value a number
+;; first, which casts to "0" or "1". The caller gives the column's type in `:database-type`.
 (defmethod sql.qp/->honeysql [:mysql ::sql.qp/cast-to-text]
-  [driver [_ _opts expr]]
-  (sql.qp/->honeysql driver [::sql.qp/cast {} expr "char"]))
+  [driver [_ {:keys [database-type]} expr]]
+  (let [expr (sql.qp/->honeysql driver expr)]
+    (h2x/maybe-cast "char" (if (= "bit" (some-> database-type u/lower-case-en))
+                             [:+ expr [:inline 0]]
+                             expr))))
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ _opts arg pattern]]

@@ -23,6 +23,14 @@
   goes through [[sql.qp/apply-top-level-clause]] so Oracle gets `WHERE rownum <= N` and
   SQL Server gets `SELECT TOP N`.
 
+  A driver can ask for two other forms of the arm, with feature flags (see [[query-form]]):
+
+  - `:field-values/distinct-stops-at-limit`: `SELECT DISTINCT ... LIMIT N`, which some engines stop reading as soon as
+    they have `N` values, where a `GROUP BY ... LIMIT N` reads the whole table. This matters for a field with more
+    distinct values than the limit.
+  - `:field-values/group-by-plain-column`: the inner query reads the plain column and the cast is in the outer query,
+    so an engine can use an index on the column.
+
   Arms are then unioned via HoneySQL's `:union-all`, batched into groups so query text stays
   below driver parameter / length limits, and decoded back to native Clojure values using the
   field's known `base_type`.
@@ -34,6 +42,7 @@
   (:require
    [clojure.string :as str]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
@@ -83,14 +92,48 @@
                        (h2x/identifier :table name))))
 
 (defn- cast-to-text-honeysql
-  "Driver-correct HoneySQL fragment for `CAST(col AS <driver's text type>)`."
-  [driver col-name]
-  (sql.qp/->honeysql driver [::sql.qp/cast-to-text {} (h2x/identifier :field col-name)]))
+  "Driver-correct HoneySQL fragment for `CAST(col AS <driver's text type>)`. The clause's options carry the
+  field's database type, so a driver can cast a type whose plain text form does not work, such as MySQL's `BIT`.
+  `col-name` is the column to cast, the field's own by default."
+  ([driver field]
+   (cast-to-text-honeysql driver field (:name field)))
+  ([driver field col-name]
+   (sql.qp/->honeysql driver [::sql.qp/cast-to-text
+                              {:database-type (:database_type field)}
+                              (h2x/identifier :field col-name)])))
+
+(defn- query-form
+  "The form of the arms of a query for `database` of `driver`, by its feature flags: `:distinct?` for
+  `:field-values/distinct-stops-at-limit` and `:plain-column?` for `:field-values/group-by-plain-column`. Today's form,
+  `{}`, when `database` is nil."
+  [driver database]
+  (if database
+    {:distinct?     (driver.u/supports? driver :field-values/distinct-stops-at-limit database)
+     :plain-column? (driver.u/supports? driver :field-values/group-by-plain-column database)}
+    {}))
+
+(defn- build-flagged-arm
+  "HoneySQL for one UNION arm in a form a driver asked for with `form` (see [[query-form]]). The tag and, with
+  `:plain-column?`, the cast are in the outer query."
+  [driver table field idx {:keys [distinct? plain-column?]}]
+  (let [column    (if plain-column?
+                    (h2x/identifier :field (:name field))
+                    (cast-to-text-honeysql driver field))
+        inner     (cond-> {:from [[(table-honeysql driver table)]]}
+                    distinct?       (assoc :select-distinct [[column :value_raw]])
+                    (not distinct?) (assoc :select [[column :value_raw]] :group-by [column]))
+        limited   (sql.qp/apply-top-level-clause driver :limit inner {:limit field-values/*distinct-limit*})]
+    {:select [[[:inline idx] :field_idx]
+              [(if plain-column?
+                 (cast-to-text-honeysql driver field "value_raw")
+                 (h2x/identifier :field "value_raw"))
+               :value_out]]
+     :from   [[limited :_arm]]}))
 
 (defn- build-arm
   "HoneySQL for one UNION arm. `idx` is the field's position in the batch and becomes the arm's tag."
   [driver table field idx]
-  (let [cast-expr (cast-to-text-honeysql driver (:name field))
+  (let [cast-expr (cast-to-text-honeysql driver field)
         inner     {:select   [[[:inline idx] :field_idx]
                               [cast-expr :value_out]]
                    ;; `:from` wraps the identifier expression in an extra vector — `[[expr]]` so HoneySQL
@@ -109,12 +152,18 @@
      :from   [[limited :_arm]]}))
 
 (defn- build-union
-  "Build the full HoneySQL form for one batch of fields. Single field → no UNION wrapper."
-  [driver table fields]
-  (let [arms (into [] (map-indexed #(build-arm driver table %2 %1)) fields)]
-    (if (= 1 (count arms))
-      (first arms)
-      {:union-all arms})))
+  "Build the full HoneySQL form for one batch of fields, with arms of `form` (see [[query-form]]). Single field → no
+  UNION wrapper."
+  ([driver table fields]
+   (build-union driver table fields {}))
+  ([driver table fields {:keys [distinct? plain-column?] :as form}]
+   (let [arm  (if (or distinct? plain-column?)
+                #(build-flagged-arm driver table %2 %1 form)
+                #(build-arm driver table %2 %1))
+         arms (into [] (map-indexed arm) fields)]
+     (if (= 1 (count arms))
+       (first arms)
+       {:union-all arms}))))
 
 (defn- decode-arm-idx
   "Coerce the `field_idx` tag a driver returned back to a Clojure integer. Drivers disagree on the type they
@@ -124,6 +173,8 @@
   (cond
     (number? x) (long x)
     (string? x) (try (Long/parseLong (str/trim x)) (catch NumberFormatException _ nil))))
+
+(declare run-distinct-batch*)
 
 (defn run-distinct-batch
   "Execute one UNION ALL query covering `fields` from one `table` of a Database of `driver`. The caller is
@@ -135,13 +186,22 @@
   `field-values/*distinct-limit*` by the per-arm `LIMIT`.
 
   Does NOT swallow exceptions — callers wrap with `metabase.sync.util/with-error-handling`
-  (or equivalent) to decide log-and-continue vs abort semantics."
-  [driver table fields]
+  (or equivalent) to decide log-and-continue vs abort semantics.
+
+  With `database`, the Database of `table`, the query has the form its driver asks for (see [[query-form]])."
+  ([driver table fields]
+   (run-distinct-batch driver table fields nil))
+  ([driver table fields database]
+   (run-distinct-batch* driver table fields (query-form driver database))))
+
+(defn- run-distinct-batch*
+  "[[run-distinct-batch]] with arms of `form`."
+  [driver table fields form]
   (let [db-id (:db_id table)]
     ;; Set up the QP before we compile, so drivers can read the database (e.g. BigQuery's project-id).
     (qp.setup/with-qp-setup [_query {:database db-id, :type :native}]
       (let [fields         (vec fields)
-            hsql           (build-union driver table fields)
+            hsql           (build-union driver table fields form)
             [sql & params] (sql.qp/format-honeysql driver hsql)
             result         (qp/process-query
                             {:database db-id

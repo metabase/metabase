@@ -47,6 +47,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [toucan2.core :as t2])
   (:import
    (java.io File)
@@ -1465,3 +1466,87 @@
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (ex-data e))))))))
+
+(deftest value-list-scan-uses-select-distinct-test
+  (mt/test-driver :mysql
+    (testing "MySQL and MariaDB stop a SELECT DISTINCT ... LIMIT at the limit, so the value-list scan uses that form"
+      (is (true? (driver.u/supports? :mysql :field-values/distinct-stops-at-limit (mt/db)))))
+    (testing "a scan of a column with more values than a list holds returns a full list"
+      (let [table  (t2/select-one :model/Table :id (mt/id :people))
+            fields [(t2/select-one :model/Field :id (mt/id :people :email))
+                    (t2/select-one :model/Field :id (mt/id :people :source))]
+            ;; as sync runs it
+            result (mt/with-test-user :crowberto
+                     (distinct-batch/run-distinct-batch :mysql table fields (mt/db)))]
+        (is (= 1000 (get-in result [(mt/id :people :email) :raw-count])))
+        (is (= ["Affiliate" "Facebook" "Google" "Organic" "Twitter"]
+               (sort (get-in result [(mt/id :people :source) :values]))))))))
+
+(tx/defdataset bit-values
+  [["flags"
+    [{:field-name "flag", :base-type {:native "BIT(1)"}}]
+    [[true] [false] [true] [nil]]]])
+
+(deftest value-list-scan-of-bit-column-test
+  (mt/test-driver :mysql
+    (mt/dataset bit-values
+      (testing "the batched value-list scan keeps both values of a BIT(1) column"
+        (let [table (t2/select-one :model/Table :id (mt/id :flags))
+              field (t2/select-one :model/Field :id (mt/id :flags :flag))]
+          (is (= :type/Boolean (:base_type field)))
+          (is (= #{true false nil}
+                 (mt/with-test-user :crowberto
+                   (set (get-in (distinct-batch/run-distinct-batch :mysql table [field])
+                                [(:id field) :values]))))))))))
+
+(tx/defdataset value-list-column-types
+  [["typed"
+    [{:field-name "t_varchar",  :base-type {:native "VARCHAR(20)"}}
+     {:field-name "t_char",     :base-type {:native "CHAR(5)"}}
+     {:field-name "t_enum",     :base-type {:native "ENUM('small','big')"}}
+     {:field-name "t_set",      :base-type {:native "SET('x','y')"}}
+     {:field-name "t_year",     :base-type {:native "YEAR"}}
+     {:field-name "t_bool",     :base-type {:native "TINYINT(1)"}}
+     {:field-name "t_bit",      :base-type {:native "BIT(1)"}}
+     {:field-name "t_bigint",   :base-type {:native "BIGINT UNSIGNED"}}
+     {:field-name "t_decimal",  :base-type {:native "DECIMAL(10,2)"}}
+     {:field-name "t_double",   :base-type {:native "DOUBLE"}}
+     {:field-name "t_float",    :base-type {:native "FLOAT"}}
+     {:field-name "t_date",     :base-type {:native "DATE"}}
+     {:field-name "t_datetime", :base-type {:native "DATETIME"}}
+     {:field-name "t_time",     :base-type {:native "TIME"}}]
+    [["abc"  "ab" "small" "x"   2001 true  true  18446744073709551615 1.50  0.1  0.5  #t "2024-01-02" #t "2024-01-02T03:04:05" #t "03:04:05"]
+     ["ABC"  "ab " "big"  "x,y" 2002 false false 1                    -2.25 1e20 1.25 #t "1999-12-31" #t "1999-12-31T23:59:59" #t "23:59:59"]
+     ["abc " "Ab" "small" ""    2001 true  true  0                    1.50  0.1  0.5  #t "2024-01-02" #t "2024-01-02T03:04:05" #t "03:04:05"]
+     [nil    nil  nil     nil   nil  nil   nil   nil                  nil   nil  nil  nil           nil                     nil]]]])
+
+(deftest value-list-scan-of-plain-columns-test
+  (mt/test-driver :mysql
+    (mt/dataset value-list-column-types
+      (let [table  (t2/select-one :model/Table :id (mt/id :typed))
+            fields (t2/select :model/Field :table_id (mt/id :typed) :name [:not= "id"])
+            scan   (fn [form]
+                     (mt/with-test-user :crowberto
+                       (into {}
+                             (map (fn [{:keys [id name]}]
+                                    [name (sort-by (juxt some? str) (get-in (#'distinct-batch/run-distinct-batch* :mysql table fields form)
+                                                                            [id :values]))]))
+                             fields)))
+            today  (scan {})]
+        (is (= 14 (count fields)))
+        (doseq [form [{:plain-column? true} {:plain-column? true :distinct? true}]]
+          (testing (str "form " form)
+            (let [plain (scan form)]
+              (testing "gives the same values as casting in the GROUP BY, for every type but VARCHAR"
+                (is (= (dissoc today "t_varchar") (dissoc plain "t_varchar"))))
+              (is (= [nil "abc"] (today "t_varchar")))
+              (if (mysql/mariadb? (mt/db))
+                (testing "merges a VARCHAR value with a trailing space, as MariaDB's PAD SPACE collation does"
+                  (is (= [nil "abc"] (plain "t_varchar"))))
+                (testing "keeps a VARCHAR value with a trailing space apart, as MySQL's NO PAD collation does"
+                  (is (= [nil "abc" "abc "] (plain "t_varchar"))))))))
+        (testing "the MySQL driver asks for it, but not for MariaDB, which reads every row in both forms"
+          (is (= (not (mysql/mariadb? (mt/db)))
+                 (driver.u/supports? :mysql :field-values/group-by-plain-column (mt/db))))
+          (is (false? (driver/database-supports? :mysql :field-values/group-by-plain-column
+                                                 (assoc (mt/db) :dbms_version {:flavor "MariaDB"})))))))))
