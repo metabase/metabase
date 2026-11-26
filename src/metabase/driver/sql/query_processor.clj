@@ -2078,11 +2078,26 @@
   (let [{table-name :name, schema :schema, db :db} table]
     (->honeysql driver (h2x/identifier :table db schema table-name))))
 
+(defmulti table-sample->honeysql
+  "The `FROM` item that reads the table `table-expr`, a compiled table identifier, with the driver's built-in block
+  sample of about `percent` percent of it, for example `[:raw [table-expr \" TABLESAMPLE SYSTEM (2.5)\"]]`. The
+  compiler calls it for a stage with `:table-sample`, which sync sets only for a driver that implements this method."
+  {:added "0.66.0", :arglists '([driver table-expr table-sample])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod table-sample->honeysql :sql
+  [driver _table-expr _table-sample]
+  (throw (ex-info (tru "Driver {0} does not support a built-in table sample." driver)
+                  {:type driver-api/qp.error-type.unsupported-feature})))
+
 (defmethod apply-top-level-clause [:sql :source-table]
-  [driver _top-level-clause honeysql-form {source-table-id :source-table}]
+  [driver _top-level-clause honeysql-form {source-table-id :source-table, table-sample :table-sample}]
   (let [table (driver-api/table (driver-api/metadata-provider) source-table-id)
         expr  (->honeysql driver table)]
-    (sql.helpers/from honeysql-form [expr])))
+    (sql.helpers/from honeysql-form [(if table-sample
+                                       (table-sample->honeysql driver expr table-sample)
+                                       expr)])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Building the HoneySQL Form                                           |

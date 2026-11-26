@@ -14,6 +14,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.postgres.ddl :as postgres.ddl]
@@ -38,12 +39,12 @@
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
-   [metabase.util.performance :refer [mapv not-empty select-keys some]]
+   [metabase.util.performance :as perf :refer [mapv not-empty select-keys some]]
    [next.jdbc :as next.jdbc]
    [taoensso.nippy :as nippy])
   (:import
    (java.io DataInput DataOutput StringReader)
-   (java.sql Array Connection ResultSet ResultSetMetaData Types)
+   (java.sql Array Connection ResultSet ResultSetMetaData Timestamp Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.apache.commons.codec.binary Hex)
    (org.postgresql PGConnection)
@@ -132,7 +133,8 @@
                  ;; Index sync is turned off across the application as it is not used ATM.
                  #_:index-info
                  :database-replication
-                 :stage-ctes/nest-single-row-aggregation]]
+                 :stage-ctes/nest-single-row-aggregation
+                 :table-random-sample]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
@@ -177,6 +179,110 @@
         (str (str/capitalize message) \.))
 
       message)))
+
+;;; ------------------------------------------------ Table statistics -----------------------------------------------
+
+;; Only for `:postgres` itself, so that a child driver, such as Redshift, does not read `pg_stats`.
+(defmethod driver/database-supports? [:postgres :table-statistics]
+  [driver _feature _db]
+  (= driver :postgres))
+
+(def ^:private table-statistics-timeout-seconds
+  "The time limit of the catalog query for the statistics of a table."
+  15)
+
+(def ^:private max-statistics-modified-fraction
+  "The most of a table's rows that may have changed since its last `ANALYZE` for its statistics to be used."
+  0.1)
+
+(def ^:private max-partitioned-statistics-age-days
+  "How old the statistics of a partitioned table may be. Autovacuum does not analyze a partitioned table, and its
+  change counter stays 0, so only their age says whether they are still good."
+  7)
+
+(defn- analyzed-at
+  "The time of the last `ANALYZE` of a table, `t`, as the JDBC driver gives it, as an instant."
+  [t]
+  (when t
+    (if (instance? Timestamp t) (.toInstant ^Timestamp t) (t/instant t))))
+
+(defn- fresh-statistics?
+  "Whether the statistics of a table, from its first row of the statistics query, are fresh enough to use: of a
+  partitioned table, at most [[max-partitioned-statistics-age-days]] old; of another table, with at most
+  [[max-statistics-modified-fraction]] of its rows changed since."
+  [{:keys [relkind reltuples modified analyzed_at]}]
+  (if (= "p" (str relkind))
+    (some-> (analyzed-at analyzed_at)
+            (t/after? (t/minus (t/instant) (t/days max-partitioned-statistics-age-days))))
+    (<= (or modified 0) (* max-statistics-modified-fraction (max 1.0 (double (or reltuples 0)))))))
+
+(defn- column-distinct-count
+  "The distinct count of a column from `pg_stats`: `n_distinct` is the count when positive, and minus the count over the
+  rows when negative; 0 means unknown, for example for `json`. `n_distinct` does not count NULL, and a fingerprint
+  does, so a column with NULLs gets one more."
+  [{:keys [n_distinct null_frac]} row-count]
+  (when (and n_distinct (not (zero? n_distinct)))
+    (when-let [n (if (neg? n_distinct)
+                   (when (some-> row-count pos?) (* (- (double n_distinct)) row-count))
+                   n_distinct)]
+      (+ (Math/round (double n)) (if (some-> null_frac pos?) 1 0)))))
+
+(defn- statistics-rows
+  "The rows of `pg_stats` of `table`, with the table's row count, kind, last `ANALYZE` and changes since. A partitioned
+  table has statistics only over its partitions (`inherited`); a table with inheritance children has none that cover
+  them, so it gets no rows. The per-table statistics functions read the counters of this table only."
+  [database table]
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+              [(str "SELECT s.attname, s.null_frac, s.n_distinct, c.reltuples, c.relkind,"
+                    " COALESCE(pg_stat_get_last_analyze_time(c.oid), pg_stat_get_last_autoanalyze_time(c.oid))"
+                    " AS analyzed_at,"
+                    " pg_stat_get_mod_since_analyze(c.oid) AS modified"
+                    " FROM pg_catalog.pg_class c"
+                    " JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace"
+                    " JOIN pg_catalog.pg_stats s ON s.schemaname = n.nspname AND s.tablename = c.relname"
+                    " AND s.inherited = (c.relkind = 'p')"
+                    " WHERE n.nspname = ? AND c.relname = ? AND NOT (c.relkind = 'r' AND c.relhassubclass)")
+               (:schema table) (:name table)]
+              {:timeout table-statistics-timeout-seconds}))
+
+(defmethod driver/table-statistics :postgres
+  [_driver database table fields {:keys [want]}]
+  (let [want?     #(or (perf/empty? want) (contains? want %))
+        rows      (when (or (want? :fingerprint) (want? :row-count))
+                    (statistics-rows database table))
+        first-row (first rows)]
+    (if-not (and first-row (fresh-statistics? first-row))
+      {}
+      (let [row-count  (some-> (:reltuples first-row) long)
+            row-count  (when (some-> row-count (>= 0)) row-count)
+            origin     {:source :catalog :kind :sampled :collected-at (some-> (analyzed-at (:analyzed_at first-row)) str)}
+            by-name    (into {} (map (juxt :attname identity)) rows)
+            field-info (when (want? :fingerprint)
+                         (into {}
+                               (keep (fn [{:keys [id nfc_path] field-name :name}]
+                                       (when-let [stats (and (perf/empty? nfc_path) (by-name field-name))]
+                                         (let [distinct-count (column-distinct-count stats row-count)]
+                                           [id {:fingerprint {:global (cond-> {:nil% (double (:null_frac stats))}
+                                                                        distinct-count
+                                                                        (assoc :distinct-count distinct-count))}
+                                                :origin      origin}]))))
+                               fields))]
+        (cond-> {}
+          (and row-count (want? :row-count)) (assoc :row-count {:value row-count :origin (assoc origin :kind :estimate)})
+          (seq field-info)                   (assoc :fields field-info))))))
+
+;;; ------------------------------------------------ Table samples -------------------------------------------------
+
+(defmethod sql.qp/table-sample->honeysql :postgres
+  [_driver table-expr {:keys [percent]}]
+  [:raw [table-expr " TABLESAMPLE SYSTEM (" [:inline percent] ")"]])
+
+;; Only tables, partitioned tables and materialized views can be read with TABLESAMPLE. Sync gives a table a row count
+;; estimate only from `pg_stat_user_tables` (see [[describe-syncable-tables]]), which has no rows for views and
+;; foreign tables, so those get no estimate and the block sample declines for them.
+(defmethod driver/table-random-sample :postgres
+  [_driver table fields rff opts]
+  (table-rows-sample/block-sample table fields rff opts))
 
 (defmethod driver/db-default-timezone :postgres
   [driver database]
