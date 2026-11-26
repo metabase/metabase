@@ -2,8 +2,11 @@
   "Analysis sub-step that takes a sample of values for a Field and saving a non-identifying fingerprint
    used for classification. This fingerprint is saved as a column on the Field it belongs to."
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
+   [malli.error :as me]
    [metabase.analyze.core :as analyze]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sync.analyze.sample :as sample]
    [metabase.sync.analyze.table-chunks :as table-chunks]
@@ -12,6 +15,7 @@
    [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -64,6 +68,136 @@
            :collected-at (str (t/instant))}
     fraction (assoc :fraction fraction)
     runs     (assoc :runs runs)))
+
+(defn- catalog-answer
+  "The answer of the driver's [[driver/table-statistics]] for `fields` of `table`, at the cost of catalog reads only,
+  within the time limit of a better sample. The answer of a field of a wrong shape is logged and dropped. A failure, a
+  timeout or an answer of a wrong shape as a whole is logged, turns the catalog off for the Database for the rest of
+  the run, and gives nil; a transient error is thrown, so that the next
+  sync tries again."
+  [driver database table fields]
+  (let [limit-ms (* 1000 (sync.settings/fingerprint-sample-timeout-seconds))
+        call     (future (driver/table-statistics driver database table fields
+                                                  {:max-cost :metadata :want #{:fingerprint}}))
+        answer   (try
+                   (deref call limit-ms ::timed-out)
+                   (catch java.util.concurrent.ExecutionException e
+                     (or (ex-cause e) e))
+                   (finally
+                     (when-not (realized? call)
+                       (future-cancel call))))
+        give-up  (fn [message & args]
+                   (log/warnf "%s; using the sample only for the tables of its database for the rest of this sync."
+                              (apply format message args))
+                   (sample/turn-off-catalog! (:db_id table))
+                   nil)]
+    (cond
+      (= ::timed-out answer)
+      (give-up "The catalog statistics of %s took longer than %d s" (sync-util/name-for-logging table) (quot limit-ms 1000))
+
+      (instance? Throwable answer)
+      (do (sync-util/rethrow-fatal answer)
+          (when (sync-util/transient-exception? answer)
+            (throw answer))
+          (log/warn answer "The catalog statistics failed")
+          (give-up "The catalog statistics of %s failed" (sync-util/name-for-logging table)))
+
+      (mr/validate ::driver/table-statistics.result answer)
+      answer
+
+      (and (map? answer) (map? (:fields answer)))
+      ;; keep the fields whose answer has the right shape, so that one odd column does not cost the others
+      (let [valid? (fn [[id field-answer]] (mr/validate ::driver/table-statistics.result {:fields {id field-answer}}))
+            fields (into {} (filter valid?) (:fields answer))]
+        (log/warnf "Some catalog statistics of %s are not in the shape of table-statistics, and are not used: %s"
+                   (sync-util/name-for-logging table)
+                   (pr-str (me/humanize (mr/explain ::driver/table-statistics.result
+                                                    {:fields (into {} (remove valid?) (:fields answer))}))))
+        {:fields fields})
+
+      :else
+      (give-up "The catalog statistics of %s are not in the shape of table-statistics: %s"
+               (sync-util/name-for-logging table)
+               (pr-str (me/humanize (mr/explain ::driver/table-statistics.result answer)))))))
+
+(defn- catalog-statistics
+  "What the database's catalog knows of the fingerprints of `fields` of `table`, by Field id, or `{}` for a driver
+  without [[driver/table-statistics]], or when it failed earlier in this run (see [[catalog-answer]])."
+  [table fields]
+  (let [driver (driver.u/database->driver (:db_id table))]
+    (or (when (and (contains? (methods driver/table-statistics) driver)
+                   (not (sample/catalog-off? (:db_id table))))
+          (let [database (driver.u/lib-database (:db_id table))]
+            (when (driver.u/supports? driver :table-statistics database)
+              (:fields (catalog-answer driver database table fields)))))
+        {})))
+
+(defn- leaf-paths
+  "The paths of the values of the nested map `nested`, as vectors of keys."
+  [nested]
+  (mapcat (fn [[k v]]
+            (if (map? v)
+              (map #(into [k] %) (leaf-paths v))
+              [[k]]))
+          nested))
+
+(defn- part-name
+  "The name of the fingerprint part at `path`, such as `global.distinct-count`, for the `:parts` of an origin."
+  [path]
+  (str/join "." (map u/qualified-name path)))
+
+(def ^:private range-keys
+  "The keys of a fingerprint's type part that give a range, which a catalog value widens unless it is exact."
+  {:min min :max max})
+
+(defn- catalog-value
+  "The value of a fingerprint part at `path` from the sample's `sample-value` and the catalog's `catalog-value` of the
+  kind `kind`, or nil to keep the sample's. The catalog's distinct count and nil fraction describe the whole table, so
+  they replace the sample's, except a distinct count of 0, which a catalog gives when it does not count NULL. A
+  distinct count that is not exact is at least the sample's, which counted the values it saw: an old estimate can be
+  below it. A range
+  from a catalog that is not exact only widens the sample's. Other parts come from the catalog only when it is exact."
+  [path sample-value catalog-value kind]
+  (let [k (peek path)]
+    (cond
+      (nil? catalog-value)                         nil
+      (= path [:global :distinct-count])           (when (pos? catalog-value)
+                                                     (if (or (= kind :exact) (not (number? sample-value)))
+                                                       catalog-value
+                                                       (max catalog-value sample-value)))
+      (= path [:global :nil%])                     catalog-value
+      (= kind :exact)                              catalog-value
+      (and (range-keys k) (number? sample-value)
+           (number? catalog-value))                ((range-keys k) sample-value catalog-value)
+      :else                                        nil)))
+
+(defn- with-catalog-parts
+  "The fingerprint `fingerprint` of a sample with `origin`, and the field's answer from the catalog, `catalog`, merged
+  part by part with [[catalog-value]], and the origin with the origin of each part from the catalog in `:parts`. Only
+  for a fingerprint from rows, and only the type part that the sample has. A merged fingerprint that is not valid gives
+  the sample's. Returns `[fingerprint origin]`."
+  [fingerprint origin {catalog-fingerprint :fingerprint catalog-origin :origin :keys [parts]}]
+  (let [part-origin (or (:fingerprint parts) catalog-origin)
+        kind        (:kind part-origin)
+        sample-type (set (keys (:type fingerprint)))
+        merged      (when (and (= :updated-fingerprints (fingerprint-outcome fingerprint)) (seq catalog-fingerprint))
+                      (reduce (fn [acc path]
+                                (let [type-path? (= :type (first path))]
+                                  (if (and type-path? (not (sample-type (second path))))
+                                    acc
+                                    (if-some [v (catalog-value path (get-in fingerprint path) (get-in catalog-fingerprint path)
+                                                               kind)]
+                                      (-> acc
+                                          (assoc-in (cons :fingerprint path) v)
+                                          (update :parts conj (assoc part-origin :part (part-name path))))
+                                      acc))))
+                              {:fingerprint fingerprint :parts []}
+                              (leaf-paths catalog-fingerprint)))]
+    (if (and merged
+             (seq (:parts merged))
+             (mr/validate :metabase.lib.schema.metadata.fingerprint/fingerprint (:fingerprint merged)))
+      [(:fingerprint merged) (assoc origin :parts (:parts merged))]
+      [fingerprint origin])))
 
 (mr/def ::FingerprintStats
   [:map {:closed true}
@@ -120,8 +254,14 @@
                                            (if (and (not (#{:unspecified :first-rows} (:method how)))
                                                     (no-data? (:result how)))
                                              (sample/first-rows-sample table fields rff opts)
-                                             how)))]
-    {:rows  (into [] (keep identity) (map (partial fingerprint-row (sample-origin table how)) fields fingerprints))
+                                             how)))
+        origin                       (sample-origin table how)
+        catalog                      (catalog-statistics table fields)]
+    {:rows  (into []
+                  (keep (fn [[field fingerprint]]
+                          (let [[fingerprint origin] (with-catalog-parts fingerprint origin (get catalog (:id field)))]
+                            (fingerprint-row origin field fingerprint))))
+                  (map vector fields fingerprints))
      :stats (fingerprint-stats fingerprints)}))
 
 (mu/defn- fingerprint-fields!

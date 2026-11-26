@@ -17,6 +17,14 @@ summary: Changes to the Metabase driver interface, listed by release.
   throws or takes longer than its time limit, and then for the rest of the run for that database. Sync stores the
   method with each fingerprint, in `metabase_field.fingerprint_origin`.
 
+- New multimethod `metabase.driver/table-statistics` and feature flag `:table-statistics`, false by default. A driver
+  that supports the flag gives what its database's catalog knows about a table and its fields, at a cost no higher
+  than `:max-cost` (`:metadata`, catalog reads only, or `:scan`, which may read the table's data): `{:row-count {:value
+  n :origin o}, :fields {field-id {:fingerprint <partial>, :values {:complete? b :declared? b :values [...]}, :origin
+  o, :parts {part o}}}}`, with only the parts it has. The schemas are `:metabase.driver/table-statistics.options` and
+  `:metabase.driver/table-statistics.result`. The default returns `{}`. Declare the flag for the driver itself only,
+  as `(= driver :my-driver)`.
+
 - New multimethod `metabase.driver.sql.query-processor/table-sample->honeysql`, for a SQL driver's built-in block
   sample (such as `TABLESAMPLE SYSTEM`). It returns the `FROM` item for a compiled table identifier and
   `{:percent p}`. The compiler calls it for a query stage with `:table-sample`. The `:sql` default throws. A driver

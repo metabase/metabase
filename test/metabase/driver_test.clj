@@ -19,6 +19,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
@@ -535,3 +536,38 @@
        clojure.lang.ExceptionInfo
        #"Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
        (driver/native-query-deps ::mock-deps-driver nil nil))))
+
+(deftest ^:parallel table-statistics-default-test
+  (testing "a driver with no statistics of its own knows nothing, so sync takes everything from the sample"
+    (is (= {} (driver/table-statistics :h2 nil {:id 1 :name "t"} [{:id 2 :name "f"}] {:max-cost :metadata})))
+    (is (false? (driver/database-supports? :h2 :table-statistics nil)))))
+
+(deftest ^:parallel table-statistics-schemas-test
+  (testing "the options: the cost the caller accepts, the parts it wants, and the most values of a list"
+    (is (mr/validate ::driver/table-statistics.options {:max-cost :metadata}))
+    (is (mr/validate ::driver/table-statistics.options {:max-cost :scan :want #{:values :fingerprint} :values-limit 1000}))
+    (is (not (mr/validate ::driver/table-statistics.options {:max-cost :all})))
+    (is (not (mr/validate ::driver/table-statistics.options {}))))
+  (testing "the answer: what the driver knows, each part with its origin"
+    (is (mr/validate ::driver/table-statistics.result {}))
+    (is (mr/validate ::driver/table-statistics.result
+                     {:row-count {:value 48211094 :origin {:source :catalog :kind :estimate}}
+                      :fields    {12 {:fingerprint {:global {:distinct-count 51 :nil% 0.0}}
+                                      :values      {:complete? true :declared? true :values ["AK" "AL"]}
+                                      :origin      {:source       :catalog
+                                                    :kind         :sampled
+                                                    :collected-at "2026-11-23T02:10:00Z"}
+                                      :parts       {:values {:source :catalog :kind :exact}}}}}))
+    (testing "a fingerprint in the shape of a fingerprint"
+      (is (not (mr/validate ::driver/table-statistics.result
+                            {:fields {12 {:fingerprint {:global {:distinct-count "51"}}
+                                          :origin      {:source :catalog :kind :exact}}}}))))
+    (testing "values only when the driver says whether they are complete"
+      (is (not (mr/validate ::driver/table-statistics.result {:fields {12 {:values {:values ["AK"]}
+                                                                           :origin {:source :catalog :kind :exact}}}}))))
+    (testing "each field answer has an origin, and a row count has one too and is not negative"
+      (is (not (mr/validate ::driver/table-statistics.result
+                            {:fields {12 {:fingerprint {:global {:distinct-count 51}}}}})))
+      (is (not (mr/validate ::driver/table-statistics.result {:row-count {:value 5 :kind :estimate}})))
+      (is (not (mr/validate ::driver/table-statistics.result
+                            {:row-count {:value -1 :origin {:source :catalog :kind :estimate}}}))))))

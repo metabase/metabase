@@ -58,6 +58,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.secrets.models.secret :as secret]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -69,6 +70,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.warehouses.provider-detection :as provider-detection]
    [next.jdbc :as next.jdbc]
    [taoensso.nippy :as nippy]
@@ -3104,6 +3106,143 @@
          (is (thrown-with-msg? Exception #"more parameters than we can handle"
                                (with-open [_stmt (sql-jdbc.execute/prepared-statement
                                                   :postgres conn "SELECT 1 -- ?" [1])]))))))))
+
+(defn- analyze!
+  "Run ANALYZE on the table `table-name`, and wait until the statistics views show it: its time, and no changes
+  since. Before Postgres 15 the views get both a moment after the command, and the counts of an earlier INSERT can get
+  there after the ANALYZE, so the ANALYZE is run again when they do."
+  [spec table-name]
+  (let [analyzed? (fn []
+                    (let [{:keys [t m]} (first (jdbc/query spec [(format (str "SELECT pg_stat_get_last_analyze_time('%1$s'::regclass) AS t,"
+                                                                              " pg_stat_get_mod_since_analyze('%1$s'::regclass) AS m")
+                                                                         table-name)]))]
+                      (and (some? t) (zero? (or m 0)))))]
+    (loop [runs 10]
+      (jdbc/execute! spec [(str "ANALYZE " table-name)])
+      (when-not (loop [tries 15]
+                  (or (analyzed?)
+                      (when (pos? tries)
+                        (Thread/sleep 100)
+                        (recur (dec tries)))))
+        (when (pos? runs)
+          (recur (dec runs)))))))
+
+(defn- do-with-stats-table!
+  "Create the table `kb_stats` with 1,000 rows: `a` with 10 values and NULL in a tenth of the rows, `b` unique; run
+  `analyze?` ANALYZE, and call `f` with its Table and Fields."
+  [analyze? f]
+  (let [spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
+    (jdbc/execute! spec ["DROP TABLE IF EXISTS kb_stats"])
+    (jdbc/execute! spec ["CREATE TABLE kb_stats (a int, b int, j json) WITH (autovacuum_enabled = false)"])
+    (try
+      (jdbc/execute! spec [(str "INSERT INTO kb_stats SELECT CASE WHEN g % 10 = 0 THEN NULL ELSE g % 10 END, g,"
+                                " CASE WHEN g % 2 = 0 THEN NULL ELSE json_build_object('g', g) END"
+                                " FROM generate_series(1, 1000) g")])
+      (when analyze? (analyze! spec "kb_stats"))
+      (mt/with-temp [:model/Table table {:db_id (mt/id) :name "kb_stats" :schema "public"}
+                     :model/Field a     {:table_id (:id table) :name "a" :base_type :type/Integer :database_type "int4"}
+                     :model/Field b     {:table_id (:id table) :name "b" :base_type :type/Integer :database_type "int4"}
+                     :model/Field j     {:table_id (:id table) :name "j" :base_type :type/JSON :database_type "json"}]
+        (f table [a b j]))
+      (finally
+        (jdbc/execute! spec ["DROP TABLE IF EXISTS kb_stats"])))))
+
+(deftest table-statistics-test
+  (mt/test-driver :postgres
+    (is (driver.u/supports? :postgres :table-statistics (mt/db)))
+    (testing "the statistics of ANALYZE in pg_stats: distinct counts and nil fractions, as sampled by ANALYZE"
+      (do-with-stats-table!
+       true
+       (fn [table [a b j]]
+         (let [answer (driver/table-statistics :postgres (lib.metadata/database (mt/metadata-provider)) table [a b j]
+                                               {:max-cost :metadata})]
+           (testing "no distinct count for a column whose n_distinct is 0, which means unknown, such as json"
+             (is (nil? (get-in answer [:fields (:id j) :fingerprint :global :distinct-count]))))
+           (is (mr/validate ::driver/table-statistics.result answer))
+           (testing "a distinct count that counts NULL as a value, as a sample does"
+             (is (= 10 (get-in answer [:fields (:id a) :fingerprint :global :distinct-count]))))
+           (is (< 0.09 (get-in answer [:fields (:id a) :fingerprint :global :nil%]) 0.11))
+           (is (= 1000 (get-in answer [:fields (:id b) :fingerprint :global :distinct-count])))
+           (is (=? {:source :catalog :kind :sampled :collected-at #"^\d{4}-.*Z$"}
+                   (get-in answer [:fields (:id a) :origin])))
+           (is (=? {:value 1000 :origin {:source :catalog :kind :estimate}} (:row-count answer)))))))
+    (testing "a table that ANALYZE has not read: nothing"
+      (do-with-stats-table!
+       false
+       (fn [table fields]
+         (is (= {} (driver/table-statistics :postgres (lib.metadata/database (mt/metadata-provider)) table fields
+                                            {:max-cost :metadata}))))))
+    (testing "only the row count when that is what is wanted"
+      (do-with-stats-table!
+       true
+       (fn [table fields]
+         (is (=? {:row-count {:value 1000}}
+                 (driver/table-statistics :postgres (lib.metadata/database (mt/metadata-provider)) table fields
+                                          {:max-cost :metadata :want #{:row-count}})))
+         (is (not (contains? (driver/table-statistics :postgres (lib.metadata/database (mt/metadata-provider)) table
+                                                      fields {:max-cost :metadata :want #{:row-count}})
+                             :fields))))))
+    (testing "nothing that is not wanted"
+      (do-with-stats-table!
+       true
+       (fn [table fields]
+         (is (= {} (driver/table-statistics :postgres (lib.metadata/database (mt/metadata-provider)) table fields
+                                            {:max-cost :metadata :want #{:values}}))))))))
+
+(deftest fingerprints-use-pg-stats-test
+  (mt/test-driver :postgres
+    (testing "sync fills the distinct counts and nil fractions of fingerprints from pg_stats"
+      (let [spec  (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+            table (t2/select-one :model/Table :id (mt/id :venues))]
+        (jdbc/execute! spec [(format "ANALYZE \"%s\".\"%s\"" (:schema table) (:name table))])
+        (mt/with-temp-copy-of-db
+          (binding [sync.fingerprint/*refingerprint?* true]
+            (sync.fingerprint/fingerprint-table! (t2/select-one :model/Table :id (mt/id :venues))))
+          (let [{:keys [fingerprint fingerprint_origin]} (t2/select-one :model/Field :id (mt/id :venues :name))]
+            (is (= 100 (get-in fingerprint [:global :distinct-count])))
+            (is (= #{"global.distinct-count" "global.nil%"} (set (map :part (:parts fingerprint_origin)))))
+            (is (every? #(= [:catalog :sampled] [(:source %) (:kind %)]) (:parts fingerprint_origin)))))))))
+
+(deftest table-statistics-of-parents-and-stale-tables-test
+  (mt/test-driver :postgres
+    (let [spec     (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+          database (lib.metadata/database (mt/metadata-provider))
+          stats    (fn [table-name]
+                     (mt/with-temp [:model/Table table {:db_id (mt/id) :name table-name :schema "public"}
+                                    :model/Field k     {:table_id (:id table) :name "k" :base_type :type/Integer
+                                                        :database_type "int4"}]
+                       (driver/table-statistics :postgres database table [k] {:max-cost :metadata})))
+          drop!    #(jdbc/execute! spec ["DROP TABLE IF EXISTS kb_child, kb_parent, kb_part_1, kb_part_2, kb_parted, kb_stale"])]
+      (drop!)
+      (try
+        (testing "a partitioned table: the statistics over its partitions"
+          (jdbc/execute! spec ["CREATE TABLE kb_parted (k int) PARTITION BY RANGE (k)"])
+          (jdbc/execute! spec ["CREATE TABLE kb_part_1 PARTITION OF kb_parted FOR VALUES FROM (0) TO (500)"])
+          (jdbc/execute! spec ["CREATE TABLE kb_part_2 PARTITION OF kb_parted FOR VALUES FROM (500) TO (1000)"])
+          (jdbc/execute! spec ["INSERT INTO kb_parted SELECT g % 50 + (g % 2) * 500 FROM generate_series(1, 1000) g"])
+          (analyze! spec "kb_parted")
+          (let [{:keys [fields]} (stats "kb_parted")]
+            (is (= 50 (-> fields vals first :fingerprint :global :distinct-count)))))
+        (testing "a table with inheritance children: nothing, since its statistics do not cover them"
+          (jdbc/execute! spec ["CREATE TABLE kb_parent (k int) WITH (autovacuum_enabled = false)"])
+          (jdbc/execute! spec ["CREATE TABLE kb_child () INHERITS (kb_parent)"])
+          (jdbc/execute! spec ["INSERT INTO kb_parent SELECT g FROM generate_series(1, 100) g"])
+          (analyze! spec "kb_parent")
+          (is (= {} (stats "kb_parent"))))
+        (testing "a table that changed much since its ANALYZE: nothing"
+          (jdbc/execute! spec ["CREATE TABLE kb_stale (k int) WITH (autovacuum_enabled = false)"])
+          (jdbc/execute! spec ["INSERT INTO kb_stale SELECT g % 5 FROM generate_series(1, 1000) g"])
+          (analyze! spec "kb_stale")
+          (jdbc/execute! spec ["INSERT INTO kb_stale SELECT g FROM generate_series(1, 5000) g"])
+          ;; the change counters reach the statistics views a moment after the transaction
+          (loop [tries 50]
+            (when (and (pos? tries)
+                       (zero? (:m (first (jdbc/query spec ["SELECT pg_stat_get_mod_since_analyze('kb_stale'::regclass) AS m"])))))
+              (Thread/sleep 100)
+              (recur (dec tries))))
+          (is (= {} (stats "kb_stale"))))
+        (finally
+          (drop!))))))
 
 (deftest table-sample-compile-test
   (mt/test-driver :postgres
