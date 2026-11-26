@@ -13,17 +13,16 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
+   [metabase.app-db.db :as mdb.db]
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.env :as mdb.env]
    [metabase.app-db.format]
-   [metabase.app-db.honeysql-guard]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.query]
    [metabase.app-db.query-cancelation]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
-   [metabase.app-db.value-guard]
    [metabase.config.core :as config]
    [metabase.global-system.mutable-component :as mc]
    [potemkin :as p]))
@@ -31,10 +30,8 @@
 (set! *warn-on-reflection* true)
 
 (comment metabase.app-db.format/keep-me
-         metabase.app-db.honeysql-guard/keep-me
          metabase.app-db.query/keep-me
-         metabase.app-db.query-cancelation/keep-me
-         metabase.app-db.value-guard/keep-me)
+         metabase.app-db.query-cancelation/keep-me)
 
 (p/import-vars
  [mdb.connection
@@ -46,6 +43,7 @@
   with-application-db
   do-before-commit
   do-after-commit
+  do-after-rollback
   in-transaction?
   mariadb?
   quartz-data-source
@@ -77,17 +75,37 @@
   spec]
  [metabase.app-db.query
   compile
-  current-timestamp-string
+  create-partition-size
+  delete-partition-size
   isa
   join
   qualify
+  select-partition-size
+  type-keyword->descendants
+  upsert-query
+  update-partition-size
+  with-conflict-retry]
+ [mdb.db
+  create-batched!
+  current-timestamp-string
+  delete-batched!
+  delete-oldest-rows!
+  increment-counts!
+  insert-returning-instances!
   query
+  select-batched
+  select-batched-by-keys
+  select-batched-map
+  select-batched-reducible
+  select-batched-set
   select-or-insert!
+  select-partitions
   streaming-reducible
   streaming-reducible-query
-  type-keyword->descendants
-  update-or-insert!
-  with-conflict-retry]
+  sum-batched
+  update-batched!
+  update-grouped!
+  update-or-insert!]
  [metabase.app-db.query-cancelation
   query-canceled-exception?]
  [liquibase

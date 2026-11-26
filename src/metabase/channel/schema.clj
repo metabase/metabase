@@ -110,8 +110,9 @@
    ::channel.details-by-type])
 
 (mr/def ::channel.update
-  "What an update (or insert) of a Channel accepts: every column of `:channel` except `id`, all optional."
+  "What an update of a Channel takes: its `:id` and the columns to change, every column of `:channel`."
   [:map {:closed true}
+   [:id          ms/PositiveInt]
    [:name        {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:type        {:optional true} [:maybe ::channel.type]]
@@ -119,6 +120,15 @@
    [:active      {:optional true} [:maybe :boolean]]
    [:created_at  {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at  {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::channel.create
+  "What a caller gives to create a Channel."
+  [:map {:closed true}
+   [:name                         :string]
+   [:type                         ::channel.type]
+   [:description {:optional true} [:maybe :string]]
+   [:details     {:optional true} [:maybe ::channel.details]]
+   [:active      {:optional true} [:maybe :boolean]]])
 
 (def channel-template-details-types
   "The `:type`s an email template's details can have: a Handlebars template written inline, or one shipped as a resource."
@@ -172,6 +182,13 @@
    [:details      {:optional true} [:maybe ::channel-template.details]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::channel-template.create
+  "What a caller gives to create a ChannelTemplate."
+  [:map {:closed true}
+   [:channel_type                  [:or :keyword :string]]
+   [:name         {:optional true} [:maybe :string]]
+   [:details      {:optional true} [:maybe ::channel-template.details]]])
 
 (mr/def ::external-channel
   "A Channel as serialization writes it, with portable references in place of ids."

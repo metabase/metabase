@@ -198,7 +198,7 @@ FROM model;
 {% endraw %}
 ```
 
-Simply typing `{% raw %}{{#}} {% endraw %}` will allow you to search for models (for example, you could type in `{% raw %}{{#customer}}{% endraw %}` to search models, questions, and tables with the word "customer" in the title).
+To search for models, type `{% raw %}{{#{% endraw %}` followed by at least one character of the model's name or ID. For example, type `{% raw %}{{#customer{% endraw %}` to search models and questions with the word "customer" in the title. Typing `{% raw %}{{#{% endraw %}` by itself won't display the list.
 
 You can also use the data reference sidebar to browse the models available. To open the data reference sidebar, click on the **book** icon.
 

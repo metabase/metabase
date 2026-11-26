@@ -66,6 +66,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
@@ -82,6 +83,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -149,6 +151,14 @@
     (when (string? schema)
       (not-empty (str/trim schema)))))
 
+(defn- workspace-schema-row
+  "The update row of `database` that sets its `database-workspace-schema` to `schema`, or drops it for nil."
+  [{:keys [id settings]} schema]
+  {:id       id
+   :settings (if schema
+               (assoc settings :database-workspace-schema schema)
+               (dissoc settings :database-workspace-schema))})
+
 (defn instance-workspace
   "The workspace this instance is, as `{:databases {<db-id> <schema>}}`, or nil when
    the `workspaces-enabled` setting is off."
@@ -205,14 +215,11 @@
         (when-let [unknown (seq (remove (set (map :id databases)) (keys schemas)))]
           (throw (ex-info (str "Unknown database ids: " (pr-str (vec unknown)))
                           {:status-code 400 :database_ids (vec unknown)})))
-        (doseq [{:keys [id settings] :as database} databases
-                :let [schema (get schemas id)]
-                :when (not= schema (database-workspace-schema database))]
-          (ws.db/update-database-settings! id (if schema
-                                                (assoc settings :database-workspace-schema schema)
-                                                (dissoc settings :database-workspace-schema)))
+        (let [changed (filterv #(not= (get schemas (:id %)) (database-workspace-schema %)) databases)]
+          (database/update-databases! (mapv #(workspace-schema-row % (get schemas (:id %))) changed) {:databases changed})
           ;; Rows pointing at the old schema would keep redirecting reads there.
-          (ws.db/delete-table-remappings-of-database! id))
+          (when (seq changed)
+            (table-remapping/delete-table-remappings-of-databases! (mapv :id changed))))
         (ws.settings/workspaces-enabled! true)))
     (catch Throwable e
       ;; The setter puts the flag in this process's settings cache before the commit, and a rollback does not
@@ -222,14 +229,19 @@
   nil)
 
 (defn delete-stale-table-remappings!
-  "Delete the remap rows of `database` when its `database-workspace-schema`
-   differs from that of `previous-database`, the same row before the write, and that had one. Those rows
-   point at the old schema and would keep redirecting reads there. A database that had no schema has no
-   rows of its own, and keeps the ones an upgrade carried over."
-  [previous-database database]
-  (when (and (some? (database-workspace-schema previous-database))
-             (not= (database-workspace-schema previous-database) (database-workspace-schema database)))
-    (ws.db/delete-table-remappings-of-database! (:id database)))
+  "Delete, in one statement, the remap rows of each Database of `changes`, `{:previous-object :object}` maps of its
+  row before and after a write, whose `database-workspace-schema` the write changed from one it had. Those rows point
+  at the old schema and would keep redirecting reads there. A database that had no schema has no rows of its own, and
+  keeps the ones an upgrade carried over."
+  [changes]
+  (when-let [database-ids (not-empty (into []
+                                           (comp (filter (fn [{:keys [previous-object object]}]
+                                                           (and (some? (database-workspace-schema previous-object))
+                                                                (not= (database-workspace-schema previous-object)
+                                                                      (database-workspace-schema object)))))
+                                                 (map (comp :id :object)))
+                                           changes))]
+    (table-remapping/delete-table-remappings-of-databases! database-ids))
   nil)
 
 (defn clear-instance-workspace!
@@ -241,7 +253,7 @@
   (ws.settings/workspaces-enabled! false)
   ;; The setting's setter deletes the remap rows only when the value changes. Delete
   ;; them here too, so that rows left while the setting was already off also go.
-  (ws.db/delete-all-table-remappings!)
+  (table-remapping/delete-all-table-remappings!)
   nil)
 
 (defn translate-instance-workspace-setting!
@@ -260,12 +272,13 @@
       (log/warn (str "Translating the removed instance-workspace setting into workspaces-enabled and"
                      " database-workspace-schema"))
       (t2/with-transaction [_conn]
-        (doseq [[database-id {:keys [output]}] databases
-                :let  [database (ws.db/database (parse-long (name database-id)))
-                       schema   (some-> (or (:schema output) (:db output)) str/trim not-empty)]
-                :when (and database schema)]
-          (ws.db/update-database-settings! (:id database)
-                                           (assoc (:settings database) :database-workspace-schema schema)))
+        (let [pairs (vec (for [[database-id {:keys [output]}] databases
+                               :let  [database (ws.db/database (parse-long (name database-id)))
+                                      schema   (some-> (or (:schema output) (:db output)) str/trim not-empty)]
+                               :when (and database schema)]
+                           [database schema]))]
+          (database/update-databases! (mapv (fn [[database schema]] (workspace-schema-row database schema)) pairs)
+                                      {:databases (mapv first pairs)}))
         (ws.settings/workspaces-enabled! true)))
     (when (setting/db-stored-value :instance-workspace)
       (ws.settings/instance-workspace! nil)))
@@ -429,7 +442,7 @@
   parent may own."
   [wsd-id]
   (provisioning/with-workspace-database-lock wsd-id
-    (ws.db/delete-workspace-database! wsd-id)))
+    (workspace-database/delete-workspace-database! wsd-id)))
 
 (defn- restore-workspace-database-status!
   "Set the WorkspaceDatabase `wsd` back to the status and `updated_at` it has in `wsd`, if it is `:deprovisioning`.
@@ -437,7 +450,7 @@
   for a row a crashed instance left `:provisioning` or `:deprovisioning`: with a new one, the busy check would refuse
   the next delete."
   [wsd]
-  (ws.db/transition-workspace-database-at! (:id wsd) :deprovisioning (:status wsd) (:updated_at wsd)))
+  (workspace-database/transition-workspace-database-at! (:id wsd) :deprovisioning (:status wsd) (:updated_at wsd)))
 
 (defn- mark-workspace-databases-deprovisioning!
   "Set every WorkspaceDatabase of `workspace-id` to `:deprovisioning`, so the busy checks refuse other requests while
@@ -454,7 +467,7 @@
         now  (t/offset-date-time)]
     (assert-workspace-not-busy workspace-id)
     (reduce (fn [marked wsd]
-              (when-not (pos? (ws.db/transition-workspace-database-at! (:id wsd) (:status wsd) :deprovisioning now))
+              (when-not (pos? (workspace-database/transition-workspace-database-at! (:id wsd) (:status wsd) :deprovisioning now))
                 (run! restore-workspace-database-status! marked)
                 (throw (workspace-busy-exception workspace-id)))
               (conj marked wsd))

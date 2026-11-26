@@ -5,13 +5,21 @@
    [metabase.models.interface :as mi]
    [metabase.queries-rest.api.card :as api.card]
    [metabase.queries-rest.db :as queries-rest.db]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(defn- hydrate-dashboard-permissions
+  "`cards`, each with its `:in_dashboards` hydrated with `:can_read` and `:can_write`, with the permissions read
+  together."
+  [cards]
+  (let [id->dashboard (u/index-by :id (t2/hydrate (vec (mapcat :in_dashboards cards)) :can_read :can_write))]
+    (mapv (fn [card] (update card :in_dashboards #(mapv (comp id->dashboard :id) %))) cards)))
+
 (defn- present-dashboard [dashboard]
   (-> (cond
-        (not (mi/can-read? (t2/hydrate dashboard :can_read))) {:error :unreadable-dashboard}
-        (not (mi/can-write? (t2/hydrate dashboard :can_write))) (merge dashboard {:error :unwritable-dashboard})
+        (not (mi/can-read? dashboard)) {:error :unreadable-dashboard}
+        (not (mi/can-write? dashboard)) (merge dashboard {:error :unwritable-dashboard})
         :else dashboard)
       (select-keys [:id :name :error])))
 
@@ -32,6 +40,7 @@
     (as-> card_ids $
       (mapv id->card $)
       (t2/hydrate $ :in_dashboards)
+      (hydrate-dashboard-permissions $)
       (mapv (fn [{:keys [id in_dashboards]}]
               {:card_id id :dashboards (map present-dashboard in_dashboards)})
             $))))
@@ -47,6 +56,5 @@
                                     [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                     [:dashboard_id  {:optional true} [:maybe ms/PositiveInt]]]]
   (t2/with-transaction [_conn]
-    (doseq [card-id card_ids]
-      (api.card/update-card! card-id (select-keys body [:collection_id :dashboard_id]) true)))
+    (api.card/move-cards! card_ids (select-keys body [:collection_id :dashboard_id])))
   {:status :success})

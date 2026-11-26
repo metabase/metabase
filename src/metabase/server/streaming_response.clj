@@ -1,7 +1,6 @@
 (ns metabase.server.streaming-response
   (:require
    [clojure.core.async :as a]
-   [clojure.walk :as walk]
    [compojure.response]
    [metabase.api.common.internal]
    [metabase.server.protocols :as server.protocols]
@@ -12,6 +11,7 @@
    [metabase.util.async :as async.u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
    [ring.util.jakarta.servlet :as servlet]
@@ -141,11 +141,7 @@
   (let [obj (cond-> obj
               response-fn response-fn)]
     (-> (if (not= :api export-format)
-          (walk/prewalk (fn [x]
-                          (if (map? x)
-                            (apply dissoc x [:json_query :preprocessed])
-                            x))
-                        obj)
+          (match/replace-all obj #'map? (dissoc &match :json_query :preprocessed))
           obj)
         (dissoc :export-format)
         (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))))

@@ -57,14 +57,22 @@
   [table-ids]
   (permitted-table-ids :queryable-table mi/can-query? :can_query table-ids))
 
-(defn- data-accessible?
-  [table]
-  (perms/user-has-permission-for-tables? (perms/user-info api/*current-user-id*) :perms/view-data :unrestricted {(:id table) (:db_id table)}))
-
 (defn data-accessible-table-ids
-  "Returns the subset of `table-ids` the current user has unrestricted view-data access to."
+  "Returns the subset of `table-ids` the current user has unrestricted view-data access to, read for all of them at
+  once."
   [table-ids]
-  (permitted-table-ids :data-accessible-table data-accessible? nil table-ids))
+  (->> (memoized :data-accessible-table table-ids
+                 (fn [ids]
+                   (let [tables (into [] (keep (table-rows ids)) ids)
+                         values (perms/table-permissions-for-user (perms/user-info api/*current-user-id*)
+                                                                  :perms/view-data
+                                                                  (into {} (map (juxt :id :db_id)) tables))]
+                     (into {}
+                           (map (fn [{:keys [id]}]
+                                  [id (perms/at-least-as-permissive? :perms/view-data (get values id) :unrestricted)]))
+                           tables)))
+                 false)
+       (into #{} (keep (fn [[id permitted?]] (when permitted? id))))))
 
 (defn- row-restricted-by-db
   "`{table-id restricted?}` for one database's `tables`, computed from a single

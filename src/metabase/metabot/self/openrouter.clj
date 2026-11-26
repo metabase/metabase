@@ -91,6 +91,11 @@
    ;; disable reports 0 reasoning_tokens in usage and completes within 48 completion tokens, so the
    ;; structured path needs neither a low effort nor the mandatory max_tokens floor
    "moonshotai/kimi-k3"              {:display-name "Kimi K3"                 :context-window 1048576 :reasoning :renderable}
+   ;; classified 2026-11-19 from the catalog: reasoning on by default at medium effort, like gpt-5.6, but
+   ;; `mandatory` with no `none` effort, like gpt-5.5-pro. Metabot runs through OpenRouter then got no 400s, and Sol
+   ;; streamed reasoning summaries without a directive. Astra streamed none, on the direct OpenAI route as well.
+   "openai/gpt-6.2-astra"            {:display-name "GPT-6.2 Astra"           :context-window  922000 :reasoning :renderable-default :reasoning-mandatory? true}
+   "openai/gpt-6.2-sol"              {:display-name "GPT-6.2 Sol"             :context-window  922000 :reasoning :renderable-default :reasoning-mandatory? true}
    "openai/gpt-5.6-sol"              {:display-name "GPT-5.6 Sol"             :context-window  922000 :reasoning :renderable-default}
    "openai/gpt-5.6-terra"            {:display-name "GPT-5.6 Terra"           :context-window  922000 :reasoning :renderable-default}
    "openai/gpt-5.6-luna"             {:display-name "GPT-5.6 Luna"            :context-window  922000 :reasoning :renderable-default}
@@ -191,11 +196,11 @@
 
 (defn- model-supports-temperature?
   "Whether an OpenRouter model id accepts an explicit `temperature`. Two families reject it: OpenAI's
-  GPT-5 and o-series, and current-generation Claude ([[claude/model-current-gen?]] once the `anthropic/`
+  GPT-5, GPT-6 and o-series, and current-generation Claude ([[claude/model-current-gen?]] once the `anthropic/`
   prefix is off)."
   [model]
   (let [model (str model)]
-    (not (or (str/starts-with? model "openai/gpt-5")
+    (not (or (re-find #"^openai/gpt-[56]" model)
              (re-find #"^openai/o\d" model)
              (and (anthropic-model? model)
                   (claude/model-current-gen? (subs model (count "anthropic/"))))))))

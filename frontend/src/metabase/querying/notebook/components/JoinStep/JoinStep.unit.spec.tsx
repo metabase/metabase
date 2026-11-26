@@ -1,4 +1,5 @@
 import _userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { useEffect, useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -219,11 +220,13 @@ function setup({
   readOnly = false,
   recentItems = [],
   searchItems = [],
+  rootCollectionItems = [],
 }: {
   step?: NotebookStep;
   readOnly?: boolean;
   recentItems?: RecentItem[];
   searchItems?: CollectionItem[];
+  rootCollectionItems?: CollectionItem[];
 } = {}) {
   const updateQuery = jest.fn();
   const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
@@ -236,7 +239,7 @@ function setup({
   });
   setupCollectionItemsEndpoint({
     collection: ROOT_COLLECTION,
-    collectionItems: [],
+    collectionItems: rootCollectionItems,
   });
   setupCollectionItemsEndpoint({
     collection: PERSONAL_COLLECTION,
@@ -431,6 +434,48 @@ describe("Notebook Editor > Join Step", () => {
 
     expect(within(modal).queryByText(QUESTION.name)).not.toBeInTheDocument();
     expect(await within(modal).findByText(MODEL.name)).toBeInTheDocument();
+  });
+
+  it("should not list metrics in the right table picker (metabase#66210)", async () => {
+    setup({
+      rootCollectionItems: [
+        createMockCollectionItem({
+          id: 401,
+          name: "66210 metric",
+          model: "metric",
+          database_id: SAMPLE_DATABASE.id,
+        }),
+        createMockCollectionItem({
+          id: 402,
+          name: "Orders question",
+          model: "card",
+          database_id: SAMPLE_DATABASE.id,
+        }),
+      ],
+    });
+
+    await userEvent.click(
+      within(screen.getByLabelText("Right table")).getByRole("textbox"),
+    );
+    await waitForLoaderToBeRemoved();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Browse all/ }),
+    );
+    const modal = await screen.findByTestId("entity-picker-modal");
+    await userEvent.click(await within(modal).findByText("Our analytics"));
+
+    expect(await within(modal).findByText("Orders question")).toBeVisible();
+    expect(within(modal).queryByText("66210 metric")).not.toBeInTheDocument();
+
+    const itemsRequests = fetchMock.callHistory.calls(
+      "path:/api/collection/root/items",
+    );
+    expect(itemsRequests.length).toBeGreaterThan(0);
+    itemsRequests.forEach((call) => {
+      const models = new URL(call.url).searchParams.getAll("models");
+      expect(models).toContain("card");
+      expect(models).not.toContain("metric");
+    });
   });
 
   it("should open the LHS column picker after right table is selected and the RHS picker after it", async () => {
@@ -869,6 +914,105 @@ describe("Notebook Editor > Join Step", () => {
         "Reviews → Product ID",
       );
     });
+    it.each([
+      { title: "without a breakout", hasBreakout: false },
+      { title: "with a breakout", hasBreakout: true },
+    ])(
+      "should join on a nested aggregation of the previous stage $title",
+      async ({ hasBreakout }) => {
+        const query = Lib.createTestQuery(provider, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                {
+                  name: "Foo",
+                  value: {
+                    type: "operator",
+                    operator: "min",
+                    args: [{ type: "column", name: "SUBTOTAL" }],
+                  },
+                },
+                {
+                  name: "Bar",
+                  value: {
+                    type: "operator",
+                    operator: "+",
+                    args: [
+                      { type: "column", name: "Foo" },
+                      {
+                        type: "operator",
+                        operator: "avg",
+                        args: [{ type: "column", name: "TAX" }],
+                      },
+                    ],
+                  },
+                },
+              ],
+              breakouts: hasBreakout
+                ? [{ type: "column", name: "CREATED_AT", unit: "month" }]
+                : [],
+            },
+            {},
+          ],
+        });
+        const { getRecentJoin } = setup({
+          step: createMockNotebookStep({ query, stageIndex: 1 }),
+        });
+
+        await userEvent.click(
+          within(screen.getByLabelText("Right table")).getByRole("textbox"),
+        );
+        await userEvent.click(
+          await screen.findByRole("menuitem", { name: /Browse all/ }),
+        );
+        const modal = await screen.findByTestId("entity-picker-modal");
+        await waitForLoaderToBeRemoved();
+        await userEvent.click(await within(modal).findByText("Databases"));
+        await userEvent.click(await screen.findByText(/Sample Database/));
+        await userEvent.click(await within(modal).findByText("Products"));
+
+        const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
+        await userEvent.click(within(lhsColumnPicker).getByText("Foo"));
+        const rhsColumnPicker = await screen.findByTestId("rhs-column-picker");
+        await userEvent.click(within(rhsColumnPicker).getByText("Price"));
+
+        await userEvent.click(await screen.findByLabelText("Pick columns"));
+        const joinColumnsPicker = await screen.findByTestId(
+          "join-columns-picker",
+        );
+        await userEvent.click(
+          within(joinColumnsPicker).getByText("Select all"),
+        );
+        await userEvent.click(within(joinColumnsPicker).getByText("ID"));
+
+        const { query: nextQuery, conditions, fields } = getRecentJoin();
+        expect(conditions).toEqual([
+          expect.objectContaining({
+            operator: "=",
+            lhsExpression: expect.objectContaining({
+              name: "Foo",
+              isFromPreviousStage: true,
+            }),
+            rhsExpression: expect.objectContaining({
+              longDisplayName: "Products - Foo → Price",
+            }),
+          }),
+        ]);
+        if (!Array.isArray(fields)) {
+          throw new Error("Expected a list of join columns");
+        }
+        const fieldNames = fields.map(
+          (column) => Lib.displayInfo(nextQuery, 1, column).name,
+        );
+        expect(fieldNames).toEqual(["ID"]);
+        const joinedColumnNames = Lib.returnedColumns(nextQuery, 1)
+          .map((column) => Lib.displayInfo(nextQuery, 1, column))
+          .filter((info) => info.isFromJoin)
+          .map((info) => info.longDisplayName);
+        expect(joinedColumnNames).toEqual(["Products - Foo → ID"]);
+      },
+    );
   });
 
   describe("join strategies", () => {

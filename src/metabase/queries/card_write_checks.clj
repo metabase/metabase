@@ -5,9 +5,11 @@
   (:require
    [metabase.api.common :as api]
    [metabase.embedding.validation :as embedding.validation]
+   [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
@@ -62,7 +64,7 @@
   [card-before-updates :- ::queries.schema/card
    card-updates        :- ::queries.schema/card]
   (when (api/column-will-change? (:dataset_query card-before-updates) (get card-updates :dataset_query ::api/not-provided))
-    (query-perms/check-run-permissions-for-query (dissoc (:dataset_query card-updates) :query-permissions/perms))))
+    (query-perms/check-run-permissions-for-queries [(dissoc (:dataset_query card-updates) :query-permissions/perms)])))
 
 (defn- check-embedding-enabled-to-change-embedding
   "Embedding must be enabled to change the value of `enable_embedding`, `embedding_type` or `embedding_params`."
@@ -85,7 +87,7 @@
   [query]
   ;; Strip :query-permissions/perms first -- it is populated internally by the QP middleware, so
   ;; any value already on the incoming query is dropped here.
-  (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms)))
+  (query-perms/check-run-permissions-for-queries [(dissoc query :query-permissions/perms)]))
 
 (defn check-allowed-to-create-card!
   "Throws unless `card` can be saved as `card-type` and the current user may create it and run its query."
@@ -105,3 +107,15 @@
   (doseq [f [check-update-result-metadata-data-perms
              check-allowed-to-modify-query]]
     (f card-before-update card-updates)))
+
+(defn check-allowed-to-update-cards!
+  "Throws a 403 unless the current user may apply to each of `card-changes`, `[card changes]` pairs of Cards hydrated
+  with `:can_write`, its changes, with what the Cards depend on read together, publishing the failure for the first
+  Card that they may not."
+  [card-changes]
+  (when-not (queries.card/can-update-cards? card-changes)
+    (events/publish-event! :event/update-permission-failure
+                           {:user-id api/*current-user-id*
+                            :object  (first (or (queries.card/first-update-refused card-changes)
+                                                (first card-changes)))})
+    (api/check-403 false)))

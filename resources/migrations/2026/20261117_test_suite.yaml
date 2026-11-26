@@ -1,0 +1,270 @@
+## Adds test_suite, a named list of saved data tests, and test_suite_member, its members. A member names its test by
+## test type and entity id, with no foreign key: the types live in different tables, and a suite pulled from git can name
+## a test this instance lacks. Deleting a test through its model deletes its member rows, except on an instance where
+## remote sync keeps synced content read-only. Adds test_suite_run, the run history of suites, which outlives the suite.
+
+databaseChangeLog:
+  - changeSet:
+      id: asx8o2
+      author: galdre
+      comment: Add test_suite
+      changes:
+        - createTable:
+            tableName: test_suite
+            remarks: A named list of saved data tests, run together
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: ${entity_id.type}
+                  remarks: NanoID for serdes
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: name
+                  type: ${text.type}
+                  remarks: The name of the suite
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: A description of the suite
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: The user who created the suite
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp this suite was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp this suite was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: qpyqjs
+      author: galdre
+      comment: Index test_suite.creator_id
+      changes:
+        - createIndex:
+            tableName: test_suite
+            indexName: idx_test_suite_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: c3vo1f
+      author: galdre
+      comment: Add FK constraint on test_suite.creator_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: test_suite
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_test_suite_creator_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: takv71
+      author: galdre
+      comment: Add test_suite_member
+      changes:
+        - createTable:
+            tableName: test_suite_member
+            remarks: A saved data test in a test suite
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: suite_id
+                  type: int
+                  remarks: The suite
+                  constraints:
+                    nullable: false
+              - column:
+                  name: test_type
+                  type: varchar(50)
+                  remarks: The type of the test, which selects the table test_entity_id points into
+                  constraints:
+                    nullable: false
+              - column:
+                  name: test_entity_id
+                  type: ${entity_id.type}
+                  remarks: The entity id of the test; no foreign key, as the test can be missing on this instance
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: int
+                  remarks: The place of the test in the suite, from 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: ywbs17
+      author: galdre
+      comment: Each test appears once in a suite
+      changes:
+        - addUniqueConstraint:
+            tableName: test_suite_member
+            columnNames: suite_id, test_type, test_entity_id
+            constraintName: uq_test_suite_member_suite_test
+
+  - changeSet:
+      id: s2rba2
+      author: galdre
+      comment: Add FK constraint on test_suite_member.suite_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: test_suite_member
+            baseColumnNames: suite_id
+            referencedTableName: test_suite
+            referencedColumnNames: id
+            constraintName: fk_test_suite_member_suite_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 3pnnh9
+      author: galdre
+      comment: Index test_suite_member by test, for deleting the members of a deleted test
+      changes:
+        - createIndex:
+            tableName: test_suite_member
+            indexName: idx_test_suite_member_test
+            columns:
+              - column:
+                  name: test_type
+              - column:
+                  name: test_entity_id
+
+  - changeSet:
+      id: lyhhry
+      author: galdre
+      comment: Add test_suite_run
+      changes:
+        - createTable:
+            tableName: test_suite_run
+            remarks: A run of a test suite and the outcome of each of its members
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: suite_id
+                  type: int
+                  remarks: The suite that was run; null once the suite is deleted
+              - column:
+                  name: initiated_by
+                  type: int
+                  remarks: The user who started the run
+              - column:
+                  name: status
+                  type: varchar(50)
+                  remarks: started, passed, failed, error, or timeout
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_time
+                  type: ${timestamp_type}
+                  remarks: When the run started
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: ${timestamp_type}
+                  remarks: When the run finished; null while it is running
+              - column:
+                  name: last_heartbeat
+                  type: ${timestamp_type}
+                  remarks: Heartbeat stamped while the run executes; a stale value means the owning process died
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: members
+                  type: ${text.type}
+                  remarks: JSON array of the outcome of each member, written once every member has run; null when the run ended before that
+
+  - changeSet:
+      id: 4gejxi
+      author: galdre
+      comment: Index test_suite_run by suite and start time, for the run history of a suite
+      changes:
+        - createIndex:
+            tableName: test_suite_run
+            indexName: idx_test_suite_run_suite_id_start_time
+            columns:
+              - column:
+                  name: suite_id
+              - column:
+                  name: start_time
+
+  - changeSet:
+      id: 0yc90m
+      author: galdre
+      comment: Add FK constraint on test_suite_run.suite_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: test_suite_run
+            baseColumnNames: suite_id
+            referencedTableName: test_suite
+            referencedColumnNames: id
+            constraintName: fk_test_suite_run_suite_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: 8ottux
+      author: galdre
+      comment: Index test_suite_run.initiated_by
+      changes:
+        - createIndex:
+            tableName: test_suite_run
+            indexName: idx_test_suite_run_initiated_by
+            columns:
+              - column:
+                  name: initiated_by
+
+  - changeSet:
+      id: uo7p23
+      author: galdre
+      comment: Add FK constraint on test_suite_run.initiated_by
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: test_suite_run
+            baseColumnNames: initiated_by
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_test_suite_run_initiated_by
+            onDelete: SET NULL

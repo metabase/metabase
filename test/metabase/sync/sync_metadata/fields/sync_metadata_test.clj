@@ -12,6 +12,13 @@
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]))
 
+(defn- updated-ids
+  "The ids an update by primary key writes: `pk`, a single id, or the ids of `[:in ids]`."
+  [pk]
+  (if (and (vector? pk) (= :in (first pk)))
+    (second pk)
+    [pk]))
+
 (defn- updates-that-will-be-performed!
   ([new-metadata-from-sync metadata-in-application-db]
    ;; use alphabetical field_order by default because the default, database, will update the position
@@ -24,13 +31,14 @@
                   :model/Table table (assoc table :db_id (u/the-id db))]
      (let [update-operations (atom [])]
        (mt/with-dynamic-fn-redefs [t2/update! (fn [model _pk-column id updates]
-                                                (swap! update-operations conj [(name model) id updates])
+                                                (doseq [id (updated-ids id)]
+                                                  (swap! update-operations conj [(name model) id updates]))
                                                 (count updates))]
-         (#'sync-metadata/update-field-metadata-if-needed!
+         (sync-metadata/update-metadata!
           (driver.u/lib-database (:id db))
           table
-          new-metadata-from-sync
-          metadata-in-application-db)
+          #{new-metadata-from-sync}
+          #{metadata-in-application-db})
          @update-operations)))))
 
 (defn- perform-updates!
@@ -38,15 +46,15 @@
   [new-metadata-from-sync metadata-in-application-db]
   (mt/with-temp [:model/Database db    {}
                  :model/Table    table {:db_id (u/the-id db) :field_order :alphabetical}]
-    (#'sync-metadata/update-field-metadata-if-needed!
+    (sync-metadata/update-metadata!
      (driver.u/lib-database (:id db))
      table
-     new-metadata-from-sync
-     metadata-in-application-db)))
+     #{new-metadata-from-sync}
+     #{metadata-in-application-db})))
 
 (deftest database-type-changed-test
   (testing "test that if database-type changes we will update it in the DB"
-    (is (= [["Field" 1 {:database_type "Integer"}]]
+    (is (= [["Field" 9999999 {:database_type "Integer"}]]
            (updates-that-will-be-performed!
             {:name                       "My Field"
              :database-type              "Integer"
@@ -57,7 +65,7 @@
             {:name                       "My Field"
              :database-type              "NULL"
              :base-type                  :type/Integer
-             :id                         1
+             :id                         9999999
              :database-position          0
              :database-required          false
              :database-is-auto-increment false})))))
@@ -73,26 +81,26 @@
 
 (deftest database-position-changed-test
   (testing "test that if database-position changes and table.field_order=database we will update the position too"
-    (is (= [["Field" 1 {:database_position 1
-                        :position          1}]]
+    (is (= [["Field" 9999999 {:database_position 1
+                              :position          1}]]
            (updates-that-will-be-performed!
             (merge default-metadata {:database-position 1})
             (merge default-metadata {:database-position 0
                                      :position          0
-                                     :id                1})
+                                     :id                9999999})
             {:field_order :database})))
     (testing "but not if the table's fields should not be sorted according to the database"
-      (is (= [["Field" 1 {:database_position 1}]]
+      (is (= [["Field" 9999999 {:database_position 1}]]
              (updates-that-will-be-performed!
               (merge default-metadata {:database-position 1})
               (merge default-metadata {:database-position 0
                                        :position          0
-                                       :id                1})
+                                       :id                9999999})
               {:field_order :alphabetical}))))))
 
 (deftest database-required-changed-test
   (testing "test that if database-required changes we will update it in the DB"
-    (is (= [["Field" 1 {:database_required false}]]
+    (is (= [["Field" 9999999 {:database_required false}]]
            (updates-that-will-be-performed!
             {:name                       "My Field"
              :database-type              "Integer"
@@ -103,7 +111,7 @@
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
-             :id                         1
+             :id                         9999999
              :position                   0
              :database-position          0
              :database-required          true
@@ -111,7 +119,7 @@
 
 (deftest database-is-auto-increment-changed-test
   (testing "test that if database-required changes we will update it in the DB"
-    (is (= [["Field" 1 {:database_is_auto_increment true}]]
+    (is (= [["Field" 9999999 {:database_is_auto_increment true}]]
            (updates-that-will-be-performed!
             {:name                       "My Field"
              :database-type              "Integer"
@@ -122,11 +130,11 @@
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
-             :id                         1
+             :id                         9999999
              :database-position          0
              :database-required          false
              :database-is-auto-increment false})))
-    (is (= [["Field" 1 {:database_is_auto_increment false}]]
+    (is (= [["Field" 9999999 {:database_is_auto_increment false}]]
            (updates-that-will-be-performed!
             {:name              "My Field"
              :database-type     "Integer"
@@ -137,7 +145,7 @@
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
-             :id                         1
+             :id                         9999999
              :database-position          0
              :database-required          false
              :database-is-auto-increment true})))))
@@ -156,7 +164,7 @@
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
-             :id                         1
+             :id                         9999999
              :database-position          0
              :database-required          false
              :json-unfolding             false
@@ -176,7 +184,7 @@
             {:name                       "My Field"
              :database-type              "Integer"
              :base-type                  :type/Integer
-             :id                         1
+             :id                         9999999
              :database-position          0
              :database-required          false
              :database-is-auto-increment true
@@ -184,48 +192,48 @@
 
 (deftest update-database-partitioned-test
   (testing "update from nil -> boolean"
-    (is (= [["Field" 1 {:database_partitioned false}]]
+    (is (= [["Field" 9999999 {:database_partitioned false}]]
            (updates-that-will-be-performed!
             (merge default-metadata {:database-partitioned false})
-            (merge default-metadata {:database-partitioned nil :id 1})))))
+            (merge default-metadata {:database-partitioned nil :id 9999999})))))
   (testing "flip the state"
-    (is (= [["Field" 1 {:database_partitioned false}]]
+    (is (= [["Field" 9999999 {:database_partitioned false}]]
            (updates-that-will-be-performed!
             (merge default-metadata {:database-partitioned false})
-            (merge default-metadata {:database-partitioned true :id 1}))))))
+            (merge default-metadata {:database-partitioned true :id 9999999}))))))
 
 (deftest update-nfc-path-test
   (testing "nil -> vector"
-    (is (= [["Field" 1 {:nfc_path ["payload" "user"]}]]
+    (is (= [["Field" 9999999 {:nfc_path ["payload" "user"]}]]
            (updates-that-will-be-performed!
             (merge default-metadata {:nfc-path ["payload" "user"]})
-            (merge default-metadata {:id 1})))))
+            (merge default-metadata {:id 9999999})))))
   (testing "vector -> nil"
-    (is (= [["Field" 1 {:nfc_path nil}]]
+    (is (= [["Field" 9999999 {:nfc_path nil}]]
            (updates-that-will-be-performed!
             default-metadata
-            (merge default-metadata {:nfc-path ["payload" "user"] :id 1})))))
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 9999999})))))
   (testing "vector -> different vector"
-    (is (= [["Field" 1 {:nfc_path ["payload" "account"]}]]
+    (is (= [["Field" 9999999 {:nfc_path ["payload" "account"]}]]
            (updates-that-will-be-performed!
             (merge default-metadata {:nfc-path ["payload" "account"]})
-            (merge default-metadata {:nfc-path ["payload" "user"] :id 1})))))
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 9999999})))))
   (testing "no change when path is identical"
     (is (= []
            (updates-that-will-be-performed!
             (merge default-metadata {:nfc-path ["payload" "user"]})
-            (merge default-metadata {:nfc-path ["payload" "user"] :id 1})))))
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 9999999})))))
   (testing "no change when driver emits keywords and DB has equivalent strings"
     (is (= []
            (updates-that-will-be-performed!
             (merge default-metadata {:nfc-path [:payload :user]})
-            (merge default-metadata {:nfc-path ["payload" "user"] :id 1}))))))
+            (merge default-metadata {:nfc-path ["payload" "user"] :id 9999999}))))))
 
 (deftest nil-database-type-test
   (testing (str "test that if `database-type` comes back as `nil` in the metadata from the sync process, we won't try "
                 "to set a `nil` value in the DB -- this is against the rules -- we should set `NULL` instead. See "
                 "`TableMetadataField` schema.")
-    (is (= [["Field" 1 {:database_type "NULL"}]]
+    (is (= [["Field" 9999999 {:database_type "NULL"}]]
            (updates-that-will-be-performed!
             {:name                       "My Field"
              :database-type              nil
@@ -238,7 +246,7 @@
              :database-type              "Integer"
              :base-type                  :type/Integer
              :database-position          0
-             :id                         1
+             :id                         9999999
              :database-required          false
              :database-is-auto-increment false
              :json-unfolding             false}))))
@@ -256,7 +264,7 @@
             {:name                       "My Field"
              :database-type              "NULL"
              :base-type                  :type/Integer
-             :id                         1
+             :id                         9999999
              :database-position          0
              :database-required          false
              :database-is-auto-increment false
@@ -265,25 +273,25 @@
 (deftest crufty-field-sets-preview-display-false-test
   (testing "When a field becomes crufty (matches auto-cruft pattern), preview_display should be set to false"
     (testing "field with preview_display=true should have it set to false when crufty"
-      (is (= [["Field" 1 {:visibility_type :details-only
-                          :preview_display false}]]
+      (is (= [["Field" 9999999 {:visibility_type :details-only
+                                :preview_display false}]]
              (updates-that-will-be-performed!
               ;; new metadata from sync - field name matches auto-cruft pattern
               (merge default-metadata {:name "updated_at"})
               ;; existing field in application DB with preview_display=true
               (merge default-metadata {:name            "updated_at"
-                                       :id              1
+                                       :id              9999999
                                        :visibility-type :normal
                                        :preview-display true})
               {:field_order :alphabetical}
               ;; database settings with auto-cruft pattern matching "updated_at"
               {:auto-cruft-columns ["updated_at"]}))))
     (testing "field already with preview_display=false should not be updated again"
-      (is (= [["Field" 1 {:visibility_type :details-only}]]
+      (is (= [["Field" 9999999 {:visibility_type :details-only}]]
              (updates-that-will-be-performed!
               (merge default-metadata {:name "updated_at"})
               (merge default-metadata {:name            "updated_at"
-                                       :id              1
+                                       :id              9999999
                                        :visibility-type :normal
                                        :preview-display false})
               {:field_order :alphabetical}
@@ -305,7 +313,7 @@
              :database-type     "Integer"
              :base-type         :type/Integer
              :semantic-type     :type/Price
-             :id                1
+             :id                9999999
              :database-position 0
              :json-unfolding    false
              :database-required false
@@ -493,7 +501,7 @@
               (merge default-metadata
                      {:base-type :type/Text})
               (merge default-metadata
-                     {:id                1
+                     {:id                9999999
                       :base-type         :type/Text
                       :effective-type    :type/Number
                       :coercion-strategy :Coercion/String->Number})))))
@@ -503,7 +511,7 @@
               (merge default-metadata
                      {:base-type :type/Number})
               (merge default-metadata
-                     {:id                1
+                     {:id                9999999
                       :base-type         :type/Number
                       :effective-type    :type/Number
                       :coercion-strategy nil})))))
@@ -514,7 +522,7 @@
                      (merge default-metadata
                             {:base-type :type/Number})
                      (merge default-metadata
-                            {:id                1
+                            {:id                9999999
                              :base-type         :type/Text
                              :effective-type    :type/Text
                              :coercion-strategy nil}))]

@@ -1495,3 +1495,129 @@
                                   (entity-details/get-metric-details {:metric-id card-id})
                                   (entity-details/get-table-details
                                    {:entity-type expected-type :entity-id card-id}))))))))))))
+
+(defn- result-or-refusal
+  "What `thunk` returns, or the message and status code of the exception it throws."
+  [thunk]
+  (try
+    (thunk)
+    (catch clojure.lang.ExceptionInfo e
+      [(ex-message e) (:status-code (ex-data e))])))
+
+(deftest get-tables-details-answers-each-table-as-get-table-details-test
+  (testing "details of several tables read together are those of each read alone, and a batch with one unreadable table is refused"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+      (perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/create-queries :query-builder)
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [arguments {:entity-type          :table
+                         :with-fields?         true
+                         :with-field-values?   false
+                         :with-related-tables? false
+                         :with-metrics?        false
+                         :with-measures?       true
+                         :with-segments?       true}
+              together  (fn [table-ids]
+                          (result-or-refusal
+                           #(entity-details/get-tables-details (lib-be/application-database-metadata-provider (mt/id))
+                                                               table-ids
+                                                               arguments)))
+              alone     (fn [table-id]
+                          (result-or-refusal #(entity-details/get-table-details (assoc arguments :entity-id table-id))))]
+          (is (= (mapv alone [(mt/id :venues) (mt/id :users)])
+                 (together [(mt/id :venues) (mt/id :users)])))
+          (is (every? :structured-output (together [(mt/id :venues) (mt/id :users)])))
+          (is (= ["You don't have permissions to do that." 403]
+                 (alone (mt/id :checkins))
+                 (together [(mt/id :venues) (mt/id :checkins) (mt/id :users)]))))))))
+
+(deftest get-metrics-details-answers-each-metric-as-get-metric-details-test
+  (testing "details of several metrics read together are those of each read alone, and a batch with one unreadable metric is refused"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (let [mp    (mt/metadata-provider)
+            query (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/count))]
+        (mt/with-temp [:model/Collection {readable-id :id}    {}
+                       :model/Collection {forbidden-id :id}   {}
+                       :model/Card       {first-id :id}       {:name "Venues A" :type :metric :collection_id readable-id
+                                                               :database_id (mt/id) :dataset_query query}
+                       :model/Card       {forbidden-card :id} {:name "Venues B" :type :metric :collection_id forbidden-id
+                                                               :database_id (mt/id) :dataset_query query}
+                       :model/Card       {last-id :id}        {:name "Venues C" :type :metric :collection_id readable-id
+                                                               :database_id (mt/id) :dataset_query query}]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) readable-id)
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [arguments {:with-default-temporal-breakout? false
+                             :with-field-values?              false
+                             :with-queryable-dimensions?      true
+                             :with-segments?                  false}
+                  together  (fn [card-ids]
+                              (result-or-refusal
+                               #(entity-details/get-metrics-details (mt/id)
+                                                                    (t2/select :model/Card :id [:in card-ids] {:order-by [[:name :asc]]})
+                                                                    arguments)))
+                  alone     (fn [card-id]
+                              (result-or-refusal #(entity-details/get-metric-details (assoc arguments :metric-id card-id))))]
+              (is (= (mapv alone [first-id last-id])
+                     (together [first-id last-id])))
+              (is (every? :structured-output (together [first-id last-id])))
+              (is (= ["You don't have permissions to do that." 403]
+                     (alone forbidden-card)
+                     (together [first-id forbidden-card last-id]))))))))))
+
+(defn- insert-metrics!
+  "Inserts a count metric on each of the test Tables named `table-keys` and returns the Cards."
+  [table-keys]
+  (let [mp (mt/metadata-provider)]
+    (t2/select :model/Card :id [:in (t2/insert-returning-pks! :model/Card
+                                                              (for [table-key table-keys]
+                                                                (assoc (mt/with-temp-defaults :model/Card)
+                                                                       :name          (str "Count of " (name table-key))
+                                                                       :type          :metric
+                                                                       :database_id   (mt/id)
+                                                                       :dataset_query (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id table-key)))
+                                                                                                     (lib/count)))))]
+               {:order-by [[:id :asc]]})))
+
+(def ^:private metrics-details-arguments
+  "The arguments the data app schema details metrics with."
+  {:with-default-temporal-breakout? false
+   :with-field-values?              false
+   :with-queryable-dimensions?      true
+   :with-segments?                  false})
+
+(deftest get-metrics-details-statement-count-test
+  (testing "details of metrics on many tables take as many statements as of metrics on few, as a non-admin, with their metadata loaded"
+    (mt/with-model-cleanup [:model/Card]
+      (let [details! (fn [cards]
+                       (mt/with-test-user :rasta
+                         (lib-be/with-metadata-provider-cache
+                           (entity-details/get-metrics-details (mt/id) cards metrics-details-arguments)
+                           (t2/with-call-count [call-count]
+                             (is (every? :structured-output (entity-details/get-metrics-details (mt/id) cards metrics-details-arguments)))
+                             (call-count)))))]
+        (details! (insert-metrics! [:venues]))
+        (is (= (details! (insert-metrics! [:venues :checkins]))
+               (details! (insert-metrics! [:venues :checkins :users :categories :orders :products]))))))))
+
+(deftest get-metrics-details-hides-same-dimensions-as-single-details-test
+  (testing "the details of metrics read together hide the same dimensions as the details of each metric alone"
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/create-queries :no)
+        (let [cards    (insert-metrics! [:venues :checkins :users])
+              dims     (fn [response] (set (map :name (get-in response [:structured-output :queryable-dimensions]))))
+              together (fn [user] (mt/with-test-user user
+                                    (mapv dims (entity-details/get-metrics-details (mt/id) cards metrics-details-arguments))))
+              alone    (fn [user] (mt/with-test-user user
+                                    (mapv #(dims (entity-details/get-metric-details (assoc metrics-details-arguments :metric-id (:id %))))
+                                          cards)))
+              [venues checkins users] (together :rasta)
+              [_ all-checkins _]      (together :crowberto)]
+          (is (= (alone :rasta) (together :rasta)))
+          (is (= (alone :crowberto) (together :crowberto)))
+          (is (seq venues))
+          (is (< (count checkins) (count all-checkins)))
+          (is (empty? users)))))))

@@ -39,6 +39,7 @@
     :model/AnalysisFindingStatus
     :model/ApiKey
     :model/ApiKeyUsageLog
+    :model/ChangeLog
     :model/AuthIdentity
     :model/ImplicitAction
     :model/QueryAction
@@ -73,6 +74,7 @@
     :model/StoredResultUse
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
+    :model/TestSuiteMember
     :model/LoginHistory
     :model/McpFeedback
     :model/McpGroupPermission
@@ -135,6 +137,7 @@
     :model/SourceMetricDaily
     :model/SourceSegmentCompositeDaily
     :model/SourceSegmentDaily
+    :model/SqlParsingShadowDifference
     :model/SsoRelayState
     :model/SupportAccessGrantLog
     :model/TableIndex
@@ -144,6 +147,7 @@
     :model/TimelineEvent
     ;; Run history is intentionally not serialized.
     :model/DataTestRun
+    :model/TestSuiteRun
     ;; TODO we should remove these models from here once serialization is supported
     :model/TransformRun
     :model/TransformRunCancelation

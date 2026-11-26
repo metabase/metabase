@@ -4,16 +4,14 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
-   [metabase.segments.schema :as segments.schema]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.xrays.automagic-dashboards.schema :as ads]
-   [metabase.xrays.db :as xrays.db]))
+   [metabase.xrays.db :as xrays.db]
+   [metabase.xrays.spec :as xrays.spec]))
 
 (def ^:private ^Long max-best-matches        3)
 (def ^:private ^Long max-serendipity-matches 2)
@@ -37,39 +35,45 @@
               (map #(update % 0 qp.util/normalize-token)))
         (tree-seq sequential? identity form)))
 
-(defmulti definition
-  "Return the relevant parts of a given entity's definition. Relevant parts are those that carry semantic meaning, and
-  especially context-bearing forms."
-  {:arglists '([instance])}
-  mi/model)
+(defn- spec-fn
+  [entity k]
+  (let [model (mi/model entity)]
+    (or (k (xrays.spec/spec model))
+        (throw (ex-info (format "No x-rays %s for model %s" (name k) model) {:model model, :key k})))))
 
-(mu/defmethod definition :xrays/Metric
-  [metric :- ::ads/metric]
-  (-> metric :xrays/aggregation))
+(defn definition
+  "The relevant parts of the definition of `entity`: those that carry semantic meaning, and especially context-bearing
+  forms."
+  [entity]
+  ((spec-fn entity :definition) entity))
 
-(defmethod definition :model/Card
-  [card]
-  ;; The schema permits an empty or otherwise unparseable stored `dataset_query`. Treat such a Card as having
-  ;; no context-bearing forms so it does not break related-entity computation for every Card and x-ray.
-  (try
-    (-> card
-        :dataset_query
-        ((juxt lib/breakouts lib/aggregations lib/expressions lib/fields)))
-    (catch Exception e
-      ;; Runs for every candidate Card while ranking, so keep it quiet.
-      (log/debugf "Ignoring Card %s while finding related entities because its query could not be parsed: %s"
-                  (:id card) (ex-message e))
-      nil)))
+(defn related
+  "The related entities of `entity`."
+  [entity]
+  ((spec-fn entity :related) entity))
 
-(mu/defmethod definition :model/Segment
-  [segment :- [:map [:definition [:maybe ::segments.schema/definition]]]]
-  (-> segment :definition :stages first :filters not-empty))
+(defn table-of
+  "The Table of `entity`, or nil."
+  [entity]
+  (xrays.db/table (:table_id entity)))
 
-(defmethod definition :model/Field
-  [field]
-  [[:field {:lib/uuid (str (random-uuid))} (:id field)]])
+(defn sibling-tables
+  "The Tables in the schema of `table`, but `table`."
+  [table]
+  (xrays.db/sibling-tables (:db_id table) (:schema table) (:id table)))
 
-(defn- similarity
+(defn fields-beside
+  "The Fields of `table` but `field`, that are visible."
+  [table field]
+  (xrays.db/other-visible-fields-in-table (:id table) (:id field)))
+
+(defn dashboard-cards
+  "The Cards on `dashboard`."
+  [dashboard]
+  (when-let [card-ids (not-empty (disj (xrays.db/card-ids-for-dashboard (:id dashboard)) nil))]
+    (xrays.db/cards card-ids)))
+
+(defn similarity
   "How similar are entities `a` and `b` based on a structural comparison of their
    definition (MBQL).
    For the purposes of finding related entities we are only interested in
@@ -85,14 +89,15 @@
     (/ (count overlap)
        (max min-overlap 1))))
 
-(defn- rank-by-similarity
+(defn rank-by-similarity
+  "The `entities` but `reference`, each with its `:similarity` to `reference`, most similar first."
   [reference entities]
   (->> entities
        (remove #{reference})
        (map #(assoc % :similarity (similarity reference %)))
        (sort-by :similarity >)))
 
-(defn- interesting-mix
+(defn interesting-mix
   "Create an interesting mix of matches. The idea is to have a balanced mix
    between close (best) matches and more diverse matches to cover a wider field
    of intents."
@@ -100,7 +105,7 @@
   (let [[best rest] (split-at max-best-matches matches)]
     (concat best (->> rest shuffle (take max-serendipity-matches)))))
 
-(defn- filter-visible
+(defn filter-visible
   "The `instances`, all of one model, that are present, visible, unarchived, active, and readable by the current user."
   [instances]
   (let [visible (filter (fn [{:keys [archived visibility_type active] :as instance}]
@@ -112,50 +117,74 @@
                         instances)]
     (mi/readable visible)))
 
-(defn- metrics-for-table
+(defn metrics-for-table
+  "The visible metrics of `table`."
   [table]
   (filter-visible (xrays.db/unarchived-metrics-for-table (:id table))))
 
-(defn- segments-for-table
+(defn segments-for-table
+  "The visible segments of `table`."
   [table]
   (filter-visible (xrays.db/unarchived-segments-for-table (:id table))))
 
-(defn- linking-to
-  [table]
-  (->> (xrays.db/fk-target-field-ids-for-table (:id table))
-       (map (comp xrays.db/table
-                  :table_id
-                  xrays.db/field))
-       distinct
-       filter-visible
-       (take max-matches)))
+(defn- tables-in-order
+  "The Tables with `table-ids`, in their order, loaded together."
+  [table-ids]
+  (let [id->table (when (seq table-ids) (m/index-by :id (xrays.db/tables (set table-ids))))]
+    (keep id->table table-ids)))
 
-(defn- linked-from
+(defn linking-to
+  "The visible tables that `table` has foreign keys to, at most a few."
+  [table]
+  (let [field-ids        (vec (xrays.db/fk-target-field-ids-for-table (:id table)))
+        field-id->table  (when (seq field-ids) (xrays.db/field-id->table-id (set field-ids)))]
+    (->> (tables-in-order (into [] (comp (keep field-id->table) (distinct)) field-ids))
+         filter-visible
+         (take max-matches))))
+
+(defn linked-from
+  "The visible tables that have foreign keys to `table`, at most a few."
   [table]
   (if-let [fields (not-empty (xrays.db/active-field-ids-for-table (:id table)))]
-    (->> (xrays.db/table-ids-of-fields-targeting fields)
-         (map xrays.db/table)
+    (->> (tables-in-order (vec (xrays.db/table-ids-of-fields-targeting fields)))
          filter-visible
          (take max-matches))
     []))
 
-(defn- cards-sharing-dashboard
+(defn cards-sharing-dashboard
+  "The visible cards on the dashboards of `card`, at most a few."
   [card]
   (if-let [dashboards (some-> (:id card) xrays.db/dashboard-ids-for-card not-empty)]
-    (->> (xrays.db/other-card-ids-on-dashboards dashboards (:id card))
-         (map xrays.db/card)
-         filter-visible
-         (take max-matches))
+    (let [card-ids (vec (xrays.db/other-card-ids-on-dashboards dashboards (:id card)))
+          id->card (when (seq card-ids) (m/index-by :id (xrays.db/cards (set card-ids))))]
+      (->> (keep id->card card-ids)
+           filter-visible
+           (take max-matches)))
     []))
 
-(defn- similar-questions
+(defn similar-questions
+  "The visible questions and models on the table of `card`, similar to it, most similar first."
   [card]
   (->> (xrays.db/unarchived-cards-for-table-of-types (:table_id card) [:model :question])
        filter-visible
        (rank-by-similarity card)
        (filter (comp pos? :similarity))))
 
-(defn- similar-metrics
+(defn similar-questions-for-cards
+  "The visible questions and models on the tables of `cards`, similar to the card of their table, most similar first
+  for each card."
+  [cards]
+  (let [table-id->candidates (->> (xrays.db/unarchived-cards-for-tables-of-types (map :table_id cards) [:model :question])
+                                  filter-visible
+                                  (group-by :table_id))]
+    (mapcat (fn [card]
+              (->> (get table-id->candidates (:table_id card))
+                   (rank-by-similarity card)
+                   (filter (comp pos? :similarity))))
+            cards)))
+
+(defn similar-metrics
+  "The visible metrics on the table of `card`, similar to it, most similar first."
   [card]
   (->> (xrays.db/unarchived-cards-for-table-of-types (:table_id card) [:metric])
        filter-visible
@@ -169,7 +198,8 @@
          filter-visible
          (take max-serendipity-matches))))
 
-(defn- recommended-dashboards
+(defn recommended-dashboards
+  "The dashboards that the `cards` are on and those that the current user edited recently."
   [cards]
   (let [recent                   (recently-modified-dashboards)
         card-id->dashboard-cards (->> (xrays.db/dashcard-card-and-dashboard-ids
@@ -185,7 +215,8 @@
                              (take max-best-matches)))]
     (concat best recent)))
 
-(defn- recommended-collections
+(defn recommended-collections
+  "The visible collections of the `cards`, a mix of them."
   [cards]
   (->> cards
        (m/distinct-by :collection_id)
@@ -193,31 +224,8 @@
        (keep (comp xrays.db/collection :collection_id))
        filter-visible))
 
-(defmulti related
-  "Return related entities."
-  {:arglists '([entity])}
-  mi/model)
-
-(defmethod related :model/Card
-  [card]
-  (let [table             (xrays.db/table (:table_id card))
-        similar-questions (similar-questions card)
-        similar-metrics   (similar-metrics card)]
-    {:table             table
-     :metrics           (interesting-mix similar-metrics)
-     :segments          (->> table
-                             segments-for-table
-                             (rank-by-similarity card)
-                             interesting-mix)
-     :dashboard-mates   (cards-sharing-dashboard card)
-     :dashboards        (recommended-dashboards similar-questions)
-     :collections       (recommended-collections similar-questions)}))
-
-(defmethod related :model/Query
-  [query]
-  (related (mi/instance :model/Card query)))
-
-(defmethod related :xrays/Metric
+(defn related-metric
+  "The related entities of the x-ray `metric`."
   [metric]
   (let [table (xrays.db/table (:table_id metric))]
     {:table    table
@@ -226,53 +234,11 @@
                     (rank-by-similarity metric)
                     interesting-mix)}))
 
-(defmethod related :model/Segment
-  [segment]
-  (let [table (xrays.db/table (:table_id segment))]
-    {:table       table
-     :metrics     (metrics-for-table table)
-     :segments    (->> table
-                       segments-for-table
-                       (rank-by-similarity segment)
-                       interesting-mix)
-     :linked-from (linked-from table)}))
+(mu/defn metric-definition
+  "The aggregation of the x-ray `metric`."
+  [metric :- ::ads/metric]
+  (-> metric :xrays/aggregation))
 
-(defmethod related :model/Table
-  [table]
-  (let [linking-to  (linking-to table)
-        linked-from (linked-from table)]
-    {:segments    (segments-for-table table)
-     :metrics     (metrics-for-table table)
-     :linking-to  linking-to
-     :linked-from linked-from
-     :tables      (->> (xrays.db/sibling-tables (:db_id table) (:schema table) (:id table))
-                       (remove (set (concat linking-to linked-from)))
-                       filter-visible
-                       interesting-mix)}))
-
-(defmethod related :model/Field
-  [field]
-  (let [table (xrays.db/table (:table_id field))]
-    {:table    table
-     :segments (->> table
-                    segments-for-table
-                    (rank-by-similarity field)
-                    interesting-mix)
-     :metrics  (->> table
-                    metrics-for-table
-                    (rank-by-similarity field)
-                    (filter (comp pos? :similarity))
-                    interesting-mix)
-     :fields   (->> (xrays.db/other-visible-fields-in-table (:id table) (:id field))
-                    filter-visible
-                    interesting-mix)}))
-
-(defmethod related :model/Dashboard
-  [dashboard]
-  (let [cards (map xrays.db/card (xrays.db/card-ids-for-dashboard (:id dashboard)))]
-    {:cards (->> cards
-                 (mapcat similar-questions)
-                 (remove (set cards))
-                 distinct
-                 filter-visible
-                 interesting-mix)}))
+(defmethod xrays.spec/spec :xrays/Metric [_model]
+  {:related    related-metric
+   :definition metric-definition})

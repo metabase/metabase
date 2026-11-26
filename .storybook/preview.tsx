@@ -2,9 +2,10 @@ import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 
 import "metabase/css/core/base.css";
-import "metabase/css/core/fonts.css";
+import "fonts.css";
+import { GlobalStyleSheet } from "metabase/styled-components/components/GlobalStyleSheet";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
-import { PortalContainer, ThemeProvider } from "metabase/ui";
+import { PortalContainer, ThemeProvider, useMantineTheme } from "metabase/ui";
 
 // @ts-expect-error: See metabase/utils/delay
 // This will skip the skippable delays in stories
@@ -22,12 +23,10 @@ require("metabase/visualizations/components/EChartsRenderer/EChartsRenderer");
 
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
-import { Global, css, useTheme } from "@emotion/react";
 import { initialize, mswLoader } from "msw-storybook-addon";
 
 import { loadCodeEditor } from "metabase/common/components/CodeEditor";
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
-import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import {
   getSaveDomImageStyles,
   loadVisualizationComponents,
@@ -116,15 +115,15 @@ declare global {
 // Loki widens the window to fit a story, so the page's own scrollbars would
 // only end up in the screenshot. Scrollbars inside the story stay visible.
 const lokiStyles = window.loki?.isRunning
-  ? css`
+  ? `
       html::-webkit-scrollbar,
       body::-webkit-scrollbar {
         display: none;
       }
     `
-  : undefined;
+  : "";
 
-const globalStyles = css`
+const globalStyles = `
   body {
     font-size: 0.875em;
   }
@@ -156,22 +155,20 @@ const decorators = [
     );
 
     return (
-      <EmotionCacheProvider>
-        <OverlayStackProvider>
-          <ThemeProvider resolvedColorScheme={resolvedColorScheme}>
-            <Global styles={globalStyles} />
-            <CssVariables />
-            {createPortal(<PortalContainer />, document.body)}
-            <Story />
-          </ThemeProvider>
-        </OverlayStackProvider>
-      </EmotionCacheProvider>
+      <OverlayStackProvider>
+        <ThemeProvider resolvedColorScheme={resolvedColorScheme}>
+          <GlobalStyleSheet styles={globalStyles} />
+          <CssVariables />
+          {createPortal(<PortalContainer />, document.body)}
+          <Story />
+        </ThemeProvider>
+      </OverlayStackProvider>
     );
   },
 ];
 
 function CssVariables() {
-  const theme = useTheme();
+  const theme = useMantineTheme();
   useEffect(() => {
     // mantine v7 will not work correctly without this
     document.body.dir = "ltr";
@@ -183,7 +180,7 @@ function CssVariables() {
   }, [theme]);
 
   const styles = useMemo(() => {
-    return css`
+    return `
       ${cssVariables}
 
       :root {
@@ -196,9 +193,9 @@ function CssVariables() {
         height: 100%;
       }
     `;
-  }, [theme]);
+  }, [cssVariables]);
 
-  return <Global styles={styles} />;
+  return <GlobalStyleSheet styles={styles} />;
 }
 
 /*

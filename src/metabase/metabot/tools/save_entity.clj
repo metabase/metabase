@@ -22,7 +22,7 @@
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
@@ -161,7 +161,7 @@
   A permission refusal ends the turn; invalid query content can be corrected by the agent."
   [dataset-query]
   (try
-    (query-perms/check-run-permissions-for-query dataset-query)
+    (query-perms/check-run-permissions-for-queries [dataset-query])
     (catch clojure.lang.ExceptionInfo e
       (let [status-code (:status-code (ex-data e))]
         (cond
@@ -200,10 +200,17 @@
     ;; agent-created charts carry the display in `:visualization_settings :chart_type`;
     ;; charts seeded from the frontend viewing context (`seed-charts`) leave that nil
     ;; and keep the raw config under `:chart_config` instead
-    {:dataset_query (links/->legacy-mbql query)
+    {:dataset_query #_{:clj-kondo/ignore [:deprecated-var]} (links/->legacy-mbql query)
      :display       (or (some-> (get-in chart [:visualization_settings :chart_type]) keyword)
                         (some-> (get-in chart [:chart_config :display_type]) keyword)
                         :table)}))
+
+(defn- check-chart-curated
+  "Throws, when this Metabot uses only curated content, unless `dataset-query` of the chart `chart-id` reads only
+  curated content."
+  [chart-id dataset-query]
+  (when (shared/curated-only?)
+    (curation/check-curated-query! (str "chart " chart-id) dataset-query)))
 
 (defn savable-chart
   "The chart `chart-id` from agent memory as `{:dataset_query :display}`, ready to save as a card.
@@ -213,9 +220,28 @@
   (let [{:keys [dataset_query] :as chart} (resolve-chart chart-id)]
     (check-query-permissions! dataset_query)
     ;; A chart may hold a query from the user's viewing context, which nothing judged on the way in.
-    (when (shared/curated-only?)
-      (curation/check-curated-query! (str "chart " chart-id) dataset_query))
+    (check-chart-curated chart-id dataset_query)
     chart))
+
+(defn savable-charts
+  "[[savable-chart]] of each of `chart-ids` in order: one run permission check of all their queries, then the curation
+  of each chart, falling back to one chart at a time, so that a refusal names the same chart, when a query is not a map
+  or the combined resolve or check throws an `Exception`."
+  [chart-ids]
+  (if-let [charts (try
+                    (let [charts (mapv resolve-chart chart-ids)]
+                      (when (every? (comp map? :dataset_query) charts)
+                        (query-perms/check-run-permissions-for-queries (mapv :dataset_query charts))
+                        charts))
+                    (catch InterruptedException e
+                      (throw e))
+                    (catch Exception _
+                      nil))]
+    (mapv (fn [chart-id {:keys [dataset_query] :as chart}]
+            (check-chart-curated chart-id dataset_query)
+            chart)
+          chart-ids charts)
+    (mapv savable-chart chart-ids)))
 
 (defn personal-collection-id
   "The current user's personal collection ID. Throws [[no-personal-collection!]] when the user has none."
@@ -261,14 +287,14 @@
         (api/read-check :model/Collection collection-id)))
     (check-writable! (cond-> {:kind :collection} collection-id (assoc :id collection-id))
                      #(api/create-check :model/Card {:collection_id collection-id}))
-    (let [card (queries/create-card!
-                {:name                   name
-                 :description            description
-                 :dataset_query          dataset_query
-                 :display                display
-                 :visualization_settings {}
-                 :collection_id          collection-id}
-                {:id api/*current-user-id*})]
+    (let [[card] (queries.card/create-cards!
+                  [(queries.card/new-card-row {:name                   name
+                                               :description            description
+                                               :dataset_query          dataset_query
+                                               :display                display
+                                               :visualization_settings {}
+                                               :collection_id          collection-id}
+                                              api/*current-user-id*)])]
       {:card             card
        :destination      {:type "collection" :id collection-id}
        :destination-name (collection-name collection-id)
@@ -284,14 +310,18 @@
     (check-writable! {:kind :dashboard :id dashboard-id}
                      #(do (api/write-check dashboard)
                           (api/create-check :model/Card {:collection_id (:collection_id dashboard)})))
-    (let [card (queries/create-card!
-                {:name                   name
-                 :description            description
-                 :dataset_query          dataset_query
-                 :display                display
-                 :visualization_settings {}
-                 :dashboard_id           dashboard-id}
-                {:id api/*current-user-id*})]
+    (let [row    (queries.card/new-card-row {:name                   name
+                                             :description            description
+                                             :dataset_query          dataset_query
+                                             :display                display
+                                             :visualization_settings {}
+                                             :dashboard_id           dashboard-id}
+                                            api/*current-user-id*)
+          _      (queries.card/check-new-dashboard-questions-timeline-permissions [row])
+          [card] (t2/with-transaction [_conn]
+                   (let [cards (queries.card/create-cards! [row])]
+                     (queries.card/place-new-dashboard-questions! cards [row])
+                     cards))]
       {:card             card
        :destination      {:type "dashboard" :id dashboard-id}
        :destination-name (metabot.db/dashboard-name dashboard-id)
@@ -307,15 +337,15 @@
     (check-writable! {:kind :document :id document-id}
                      #(do (api/write-check document)
                           (api/create-check :model/Card {:collection_id (:collection_id document)})))
-    (let [card (queries/create-card!
-                {:name                   name
-                 :description            description
-                 :dataset_query          dataset_query
-                 :display                display
-                 :visualization_settings {}
-                 :collection_id          (:collection_id document)
-                 :document_id            document-id}
-                {:id api/*current-user-id*})]
+    (let [[card] (queries.card/create-cards!
+                  [(queries.card/new-card-row {:name                   name
+                                               :description            description
+                                               :dataset_query          dataset_query
+                                               :display                display
+                                               :visualization_settings {}
+                                               :collection_id          (:collection_id document)
+                                               :document_id            document-id}
+                                              api/*current-user-id*)])]
       (documents/add-card-to-document! document-id (:id card) (:position destination))
       {:card             card
        :destination      {:type "document" :id document-id}
@@ -386,7 +416,7 @@
                             "dashboard"  (save-to-dashboard! args)
                             "document"   (save-to-document! args))]
                 (when-let [conversation-id (shared/current-conversation-id)]
-                  (metabot.db/link-card-to-conversation! (:id (:card saved)) conversation-id chart_id))
+                  (queries.card/link-to-metabot-conversation! conversation-id [[(:id (:card saved)) chart_id]]))
                 saved)))
           instruction-text (te/lines
                             (str "Saved \"" question-name "\" to " destination-name ".")

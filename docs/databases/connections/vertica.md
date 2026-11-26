@@ -1,6 +1,6 @@
 ---
 title: Working with Vertica in Metabase
-summary: Add the Vertica JDBC driver to your self-hosted Metabase, which Metabase can't bundle itself because of licensing restrictions.
+summary: On self-hosted Metabase Open Source, add the Vertica JDBC driver yourself, because licensing restrictions keep Metabase from bundling it. Metabase Cloud, Pro, and Enterprise include the driver.
 redirect_from:
   - /docs/latest/administration-guide/databases/vertica
 ---
@@ -28,7 +28,7 @@ All you need to do is create the directory, move the JAR you just downloaded int
 
 ### When running from a JAR
 
-By default, the plugins directory is called `plugins`, and lives in the same directory as the Metabase JAR.
+By default, the plugins directory is called `plugins`, and lives in the same directory as the Metabase JAR. To use a different directory, set the [`MB_PLUGINS_DIR`](../../configuring-metabase/environment-variables.md#mb_plugins_dir) environment variable.
 
 For example, if you're running Metabase from a directory called `/app/`, you should move the Vertica JDBC driver JAR to `/app/plugins/`:
 

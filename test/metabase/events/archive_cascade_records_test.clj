@@ -3,7 +3,7 @@
   records nothing, whatever its model."
   (:require
    [clojure.test :refer :all]
-   [metabase.events.core :as events]
+   [metabase.queries.models.card :as card]
    [metabase.revisions.db :as revisions.db]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -24,11 +24,11 @@
     {:audit     (into #{}
                       (comp (filter #(contains? entities [(:model %) (:model_id %)]))
                             (map (juxt :topic :model :model_id)))
-                      (t2/query {:select [:topic :model :model_id] :from [:audit_log] :where [:> :id audit]}))
+                      (t2/query {:select [:topic :model :model_id] :from [(t2/table-name :model/AuditLog)] :where [:> :id audit]}))
      :revisions (into #{}
                       (comp (filter #(contains? entities [(:model %) (:model_id %)]))
                             (map (juxt :model :model_id)))
-                      (t2/query {:select [:model :model_id] :from [:revision] :where [:> :id revision]}))}))
+                      (t2/query {:select [:model :model_id] :from [(t2/table-name :model/Revision)] :where [:> :id revision]}))}))
 
 (defn- archived-states
   "The `:archived` of each `[model id]` of `rows`, as booleans."
@@ -92,15 +92,13 @@
           (is (= [false false] (archived-states [[:model/Document doc] [:model/Card dc]]))))))))
 
 (deftest cascade-revisions-are-one-insert-test
-  (testing "the Revisions of a batch are written by one statement"
+  (testing "the Revisions of the rows of one write are written by one statement"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card {a :id} {}
                      :model/Card {b :id} {}]
         (let [inserts (atom 0)]
           (mt/with-dynamic-fn-redefs [revisions.db/insert-revisions! (let [f (mt/original-fn #'revisions.db/insert-revisions!)]
                                                                        (fn [rows] (swap! inserts inc) (f rows)))]
-            (events/with-batched-events
-              (t2/update! :model/Card :id a {:name "A2"})
-              (t2/update! :model/Card :id b {:name "B2"})))
+            (card/update-cards! [{:id a :name "A2"} {:id b :name "B2"}]))
           (is (= 1 @inserts))
           (is (= 2 (t2/count :model/Revision :model "Card" :model_id [:in [a b]] :is_creation false))))))))

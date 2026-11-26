@@ -111,8 +111,7 @@
                                                          "unknown_function")
                                            ;; Gemini reads a failure under `error` and a result under `output`.
                                            :response {(if (get-in part [:result :error]) :error :output)
-                                                      (or (get-in part [:result :output])
-                                                          (pr-str (:result part)))}}}]}
+                                                      (core/tool-result-text (:result part))}}}]}
                    ;; Reasoning is display-only: thought summaries never go back to Gemini. The
                    ;; model keeps its reasoning continuity through the functionCall
                    ;; thoughtSignatures replayed above. The empty :parts vector is dropped by
@@ -432,5 +431,4 @@
                                            :errorText (str "Prompt blocked by Google: " block-reason)}))
              ;; An error envelope in the stream, e.g. a failure in the middle of the stream.
              (some? error)        (-> (close-blocks!)
-                                      (rf {:type      :error
-                                           :errorText (or (:message error) (pr-str error))})))))))))
+                                      (rf (core/error-chunk error (or (:message error) (pr-str error))))))))))))

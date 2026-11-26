@@ -3,9 +3,10 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.measures.db :as measures.db]
+   [metabase.measures.models.measure :as measure]
    [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
@@ -33,14 +34,21 @@
    [:dimension_mappings  {:optional true} [:maybe [:sequential :map]]]
    [:result_column_name  {:optional true} [:maybe :string]]])
 
+(defn- checked-definition
+  "The normalized `definition`, after checking that it fits a Measure, for every caller of this entry point."
+  [definition]
+  (mu/validate-throw ::lib.schema.measure/definition (lib-be/normalize-query definition)))
+
 (defn create-measure!
   "Create-check and insert a new Measure and return the hydrated Measure."
   [{:keys [name description definition], :as body}]
-  (let [definition (lib-be/normalize-query definition)]
+  (let [definition (checked-definition definition)]
     (api/create-check :model/Measure (assoc body :definition definition))
-    (let [measure (api/check-500
-                   (measures.db/insert-measure! api/*current-user-id* name description definition))]
-      (t2/hydrate measure :creator))))
+    (-> (first (measure/create-measures! [{:creator_id  api/*current-user-id*
+                                           :name        name
+                                           :description description
+                                           :definition  definition}]))
+        (t2/hydrate :creator))))
 
 (api.macros/defendpoint :post "/" :- ::measure
   "Create a new `Measure`. The Measure's table is derived from its `definition`."
@@ -55,7 +63,7 @@
 (mu/defn- hydrated-measure [id :- ms/PositiveInt
                             include-orphaned? :- :boolean]
   (api/read-check (measures.db/measure id))
-  (metrics/sync-dimensions! :metadata/measure id)
+  (metrics/sync-dimensions! :metadata/measure [id])
   (cond-> (-> (t2/hydrate (measures.db/measure id) :creator)
               metrics/filter-dimensions-for-user)
     (not include-orphaned?) metrics/without-orphaned-dimensions))
@@ -100,8 +108,8 @@
                      new-body)]
     (api/update-check existing new-body)
     (when changes
-      (events/with-event-context {:revision-message revision_message}
-        (measures.db/update-measure! id changes)))
+      (measure/update-measures! [(assoc (cond-> changes
+                                          (:definition changes) (update :definition checked-definition)) :id id)] {:context {:revision-message revision_message}}))
     (hydrated-measure id false)))
 
 (api.macros/defendpoint :put "/:id" :- ::measure

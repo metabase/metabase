@@ -82,18 +82,14 @@
 ;; session events
 
 (mr/def :event/session-revoked
-  [:map {:closed true}
-   ;; the admin who revoked, and the user whose sessions they were. `:model` is passed explicitly because the object is
-   ;; a plain map rather than a Toucan instance, so the audit log cannot derive it.
-   [:user-id  pos-int?]
-   [:model    [:= :model/User]]
-   [:model-id pos-int?]
-   ;; one per-user row of a revoke by criteria: the criteria and how many of that user's sessions went, which the
-   ;; `:event/sessions-revoked` summary covers
-   [:details
-    [:map {:closed true}
-     [:criteria :map]
-     [:count    pos-int?]]]])
+  [:map {:closed true
+         :doc    "The per-user rows of a revoke by criteria: each User whose sessions went, with how many went."}
+   [:user-id pos-int?]
+   [:details [:map {:closed true}
+              [:criteria :map]]]
+   [:objects [:sequential [:map {:closed true}
+                           [:id    pos-int?]
+                           [:count pos-int?]]]]])
 
 (mr/def :event/sessions-revoked
   ;; the one summary row a revoke by criteria writes. No `:model`: the call is about a set of sessions picked out by
@@ -147,20 +143,40 @@
    [:object [:fn #(t2/instance-of? :model/SecurityAdvisory %)]]])
 
 (defn register-lifecycle-topic!
-  "Have the events of `topic`, one made by the write of a row, checked against the lifecycle schema."
+  "Have the events of `topic`, made by the writes of rows, checked against the lifecycle schema."
   [topic]
   (when-not (contains? @lifecycle-topics topic)
     (swap! lifecycle-topics conj topic))
   nil)
 
-(mr/def ::lifecycle
+(mr/def ::lifecycle.change
+  "The change of one row in a lifecycle event: the row after the write as `:object`, absent for a delete, the row
+  before it as `:previous-object`, absent for a create."
   [:map {:closed true}
    [:object {:optional true} [:map]]
-   [:previous-object {:optional true} [:map]]
+   [:previous-object {:optional true} [:map]]])
+
+(mr/def ::context
+  "What the writes of one action say of themselves: `:revision-message`, the message of the Revisions they make;
+  `:archived-with`, the `[model id]` of the entity whose archive or restore carried their rows; and `:details`, a map
+  the audit log records."
+  [:map {:closed true}
+   [:revision-message {:optional true} [:maybe :string]]
+   [:archived-with {:optional true} [:tuple :keyword pos-int?]]
+   [:details {:optional true} [:map]]])
+
+(mr/def ::write-opts
+  "The options the write functions of most models take: `:writer`, who writes when it is not a user, and `:context`."
+  [:maybe [:map {:closed true}
+           [:writer  {:optional true} [:enum :import :revert :replacement :sync :cascade]]
+           [:context {:optional true} [:maybe ::context]]]])
+
+(mr/def ::lifecycle
+  "A lifecycle event, such as `:event/card-update`: the `:changes` of the rows of one model that one action created,
+  updated or deleted, the `:user-id` of the user who made all of them, nil for a write without a user, the
+  `:writer` when it is not a user's own write, such as `:import` or `:revert`, and the `:context` they share."
+  [:map {:closed true}
+   [:changes [:sequential ::lifecycle.change]]
    [:user-id [:maybe pos-int?]]
-   [:context {:optional true}
-    [:map {:closed true}
-     [:revision-message {:optional true} [:maybe :string]]
-     [:reverting? {:optional true} :boolean]
-     [:archived-with {:optional true} [:tuple :keyword pos-int?]]
-     [:details {:optional true} [:map]]]]])
+   [:writer {:optional true} :keyword]
+   [:context {:optional true} ::context]])

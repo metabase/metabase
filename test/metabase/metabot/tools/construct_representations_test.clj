@@ -608,7 +608,7 @@
             (when-not (instance? clojure.lang.ExceptionInfo result)
               (let [q          (get-in result [:structured-output :query])
                     ;; Round-trip through legacy is the gate the production failure hit.
-                    legacy     (lib/->legacy-MBQL q)
+                    legacy     #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL q)
                     rebuilt    (try (lib/query mp legacy)
                                     (catch clojure.lang.ExceptionInfo e e))]
                 (testing "order-by uses an aggregation reference, not an inline aggregation"
@@ -1917,13 +1917,12 @@
                {:id 301 :name "NAME"        :table-id 30 :base-type :type/Text}]}))
 
 (def ^:private metric-definition
-  "Count of ORDERS with an EXPLICIT (no-FK) join to CAMPAIGNS, as legacy MBQL for storage."
+  "Count of ORDERS with an EXPLICIT (no-FK) join to CAMPAIGNS, for storage."
   (-> (lib/query mp-metric-base (lib.metadata/table mp-metric-base 10))
       (lib/join (lib/join-clause (lib.metadata/table mp-metric-base 30)
                                  [(lib/= (lib.metadata/field mp-metric-base 102)
                                          (lib.metadata/field mp-metric-base 300))]))
-      (lib/aggregate (lib/count))
-      lib.convert/->legacy-MBQL))
+      (lib/aggregate (lib/count))))
 
 (def ^:private mp-metric
   (lib.tu/mock-metadata-provider
@@ -2088,7 +2087,8 @@
                                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]}
                                                 stage-kvs)]}))
         before (get-in result [:structured-output :query])]
-    [before (-> before links/->legacy-mbql json/encode (json/decode true))]))
+    ;; existing usage -- do not use going forward
+    [before (-> before #_{:clj-kondo/ignore [:deprecated-var]} links/->legacy-mbql json/encode (json/decode true))]))
 
 (defn- stage-clause-counts
   "Per-stage counts of the clause vectors on a query, for comparing a query with its round-trip."
@@ -2621,6 +2621,7 @@
                                     :query    {:source-table (mt/id :products)}}}
                    :model/Card {metric-id :id, metric-eid :entity_id}
                    {:name "Multi-stage card metric" :type :metric
+                    :table_id (mt/id :products)
                     :dataset_query {:database (mt/id)
                                     :type     :query
                                     :query    {:source-query {:source-table (str "card__" question-id)}
@@ -2920,7 +2921,7 @@
     (mt/with-temp [:model/Card {c1-id :id}
                    {:name "C1" :type :question :dataset_query (table-query :orders)}
                    :model/Card {c2-id :id, c2-eid :entity_id}
-                   {:name "C2" :type :question :dataset_query (card-query c1-id)}
+                   {:name "C2" :type :question :table_id (mt/id :orders) :dataset_query (card-query c1-id)}
                    :model/Card {products-metric-eid :entity_id}
                    {:name "Product count" :type :metric
                     :dataset_query (lib/aggregate (table-query :products) (lib/count))}
@@ -2928,7 +2929,7 @@
                    {:name "Order count" :type :metric
                     :dataset_query (lib/aggregate (table-query :orders) (lib/count))}
                    :model/Card {two-stage-id :id, two-stage-eid :entity_id}
-                   {:name "Two-stage count" :type :metric
+                   {:name "Two-stage count" :type :metric :table_id (mt/id :orders)
                     :dataset_query (-> (card-query c1-id) lib/append-stage (lib/aggregate (lib/count)))}]
       (t2/update! :model/Card :id c1-id {:dataset_query (table-query :products)})
       (mt/with-current-user (mt/user->id :crowberto)

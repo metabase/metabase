@@ -564,16 +564,16 @@
           (testing "a string group name is bound as a parameter"
             (#'providers.jwt/group-names->ids ["developers"])
             (let [[query & params] (sql/format {:select [:id]
-                                                :from   [:permissions_group]
+                                                :from   [(t2/table-name :model/PermissionsGroup)]
                                                 :where  [:in :name @captured]})]
               (is (str/includes? query "IN (?)"))
               (is (= ["developers"] params))))
           (testing "non-string group names are ignored"
             (reset! captured nil)
             (#'providers.jwt/group-names->ids ["developers" {:select :x}])
-            (is (= #{"developers"} @captured))
+            (is (= #{"developers"} (set @captured)))
             (let [[query & params] (sql/format {:select [:id]
-                                                :from   [:permissions_group]
+                                                :from   [(t2/table-name :model/PermissionsGroup)]
                                                 :where  [:in :name @captured]})]
               (is (str/includes? query "IN (?)"))
               (is (= ["developers"] params))

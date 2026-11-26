@@ -2,8 +2,11 @@
   (:require
    [metabase-enterprise.action-v2.db :as action-v2.db]
    [metabase.actions.core :as actions]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -43,6 +46,8 @@
   ;; We may also want to filter based on the type of interaction that caused the change (e.g., grid, workflow, etc)
   (action-v2.db/next-undo-batch undo? user-id (serialize-scope scope)))
 
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
 (defn- batch-to-prune-from
   "Return the largest batch_num that we should no longer retain, if we only want to keep a certain number of batches
   in the optional `scope` or belonging to the optional `user-id`. Returns 0 if we do not need to prune anything."
@@ -75,32 +80,6 @@
     (do
       (action-v2.db/insert-sequence! seq-name 2)
       1)))
-
-(defn track-change!
-  "Insert some snapshot data based on edits made to the given table."
-  [user-id scope table-id->row-pk->values]
-  (let [scope (serialize-scope scope)]
-    (t2/with-transaction [_conn]
-      (let [next-batch-num (next-sequence! "undo_batch_num")]
-        (action-v2.db/insert-undos!
-         (for [[table-id table-updates] table-id->row-pk->values
-               [row-pk values] table-updates]
-           (merge {:batch_num  next-batch-num
-                   :table_id   table-id
-                   :user_id    user-id
-                   :row_pk     row-pk
-                   :scope      scope
-                   ;; default value, can be override in values
-                   :undoable   true}
-                  values)))))
-    ;; Delete snapshots that have been undone, as we keep a linear history and will no longer be able to "redo" them.
-    (when-let [{:keys [batch_num]} (first (next-batch false user-id scope))]
-      (action-v2.db/delete-undone-batches-from! batch_num scope))
-    ;; Pruning. Fairly naive implementation. Doesn't assume we were fully pruned before this update.
-    (prune-from-batch! (max (batch-to-prune-from-for-rows retention-total-rows)
-                            (batch-to-prune-from retention-total-batches)))
-    (prune-batches! retention-batches-per-scope :scope scope)
-    (prune-batches! retention-batches-per-user :user-id user-id)))
 
 ;; This will be used to fix conflict false positives
 #_(defn- diff-keys
@@ -201,12 +180,49 @@
              :table-id table-id
              :row      row})))))
 
-(defn undo!
-  "Rollback the given user's last change to the given table."
-  [context user-id scope]
+(mu/defn track-change!
+  "Insert the snapshots of the edits the user with `user-id` made in `scope`, then prune the history."
+  [user-id                  :- ms/PositiveInt
+   scope                    :- [:or :string :map]
+   table-id->row-pk->values :- [:map-of ms/PositiveInt [:map-of :map :map]]]
+  (let [scope (serialize-scope scope)]
+    (t2/with-transaction [_conn]
+      (let [next-batch-num (next-sequence! "undo_batch_num")]
+        (action-v2.db/insert-undos!
+         (for [[table-id table-updates] table-id->row-pk->values
+               [row-pk values] table-updates]
+           (merge {:batch_num  next-batch-num
+                   :table_id   table-id
+                   :user_id    user-id
+                   :row_pk     row-pk
+                   :scope      scope
+                   ;; default value, can be override in values
+                   :undoable   true}
+                  values)))))
+    ;; Delete snapshots that have been undone, as we keep a linear history and will no longer be able to "redo" them.
+    (when-let [{:keys [batch_num]} (first (next-batch false user-id scope))]
+      (action-v2.db/delete-undone-batches-from! batch_num scope))
+    ;; Pruning. Fairly naive implementation. Doesn't assume we were fully pruned before this update.
+    (prune-from-batch! (max (batch-to-prune-from-for-rows retention-total-rows)
+                            (batch-to-prune-from retention-total-batches)))
+    (prune-batches! retention-batches-per-scope :scope scope)
+    (prune-batches! retention-batches-per-user :user-id user-id)))
+
+(mu/defn undo!
+  "Roll back the last change the user with `user-id` made in `scope`."
+  [context :- :map
+   user-id :- [:maybe ms/PositiveInt]
+   scope   :- [:maybe [:or :string :map]]]
   (undo*! :undo context user-id scope))
 
-(defn redo!
-  "Rollback the given user's last change to the given table."
-  [context user-id scope]
+(mu/defn redo!
+  "Reapply the last change the user with `user-id` rolled back in `scope`."
+  [context :- :map
+   user-id :- [:maybe ms/PositiveInt]
+   scope   :- [:maybe [:or :string :map]]]
   (undo*! :redo context user-id scope))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Undo [_model]
+  {:skip? true})

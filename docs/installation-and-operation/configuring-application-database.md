@@ -119,7 +119,7 @@ metabase.db.h2.db  # Or metabase.db.mv.db depending on when you first started us
 metabase.db.trace.db
 ```
 
-If you want to use an H2 database file in a particular directory, use the `MB_DB_TYPE` and `MB_DB_FILE` environment variables:
+If you want to use an H2 database file in a particular directory, use the [`MB_DB_TYPE`](../configuring-metabase/environment-variables.md#mb_db_type) and [`MB_DB_FILE`](../configuring-metabase/environment-variables.md#mb_db_file) environment variables:
 
 ```sh
 export MB_DB_TYPE=h2

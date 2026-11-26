@@ -42,6 +42,10 @@ import {
 
 import { TransformTestListPage } from "./TransformTestListPage";
 
+const { trackSimpleEvent } = jest.requireMock<{
+  trackSimpleEvent: jest.Mock;
+}>("metabase/analytics");
+
 const QUERY_SOURCE: QueryTransformSource = {
   type: "query",
   query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
@@ -91,12 +95,16 @@ function setup({
 
   const { router } = renderWithProviders(
     <Route path={path} element={<TransformTestListPage />} />,
-    { withRouter: true, initialRoute, storeInitialState },
+    { withRouter: true, withUndos: true, initialRoute, storeInitialState },
   );
   return { router };
 }
 
 describe("TransformTestListPage", () => {
+  afterEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   it("lists the tests of the transform with their checks and last run", async () => {
     setup({
       tests: [
@@ -171,35 +179,53 @@ describe("TransformTestListPage", () => {
     expect(screen.queryByText("Refunds")).not.toBeInTheDocument();
   });
 
-  it("runs a test from the row menu and reloads the list", async () => {
-    setup({ tests: [createMockTransformTest({ id: 1, name: "Refunds" })] });
-    setupRunTransformTestEndpoint(1, {
-      status: "passed",
-      expectations: [],
-      tables: {},
-    });
+  it.each([
+    { status: "passed" as const, toast: "Test passed" },
+    { status: "failed" as const, toast: "Test failed" },
+  ])(
+    "runs a test from the row menu, shows $toast and reloads the list",
+    async ({ status, toast }) => {
+      setup({
+        tests: [
+          createMockTransformTest({ id: 1, name: "Refunds" }),
+          createMockTransformTest({ id: 2, name: "Countries" }),
+        ],
+      });
+      setupRunTransformTestEndpoint(2, {
+        status,
+        expectations: [],
+        tables: {},
+      });
 
-    const row = await findRow("Refunds");
-    await userEvent.click(within(row).getByLabelText("Test options"));
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: /Run test/ }),
-    );
+      const row = await findRow("Countries");
+      await userEvent.click(within(row).getByLabelText("Test options"));
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Run test/ }),
+      );
 
-    await waitFor(() => {
+      expect(await screen.findByTestId("toast-undo")).toHaveTextContent(toast);
       expect(
-        fetchMock.callHistory.called("path:/api/ee/transform-test/1/run", {
+        fetchMock.callHistory.called("path:/api/ee/transform-test/2/run", {
           method: "POST",
         }),
       ).toBe(true);
-    });
-    await waitFor(() => {
       expect(
-        fetchMock.callHistory.calls("path:/api/ee/transform-test", {
-          method: "GET",
-        }),
-      ).toHaveLength(2);
-    });
-  });
+        fetchMock.callHistory.called("path:/api/ee/transform-test/1/run"),
+      ).toBe(false);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "transform_test_trigger_manual_run",
+        target_id: 2,
+        triggered_from: "test_list",
+      });
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.calls("path:/api/ee/transform-test", {
+            method: "GET",
+          }),
+        ).toHaveLength(2);
+      });
+    },
+  );
 
   it("opens a test when its row is clicked", async () => {
     const { router } = setup({

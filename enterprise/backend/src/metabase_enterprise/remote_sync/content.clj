@@ -91,10 +91,10 @@
             (exported-models)))))
 
 (defn- tree-document
-  "The document of the entity YAML file at `path` of the tree of `version` of `repo`, with the content as the tree
-  holds it."
-  [repo version path]
-  (let [read-file    #(protocol/read-file repo version %)
+  "The document of the entity YAML file at `path` of the tree of `version` of `source`, a
+  [[protocol/Source]], with the content as the tree holds it."
+  [source version path]
+  (let [read-file    #(protocol/read-file source version %)
         yaml-content (read-file path)
         entity       (-> yaml-content
                          (yaml/parse-string {:key-fn ee.serialization/parse-key})
@@ -107,14 +107,15 @@
      :resources (or (:serdes/resources entity) {})}))
 
 (defn tree-documents
-  "The documents of the entity YAML files of the tree of `version` of `repo`; none for a nil `version`."
-  [repo version]
+  "The documents of the entity YAML files of the tree of `version` of `source`, a [[protocol/Source]]; none
+  for a nil `version`."
+  [source version]
   (let [exported? (set (exported-models))]
     (if version
       (into {}
             (comp (filter ee.serialization/entity-file-path?)
-                  (map #(tree-document repo version %))
+                  (map #(tree-document source version %))
                   (map (juxt (comp serialization/key-of :entity) identity))
                   (filter (comp exported? ffirst)))
-            (protocol/list-files repo version))
+            (protocol/list-files source version))
       {})))

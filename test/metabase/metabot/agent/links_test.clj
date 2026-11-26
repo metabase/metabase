@@ -14,7 +14,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (defn- decode-question-url
   "Decode a `/question#<base64>` URL into its JSON-decoded pseudo-card map."
@@ -42,24 +43,27 @@
                          :aggregation [[:count]]
                          :breakout    [[:field 31 {:temporal-unit :day
                                                    :base-type     :type/DateTime}]]}}
+             ;; existing usage -- do not use going forward
+             #_{:clj-kondo/ignore [:deprecated-var]}
              (links/->legacy-mbql rehydrated))))))
 
 (def ^:private strip-lib-keys query-repair-test/strip-lib-keys)
 (def ^:private stripped-aggregated-query query-repair-test/stripped-aggregated-query)
 
-(deftest ^:parallel ->legacy-mbql-lib-type-less-pmbql-test
-  (testing "converts pMBQL stripped of :lib/* keys (frontend viewing-context round-trip) to legacy MBQL"
+(deftest ^:parallel ->legacy-mbql-lib-type-less-mbql-5-test
+  (testing "converts MBQL 5 stripped of :lib/* keys (frontend viewing-context round-trip) to legacy MBQL"
     ;; Regression for the BOT-1604 follow-up: a query that round-trips through the
-    ;; frontend's `user_is_viewing` / `chart_configs` context comes back as pMBQL
+    ;; frontend's `user_is_viewing` / `chart_configs` context comes back as MBQL 5
     ;; without `:lib/type`. The old guard keyed only on `:lib/type`, so such a query
-    ;; fell through unchanged and the raw pMBQL (`:stages`, pMBQL-order field clauses)
+    ;; fell through unchanged and the raw MBQL 5 (`:stages`, MBQL 5-order field clauses)
     ;; leaked into the `/question#<base64>` hash — the frontend then crashed with
     ;; "Error calculating display info for query: Stage 0 does not exist".
     (let [fe-query (strip-lib-keys (lib.tu/venues-query))
-          legacy   (links/->legacy-mbql fe-query)]
+          ;; existing usage -- do not use going forward
+          legacy   #_{:clj-kondo/ignore [:deprecated-var]} (links/->legacy-mbql fe-query)]
       (is (not (contains? fe-query :lib/type)))
       (is (contains? fe-query :stages))
-      (testing "is normalized + converted to legacy MBQL, not passed through as raw pMBQL"
+      (testing "is normalized + converted to legacy MBQL, not passed through as raw MBQL 5"
         (is (= :query (:type legacy)))
         (is (not (contains? legacy :stages)))
         (is (map? (:query legacy)))
@@ -70,7 +74,8 @@
     ;; `normalize` mints a fresh `:lib/uuid` for the aggregation, so the ref in the order-by names a uuid that no
     ;; aggregation carries. With one aggregation the ref can only mean that one.
     (let [stripped (stripped-aggregated-query (lib/count))
-          legacy   (links/->legacy-mbql stripped)]
+          ;; existing usage -- do not use going forward
+          legacy     #_{:clj-kondo/ignore [:deprecated-var]} (links/->legacy-mbql stripped)]
       (is (not (contains? stripped :lib/type)))
       (is (= :query (:type legacy)))
       (is (= [[:desc [:aggregation 0]]] (-> legacy :query :order-by)))))
@@ -78,7 +83,9 @@
     ;; Conversion throws on the dangling ref. This used to take down the whole agent turn instead of just
     ;; producing a broken link.
     (let [stripped (stripped-aggregated-query (lib/count) (lib/sum (meta/field-metadata :venues :price)))]
-      (is (= stripped (links/->legacy-mbql stripped))))))
+      (is (= stripped
+             ;; existing usage -- do not use going forward
+             #_{:clj-kondo/ignore [:deprecated-var]} (links/->legacy-mbql stripped))))))
 
 (deftest ^:parallel pseudo-card->link-keeps-mbql5-temporal-filters-test
   (testing "temporal filters survive JSON serialization in the /question# hash (BOT-1972)"
@@ -140,7 +147,8 @@
                            "MBQL 5 stripped of its :lib/* keys" (strip-lib-keys native)
                            "MBQL 5 after a JSON round trip"     (-> native lib/prepare-for-serialization json/encode json/decode+kw)}]
         (testing desc
-          (is (= (lib/->legacy-MBQL native)
+          ;; existing usage -- do not use going forward
+          (is (= #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL native)
                  (links/->frontend-query sent))))))
     (testing "a structured query with a date filter stays MBQL 5"
       (let [sent (links/->frontend-query structured)]
@@ -291,6 +299,69 @@
                (links/resolve-metabase-uri (str "metabase://segment/" segment-id) {} {}))))))
   (testing "returns nil for non-existent segment"
     (is (nil? (links/resolve-metabase-uri "metabase://segment/999999999" {} {})))))
+
+(defn- insert-measures-and-segments!
+  "Insert `n` measures and `n` segments over the venues and checkins tables and return their IDs."
+  [n]
+  (let [mp     (mt/metadata-provider)
+        tables (take n (cycle [(mt/id :venues) (mt/id :checkins)]))
+        query  #(lib/query mp (lib.metadata/table mp %))]
+    {:measure-ids (vec (for [table-id tables]
+                         (first (t2/insert-returning-pks! :model/Measure
+                                                          {:name       "Count"
+                                                           :creator_id (mt/user->id :rasta)
+                                                           :definition (lib/aggregate (query table-id) (lib/count))}))))
+     :segment-ids (vec (for [table-id tables]
+                         (first (t2/insert-returning-pks! :model/Segment
+                                                          {:name       "All"
+                                                           :creator_id (mt/user->id :rasta)
+                                                           :definition (lib/filter (query table-id) (lib/= 1 1))}))))}))
+
+(defn- measure-and-segment-links-text
+  "A markdown text with a link to each of `measure-ids` and `segment-ids`."
+  [measure-ids segment-ids]
+  (str/join " " (concat (map #(str "[m" % "](metabase://measure/" % ")") measure-ids)
+                        (map #(str "[s" % "](metabase://segment/" % ")") segment-ids))))
+
+(deftest resolve-links-reads-measures-and-segments-once-test
+  (mt/with-model-cleanup [:model/Measure :model/Segment]
+    (let [{:keys [measure-ids segment-ids]} (insert-measures-and-segments! 6)
+          text-count  (fn [n]
+                        (let [text (measure-and-segment-links-text (take n measure-ids) (take n segment-ids))]
+                          (t2/with-call-count [calls]
+                            (links/resolve-links text {} {} (atom {}))
+                            (links/resolve-slack-links (str/replace text #"\[([^\]]*)\]\(([^)]*)\)" "<$2|$1>")
+                                                       {} {} (atom {}))
+                            (calls))))]
+      (text-count 2)
+      (let [two-count (text-count 2)]
+        (is (pos? two-count))
+        (is (= two-count (text-count 6)))))))
+
+(deftest resolve-links-measure-and-segment-urls-test
+  (mt/with-model-cleanup [:model/Measure :model/Segment]
+    (let [{[m1 m2] :measure-ids [s1 s2] :segment-ids} (insert-measures-and-segments! 2)
+          links [[(str "metabase://measure/" m1) (str "/data-studio/library/tables/" (mt/id :venues) "/measures/" m1)]
+                 [(str "metabase://measure/" m2) (str "/data-studio/library/tables/" (mt/id :checkins) "/measures/" m2)]
+                 [(str "metabase://segment/" s1) (str "/question#?db=" (mt/id) "&table=" (mt/id :venues) "&segment=" s1)]
+                 [(str "metabase://segment/" s2) (str "/question#?db=" (mt/id) "&table=" (mt/id :checkins) "&segment=" s2)]
+                 ["metabase://measure/999999999" nil]
+                 ["metabase://segment/999999999" nil]
+                 ["metabase://measure/abc" nil]
+                 [(str "metabase://measure/" m1 "-count") nil]
+                 [(str "metabase://table/" (mt/id :venues)) (str "/table/" (mt/id :venues))]
+                 ["metabase://question/12" "/question/12"]]]
+      (testing "markdown links"
+        (is (= (str/join "\n" (concat (map-indexed (fn [i [_ url]] (if url (str "[l" i "](" url ")") (str "l" i))) links)
+                                      ["[x](https://example.com)"]))
+               (links/resolve-links (str/join "\n" (concat (map-indexed (fn [i [uri]] (str "[l" i "](" uri ")")) links)
+                                                           ["[x](https://example.com)"]))
+                                    {} {} (atom {})))))
+      (testing "Slack links"
+        (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
+          (is (= (str/join " " (map (fn [[_ url]] (if url (str "<https://metabase.example.com" url "|x>") "x")) links))
+                 (links/resolve-slack-links (str/join " " (map (fn [[uri]] (str "<" uri "|x>")) links))
+                                            {} {} (atom {})))))))))
 
 (deftest ^:parallel resolve-metabase-uri-unknown-entity-type-test
   (testing "returns nil for unknown entity types"

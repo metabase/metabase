@@ -106,6 +106,8 @@ function createConversation(
     user: null,
     message_count: 2,
     total_tokens: 30,
+    uncached_tokens: 30,
+    cache_read_tokens: 0,
     profile_id: "internal",
     slack_permalink: null,
     messages,
@@ -178,6 +180,22 @@ describe("ConversationDetailPage", () => {
     expect(
       await screen.findByRole("heading", { name: "A conversation" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows the tokens without cache and the cached tokens, and no total", async () => {
+    setup({
+      ...createConversation([userMessage("u1", null, "hello")]),
+      total_tokens: 12345,
+      uncached_tokens: 5556,
+      cache_read_tokens: 6789,
+    });
+
+    expect(await screen.findByText("Tokens")).toBeInTheDocument();
+    expect(screen.getByText("5,556")).toBeInTheDocument();
+    expect(screen.getByText("Cached tokens")).toBeInTheDocument();
+    expect(screen.getByText("6,789")).toBeInTheDocument();
+    expect(screen.queryByText("Total tokens")).not.toBeInTheDocument();
+    expect(screen.queryByText("12,345")).not.toBeInTheDocument();
   });
 
   it("marks the fork boundary and links to the original conversation", async () => {

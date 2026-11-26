@@ -17,9 +17,9 @@
    [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.models.user :as user]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.password :as u.password]
    [metabase.util.secret :as u.secret]
@@ -49,10 +49,10 @@
                      :created_at :%now})
         (testing "session authenticates while the user is active"
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))
-        (t2/update! :model/User :id user-id {:is_active false})
+        (user/update-users! [{:id user-id :is_active false}])
         (testing "after deactivation the session no longer authenticates"
           (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))
-        (t2/update! :model/User :id user-id {:is_active true})
+        (user/update-users! [{:id user-id :is_active true}])
         (testing "after reactivation the same session STILL does not authenticate"
           (is (nil? (#'mw.session/current-user-info-for-session session-key nil))))))))
 
@@ -64,8 +64,8 @@
         (doseq [[created-at expected msg]
                 [[:%now                                                            false "brand-new session"]
                  [#t "1970-01-01T00:00:01Z"                                        true  "really old session"]
-                 [(h2x/add-interval-honeysql-form (mdb/db-type) :%now -61 :second) true  "session that is 61 seconds old"]
-                 [(h2x/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]]]
+                 [[:date-add :%now -61 :second] true  "session that is 61 seconds old"]
+                 [[:date-add :%now -59 :second] false "session that is 59 seconds old"]]]
           (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
             (mt/with-temp [:model/User {user-id :id}]
               (let [session-id (session/generate-session-id)
@@ -92,12 +92,11 @@
 (deftest session-expires-at-test
   (init-status/set-complete!)
   (testing "`expires_at` is enforced server-side, even for a session well within `max-session-age`"
-    (let [db-type (mdb/db-type)
-          now     (h2x/current-datetime-honeysql-form db-type)]
+    (let [now [:current-timestamp]]
       (doseq [[expires-at expected msg]
               [[nil                                                    false "session with no expires_at"]
-               [(h2x/add-interval-honeysql-form db-type now 60 :second) false "session that expires in 60 seconds"]
-               [(h2x/add-interval-honeysql-form db-type now -1 :second) true  "session that expired 1 second ago"]
+               [[:date-add now 60 :second] false "session that expires in 60 seconds"]
+               [[:date-add now -1 :second] true  "session that expired 1 second ago"]
                [#t "1970-01-01T00:00:01Z"                              true  "session that expired long ago"]]]
         (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
           (mt/with-temp [:model/User {user-id :id}]
@@ -294,7 +293,7 @@
                                                      ::api-key/unhashed-key (u.secret/secret "mb_encrypted123")}]
         (testing "the stored bcrypt hash is encrypted at rest"
           ;; select from the raw table to bypass the model's decrypting :out transform
-          (let [raw (t2/select-one-fn :key :api_key :id api-key-id)]
+          (let [raw (t2/select-one-fn :key (t2/table-name :model/ApiKey) :id api-key-id)]
             (is (encryption/possibly-encrypted-string? raw)
                 "raw column value should be ciphertext")
             (is (not (encryption/possibly-encrypted-string? (encryption/maybe-decrypt raw)))
@@ -303,14 +302,14 @@
           (is (= (mt/user->id :lucky)
                  (:metabase-user-id (#'mw.session/merge-current-user-info nil {:headers {"x-api-key" "mb_encrypted123"}})))))
         (testing "a plaintext bcrypt hash injected via direct SQL is rejected, even though it is a correct hash of the key"
-          (t2/query {:update :api_key
+          (t2/query {:update (t2/table-name :model/ApiKey)
                      :set    {:key (u.password/hash-bcrypt "mb_encrypted123")}
                      :where  [:= :id api-key-id]})
           (is (nil? (:metabase-user-id (#'mw.session/merge-current-user-info nil {:headers {"x-api-key" "mb_encrypted123"}})))
               "strict decrypt rejects the unencrypted hash")
           ;; restore a properly-encrypted hash so `with-temp` cleanup (whose before-delete reads the row) doesn't hit the
           ;; strict decrypt on the corrupted plaintext value
-          (t2/query {:update :api_key
+          (t2/query {:update (t2/table-name :model/ApiKey)
                      :set    {:key (encryption/maybe-encrypt (u.password/hash-bcrypt "mb_encrypted123"))}
                      :where  [:= :id api-key-id]}))))))
 
@@ -728,7 +727,7 @@
               key-hashed  (session/hash-session-key session-key)]
           (t2/insert! (t2/table-name :model/Session)
                       {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now
-                       :last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -600 :second)})
+                       :last_active_at [:date-add :%now -600 :second]})
           (is (some? (#'mw.session/current-user-info-for-session session-key nil))))))))
 
 (defn session-valid?

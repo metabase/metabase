@@ -142,9 +142,11 @@
                       (u/group-by
                        :lower_name :id
                        (action-v2.db/category-list-field-ids-by-name table-id lower-names)))
+        id->values  (when (seq ln->ids)
+                      (u/group-by :field_id :values (action-v2.db/field-values-of-fields (vec (apply concat (vals ln->ids))))))
         stale-fields (->> (for [[lower-name field-ids] ln->ids
                                 :let [new-values (into #{} (filter some?) (ln->values lower-name))
-                                      old-values (into #{} cat (action-v2.db/field-values-of-fields field-ids))]]
+                                      old-values (into #{} (comp (mapcat id->values) cat) field-ids)]]
                             (when (seq (set/difference new-values old-values))
                               field-ids))
                           (apply concat))]

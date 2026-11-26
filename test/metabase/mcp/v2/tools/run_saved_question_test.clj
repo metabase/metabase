@@ -424,5 +424,5 @@
         (mt/with-current-user (mt/user->id :rasta)
           (mt/with-dynamic-fn-redefs [lib-be.db/columns (fn [& _]
                                                           (t2/with-transaction [_conn]
-                                                            (t2/query ["SELECT no_such_column FROM metabase_field"])))]
+                                                            (t2/query {:select [:no_such_column] :from [(t2/table-name :model/Field)]})))]
             (is (= "Internal error" (tool-error (call-run-saved-question {:id card-id}))))))))))

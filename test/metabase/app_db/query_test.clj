@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.app-db.db :as mdb.db]
    [metabase.app-db.format :as app-db.format]
    [metabase.app-db.query :as mdb.query]
    [metabase.query-processor.compile :as qp.compile]
@@ -123,12 +124,12 @@
             (let [threads 5
                   latch   (CountDownLatch. threads)
                   thunk   (fn []
-                            (mdb.query/select-or-insert! :model/Setting {search-col search-value}
-                                                         (fn []
-                                                           ;; Make sure all the threads are in the mutating path
-                                                           (.countDown latch)
-                                                           (.await latch)
-                                                           {other-col (random-value! other-col)})))
+                            (mdb.db/select-or-insert! :model/Setting {search-col search-value}
+                                                      (fn []
+                                                        ;; Make sure all the threads are in the mutating path
+                                                        (.countDown latch)
+                                                        (.await latch)
+                                                        {other-col (random-value! other-col)})))
                   results (set (mt/repeat-concurrently threads thunk))
                   n       (count results)
                   latest  (t2/select-one :model/Setting search-col search-value)]
@@ -175,12 +176,12 @@
                     latch      (CountDownLatch. threads)
                     thunk      (fn []
                                  (u/prog1 (random-value! other-col)
-                                   (mdb.query/update-or-insert! :model/Setting {search-col search-value}
-                                                                (fn [_]
-                                                                  ;; Make sure all the threads are in the mutating path
-                                                                  (.countDown latch)
-                                                                  (.await latch)
-                                                                  {other-col <>}))))
+                                   (mdb.db/update-or-insert! :model/Setting {search-col search-value}
+                                                             (fn [_]
+                                                               ;; Make sure all the threads are in the mutating path
+                                                               (.countDown latch)
+                                                               (.await latch)
+                                                               {other-col <>}))))
                     values-set (set (mt/repeat-concurrently threads thunk))
                     latest     (get (t2/select-one :model/Setting search-col search-value) other-col)]
                 (testing "each update tried to set a different value"
@@ -200,3 +201,95 @@
               ;; Since we couldn't use with-temp, we need to clean up manually.
               (finally
                 (t2/delete! :model/Setting search-col search-value)))))))))
+
+(deftest ^:parallel select-batched-test
+  (testing "ids over the partition size are read in partitions of at most that size, in order"
+    (let [calls (atom [])
+          ids   (range (+ (* 2 mdb.query/select-partition-size) 3))]
+      (is (= (vec ids)
+             (mdb.db/select-batched (fn [partition]
+                                      (swap! calls conj (count partition))
+                                      partition)
+                                    ids)))
+      (is (= [mdb.query/select-partition-size mdb.query/select-partition-size 3] @calls))))
+  (testing "no ids make no call"
+    (is (= [] (mdb.db/select-batched (fn [_] (throw (ex-info "called" {}))) [])))))
+
+(deftest ^:synchronized select-batched-by-keys-test
+  (with-redefs [mdb.query/select-partition-size 2]
+    (let [calls (atom [])
+          rows  (mdb.db/select-batched-by-keys (fn [m] (swap! calls conj m) [m])
+                                               {:id [1 2 3] :name nil :other :x}
+                                               [:id :name])]
+      (testing "each key's collection is bound in partitions and keys without values are left alone"
+        (is (= [{:id #{1 2} :name nil :other :x} {:id #{3} :name nil :other :x}] @calls))
+        (is (= @calls rows))))
+    (testing "a map without values under the keys is read once"
+      (is (= [{:other :x}] (mdb.db/select-batched-by-keys vector {:other :x} [:id]))))))
+
+(deftest ^:synchronized insert-returning-instances-over-partitions-test
+  (testing "rows read back over partitions keep the order of the rows inserted"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [names (mapv #(str "partitioned-tag-" % "-" (u/generate-nano-id)) (range 5))]
+        (is (= names
+               (mapv :name (with-redefs [mdb.query/select-partition-size 2]
+                             (mdb.db/insert-returning-instances! :model/TransformTag
+                                                                 (mapv (fn [tag-name] {:name tag-name}) names))))))))))
+
+(deftest ^:synchronized grouped-updates-and-counts-over-partitions-test
+  (t2/with-transaction [_conn nil {:rollback-only true}]
+    (let [tags (mdb.db/insert-returning-instances! :model/TransformTag
+                                                   (mapv (fn [i] {:name (str "grouped-tag-" i "-" (u/generate-nano-id))})
+                                                         (range 5)))
+          ids  (mapv :id tags)]
+      (testing "rows that get one change are updated over partitions"
+        (with-redefs [mdb.query/update-partition-size 2]
+          (mdb.db/update-grouped! :model/TransformTag (mapv (fn [id] {:id id :built_in_type "partitioned"}) ids)))
+        (is (= #{"partitioned"}
+               (t2/select-fn-set :built_in_type :model/TransformTag :id [:in ids]))))
+      (testing "counts are added over partitions, once to each row"
+        (mt/with-temp [:model/Card {a :id} {:view_count 1}
+                       :model/Card {b :id} {:view_count 1}
+                       :model/Card {c :id} {:view_count 1}]
+          (is (= 3
+                 (with-redefs [mdb.query/update-partition-size 2]
+                   (mdb.db/increment-counts! :model/Card :view_count {2 [a b] 5 [c]}))))
+          (is (= {a 3 b 3 c 6}
+                 (t2/select-pk->fn :view_count :model/Card :id [:in [a b c]]))))))))
+
+(deftest ^:synchronized batched-read-and-write-helpers-test
+  (with-redefs [mdb.query/select-partition-size 2]
+    (testing "an id given twice is read once"
+      (is (= [1 2 3] (mdb.db/select-batched identity [1 2 1 3 2])))
+      (is (= #{1 2 3} (set (mdb.db/select-batched identity #{1 2 3})))))
+    (testing "maps of partitions make one map"
+      (is (= {1 :a 2 :b 3 :c} (mdb.db/select-batched-map #(select-keys {1 :a 2 :b 3 :c} %) [1 2 3]))))
+    (testing "sets of partitions make one set, nil when no partition has an element"
+      (is (= #{1 3} (mdb.db/select-batched-set #(set (filter odd? %)) [1 2 3])))
+      (is (nil? (mdb.db/select-batched-set (constantly nil) [1 2 3])))
+      (is (nil? (mdb.db/select-batched-set (constantly nil) []))))
+    (testing "reducibles of partitions make one reducible"
+      (is (= [1 2 3] (into [] (mdb.db/select-batched-reducible identity [1 2 3])))))
+    (testing "row counts of partitions are added"
+      (is (= 5 (mdb.db/sum-batched 2 count [1 2 3 4 5])))
+      (is (= 0 (mdb.db/sum-batched 2 count []))))))
+
+(deftest grouped-updates-merges-the-rows-of-one-key-test
+  (let [grouped #(#'mdb.db/grouped-updates % :id (fn [row] (dissoc row :id)))]
+    (testing "the last value of a column wins"
+      (is (= [[{:a 1} [1]]]
+             (grouped [{:id 1, :a 1} {:id 1, :a 2} {:id 1, :a 1}]))))
+    (testing "rows of one key that set different columns are all kept"
+      (is (= [[{:a 1, :b 2} [1]]]
+             (grouped [{:id 1, :a 1} {:id 1, :b 2}]))))
+    (testing "keys group by the changes they end with"
+      (is (= [[{:a 2} [1 3]] [{:a 1} [2]]]
+             (grouped [{:id 1, :a 1} {:id 2, :a 1} {:id 1, :a 2} {:id 3, :a 2}]))))
+    (testing "a key with no column to change is left out"
+      (is (= [] (grouped [{:id 1}]))))))
+
+(deftest exists-test
+  (testing "`t2/exists?` wraps its query in `[:exists ...]`, which compiles because that subquery is marked"
+    (mt/with-temp [:model/ContentTranslation _ {:locale "de" :msgid "x" :msgstr "ex"}]
+      (is (t2/exists? :model/ContentTranslation :locale "de"))
+      (is (not (t2/exists? :model/ContentTranslation :locale "xx"))))))

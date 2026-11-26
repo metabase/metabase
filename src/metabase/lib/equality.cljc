@@ -26,7 +26,9 @@
 (defmulti =
   "Determine whether two already-normalized MBQL 5 maps, clauses, or other sorts of expressions are equal. The basic rule
   is that two things are considered equal if they are [[clojure.core/=]], or, if they are both maps, if they
-  are [[clojure.core/=]] if you ignore all qualified keyword keys besides `:lib/type`."
+  are [[clojure.core/=]] if you ignore all qualified keyword keys besides `:lib/type` and `:lib/expression-name`.
+
+  Two `:field` refs that differ only because one of them leaves out `:base-type` or `:effective-type` are equal."
   {:arglists '([x y])}
   ;; two things with different dispatch values (for maps, the `:lib/type` key; for MBQL clauses, the tag, and for
   ;; everything else, a `:dispatch-type/...` keyword) can't be equal.
@@ -42,13 +44,19 @@
   [_x _y]
   false)
 
+(def ^:private relevant-qualified-keys
+  "Qualified keys that say something about what a map or clause means. Other qualified keys, such as `:lib/uuid`, are
+  bookkeeping. `:lib/expression-name` is here because an expression's name is the only thing that tells two expressions
+  with the same definition apart."
+  #{:lib/type :lib/expression-name})
+
 (defn- relevant-keys-set
   "Set of keys in a map that we consider relevant for [[=]] purposes."
   [m]
   (into #{}
         (remove (fn [k]
                   (and (qualified-keyword? k)
-                       (not= k :lib/type))))
+                       (not (contains? relevant-qualified-keys k)))))
         (keys m)))
 
 (defmethod = :dispatch-type/map
@@ -95,6 +103,26 @@
          (clojure.core/= (get-in *side->uuid->index* [:left x-uuid] ::no-left)
                          (get-in *side->uuid->index* [:right y-uuid] ::no-right))
          (clojure.core/= x-uuid y-uuid))))
+
+(defn- field-ref-options-for-comparison
+  "Options of a `:field` ref without the type keys that `other-opts` leaves out."
+  [opts other-opts]
+  (cond-> opts
+    (not (:base-type other-opts))      (dissoc :base-type)
+    (not (:effective-type other-opts)) (dissoc :effective-type)))
+
+;;; A ref built from column metadata has `:base-type` and `:effective-type`; a ref to the same Field that was written by
+;;; hand or converted from legacy MBQL often has neither. Both are the same ref, so a type key only counts when both
+;;; refs have it.
+(defmethod = :field
+  [[_x-tag x-opts x-id-or-name :as x] [_y-tag y-opts y-id-or-name :as y]]
+  (if (and (clojure.core/= 3 (count x) (count y))
+           (map? x-opts)
+           (map? y-opts))
+    (and (clojure.core/= x-id-or-name y-id-or-name)
+         (= (field-ref-options-for-comparison x-opts y-opts)
+            (field-ref-options-for-comparison y-opts x-opts)))
+    ((get-method = :dispatch-type/sequential) x y)))
 
 ;;; if we've gotten here we at least know the dispatch values for `x` and `y` are the same, which means the types will
 ;;; be the same.

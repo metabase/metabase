@@ -8,15 +8,19 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.database-routing.core :as database-routing]
+   [metabase.documents.schema :as documents.schema]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.public-sharing.core :as public-sharing]
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
    [metabase.secrets.core :as secret]
@@ -27,7 +31,6 @@
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -35,6 +38,8 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
@@ -82,12 +87,13 @@
           schemas-by-db (reduce
                          (fn [m {:keys [db_id schema]}]
                            (update m db_id (fnil conj []) schema))
-                         {} rows)]
+                         {} rows)
+          readable-ones (schema.table/readable-schemas (map (juxt :db_id :schema) rows))]
       (for [db dbs]
         (let [db-id       (:id db)
               raw-schemas (get schemas-by-db db-id [])
               readable    (->> raw-schemas
-                               (filter (partial schema.table/can-read-schema? db-id))
+                               (filter #(contains? readable-ones [db-id %]))
                                (map #(if (nil? %) "" %))
                                distinct
                                sort
@@ -191,14 +197,15 @@
                                                 include-analytics? include-stubs?)]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
       include-tables?              (add-tables :can-query? can-query?)
-      include-schemas?             add-schemas
       can-query?                   (#(filter mi/can-query? (t2/hydrate % :can_query)))
       true                         add-can-upload-to-dbs
-      true                         (t2/hydrate :router_user_attribute)
+      true                         (t2/hydrate :router_user_attribute :router_anonymous_access_granted)
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) (t2/hydrate % :can_write)))
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
-      include-only-uploadable?     (#(filter uploadable-db? %)))))
+      include-only-uploadable?     (#(filter uploadable-db? %))
+      include-schemas?             add-schemas
+      true                         database/add-json-access)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -323,7 +330,7 @@
   "Get a single Database with `id`."
   [db {:keys [include include-editable-data-model?]}]
   (cond-> db
-    true                         (t2/hydrate :router_user_attribute)
+    true                         (t2/hydrate :router_user_attribute :router_anonymous_access_granted)
     true                         add-expanded-schedules
     true                         (get-database-hydrate-include include)
     true                         add-can-upload
@@ -385,6 +392,60 @@
   (api/check-superuser)
   (check-database-exists id)
   (first (warehouses-rest.db/database-usage-counts id)))
+
+(def ^:private max-anonymously-reachable
+  "How many rows `GET /api/database/:id/anonymous-reach` returns."
+  100)
+
+(mr/def ::anonymously-reachable-entity
+  [:map {:closed true}
+   [:id
+    {:description "Id of the published card (question, model or metric), dashboard or document."}
+    [:or ::lib.schema.id/card ::lib.schema.id/dashboard ::documents.schema/document.id]]
+   [:model
+    {:description "What kind of thing it is, in the same vocabulary search and collection items use."}
+    [:enum "card" "dataset" "metric" "dashboard" "document"]]
+   [:name
+    {:description "Its name, as an admin would recognise it."}
+    :string]
+   [:surfaces
+    {:description (str "The anonymous surfaces through which it reaches this database: a public link, a published"
+                       " guest embed, or both.")}
+    [:sequential {:min 1} [:enum "guest-embed" "public-link"]]]
+   [:reaches_indirectly
+    {:description (str "True where the connection to this database is not self-evident: nothing this entity shows"
+                       " is saved against the database, and it reaches it by running a question's query to fill a"
+                       " filter's value list.")}
+    :boolean]])
+
+(mr/def ::anonymous-reach
+  [:map {:closed true}
+   [:total
+    {:description "How many anonymously reachable entities reach this database."}
+    ms/IntGreaterThanOrEqualToZero]
+   [:data
+    {:description (str "The first " max-anonymously-reachable " of those entities by name. `total` says how many there"
+                       " are in all.")}
+    [:sequential ::anonymously-reachable-entity]]])
+
+(defn- present-anonymously-reachable-entity
+  "One row of the anonymous-reach response."
+  [{:keys [id model surfaces indirect?], entity-name :name}]
+  {:id                 id
+   :model              model
+   :name               entity-name
+   :surfaces           (vec (sort (map u/qualified-name surfaces)))
+   :reaches_indirectly indirect?})
+
+(api.macros/defendpoint :get "/:id/anonymous-reach" :- ::anonymous-reach
+  "The public links and published guest embeds through which anonymous traffic can get data from this database."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ::lib.schema.id/database]]]
+  (api/check-superuser)
+  (check-database-exists id)
+  (let [reachable (public-sharing/anonymously-reachable-entities id)]
+    {:total (count reachable)
+     :data  (mapv present-anonymously-reachable-entity (take max-anonymously-reachable reachable))}))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
@@ -498,7 +559,7 @@
                            (str " " semantic_type)))]))))
 
 (defn- autocomplete-suggestions
-  "`like-pattern` is a `LIKE` right-hand side (see [[h2x/like-substring]] and [[h2x/like-prefix]]) matched against
+  "`like-pattern` is a `LIKE` right-hand side (see [[funnysql.util/like-substring]] and [[funnysql.util/like-prefix]]) matched against
   lowercased table and field names."
   [db-id like-pattern]
   (let [limit  50
@@ -540,8 +601,8 @@
      :headers {"Cache-Control" "public, max-age=60"
                "Vary"          "Cookie"}
      :body    (cond
-                substring (autocomplete-suggestions id (h2x/like-substring substring))
-                prefix    (autocomplete-suggestions id (h2x/like-prefix prefix)))}
+                substring (autocomplete-suggestions id (funnysql.util/like-substring substring))
+                prefix    (autocomplete-suggestions id (funnysql.util/like-prefix prefix)))}
     (catch Throwable e
       (log/warnf "Error with autocomplete: %s" (ex-message e)))))
 
@@ -655,19 +716,18 @@
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfully, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
-      (u/prog1 (api/check-500 (warehouses-rest.db/insert-database!
-                               (merge
-                                {:name         name
-                                 :engine       engine
-                                 :details      details-or-error
-                                 :is_full_sync is_full_sync
-                                 :is_on_demand is_on_demand
-                                 :cache_ttl    cache_ttl
-                                 :creator_id   api/*current-user-id*}
-                                (when schedules
-                                  (sync.schedules/schedule-map->cron-strings schedules))
-                                (when (some? auto_run_queries)
-                                  {:auto_run_queries auto_run_queries}))))
+      (u/prog1 (api/check-500 (first (database/create-databases! [(merge
+                                                                   {:name         name
+                                                                    :engine       engine
+                                                                    :details      details-or-error
+                                                                    :is_full_sync is_full_sync
+                                                                    :is_on_demand is_on_demand
+                                                                    :cache_ttl    cache_ttl
+                                                                    :creator_id   api/*current-user-id*}
+                                                                   (when schedules
+                                                                     (sync.schedules/schedule-map->cron-strings schedules))
+                                                                   (when (some? auto_run_queries)
+                                                                     {:auto_run_queries auto_run_queries}))])))
         (sync/start-initial-sync! <> nil)
         (analytics/track-event! :snowplow/database
                                 {:event        :database-connection-successful
@@ -957,10 +1017,8 @@
             (setting/validate-settable-for-db setting-kw pending-db driver-supports?)
             (catch Exception e
               (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
-        (events/with-batched-events
-          (warehouses-rest.db/update-database! id updates)
-          (when (premium-features/enable-cache-granular-controls?)
-            (warehouses-rest.db/update-database! id {:cache_ttl cache_ttl})))
+        (database/update-databases! [(assoc (cond-> updates
+                                              (premium-features/enable-cache-granular-controls?) (assoc :cache_ttl cache_ttl)) :id (:id existing-database))] {:databases [existing-database]})
         (let [db (warehouses-rest.db/database id)]
           (sync/start-initial-sync! db existing-database)
           (-> db
@@ -981,9 +1039,9 @@
   (t2/with-transaction [_conn]
     (api/let-404 [db (warehouses-rest.db/database id)]
       (api/check-403 (mi/can-write? (t2/hydrate db :can_write)))
-      (warehouses-rest.db/delete-destination-databases! id)
-      (database-routing/delete-associated-database-router! id)
-      (warehouses-rest.db/delete-database! id)
+      (database/delete-databases! (warehouses-rest.db/destination-database-ids id))
+      (database-routing/delete-database-routers-for-databases! [id])
+      (database/delete-databases! [id])
       nil))
   api/generic-204-no-content)
 
@@ -998,7 +1056,6 @@
   "Trigger a manual update of the schema metadata for this `Database`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  ;; just wrap this in a future so it happens async
   (let [db (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-manual-sync {:object db :user-id api/*current-user-id*})
     (if-let [ex (try
@@ -1013,12 +1070,7 @@
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
         (analytics/track-event! :snowplow/simple_event {:event "database_manual_sync" :target_id id})
-        (quick-task/submit-task!
-         (fn []
-           (database-routing/with-anonymous-router-access
-             ;; explicit, user-requested sync — runs even when `disable-auto-sync` is enabled
-             (sync/sync-db-metadata-explicit! (u/the-id db))
-             (sync/analyze-db-explicit! (u/the-id db)))))
+        (sync/schedule-database-sync! (u/the-id db))
         {:status :ok}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1035,7 +1087,7 @@
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
     (when-let [table-ids (seq (map :id tables))]
-      (warehouses-rest.db/mark-tables-sync-complete! table-ids)))
+      (table/update-tables! (for [id (vec (distinct table-ids))] {:id id :initial_sync_status "complete"}))))
   {:status :ok})
 
 ;;; ------------------------------------------ POST /api/database/:id/rescan_values -------------------------------------------
@@ -1074,7 +1126,7 @@
   {:status :ok})
 
 (defn- delete-all-field-values-for-database! [database-or-id]
-  (warehouses-rest.db/delete-field-values-for-database! (u/the-id database-or-id)))
+  (field-values/delete-field-values! (field-values/ids-of-database (u/the-id database-or-id))))
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
 ;;

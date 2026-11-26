@@ -92,10 +92,7 @@ const decodeQuery = (
 
     const question = buildQuestion({ dataset_query: datasetQuery });
     const query = question.query();
-    const isNativeOnly =
-      Lib.queryDisplayInfo(query).isNative && Lib.stageCount(query) === 1;
-
-    if (isNativeOnly) {
+    if (Lib.isNativeOnlyQuery(query)) {
       const databaseId = Lib.databaseID(query);
       if (databaseId == null) {
         return { kind: "none" };

@@ -1,5 +1,6 @@
 (ns metabase-enterprise.sandbox.schema
   (:require
+   [malli.util :as mut]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -39,16 +40,27 @@
 
 (mr/def ::sandbox
   "A Sandbox as selected from the app DB: every column of `:sandboxes`, plus `:table` some callers hydrate onto it."
-  [:merge
-   ::sandbox.update
-   [:map {:closed true}
-    [:id                   ms/PositiveInt]
-    [:table                {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
+  [:map {:closed true}
+   [:id                   ms/PositiveInt]
+   [:group_id             {:optional true} [:maybe ms/PositiveInt]]
+   [:table_id             {:optional true} [:maybe ::lib.schema.id/table]]
+   [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
+   [:attribute_remappings {:optional true} [:maybe ::sandbox.attribute-remappings]]
+   [:table                {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]])
 
 (mr/def ::sandbox.update
-  "What an update (or insert) of a Sandbox accepts: every column of `:sandboxes` except `id`, all optional."
+  "What an update of a Sandbox takes: its `:id` and the columns to set."
   [:map {:closed true}
+   [:id                   ::lib.schema.id/sandbox]
    [:group_id             {:optional true} [:maybe ms/PositiveInt]]
    [:table_id             {:optional true} [:maybe ::lib.schema.id/table]]
    [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
    [:attribute_remappings {:optional true} [:maybe ::sandbox.attribute-remappings]]])
+
+(mr/def ::sandbox.create
+  "What creating a Sandbox takes: the columns of an update without the `:id`, and its group and Table."
+  [:merge
+   (mut/dissoc ::sandbox.update :id)
+   [:map {:closed true}
+    [:table_id ::lib.schema.id/table]
+    [:group_id ms/PositiveInt]]])

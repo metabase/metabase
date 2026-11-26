@@ -9,11 +9,11 @@ summary: Control who can use Metabot and which MCP tools each group can use, and
 
 _Admin > AI > Usage controls_
 
-Once you've connected an AI provider (see [AI settings](./settings.md)), you can control who can use Metabot and set usage budgets. If you've [turned on the MCP server](./mcp.md#turn-on-the-mcp-server), you can also choose which MCP tools each group can use.
-
 - [AI feature access](#ai-feature-access): which groups can use Metabot, and which of its tools.
 - [MCP tools access](#mcp-tools-access): which MCP tools each group's AI clients can use.
 - [AI usage limits](#ai-usage-limits): token or message caps by instance, group, or tenant.
+
+Before you can set AI feature access and AI usage limits, you need to connect an AI provider (see [AI settings](./settings.md)). MCP tools access doesn't need an AI provider, just the [MCP server](./mcp.md#turn-the-mcp-server-on-or-off), which is on by default.
 
 ## AI feature access
 
@@ -38,7 +38,7 @@ _Admin > AI > Usage controls > MCP tools access_
 
 MCP tools access lets you choose which [MCP server](./mcp.md) tools each group's AI clients can use. For example, you can let your analysts run raw SQL from Claude or Cursor, and give everyone else only the tools that read content.
 
-By default, everyone can use every MCP tool. The **MCP tools access** page only shows up once you've [turned on the MCP server](./mcp.md#turn-on-the-mcp-server).
+By default, everyone can use every MCP tool. The **MCP tools access** page is hidden if you've [turned off the MCP server](./mcp.md#turn-the-mcp-server-on-or-off).
 
 Tool access doesn't replace other permissions. People still need the usual [data](../permissions/data.md) and [collection](../permissions/collections.md) permissions, and their client still needs the right [permission scope](./mcp.md#permission-scopes).
 

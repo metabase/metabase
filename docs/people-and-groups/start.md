@@ -8,7 +8,7 @@ redirect_from:
 
 # People overview
 
-User accounts, groups, and authentication. For permissions, see [Permissions overview](../permissions/start.md).
+For permissions, see [Permissions overview](../permissions/start.md).
 
 ## [Editing your account settings](./account-settings.md)
 

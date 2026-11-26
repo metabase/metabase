@@ -2,21 +2,24 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.revisions.models.revision :as revision]
    [metabase.revisions.models.revision.diff :as revision.diff]
+   [metabase.revisions.spec :as revisions.spec]
    [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (defn- diff-strings
-  "The `revision/diff-strings` of `o1` and `o2`, naming the Collections and Dashboards they reference."
+  "The `revision/describe` of `o1` and `o2`, naming the Collections and Dashboards they reference."
   [model o1 o2]
-  (revision/diff-strings model o1 o2 (revision/readable-names (filterv some? [o1 o2]))))
+  (revision/describe model o1 o2 (revision/readable-names (filterv some? [o1 o2]))))
 
 (def ^:private reverted-to
   (atom nil))
@@ -35,22 +38,32 @@
                                                                     "FakeCard"      "FakeCard"))]
     (thunk)))
 
-(defmethod revision/serialize-instance ::FakedCard
-  [_model _id obj]
-  (into {} (assoc obj :serialized true)))
+(defn- snapshot-serialized
+  [_rows snapshots]
+  (mapv #(assoc % :serialized true) snapshots))
 
-(defmethod revision/revert-to-revision! ::FakedCard
-  [_model _id _user-id serialized-instance]
-  (reset! reverted-to (dissoc serialized-instance :serialized)))
+(defn- revert-faked-card!
+  [_id _user-id snapshot]
+  (reset! reverted-to (dissoc snapshot :serialized)))
 
-(defmethod revision/diff-map ::FakedCard
-  [_model o1 o2]
-  {:o1 (when o1 (into {} o1)), :o2 (when o2 (into {} o2))})
-
-(defmethod revision/diff-strings ::FakedCard
-  [_model o1 o2 _names]
+(defn- describe-faked-card
+  [o1 o2 _names]
   (when o1
     [(str "BEFORE=" (into {} o1) ",AFTER=" (into {} o2))]))
+
+(mr/def ::faked-card.revision
+  [:map {:closed true}
+   [:name       {:optional true} [:maybe :string]]
+   [:serialized {:optional true} [:maybe :boolean]]])
+
+(defmethod revisions.spec/spec ::FakedCard
+  [_model]
+  {:track    [:name :serialized]
+   :skip     []
+   :schema   ::faked-card.revision
+   :snapshot snapshot-serialized
+   :revert!  revert-faked-card!
+   :describe describe-faked-card})
 
 (defn- push-fake-revision! [card-id & {:keys [message] :as object}]
   (revisions.tu/push-revision!
@@ -133,8 +146,8 @@
                                 config/ee-available? (assoc :model/TransformTest "Transform test"
                                                             :model/CardTest      "Card test"
                                                             :model/SegmentTest   "Segment test"))]
-      ;; recording a revision calls `serialize-instance`, which has no default: a model with revisions has a method.
-      (is (= (set (filter #(= "model" (namespace %)) (keys (methods revision/serialize-instance))))
+      ;; a model with a revision spec has Revisions.
+      (is (= (set (filter #(= "model" (namespace %)) (revisions.spec/revisioned-models)))
              (set (keys model->display-name))))
       (doseq [[model display-name] model->display-name]
         (testing model
@@ -269,20 +282,20 @@
             (is (= [(apply max (map :id revisions))]
                    (keep #(when (:most_recent %) (:id %)) revisions)))))))))
 
-(deftest row-changed-ignores-what-revision-does-not-hold-test
+(deftest changed-ignores-what-revision-does-not-hold-test
   (testing "the update of a real :model/Card that changes nothing a revision holds is no change"
     (mt/with-temp [:model/Card {card-id :id :as card} {:name "Tips Created by Day"}]
       (testing "an identical card"
-        (is (false? (revision/row-changed? :model/Card card-id card card))))
+        (is (false? (revision/changed? :model/Card card card))))
       (testing "a change of the name"
-        (is (true? (revision/row-changed? :model/Card card-id card (assoc card :name "Spots Created by Day")))))
+        (is (true? (revision/changed? :model/Card card (assoc card :name "Spots Created by Day")))))
       (testing "`:card_schema` is stored in the snapshot, because revert reads it back"
-        ;; Excluding it from `serialize-instance` would also equalize the comparison, but then
-        ;; `revert-to-revision! :model/Card` would fall back to `starting-card-schema-version` and
+        ;; Excluding it from the snapshot would also equalize the comparison, but then
+        ;; a revert of a card would fall back to `starting-card-schema-version` and
         ;; silently downgrade the card on every revert.
         (let [card (t2/select-one :model/Card :id card-id)]
           (is (= (:card_schema card)
-                 (:card_schema (revision/serialize-instance :model/Card card-id card)))))))))
+                 (:card_schema (revision/snapshot :model/Card card)))))))))
 
 (deftest add-revision-details-test
   (mt/with-model-cleanup [:model/Revision]
@@ -294,8 +307,8 @@
                  :is_reversion         false
                  :message              nil
                  :user                 {:id (mt/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"}
-                 :diff                 {:o1 {:name "Initial Name", :serialized true}
-                                        :o2 {:name "Modified Name", :serialized true}}
+                 :diff                 {:before {:name "Initial Name"}
+                                        :after  {:name "Modified Name"}}
                  :has_multiple_changes false
                  :description          "BEFORE={:name \"Initial Name\", :serialized true},AFTER={:name \"Modified Name\", :serialized true}."}
                 (let [revisions (revision/revisions ::FakedCard card-id)]
@@ -321,8 +334,7 @@
                    :is_creation          false,
                    :message              nil,
                    :user                 {:id (mt/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
-                   :diff                 {:o1 nil
-                                          :o2 {:name "Tips Created by Day", :serialized true}}
+                   :diff                 nil
                    :has_multiple_changes false
                    :description          "modified this."})]
                 (->> (revision/revisions+details ::FakedCard card-id)
@@ -341,8 +353,8 @@
                    :is_creation          false,
                    :message              nil
                    :user                 {:id (mt/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
-                   :diff                 {:o1 {:name "Tips Created by Day", :serialized true}
-                                          :o2 {:name "Spots Created by Day", :serialized true}}
+                   :diff                 {:before {:name "Tips Created by Day"}
+                                          :after  {:name "Spots Created by Day"}}
                    :has_multiple_changes false
                    :description          (str "BEFORE={:name \"Tips Created by Day\", :serialized true},AFTER="
                                               "{:name \"Spots Created by Day\", :serialized true}.")})
@@ -352,8 +364,7 @@
                    :is_creation          false,
                    :message              nil
                    :user                 {:id (mt/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
-                   :diff                 {:o1 nil
-                                          :o2 {:name "Tips Created by Day", :serialized true}}
+                   :diff                 nil
                    :has_multiple_changes false
                    :description          "modified this."})]
                 (->> (revision/revisions+details ::FakedCard card-id)
@@ -419,6 +430,25 @@
           (revision/revert! {:entity :model/Card, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id})
           (is (= "Tips Created by Day"
                  (:name (t2/select-one :model/Card :id card-id)))))))))
+
+(deftest revert-to-older-shaped-snapshot-of-current-state-adds-no-revision-test
+  (testing "a revert to a snapshot that an older version recorded, equal to the current state in what a Revision records"
+    (mt/with-temp [:model/Segment {segment-id :id :as segment} {:name "Tracked"}]
+      (let [snapshot (revision/snapshot :model/Segment segment)
+            older    (assoc snapshot :id segment-id :entity_id (:entity_id segment) :creator_id (:creator_id segment))
+            revision (fn [object]
+                       (t2/insert-returning-instance! :model/Revision {:model       "Segment"
+                                                                       :model_id    segment-id
+                                                                       :user_id     (mt/user->id :rasta)
+                                                                       :object      object
+                                                                       :is_creation false}))
+            target   (revision older)]
+        (revision snapshot)
+        (revision/revert! {:entity      :model/Segment
+                           :id          segment-id
+                           :user-id     (mt/user->id :rasta)
+                           :revision-id (:id target)})
+        (is (= 2 (t2/count :model/Revision :model "Segment" :model_id segment-id)))))))
 
 (deftest reverting-should-add-revision-test
   (mt/with-model-cleanup [:model/Revision]
@@ -540,6 +570,7 @@
                            (call-count (fn [] (revision/revisions :model/Card card-id))))]
         (move! coll-a)
         (move! coll-b)
+        (extra)
         (let [one-move (extra)]
           (move! coll-c)
           (move! coll-a)
@@ -550,3 +581,29 @@
                    (map (comp str :description) (take 3 (details))))))
           (testing "further moves cost no further queries past loading their revisions"
             (is (= one-move (extra)))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/Revision]
+    (let [user-id  (mt/user->id :rasta)
+          next-id  (atom 1000000)
+          rows     (fn [n]
+                     (mapv (fn [_] {:model "Dashboard" :model_id (swap! next-id inc) :user_id user-id
+                                    :object {:name (mt/random-name)} :is_creation false :is_reversion false})
+                           (range n)))
+          fresh!   (fn [n]
+                     (let [rows (rows n)]
+                       (dotimes [_ 3] (revision/create-revisions! rows))
+                       (mapv (juxt :model :model_id) rows)))
+          counted  (fn [f]
+                     (f 1)
+                     (is (= (f 2) (f 6))))]
+      (testing "creating revisions"
+        (counted (fn [n] (let [rows (rows n)] (events.tu/statement-count! #(revision/create-revisions! rows))))))
+      (testing "settling the revisions of entities whose newest revision is their only one"
+        (counted (fn [n]
+                   (let [rows (rows n)]
+                     (revision/create-revisions! rows)
+                     (events.tu/statement-count! #(revision/settle-revisions! (mapv (juxt :model :model_id) rows)))))))
+      (testing "deleting the revisions of entities"
+        (counted (fn [n] (let [entities (fresh! n)]
+                           (events.tu/statement-count! #(revision/delete-revisions-for-entities! "Dashboard" (mapv second entities))))))))))

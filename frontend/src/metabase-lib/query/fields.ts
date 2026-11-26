@@ -6,10 +6,8 @@ import type {
   Clause,
   ColumnMetadata,
   FieldSearchInfo,
-  MetricMetadata,
   ParameterFieldInfo,
   Query,
-  SegmentMetadata,
 } from "./types";
 
 export function fields(query: Query, stageIndex: number): Clause[] {
@@ -64,7 +62,7 @@ export function parameterFieldInfo(
 export function legacyRef(
   query: Query,
   stageIndex: number,
-  column: ColumnMetadata | MetricMetadata | SegmentMetadata,
+  column: ColumnMetadata,
 ): FieldReference {
   return ML.legacy_ref(query, stageIndex, column);
 }

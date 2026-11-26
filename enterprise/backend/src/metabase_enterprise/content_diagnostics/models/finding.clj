@@ -5,7 +5,11 @@
   (:require
    [metabase-enterprise.content-diagnostics.common :as common]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
+   [metabase-enterprise.content-diagnostics.schema :as cd.schema]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -22,56 +26,66 @@
    :entity_kind  mi/transform-keyword
    :details      mi/transform-json})
 
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
 (def ^:private delete-batch-size
   "Rows per DELETE, so a backlog is cleared in short transactions rather than one long one."
   1000)
 
-(defn delete-invalidated-before!
-  "Hard-delete every finding invalidated before `cutoff`, a batch at a time; returns the row count.
-  Active findings need no guard - their `invalidated_at` is NULL, and NULL < cutoff is never true."
-  [cutoff]
+(mu/defn create-findings!
+  "Insert the finding `rows` in one statement."
+  [rows :- [:sequential ::cd.schema/finding.create]]
+  (cd.db/insert-findings! rows))
+
+(mu/defn delete-findings-for-cleanup! :- :int
+  "Hard-delete every finding invalidated before `cutoff`, a batch at a time, and return the row count; an active
+  finding needs no guard, as its `invalidated_at` is NULL and NULL < cutoff is never true."
+  [cutoff :- ms/TemporalInstant]
   (loop [deleted 0]
     (let [n (long (cd.db/delete-invalidated-batch! cutoff delete-batch-size))]
       (if (< n delete-batch-size)
         (+ deleted n)
         (recur (+ deleted n))))))
 
-(defn invalidate-superseded!
+(mu/defn invalidate-superseded!
   "Soft-invalidate (stamp `invalidated_at`, never delete) every still-active finding of `finding-types`
   from a *prior* scan. Entities the new scan re-flagged keep a newer active row; entities it no longer
   flags drop out of the active set. Filtering on `invalidated_at` NULL keeps this idempotent."
-  [scan-id finding-types]
+  [scan-id       :- :string
+   finding-types :- [:set :keyword]]
   (when (seq finding-types)
     (cd.db/invalidate-superseded! scan-id finding-types)))
 
-(defn invalidate-for!
+(mu/defn invalidate-for!
   "Soft-invalidate, in one statement, the active findings of the entities `entity-ids-by-type`, a map of entity type to
   ids, and of the archived collections `collection-ids` and the collection items currently in them."
-  [entity-ids-by-type collection-ids]
+  [entity-ids-by-type :- [:map-of :keyword [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
+   collection-ids     :- [:maybe [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
   (let [archived-types (conj (descendants common/hierarchy ::common/collection-item) :collection)
         clauses        (cond-> (into []
                                      (keep (fn [[entity-type ids]]
                                              (when (seq ids)
                                                [:and
-                                                [:= :entity_type [:auto/param (name entity-type)]]
-                                                [:in :entity_id [:auto/param (vec ids)]]])))
+                                                [:= :entity_type (name entity-type)]
+                                                [:in :entity_id (vec ids)]])))
                                      entity-ids-by-type)
                          (seq collection-ids)
                          (into (common/entity-collection-clauses
                                 archived-types
-                                (fn [_etype coll-col] [:in coll-col [:auto/param (vec collection-ids)]]))))]
+                                (fn [_etype coll-col] [:in coll-col (vec collection-ids)]))))]
     (when (seq clauses)
       (cd.db/invalidate-findings-where! [:and [:= :invalidated_at nil] (into [:or] clauses)]))))
 
-(defn invalidate-by-ids!
-  "Soft-invalidate the still-active findings among `ids` that match `where`, in one transaction; returns
-  the set of ids found active. Two racing calls can both report an id; the `invalidated_at` NULL guard
-  still stamps it once."
-  [ids where]
-  (t2/with-transaction [_conn]
-    (let [eligible (set (cd.db/active-finding-ids ids where))]
-      (when (seq eligible)
-        (cd.db/invalidate-findings-where! [:and
-                                           [:in :id (vec eligible)]
-                                           [:= :invalidated_at nil]]))
-      eligible)))
+(mu/defn invalidate-findings!
+  "Soft-invalidate the still-active findings among `ids` in one transaction, a finding invalidated meanwhile keeping
+  its first stamp, and return the set of `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (when (seq ids)
+    (t2/with-transaction [_conn]
+      (cd.db/invalidate-findings-by-ids! (vec ids))))
+  (set ids))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ContentDiagnosticsFinding [_model]
+  {:skip? false})

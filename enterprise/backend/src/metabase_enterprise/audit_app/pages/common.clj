@@ -10,13 +10,13 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.funnysql.schema :as funnysql.schema]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
@@ -98,35 +98,8 @@
                       {:driver driver, :honeysql-query honeysql-query}
                       e)))))
 
-(mr/def ::honeysql-expr
-  "A Honey SQL 2 expression inside an audit query: a plain expression, a subquery, or a vector form containing these."
-  [:or
-   ::h2x/expr
-   [:ref ::honeysql-query]
-   [:sequential [:ref ::honeysql-expr]]])
-
-(mr/def ::honeysql-query
-  "A Honey SQL 2 query map as this namespace's audit queries build it: a `:with` CTE's body and a `:union-all`
-  branch are each themselves one of these."
-  [:map {:closed true}
-   [:with            {:optional true} [:sequential [:tuple :keyword [:ref ::honeysql-query]]]]
-   [:select          {:optional true} [:sequential [:ref ::honeysql-expr]]]
-   [:select-distinct {:optional true} [:sequential [:ref ::honeysql-expr]]]
-   [:from            {:optional true} [:sequential [:ref ::honeysql-expr]]]
-   [:join            {:optional true} [:sequential [:ref ::honeysql-expr]]]
-   [:left-join       {:optional true} [:sequential [:ref ::honeysql-expr]]]
-   [:inner-join      {:optional true} [:sequential [:ref ::honeysql-expr]]]
-   [:where           {:optional true} [:ref ::honeysql-expr]]
-   [:group-by        {:optional true} [:sequential [:ref ::honeysql-expr]]]
-   [:having          {:optional true} [:ref ::honeysql-expr]]
-   [:partition-by    {:optional true} [:sequential [:ref ::honeysql-expr]]]
-   [:order-by        {:optional true} [:sequential [:ref ::honeysql-expr]]]
-   [:limit           {:optional true} ::h2x/expr]
-   [:offset          {:optional true} ::h2x/expr]
-   [:union-all       {:optional true} [:sequential [:ref ::honeysql-query]]]])
-
 (mu/defn- reduce-results* :- :some
-  [honeysql-query :- ::honeysql-query
+  [honeysql-query :- ::funnysql.schema/query
    rff            :- ::qp.schema/rff
    init           :- ::qp.schema/accumulator]
   (let [driver         (mdb/db-type)
@@ -193,9 +166,9 @@
      [:and [:= nil first-name] [:= nil last-name]]
      email
      [:or [:= nil first-name] [:= nil last-name]]
-     (h2x/concat [:coalesce first-name ""] [:coalesce last-name ""])
+     [:concat [:coalesce first-name ""] [:coalesce last-name ""]]
      :else
-     (h2x/concat [:coalesce first-name ""] (h2x/literal " ") [:coalesce last-name ""])]))
+     [:concat [:coalesce first-name ""] [:literal " "] [:coalesce last-name ""]]]))
 
 (defn lowercase-field
   "Lowercase a SQL field, to enter into honeysql query"
@@ -208,7 +181,7 @@
   (add-search-clause {} \"birds\" :t.name :db.name)"
   [query query-string & fields-to-search]
   (sql.helpers/where query (when (seq query-string)
-                             (let [query-string (h2x/like-substring query-string)]
+                             (let [query-string (funnysql.util/like-substring query-string)]
                                ;; this has to be a vector: a seq compiles as a list of values, not a call to `:or`
                                (into [:or]
                                      (for [field fields-to-search]

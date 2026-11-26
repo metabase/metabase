@@ -8,14 +8,19 @@
    [metabase.app-db.sql-errors :as sql-errors]
    [metabase.audit-app.core :as audit]
    [metabase.batch-processing.core :as grouper]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.documents.models.document :as document]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
-   [metabase.query-permissions.core :as query-perms]
+   [metabase.queries.models.card :as card]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.view-log.db :as view-log.db]
+   [metabase.view-log.models.view-log :as view-log]
    [metabase.view-log.schema :as view-log.schema]
+   [metabase.warehouse-schema.models.table :as table]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -58,10 +63,10 @@
           ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
           (cluster-lock/with-cluster-lock {:lock lock-name :retry-transient? true}
             (case model
-              :model/Card      (view-log.db/increment-card-view-counts! cnt->ids)
-              :model/Dashboard (view-log.db/increment-dashboard-view-counts! cnt->ids)
-              :model/Table     (view-log.db/increment-table-view-counts! cnt->ids)
-              :model/Document  (view-log.db/increment-document-view-counts! cnt->ids))))))
+              :model/Card      (card/increment-view-counts! cnt->ids)
+              :model/Dashboard (dashboard/increment-view-counts! cnt->ids)
+              :model/Table     (table/increment-view-counts! cnt->ids)
+              :model/Document  (document/increment-view-counts! cnt->ids))))))
     (catch Exception e
       (log/errorf "Failed to increment view counts: %s" (ex-message e)))))
 
@@ -93,14 +98,14 @@
   [views]
   (log/debugf "Recording %d views" (count views))
   (try
-    (view-log.db/insert-view-logs! views)
+    (view-log/create-view-logs! views)
     (catch Exception e
       (if (sql-errors/row-rejected? e)
         (do
           (log/warnf "Failed to record %d views as a batch, retrying individually: %s" (count views) (ex-message e))
           (doseq [view views]
             (try
-              (view-log.db/insert-view-logs! [view])
+              (view-log/create-view-logs! [view])
               (catch Exception e
                 (log/errorf "Failed to record view: %s" (ex-message e))))))
         (log/errorf "Failed to record %d views: %s" (count views) (ex-message e))))))
@@ -117,8 +122,8 @@
   to [[record-view-interval-seconds]] (plus they are lost on non-graceful shutdown); we consider that an acceptable
   trade for not paying for a synchronous INSERT on every read/query request."
   [view-or-views :- [:or
-                     ::view-log.schema/view-log.update
-                     [:sequential ::view-log.schema/view-log.update]]]
+                     ::view-log.schema/view-log.create
+                     [:sequential ::view-log.schema/view-log.create]]]
   (span/with-span!
     {:name "record-view!"}
     (when (premium-features/log-enabled?)
@@ -192,7 +197,7 @@
       ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
       ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
       (cluster-lock/with-cluster-lock {:lock dashboard-statistics-lock :retry-transient? true}
-        (view-log.db/update-dashboards-last-viewed-at! dashboard-id->timestamp))
+        (dashboard/touch-last-viewed! dashboard-id->timestamp))
       (catch Exception e
         (log/errorf "Failed to update dashboard last_viewed_at: %s" (ex-message e))))))
 
@@ -274,10 +279,13 @@
      :user-id user-id}
     (try
       (increment-view-counts! :model/Table (:id object))
-      (let [table-id    (u/id object)
-            database-id (:db_id object)
-            has-access? (when (= api/*current-user-id* user-id)
-                          (query-perms/can-query-table? database-id table-id))]
+      (let [has-access? (when (= api/*current-user-id* user-id)
+                          (try
+                            (mi/can-query? (t2/hydrate object :can_query))
+                            (catch Exception e
+                              (log/warnf "Could not tell whether the reader of table %s may query it: %s"
+                                         (u/id object) (ex-message e))
+                              false)))]
         (-> event
             (assoc :has-access has-access?)
             generate-view

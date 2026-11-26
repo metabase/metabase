@@ -3,6 +3,7 @@
    Exercises the round-trip between `add-mapping!`, `remap-table`, `remove-mapping!`,
    `all-mappings-for-db`, `clear-mappings-for-db!`, and `add-transform-target-mapping!`."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.workspaces.core :as ws]
@@ -12,7 +13,10 @@
    [metabase.driver :as driver]
    [metabase.driver.connection.workspaces :as driver.conn.w]
    [metabase.driver.util :as driver.u]
+   [metabase.events.test-util :as events.tu]
    [metabase.sync.fetch-metadata :as fetch-metadata]
+   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
@@ -181,6 +185,58 @@
                 (ws.table-remapping/workspace-remap-schema+name db-id {:schema "PUBLIC" :name "ORDERS"}))
              "with a remapping, the hook returns the isolated warehouse location so sync asks the driver there"))))))
 
+(deftest table-remapper-matches-single-table-hook-test
+  (testing "the remapper resolved once for a Database answers every Table as the single-Table hook does"
+    (let [db-id (mt/id)
+          specs (conj (t2/select-fn-vec #(select-keys % [:schema :name]) :model/Table :db_id db-id :active true)
+                      {:schema "nope_schema" :name "nope_table"})
+          check (fn []
+                  (let [remap (fetch-metadata/table-remapper (driver.u/lib-database db-id))]
+                    (doseq [spec specs]
+                      (is (= (ws.table-remapping/workspace-remap-schema+name db-id spec)
+                             (remap spec))
+                          (pr-str spec)))))]
+      (clean-db-fixture!
+       db-id
+       (fn []
+         (testing "without remapping rows"
+           (check))
+         (ws.table-remapping/add-mapping! db-id
+                                          {:schema "PUBLIC"    :table "ORDERS"}
+                                          {:schema "mb_iso_ws" :table "orders_copy"})
+         (testing "with remapping row"
+           (is (= {:db nil :schema "mb_iso_ws" :name "orders_copy"}
+                  ((fetch-metadata/table-remapper (driver.u/lib-database db-id)) {:schema "PUBLIC" :name "ORDERS"})))
+           (check)))))))
+
+(defn- sync-fields-statement-count!
+  "The number of app-DB statements of a Fields sync, the lower of two, over a fresh H2 warehouse of `n` Tables whose
+  Database has one TableRemapping row."
+  [n]
+  (let [warehouse (str "ws_remap_sync_fields_" n)
+        details   {:db (str "mem:" warehouse ";DB_CLOSE_DELAY=-1")}
+        spec      {:classname "org.h2.Driver" :subprotocol "h2" :subname (:db details)}]
+    (jdbc/execute! spec ["DROP ALL OBJECTS"])
+    (doseq [i (range n)]
+      (jdbc/execute! spec [(format "CREATE TABLE T%d (ID INT PRIMARY KEY, A VARCHAR)" i)]))
+    (mt/with-model-cleanup [:model/Database]
+      (let [db-id (t2/insert-returning-pk! :model/Database {:name warehouse :engine :h2 :details details})]
+        (try
+          (ws.table-remapping/add-mapping! db-id {:schema "PUBLIC" :table "T0"} {:schema "mb_iso_ws" :table "t0_copy"})
+          (sync-metadata/sync-db-metadata! db-id)
+          (let [database (driver.u/lib-database db-id)
+                measure  #(events.tu/real-statement-count! (fn [] (sync-fields/sync-fields! database)))]
+            (min (measure) (measure)))
+          (finally
+            (ws.table-remapping/clear-mappings-for-db! db-id)))))))
+
+(deftest sync-fields-remapping-statement-count-test
+  (mt/test-driver :h2
+    (testing "Fields sync of Database with remapping row issues as many statements for 16 Tables as for 4"
+      (sync-fields-statement-count! 2)
+      (is (= (sync-fields-statement-count! 4)
+             (sync-fields-statement-count! 16))))))
+
 (deftest fk-metadata-mysql-swaps-connection-to-iso-db-test
   (testing "fk-metadata on a MySQL workspace with a :db swap must run describe-fks under the iso DB.
             Bug GHY-3599: fk-metadata didn't wrap its describe-fks call in with-swapped-connection-details,
@@ -264,10 +320,9 @@
                                                      :name   (:name table)})
                          {:fields #{}})]
            (let [logical-table (t2/instance :model/Table
-                                            {:id 999 :name "ORDERS" :schema "PUBLIC" :db_id db-id})]
-             (fetch-metadata/table-fields-metadata
-              (driver.u/lib-database db-id)
-              logical-table))
+                                            {:id 999 :name "ORDERS" :schema "PUBLIC" :db_id db-id})
+                 database      (driver.u/lib-database db-id)]
+             (fetch-metadata/table-fields-metadata database logical-table (fetch-metadata/table-remapper database)))
            (is (= 1 (count @describe-calls)))
            (let [call (first @describe-calls)]
              (testing "driver is asked about the remapped (to_schema, to_table_name), not the logical source"

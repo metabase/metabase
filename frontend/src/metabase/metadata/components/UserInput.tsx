@@ -95,7 +95,7 @@ export const UserInput = ({
         // Unjustified type cast. FIXME
         const option = item.option as Option;
         return (
-          <Flex align="center" gap="sm" p="sm" w="100%">
+          <Flex align="center" gap="sm" w="100%">
             {option.type === "user" && <Avatar name={item.option.label} />}
             {option.type === "unknown" && (
               <Avatar color="background_page-secondary">

@@ -6,10 +6,14 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.config.core :as config]
+   [metabase.events.test-util :as events.tu]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.data-permissions :as data-permissions]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -51,28 +55,15 @@
     (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :legacy-no-self-service)))
     (is (data-perms/at-least-as-permissive? :perms/view-data :blocked :blocked))))
 
-(deftest destination-db-permissions-insert-throws-test
-  (testing "inserting a DataPermissions row for a destination database throws"
-    (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
-                   :model/Database         {router-db-id :id}  {}
-                   :model/Database         {destination-db-id :id} {:router_database_id router-db-id}]
-      (is (thrown-with-msg?
-           ExceptionInfo
-           #"destination database"
-           (t2/insert! :model/DataPermissions {:db_id      destination-db-id
-                                               :group_id   group-id
-                                               :perm_type  :perms/view-data
-                                               :perm_value :unrestricted}))))))
-
 (deftest destination-db-permissions-batch-insert-throws-test
-  (testing "batch-insert-permissions! throws for a destination database row"
+  (testing "create-data-permissions! throws for a destination database row"
     (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
                    :model/Database         {router-db-id :id}  {}
                    :model/Database         {destination-db-id :id} {:router_database_id router-db-id}]
       (is (thrown-with-msg?
            ExceptionInfo
            #"destination database"
-           (data-perms/batch-insert-permissions!
+           (data-permissions/create-data-permissions!
             [{:db_id      destination-db-id
               :group_id   group-id
               :perm_type  :perms/view-data
@@ -91,16 +82,57 @@
         (is (thrown-with-msg?
              ExceptionInfo
              #"destination database"
-             (data-perms/assert-no-destination-db-permissions! [dest-row]))))
+             (data-permissions/assert-no-destination-db-permissions! [dest-row]))))
       (testing "a batch mixing a destination-db row with normal-db rows throws"
         (is (thrown-with-msg?
              ExceptionInfo
              #"destination database"
-             (data-perms/assert-no-destination-db-permissions! [normal-row dest-row]))))
+             (data-permissions/assert-no-destination-db-permissions! [normal-row dest-row]))))
+      (testing "rows on several Databases, the destination one after the others, throw and write nothing"
+        (mt/with-temp [:model/PermissionsGroup {other-group-id :id} {}]
+          (is (=? {:status-code 400 :destination-db-ids [destination-db-id]}
+                  (try
+                    (data-permissions/create-data-permissions!
+                     [(assoc normal-row :group_id other-group-id)
+                      (assoc normal-row :group_id other-group-id :db_id router-db-id)
+                      (assoc dest-row :group_id other-group-id)])
+                    nil
+                    (catch ExceptionInfo e
+                      (is (re-find #"Cannot grant permissions on a destination database" (ex-message e)))
+                      (ex-data e)))))
+          (is (not (t2/exists? :model/DataPermissions :group_id other-group-id :db_id [:in [normal-db-id router-db-id]]
+                               :perm_type :perms/view-data)))))
       (testing "an all-normal-db batch does not throw"
-        (is (nil? (data-perms/assert-no-destination-db-permissions! [normal-row normal-row]))))
+        (is (nil? (data-permissions/assert-no-destination-db-permissions! [normal-row normal-row]))))
       (testing "an empty seq does not throw"
-        (is (nil? (data-perms/assert-no-destination-db-permissions! [])))))))
+        (is (nil? (data-permissions/assert-no-destination-db-permissions! [])))))))
+
+(deftest destination-check-follows-database-created-after-earlier-check-test
+  (testing "a Database id checked before it exists is refused once a destination Database takes it"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}     {}
+                   :model/Database         {router-db-id :id} {}]
+      (let [db-id (+ 1000000 (t2/select-one-fn :max-id [:model/Database [:%max.id :max-id]]))
+            row   {:db_id db-id :group_id group-id :perm_type :perms/view-data :perm_value :unrestricted}]
+        (is (nil? (data-permissions/assert-no-destination-db-permissions! [row])))
+        (mt/with-temp [:model/Database _ {:id db-id :router_database_id router-db-id}]
+          (is (thrown-with-msg? ExceptionInfo #"destination database"
+                                (data-permissions/assert-no-destination-db-permissions! [row]))))))))
+
+(deftest create-data-permissions-statement-count-test
+  (testing "rows on fresh Databases are checked for routing destinations in as many statements for 2 Databases as for 6"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+      (mt/with-model-cleanup [:model/Database :model/DataPermissions]
+        (let [counted (fn [n]
+                        (let [db-ids (vec (t2/insert-returning-pks! :model/Database
+                                                                    (repeatedly n #(mt/with-temp-defaults :model/Database))))]
+                          (t2/delete! :model/DataPermissions :group_id group-id)
+                          (t2/with-call-count [call-count]
+                            (data-permissions/create-data-permissions!
+                             (for [db-id db-ids]
+                               {:db_id db-id :group_id group-id :perm_type :perms/view-data :perm_value :unrestricted}))
+                            (call-count))))]
+          (counted 1)
+          (is (= (counted 2) (counted 6))))))))
 
 (deftest admin-permission-graph-excludes-destination-dbs-test
   (testing "the admin permission graph covers routers but not their destinations"
@@ -122,9 +154,9 @@
                                                   :group_id   group-id
                                                   :perm_type  :perms/view-data
                                                   :perm_value :unrestricted})))
-        (testing "via batch-insert-permissions!"
+        (testing "via create-data-permissions!"
           (t2/delete! :model/DataPermissions :db_id normal-db-id :group_id group-id)
-          (is (nil? (data-perms/batch-insert-permissions!
+          (is (nil? (data-permissions/create-data-permissions!
                      [{:db_id      normal-db-id
                        :group_id   group-id
                        :perm_type  :perms/view-data
@@ -780,25 +812,25 @@
           ;; EE behavior is tested in `metabase-enterprise.advanced-permissions.common-test`
           (data-perms/set-database-permission! group-id db-id-1 :perms/view-data :unrestricted)
           ;; We don't use `with-temp` to create the new Database because it always grants permissions automatically
-          (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
+          (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
             (is (= :unrestricted (t2/select-one-fn :perm_value
                                                    :model/DataPermissions
                                                    :db_id     new-db-id
                                                    :group_id  group-id
                                                    :perm_type :perms/view-data)))
-            (t2/delete! :model/Database :id new-db-id))
+            (database/delete-databases! [new-db-id]))
           (data-perms/set-database-permission! group-id db-id-1 :perms/view-data :legacy-no-self-service)
-          (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
+          (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
             (is (= :unrestricted (t2/select-one-fn :perm_value
                                                    :model/DataPermissions
                                                    :db_id     new-db-id
                                                    :group_id  group-id
                                                    :perm_type :perms/view-data)))
-            (t2/delete! :model/Database :id new-db-id))
+            (database/delete-databases! [new-db-id]))
           (testing "A new database gets `unrestricted` data perms on OSS even if a group has `blocked` perms for a DB"
             (mt/with-premium-features #{}
               (data-perms/set-database-permission! group-id db-id-2 :perms/view-data :blocked)
-              (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
+              (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
                 ;; When EE code is on the classpath the new database fails CLOSED to :blocked for the
                 ;; blocked group regardless of token features (UXW-4927); only a true OSS jar (no EE
                 ;; code at all) falls back to :unrestricted.
@@ -812,51 +844,51 @@
       (testing "Query permissions... "
         (testing "A new database gets `query-builder-and-native` query permissions if a group only has `query-builder-and-native` for other databases"
           (data-perms/set-database-permission! group-id db-id-1 :perms/create-queries :query-builder-and-native)
-          (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
+          (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
             (is (= :query-builder-and-native (t2/select-one-fn :perm_value
                                                                :model/DataPermissions
                                                                :db_id     new-db-id
                                                                :group_id  group-id
                                                                :perm_type :perms/create-queries)))
-            (t2/delete! :model/Database :id new-db-id)))
+            (database/delete-databases! [new-db-id])))
         (testing "A new database gets `query-builder` query permissions if a group has `query-builder` for any database"
           (data-perms/set-database-permission! group-id db-id-2 :perms/create-queries :query-builder)
-          (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
+          (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
             (is (= :query-builder (t2/select-one-fn :perm_value
                                                     :model/DataPermissions
                                                     :db_id     new-db-id
                                                     :group_id  group-id
                                                     :perm_type :perms/create-queries)))
-            (t2/delete! :model/Database :id new-db-id)))
+            (database/delete-databases! [new-db-id])))
         (testing "A new database gets `no` query permissions if a group has `no` for any database"
           (data-perms/set-database-permission! group-id db-id-2 :perms/create-queries :no)
-          (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
+          (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
             (is (= :no (t2/select-one-fn :perm_value
                                          :model/DataPermissions
                                          :db_id     new-db-id
                                          :group_id  group-id
                                          :perm_type :perms/create-queries)))
-            (t2/delete! :model/Database :id new-db-id))))
+            (database/delete-databases! [new-db-id]))))
       (t2/delete! :model/DataPermissions :group_id group-id)
       (testing "Download permissions... "
         (testing "A new database gets `one-million-rows` download permissions if a group only has `one-million-rows` for other databases"
           (data-perms/set-database-permission! group-id db-id-1 :perms/download-results :one-million-rows)
-          (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
+          (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
             (is (= :one-million-rows (t2/select-one-fn :perm_value
                                                        :model/DataPermissions
                                                        :db_id     new-db-id
                                                        :group_id  group-id
                                                        :perm_type :perms/download-results)))
-            (t2/delete! :model/Database :id new-db-id)))
+            (database/delete-databases! [new-db-id])))
         (testing "A new database gets `no` download permissions if a group has `no` for any database"
           (data-perms/set-database-permission! group-id db-id-2 :perms/download-results :no)
-          (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
+          (let [new-db-id (:id (first (database/create-databases! [{:name "Test" :engine :h2 :details {}}])))]
             (is (= :no (t2/select-one-fn :perm_value
                                          :model/DataPermissions
                                          :db_id     new-db-id
                                          :group_id  group-id
                                          :perm_type :perms/download-results)))
-            (t2/delete! :model/Database :id new-db-id)))))))
+            (database/delete-databases! [new-db-id])))))))
 
 (deftest set-new-table-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
@@ -874,38 +906,42 @@
         (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
         (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
         (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :query-builder)
-        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-          ;; nil table ID is passed to check DB-level value
-          (is (= :query-builder (perm-value nil)))
-          (is (nil? (perm-value table-id-4)))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{table-id-4 :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+            ;; nil table ID is passed to check DB-level value
+            (is (= :query-builder (perm-value nil)))
+            (is (nil? (perm-value table-id-4))))))
       (testing "New table inherits uniform permission value from schema"
         (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
         (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
         (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :no)
-        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-          (is (= :query-builder (perm-value table-id-4))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{table-id-4 :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+            (is (= :query-builder (perm-value table-id-4)))))
         (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :no)
         (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
         (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :query-builder)
-        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-          (is (= :no (perm-value table-id-4)))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{table-id-4 :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+            (is (= :no (perm-value table-id-4))))))
       (testing "New table uses default value when schema permissions are not uniform"
         (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
         (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :no)
         (data-perms/set-table-permission! group-id table-id-3 :perms/create-queries :no)
-        (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "PUBLIC"}]
-          (is (= :no (perm-value table-id-4))))))))
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{table-id-4 :id}] (table/create-tables! [{:db_id db-id :schema "PUBLIC" :name "new_table" :active true}])]
+            (is (= :no (perm-value table-id-4)))))))))
 
 ;;; ---------------------------------------- Batch permission function tests ----------------------------------------
 
-(deftest set-default-group-permissions!-tenant-test
+(deftest set-default-groups-permissions!-tenant-test
   (testing "Tenant groups get least-permissive defaults for all databases"
     (mt/with-temp [:model/Database         {db-id-1 :id} {}
                    :model/Database         {db-id-2 :id} {}
                    :model/PermissionsGroup {group-id :id} {:is_tenant_group true}]
       ;; Delete the auto-created permissions so we can test the function directly
       (t2/delete! :model/DataPermissions :group_id group-id)
-      (data-perms/set-default-group-permissions! group-id [db-id-1 db-id-2] false)
+      (data-perms/set-default-groups-permissions! [{:id group-id :is_tenant_group true}] [db-id-1 db-id-2])
       (let [perms (t2/select :model/DataPermissions :group_id group-id)
             by-db (group-by :db_id perms)
             perm-map (fn [db-id]
@@ -924,7 +960,7 @@
             (is (= :no (get pm :perms/manage-database))
                 "manage-database must be :no for tenant groups")))))))
 
-(deftest set-default-group-permissions!-regular-test
+(deftest set-default-groups-permissions!-regular-test
   (testing "Regular groups mirror All Users permissions, coalescing to most-restrictive per DB"
     (mt/with-temp [:model/Database         {db-id-1 :id} {}
                    :model/Database         {db-id-2 :id} {}
@@ -937,7 +973,7 @@
         (data-perms/set-database-permission! au-id db-id-2 :perms/download-results :no)
         ;; Delete auto-created permissions for the new group
         (t2/delete! :model/DataPermissions :group_id group-id)
-        (data-perms/set-default-group-permissions! group-id [db-id-1 db-id-2] true)
+        (data-perms/set-default-groups-permissions! [{:id group-id :is_tenant_group false}] [db-id-1 db-id-2])
         (let [perm-val (fn [db-id perm-type]
                          (t2/select-one-fn :perm_value :model/DataPermissions
                                            :group_id group-id :db_id db-id :perm_type perm-type))]
@@ -1206,8 +1242,7 @@
   [n-groups n-tables]
   (let [db-id     (t2/insert-returning-pk! :model/Database (mt/with-temp-defaults :model/Database))
         group-ids (vec (for [_ (range n-groups)]
-                         (t2/insert-returning-pk! :model/PermissionsGroup
-                                                  (mt/with-temp-defaults :model/PermissionsGroup))))
+                         (:id (first (perms-group/create-permissions-groups! [{:name (mt/random-name)}])))))
         table-ids (vec (for [_ (range n-tables)]
                          (t2/insert-returning-pk! :model/Table
                                                   (merge (mt/with-temp-defaults :model/Table)
@@ -1322,21 +1357,21 @@
 
 (deftest blocked-tables-downgrade-to-blocked-dbs
   (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
-    (let [user-id  (t2/insert-returning-pk! :core_user {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
-          db-id    (t2/insert-returning-pk! :metabase_database {:name       "DB"
-                                                                :engine     "h2"
-                                                                :created_at :%now
-                                                                :updated_at :%now
-                                                                :details    "{}"})
-          table-id (t2/insert-returning-pk! :metabase_table {:name       "orders"
-                                                             :active     true
-                                                             :db_id      db-id
-                                                             :created_at #t "2020"
-                                                             :updated_at #t "2020"})
+    (let [user-id  (t2/insert-returning-pk! (t2/table-name :model/User) {:first_name  "Howard"
+                                                                         :last_name   "Hughes"
+                                                                         :email       "howard@aircraft.com"
+                                                                         :password    "superstrong"
+                                                                         :date_joined :%now})
+          db-id    (t2/insert-returning-pk! (t2/table-name :model/Database) {:name       "DB"
+                                                                             :engine     "h2"
+                                                                             :created_at :%now
+                                                                             :updated_at :%now
+                                                                             :details    "{}"})
+          table-id (t2/insert-returning-pk! (t2/table-name :model/Table) {:name       "orders"
+                                                                          :active     true
+                                                                          :db_id      db-id
+                                                                          :created_at #t "2020"
+                                                                          :updated_at #t "2020"})
           group-id (t2/insert-returning-pk! (t2/table-name :model/PermissionsGroup) {:name "Test Group"})]
       (t2/insert! (t2/table-name :model/PermissionsGroupMembership) {:user_id user-id :group_id group-id})
       (migrate!)
@@ -1349,28 +1384,28 @@
 
 (deftest dbs-with-a-single-blocked-table-downgrade-to-blocked-dbs
   (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
-    (let [user-id      (t2/insert-returning-pk! :core_user {:first_name  "Howard"
-                                                            :last_name   "Hughes"
-                                                            :email       "howard@aircraft.com"
-                                                            :password    "superstrong"
-                                                            :date_joined :%now})
-          db-id        (t2/insert-returning-pk! :metabase_database {:name       "DB"
-                                                                    :engine     "h2"
-                                                                    :created_at :%now
-                                                                    :updated_at :%now
-                                                                    :details    "{}"})
-          table-id     (t2/insert-returning-pk! :metabase_table {:name       "orders"
-                                                                 :active     true
-                                                                 :db_id      db-id
-                                                                 :schema     "test-schema"
-                                                                 :created_at #t "2020"
-                                                                 :updated_at #t "2020"})
-          _other-table (t2/insert-returning-pk! :metabase_table {:name       "other"
-                                                                 :active     true
-                                                                 :db_id      db-id
-                                                                 :schema     "test-schema"
-                                                                 :created_at #t "2020"
-                                                                 :updated_at #t "2020"})
+    (let [user-id      (t2/insert-returning-pk! (t2/table-name :model/User) {:first_name  "Howard"
+                                                                             :last_name   "Hughes"
+                                                                             :email       "howard@aircraft.com"
+                                                                             :password    "superstrong"
+                                                                             :date_joined :%now})
+          db-id        (t2/insert-returning-pk! (t2/table-name :model/Database) {:name       "DB"
+                                                                                 :engine     "h2"
+                                                                                 :created_at :%now
+                                                                                 :updated_at :%now
+                                                                                 :details    "{}"})
+          table-id     (t2/insert-returning-pk! (t2/table-name :model/Table) {:name       "orders"
+                                                                              :active     true
+                                                                              :db_id      db-id
+                                                                              :schema     "test-schema"
+                                                                              :created_at #t "2020"
+                                                                              :updated_at #t "2020"})
+          _other-table (t2/insert-returning-pk! (t2/table-name :model/Table) {:name       "other"
+                                                                              :active     true
+                                                                              :db_id      db-id
+                                                                              :schema     "test-schema"
+                                                                              :created_at #t "2020"
+                                                                              :updated_at #t "2020"})
           group-id     (t2/insert-returning-pk! (t2/table-name :model/PermissionsGroup) {:name "Test Group"})]
       (t2/insert! (t2/table-name :model/PermissionsGroupMembership) {:user_id user-id :group_id group-id})
       (migrate!)
@@ -1594,7 +1629,7 @@
     ;; able to obtain the lock simultaneously).
     (mt/with-model-cleanup [:model/PermissionsGroup :model/Database :model/Table]
       (let [db-id (t2/insert-returning-pk! :model/Database (mt/with-temp-defaults :model/Database))
-            group-id (t2/insert-returning-pk! :model/PermissionsGroup (mt/with-temp-defaults :model/PermissionsGroup))
+            group-id (:id (first (perms-group/create-permissions-groups! [{:name (mt/random-name)}])))
             table-id (t2/insert-returning-pk! :model/Table (merge (mt/with-temp-defaults :model/Table)
                                                                   {:db_id db-id}))]
         ;; when testing locally, without a cluster lock this failed 9/10 times. Run it a few times to make sure a lock
@@ -1614,11 +1649,11 @@
             (is (not (and (perm-exists? :table_id nil)
                           (perm-exists? :table_id [:not= nil]))))))))))
 
-(defn- insert-error
+(defn- insert-error!
   "The ex-data of the error inserting the DataPermissions `rows`, or nil when the insert succeeds."
   [rows]
   (try
-    (t2/insert! :model/DataPermissions rows)
+    (data-permissions/create-data-permissions! rows)
     nil
     (catch ExceptionInfo e
       (ex-data e))))
@@ -1630,17 +1665,17 @@
     (let [row (fn [perm-type value]
                 {:group_id group-id :db_id db-id :perm_type perm-type :perm_value value})]
       (testing "transforms without native create-queries is refused"
-        (is (=? {:status-code 400} (insert-error [(row :perms/transforms :yes)])))
+        (is (=? {:status-code 400} (insert-error! [(row :perms/transforms :yes)])))
         (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder)
-        (is (=? {:status-code 400} (insert-error [(row :perms/transforms :yes)]))))
+        (is (=? {:status-code 400} (insert-error! [(row :perms/transforms :yes)]))))
       (testing "transforms after native create-queries is accepted"
         (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id)
-        (is (nil? (insert-error [(row :perms/create-queries :query-builder-and-native)])))
-        (is (nil? (insert-error [(row :perms/transforms :yes)]))))
+        (is (nil? (insert-error! [(row :perms/create-queries :query-builder-and-native)])))
+        (is (nil? (insert-error! [(row :perms/transforms :yes)]))))
       (testing "database-level create-queries without native next to stored transforms is refused"
         (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id :perm_type :perms/create-queries)
         (is (=? {:status-code 400}
-                (insert-error [(row :perms/create-queries :query-builder)])))))))
+                (insert-error! [(row :perms/create-queries :query-builder)])))))))
 
 (deftest table-level-create-queries-revokes-transforms-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
@@ -1652,3 +1687,67 @@
     (is (= #{:no}
            (t2/select-fn-set :perm_value :model/DataPermissions
                              :group_id group-id :db_id db-id :perm_type :perms/transforms)))))
+
+(deftest create-data-permissions-statement-count-does-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/PermissionsGroup]
+    (let [counted (fn [n]
+                    (let [group-ids (mapv :id (perms-group/create-permissions-groups!
+                                               (vec (repeatedly n #(hash-map :name (mt/random-name))))))]
+                      (mt/with-temp [:model/Database {native-db-id :id} {}
+                                     :model/Database {other-db-id :id} {}]
+                        (data-permissions/delete-data-permissions!
+                         (t2/select-pks-vec :model/DataPermissions :group_id [:in group-ids] :db_id [:in [native-db-id other-db-id]]))
+                        (data-permissions/create-data-permissions!
+                         (vec (for [group-id (take-nth 2 group-ids)]
+                                {:group_id group-id :db_id native-db-id
+                                 :perm_type :perms/create-queries :perm_value :query-builder-and-native})))
+                        (events.tu/statement-count!
+                         #(data-permissions/create-data-permissions!
+                           (vec (concat (for [group-id (take-nth 2 group-ids)]
+                                          {:group_id group-id :db_id native-db-id
+                                           :perm_type :perms/transforms :perm_value :yes})
+                                        (for [group-id (take-nth 2 (rest group-ids))]
+                                          {:group_id group-id :db_id native-db-id
+                                           :perm_type :perms/create-queries :perm_value :query-builder})
+                                        (for [group-id group-ids]
+                                          {:group_id group-id :db_id other-db-id
+                                           :perm_type :perms/create-queries :perm_value :no}))))))))]
+      (counted 2)
+      (is (= (counted 2) (counted 6))))))
+
+(deftest delete-data-permissions-statement-count-does-not-grow-with-rows-test
+  (mt/with-model-cleanup [:model/PermissionsGroup]
+    (let [counted (fn [n]
+                    (let [group-ids (mapv :id (perms-group/create-permissions-groups!
+                                               (vec (repeatedly n #(hash-map :name (mt/random-name))))))
+                          ids       (t2/select-pks-vec :model/DataPermissions :group_id [:in group-ids] :db_id (mt/id)
+                                                       :perm_type :perms/view-data)]
+                      (events.tu/statement-count! #(data-permissions/delete-data-permissions! ids))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6))))))
+
+(deftest create-data-permissions-refuses-transforms-without-native-test
+  (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                 :model/PermissionsGroup {other-id :id} {}
+                 :model/Database         {db-id :id}    {}]
+    (data-permissions/delete-data-permissions!
+     (t2/select-pks-vec :model/DataPermissions :group_id [:in [group-id other-id]] :db_id db-id))
+    (data-permissions/create-data-permissions!
+     [{:group_id group-id :db_id db-id :perm_type :perms/create-queries :perm_value :query-builder-and-native}
+      {:group_id other-id :db_id db-id :perm_type :perms/create-queries :perm_value :query-builder}])
+    (testing "transforms where the group has native access is granted"
+      (data-permissions/create-data-permissions!
+       [{:group_id group-id :db_id db-id :perm_type :perms/transforms :perm_value :yes}])
+      (is (t2/exists? :model/DataPermissions :group_id group-id :db_id db-id :perm_type :perms/transforms)))
+    (testing "transforms where one of the groups lacks native access is refused and writes nothing"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Transforms permission requires"
+                            (data-permissions/create-data-permissions!
+                             [{:group_id other-id :db_id db-id :perm_type :perms/download-results :perm_value :no}
+                              {:group_id other-id :db_id db-id :perm_type :perms/transforms :perm_value :yes}])))
+      (is (not (t2/exists? :model/DataPermissions :group_id other-id :db_id db-id :perm_type :perms/download-results))))
+    (testing "a database-level create-queries row without native access next to stored transforms is refused"
+      (data-permissions/delete-data-permissions!
+       (t2/select-pks-vec :model/DataPermissions :group_id group-id :db_id db-id :perm_type :perms/create-queries))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Transforms permission requires"
+                            (data-permissions/create-data-permissions!
+                             [{:group_id group-id :db_id db-id :perm_type :perms/create-queries :perm_value :query-builder}]))))))

@@ -65,23 +65,22 @@ function setup({ action, database, table, fieldId = "status" }: SetupOpts) {
   );
 }
 
-const DATASET_QUERY = Lib.toLegacyQuery(
-  Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
-    query: "UPDATE orders SET status = {{status}}",
-    templateTags: {
-      status: { type: "text", id: "status", "display-name": "Status" },
-    },
-  }),
-);
+const DATASET_QUERY = Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
+  query: "UPDATE orders SET status = {{status}}",
+  templateTags: {
+    status: { type: "text", id: "status", "display-name": "Status" },
+  },
+});
 
-const TWO_VARIABLE_DATASET_QUERY = Lib.toLegacyQuery(
-  Lib.createTestNativeQuery(SAMPLE_PROVIDER, {
+const TWO_VARIABLE_DATASET_QUERY = Lib.createTestJsNativeQuery(
+  SAMPLE_PROVIDER,
+  {
     query: "UPDATE orders SET status = {{status}} WHERE id = {{id}}",
     templateTags: {
       status: { type: "text", id: "status", "display-name": "Status" },
       id: { type: "number", id: "id", "display-name": "ID" },
     },
-  }),
+  },
 );
 
 describe("ActionFieldsPage", () => {

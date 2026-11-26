@@ -6,7 +6,8 @@
    [metabase.models.interface :as mi]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.filter :as search.filter]
-   [metabase.search.permissions :as search.permissions]))
+   [metabase.search.permissions :as search.permissions]
+   [toucan2.core :as t2]))
 
 (defn add-table-where-clauses
   "Add a `WHERE` clause to the query to only return tables the current user has access to."
@@ -33,7 +34,8 @@
   so we can return its `:name`."
   [search-ctx qry]
   (let [collection-id-col :search_index.collection_id
-        permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
+        permitted-clause  (search.permissions/permitted-collections-clause
+                           search-ctx collection-id-col :search_index.model)
         personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)
         ;; Tables have their own dedicated permission filter (add-table-where-clauses) that checks both data
         ;; permissions and published-via-collection access, so we exclude them from collection filtering here.
@@ -42,7 +44,7 @@
                                    [:in :search_index.model excluded-models]
                                    %)]
     (cond-> qry
-      true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
+      true (sql.helpers/left-join [(t2/table-name :model/Collection) :collection] [:= collection-id-col :collection.id])
       true (sql.helpers/where (or-null permitted-clause))
       personal-clause (sql.helpers/where (or-null personal-clause)))))
 

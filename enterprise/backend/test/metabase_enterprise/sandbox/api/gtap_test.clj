@@ -7,6 +7,7 @@
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [toucan2.core :as t2]))
@@ -107,9 +108,11 @@
                    (mt/user-http-request :crowberto :get 200 (format "mt/gtap/%s" (:id post-results))))))))
       (testing "Meaningful errors should be returned if you create an invalid GTAP"
         (mt/with-temp [:model/Field _ {:name "My field" :table_id table-id :base_type :type/Integer}
-                       :model/Card  {card-id :id} {:dataset_query (mt/mbql-query venues
-                                                                    {:fields      [[:expression "My field"]]
-                                                                     :expressions {"My field" [:ltrim "wow"]}})}]
+                       :model/Card  {card-id :id} (let [query (mt/mbql-query venues
+                                                                {:fields      [[:expression "My field"]]
+                                                                 :expressions {"My field" [:ltrim "wow"]}})]
+                                                    {:dataset_query   query
+                                                     :result_metadata (qp.preprocess/query->expected-cols query)})]
           (with-gtap-cleanup!
             (is (=? {:message  "Sandbox Questions can't return columns that have different types than the Table they are sandboxing."
                      :expected "type/Integer"
@@ -140,9 +143,11 @@
                                  :attribute_remappings {"foo" 1}})))
       (testing "An invalid sandbox results in a 400 error being returned"
         (mt/with-temp [:model/Field _ {:name "My field", :table_id table-id, :base_type :type/Integer}
-                       :model/Card  {card-id :id} {:dataset_query (mt/mbql-query venues
-                                                                    {:fields      [[:expression "My field"]]
-                                                                     :expressions {"My field" [:ltrim "wow"]}})}]
+                       :model/Card  {card-id :id} (let [query (mt/mbql-query venues
+                                                                {:fields      [[:expression "My field"]]
+                                                                 :expressions {"My field" [:ltrim "wow"]}})]
+                                                    {:dataset_query   query
+                                                     :result_metadata (qp.preprocess/query->expected-cols query)})]
           (with-gtap-cleanup!
             (is (=? {:message  "Sandbox Questions can't return columns that have different types than the Table they are sandboxing."
                      :expected "type/Integer"

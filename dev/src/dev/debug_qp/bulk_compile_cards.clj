@@ -14,16 +14,16 @@
 
 (defn- get-card-ids [engine limit]
   (t2/query {:select [:rc.id :rc.database_id]
-             :from   [[:report_card :rc]]
-             :join   [[:metabase_database :md] [:= :rc.database_id :md.id]]
+             :from   [[(t2/table-name :model/Card) :rc]]
+             :join   [[(t2/table-name :model/Database) :md] [:= :rc.database_id :md.id]]
              :where  [:and [:= :md.engine engine] [:not= :rc.query_type "native"]]
              :order-by [[:md.id :asc] [:rc.id :asc]]
              :limit  limit}))
 
 (defn- get-native-card-ids [engine limit]
   (t2/query {:select [:rc.id :rc.database_id]
-             :from   [[:report_card :rc]]
-             :join   [[:metabase_database :md] [:= :rc.database_id :md.id]]
+             :from   [[(t2/table-name :model/Card) :rc]]
+             :join   [[(t2/table-name :model/Database) :md] [:= :rc.database_id :md.id]]
              :where  [:and [:= :md.engine engine] [:= :rc.query_type "native"]]
              :order-by [[:md.id :asc] [:rc.id :asc]]
              :limit  limit}))

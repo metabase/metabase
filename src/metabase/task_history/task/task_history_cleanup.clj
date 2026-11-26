@@ -3,6 +3,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.task-history.db :as task-history.db]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
@@ -14,20 +15,29 @@
   "Maximum number of TaskHistory rows."
   100000)
 
+(defn- delete-old-task-history!
+  "Delete the TaskHistory rows that ended at or before the `rows-to-keep`th most recently ended one, keeping the newest
+  `rows-to-keep` rows, and return the number deleted, or nil when there are no more rows than that."
+  [rows-to-keep]
+  (when-let [clean-before-date (task-history.db/nth-newest-task-history-ended-at rows-to-keep)]
+    (let [ids (task-history.db/task-history-ids-ended-before clean-before-date)]
+      (task-history/delete-task-histories! ids)
+      (count ids))))
+
 (defn- task-history-cleanup!
-  "Delete older TaskHistory rows -- see docstring of `task-history/cleanup-task-history!` for more details."
+  "Delete older TaskHistory rows, see [[delete-old-task-history!]]."
   []
   (log/debug "Cleaning up task history")
   (tracing/with-span :tasks "task.history-cleanup.delete" {:task-history/rows-to-keep history-rows-to-keep}
     (task-history/with-task-history {:task "task-history-cleanup"}
-      (let [deleted-rows? (task-history/cleanup-task-history! history-rows-to-keep)]
+      (let [deleted-rows? (delete-old-task-history! history-rows-to-keep)]
         (log/debug
          (if deleted-rows?
            "Task history cleanup successful, rows were deleted"
            "Task history cleanup successful, no rows were deleted"))))))
 
 (task/defjob TaskHistoryCleanup
-  "Delete older TaskHistory rows -- see docstring of `task-history/cleanup-task-history!` for more details."
+  "Delete older TaskHistory rows, see [[delete-old-task-history!]]."
   {:saved-class "metabase.task_history.task.task_history_cleanup.TaskHistoryCleanup"}
   [_]
   (task-history-cleanup!))

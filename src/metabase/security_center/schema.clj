@@ -1,7 +1,6 @@
 (ns metabase.security-center.schema
   "Malli schemas for the Security Center module."
   (:require
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -11,8 +10,12 @@
 (mr/def ::semver
   [:re #"^\d+(?:\.\d+)*$"])
 
+(def severities
+  "Every severity of an advisory or a health check, highest first."
+  [:critical :high :medium :low])
+
 (mr/def ::severity
-  [:enum :critical :high :medium :low])
+  (into [:enum] severities))
 
 (mr/def ::match-status
   [:enum :unknown :active :resolved :not_affected :error])
@@ -40,29 +43,14 @@
   for the app DB in use."
   [:enum :default :h2 :mysql :postgres])
 
-(mr/def ::honeysql-query
-  "A HoneySQL 2 query map, as EDN keyed by its top-level clause keywords."
-  [:map {:closed true}
-   [:with        {:optional true} [:sequential [:tuple :keyword [:ref ::honeysql-query]]]]
-   [:select      {:optional true} [:sequential ::h2x/expr]]
-   [:delete-from {:optional true} ::h2x/expr]
-   [:from     {:optional true} [:sequential [:or ::h2x/expr [:ref ::honeysql-query]]]]
-   [:join     {:optional true} [:sequential [:or ::h2x/expr [:ref ::honeysql-query]]]]
-   [:where    {:optional true} ::h2x/expr]
-   [:group-by {:optional true} [:sequential ::h2x/expr]]
-   [:having   {:optional true} ::h2x/expr]
-   [:order-by {:optional true} [:sequential ::h2x/expr]]
-   [:limit    {:optional true} ::h2x/expr]
-   [:offset   {:optional true} ::h2x/expr]])
-
 (mr/def ::matching-query
-  "HoneySQL query keyed by dialect. nil means affects all instances.
-   Stored as EDN to preserve keywords that HoneySQL requires for identifiers/operators."
+  "HoneySQL query keyed by dialect, compiled with the Honey SQL library rather than Funny SQL. nil means affects all
+  instances. Stored as EDN to preserve keywords that HoneySQL requires for identifiers/operators."
   [:maybe [:map {:closed true}
-           [:default  {:optional true} ::honeysql-query]
-           [:h2       {:optional true} ::honeysql-query]
-           [:mysql    {:optional true} ::honeysql-query]
-           [:postgres {:optional true} ::honeysql-query]]])
+           [:default  {:optional true} :map]
+           [:h2       {:optional true} :map]
+           [:mysql    {:optional true} :map]
+           [:postgres {:optional true} :map]]])
 
 (mr/def ::security-advisory.matching-query
   "The `:matching_query` column of a SecurityAdvisory, decoded."
@@ -95,3 +83,50 @@
    [:last_notified_at  {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:download_jar_urls {:optional true} [:maybe ::download-jar-urls]]])
+
+;;; Health checks
+
+(mr/def ::health-check-id
+  [:enum
+   :supported-version :encryption-secret-key :session-secret-key :legacy-startup-encryption
+   :https-site-url :https-redirect :sso-login :scim-provisioning :mfa-required
+   :read-only-connections :all-users-permissions])
+
+(def health-check-statuses
+  "Every status a health check can have. `:unknown` means the check could not tell."
+  [:pass :fail :unknown])
+
+(mr/def ::health-check-status
+  (into [:enum] health-check-statuses))
+
+(mr/def ::health-check-entity-type
+  [:enum :database :collection :group])
+
+(mr/def ::health-check-item
+  "The `entity_` keys are named as in task runs. `entity_id` is `\"root\"` for the root collection."
+  [:map {:closed true}
+   [:status      ::health-check-status]
+   [:message     {:optional true} :string]
+   [:entity_type {:optional true} ::health-check-entity-type]
+   [:entity_id   {:optional true} [:or ms/PositiveInt [:= "root"]]]
+   [:entity_name {:optional true} :string]])
+
+(mr/def ::health-check-docs
+  "`page` and `anchor` are what the frontend's `useDocsUrl` takes."
+  [:map {:closed true}
+   [:page   :string]
+   [:anchor {:optional true} :string]])
+
+(mr/def ::health-check
+  "A check as the API returns it. `items` has at least one entry, so a check always reports something."
+  [:map {:closed true}
+   [:id               ::health-check-id]
+   [:severity         ::severity]
+   [:title            :string]
+   [:description      :string]
+   [:remediation      :string]
+   [:docs             ::health-check-docs]
+   [:requires_restart :boolean]
+   [:status           ::health-check-status]
+   [:checked_at       ms/TemporalInstant]
+   [:items            [:sequential {:min 1} ::health-check-item]]])

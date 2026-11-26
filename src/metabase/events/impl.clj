@@ -40,11 +40,26 @@
    (some-fn qualified-keyword? #(= % :default))
    #(not= (namespace %) "event")))
 
+(events.hierarchy/derive! :metabase/lifecycle-event :metabase/event)
+
+(defn- ensure-lifecycle-topic!
+  "Have `topic`, that of an event with the `:changes` of rows, derive `:metabase/lifecycle-event`, the topic that a
+  consumer of the lifecycle events of every model derives its own from, in place of deriving `:metabase/event`
+  directly, and be checked against the lifecycle schema."
+  [topic]
+  (when-not (events.hierarchy/isa? topic :metabase/lifecycle-event)
+    (locking events.hierarchy/hierarchy
+      (when-not (events.hierarchy/isa? topic :metabase/lifecycle-event)
+        (when (contains? (parents events.hierarchy/hierarchy topic) :metabase/event)
+          (events.hierarchy/underive! topic :metabase/event))
+        (events.hierarchy/derive! topic :metabase/lifecycle-event))))
+  (events.schema/register-lifecycle-topic! topic))
+
 (methodical/defmulti publish-event!
   "'Publish' an event by calling [[publish-event!]] with a [[Topic]] and an `event` map, whose contents vary
   based on their `topic`. These calls return the original `event` object passed in, to support chaining.
 
-    (events/publish-event! :event/database-create {:object database :user-id api/*current-user-id*})
+    (events/publish-event! :event/database-create {:changes [{:object database}] :user-id api/*current-user-id*})
 
   'Subscribe' to an event by add a Methodical method implementation. Since this uses
   the [[methodical/do-method-combination]], all multiple method implementations can be called for a single invocation.
@@ -76,7 +91,9 @@
   ;; work around https://github.com/camsaul/methodical/issues/97
   :dispatcher
   (u.methodical.unsorted-dispatcher/unsorted-dispatcher
-   (fn dispatch-fn [topic _event]
+   (fn dispatch-fn [topic event]
+     (when (and (map? event) (contains? event :changes))
+       (ensure-lifecycle-topic! topic))
      (keyword topic))
    :hierarchy #'events.hierarchy/hierarchy)
   ;; work around https://github.com/camsaul/methodical/issues/98
@@ -90,10 +107,13 @@
 (methodical/defmethod publish-event! :around :default
   [topic event]
   (assert (not *compile-files*) "Calls to publish-event! are not allowed in the top level.")
-  (let [{:keys [object]} event]
-    (log/debugf "Publishing %s event (model and id): %s"
+  (let [objects (if (contains? event :changes)
+                  (map #(or (:object %) (:previous-object %)) (:changes event))
+                  [(:object event)])]
+    (log/debugf "Publishing %s event (models and ids): %s"
                 (u/colorize :yellow (pr-str topic))
-                (pr-str (let [model (t2/model object)]
+                (pr-str (for [object objects
+                              :let [model (t2/model object)]]
                           (cond-> (select-keys object [:id])
                             model
                             (assoc :model model))))))
@@ -105,7 +125,8 @@
   (try
     (when-let [schema (and (mu/instrument-ns? *ns*) (events.schema/event-schema topic))]
       (mu/validate-throw schema event))
-    (next-method topic event)
+    (when-not (and (contains? event :changes) (empty? (:changes event)))
+      (next-method topic event))
     (catch Throwable e
       (throw (ex-info (i18n/tru "Error publishing {0} event: {1}" topic (ex-message e))
                       {:topic topic, :event event}

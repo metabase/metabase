@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.util :as perms-util]
    [metabase.search.appdb.index :as search.index]
@@ -44,6 +46,14 @@
       (mt/with-test-user :crowberto
         (is (=? {:type :not-searchable :details {:reason :excluded-by-where :search-model "card"}}
                 (diagnose {:search-string "document"} "card" card-id))))))
+  (testing "A card in a data app's collection is excluded by the spec's :where clause, though cards may go there"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+      (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-apps"}
+                     :model/Card       {card-id :id} {:collection_id coll-id, :dataset_query query}]
+        (mt/with-test-user :crowberto
+          (is (=? {:type :not-searchable, :details {:reason :excluded-by-where, :search-model "card"}}
+                  (diagnose {} "card" card-id)))))))
   (testing "A model with no search spec"
     (mt/with-test-user :crowberto
       (is (=? {:type :not-searchable :details {:reason :no-spec :search-model "user"}}

@@ -3,8 +3,10 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -17,10 +19,10 @@
   [:and
    [:= :type "metric"]
    [:= :archived false]
-   (perms/visible-collections-filter-clause :report_card.collection_id (api/current-user-info) {:include-trash-collection? false
-                                                                                                :include-archived-items    :exclude
-                                                                                                :permission-level          :read
-                                                                                                :root-namespace            nil})])
+   (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Card) :collection_id) (api/current-user-info) {:include-trash-collection? false
+                                                                                                                                  :include-archived-items    :exclude
+                                                                                                                                  :permission-level          :read
+                                                                                                                                  :root-namespace            nil})])
 
 (mu/defn visible-metric-card-count
   "The number of unarchived metric Cards the current user can read."
@@ -46,16 +48,12 @@
 (mu/defn metric-cards-by-ids
   "The metric Cards with `ids`."
   [ids :- [:sequential ::lib.schema.id/card]]
-  (if (seq ids)
-    (t2/select :model/Card :id [:in ids] :type "metric")
-    []))
+  (mdb/select-batched #(t2/select :model/Card :id [:in %] :type "metric") ids))
 
 (mu/defn measures-by-ids
   "The Measures with `ids`."
   [ids :- [:sequential ::lib.schema.id/measure]]
-  (if (seq ids)
-    (t2/select :model/Measure :id [:in ids])
-    []))
+  (mdb/select-batched #(t2/select :model/Measure :id [:in %]) ids))
 
 (mu/defn measure
   "The Measure with `id`, or nil."
@@ -69,13 +67,13 @@
   *persisted*, so it has to see the stored column. Going through the model runs the `:card_schema` upgrades, which
   populates missing `:dimensions`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select [:report_card :id :dimensions] :type "metric" :database_id database-id))
+  (t2/select [(t2/table-name :model/Card) :id :dimensions] :type "metric" :database_id database-id))
 
 (mu/defn fields-with-columns
   "The id and `columns` of the Fields with `field-ids`."
   [columns   :- [:sequential :keyword]
    field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select (into [:model/Field :id] columns) :id [:in field-ids]))
+  (mdb/select-batched #(t2/select (into [:model/Field :id] columns) :id [:in %]) field-ids))
 
 (mu/defn field
   "The Field with `field-id`, or nil."

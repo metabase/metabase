@@ -22,6 +22,7 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -106,7 +107,7 @@
               template_tags)))))
 
 (defn- ensure-pmbql-type
-  "Fill in the pMBQL `:lib/type` discriminators a hand-written JSON `query` can't be expected to
+  "Fill in the MBQL 5 `:lib/type` discriminators a hand-written JSON `query` can't be expected to
    supply: `:mbql/query` at the top level (unless the query is already legacy MBQL 4, carrying
    `:type`), and `:mbql.stage/native` or `:mbql.stage/mbql` on each stage. A query that already
    carries `:lib/type` throughout — e.g. one round-tripped through a lib helper — passes through
@@ -147,7 +148,7 @@
    save-path guards (native allowed); `query` is inline MBQL 5; `native` is built from raw SQL
    once `token-scopes` clears [[check-native-source-gates!]].
 
-   Every branch returns genuine normalized pMBQL: the save path feeds `dataset_query` into
+   Every branch returns genuine normalized MBQL 5: the save path feeds `dataset_query` into
    strictly schema-checked functions (`queries/check-allowed-to-create-card!` and friends), so
    the JSON-shaped maps a handle or inline source yields — keyword *values* flattened to strings
    by the JSON round-trip — must be restored first."
@@ -344,20 +345,25 @@
                             (resolve-result-metadata dataset-query
                                                      {:type (keyword (or card_type "question"))}
                                                      column_metadata))
-          card (queries/create-card!
-                (cond-> (u/remove-nils
-                         {:name                   name
-                          :type                   (keyword (or card_type "question"))
-                          :dataset_query          dataset-query
-                          :display                (keyword (or display "table"))
-                          :description            description
-                          :collection_id          collection-id
-                          :collection_position    collection_position
-                          :cache_ttl              cache_ttl
-                          :visualization_settings (or visualization_settings {})})
-                  result-metadata (assoc :result_metadata result-metadata)
-                  dashboard-id    (assoc :dashboard_id dashboard-id))
-                {:id api/*current-user-id*})]
+          row  (cond-> (u/remove-nils
+                        {:name                   name
+                         :type                   (keyword (or card_type "question"))
+                         :dataset_query          dataset-query
+                         :display                (keyword (or display "table"))
+                         :description            description
+                         :collection_id          collection-id
+                         :collection_position    collection_position
+                         :cache_ttl              cache_ttl
+                         :visualization_settings (or visualization_settings {})
+                         :creator_id             api/*current-user-id*})
+                 result-metadata (assoc :result_metadata result-metadata)
+                 dashboard-id    (assoc :dashboard_id dashboard-id))
+          _    (queries/check-new-dashboard-questions-timeline-permissions [row])
+          card (t2/with-transaction [_conn]
+                 (collection/maybe-reconcile-collection-position! (select-keys row [:collection_id :collection_position]))
+                 (let [[created] (queries.card/create-cards! [row])]
+                   (queries.card/place-new-dashboard-questions! [created] [row])
+                   created))]
       (assoc (card-response card)
              :url (common/frontend-url (channel.urls/card-path (:id card)))))))
 
@@ -460,10 +466,12 @@
                                                        (or new-query (:dataset_query card-before))
                                                        card-before
                                                        column_metadata)))]
-      (queries/update-card! {:card-before-update    card-before
-                             :card-updates          card-updates
-                             :actor                 @api/*current-user*
-                             :delete-old-dashcards? false}))
+      (t2/with-transaction [_conn]
+        (collection/maybe-reconcile-collection-position!
+         (select-keys card-before [:collection_id :collection_position])
+         (select-keys card-updates [:collection_id :collection_position]))
+        (queries.card/place-updated-dashboard-question! card-before card-updates false)
+        (queries.card/update-cards! [(assoc (queries.card/card-changes card-updates) :id (:id card-before))])))
     (update-card-response (mcp.db/select-one-by-id :model/Card card-id))))
 
 (def ^:private question-write-args-schema
