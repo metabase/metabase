@@ -75,7 +75,7 @@ describe("QueryBuilder > notebook > sidesheets (UXW-224)", () => {
 
     await userEvent.click(screen.getByTestId("qb-header-info-button"));
     const infoSidesheet = await screen.findByTestId("sidesheet");
-    expect(infoSidesheet).toBeInTheDocument();
+    await waitFor(() => expect(infoSidesheet).toBeVisible());
     expectNotebookToBeOpen();
 
     await userEvent.click(within(infoSidesheet).getByLabelText("Close"));
@@ -91,7 +91,8 @@ describe("QueryBuilder > notebook > sidesheets (UXW-224)", () => {
       }),
     );
     await userEvent.click(await screen.findByText("Edit settings"));
-    expect(await screen.findByTestId("sidesheet")).toBeInTheDocument();
+    const settingsSidesheet = await screen.findByTestId("sidesheet");
+    await waitFor(() => expect(settingsSidesheet).toBeVisible());
     expect(router.location.pathname).toContain("/notebook");
     expectNotebookToBeOpen();
   });
