@@ -2,19 +2,16 @@
   "`:model/SegmentTest`: a saved test of one segment."
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
-   [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
-   [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.segment :as data-testing.subject.segment]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase-enterprise.data-testing.util :as data-testing.util]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.core :as revisions]
@@ -42,55 +39,6 @@
   {:inputs       (data-testing.util/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.util/json-column ::data-testing.schema/expectations)})
 
-(methodical/defmethod t2/batched-hydrate [:model/SegmentTest :last_run]
-  "Add the newest run, or nil, to each segment test."
-  [_model _k segment-tests]
-  (data-testing.models/with-last-runs :segment segment-tests))
-
-;;; ------------------------------------------------- Permissions --------------------------------------------------
-
-(methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_read]
-  "Add whether the current user can read the segment of each segment test, loading the segments at once."
-  [_model k segment-tests]
-  (data-testing.models/with-readable-subjects k segment-tests :segment_id
-    (data-testing.db/segments-by-ids (into [] (comp (keep :segment_id) (distinct)) segment-tests))))
-
-(defn- segment-database-id
-  "The id of the Database of the query of `segment`."
-  [segment]
-  (data-testing.models/query-database-id (:definition segment)))
-
-(methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_write]
-  "Add whether the current user may edit each segment test: they may edit its segment, loading the segments at once."
-  [_model k segment-tests]
-  (vec (data-testing.models/assoc-subject-answers
-        segment-tests k
-        {:subject-key   :segment_id
-         :subjects      (data-testing.db/segments-by-ids
-                         (into [] (comp (remove nil?) (keep :segment_id) (distinct)) segment-tests))
-         :subject-k     :can_write
-         :subject-check mi/can-write?})))
-
-(methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_query]
-  "Add whether the current user may run each segment test: they read it and may run its segment, as its `:can_query`
-  says, loading the segments at once."
-  [_model k segment-tests]
-  (vec (data-testing.models/assoc-can-query
-        segment-tests k :segment_id
-        (data-testing.db/segments-by-ids (into [] (comp (remove nil?) (keep :segment_id) (distinct)) segment-tests)))))
-
-(defmethod mi/can-create? :model/SegmentTest
-  [_model instance]
-  (data-testing.models/can-create-test? (some-> (:segment_id instance) data-testing.db/segment) segment-database-id))
-
-(defmethod mi/can-update? :model/SegmentTest
-  [instance changes]
-  (data-testing.models/can-update-test? instance changes
-                                        {:subject-key  :segment_id
-                                         :load-subject data-testing.db/segment
-                                         :db-id        segment-database-id
-                                         :writable?    (mi/can-write? instance)}))
-
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
 (mu/defn testable-segment :- [:maybe :map]
@@ -106,20 +54,6 @@
   [segment-id :- ::lib.schema.id/segment
    definition :- ::data-testing.runner/definition]
   (data-testing.runner/validate-test :segment (testable-segment segment-id) definition))
-
-(mu/defn check-edit :- :nil
-  "Throws the typed refusal of an edit that sets the keys `edited-keys` of a segment test and leaves it as `edited`. An
-  edit that sets the segment or what a run reads is refused as a new test like `edited` would be. Any other edit is
-  refused when the segment is archived."
-  [edited      :- [:map [:segment_id ::lib.schema.id/segment]]
-   edited-keys :- [:sequential :keyword]]
-  (if (data-testing.models/validates-edit? :segment_id edited-keys)
-    (validate-test (:segment_id edited) (data-testing.runner/test-definition edited))
-    (let [segment (data-testing.db/segment (:segment_id edited))]
-      ;; A new test of an archived segment with no query is refused for having no query; so is this edit.
-      (when (:archived segment)
-        (data-testing.subject.segment/check-testable segment))
-      (data-testing.subject/check-not-archived :segment segment))))
 
 (defmethod data-testing.test-type/spec :segment [_test-type]
   {:model      :model/SegmentTest
@@ -165,16 +99,22 @@
   [id _user-id snapshot]
   (update-segment-tests! [(assoc snapshot :id id)] {:writer :revert}))
 
-(defn- check-revert
-  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
-  [id _user-id snapshot]
-  (data-testing.models/check-revert-available)
-  (data-testing.errors/refusing
-   "segment-test"
-   #(check-edit snapshot (data-testing.models/reverted-keys (data-testing.db/segment-test id) snapshot)))
-  snapshot)
-
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defn- segment-database-id
+  "The id of the Database of the query of `segment`."
+  [segment]
+  (data-testing.models/query-database-id (:definition segment)))
+
+(defmethod data-testing.models/saved-test-spec :model/SegmentTest [_model]
+  {:test-type         :segment
+   :subject-key       :segment_id
+   :subject           data-testing.db/segment
+   :subjects          data-testing.db/segments-by-ids
+   :database-id       segment-database-id
+   :validate-test     validate-test
+   :check-testable    data-testing.subject.segment/check-testable
+   :refuses-archived? true})
 
 (defmethod app-db-copy/spec :model/SegmentTest [_model]
   {:skip? false})
@@ -200,7 +140,7 @@
    :skip          [:creator_id :entity_id]
    :schema        ::data-testing.schema/segment-test.revision
    :authorize     :snapshot
-   :before-revert check-revert
+   :before-revert #(data-testing.models/check-revert :model/SegmentTest %1 %2 %3)
    :revert!       revert-segment-test!})
 
 (defmethod audit/spec :model/SegmentTest [_model]
