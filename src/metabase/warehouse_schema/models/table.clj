@@ -276,7 +276,7 @@
 
 (t2/define-after-select :model/Table
   [table]
-  (dissoc table :is_defective_duplicate :unique_table_helper))
+  (dissoc table :is_defective_duplicate :unique_table_helper :worktree_id))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

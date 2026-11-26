@@ -59,17 +59,34 @@
                                       (map t2/table-name))
                                 (descendants :hook/worktree-id))))
 
-(mu/defn- sandbox-options :- ::funnysql.schema/sandbox.options
-  "The options that keep a query to the rows of the worktree with `worktree-id`."
+(def ^:private view-substitutions
+  "The views a query in a worktree other than the default one reads in place of the Table and Field tables, which
+  overlay them with the worktree's user settings."
+  {:metabase_table :v_worktree_table
+   :metabase_field :v_worktree_field})
+
+(mu/defn- row-filters :- [:map-of :keyword ::funnysql.schema/sandbox.row-filter]
+  "A filter on `worktree_id` keeping the rows of the worktree with `worktree-id` for each of `tables`."
+  [tables      :- [:sequential :keyword]
+   worktree-id :- pos-int?]
+  (into {} (map (fn [table] [table {:column :worktree_id :value worktree-id}])) tables))
+
+(mu/defn- main-options :- ::funnysql.schema/sandbox.options
+  "The options that keep a query to the rows of the main app, which reads the stored Table and Field rows."
+  []
+  {:row-filters (row-filters (vec @worktree-tables) default-worktree-id)})
+
+(mu/defn- worktree-options :- ::funnysql.schema/sandbox.options
+  "The options that keep a query to the rows of the worktree with `worktree-id`, reading Tables and Fields through the
+  views that overlay them with its user settings."
   [worktree-id :- pos-int?]
-  {:row-filters (into {}
-                      (map (fn [table] [table {:column :worktree_id :value worktree-id}]))
-                      @worktree-tables)})
+  {:table-substitutions view-substitutions
+   :row-filters         (row-filters (into (vec @worktree-tables) (vals view-substitutions)) worktree-id)})
 
 (mu/defn sandbox-worktree-query :- ::funnysql.schema/query
   "`query` kept to the rows of the worktree this thread works in, or as it is across every worktree."
   [query :- ::funnysql.schema/query]
   (case (if @worktree-tables (:type *scope*) :all)
     :all      query
-    :main     (funnysql/sandbox-query query (sandbox-options default-worktree-id))
-    :worktree (funnysql/sandbox-query query (sandbox-options (:worktree-id *scope*)))))
+    :main     (funnysql/sandbox-query query (main-options))
+    :worktree (funnysql/sandbox-query query (worktree-options (:worktree-id *scope*)))))
