@@ -207,7 +207,10 @@
            ;; the field as a sync before JSON support made it
            (t2/delete! :model/Field :table_id (:id table) :nfc_path [:not= nil])
            (t2/update! :model/Field {:table_id (:id table) :name "payload"}
-                       {:base_type :type/* :effective_type :type/* :json_unfolding false :visibility_type :normal})
+                       {:base_type       :type/*
+                        :effective_type  :type/*
+                        :json_unfolding  false
+                        :visibility_type :normal})
            (dotimes [_ 2]
              (sync/sync-database! (:id (mt/db)))
              (is (=? {:base_type :type/JSON :json_unfolding true :visibility_type :details-only}
