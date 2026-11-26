@@ -1628,7 +1628,7 @@
                                                                      :object   (revision/snapshot :model/Card card2)}]
             ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
             (is (= 1
-                   (t2/query-one {:update :revision
+                   (t2/query-one {:update (t2/table-name :model/Revision)
                                   ;; in the past
                                   :set    {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
                                   :where  [:= :id (:id revision1)]})))
@@ -1738,13 +1738,13 @@
                                                            :user_id  failuser-id
                                                            :object   (revision/snapshot :model/Dashboard dashboard)}]
             (letfn [(at-year [year] (ZonedDateTime/of year 1 1 0 0 0 0 (ZoneId/of "UTC")))]
-              (t2/query-one {:update :revision
+              (t2/query-one {:update (t2/table-name :model/Revision)
                              ;; in the past
                              :set    {:timestamp (at-year 2015)}
                              :where  [:in :id (map :id [card-revision1 dash-revision1])]})
               ;; mark the later revisions with the user with name "pass". Note important that its the later revision by
               ;; id. Query assumes increasing timestamps with ids
-              (t2/query-one {:update :revision
+              (t2/query-one {:update (t2/table-name :model/Revision)
                              :set    {:timestamp (at-year 2021)
                                       :user_id   passuser-id}
                              :where  [:in :id (map :id [card-revision2 dash-revision2])]}))

@@ -674,7 +674,7 @@
   "The setting's `value_with_aad` exactly as it sits in the DB, bypassing the model's decrypting read."
   [setting-key]
   (-> (mdb/query {:select [:value_with_aad]
-                  :from   [:setting]
+                  :from   [(t2/table-name :model/Setting)]
                   :where  [:= :key (name setting-key)]})
       first :value_with_aad))
 
@@ -1017,7 +1017,7 @@
                                            ;; site-wide row for a Database-local-only Setting
                                            (t2/delete! :model/Setting :key (name setting-name))
                                            (when site-wide-value
-                                             (t2/insert! :setting
+                                             (t2/insert! (t2/table-name :model/Setting)
                                                          :key            (name setting-name)
                                                          :value          (str site-wide-value)
                                                          :value_with_aad (encryption/maybe-encrypt
@@ -1931,11 +1931,11 @@
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
       (encryption-test/with-secret-key "ABCDEFGH12345678"
-        (t2/delete! :setting :key "toucan-name")
-        (t2/delete! :setting :key "test-never-encrypted-setting")
+        (t2/delete! (t2/table-name :model/Setting) :key "toucan-name")
+        (t2/delete! (t2/table-name :model/Setting) :key "test-never-encrypted-setting")
         ;; `value` only, as that version writes it: encrypted for a setting that encrypts, plaintext for one that does not
-        (t2/insert! :setting [{:key "toucan-name", :value (encryption/encrypt "Lenny")}
-                              {:key "test-never-encrypted-setting", :value "foobar"}])
+        (t2/insert! (t2/table-name :model/Setting) [{:key "toucan-name", :value (encryption/encrypt "Lenny")}
+                                                    {:key "test-never-encrypted-setting", :value "foobar"}])
         (mdb.setting/migrate-settings!)
         (testing "an encrypted row's value is stored under its AAD"
           (is (= "Lenny" (decrypt-setting-value :toucan-name (raw-setting-value-with-aad :toucan-name)))))
@@ -1948,7 +1948,7 @@
         (testing "a row that already has a stored value is left byte-identical, whatever `value` says beside it"
           (toucan-name! "Sad Can")
           (let [before (raw-setting-value-with-aad :toucan-name)]
-            (t2/update! :setting :key "toucan-name" {:value (encryption/encrypt "Bird Can")})
+            (t2/update! (t2/table-name :model/Setting) :key "toucan-name" {:value (encryption/encrypt "Bird Can")})
             (mdb.setting/migrate-settings!)
             (is (= before (raw-setting-value-with-aad :toucan-name)))
             (is (= "Sad Can" (decrypt-setting-value :toucan-name (raw-setting-value-with-aad :toucan-name))))))))))
@@ -1962,8 +1962,8 @@
     (mdb/setup-db! :create-sample-content? false)
     (encryption-test/with-secret-key "ABCDEFGH12345678"
       (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
-      (t2/insert! :setting [{:key "read-only-mode", :value "false", :value_with_aad "false"}
-                            {:key "toucan-name", :value (encryption/encrypt "Lenny")}])
+      (t2/insert! (t2/table-name :model/Setting) [{:key "read-only-mode", :value "false", :value_with_aad "false"}
+                                                  {:key "toucan-name", :value (encryption/encrypt "Lenny")}])
       (mdb.setting/migrate-settings!)
       (is (= "Lenny" (decrypt-setting-value :toucan-name (raw-setting-value-with-aad :toucan-name)))))))
 

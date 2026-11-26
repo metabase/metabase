@@ -152,7 +152,7 @@
 (defn- sync-and-fetch-metric-dimensions!
   "Syncs and returns persisted dimensions with mapping metadata of the metrics with `metric-ids`, by metric id."
   [metric-ids]
-  (metrics/sync-all-dimensions! :metadata/metric metric-ids)
+  (metrics/sync-dimensions! :metadata/metric metric-ids)
   (into {}
         (map (fn [{:keys [id dimensions dimension_mappings]}]
                [id (enrich-dimensions-with-mappings dimensions dimension_mappings)]))

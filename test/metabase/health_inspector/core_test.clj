@@ -32,16 +32,16 @@
                      "query" {"expressions" "extremely invalid"
                               "source-table" 2}
                      "type" "query"}
-          bad-card (assoc (dissoc (t2/select-one :report_card :id (:id template)) :id)
+          bad-card (assoc (dissoc (t2/select-one (t2/table-name :model/Card) :id (:id template)) :id)
                           :entity_id (u/generate-nano-id)
                           :dataset_query (json/encode bad-query)
                           :description "bad query")
-          bad (t2/insert-returning-pk! :report_card bad-card)]
+          bad (t2/insert-returning-pk! (t2/table-name :model/Card) bad-card)]
       (try
         (let [{:keys [health message]} (hi/validate-queries)]
           (is (< 0 health 100))
           (is (= "Some queries are invalid." message)))
-        (finally (t2/delete! :report_card :id bad))))))
+        (finally (t2/delete! (t2/table-name :model/Card) :id bad))))))
 
 (deftest report-db-test
   (t2/delete! :health_inspector_runs)

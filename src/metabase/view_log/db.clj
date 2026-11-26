@@ -24,6 +24,6 @@
   [time-column :- :keyword
    cutoff      :- ms/TemporalInstant
    batch-size  :- ms/PositiveInt]
-  (vec (t2/select-pks-vec :model/ViewLog {:where    [:<= time-column [:auto/param cutoff]]
+  (vec (t2/select-pks-vec :model/ViewLog {:where    [:<= time-column cutoff]
                                           :order-by [[:id :asc]]
                                           :limit    batch-size})))

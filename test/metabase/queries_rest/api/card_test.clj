@@ -1197,7 +1197,7 @@
       (testing "PUT /api/card/:id refuses an empty query"
         (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:dataset_query {}}))
       (testing "a Card whose stored query is empty reads as a stored row and takes edits of its other columns"
-        (t2/query-one {:update :report_card :set {:dataset_query "{}"} :where [:= :id card-id]})
+        (t2/query-one {:update (t2/table-name :model/Card) :set {:dataset_query "{}"} :where [:= :id card-id]})
         (is (mr/validate ::queries.schema/card (t2/select-one :model/Card :id card-id)))
         (is (mr/validate ::queries.schema/card.update {:id 1 :dataset_query {}}))
         (is (=? {:name "Renamed"}
@@ -1518,7 +1518,8 @@
               (with-redefs [sql-jdbc.execute/execute-statement! (fn [driver stmt sql]
                                                                   (reset! sql-result sql)
                                                                   (orig driver stmt sql))
-                            driver/query-result-metadata        (get-method driver/query-result-metadata :default)]
+                            driver/query-result-metadata        (get-method driver/query-result-metadata :default)
+                            card.metadata/metadata-sync-wait-ms 30000]
                 (mt/user-http-request
                  :crowberto :post 200 "card"
                  (assoc (card-with-name-and-query card-name)

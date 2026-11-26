@@ -10,6 +10,7 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.collections.schema :as collections.schema]
    [metabase.documents.schema :as documents.schema]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
@@ -18,7 +19,6 @@
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -30,7 +30,7 @@
   ^:allow-subquery {:select [:parent.archived]
                     :from   [[table :parent]]
                     :where  [:= :parent.id (if (contains? changes k)
-                                             [:auto/param (get changes k)]
+                                             (get changes k)
                                              (keyword (str "document." (name k))))]})
 
 (mu/defn archived-directly-clause :- :any
@@ -73,7 +73,7 @@
   "The unarchived Documents not attached to an Exploration, in a Collection visible to the current user."
   []
   (t2/select :model/Document {:where [:and
-                                      (perms/visible-collections-filter-clause :document.collection_id (api/current-user-info) {:root-namespace nil})
+                                      (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Document) :collection_id) (api/current-user-info) {:root-namespace nil})
                                       [:= :archived false]
                                       [:= :exploration_id nil]]}))
 
@@ -107,7 +107,7 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id [:auto/param card-id]))
+  (t2/select-one :model/Card :id card-id))
 
 (mu/defn cards-by-ids
   "The Cards with `card-ids`."
@@ -152,12 +152,12 @@
 (mu/defn cards-archived-with-documents
   "The unarchived Cards in the Documents with `document-ids`, which archiving them archives along with them."
   [document-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (mdb/select-batched #(t2/select :model/Card :document_id [:in [:auto/param %]] :archived false) document-ids))
+  (mdb/select-batched #(t2/select :model/Card :document_id [:in %] :archived false) document-ids))
 
 (mu/defn cards-restored-with-documents
   "The Cards in the Documents with `document-ids` that were archived along with them, which restoring them restores."
   [document-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (mdb/select-batched #(t2/select :model/Card :document_id [:in [:auto/param %]] :archived true :archived_directly false)
+  (mdb/select-batched #(t2/select :model/Card :document_id [:in %] :archived true :archived_directly false)
                       document-ids))
 
 (mu/defn card-ids-archived-with-documents
@@ -214,19 +214,19 @@
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
 
-(mu/defn stale-document-candidates :- ::staleness/query
+(mu/defn stale-document-candidates :- ::funnysql.schema/query.select
   "The query of the Documents that are stale for `opts`, `{:collection-ids (:all | #{int|nil}), :cutoff-date local-date}`:
   those not viewed since the cutoff, or never viewed and created before it, in regular collections. `last_viewed_at`
   is never null, so the recency is null for a Document that was never viewed."
   [opts :- ::staleness/candidates-options]
   ^:allow-subquery
   {:select [:document.id
-            [(h2x/literal "Document") :model]
+            [[:literal "Document"] :model]
             [:document.name :name]
             [[:case [:= :document.view_count [:inline 0]] nil :else :document.last_viewed_at] :last_used_at]
             :document.collection_id]
-   :from :document
-   :left-join [:collection [:= :collection.id :document.collection_id]]
+   :from [[(t2/table-name :model/Document) :document]]
+   :left-join [[(t2/table-name :model/Collection) :collection] [:= :collection.id :document.collection_id]]
    :where [:and
            [:= :document.archived false]
            [:or
@@ -247,8 +247,8 @@
    :- :metabase.dependencies.items/items-opts]
   (let [location (collections.listing/collection-location :collection nil)]
     {:select    [[:document.id :entity_id] [:document.name :name] [location :location]]
-     :from      [:document]
-     :left-join [:collection [:= :document.collection_id :collection.id]]
+     :from      [[(t2/table-name :model/Document) :document]]
+     :left-join [[(t2/table-name :model/Collection) :collection] [:= :document.collection_id :collection.id]]
      :where     (into [:and]
                       (remove nil?)
                       [(collections.listing/visible-in-collections-clause :document opts include-archived nil)
@@ -272,13 +272,13 @@
             [:u.first_name :last_edit_first_name]
             [:u.last_name :last_edit_last_name]
             [:r.timestamp :last_edit_timestamp]
-            [(h2x/literal "document") :model]]
-   :from [[:document :document]]
-   :left-join [[:revision :r] [:and
-                               [:= :r.model_id :document.id]
-                               [:= :r.model (h2x/literal "Document")]
-                               (revisions.sql/newest-revision-clause :r "Document" :document.id)]
-               [:core_user :u] [:= :u.id :r.user_id]]
+            [[:literal "document"] :model]]
+   :from [[(t2/table-name :model/Document) :document]]
+   :left-join [[(t2/table-name :model/Revision) :r] [:and
+                                                     [:= :r.model_id :document.id]
+                                                     [:= :r.model [:literal "Document"]]
+                                                     (revisions.sql/newest-revision-clause :r "Document" :document.id)]
+               [(t2/table-name :model/User) :u] [:= :u.id :r.user_id]]
    :where [:and
            (collections.listing/visible-items-clause :document.collection_id archived? {:root-namespace nil})
            (if (collection/is-trash? collection)
@@ -307,9 +307,9 @@
                            [:c.id :collection_id]
                            [:c.name :collection_name]
                            [:c.authority_level :collection_authority_level]]
-                  :from [[:document :d]]
+                  :from [[(t2/table-name :model/Document) :d]]
                   :where [:in :d.id document-ids]
-                  :left-join [[:collection :c]
+                  :left-join [[(t2/table-name :model/Collection) :c]
                               [:and
                                [:= :c.id :d.collection_id]
                                [:= :c.archived false]]]}))

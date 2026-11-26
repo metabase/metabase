@@ -80,7 +80,7 @@
   "Stores an empty definition on the segment `segment-id`, which the model refuses to save but older segments still
   have."
   [segment-id]
-  (t2/query-one {:update :segment :set {:definition "{}"} :where [:= :id segment-id]}))
+  (t2/query-one {:update (t2/table-name :model/Segment) :set {:definition "{}"} :where [:= :id segment-id]}))
 
 (defmacro with-transforms-enabled
   "Body with `features` licensed and the transforms setting on."

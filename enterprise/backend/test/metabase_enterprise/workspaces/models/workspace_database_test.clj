@@ -32,14 +32,14 @@
       (finally
         ;; Manual cleanup in reverse-FK order: wsd rows first, then workspaces, then dbs.
         (when-let [wsd-ids (seq (:workspace-dbs @ids))]
-          (try (t2/delete! :workspace_database :id [:in wsd-ids]) (catch Throwable _ nil)))
+          (try (t2/delete! (t2/table-name :model/WorkspaceDatabase) :id [:in wsd-ids]) (catch Throwable _ nil)))
         (when-let [ws-ids (seq (:workspaces @ids))]
           (try (t2/delete! :model/Workspace :id [:in ws-ids]) (catch Throwable _ nil)))
         (when-let [db-ids (seq (:dbs @ids))]
           ;; Use raw table to bypass our pre-delete hook during teardown, in case
           ;; the test left behind state the hook would refuse.
-          (try (t2/delete! :workspace_database :database_id [:in db-ids]) (catch Throwable _ nil))
-          (try (t2/delete! :metabase_database :id [:in db-ids]) (catch Throwable _ nil)))))))
+          (try (t2/delete! (t2/table-name :model/WorkspaceDatabase) :database_id [:in db-ids]) (catch Throwable _ nil))
+          (try (t2/delete! (t2/table-name :model/Database) :id [:in db-ids]) (catch Throwable _ nil)))))))
 
 (deftest pre-delete-refuses-database-with-initialized-workspace-databases-test
   (testing "deleting a Database with an :provisioned WorkspaceDatabase child raises 409 and leaves state untouched"
@@ -105,7 +105,7 @@
 
 (deftest fk-restrict-is-defense-in-depth-test
   (testing "FK constraint blocks cascade-delete of an :provisioned workspace_database even if the app-level hook is bypassed"
-    ;; `(t2/delete! :metabase_database ...)` against the raw table name bypasses the
+    ;; `(t2/delete! (t2/table-name :model/Database) ...)` against the raw table name bypasses the
     ;; `before-delete` hook (per toucan2 docs). The FK must still refuse the delete so
     ;; the warehouse schema isn't silently orphaned by a path that doesn't know about
     ;; the workspace invariants.
@@ -128,7 +128,7 @@
                                                  :input_schemas    []
                                                  :status :provisioned})]
             (track-wsd! wsd-id)
-            (let [thrown (try (t2/delete! :metabase_database :id db-id) nil
+            (let [thrown (try (t2/delete! (t2/table-name :model/Database) :id db-id) nil
                               (catch Throwable t t))]
               (is (some? thrown)
                   "raw-table delete must still throw — the FK enforces the invariant at the DB layer")

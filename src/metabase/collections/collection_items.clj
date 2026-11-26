@@ -13,7 +13,6 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -67,14 +66,14 @@
                   :type
                   [[:case [:= :is_remote_synced nil] [:inline false] :else :is_remote_synced] :is_remote_synced]
                   [:type :collection_type]
-                  [(h2x/literal "collection") :model]
+                  [[:literal "collection"] :model]
                   :authority_level])
         (sql.helpers/where (collections.listing/pinned-state->clause pinned-state nil)))))
 
 (defn- annotate-collections
   [parent-coll colls {:keys [show-dashboard-questions?]}]
   (let [descendant-collections (collection/descendants-flat parent-coll nil
-                                                            (perms/visible-collections-filter-clause :collection.id (api/current-user-info) {:include-archived-items :all :root-namespace nil}))
+                                                            (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Collection) :id) (api/current-user-info) {:include-archived-items :all :root-namespace nil}))
 
         descendant-collection-ids (mapv u/the-id descendant-collections)
 

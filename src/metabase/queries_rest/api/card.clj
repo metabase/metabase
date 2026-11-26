@@ -10,6 +10,7 @@
    [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -39,7 +40,6 @@
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -345,7 +345,7 @@
                          supported-series-display-type
                          last-cursor
                          exclude-ids
-                         (when query (h2x/like-substring query))
+                         (when query (funnysql.util/like-substring query))
                          ;; add a little buffer to the page to account for cards that are not
                          ;; compatible + do not have permissions to read
                          ;; this is just a heuristic, but it should be good enough

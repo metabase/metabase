@@ -558,7 +558,7 @@
   (testing "Tables with unknown data_authority values from database are read as :unknown"
     (mt/with-temp [:model/Table table {}]
       ;; Directly insert an unknown value into the database, bypassing Toucan transforms
-      (t2/query-one {:update :metabase_table
+      (t2/query-one {:update (t2/table-name :model/Table)
                      :set    {:data_authority "federated"}
                      :where  [:= :id (:id table)]})
       (testing "Unexpected values are converted to :unknown"
@@ -1600,7 +1600,7 @@
   "Put `card-id` back into the pre-64 shape: `card_schema` 23 with no stored dimensions, so reading it is what
   triggers the backfill. Needs a raw UPDATE because before-insert forces `:card_schema` to current."
   [card-id]
-  (t2/query-one {:update :report_card
+  (t2/query-one {:update (t2/table-name :model/Card)
                  :set    {:card_schema 23, :dimensions nil, :dimension_mappings nil}
                  :where  [:= :id card-id]}))
 
@@ -1640,7 +1640,7 @@
               "the dimension backfill ran while loading dashboard query metadata")))
       (testing "the stored row is untouched — still schema 23, so a later write still upgrades it"
         (is (= 23 (:card_schema (t2/query-one {:select [:card_schema]
-                                               :from   [:report_card]
+                                               :from   [(t2/table-name :model/Card)]
                                                :where  [:= :id metric-id]}))))))))
 
 (defn- insert-fk-star!

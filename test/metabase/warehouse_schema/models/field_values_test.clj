@@ -262,7 +262,7 @@
                                              :hash_key "random-hash"}]
           (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name))))))))
       (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
-        (t2/query-one {:update :metabase_fieldvalues
+        (t2/query-one {:update (t2/table-name :model/FieldValues)
                        :where [:and
                                [:= :field_id (mt/id :categories :name)]
                                [:= :type "full"]]
@@ -435,7 +435,7 @@
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
     (mt/with-temp [:model/FieldValues fv {:field_id (mt/id :venues :id)
                                           :values   (json/encode ["1" "2" "3"])}]
-      (is (t2/query-one {:update :metabase_fieldvalues
+      (is (t2/query-one {:update (t2/table-name :model/FieldValues)
                          :set    {:human_readable_values (json/encode {"1" "a", "2" "b", "3" "c"})}
                          :where  [:= :id (:id fv)]}))
       (is (= ["a" "b" "c"]

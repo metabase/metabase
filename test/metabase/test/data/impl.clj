@@ -370,8 +370,8 @@
                                                   [:source-table.name :source-table]
                                                   [:target-field.name :target-field]
                                                   [:target-table.name :target-table]]
-                                      :from      [[:metabase_field :source-field]]
-                                      :left-join [[:metabase_table :source-table] [:= :source-field.table_id :source-table.id]
+                                      :from      [[(t2/table-name :model/Field) :source-field]]
+                                      :left-join [[(t2/table-name :model/Table) :source-table] [:= :source-field.table_id :source-table.id]
                                                   [:metabase_field :target-field] [:= :source-field.fk_target_field_id :target-field.id]
                                                   [:metabase_table :target-table] [:= :target-field.table_id :target-table.id]]
                                       :where     [:and

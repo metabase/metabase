@@ -84,7 +84,7 @@
  :config-counts                {:constant-condition                      1
                                 :deprecated-namespace                    7
                                 :deprecated-var                          16
-                                :discouraged-namespace                   15
+                                :discouraged-namespace                   19
                                 :discouraged-var                         14
                                 :inline-def                              1
                                 :main-without-gen-class                  1
@@ -95,7 +95,6 @@
                                 :metabase/modules                        1
                                 :metabase/prefer-with-dynamic-fn-redefs  4
                                 :metabase/t2-query-namespace             2
-                                :metabase/unsafe-app-db-query            1
                                 :missing-docstring                       2
                                 :private-call                            1
                                 :redundant-ignore                        1

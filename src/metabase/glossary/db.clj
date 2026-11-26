@@ -3,9 +3,9 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.glossary.schema :as glossary.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -16,7 +16,7 @@
   [search :- [:maybe :string]]
   (t2/select :model/Glossary
              (cond-> {:order-by [[:term :asc]]}
-               search (assoc :where (let [pattern (h2x/like-substring search)]
+               search (assoc :where (let [pattern (funnysql.util/like-substring search)]
                                       [:or
                                        [:like [:lower :term] pattern]
                                        [:like [:lower :definition] pattern]])))))

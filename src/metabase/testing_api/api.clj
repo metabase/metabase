@@ -47,7 +47,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
@@ -135,8 +136,9 @@
     ;; queried successfully until it is recompiled. Our workaround is to recompile ALL views immediately after we
     ;; restore the app DB from a snapshot. Bug report is here: https://github.com/h2database/h2database/issues/3942
     (doseq [table-name
-            (->> (jdbc/query {:connection conn} ["SELECT table_name FROM information_schema.views WHERE table_schema=?" "PUBLIC"])
-                 (map :table_name))]
+            (map :table_name (t2/query conn {:select [:table_name]
+                                             :from   [:information_schema.views]
+                                             :where  [:= :table_schema "PUBLIC"]}))]
       ;; parameterization doesn't work with view names. If someone maliciously named a table, this is bad. On the
       ;; other hand, this is not running in prod and you already had to have enough access to maliciously name the
       ;; table, so this is probably safe enough.

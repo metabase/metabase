@@ -25,9 +25,9 @@
                                       ;; required alongside :card_schema for the Card schema upgrade
                                       :c.type :c.database_id :c.result_metadata
                                       :c.dimensions :c.dimension_mappings]
-                             :from   [[:sandboxes :s]]
-                             :join   [[:permissions_group :pg] [:= :s.group_id :pg.id]
-                                      [:report_card :c] [:= :c.id :s.card_id]]
+                             :from   [[(t2/table-name :model/Sandbox) :s]]
+                             :join   [[(t2/table-name :model/PermissionsGroup) :pg] [:= :s.group_id :pg.id]
+                                      [(t2/table-name :model/Card) :c] [:= :c.id :s.card_id]]
                              :where  [:= :pg.id (u/the-id group)]})
         {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata
                                             (:dataset_query card)

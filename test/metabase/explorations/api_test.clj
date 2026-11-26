@@ -27,6 +27,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.users.models.user :as user]
+   [metabase.util :as u]
    [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
@@ -84,12 +85,12 @@
                                             :database_id sample-db-id))]
     (if (seq metric-ids)
       (try
-        (t2/query {:update :report_card
+        (t2/query {:update (t2/table-name :model/Card)
                    :set    {:archived true}
                    :where  [:in :id metric-ids]})
         (thunk)
         (finally
-          (t2/query {:update :report_card
+          (t2/query {:update (t2/table-name :model/Card)
                      :set    {:archived false}
                      :where  [:in :id metric-ids]})))
       (thunk))))
@@ -1255,9 +1256,9 @@
         dataset-query (t2/select-one-fn :dataset_query :model/Card :id card-id)
         creator-id    (t2/select-one-fn :creator_id :model/Exploration
                                         {:select [:e.creator_id]
-                                         :from   [[:exploration :e]]
-                                         :join   [[:exploration_thread :t] [:= :t.exploration_id :e.id]
-                                                  [:exploration_query :q]  [:= :q.exploration_thread_id :t.id]]
+                                         :from   [[(t2/table-name :model/Exploration) :e]]
+                                         :join   [[(t2/table-name :model/ExplorationThread) :t] [:= :t.exploration_id :e.id]
+                                                  [(t2/table-name :model/ExplorationQuery) :q]  [:= :q.exploration_thread_id :t.id]]
                                          :where  [:= :q.id query-id]})
         sr-id         (first (t2/insert-returning-pks!
                               :model/StoredResult
@@ -1861,7 +1862,7 @@
             (store-fake-result! qid qp-out)
             (mark-done! qid)
             (let [doc (t2/select-one :model/Document :id doc-id)]
-              (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
+              (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-queries (fn [_] nil)
                                           queries.card/create-cards!                        (fn [& _] (throw (ex-info "boom" {})))]
                 (is (thrown? Throwable
                              (eqr/create-ephemeral-card-for-exploration-queries!
@@ -1899,7 +1900,7 @@
             (let [src-sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
                                               :exploration_query_id qid)
                   doc       (t2/select-one :model/Document :id doc-id)
-                  result    (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+                  result    (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-queries (fn [_] nil)]
                               (eqr/create-ephemeral-card-for-exploration-queries!
                                [qid] doc-id (:collection_id doc) u
                                {:display "bar" :visualization-settings {}}))
@@ -2815,11 +2816,11 @@
                                            {:page_id         (:page-id src)
                                             :explore_filters [new-f]})
               new-block (->> (t2/select :model/ExplorationBlock
-                                        {:join  [[:exploration_thread :t]
-                                                 [:= :t.id :exploration_block.exploration_thread_id]]
+                                        {:join  [[(t2/table-name :model/ExplorationThread) :t]
+                                                 [:= :t.id (u/qualified-key (t2/table-name :model/ExplorationBlock) :exploration_thread_id)]]
                                          :where [:and
                                                  [:= :t.exploration_id (:exploration-id src)]
-                                                 [:not= :exploration_block.exploration_thread_id (:thread-id src)]]})
+                                                 [:not= (u/qualified-key (t2/table-name :model/ExplorationBlock) :exploration_thread_id) (:thread-id src)]]})
                              first)
               filters (:explore_filters (first (:metrics new-block)))]
           (is (= [(assoc prior :field_ref [:field (mt/id :venues :name) nil])
@@ -3108,7 +3109,7 @@
   create hold no data perms, and `create-cards!` runs the same check — the existing single-query
   test stubs it for the same reason. Tests that are *about* the permission check don't use this."
   [& args]
-  (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
+  (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-queries (fn [_] nil)]
     (apply eqr/create-ephemeral-card-for-exploration-queries! args)))
 
 (deftest composite-snapshot-carries-a-data-access-token-test
@@ -3208,8 +3209,8 @@
             ;; "checked them all" are distinguishable.
             (t2/update! :model/ExplorationQuery :id (second query-ids) {:dataset_query other-q})
             (let [checked (atom [])]
-              (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query
-                                          (fn [q] (swap! checked conj q) nil)]
+              (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-queries
+                                          (fn [qs] (swap! checked into qs) nil)]
                 (eqr/create-ephemeral-card-for-exploration-queries!
                  query-ids document-id (:collection_id doc) u
                  {:display "bar" :visualization-settings {}}))

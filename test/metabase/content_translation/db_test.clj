@@ -15,3 +15,14 @@
   (testing "a non-string locale is rejected before it reaches the query"
     (is (thrown? clojure.lang.ExceptionInfo
                  (content-translation.db/translations-for-locale {:raw "(SELECT 1)"})))))
+
+(deftest insert-translations-partitions-rows-test
+  (testing "insert-translations! inserts every row and returns their number when the rows span several partitions"
+    (mt/with-model-cleanup [:model/ContentTranslation]
+      (mt/with-partition-size 2
+        (let [rows (mapv (fn [i] {:locale "de" :msgid (str "partitioned " i) :msgstr (str "aufgeteilt " i)}) (range 5))]
+          (is (= 5 (content-translation.db/insert-translations! rows)))
+          (is (= (set (map :msgid rows))
+                 (into #{}
+                       (comp (map :msgid) (filter #(re-find #"^partitioned " %)))
+                       (content-translation.db/translations-for-locale "de")))))))))

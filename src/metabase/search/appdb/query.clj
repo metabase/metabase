@@ -6,7 +6,8 @@
    [metabase.models.interface :as mi]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.filter :as search.filter]
-   [metabase.search.permissions :as search.permissions]))
+   [metabase.search.permissions :as search.permissions]
+   [toucan2.core :as t2]))
 
 (defn add-table-where-clauses
   "Add a `WHERE` clause to the query to only return tables the current user has access to."
@@ -43,7 +44,7 @@
                                    [:in :search_index.model excluded-models]
                                    %)]
     (cond-> qry
-      true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
+      true (sql.helpers/left-join [(t2/table-name :model/Collection) :collection] [:= collection-id-col :collection.id])
       true (sql.helpers/where (or-null permitted-clause))
       personal-clause (sql.helpers/where (or-null personal-clause)))))
 
