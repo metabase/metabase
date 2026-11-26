@@ -66,11 +66,25 @@
             "overrides the 4-arg selectTriggerToAcquire")))))
 
 (deftest ensure-delegate-loadable!-throws-when-the-compiled-class-will-not-load-test
-  (testing "a compile that leaves the class unloadable throws, so install-delegate! falls back"
+  (testing "a compile that leaves the class unloadable throws"
     (mt/with-dynamic-fn-redefs [affinity/class-loadable?   (constantly false)
                                 affinity/compile-delegate! (fn [_ns-sym])]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"QueueAffinityPostgresDelegate still cannot be loaded"
                             (affinity/ensure-delegate-loadable! :postgres))))))
+
+(deftest install-delegate!-falls-back-when-the-compiled-class-will-not-load-test
+  (testing "install-delegate! catches that throw and gives Quartz the plain delegate"
+    (let [property "org.quartz.jobStore.driverDelegateClass"
+          saved    (System/getProperty property)]
+      (try
+        (mt/with-dynamic-fn-redefs [affinity/class-loadable?   (constantly false)
+                                    affinity/compile-delegate! (fn [_ns-sym])]
+          (is (= "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate" (affinity/install-delegate! :postgres)))
+          (is (= "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate" (System/getProperty property))))
+        (finally
+          (if saved
+            (System/setProperty property saved)
+            (System/clearProperty property)))))))
 
 ;;; Integration: run the real `selectTriggerToAcquire` re-implementation against the app DB (whatever
 ;;; type CI uses), proving the affinity predicate actually filters rows — and never touches non-queue

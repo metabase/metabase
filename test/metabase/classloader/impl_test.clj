@@ -46,13 +46,16 @@
     ;; A fixed, shared dir let a stale `__init.class` from another checkout stop the compile, so the gen-class file
     ;; was never written again.
     (let [compile!  #(classloader/compile-to-temp-dir! "mb-classloader-test" 'metabase.classloader.gen-class-fixture)
+          load!     #(Class/forName "metabase.classloader.GenClassFixture" false (classloader/the-classloader))
+          ;; after an earlier run in this JVM, that run's `__init.class` is on the classpath, so `compile` writes nothing
+          loaded?   (try (load!) true (catch ClassNotFoundException _ false))
           tmp       (io/file (System/getProperty "java.io.tmpdir"))
           before    (set (.list tmp))
           ^File dir (compile!)]
       (is (= tmp (.getParentFile dir)))
       (is (not (contains? before (.getName dir))))
-      (is (.exists (io/file dir "metabase" "classloader" "GenClassFixture.class")))
-      (is (= "metabase.classloader.GenClassFixture"
-             (.getName (Class/forName "metabase.classloader.GenClassFixture" false (classloader/the-classloader)))))
-      (testing "and the next compile gets a dir of its own"
+      (when-not loaded?
+        (is (.exists (io/file dir "metabase" "classloader" "GenClassFixture.class"))))
+      (is (= "metabase.classloader.GenClassFixture" (.getName ^Class (load!))))
+      (testing "and the next compile gets a dir of its own, not a fixed one"
         (is (not= dir (compile!)))))))
