@@ -15,6 +15,7 @@ select
     coalesce(u.display_name, b.display_name) as display_name,
     coalesce(u.entity_type, b.entity_type) as entity_type,
     b.estimated_row_count,
+    coalesce(u.event_settings, b.event_settings) as event_settings,
     coalesce(u.field_order, b.field_order) as field_order,
     b.id,
     b.initial_sync_status,
