@@ -58,6 +58,7 @@ driver:
       placeholder: 100
       visible-if:
         advanced-options: true
+    - json-unfolding
     - merge:
         - additional-options
         - placeholder: "connection_timeout=1000&socket_timeout=300000"

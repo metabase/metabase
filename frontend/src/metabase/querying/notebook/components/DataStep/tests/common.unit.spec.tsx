@@ -445,6 +445,15 @@ describe("DataStep", () => {
       }
     };
 
+    it("should list metrics in Our analytics (metabase#66210)", async () => {
+      await setupCardPicking();
+
+      await userEvent.click(await screen.findByText("Our analytics"));
+
+      expect(await screen.findByText(ROOT_METRIC.name)).toBeVisible();
+      expect(screen.getByText(ROOT_QUESTION.name)).toBeVisible();
+    });
+
     it.each([ROOT_QUESTION, ROOT_MODEL, ROOT_METRIC])(
       "should use the $type picked from the search of Our analytics as the source",
       async (card) => {

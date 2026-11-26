@@ -178,10 +178,11 @@
                     :tool_call_id search-id
                     :content      "<result>orders</result>"}
                    (second msgs))))
-          (testing "errored tool part replays its error text"
+          (testing "errored tool part replays its error text, marked as a failure"
             (is (= {:role         :tool
                     :tool_call_id failed-id
-                    :content      "it broke"}
+                    :content      "it broke"
+                    :is_error     true}
                    (last msgs))))
           (testing "order is preserved — call/result pairs stay adjacent"
             (is (= [search-id search-id query-id query-id failed-id failed-id]

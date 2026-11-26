@@ -53,6 +53,7 @@ function createSummary(
     user_message_count: 0,
     assistant_message_count: 0,
     total_tokens: 0,
+    uncached_tokens: 0,
     cache_read_tokens: 0,
     last_message_at: null,
     profile_id: null,
@@ -76,6 +77,7 @@ const BOBBY_CONVERSATION = createSummary({
   ip_address: "10.0.0.1",
   message_count: 4,
   total_tokens: 12345,
+  uncached_tokens: 5556,
   cache_read_tokens: 6789,
   user: {
     id: BOBBY.id,
@@ -200,8 +202,9 @@ describe("ConversationsPage", () => {
       const table = (setup(), await findTable());
 
       expect(within(table).getByText("4")).toBeInTheDocument();
-      expect(within(table).getByText("12,345")).toBeInTheDocument();
+      expect(within(table).getByText("5,556")).toBeInTheDocument();
       expect(within(table).getByText("6,789")).toBeInTheDocument();
+      expect(within(table).queryByText("12,345")).not.toBeInTheDocument();
     });
 
     it("shows an empty state when no conversations match", async () => {
@@ -249,7 +252,7 @@ describe("ConversationsPage", () => {
       { headerLabel: /^Profile\b/, sortBy: "profile_id" },
       { headerLabel: /^Date\b/, sortBy: "created_at" },
       { headerLabel: /^Messages\b/, sortBy: "message_count" },
-      { headerLabel: /^Tokens\b/, sortBy: "total_tokens" },
+      { headerLabel: /^Tokens\b/, sortBy: "uncached_tokens" },
       { headerLabel: /^Cached tokens\b/, sortBy: "cache_read_tokens" },
       { headerLabel: /^IP\b/, sortBy: "ip_address" },
     ])("sorts by $sortBy", async ({ headerLabel, sortBy }) => {
