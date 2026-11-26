@@ -514,7 +514,7 @@
     "test-unit": "bun run build:cljs && bun run test-unit-keep-cljs",
     "test-unit-keep-cljs": "jest --ignoreProjects ci-scripts --runner ./frontend/test/harness/jest-runner.ts",
     "test-unit-agent": "bun run build:cljs && bun run test-unit-agent-keep-cljs",
-    "test-unit-agent-keep-cljs": "jest --ignoreProjects ci-scripts --reporters=./frontend/test/harness/jest-agent-reporter.ts --runner ./frontend/test/harness/jest-runner.ts",
+    "test-unit-agent-keep-cljs": "jest --silent --ignoreProjects ci-scripts --reporters=./frontend/test/harness/jest-agent-reporter.ts --runner ./frontend/test/harness/jest-runner.ts",
     "test-unit-jest": "bun run build:cljs && bun run test-unit-jest-keep-cljs",
     "test-unit-jest-keep-cljs": "jest --ignoreProjects ci-scripts",
     "test-unit-watch": "bun run test-unit --watch",
