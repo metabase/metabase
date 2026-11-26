@@ -1109,6 +1109,29 @@ class ShapeComparator {
     const problems: ShapeIssue[] = [];
     const covers = (domain: { keyType: ts.Type }, keys: { keyType: ts.Type }) =>
       indexAccepts(this.checker, keys.keyType, domain.keyType);
+    const compareValues = (source: ShapeIndex, target: ts.IndexInfo) => {
+      const siblings = siblingShapes.flatMap((sibling) =>
+        sibling.indexes.flatMap((index) =>
+          covers(index, target) || covers(target, index)
+            ? sentVariants(this.checker, index.shape)
+            : [],
+        ),
+      );
+      return this.visit(
+        source.shape,
+        target.type,
+        {
+          path: `${path}[key]`,
+          declaration: source.declaration,
+          sentDeclaration: source.declaration,
+          targetDeclaration: target.declaration,
+          depth: depth + 1,
+        },
+        siblings.length
+          ? [...sentVariants(this.checker, source.shape), ...siblings]
+          : undefined,
+      );
+    };
     for (const index of shape.indexes) {
       const accepting = targetIndexes.filter((target) => covers(target, index));
       const indexPath = `${path}[key]`;
@@ -1127,15 +1150,7 @@ class ShapeComparator {
               )
             : [];
         for (const candidate of [...accepting, ...narrower]) {
-          problems.push(
-            ...this.visit(index.shape, candidate.type, {
-              path: indexPath,
-              declaration: index.declaration,
-              sentDeclaration: index.declaration,
-              targetDeclaration: candidate.declaration,
-              depth: depth + 1,
-            }),
-          );
+          problems.push(...compareValues(index, candidate));
         }
       } else if (this.direction.from === "frontend") {
         problems.push(
@@ -1171,17 +1186,20 @@ class ShapeComparator {
           );
           continue;
         }
-        sentIndexes.forEach((candidate) =>
-          problems.push(
-            ...this.visit(candidate.shape, index.type, {
-              sentDeclaration: candidate.declaration,
-              targetDeclaration: index.declaration,
-              path: indexPath,
-              declaration: index.declaration,
-              depth: depth + 1,
-            }),
-          ),
-        );
+        // The source loop already compared equally specific indexes. For this narrower target,
+        // compare only the most specific source indexes that cover it.
+        sentIndexes
+          .filter(
+            (candidate) =>
+              !covers(index, candidate) &&
+              !sentIndexes.some(
+                (other) =>
+                  covers(candidate, other) && !covers(other, candidate),
+              ),
+          )
+          .forEach((candidate) =>
+            problems.push(...compareValues(candidate, index)),
+          );
       }
     }
     return problems;

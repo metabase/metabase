@@ -182,6 +182,37 @@ function omittedByJson(type: ts.Type): boolean {
   );
 }
 
+function isGlobalThis(checker: ts.TypeChecker, expression: ts.Expression) {
+  const receiver = unwrap(expression);
+  return (
+    ts.isIdentifier(receiver) &&
+    receiver.text === "globalThis" &&
+    checker.getSymbolAtLocation(receiver)?.declarations?.length === 0
+  );
+}
+
+function isGlobalValue(
+  checker: ts.TypeChecker,
+  expression: ts.Expression,
+  name: string,
+): boolean {
+  if (
+    !ts.isIdentifier(expression) &&
+    !(
+      ts.isPropertyAccessExpression(expression) &&
+      isGlobalThis(checker, expression.expression)
+    )
+  ) {
+    return false;
+  }
+  const symbol = checker.getSymbolAtLocation(expression);
+  return (
+    symbol?.name === name &&
+    symbol.valueDeclaration !== undefined &&
+    isLibDeclaration(symbol.valueDeclaration)
+  );
+}
+
 // Object-literal properties often widen to number even when their initializer has a literal type.
 function numberInitializer(
   checker: ts.TypeChecker,
@@ -207,6 +238,15 @@ function numberInitializer(
   const symbol = checker.getSymbolAtLocation(
     ts.isPropertyAccessExpression(expression) ? expression.name : expression,
   );
+  if (ts.isPropertyAccessExpression(expression)) {
+    const receiver = unwrap(expression.expression);
+    if (
+      !isGlobalValue(checker, receiver, "Number") &&
+      !isGlobalThis(checker, receiver)
+    ) {
+      return undefined;
+    }
+  }
   return symbol?.valueDeclaration &&
     isLibDeclaration(symbol.valueDeclaration) &&
     ["NaN", "Infinity", "POSITIVE_INFINITY", "NEGATIVE_INFINITY"].includes(
@@ -214,6 +254,36 @@ function numberInitializer(
     )
     ? { kind: "null", from: type }
     : undefined;
+}
+
+function jsonDate(
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  result: Shape,
+  expression: ts.Expression | undefined,
+): Shape {
+  const nullDate: Shape = { kind: "null", from: type };
+  if (
+    expression &&
+    ts.isNewExpression(expression) &&
+    expression.arguments?.length === 1 &&
+    isGlobalValue(checker, unwrap(expression.expression), "Date")
+  ) {
+    const [argument] = expression.arguments;
+    if (argument) {
+      const timestamp = numberInitializer(checker, argument);
+      if (timestamp?.kind === "null") {
+        return nullDate;
+      }
+      if (timestamp?.kind === "type" && timestamp.type.isNumberLiteral()) {
+        return Number.isNaN(new Date(timestamp.type.value).getTime())
+          ? nullDate
+          : result;
+      }
+    }
+  }
+  // Date.prototype.toJSON returns null for an invalid date, despite its lib.d.ts signature.
+  return jsonUnion([result, nullDate]);
 }
 
 export function jsonField(
@@ -466,13 +536,12 @@ function buildShape(
       checker.getReturnTypeOfSignature(signature),
       walk,
     );
-    // Date.prototype.toJSON returns null for an invalid date, despite its lib.d.ts signature.
     return toJson.declarations.some(
       (declaration) =>
         ts.isInterfaceDeclaration(declaration.parent) &&
         declaration.parent.name.text === "Date",
     )
-      ? jsonUnion([result, { kind: "null", from: type }])
+      ? jsonDate(checker, type, result, expression)
       : result;
   }
   if (omittedByJson(type)) {

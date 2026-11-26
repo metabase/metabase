@@ -699,6 +699,12 @@ function checkPathParameters(
   });
 }
 
+function hasUnrestrictedStringText(type: ts.Type): boolean {
+  return type.isIntersection()
+    ? type.types.some(hasUnrestrictedStringText)
+    : (type.flags & ts.TypeFlags.String) !== 0;
+}
+
 function pathParameterVerdict(
   context: CheckContext,
   location: string,
@@ -728,7 +734,7 @@ function pathParameterVerdict(
       (value) =>
         value.kind === "type" &&
         unionMembers(context.checker, value.type).some(
-          (part) => (part.flags & ts.TypeFlags.String) !== 0,
+          hasUnrestrictedStringText,
         ),
     )
   ) {

@@ -837,6 +837,23 @@ describe("modelClientRequest against the real API client", () => {
       projected({ method: "POST", body: [{ amount: ["null", "number"] }] }),
     ],
     [
+      "should model non-finite numbers only on the global Number constructor",
+      {
+        endpoint:
+          '{ query: (numberLike: Pick<typeof globalThis, "Number">) => ({ method: "POST", url: "/api/x", body: { caller: numberLike.Number.POSITIVE_INFINITY, global: globalThis.Number.POSITIVE_INFINITY } }) }',
+        argument:
+          "{ Number: Object.assign(Number.bind(null), { POSITIVE_INFINITY: 7 }) }",
+      },
+      sentRequest({
+        method: "POST",
+        body: { kind: "json", value: { caller: 7, global: null } },
+      }),
+      projected({
+        method: "POST",
+        body: [{ caller: ["null", "number"], global: ["null"] }],
+      }),
+    ],
+    [
       "should send an undeclared key from a spread rest binding",
       {
         declarations: "const input = { id: 1, unexpected: 2 };",
@@ -859,6 +876,35 @@ describe("modelClientRequest against the real API client", () => {
         body: { kind: "json", value: { when: "1970-01-01T00:00:00.000Z" } },
       }),
       projected({ method: "POST", body: [{ when: ["null", "string"] }] }),
+    ],
+    [
+      "should model fresh numeric Date constructions by their validity",
+      {
+        endpoint:
+          '{ query: (_: void) => ({ method: "POST", url: "/api/x", body: { valid: new Date(0), outOfRange: new Date(8640000000000001), notANumber: new Date(NaN) } }) }',
+        argument: "undefined",
+      },
+      sentRequest({
+        method: "POST",
+        body: {
+          kind: "json",
+          value: {
+            valid: "1970-01-01T00:00:00.000Z",
+            outOfRange: null,
+            notANumber: null,
+          },
+        },
+      }),
+      projected({
+        method: "POST",
+        body: [
+          {
+            valid: ["string"],
+            outOfRange: ["null"],
+            notANumber: ["null"],
+          },
+        ],
+      }),
     ],
     [
       "should keep the enumerable indices of a typed array during JSON conversion",

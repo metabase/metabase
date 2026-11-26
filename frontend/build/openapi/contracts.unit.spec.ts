@@ -1248,6 +1248,22 @@ describe("request comparison rules", () => {
     });
     expect(resultFor(results, "request.path.0")?.status).toBe("mismatch");
   });
+
+  it.each(["string", 'string & { readonly brand: "Name" }'])(
+    "should leave a path parameter of type %s unverified when its text is unrestricted",
+    (argumentType) => {
+      const results = check({
+        frontend,
+        backend: operation({
+          url: "/api/user/{name}",
+          path: "path: {name: string}",
+        }),
+        endpoint: request(argumentType, "name => `/api/user/${name}`"),
+      });
+      expect(resultFor(results, "request.path.0")?.status).toBe("unverified");
+    },
+  );
+
   it("should model a module-local FormData namesake as a plain object", () => {
     const results = check({
       frontend: frontend + " export {}; interface FormData { foo: string }",

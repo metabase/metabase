@@ -95,6 +95,23 @@ describe("type comparison", () => {
     ).toBe("compatible");
   });
 
+  it.each([
+    ["{ a?: number; b?: string }", "compatible"],
+    ["{ a?: number; b?: string; missing?: number }", "mismatch"],
+    ["{ a?: number; b?: number }", "mismatch"],
+  ])(
+    "should track dictionary value fields across nested response branches for %s",
+    (row, status) => {
+      expect(
+        compare({
+          frontend: `{ rows: Record<string, ${row}> }`,
+          backend:
+            "{ rows: Record<string, { a: number }> } | { rows: Record<string, { b: string }> }",
+        }).status,
+      ).toBe(status);
+    },
+  );
+
   it("should check response tuple rest fields", () => {
     expect(
       compare({
@@ -111,6 +128,16 @@ describe("type comparison", () => {
         backend: "{ [key: string]: string | number; [key: number]: number }",
       }).status,
     ).toBe("mismatch");
+  });
+
+  it("should compare numeric response values using the numeric source signature", () => {
+    expect(
+      compare({
+        frontend: "{ [key: number]: { id: number; label?: string } }",
+        backend:
+          "{ [key: string]: { id: number }; [key: number]: { id: number; label?: string } }",
+      }).status,
+    ).toBe("compatible");
   });
 
   it("should ignore unconsumed response fields throughout nested arrays", () => {
