@@ -1,11 +1,16 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  setupCollectionByIdEndpoint,
   setupLibraryEndpoints,
+  setupRecentViewsEndpoints,
+  setupSearchEndpoints,
   setupTablesBulkEndpoints,
   setupUserAcknowledgementEndpoints,
+  setupUserMetabotPermissionsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -21,9 +26,12 @@ import {
 } from "__support__/ui";
 import * as Analytics from "metabase/analytics";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { getDataStudioMetadataRoutes } from "metabase/data-studio/data-model/routes";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
+import { Palette } from "metabase/palette/components/Palette";
 import { Outlet, Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   Database,
@@ -35,6 +43,7 @@ import type {
   TableId,
 } from "metabase-types/api";
 import {
+  createMockCollection,
   createMockColumn,
   createMockDatabase,
   createMockField,
@@ -48,25 +57,27 @@ import {
 import {
   ORDERS,
   ORDERS_ID,
+  PEOPLE_ID,
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
   createOrdersIdField,
   createOrdersProductIdField,
   createOrdersQuantityField,
+  createOrdersSubtotalField,
   createOrdersTable,
   createOrdersTaxField,
+  createOrdersTotalField,
   createOrdersUserIdField,
   createPeopleIdField,
   createPeopleTable,
   createProductsCategoryField,
   createProductsIdField,
   createProductsTable,
+  createProductsTitleField,
   createReviewsIdField,
   createReviewsTable,
 } from "metabase-types/api/mocks/presets";
-
-import { DataModel } from "./DataModel";
 
 /**
  * Field section flows of the admin data model page and the data studio data
@@ -97,6 +108,14 @@ const JSON_NESTED_ID = 9002;
 const TEXT_ID = 9003;
 const MANY_DATA_TYPES_ID = 9000;
 
+const TOTAL_DESCRIPTION = "The total billed amount.";
+
+/** a table published into a collection that remote sync keeps read-only */
+const READ_ONLY_PUBLISHED_TABLE: Partial<Table> = {
+  can_write: false,
+  collection: createMockCollection({ name: "Synced library data" }),
+};
+
 function createInitialTables(): Table[] {
   return [
     createOrdersTable({
@@ -107,7 +126,9 @@ function createInitialTables(): Table[] {
         }),
         createOrdersUserIdField(),
         createOrdersProductIdField(),
+        createOrdersSubtotalField(),
         createOrdersTaxField(),
+        createOrdersTotalField({ description: TOTAL_DESCRIPTION }),
         createOrdersQuantityField({ has_field_values: "list" }),
       ],
     }),
@@ -124,6 +145,7 @@ function createInitialTables(): Table[] {
           description:
             "The numerical product number. Only used internally. All external communication should use the title.",
         }),
+        createProductsTitleField(),
         createProductsCategoryField(),
       ],
     }),
@@ -184,31 +206,78 @@ const COLUMN_VALUES: Partial<Record<FieldId, RowValue[]>> = {
   [ORDERS.TAX]: [2.07, 6.1, 2.9, 6.01, 7.03, 4.13],
   [ORDERS.QUANTITY]: [2, 3, 5],
   [ORDERS.PRODUCT_ID]: [14, 123, 105],
+  [ORDERS.TOTAL]: [39.72, 117.03, 49.21, 115.23, 134.91],
+  [PRODUCTS.CATEGORY]: ["Doohickey", "Gadget", "Widget"],
 };
 
 interface Backend {
   getField: (id: FieldId) => Field;
 }
 
+interface BackendOpts {
+  fieldPatch?: Record<FieldId, Partial<Field>>;
+  tablePatch?: Record<TableId, Partial<Table>>;
+  /** the preview queries return no rows */
+  isEmpty?: boolean;
+}
+
+/**
+ * The field positions that the backend computes for a field order. "smart"
+ * stands in for the backend heuristic (warehouse_schema_rest table_test
+ * `field-ordering-test`): the primary key, the other fields, then the foreign
+ * keys, each group in database order.
+ *
+ * `fieldsInDatabaseOrder` are the fields in the order the table defines them.
+ */
+function getFieldsInOrder(
+  fieldsInDatabaseOrder: Field[],
+  fieldOrder: Table["field_order"],
+) {
+  const fields = fieldsInDatabaseOrder;
+  switch (fieldOrder) {
+    case "alphabetical":
+      return _.sortBy(fields, (field) => field.name);
+    case "smart":
+      return _.sortBy(fields, (field) => {
+        if (field.semantic_type === "type/PK") {
+          return 0;
+        }
+        return field.semantic_type === "type/FK" ? 2 : 1;
+      });
+    case "custom":
+      return _.sortBy(fields, (field) => field.position);
+    default:
+      return fields;
+  }
+}
+
 /**
  * A fake backend for the data model pages. It answers data model requests
  * only when they carry the parameters of the pro-self-hosted edition, and it
- * keeps the fields that PUT /api/field/:id writes.
+ * keeps the fields that PUT /api/field/:id writes and the tables that
+ * PUT /api/table/:id writes.
  */
 function setupBackend({
   fieldPatch = {},
-}: { fieldPatch?: Record<FieldId, Partial<Field>> } = {}): Backend {
-  const tables = createInitialTables();
+  tablePatch = {},
+  isEmpty = false,
+}: BackendOpts = {}): Backend {
+  const tables = createInitialTables().map((table) => ({
+    ...table,
+    ...tablePatch[table.id],
+  }));
   const fields = new Map<FieldId, Field>();
   tables.forEach((table) =>
-    table.fields?.forEach((field) => {
+    table.fields?.forEach((field, index) => {
       fields.set(Number(field.id), {
         ...field,
+        position: index,
         ...fieldPatch[Number(field.id)],
       });
     }),
   );
 
+  // in database order: Map#set keeps the place of a key that is updated
   const getTableFields = (tableId: TableId) =>
     Array.from(fields.values()).filter((field) => field.table_id === tableId);
   const getTable = (tableId: TableId): Table => {
@@ -224,6 +293,22 @@ function setupBackend({
       throw new Error(`Unknown field ${id}`);
     }
     return field;
+  };
+  const updateTable = (tableId: TableId, body: Partial<Table>) => {
+    const index = tables.findIndex((table) => table.id === tableId);
+    const table = { ...tables[index], ...body };
+    // the backend keeps visibility_type in sync with data_layer
+    if (body.data_layer === "hidden") {
+      table.visibility_type = "hidden";
+    }
+    tables[index] = table;
+    if (body.field_order != null) {
+      getFieldsInOrder(getTableFields(tableId), body.field_order).forEach(
+        (field, position) =>
+          fields.set(Number(field.id), { ...field, position }),
+      );
+    }
+    return getTable(tableId);
   };
 
   const database: Database = createMockDatabase({
@@ -282,6 +367,11 @@ function setupBackend({
       response: [],
       name: `table-${table.id}-fks`,
     });
+    fetchMock.put(
+      `path:/api/table/${table.id}`,
+      (call) => updateTable(table.id, JSON.parse(String(call.options.body))),
+      { name: `table-${table.id}-put` },
+    );
   });
 
   fields.forEach((_field, id) => {
@@ -345,14 +435,14 @@ function setupBackend({
           effective_type: field.effective_type,
           semantic_type: field.semantic_type,
           visibility_type: field.visibility_type,
+          description: field.description,
           source: "fields",
           field_ref: ["field", Number(field.id), null],
         }),
       );
-      const rowCount = Math.max(
-        0,
-        ...fieldIds.map((id) => COLUMN_VALUES[id]?.length ?? 0),
-      );
+      const rowCount = isEmpty
+        ? 0
+        : Math.max(0, ...fieldIds.map((id) => COLUMN_VALUES[id]?.length ?? 0));
       const rowsInPkOrder = Array.from({ length: rowCount }, (_, index) =>
         fieldIds.map((id) => COLUMN_VALUES[id]?.[index] ?? null),
       );
@@ -371,6 +461,25 @@ function setupBackend({
   );
 
   return { getField };
+}
+
+function setupRootCollectionEndpoint() {
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection({ id: "root", can_write: true })],
+  });
+}
+
+function setupCommandPaletteEndpoints() {
+  setupSearchEndpoints([]);
+  setupRecentViewsEndpoints([]);
+  setupUserMetabotPermissionsEndpoint();
+  setupRootCollectionEndpoint();
+  // the palette lists databases without the data model parameters
+  fetchMock.get(
+    "path:/api/database",
+    { data: [], total: 0 },
+    { name: "palette-database-list" },
+  );
 }
 
 function hasCustomMapping(field: Field) {
@@ -401,15 +510,26 @@ function getQueriedFieldIds(body: unknown): FieldId[] {
   return [];
 }
 
-interface SetupOpts {
+interface SetupOpts extends BackendOpts {
   area: Area;
   tableId: TableId;
-  fieldId: FieldId;
-  fieldPatch?: Record<FieldId, Partial<Field>>;
+  /** without a field, the data studio opens the table on `tab` */
+  fieldId?: FieldId;
+  tab?: DataStudioTableMetadataTab;
+  isRemoteSyncReadOnly?: boolean;
+  withCommandPalette?: boolean;
 }
 
-async function setup({ area, tableId, fieldId, fieldPatch }: SetupOpts) {
-  const backend = setupBackend({ fieldPatch });
+async function setup({
+  area,
+  tableId,
+  fieldId,
+  tab = "field",
+  isRemoteSyncReadOnly = false,
+  withCommandPalette = false,
+  ...backendOpts
+}: SetupOpts) {
+  const backend = setupBackend(backendOpts);
   setupTablesBulkEndpoints();
   setupUsersEndpoints([createMockUserListResult()]);
   setupUserAcknowledgementEndpoints({
@@ -425,15 +545,27 @@ async function setup({ area, tableId, fieldId, fieldPatch }: SetupOpts) {
       "token-features": createMockTokenFeatures({
         advanced_permissions: true,
         library: true,
+        remote_sync: isRemoteSyncReadOnly,
+      }),
+      ...(isRemoteSyncReadOnly && {
+        "remote-sync-enabled": true,
+        "remote-sync-type": "read-only",
       }),
     }),
   });
   setupEnterprisePlugins();
+  if (withCommandPalette) {
+    setupCommandPaletteEndpoints();
+  }
+  if (isRemoteSyncReadOnly) {
+    setupRootCollectionEndpoint();
+  }
 
   const layout = (
     <>
       <Outlet />
       <UndoListing />
+      {withCommandPalette && <Palette />}
     </>
   );
 
@@ -459,19 +591,7 @@ async function setup({ area, tableId, fieldId, fieldPatch }: SetupOpts) {
     ) : (
       <Route element={layout}>
         <Route path="data-studio/data">
-          <Route path="database/:databaseId" element={<DataModel />} />
-          <Route
-            path="database/:databaseId/schema/:schemaId"
-            element={<DataModel />}
-          />
-          <Route
-            path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
-            element={<DataModel />}
-          />
-          <Route
-            path="database/:databaseId/schema/:schemaId/table/:tableId/:tab/:fieldId"
-            element={<DataModel />}
-          />
+          {getDataStudioMetadataRoutes(Outlet)}
         </Route>
       </Route>
     );
@@ -488,11 +608,16 @@ async function setup({ area, tableId, fieldId, fieldPatch }: SetupOpts) {
     initialRoute:
       area === "admin"
         ? Urls.dataModel(params)
-        : Urls.dataStudioData({ ...params, tab: "field" }),
+        : Urls.dataStudioData({ ...params, tab }),
     storeInitialState: state,
+    withKBar: withCommandPalette,
   });
 
-  expect(await findFieldSection()).toBeInTheDocument();
+  if (fieldId != null) {
+    expect(await findFieldSection()).toBeInTheDocument();
+  } else {
+    expect(await screen.findByTestId("table-section")).toBeInTheDocument();
+  }
   await waitForLoaderToBeRemoved();
 
   return { backend, trackSimpleEvent };
@@ -949,6 +1074,477 @@ describe.each(AREAS)("data model field section > %s", (area) => {
       ).not.toBeInTheDocument();
     });
   });
+
+  describe("read-only remote sync", () => {
+    it("should show a published table that cannot be written", async () => {
+      await setup({
+        area,
+        tableId: ORDERS_ID,
+        tab: "details",
+        isRemoteSyncReadOnly: true,
+        tablePatch: {
+          [ORDERS_ID]: READ_ONLY_PUBLISHED_TABLE,
+          [PRODUCTS_ID]: READ_ONLY_PUBLISHED_TABLE,
+        },
+        fieldPatch: {
+          [ORDERS.PRODUCT_ID]: {
+            dimensions: [
+              createMockFieldDimension({
+                type: "external",
+                name: "Product ID",
+                human_readable_field_id: PRODUCTS.TITLE,
+              }),
+            ],
+          },
+        },
+      });
+      // the display values picker loads the database without the data model
+      // parameters, so this route only answers what the routes above do not
+      fetchMock.get(
+        `path:/api/database/${SAMPLE_DB_ID}`,
+        createMockDatabase({ id: SAMPLE_DB_ID, name: "Sample Database" }),
+        { name: "database-without-data-model-params" },
+      );
+
+      // table picker and table
+      expect(await findTablePickerItem("Orders")).toBeInTheDocument();
+      expect(await findTablePickerItem("Products")).toBeInTheDocument();
+      const tableNameInput = await findTableNameInput("Orders");
+      expect(tableNameInput).toHaveAttribute("readonly");
+      if (area === "data studio") {
+        await clickFieldsTab();
+      }
+
+      // field metadata, FK target and remapping
+      await clickTableSectionField("Product ID");
+      await waitFor(() =>
+        expect(getFieldNameInput()).toHaveValue("Product ID"),
+      );
+      await waitFor(() =>
+        expect(getFieldSemanticTypeFkTargetInput()).toHaveValue(
+          "Products → ID",
+        ),
+      );
+      expect(await findFieldDisplayValuesInput()).toHaveValue(
+        "Use foreign key",
+      );
+      await waitFor(() =>
+        expect(
+          within(getFieldSection()).getByPlaceholderText("Choose a field"),
+        ).toHaveValue("Title"),
+      );
+
+      // preview
+      await openPreview();
+      const preview = within(getPreviewSection());
+      expect(await preview.findByText("Product ID")).toBeInTheDocument();
+      expect(await preview.findByText("123")).toBeInTheDocument();
+      await userEvent.click(preview.getByLabelText("Detail"));
+      expect(await preview.findByText("Product ID")).toBeInTheDocument();
+      expect(await preview.findByText("14")).toBeInTheDocument();
+      expect(
+        preview.queryByText("Sorry, you don’t have permission to see that."),
+      ).not.toBeInTheDocument();
+
+      // field values, with the preview that stays open
+      await userEvent.click(await findTablePickerItem("Products"));
+      expect(await findTableNameInput("Products")).toBeInTheDocument();
+      if (area === "data studio") {
+        await clickFieldsTab();
+      }
+      await waitFor(() => clickTableSectionField("Category"));
+      await waitFor(() => expect(getFieldNameInput()).toHaveValue("Category"));
+      await userEvent.click(
+        within(getPreviewSection()).getByLabelText("Filtering"),
+      );
+      expect(
+        await within(getPreviewSection()).findByText("Doohickey"),
+      ).toBeInTheDocument();
+    });
+  });
+});
+
+describe("data studio data model page", () => {
+  const area: Area = "data studio";
+
+  beforeEach(() => {
+    // so the virtual lists render in the tests
+    mockGetBoundingClientRect();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  describe("preview section", () => {
+    it("should close the preview with Esc key only when no overlay is open", async () => {
+      await setup({
+        area,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.PRODUCT_ID,
+        withCommandPalette: true,
+      });
+
+      // close the preview with Esc key
+      expect(screen.queryByTestId("preview-section")).not.toBeInTheDocument();
+      await openPreview();
+      expect(getPreviewSection()).toBeInTheDocument();
+      await userEvent.keyboard("{Escape}");
+      expect(screen.queryByTestId("preview-section")).not.toBeInTheDocument();
+
+      // do not close the preview with Esc key while modal is open
+      await openPreview();
+      expect(getPreviewSection()).toBeInTheDocument();
+      await userEvent.click(
+        within(getFieldSection()).getByRole("button", { name: /Field values/ }),
+      );
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+      expect(getPreviewSection()).toBeInTheDocument();
+
+      // do not close the preview with Esc key while command palette is open
+      await userEvent.keyboard("[ControlLeft>]k[/ControlLeft]");
+      expect(await screen.findByTestId("command-palette")).toBeInTheDocument();
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(screen.queryByTestId("command-palette")).not.toBeInTheDocument(),
+      );
+      expect(getPreviewSection()).toBeInTheDocument();
+
+      // do not close the preview with Esc key while popover is open
+      await userEvent.click(getFieldSemanticTypeInput());
+      expect(await screen.findByRole("listbox")).toBeInTheDocument();
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(screen.queryByRole("listbox")).not.toBeInTheDocument(),
+      );
+      expect(getPreviewSection()).toBeInTheDocument();
+    });
+
+    it("should not auto-focus inputs in filtering preview", async () => {
+      await setup({ area, tableId: ORDERS_ID, fieldId: ORDERS.PRODUCT_ID });
+
+      await openPreview();
+      await userEvent.click(
+        within(getPreviewSection()).getByLabelText("Filtering"),
+      );
+      const idInput =
+        await within(getPreviewSection()).findByPlaceholderText("Enter an ID");
+      expect(idInput).toBeVisible();
+      expect(idInput).not.toHaveFocus();
+
+      await selectOption(getFieldFilteringInput(), "A list of all values");
+      const listSearchInput =
+        await within(getPreviewSection()).findByPlaceholderText(
+          "Search the list",
+        );
+      expect(listSearchInput).toBeVisible();
+      expect(listSearchInput).not.toHaveFocus();
+
+      await clickTableSectionField("Tax");
+      const minInput =
+        await within(getPreviewSection()).findByPlaceholderText("Min");
+      expect(minInput).toBeVisible();
+      expect(minInput).not.toHaveFocus();
+
+      await selectOption(getFieldFilteringInput(), "Search box");
+      const numberInput =
+        await within(getPreviewSection()).findByPlaceholderText(
+          "Enter a number",
+        );
+      expect(numberInput).toBeVisible();
+      expect(numberInput).not.toHaveFocus();
+    });
+
+    it("should show empty state when there is no data", async () => {
+      await setup({
+        area,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.TAX,
+        isEmpty: true,
+      });
+
+      await openPreview();
+      const preview = within(getPreviewSection());
+      expect(await preview.findByText("No data to show")).toBeInTheDocument();
+      expect(getDatasetSourceTableIds()).toEqual([ORDERS_ID]);
+
+      await userEvent.click(preview.getByLabelText("Detail"));
+      await waitFor(() => expect(getDatasetSourceTableIds()).toHaveLength(2));
+      expect(await preview.findByText("No data to show")).toBeInTheDocument();
+    });
+
+    it("should not crash when viewing filtering preview of a hidden table", async () => {
+      await setup({
+        area,
+        tableId: ORDERS_ID,
+        tab: "details",
+        tablePatch: { [ORDERS_ID]: { data_layer: "internal" } },
+      });
+
+      await selectOption(
+        within(getTableSection()).getByRole("textbox", {
+          name: "Visibility layer",
+        }),
+        "Hidden",
+      );
+      await waitFor(() =>
+        expect(getTablePutBodies(ORDERS_ID)).toEqual([
+          { data_layer: "hidden" },
+        ]),
+      );
+
+      await clickFieldsTab();
+      await clickTableSectionField("Product ID");
+      await waitFor(() =>
+        expect(getFieldNameInput()).toHaveValue("Product ID"),
+      );
+      await openPreview();
+      await userEvent.click(
+        within(getPreviewSection()).getByLabelText("Filtering"),
+      );
+      expect(
+        await within(getPreviewSection()).findByPlaceholderText("Enter an ID"),
+      ).toBeVisible();
+      expect(
+        screen.queryByText("Something’s gone wrong"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("table and field details", () => {
+    it("should allow you to close table and field details", async () => {
+      await setup({ area, tableId: ORDERS_ID, fieldId: ORDERS.PRODUCT_ID });
+
+      await openPreview();
+      expect(getPreviewSection()).toBeInTheDocument();
+
+      await userEvent.click(
+        within(screen.getByTestId("field-section-header")).getByRole("link", {
+          name: /close/,
+        }),
+      );
+      await waitFor(() =>
+        expect(screen.queryByTestId("field-section")).not.toBeInTheDocument(),
+      );
+      expect(screen.queryByTestId("preview-section")).not.toBeInTheDocument();
+      expect(getTableSection()).toBeInTheDocument();
+
+      await userEvent.click(
+        within(screen.getByTestId("table-section-header")).getByRole("link", {
+          name: /close/,
+        }),
+      );
+      await waitFor(() =>
+        expect(screen.queryByTestId("table-section")).not.toBeInTheDocument(),
+      );
+
+      // the preview opened state was cleared and does not re-appear
+      await userEvent.click(await findTablePickerItem("Orders"));
+      expect(await findTableNameInput("Orders")).toBeInTheDocument();
+      await clickFieldsTab();
+      await clickTableSectionField("Subtotal");
+      await waitFor(() => expect(getFieldNameInput()).toHaveValue("Subtotal"));
+      expect(screen.queryByTestId("preview-section")).not.toBeInTheDocument();
+      expect(getFieldSection()).toBeInTheDocument();
+      expect(getTableSection()).toBeInTheDocument();
+    });
+
+    it("should allow clearing a field description", async () => {
+      await setup({ area, tableId: ORDERS_ID });
+
+      const descriptionInput = getTableSectionFieldDescriptionInput("Total");
+      expect(descriptionInput).toHaveValue(TOTAL_DESCRIPTION);
+      await userEvent.clear(descriptionInput);
+      await userEvent.tab();
+
+      await waitFor(() =>
+        expect(getFieldPutBody(ORDERS.TOTAL)).toEqual({ description: null }),
+      );
+      await assertAndCloseToast("Description of Total updated");
+      expect(getTableSectionFieldDescriptionInput("Total")).toHaveValue("");
+      expect(getFieldPutCalls(ORDERS.TOTAL)).toHaveLength(1);
+
+      // the cleared description is what the backend returns afterwards
+      await userEvent.click(await findTablePickerItem("Products"));
+      expect(await findTableNameInput("Products")).toBeInTheDocument();
+      await userEvent.click(await findTablePickerItem("Orders"));
+      expect(await findTableNameInput("Orders")).toBeInTheDocument();
+      await clickFieldsTab();
+      await waitFor(() =>
+        expect(getTableSectionFieldDescriptionInput("Total")).toHaveValue(""),
+      );
+
+      // verify preview
+      await clickTableSectionField("Total");
+      await waitFor(() => expect(getFieldNameInput()).toHaveValue("Total"));
+      await openPreview();
+      const preview = within(getPreviewSection());
+      expect(await preview.findByText("117.03")).toBeInTheDocument();
+      expect(
+        preview.getAllByTestId("cell-data").map((cell) => cell.textContent),
+      ).toEqual(["Total", "39.72", "117.03", "49.21", "115.23", "134.91"]);
+      await userEvent.hover(
+        within(preview.getByTestId("header-cell")).getByText("Total"),
+      );
+      // the column info hovercard opens after a delay
+      const hovercard = await screen.findByRole(
+        "dialog",
+        {},
+        { timeout: 3000 },
+      );
+      expect(hovercard).toHaveTextContent("No description");
+      expect(hovercard).not.toHaveTextContent(TOTAL_DESCRIPTION);
+    });
+  });
+
+  describe("table actions menu", () => {
+    it.each([
+      {
+        item: "Re-sync schema",
+        route: "tables-sync-schema",
+        toast: "Sync triggered",
+      },
+      {
+        item: "Re-scan field values",
+        route: "tables-rescan-values",
+        toast: "Scan triggered",
+      },
+      {
+        item: "Discard cached field values",
+        route: "tables-discard-values",
+        toast: "Discard triggered",
+      },
+    ])(
+      "should trigger '$item' for the table",
+      async ({ item, route, toast }) => {
+        // not the first table, and an id that no database shares
+        await setup({ area, tableId: PEOPLE_ID, tab: "details" });
+
+        await userEvent.click(
+          within(getTableSection()).getByRole("button", {
+            name: "More actions",
+          }),
+        );
+        await userEvent.click(
+          await screen.findByRole("menuitem", { name: new RegExp(item) }),
+        );
+
+        await waitFor(() =>
+          expect(fetchMock.callHistory.calls(route)).toHaveLength(1),
+        );
+        expect(
+          JSON.parse(
+            String(fetchMock.callHistory.lastCall(route)?.options.body),
+          ),
+        ).toEqual({ table_ids: [PEOPLE_ID] });
+        await assertAndCloseToast(toast);
+      },
+    );
+  });
+
+  describe("sorting", () => {
+    it("should allow sorting fields as in the database, alphabetically, and smartly", async () => {
+      await setup({ area, tableId: ORDERS_ID });
+
+      await userEvent.click(
+        within(getTableSection()).getByRole("button", { name: /Sorting/ }),
+      );
+      expect(getSortOrderRadio("database")).toBeChecked();
+      expect(getSortableFieldNames()).toEqual([
+        "ID",
+        "User ID",
+        "Product ID",
+        "Subtotal",
+        "Tax",
+        "Total",
+        "Quantity",
+      ]);
+
+      await userEvent.click(
+        within(getSortOrderInput()).getByLabelText("Alphabetical order"),
+      );
+      await waitFor(() =>
+        expect(getTablePutBodies(ORDERS_ID)).toEqual([
+          { field_order: "alphabetical" },
+        ]),
+      );
+      await assertAndCloseToast("Field order updated");
+      expect(getSortOrderRadio("alphabetical")).toBeChecked();
+      await waitFor(() =>
+        expect(getSortableFieldNames()).toEqual([
+          "ID",
+          "Product ID",
+          "Quantity",
+          "Subtotal",
+          "Tax",
+          "Total",
+          "User ID",
+        ]),
+      );
+
+      await userEvent.click(
+        within(getSortOrderInput()).getByLabelText("Auto order"),
+      );
+      await waitFor(() =>
+        expect(getTablePutBodies(ORDERS_ID)).toEqual([
+          { field_order: "alphabetical" },
+          { field_order: "smart" },
+        ]),
+      );
+      await assertAndCloseToast("Field order updated");
+      expect(getSortOrderRadio("smart")).toBeChecked();
+      await waitFor(() =>
+        expect(getSortableFieldNames()).toEqual([
+          "ID",
+          "Subtotal",
+          "Tax",
+          "Total",
+          "Quantity",
+          "User ID",
+          "Product ID",
+        ]),
+      );
+    });
+
+    it("should allow switching from a custom order to a predefined order without a loading state (metabase#56482)", async () => {
+      await setup({
+        area,
+        tableId: ORDERS_ID,
+        tablePatch: { [ORDERS_ID]: { field_order: "custom" } },
+        fieldPatch: {
+          [ORDERS.USER_ID]: { position: 0 },
+          [ORDERS.ID]: { position: 1 },
+        },
+      });
+
+      await userEvent.click(
+        within(getTableSection()).getByRole("button", { name: /Sorting/ }),
+      );
+      expect(getSortOrderRadio("custom")).toBeChecked();
+      expect(getSortableFieldNames().slice(0, 2)).toEqual(["User ID", "ID"]);
+
+      await userEvent.click(
+        within(getSortOrderInput()).getByLabelText("Database order"),
+      );
+      await waitFor(() =>
+        expect(getTablePutBodies(ORDERS_ID)).toEqual([
+          { field_order: "database" },
+        ]),
+      );
+      await assertAndCloseToast("Field order updated");
+
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+      // the table section was not remounted, so it is still in sorting mode
+      expect(getSortOrderRadio("database")).toBeChecked();
+      await waitFor(() =>
+        expect(getSortableFieldNames().slice(0, 2)).toEqual(["ID", "User ID"]),
+      );
+    });
+  });
 });
 
 function getFieldPutCalls(fieldId: FieldId) {
@@ -1108,4 +1704,54 @@ async function findTableSectionFieldNameInput(name: string) {
 async function clickTableSectionField(name: string) {
   const field = within(getTableSection()).getByRole("listitem", { name });
   await userEvent.click(within(field).getByRole("img"));
+}
+
+function getTablePutBodies(tableId: TableId): unknown[] {
+  return fetchMock.callHistory
+    .calls(`table-${tableId}-put`)
+    .map((call) => JSON.parse(String(call.options.body)));
+}
+
+async function findTablePickerItem(name: string) {
+  return await waitFor(() => {
+    const items = screen
+      .getAllByTestId("tree-item")
+      .filter(
+        (item) =>
+          item.getAttribute("data-type") === "table" &&
+          item.textContent?.includes(name),
+      );
+    expect(items).toHaveLength(1);
+    return items[0];
+  });
+}
+
+async function findTableNameInput(name: string) {
+  return await waitFor(() => within(getTableSection()).getByDisplayValue(name));
+}
+
+async function clickFieldsTab() {
+  await userEvent.click(screen.getByRole("tab", { name: /Fields/ }));
+}
+
+function getTableSectionFieldDescriptionInput(name: string) {
+  return within(
+    within(getTableSection()).getByRole("listitem", { name }),
+  ).getByPlaceholderText("No description yet");
+}
+
+function getSortOrderInput() {
+  return within(getTableSection()).getByRole("radiogroup", {
+    name: "Column order",
+  });
+}
+
+function getSortOrderRadio(value: string) {
+  return within(getSortOrderInput()).getByDisplayValue(value);
+}
+
+function getSortableFieldNames() {
+  return within(getTableSection())
+    .getAllByRole("listitem")
+    .map((item) => item.getAttribute("aria-label"));
 }
