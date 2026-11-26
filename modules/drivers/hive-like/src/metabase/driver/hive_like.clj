@@ -95,7 +95,7 @@
     #"char.*"           :type/Text
     #"varchar.*"        :type/Text
     #"string.*"         :type/Text
-    #"binary*"          :type/*
+    #"binary*"          :type/Binary
     #"date"             :type/Date
     #"time"             :type/Time
     #"timestamp"        :type/DateTime

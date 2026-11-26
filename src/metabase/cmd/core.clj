@@ -229,6 +229,17 @@
   [path & options]
   (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load! path (get-parsed-options #'import options)))
 
+(defn ^:command ^:requires-init folder-import
+  {:doc "Load the serialized content in directory `path`, laid out as a remote sync repository is, creating or updating
+  each entity and deleting nothing."}
+  [path]
+  (call-enterprise 'metabase-enterprise.remote-sync.cmd/folder-import! path))
+
+(defn ^:command dbt-export
+  "Convert the metrics of a dbt project to serialized content that `folder-import` loads, as the EDN file at `path` says."
+  [path]
+  (call-enterprise 'metabase-enterprise.semantic-layer-import.cmd/dbt-export! path))
+
 (defn ^:command export
   {:doc      "Serialize Metabase instance into directory at `path`."
    :arg-spec [["-c" "--collection ID"            "Export only specified ID(s). Use commas to separate multiple IDs. Pass either PKs or entity IDs."

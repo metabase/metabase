@@ -126,7 +126,7 @@
 (defmethod sql-jdbc.sync/database-type->base-type :sqlserver
   [_ column-type]
   ({:bigint           :type/BigInteger
-    :binary           :type/*
+    :binary           :type/Binary
     :bit              :type/Boolean ; actually this is 1 / 0 instead of true / false ...
     :char             :type/Text
     :cursor           :type/*
@@ -139,7 +139,7 @@
     :geography        :type/*
     :geometry         :type/*
     :hierarchyid      :type/*
-    :image            :type/*
+    :image            :type/Binary
     :int              :type/Integer
     :money            :type/Decimal
     :nchar            :type/Text
@@ -157,7 +157,7 @@
     :timestamp        :type/* ; not a standard SQL timestamp, see https://msdn.microsoft.com/en-us/library/ms182776.aspx
     :tinyint          :type/Integer
     :uniqueidentifier :type/UUID
-    :varbinary        :type/*
+    :varbinary        :type/Binary
     :varchar          :type/Text
     :xml              :type/*
     ;; auto-incrementing integer (ie pk) field

@@ -1,0 +1,88 @@
+version: 2
+models:
+- name: parcels
+  description: One row per revision of a parcel record.
+  semantic_model:
+    enabled: true
+    name: parcels
+  agg_time_dimension: created_at
+  columns:
+  - name: depot_id
+    data_type: text
+    description: The depot that currently holds the parcel.
+    entity:
+      type: foreign
+      name: depot
+  - name: parcel_id
+    data_type: text
+    description: Unique identifier of the parcel.
+    entity:
+      type: primary
+      name: parcel
+  - name: revision
+    data_type: integer
+    description: The revision number of the record, starting at zero.
+  - name: scan_events
+    data_type: jsonb
+    description: The scan events recorded for the parcel so far.
+  - name: is_fragile
+    data_type: boolean
+    description: Whether the parcel is marked fragile.
+  - name: is_oversized
+    data_type: boolean
+    description: Whether the parcel exceeds the standard size.
+  - name: requires_signature
+    data_type: boolean
+    description: Whether delivery needs a signature.
+  - name: is_returned
+    data_type: boolean
+    description: Whether the parcel was returned to sender.
+  - name: is_insured
+    data_type: boolean
+    description: Whether the parcel is insured.
+  - name: created_at
+    data_type: timestamp
+    description: When the parcel record was created.
+    granularity: day
+    dimension:
+      type: time
+  - name: last_scanned_at
+    data_type: timestamp
+    description: When the parcel was last scanned.
+  - name: next_scan_due_at
+    data_type: timestamp
+    description: When the parcel's next scan is expected.
+  - name: is_delivered
+    data_type: boolean
+    description: Whether the parcel has been delivered.
+  metrics:
+  - name: parcel_count
+    label: Parcel Count
+    type: simple
+    agg: count_distinct
+    expr: parcel_id
+    description: The number of distinct parcels.
+  - name: depots_with_parcels
+    label: Depots With Parcels
+    type: simple
+    agg: count_distinct
+    expr: depot_id
+    description: The number of distinct depots holding parcels.
+  - name: new_parcels
+    label: New Parcels
+    type: simple
+    agg: sum
+    expr: CASE WHEN revision = 0 THEN 1 ELSE 0 END
+    description: The number of parcel records at their first revision.
+  - name: parcels_to_date
+    label: Parcels To Date
+    type: cumulative
+    input_metric: parcel_count
+    period_agg: last
+    description: The running total of distinct parcels.
+  - name: depots_to_date
+    label: Depots To Date
+    type: cumulative
+    input_metric: depots_with_parcels
+    period_agg: last
+    description: The running total of distinct depots holding parcels.
