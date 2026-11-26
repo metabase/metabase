@@ -15,6 +15,7 @@ import {
   getRowName,
   getTableQuery,
 } from "metabase/detail-view/utils";
+import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setDetailView } from "metabase/redux/app";
 import { useParams } from "metabase/router";
@@ -42,6 +43,15 @@ export function TableDetailPage() {
       ? filterByPk(tableQuery, table.fields ?? [], rowId)
       : undefined;
   }, [rowId, table, tableQuery]);
+
+  useRegisterMetabotContextProvider(async () => {
+    if (!tableQuery) {
+      return {};
+    }
+    return {
+      user_is_viewing: [{ type: "adhoc", query: Lib.toJsQuery(tableQuery) }],
+    };
+  }, [tableQuery]);
 
   const {
     data: dataset,
