@@ -9,7 +9,7 @@ on:
         options: [patch, minor, major]
         required: true
       note:
-        description: Optional changelog override; leave blank to draft from the last release
+        description: Optional changelog override. Leave blank to draft from the last release.
         type: string
         required: false
 
