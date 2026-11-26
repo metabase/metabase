@@ -23,7 +23,7 @@ describe("scenarios > visualizations > waterfall", () => {
         },
         display: "line",
       },
-      { visitQuestion: true },
+      { visitQuestion: true, wrapId: true },
     );
 
     H.openVizTypeSidebar();
@@ -53,9 +53,8 @@ describe("scenarios > visualizations > waterfall", () => {
         ]);
       });
 
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.reload();
-    cy.wait("@cardQuery");
+    // open the saved question again, which reruns its query on the backend
+    H.visitQuestion("@questionId");
 
     H.echartsContainer().within(() => {
       cy.findByText("Sum of Total").should("exist");
