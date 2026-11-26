@@ -89,10 +89,12 @@
                     (str/split-lines
                      (apply exec!
                             (concat [(flavor->client flavor)
-                                     "--compact" "--skip-extended-insert" "--skip-add-locks"
+                                     "--compact" "--skip-add-locks"
                                      "--skip-disable-keys" "--skip-set-charset" "--complete-insert"
                                      "--no-tablespaces" "--protocol=TCP" "--skip-no-autocommit"]
-                                    (when (= flavor :mysql) ["--set-gtid-purged=OFF"])
+                                    (if (= flavor :mysql)
+                                      ["--extended-insert" "--net-buffer-length=16384" "--set-gtid-purged=OFF"]
+                                      ["--skip-extended-insert"])
                                     ["--host=127.0.0.1" "--port=3306"
                                      (str "--user=" user) (str db)])))))
                   :backslash-escapes? true)]
