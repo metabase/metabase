@@ -1,6 +1,10 @@
 import type { FilterOperator } from "../../types";
 
-import { findExactOperator, findOperatorGroups, findOperators } from "./utils";
+import {
+  findExactOperator,
+  findOperators,
+  getOperatorSuggestions,
+} from "./operators";
 
 const IS: FilterOperator = { key: "=", label: "is", valueKind: "multi" };
 const IS_NOT: FilterOperator = {
@@ -25,13 +29,21 @@ const IS_EMPTY: FilterOperator = {
 };
 const OPERATORS = [IS, IS_NOT, GREATER, AT_LEAST, IS_EMPTY];
 
-describe("findOperatorGroups", () => {
+describe("getOperatorSuggestions", () => {
+  const groups = [[IS, IS_NOT], [GREATER, AT_LEAST], [IS_EMPTY]];
+
   it("keeps the matches in their groups and drops the empty groups", () => {
-    const groups = [[IS, IS_NOT], [GREATER, AT_LEAST], [IS_EMPTY]];
-    expect(findOperatorGroups(groups, "is")).toEqual([
-      [IS, IS_NOT],
-      [IS_EMPTY],
-    ]);
+    const labels = getOperatorSuggestions(groups, "is").map(({ rows }) =>
+      rows.map(({ label }) => label),
+    );
+    expect(labels).toEqual([["is", "is not"], ["is empty"]]);
+  });
+
+  it("shows a symbol key next to the label and no word key", () => {
+    const hints = getOperatorSuggestions(groups, "")
+      .flatMap(({ rows }) => rows)
+      .map((row) => (row.type === "item" ? row.hint : undefined));
+    expect(hints).toEqual(["=", "!=", ">", ">=", undefined]);
   });
 });
 

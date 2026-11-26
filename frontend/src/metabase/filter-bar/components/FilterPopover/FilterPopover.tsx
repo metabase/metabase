@@ -5,31 +5,30 @@ import { Popover } from "metabase/ui";
 
 import {
   type DraftState,
+  type DraftStep,
   findDraftStartingAt,
   getStageAt,
   readDraft,
 } from "../../editor";
 import type { ConnectorToken } from "../../model";
-import type {
-  ColumnGroup,
-  FilterBarAdapter,
-  FilterOperatorGroup,
-} from "../../types";
+import type { FilterBarAdapter } from "../../types";
 import { AnchorTarget, type GetAnchorRect } from "../AnchorTarget/AnchorTarget";
-import { ColumnList } from "../ColumnList/ColumnList";
-import { buildList } from "../ColumnList/utils";
 import type { DraftPick, DraftSuggestion } from "../FilterBar/draft-suggestion";
-import { OperatorList } from "../OperatorList/OperatorList";
-import { findOperatorGroups } from "../OperatorList/utils";
-import type { ListKeys } from "../SuggestionList/SuggestionList";
+import { LogicOperatorsHint } from "../LogicOperatorsHint/LogicOperatorsHint";
+import {
+  type ListKeys,
+  SuggestionList,
+} from "../SuggestionList/SuggestionList";
+import type { SuggestionGroup } from "../SuggestionList/utils";
 
-type DraftListView<F> =
-  | {
-      type: "columns";
-      groups: readonly ColumnGroup<F>[];
-      connector: ConnectorToken["type"] | null;
-    }
-  | { type: "operators"; groups: readonly FilterOperatorGroup[] };
+import { findExactColumn, getColumnSuggestions } from "./columns";
+import { findExactOperator, getOperatorSuggestions } from "./operators";
+
+type DraftListView<F> = {
+  step: DraftStep;
+  groups: SuggestionGroup<DraftPick<F>>[];
+  exact: DraftPick<F> | null;
+};
 
 const NEW_DRAFT: Pick<DraftState, "step" | "column"> = {
   step: "column",
@@ -47,56 +46,31 @@ const getDraftListView = <F,>(
 ): DraftListView<F> | null => {
   const { doc } = editor.state;
   const draft = findDraftStartingAt(doc, range.from);
-  return match(draft ? readDraft(draft) : NEW_DRAFT)
-    .with({ step: "column" }, (): DraftListView<F> | null => {
-      const groups = adapter.stage(getStageAt(doc, range.from)).columnGroups();
+  const view = match(draft ? readDraft(draft) : NEW_DRAFT)
+    .with({ step: "column" }, (): DraftListView<F> => {
+      const columns = adapter.stage(getStageAt(doc, range.from)).columnGroups();
       const connector = getTypedConnector(query);
-      const hasColumns = buildList(groups, query, new Set()).length > 0;
-      return hasColumns || connector
-        ? { type: "columns", groups, connector }
-        : null;
+      return {
+        step: "column",
+        groups: getColumnSuggestions(columns, query, connector),
+        exact: connector ? null : findExactColumn(columns, query),
+      };
     })
     .with(
       { step: "operator", column: P.nonNullable },
-      ({ column: { column, stage } }): DraftListView<F> | null => {
-        const groups = adapter.stage(stage).operators(column) ?? [];
-        const hasOperators = findOperatorGroups(groups, query).length > 0;
-        return hasOperators ? { type: "operators", groups } : null;
+      ({ column: { column, stage } }): DraftListView<F> => {
+        const operators = adapter.stage(stage).operators(column) ?? [];
+        const exact = findExactOperator(operators.flat(), query);
+        return {
+          step: "operator",
+          groups: getOperatorSuggestions(operators, query),
+          exact: exact ? { type: "operator", operator: exact } : null,
+        };
       },
     )
     .otherwise(() => null);
+  return view && view.groups.length > 0 ? view : null;
 };
-
-type DraftListProps<F> = {
-  view: DraftListView<F>;
-  query: string;
-  keys: Ref<ListKeys>;
-  onPick: (item: DraftPick<F>) => void;
-};
-
-const DraftList = <F,>({ view, query, keys, onPick }: DraftListProps<F>) =>
-  match(view)
-    .with({ type: "columns" }, ({ groups, connector }) => (
-      <ColumnList
-        groups={groups}
-        query={query}
-        keys={keys}
-        connector={connector}
-        onPick={onPick}
-        onPickConnector={(connector) =>
-          onPick({ type: "connector", connector })
-        }
-      />
-    ))
-    .with({ type: "operators" }, ({ groups }) => (
-      <OperatorList
-        groups={groups}
-        query={query}
-        keys={keys}
-        onPick={(operator) => onPick({ type: "operator", operator })}
-      />
-    ))
-    .exhaustive();
 
 type FilterPopoverProps<F> = {
   adapter: FilterBarAdapter<F>;
@@ -142,10 +116,13 @@ export const FilterPopover = <F,>({
           ? filterEditor
           : listView &&
             suggestion && (
-              <DraftList
-                view={listView}
+              <SuggestionList
+                key={listView.step}
+                groups={listView.groups}
                 query={suggestion.query}
+                exact={listView.exact}
                 keys={listKeys}
+                footer={listView.step === "column" && <LogicOperatorsHint />}
                 onPick={suggestion.pick}
               />
             )}
