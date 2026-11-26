@@ -348,26 +348,29 @@
 
   `retry?` is an optional predicate on the caught exception, ANDed with
   [[retryable-error?]]; returning false surfaces the error without retrying. The
-  streaming path passes one to avoid replaying a partially-consumed response."
+  streaming path passes one to avoid replaying a partially-consumed response.
+
+  `:max-attempts` in `tracking-opts` replaces `max-llm-retries` as the attempt count."
   ([tracking-opts thunk]
    (with-retries tracking-opts thunk (constantly true)))
   ([tracking-opts thunk retry?]
-   (let [labels {:model    (:model tracking-opts)
-                 :source   (:tag tracking-opts)
-                 :provider (provider-label tracking-opts)}]
+   (let [labels       {:model    (:model tracking-opts)
+                       :source   (:tag tracking-opts)
+                       :provider (provider-label tracking-opts)}
+         max-attempts (long (or (:max-attempts tracking-opts) max-llm-retries))]
      (loop [attempt 1]
        (analytics/inc! :metabase-metabot/llm-requests labels)
        (let [timer  (u/start-timer)
              result (try
                       {:ok (thunk)}
                       (catch Exception e
-                        (if (and (< attempt max-llm-retries)
+                        (if (and (< attempt max-attempts)
                                  (retry? e)
                                  (retryable-error? e))
                           (let [delay (retry-delay-ms attempt e)]
                             (log/warn "LLM call failed with retryable error, retrying"
                                       {:attempt attempt
-                                       :max     max-llm-retries
+                                       :max     max-attempts
                                        :delay   delay
                                        :status  (:status (ex-data e))
                                        :error   (ex-message e)})
@@ -645,7 +648,7 @@
            (classified-error-part provider part)
            part))))
 
-(defn- missing-required-permission
+(defn missing-required-permission
   "Returns the metabot permission keyword that the current user is missing
   (the base `:permission/metabot` or `required-perm`), or nil when granted.
   The base `:permission/metabot` is always checked even when `required-perm`
@@ -861,33 +864,13 @@
     (incomplete-structured-output-error parts incomplete-reason)
     (ex-info "LLM returned no tool call in structured response" {:parts parts})))
 
-(defn call-llm-structured-with-trace
-  "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
-  so callers can inspect everything the model emitted — any non-tool text, the
-  structured tool call itself, and usage. Useful for debugging *why* the model
-  produced what it did.
+(defn call-llm-structured-unchecked
+  "[[call-llm-structured-with-trace]] without its usage-limit and permission checks, for a caller that has run its own
+  checks first, such as [[metabase.metabot.ai-features/call!]].
 
-  Unlike [[call-llm]], the usage-limit and permission gates THROW here rather than
-  yielding an `:error` part — `ex-info` with `:type :metabot/usage-limit-reached`
-  or `:metabot/permission-denied`. Callers wanting to fall back silently must
-  catch them.
-
-  `opts` extends `tracking-opts` and may include:
-    :required-permission  - A `:permission/metabot-*` keyword that the current
-                            user must hold (as `:yes`) in addition to the base
-                            `:permission/metabot`, which is always checked.
-
-  A leading {:role \"system\" ...} message in `messages` is forwarded as the
-  provider system prompt, keeping untrusted content in the user channel."
+  `opts` also takes `:max-attempts`, the attempt count for transient failures, and `:fast?`, which asks for the
+  provider's fast mode."
   [provider-and-model messages json-schema temperature max-tokens opts]
-  (warn-when-missing-required-permission "call-llm-structured-with-trace" opts)
-  (warn-when-missing-request-id "call-llm-structured-with-trace" opts)
-  (when-let [limit-msg (usage/check-usage-limits! (:request-id opts))]
-    (throw (ex-info limit-msg
-                    {:type       :metabot/usage-limit-reached
-                     :error-code "ai_usage_limit_reached"
-                     :message    limit-msg})))
-  (check-permission! (:required-permission opts))
   (let [{:keys [provider stream-fn model credentials ai-proxy?]} (parse-provider-model provider-and-model)
         [system-msg input] (if (= "system" (some-> messages first :role name))
                              [(:content (first messages)) (vec (rest messages))]
@@ -897,7 +880,7 @@
                                                            :msg-count (count input)
                                                            :ai-proxy? ai-proxy?})
         tracking-opts  (-> opts
-                           (dissoc :required-permission)
+                           (dissoc :required-permission :fast?)
                            (assoc :model provider-and-model :provider provider :model-name model
                                   :ai-proxy? ai-proxy?))
         streaming-opts (cond-> {:model       model
@@ -908,6 +891,7 @@
                                 :credentials credentials
                                 :ai-proxy?   ai-proxy?}
                          system-msg                  (assoc :system system-msg)
+                         (:fast? opts)               (assoc :fast? true)
                          (contains? opts :cache?)    (assoc :cache? (:cache? opts))
                          (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))]
     (with-span :info {:name      :metabot.agent/call-llm-structured
@@ -976,6 +960,35 @@
                                :raw-finish-reason (core/parts->raw-finish-reason parts)})
                     {:result output :parts parts})
                 (throw (no-structured-output-error parts incomplete-reason))))))))))
+
+(defn call-llm-structured-with-trace
+  "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
+  so callers can inspect everything the model emitted — any non-tool text, the
+  structured tool call itself, and usage. Useful for debugging *why* the model
+  produced what it did.
+
+  Unlike [[call-llm]], the usage-limit and permission gates THROW here rather than
+  yielding an `:error` part — `ex-info` with `:type :metabot/usage-limit-reached`
+  or `:metabot/permission-denied`. Callers wanting to fall back silently must
+  catch them.
+
+  `opts` extends `tracking-opts` and may include:
+    :required-permission  - A `:permission/metabot-*` keyword that the current
+                            user must hold (as `:yes`) in addition to the base
+                            `:permission/metabot`, which is always checked.
+
+  A leading {:role \"system\" ...} message in `messages` is forwarded as the
+  provider system prompt, keeping untrusted content in the user channel."
+  [provider-and-model messages json-schema temperature max-tokens opts]
+  (warn-when-missing-required-permission "call-llm-structured-with-trace" opts)
+  (warn-when-missing-request-id "call-llm-structured-with-trace" opts)
+  (when-let [limit-msg (usage/check-usage-limits! (:request-id opts))]
+    (throw (ex-info limit-msg
+                    {:type       :metabot/usage-limit-reached
+                     :error-code "ai_usage_limit_reached"
+                     :message    limit-msg})))
+  (check-permission! (:required-permission opts))
+  (call-llm-structured-unchecked provider-and-model messages json-schema temperature max-tokens opts))
 
 (defn call-llm-structured
   "Make an LLM call that returns structured JSON output.

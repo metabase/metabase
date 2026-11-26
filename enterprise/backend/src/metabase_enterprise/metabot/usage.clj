@@ -7,6 +7,7 @@
    [metabase-enterprise.metabot.models.metabot-instance-limit :as instance-limit]
    [metabase-enterprise.metabot.settings :as metabot.settings]
    [metabase.api.common :as api]
+   [metabase.metabot.core :as metabot]
    [metabase.metabot.models.ai-usage-log :as ai-usage-log]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log])
@@ -64,7 +65,9 @@
   :feature :none
   [{:keys [source model provider model-name prompt-tokens completion-tokens cache-creation-tokens
            cache-read-tokens user-id tenant-id conversation-id profile-id request-id ai-proxied]}]
-  (when-not (contains? known-sources source)
+  ;; A registered one-call feature is checked before its call, and analytics show it under its raw id.
+  (when-not (or (contains? known-sources source)
+                (contains? metabot/ai-feature-registry source))
     (throw (ex-info (str "Unknown ai_usage_log source " (pr-str source))
                     {:source source})))
   (when-let [pid (some-> profile-id name)]
@@ -123,7 +126,8 @@
             1000000)
 
       :messages
-      (:cnt (metabot.db/usage-message-count start message-sources request-id user-id tenant-id)))))
+      (:cnt (metabot.db/usage-message-count start (into message-sources (metabot/message-ai-feature-ids))
+                                            request-id user-id tenant-id)))))
 
 (defn- check-instance-limit
   "Check the instance-wide limit. Returns an error message string if exceeded, nil otherwise."

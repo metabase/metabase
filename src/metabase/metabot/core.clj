@@ -1,6 +1,7 @@
 (ns metabase.metabot.core
   "API namespace for the `metabase.metabot` module."
   (:require
+   [metabase.metabot.ai-features]
    [metabase.metabot.scope]
    [metabase.metabot.search-models]
    [metabase.metabot.self]
@@ -48,3 +49,13 @@
  [metabase.metabot.self
   llm-call-available?
   llm-call-unavailable-reason])
+
+(p/import-vars
+ [metabase.metabot.ai-features
+  call!
+  render-untrusted])
+
+(p/import-fn metabase.metabot.ai-features/available? ai-feature-available?)
+(p/import-fn metabase.metabot.ai-features/unavailable-reason ai-feature-unavailable-reason)
+(p/import-fn metabase.metabot.ai-features/message-feature-ids message-ai-feature-ids)
+(p/import-def metabase.metabot.ai-features/registry ai-feature-registry)

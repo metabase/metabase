@@ -82,9 +82,24 @@
    (some-> (meter-entry token-status)
            :is-locked)))
 
+(defn model-managed-free-limit-reached?
+  "True when `model-ref` names the managed Metabase provider and its free-tier allowance is used up.
+
+  Unlike [[managed-free-limit-reached?]], which reads the Metabot model, this checks the model a call will run on, so
+  a call on a mini model on its own key is not refused for the Metabot model's allowance."
+  [model-ref]
+  (boolean
+   (and (llm.provider/managed-model-ref? model-ref)
+        (some-> (premium-features/token-status) managed-free-limit-reached?))))
+
+(defn managed-free-limit-message
+  "The message for a used-up free-tier allowance on the managed Metabase provider."
+  []
+  (tru "You''ve used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."))
+
 (defn check-metabase-managed-free-limit!
   "Return the free-trial lock message when the managed Metabase provider is locked."
   []
   (api/check (not (managed-free-limit-reached?))
-             [402 {:message    (tru "You''ve used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key.")
+             [402 {:message    (managed-free-limit-message)
                    :error-code "metabase_ai_managed_locked"}]))

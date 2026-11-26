@@ -517,6 +517,7 @@
   metabase-enterprise.workspaces.test-util/with-resources!                              clojure.core/let
   metabase-enterprise.workspaces.test-util/with-workspaces!                             clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
+  metabase.metabot.test-util/with-fake-llm!                                             clojure.core/let
   metabase.transforms.test-util/with-transform-cleanup!                                 clojure.core/let
   metabase.transforms.test-util/with-transforms-api-users!                              clojure.core/fn
   metabase.api.common/let-404                                                           clojure.core/let
