@@ -1,6 +1,6 @@
 import { type FocusEvent, type KeyboardEvent, useState } from "react";
 
-import { isFocusVisible } from "metabase/utils/dom";
+import { isFocusVisible } from "metabase/utils/focus-visible";
 
 import type { SegmentedControlItem } from "./index";
 
