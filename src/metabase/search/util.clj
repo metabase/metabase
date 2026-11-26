@@ -181,7 +181,8 @@
     (when input
       (let [trimmed        (str/trim input)
             ;; Prefix matching serves search as you type. Metabot sends whole keywords, and a prefix on its last
-            ;; keyword query alone would match words that no query names.
+            ;; keyword query alone would match words that no query names. An H2 app DB matches every word as a
+            ;; substring and reads no context, so this holds on Postgres only.
             complete?      (and (not= context :metabot)
                                 (not (str/ends-with? trimmed "\"")))
             maybe-complete (if complete? complete-last-word identity)]

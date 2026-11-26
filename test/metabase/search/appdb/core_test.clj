@@ -6,6 +6,7 @@
    [metabase.events.core :as events]
    [metabase.search.appdb.core]
    [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
    [metabase.search.util :as search.util]
@@ -25,10 +26,20 @@
     (testing "[\"orders\" \"monthly revenue\"] searches for orders, or monthly and revenue together, with no prefix"
       (let [[folded] (search.engine/disjunction :search.engine/appdb ["orders" "monthly revenue"])
             expr     (search.util/to-tsquery-expr folded {:context :metabot})
-            ;; The same form the appdb engine builds, so Postgres parses it as a search would.
+            ;; Postgres parses it as a search would, under the simple configuration, which stems nothing.
             parsed   (mdb/query {:select [[[:to_tsquery [:literal "simple"] [:lift expr]] :query]]})]
         (is (= "'orders' | 'monthly' & 'revenue'"
                (str (:query (first parsed)))))))))
+
+(deftest postgres-search-passes-its-context-to-the-tsquery-test
+  (let [lifted (fn [search-ctx]
+                 (some #(when (and (vector? %) (= :lift (first %))) (second %))
+                       (tree-seq coll? seq ((get-method specialization/base-query :postgres)
+                                            :search_index "order" search-ctx [:model_id]))))]
+    (testing "Metabot's last word matches whole"
+      (is (= "'order'" (lifted {:context :metabot}))))
+    (testing "Other searches match the last word as a prefix"
+      (is (= "'order':*" (lifted {:context :search-app}))))))
 
 (deftest locale-change-reindexes-after-commit-test
   (when (contains? #{:mysql :postgres} (mdb/db-type))

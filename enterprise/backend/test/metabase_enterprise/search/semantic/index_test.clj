@@ -39,6 +39,17 @@
         embedding [0.1 0.2 0.3]]
     (first (sql/format (#'semantic.index/semantic-search-query index embedding ctx) :quoted true))))
 
+(deftest keyword-search-query-passes-its-context-to-the-tsquery-test
+  (let [lifted (fn [search-ctx]
+                 (some #(when (and (vector? %) (= :lift (first %))) (second %))
+                       (tree-seq coll? seq (#'semantic.index/keyword-search-query
+                                            {:table-name "idx_tbl"}
+                                            (merge {:search-string "order", :archived? false} search-ctx)))))]
+    (testing "Metabot's last word matches whole"
+      (is (= "'order'" (lifted {:context :metabot}))))
+    (testing "Other searches match the last word as a prefix"
+      (is (= "'order':*" (lifted {:context :search-app}))))))
+
 (deftest semantic-search-query-strategy-test
   (testing ":brute-force applies the non-vector filters inside a MATERIALIZED CTE (filter-first, exact)"
     (let [sql (vector-search-sql :brute-force)]
