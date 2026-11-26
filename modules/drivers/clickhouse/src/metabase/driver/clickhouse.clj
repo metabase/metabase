@@ -83,6 +83,9 @@
                               :expressions/float                true
                               :expressions/integer              true
                               :expressions/text                 true
+                              ;; `SELECT DISTINCT ... LIMIT n` stops reading once it has `n` values; `GROUP BY ... LIMIT n`
+                              ;; reads the whole table first
+                              :field-values/distinct-stops-at-limit true
                               ;; ClickHouse uses both index lifecycles: ORDER BY is inlined into the MergeTree engine
                               ;; clause at creation, while data-skipping indexes are added as separate statements after.
                               :index/fetch                      true
