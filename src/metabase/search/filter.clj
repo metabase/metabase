@@ -9,8 +9,8 @@
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [toucan2.core :as t2])
   (:import
    (java.time LocalDate)))
 
@@ -60,7 +60,7 @@
         models   (into #{}
                        (remove nil?)
                        (for [search-model (:models search-ctx)
-                             :let [spec (search.spec/spec search-model)]]
+                             :let [spec (search.spec/search-model-spec search-model)]]
                          (when (and (visible-to? search-ctx spec)
                                     (every? (spec-supported-attr-keys spec) required))
                            (:name spec))))]
@@ -146,12 +146,12 @@
     ;; Correlated subquery: assumes the outer query has `:collection` as FROM or LEFT JOIN.
     (let [descendant-of-personal-collection
           [:exists ^:allow-subquery {:select [[[:inline 1]]]
-                                     :from   [[:collection :pc]]
+                                     :from   [[(t2/table-name :model/Collection) :pc]]
                                      :where  [:and
                                               [:not= :pc.personal_owner_id nil]
                                               [:= :pc.location "/"]
                                               [:like :collection.location
-                                               [:concat (h2x/literal "/") :pc.id (h2x/literal "/%")]]]}]]
+                                               [:concat [:literal "/"] :pc.id [:literal "/%"]]]]}]]
       (case filter-type
         "only"
         [:or

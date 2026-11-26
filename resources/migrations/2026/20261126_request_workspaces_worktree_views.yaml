@@ -1,0 +1,32 @@
+## The views of Tables and Fields that each remote sync worktree reads carry the workspace that owns a row, which the
+## rows of metabase_table and metabase_field carry since 20261118_request_workspaces.yaml.
+
+databaseChangeLog:
+  - changeSet:
+      id: 9z9t3w
+      author: nvoxland
+      comment: Add workspace_id, the workspace that owns a Table, to v_worktree_table
+      changes:
+        - sqlFile:
+            path: ../worktree_views/table/v2/worktree_table.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: DROP VIEW v_worktree_table
+        - sqlFile:
+            path: ../worktree_views/table/v1/worktree_table.sql
+            relativeToChangelogFile: true
+  - changeSet:
+      id: a5f7oa
+      author: nvoxland
+      comment: Add workspace_id, the workspace that owns a Field, to v_worktree_field
+      changes:
+        - sqlFile:
+            path: ../worktree_views/field/v2/worktree_field.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: DROP VIEW v_worktree_field
+        - sqlFile:
+            path: ../worktree_views/field/v1/worktree_field.sql
+            relativeToChangelogFile: true

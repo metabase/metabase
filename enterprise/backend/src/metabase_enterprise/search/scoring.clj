@@ -6,10 +6,11 @@
    [metabase.search.in-place.scoring :as scoring]
    [metabase.search.scoring :as search.scoring]))
 
+;; Each `:expr` is built per search, because its cast depends on the app DB type.
 (def ^:private enterprise-scorers
-  {:official-collection {:expr (search.scoring/truthy :official_collection)
+  {:official-collection {:expr #(search.scoring/truthy :official_collection)
                          :pred #(premium-features/has-feature? :official-collections)}
-   :verified            {:expr (search.scoring/truthy :verified)
+   :verified            {:expr #(search.scoring/truthy :verified)
                          :pred #(premium-features/has-feature? :content-verification)}})
 
 (defn- additional-scorers
@@ -18,7 +19,7 @@
   (into {}
         (keep (fn [[k {:keys [expr pred]}]]
                 (when (pred)
-                  [k expr])))
+                  [k (expr)])))
         enterprise-scorers))
 
 (defenterprise scorers

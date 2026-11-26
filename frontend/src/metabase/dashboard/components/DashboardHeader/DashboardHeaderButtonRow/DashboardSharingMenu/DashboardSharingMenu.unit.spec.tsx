@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupDashboardPublicLinkEndpoints } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
-import type { Dashboard } from "metabase-types/api";
+import type { CreateUserRequest, Dashboard } from "metabase-types/api";
 import {
+  createMockCard,
   createMockDashboardCard,
   createMockDashboardTab,
   createMockUser,
@@ -33,6 +35,45 @@ describe("DashboardSharingMenu", () => {
     });
 
     expect(screen.queryByTestId("sharing-menu-button")).not.toBeInTheDocument();
+  });
+
+  describe.each([
+    { description: "without cards", dashcards: [] },
+    {
+      description: "with only a text card",
+      dashcards: [
+        createMockDashboardCard({
+          card: createMockCard({ display: "text" }),
+        }),
+      ],
+    },
+  ])("dashboard $description (metabase#15077)", ({ dashcards }) => {
+    it("should still allow sharing with a public link", async () => {
+      setupDashboardPublicLinkEndpoints(1);
+      setupDashboardSharingMenu({
+        isAdmin: true,
+        isPublicSharingEnabled: true,
+        isEmbeddingEnabled: true,
+        dashboard: { dashcards },
+      });
+
+      expect(screen.getByTestId("sharing-menu-button")).toBeVisible();
+      await openMenu();
+      expect(screen.getByText("Create a public link")).toBeVisible();
+      expect(screen.getByText("Embed")).toBeVisible();
+
+      await userEvent.click(screen.getByText("Create a public link"));
+      expect(
+        await screen.findByTestId("public-link-popover-content"),
+      ).toBeVisible();
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.calls("path:/api/dashboard/1/public_link", {
+            method: "POST",
+          }),
+        ).toHaveLength(1),
+      );
+    });
   });
 
   describe("pdf export", () => {
@@ -396,7 +437,15 @@ describe("DashboardSharingMenu", () => {
     const inviteAndGetRequestBody = async (dashboard: Partial<Dashboard>) => {
       fetchMock.get("path:/api/permissions/group", []);
       fetchMock.get("path:/api/permissions/invite-group-ids", []);
-      fetchMock.post("path:/api/user", createMockUser({ id: 99 }));
+      fetchMock.post("path:/api/user", async ({ options }) => {
+        const body: CreateUserRequest = JSON.parse(
+          // Unjustified type cast. FIXME
+          await (options.body as unknown as Promise<string>),
+        );
+        return body.email === "newbie@metabase.com"
+          ? createMockUser({ id: 99, email: body.email })
+          : { status: 400 };
+      });
       setupDashboardSharingMenu({
         isAdmin: true,
         isEmailSetup: true,
@@ -452,8 +501,9 @@ describe("DashboardSharingMenu", () => {
       ).toBeInTheDocument();
     });
 
-    it("sends the dashboard as the invite_target", async () => {
+    it("sends the typed email and the dashboard as the invite_target", async () => {
       const body = await inviteAndGetRequestBody({ id: 42, name: "Q3 KPIs" });
+      expect(body.email).toBe("newbie@metabase.com");
       expect(body.invite_target).toEqual({
         type: "dashboard",
         id: 42,

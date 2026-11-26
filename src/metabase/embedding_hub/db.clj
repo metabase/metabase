@@ -2,6 +2,7 @@
   "Application database queries for the embedding hub module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn user-added-database?
@@ -49,7 +50,7 @@
                                              :from   [[(t2/table-name :model/Collection) :sample_coll]]
                                              :where  [:and
                                                       [:= :sample_coll.is_sample true]
-                                                      [:= :sample_coll.id :report_card.collection_id]]}]]]
+                                                      [:= :sample_coll.id (u/qualified-key (t2/table-name :model/Card) :collection_id)]]}]]]
                                     [:is :collection_id nil]]]}))
 
 (defn sandbox?

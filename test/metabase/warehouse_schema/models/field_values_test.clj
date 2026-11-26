@@ -188,14 +188,14 @@
     (is (= {:values [[1] [2] [3] [4] [5]]}
            (distinct-field-values (mt/id :reviews :rating))))))
 
-(deftest clear-field-values-for-field!-test
+(deftest delete-field-values-of-fields-test
   (mt/with-temp [:model/Database    {database-id :id} {}
                  :model/Table       {table-id :id} {:db_id database-id}
                  :model/Field       {field-id :id} {:table_id table-id}
                  :model/FieldValues _              {:field_id field-id :values "[1, 2, 3]"}]
     (is (= [1 2 3]
            (t2/select-one-fn :values :model/FieldValues, :field_id field-id)))
-    (field-values/clear-field-values-for-field! field-id)
+    (field-values/delete-field-values! (field-values/ids-of-fields [field-id]))
     (is (= nil
            (t2/select-one-fn :values :model/FieldValues, :field_id field-id)))))
 
@@ -262,7 +262,7 @@
                                              :hash_key "random-hash"}]
           (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :categories :name))))))))
       (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
-        (t2/query-one {:update :metabase_fieldvalues
+        (t2/query-one {:update (t2/table-name :model/FieldValues)
                        :where [:and
                                [:= :field_id (mt/id :categories :name)]
                                [:= :type "full"]]
@@ -435,7 +435,7 @@
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
     (mt/with-temp [:model/FieldValues fv {:field_id (mt/id :venues :id)
                                           :values   (json/encode ["1" "2" "3"])}]
-      (is (t2/query-one {:update :metabase_fieldvalues
+      (is (t2/query-one {:update (t2/table-name :model/FieldValues)
                          :set    {:human_readable_values (json/encode {"1" "a", "2" "b", "3" "c"})}
                          :where  [:= :id (:id fv)]}))
       (is (= ["a" "b" "c"]
@@ -494,8 +494,8 @@
 
 (deftest field-values-schema-test
   (testing "the FieldValues schema takes human-readable values only as a list of strings or nils"
-    (is (not (mr/validate ::warehouse-schema.schema/field-values.update {:human_readable_values {"1" "A", "2" "B"}})))
-    (is (mr/validate ::warehouse-schema.schema/field-values.update {:human_readable_values ["a" nil "c"]}))))
+    (is (not (mr/validate ::warehouse-schema.schema/field-values.update {:id 1, :human_readable_values {"1" "A", "2" "B"}})))
+    (is (mr/validate ::warehouse-schema.schema/field-values.update {:id 1, :human_readable_values ["a" nil "c"]}))))
 
 (deftest human-readable-values-cover-values-schema-test
   (let [bad {:values [1 2 3], :human_readable_values ["a" "b"]}]
@@ -506,10 +506,10 @@
       (is (thrown-with-msg? ExceptionInfo #"must be specified for all field values"
                             (lib/normalize ::warehouse-schema.schema/external-field-values bad {:throw? true}))))
     (testing "a body with only one of the columns passes"
-      (is (= {:values [1 2 3]}
-             (lib/normalize ::warehouse-schema.schema/field-values.update {:values [1 2 3]} {:throw? true})))
-      (is (= {:human_readable_values ["a" "b"]}
-             (lib/normalize ::warehouse-schema.schema/field-values.update {:human_readable_values ["a" "b"]}
+      (is (= {:id 1, :values [1 2 3]}
+             (lib/normalize ::warehouse-schema.schema/field-values.update {:id 1, :values [1 2 3]} {:throw? true})))
+      (is (= {:id 1, :human_readable_values ["a" "b"]}
+             (lib/normalize ::warehouse-schema.schema/field-values.update {:id 1, :human_readable_values ["a" "b"]}
                             {:throw? true}))))))
 
 (deftest human-readable-values-cover-values-test
@@ -630,7 +630,7 @@
     (mt/with-temp [:model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                   :type     :sandbox
                                                   :hash_key "random-hash"}]
-      (t2/insert! :model/FieldValues (cond-> {:field_id (mt/id :venues :id)} explicitly-full? (assoc :type :full)))
+      (field-values/create-field-values! [(cond-> {:field_id (mt/id :venues :id)} explicitly-full? (assoc :type :full))])
       (is (not (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))))
 
 (deftest update-full-field-values-should-remove-all-cached-field-values
@@ -639,7 +639,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (t2/update! :model/FieldValues :id (:id fv) {:values [1 2 3]})
+    (field-values/update-field-values! [{:id (:id fv) :values [1 2 3]}])
     (is (not (t2/exists? :model/FieldValues :id (:id sandbox-fv))))))
 
 (deftest update-full-field-without-values-should-remove-not-all-cached-field-values
@@ -648,8 +648,34 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (t2/update! :model/FieldValues :id (:id fv) {:updated_at (t/zoned-date-time)})
+    (field-values/update-field-values! [{:id (:id fv) :has_more_values true}])
     (is (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))
+
+(defn- field-values-write-call-counts!
+  "The number of app-DB calls creating and then updating full FieldValues for `n` Fields of a new Table of a new
+  Database takes, so that nothing of the driver's test dataset is involved."
+  [n]
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Table    {table-id :id} {:db_id db-id}]
+    (let [field-ids (vec (for [i (range n)]
+                           (t2/insert-returning-pk! :model/Field {:table_id      table-id
+                                                                  :name          (str "F" i)
+                                                                  :base_type     :type/Text
+                                                                  :database_type "TEXT"})))
+          ids       (mapv :id (field-values/create-field-values! (mapv #(hash-map :field_id % :values ["a"]) field-ids)))]
+      [(t2/with-call-count [call-count]
+         (field-values/create-field-values! (mapv #(hash-map :field_id % :type :sandbox :hash_key "h" :values ["a"])
+                                                  field-ids))
+         (call-count))
+       (t2/with-call-count [call-count]
+         (field-values/update-field-values! (for [id ids] {:id id :values ["b"]}))
+         (call-count))])))
+
+(deftest bulk-field-values-writes-call-count-test
+  (testing "creating and updating FieldValues takes the same number of statements for 2 and 6 rows"
+    (field-values-write-call-counts! 1)
+    (is (= (field-values-write-call-counts! 2)
+           (field-values-write-call-counts! 6)))))
 
 (deftest select-coherence-test
   (testing "We cannot perform queries with invalid mixes of type and hash_key, which would return nothing"
@@ -892,7 +918,7 @@
         (mt/with-dynamic-fn-redefs [qp/process-query (fn [_query] {:data {:rows [[0 "a"] [0 "b"] [1 "42"]]}})]
           (is (= {f1-id {:values ["a" "b"] :raw-count 2}
                   f2-id {:values [42] :raw-count 1}}
-                 (distinct-batch/run-distinct-batch table fields))))))))
+                 (distinct-batch/run-distinct-batch :h2 table fields))))))))
 
 (deftest ^:mb/driver-tests run-distinct-batch-integration-test
   (testing "run-distinct-batch returns correct distinct values for each field"
@@ -901,7 +927,7 @@
         (let [table   (t2/select-one :model/Table :id (mt/id :people))
               fields  [(t2/select-one :model/Field :id (mt/id :people :state))
                        (t2/select-one :model/Field :id (mt/id :people :source))]
-              results (distinct-batch/run-distinct-batch table fields)]
+              results (distinct-batch/run-distinct-batch driver/*driver* table fields)]
           (is (map? results) "Returns a map keyed by field-id")
           (is (= (set (map :id fields)) (set (keys results))))
           (testing "people.state distinct values"
@@ -928,8 +954,8 @@
               float-fields   (mapv #(t2/select-one :model/Field :id (mt/id :products %)) [:rating])
               expected-set   (fn [f] (set (map first (-> (field-values/distinct-values f) :values))))
               per-field-results (into {} (map (fn [f] [(:id f) (expected-set f)])) (concat text-fields float-fields))
-              people-results    (distinct-batch/run-distinct-batch people-table text-fields)
-              products-results  (distinct-batch/run-distinct-batch products-table float-fields)
+              people-results    (distinct-batch/run-distinct-batch driver/*driver* people-table text-fields)
+              products-results  (distinct-batch/run-distinct-batch driver/*driver* products-table float-fields)
               union-results     (merge people-results products-results)]
           (doseq [field (concat text-fields float-fields)]
             (testing (format "field %s (%s)" (:name field) (name (:base_type field)))
@@ -946,7 +972,7 @@
         (let [table        (t2/select-one :model/Table :id (mt/id :people))
               state-field  (t2/select-one :model/Field :id (mt/id :people :state))
               source-field (t2/select-one :model/Field :id (mt/id :people :source))
-              results      (distinct-batch/run-distinct-batch table [state-field source-field])]
+              results      (distinct-batch/run-distinct-batch driver/*driver* table [state-field source-field])]
           (testing "Result map is keyed by field-id with :values / :raw-count entries"
             (is (map? results))
             (is (= #{(:id state-field) (:id source-field)} (set (keys results)))))

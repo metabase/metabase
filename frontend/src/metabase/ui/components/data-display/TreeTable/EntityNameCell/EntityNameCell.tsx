@@ -1,10 +1,9 @@
 import { type ComponentProps, memo } from "react";
 
-import CS from "metabase/css/core/index.css";
-import { Group, Icon, Text } from "metabase/ui";
+import { FixedSizeIcon, Group, Text } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { Ellipsified } from "metabase/ui/components/data-display/Ellipsified";
-import type { IconName } from "metabase-types/api";
+import type { IconName } from "metabase-types/api/icon";
 
 interface EntityNameCellProps {
   icon?: IconName;
@@ -29,7 +28,7 @@ export const EntityNameCell = memo(function EntityNameCell({
 }: EntityNameCellProps) {
   return (
     <Group data-testid={testId} gap="sm" wrap="nowrap" miw={0}>
-      {icon && <Icon name={icon} c={iconColor} className={CS.flexNoShrink} />}
+      {icon && <FixedSizeIcon name={icon} c={iconColor} />}
       {wrap ? (
         <Text c={nameColor} flex={1} miw={0}>
           {name}

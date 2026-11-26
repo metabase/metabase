@@ -9,13 +9,18 @@
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.events.test-util :as events.tu]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.secrets.core :as secret]
    [metabase.serialization.core :as serialization]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -23,11 +28,13 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.models.transform :as transform]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouses.models.database :as database]
+   [metabase.warehouses.serialization :as warehouses.serialization]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -81,7 +88,7 @@
         (with-redefs [t2/query-one (fn [& args]
                                      (swap! delete-queries into (filter :delete-from args))
                                      (apply original-query-one args))]
-          (#'database/delete-database-fields! db-id))
+          (database/delete-for-databases! :model/Field [{:id db-id}]))
         (is (empty? @delete-queries))))))
 
 (deftest ^:parallel delete-database-fields-test
@@ -90,21 +97,37 @@
                    :model/Table    {table-id :id}  {:db_id db-id}
                    :model/Field    {parent-id :id} {:table_id table-id}
                    :model/Field    _               {:table_id table-id :parent_id parent-id}]
-      (t2/with-call-count [call-count]
-        ;; This only deletes the test-local Database Fields created above.
-        ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
-        #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-        (#'database/delete-database-fields! db-id)
-        (is (= 4 (call-count))
-            "One existence check, two successful DELETEs, and one terminating DELETE"))
+      ;; This only deletes the test-local Database Fields created above.
+      ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
+      #_{:clj-kondo/ignore [:metabase/validate-deftest]}
+      (database/delete-for-databases! :model/Field [{:id db-id}])
       (is (not (t2/exists? :model/Field :id parent-id)))
       (is (not (t2/exists? :model/Field :table_id table-id))))))
+
+(deftest delete-database-fields-statement-count-test
+  (testing "deleting the nested Fields of a Database runs the same number of statements for 2 and 6 parent Fields"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id}]
+      (let [counted (fn [n]
+                      (let [parent-ids (t2/insert-returning-pks! :model/Field
+                                                                 (for [i (range n)]
+                                                                   {:table_id table-id :name (str "P" i)
+                                                                    :base_type :type/Text :database_type "TEXT"}))]
+                        (t2/insert! :model/Field (for [parent-id parent-ids]
+                                                   {:table_id table-id :parent_id parent-id :name "C"
+                                                    :base_type :type/Text :database_type "TEXT"}))
+                        (t2/with-call-count [call-count]
+                          (database/delete-for-databases! :model/Field [{:id db-id}])
+                          (call-count))))]
+        (counted 1)
+        (is (= (counted 2) (counted 6)))
+        (is (not (t2/exists? :model/Field :table_id table-id)))))))
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
     (mt/with-temp-scheduler!
       (task/init! ::task.sync-databases/SyncDatabases)
-      (mt/with-temp [:model/Database {db-id :id}]
+      (let [db-id (:id (first (database/create-databases! [{:name "Tasks Test" :engine :h2 :details {}}])))]
         (is (=? {:description         (format "sync-and-analyze Database %d" db-id)
                  :key                 (format "metabase.task.sync-and-analyze.trigger.%d" db-id)
                  :misfire-instruction "DO_NOTHING"
@@ -114,9 +137,17 @@
                  :data                {"db-id" db-id}}
                 (trigger-for-db db-id)))
         (testing "When deleting a Database, sync tasks should get removed"
-          (t2/delete! :model/Database :id db-id)
+          (database/delete-databases! [db-id])
           (is (= nil
                  (trigger-for-db db-id))))))))
+
+(deftest create-databases-keeps-defaults-of-left-out-columns-test
+  (testing "a bulk create of rows with different columns keeps the default of each column a row leaves out"
+    (mt/with-model-cleanup [:model/Database]
+      (let [[a b] (database/create-databases! [{:name "Defaults A" :engine :h2 :details {}}
+                                               {:name "Defaults B" :engine :h2 :details {} :auto_run_queries false}])]
+        (is (= [true false]
+               (mapv #(t2/select-one-fn :auto_run_queries :model/Database :id (:id %)) [a b])))))))
 
 (deftest delete-database-deletes-query-actions-test
   (testing "deleting a Database deletes the query Actions that run against it, including the ones without a model"
@@ -126,7 +157,7 @@
                                                        :dataset_query {:database db-id
                                                                        :type     :native
                                                                        :native   {:query "select 1"}}}]
-      (t2/delete! :model/Database :id db-id)
+      (database/delete-databases! [db-id])
       (is (not (t2/exists? :model/Action :id action-id))))))
 
 (deftest health-check-candidates-test
@@ -470,35 +501,37 @@
 (deftest maybe-test-and-migrate-details!-password-test
   (mt/with-driver
    :secret-test-driver
-    (mt/with-temp [:model/Database db {:engine "secret-test-driver"
-                                       :name "Secret Test"
-                                       :details {:keystore-value "secret"
-                                                 :password "secret"}}]
-      (log/with-no-logs
-        (testing "password connects"
-          (binding [*secret-can-connect?* (fn [_driver details]
-                                            (contains? details :password))]
-            (is (= {:keystore-value nil
-                    :password "secret"}
-                   (database/maybe-test-and-migrate-details! db)))
-            (is (= {:password "secret"}
-                   (t2/select-one-fn :details :model/Database :id (:id db))))))))))
+    (mt/with-model-cleanup [:model/Database :model/Secret]
+      (let [[db] (database/create-databases! [{:engine :secret-test-driver
+                                               :name "Secret Test"
+                                               :details {:keystore-value "secret"
+                                                         :password "secret"}}])]
+        (log/with-no-logs
+          (testing "password connects"
+            (binding [*secret-can-connect?* (fn [_driver details]
+                                              (contains? details :password))]
+              (is (= {:keystore-value nil
+                      :password "secret"}
+                     (database/maybe-test-and-migrate-details! db)))
+              (is (= {:password "secret"}
+                     (t2/select-one-fn :details :model/Database :id (:id db)))))))))))
 
 (deftest maybe-test-and-migrate-details!-keystore-test
   (mt/with-driver
    :secret-test-driver
-    (mt/with-temp [:model/Database db {:engine "secret-test-driver"
-                                       :name "Secret Test"
-                                       :details {:keystore-value "secret"
-                                                 :password "secret"}}]
-      (log/with-no-logs
-        (testing "keystore connects"
-          (binding [*secret-can-connect?* (fn [_driver details]
-                                            (get details :keystore-id))]
-            (is (= {:keystore-id (get-in db [:details :keystore-id])}
-                   (database/maybe-test-and-migrate-details! db)))
-            (is (= {:keystore-id (get-in db [:details :keystore-id])}
-                   (t2/select-one-fn :details :model/Database :id (:id db))))))))))
+    (mt/with-model-cleanup [:model/Database :model/Secret]
+      (let [[db] (database/create-databases! [{:engine :secret-test-driver
+                                               :name "Secret Test"
+                                               :details {:keystore-value "secret"
+                                                         :password "secret"}}])]
+        (log/with-no-logs
+          (testing "keystore connects"
+            (binding [*secret-can-connect?* (fn [_driver details]
+                                              (get details :keystore-id))]
+              (is (= {:keystore-id (get-in db [:details :keystore-id])}
+                     (database/maybe-test-and-migrate-details! db)))
+              (is (= {:keystore-id (get-in db [:details :keystore-id])}
+                     (t2/select-one-fn :details :model/Database :id (:id db)))))))))))
 
 (deftest secrets-in-details-test
   (mt/with-driver :secret-test-driver
@@ -531,30 +564,31 @@
               "API request"))))))
 
 (deftest secret-value-will-not-save-in-details-test
-  (mt/with-temp [:model/Database db {:engine "secret-test-driver"
-                                     :name "Secret Test"
-                                     :details {:keystore-value "secret"}}]
-    (let [db-id (:id db)
+  (mt/with-model-cleanup [:model/Database :model/Secret]
+    (let [[db] (database/create-databases! [{:engine :secret-test-driver
+                                             :name "Secret Test"
+                                             :details {:keystore-value "secret"}}])
+          db-id (:id db)
           secret-id (get-in db [:details :keystore-id])
           expected {:keystore-id secret-id}]
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "secret") :source :uploaded :version 1}
               (secret/latest-for-id secret-id)))
-      (t2/update! :model/Database :id db-id {:details {:keystore-path "secret-path"}})
+      (database/update-databases! [{:id db-id :details {:keystore-path "secret-path"}}])
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "secret-path") :source :file-path :version 2}
               (secret/latest-for-id secret-id)))
-      (t2/update! :model/Database :id db-id {:details {:keystore-path "ignore-path" :keystore-value "prefer-value"}})
+      (database/update-databases! [{:id db-id :details {:keystore-path "ignore-path" :keystore-value "prefer-value"}}])
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "prefer-value") :source :uploaded :version 3}
               (secret/latest-for-id secret-id)))
-      (t2/update! :model/Database :id db-id {:details {:keystore-options "local"
-                                                       :keystore-path "prefer-path"
-                                                       :keystore-value "ignore-value"}})
+      (database/update-databases! [{:id db-id :details {:keystore-options "local"
+                                                        :keystore-path "prefer-path"
+                                                        :keystore-value "ignore-value"}}])
       (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? {:value (u/string-to-bytes "prefer-path") :source :file-path :version 4}
               (secret/latest-for-id secret-id)))
-      (t2/update! :model/Database :id db-id {:details {:keystore-value nil}})
+      (database/update-databases! [{:id db-id :details {:keystore-value nil}}])
       (is (= {} (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
       (is (=? nil
               (secret/latest-for-id secret-id))))))
@@ -686,35 +720,39 @@
                                     (is (= exp-val
                                            v)))))))]
           (testing "values for referenced secret IDs are resolved in a new DB"
-            (mt/with-temp [:model/Database {:keys [id details] :as database} {:engine  :secret-test-driver
-                                                                              :name    "Test DB with secrets"
-                                                                              :details {:host           "localhost"
-                                                                                        :password-value "new-password"}}]
-              (testing " and saved db-details looks correct"
-                (check-db-fn database {:kind    :password
-                                       :source  :uploaded
-                                       :version 1
-                                       :value   "new-password"})
-                (testing " updating the value works as expected"
-                  (t2/update! :model/Database :id id {:details (assoc details :password-path "/path/to/my/password-file")})
-                  (check-db-fn (t2/select-one :model/Database :id id) {:kind    :password
-                                                                       :source  :file-path
-                                                                       :version 2
-                                                                       :value   "/path/to/my/password-file"}))))
-            (testing "Secret instances are deleted from the app DB when the DatabaseInstance is deleted"
-              (is (seq @secret-ids) "At least one Secret instance should have been created")
-              (doseq [secret-id @secret-ids]
-                (testing (format "Secret ID %d should have been deleted after the Database was" secret-id)
-                  (is (nil? (t2/select-one :model/Secret :id secret-id))
-                      (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
+            (mt/with-model-cleanup [:model/Database :model/Secret]
+              (let [[{:keys [id details] :as database}] (database/create-databases!
+                                                         [{:engine  :secret-test-driver
+                                                           :name    "Test DB with secrets"
+                                                           :details {:host           "localhost"
+                                                                     :password-value "new-password"}}])]
+                (testing " and saved db-details looks correct"
+                  (check-db-fn database {:kind    :password
+                                         :source  :uploaded
+                                         :version 1
+                                         :value   "new-password"})
+                  (testing " updating the value works as expected"
+                    (database/update-databases! [{:id id :details (assoc details :password-path "/path/to/my/password-file")}])
+                    (check-db-fn (t2/select-one :model/Database :id id) {:kind    :password
+                                                                         :source  :file-path
+                                                                         :version 2
+                                                                         :value   "/path/to/my/password-file"})))
+                (database/delete-databases! [id])
+                (testing "Secret instances are deleted from the app DB when the DatabaseInstance is deleted"
+                  (is (seq @secret-ids) "At least one Secret instance should have been created")
+                  (doseq [secret-id @secret-ids]
+                    (testing (format "Secret ID %d should have been deleted after the Database was" secret-id)
+                      (is (nil? (t2/select-one :model/Secret :id secret-id))
+                          (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))))
 
 (deftest write-data-details-secrets-on-insert-test
   (testing "handle-incoming-client-secrets! processes write_data_details on insert"
-    (mt/with-temp [:model/Database db {:engine             "secret-test-driver"
-                                       :name               "Secret Test"
-                                       :details            {:host "localhost"}
-                                       :write_data_details {:keystore-value "write-secret"}}]
-      (let [db-id             (:id db)
+    (mt/with-model-cleanup [:model/Database :model/Secret]
+      (let [[db] (database/create-databases! [{:engine             :secret-test-driver
+                                               :name               "Secret Test"
+                                               :details            {:host "localhost"}
+                                               :write_data_details {:keystore-value "write-secret"}}])
+            db-id             (:id db)
             raw-write-details (t2/select-one-fn
                                (comp json/decode+kw :write_data_details)
                                (t2/table-name :model/Database) :id db-id)]
@@ -732,7 +770,7 @@
                                        :name    "Secret Test"
                                        :details {:host "localhost"}}]
       (let [db-id (:id db)]
-        (t2/update! :model/Database :id db-id {:write_data_details {:keystore-value "write-secret"}})
+        (database/update-databases! [{:id db-id :write_data_details {:keystore-value "write-secret"}}])
         (let [raw-write-details (t2/select-one-fn
                                  (comp json/decode+kw :write_data_details)
                                  (t2/table-name :model/Database) :id db-id)]
@@ -754,7 +792,7 @@
                                              :updated_at         (t/instant)
                                              :details            (json/encode {:host "localhost"})
                                              :write_data_details (json/encode {:keystore-id write-secret-id})}]
-          (t2/delete! :model/Database :id db-id)
+          (database/delete-databases! [db-id])
           (is (nil? (t2/select-one :model/Secret :id write-secret-id))
               "Secret referenced in write_data_details should be deleted"))))))
 
@@ -930,10 +968,11 @@
   (testing "serdes import refuses a SQLite Database on a hosted instance (SEC-1175); self-hosted and non-SQLite are fine"
     (mt/with-premium-features #{:hosting}
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"SQLite is not available"
-                            (database/assert-sqlite-not-hosted! {:engine :sqlite :name "x" :details {:db "/etc/hosts"}})))
-      (is (nil? (database/assert-sqlite-not-hosted! {:engine :postgres :name "x"}))))
+                            (warehouses.serialization/assert-sqlite-not-hosted!
+                             {:engine :sqlite :name "x" :details {:db "/etc/hosts"}})))
+      (is (nil? (warehouses.serialization/assert-sqlite-not-hosted! {:engine :postgres :name "x"}))))
     (mt/with-premium-features #{}
-      (is (nil? (database/assert-sqlite-not-hosted! {:engine :sqlite :name "x"}))))))
+      (is (nil? (warehouses.serialization/assert-sqlite-not-hosted! {:engine :sqlite :name "x"}))))))
 
 (deftest create-database-with-null-details-test
   (testing "Details should get a default value of {} if unspecified"
@@ -981,8 +1020,8 @@
                      :model/Table _ {:db_id db3-id :name "Table3"}
                      :model/PermissionsGroup pg1 {}
                      :model/PermissionsGroup pg2 {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
-        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg1}])
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg2}])
         (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
@@ -1007,8 +1046,8 @@
                      :model/Table _ {:db_id db3-id :name "Table3"}
                      :model/PermissionsGroup pg1 {}
                      :model/PermissionsGroup pg2 {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
-        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg1}])
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg2}])
         (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
@@ -1033,8 +1072,8 @@
                      :model/Table _ {:db_id db3-id :name "Table3"}
                      :model/PermissionsGroup pg1 {}
                      :model/PermissionsGroup pg2 {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
-        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg1}])
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg2}])
         (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
@@ -1046,7 +1085,7 @@
                (fetch-visible-db-ids [db1-id db2-id db3-id]
                                      {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                      default-permission-mapping
-                                     :metabase_database.id)))))))
+                                     (u/qualified-key (t2/table-name :model/Database) :id))))))))
 
 (deftest visible-databases-filter-clause-column-expression-test
   (testing "Should work with column expressions"
@@ -1059,8 +1098,8 @@
                      :model/Table _ {:db_id db3-id :name "Table3"}
                      :model/PermissionsGroup pg1 {}
                      :model/PermissionsGroup pg2 {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
-        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg1}])
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg2}])
         (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
@@ -1072,7 +1111,7 @@
                (fetch-visible-db-ids [db1-id db2-id db3-id]
                                      {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false}
                                      default-permission-mapping
-                                     [:coalesce :id :metabase_database.id])))))))
+                                     [:coalesce :id (u/qualified-key (t2/table-name :model/Database) :id)])))))))
 
 (deftest visible-databases-filter-clause-view-data-only-test
   (testing "Requiring only view-data permissions should include databases where user has view permissions"
@@ -1085,8 +1124,8 @@
                      :model/Table _ {:db_id db3-id :name "Table3"}
                      :model/PermissionsGroup pg1 {}
                      :model/PermissionsGroup pg2 {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
-        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg1}])
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg2}])
         (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
@@ -1112,8 +1151,8 @@
                      :model/Table _ {:db_id db3-id :name "Table3"}
                      :model/PermissionsGroup pg1 {}
                      :model/PermissionsGroup pg2 {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
-        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg1}])
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg2}])
         (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
@@ -1139,8 +1178,8 @@
                      :model/Table _ {:db_id db3-id :name "Table3"}
                      :model/PermissionsGroup pg1 {}
                      :model/PermissionsGroup pg2 {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
-        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg1}])
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg2}])
         (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
         (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
@@ -1165,7 +1204,7 @@
                      :model/Table {table2-id :id} {:db_id db-id :name "Table2"}
                      :model/Table _ {:db_id db-id :name "Table3"}
                      :model/PermissionsGroup pg {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
         ;; Clear existing permissions for our test database only
         (t2/delete! :model/DataPermissions :db_id db-id)
         ;; Block database-level access
@@ -1189,7 +1228,7 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table _ {:db_id db-id :name "Table1"}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
       (t2/delete! :model/DataPermissions :db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
@@ -1201,7 +1240,7 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table _ {:db_id db-id :name "Table1"}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
       (t2/delete! :model/DataPermissions :db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -1214,7 +1253,7 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {table-id :id} {:db_id db-id :name "Table1"}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
       (t2/delete! :model/DataPermissions :db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -1229,7 +1268,7 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table _ {:db_id db-id :name "Table1"}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
       (t2/delete! :model/DataPermissions :db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -1244,7 +1283,7 @@
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table _ {:db_id db-id :name "Table1"}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-users-to-groups! [{:user (mt/user->id :rasta) :group pg}])
       (t2/delete! :model/DataPermissions :db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
@@ -1303,10 +1342,10 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"A destination database cannot be the router of another destination database"
-           (t2/insert! :model/Database {:name               "Nested Destination"
-                                        :engine             :h2
-                                        :details            {}
-                                        :router_database_id dest-id}))))))
+           (first (database/create-databases! [{:name               "Nested Destination"
+                                                :engine             :h2
+                                                :details            {}
+                                                :router_database_id dest-id}])))))))
 
 (deftest provider-name-derived-from-engine-and-host-test
   (testing "provider_name follows the engine and the host, whatever the writer sends"
@@ -1378,5 +1417,135 @@
                             (t2/with-call-count [call-count]
                               (doall (t2/hydrate databases :can_write))
                               (call-count)))]
+          (query-count [db-1])
           (is (= (query-count [db-1])
                  (query-count [db-1 db-2 db-3]))))))))
+
+(defn- create-test-databases!
+  "Create `n` Databases with `prefix` names through [[database/create-databases!]], destinations of the Database with
+  `router-id` when it is given, and return their ids."
+  ([prefix n]
+   (create-test-databases! prefix n nil))
+  ([prefix n router-id]
+   (mapv :id (database/create-databases! (vec (for [i (range n)]
+                                                (cond-> {:name (str prefix " " i) :engine :h2 :details {}}
+                                                  router-id (assoc :router_database_id router-id))))))))
+
+(deftest create-databases-call-count-test
+  (testing "creating Databases runs the same number of statements for 2 and 6 rows, consumers aside"
+    (let [counted (fn [n]
+                    (let [ids (atom [])]
+                      (try
+                        (events.tu/statement-count!
+                         #(reset! ids (create-test-databases! (str "Create Plain Count " n) n)))
+                        (finally
+                          (database/delete-databases! @ids)))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6)))))
+  (testing "creating the destinations of a router runs the same number of statements for 2 and 6 rows, consumers aside"
+    (mt/with-temp [:model/Database {router-id :id} {}]
+      (let [counted (fn [n]
+                      (let [ids (atom [])]
+                        (try
+                          (events.tu/statement-count!
+                           #(reset! ids (create-test-databases! (str "Create Count " n) n router-id)))
+                          (finally
+                            (database/delete-databases! @ids)))))]
+        (counted 1)
+        (is (= (counted 2) (counted 6)))))))
+
+(deftest create-databases-grants-default-permissions-test
+  (testing "every created Database gets the default permissions of its groups"
+    (let [ids (create-test-databases! "Default Permissions" 3)]
+      (try
+        (doseq [id ids]
+          (is (t2/exists? :model/DataPermissions :db_id id :group_id (u/the-id (perms/all-users-group)))))
+        (finally
+          (database/delete-databases! ids))))))
+
+(deftest update-databases-call-count-test
+  (testing "updating the details of Databases runs the same number of statements for 2 and 6 rows"
+    (let [counted (fn [n]
+                    (let [ids (create-test-databases! (str "Update Count " n) n)]
+                      (try
+                        (t2/with-call-count [call-count]
+                          (database/update-databases! (for [id ids] {:id id :details {:db "mem:update-count"}}))
+                          (call-count))
+                        (finally
+                          (database/delete-databases! ids)))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6))))))
+
+(deftest update-databases-plain-changes-add-fixed-statements-to-plain-update-test
+  (testing "a change that needs nothing but its statement adds the same number of statements to a plain update for 2
+           and 6 rows, the search index left out as it reacts to the event the plain update does not publish"
+    (let [extra (fn [n]
+                  (let [ids (create-test-databases! (str "Plain Count " n) n)]
+                    (try
+                      (let [plain   (t2/with-call-count [call-count]
+                                      (t2/update! :model/Database :id [:in ids] {:dbms_version {:version "1"}})
+                                      (call-count))
+                            written (binding [search.ingestion/*disable-updates* true]
+                                      (t2/with-call-count [call-count]
+                                        (database/update-databases! (for [id ids] {:id id :dbms_version {:version "2"}}))
+                                        (call-count)))]
+                        (is (= #{{:version "2"}} (t2/select-fn-set :dbms_version :model/Database :id [:in ids])))
+                        (- written plain))
+                      (finally
+                        (database/delete-databases! ids)))))]
+      (extra 1)
+      (is (= (extra 2) (extra 6))))))
+
+(deftest delete-databases-call-count-test
+  (testing "deleting Databases with Tables and Fields runs the same number of statements for 2 and 6 rows"
+    (let [counted (fn [n]
+                    (let [ids (create-test-databases! (str "Delete Count " n) n)]
+                      (doseq [id ids]
+                        (let [table-id (t2/insert-returning-pk! :model/Table {:db_id id :name "T" :active true})]
+                          (t2/insert! :model/Field {:table_id table-id :name "F" :base_type :type/Text
+                                                    :database_type "TEXT"})))
+                      (t2/with-call-count [call-count]
+                        (database/delete-databases! ids)
+                        (call-count))))]
+      (counted 1)
+      (is (= (counted 2) (counted 6))))))
+
+(deftest delete-database-deletes-transforms-through-write-function-test
+  (testing "deleting a Database deletes the Transforms that read from it through their delete function"
+    (let [db-id   (first (create-test-databases! "Transform Source" 1))
+          deleted (atom nil)]
+      (mt/with-temp [:model/Transform {transform-id :id}
+                     {:source {:type  :query
+                               :query (lib/native-query (lib-be/application-database-metadata-provider db-id)
+                                                        "SELECT 1")}}]
+        (let [original (mt/original-fn #'transform/delete-transforms!)]
+          (mt/with-dynamic-fn-redefs [transform/delete-transforms! (fn [ids]
+                                                                     (reset! deleted ids)
+                                                                     (original ids))]
+            (database/delete-databases! [db-id])))
+        (is (= [transform-id] @deleted))
+        (is (not (t2/exists? :model/Transform :id transform-id)))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp-scheduler!
+    (testing "updating Databases, some of which already hold the new values"
+      (let [update! (fn [n]
+                      (mt/with-model-cleanup [:model/Database]
+                        (let [ids (vec (t2/insert-returning-pks! :model/Database
+                                                                 (for [i (range n)] {:name (str "Count " i) :engine :h2 :details {}})))]
+                          (t2/update! :model/Database :id [:in (vec (take-nth 2 ids))] {:auto_run_queries false})
+                          (events.tu/statement-count!
+                           #(database/update-databases! (for [id ids] {:id id :auto_run_queries false :is_full_sync false}))))))]
+        (update! 1)
+        (testing "half the Databases already hold a value, so Toucan writes them separately: at most 2 statements per row"
+          (is (<= (- (update! 6) (update! 2)) (* 4 2))))))
+    (testing "deleting Databases that have Tables and Fields"
+      (let [delete! (fn [n]
+                      (let [ids (vec (t2/insert-returning-pks! :model/Database
+                                                               (for [i (range n)] {:name (str "Count " i) :engine :h2 :details {}})))]
+                        (doseq [id ids]
+                          (let [table-id (t2/insert-returning-pk! :model/Table {:db_id id :name "T" :active true})]
+                            (t2/insert! :model/Field {:table_id table-id :name "F" :base_type :type/Text :database_type "TEXT" :position 0})))
+                        (events.tu/statement-count! #(database/delete-databases! ids))))]
+        (delete! 1)
+        (is (= (delete! 2) (delete! 6)))))))

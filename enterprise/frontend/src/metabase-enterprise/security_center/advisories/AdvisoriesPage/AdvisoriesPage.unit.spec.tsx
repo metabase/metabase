@@ -1,0 +1,747 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
+import {
+  findRequests,
+  setupNotificationChannelsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
+} from "__support__/server-mocks";
+import { createMockSettingsState } from "__support__/state";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { Route } from "metabase/router";
+import type {
+  Advisory,
+  AdvisoryId,
+  ListAdvisoriesResponse,
+} from "metabase-types/api";
+import { createMockVersion } from "metabase-types/api/mocks";
+import { createAdvisory } from "metabase-types/api/mocks/security-center";
+
+import * as notificationHook from "../hooks/use-notification-config";
+import * as advisoriesHook from "../hooks/use-security-advisories";
+
+import { AdvisoriesPage } from "./AdvisoriesPage";
+
+const mockAcknowledge = jest.fn();
+const mockAcknowledgeAll = jest.fn();
+
+function setup(
+  advisories: Advisory[] = [],
+  {
+    lastCheckedAt = null,
+    lastSyncAttemptedAt = null,
+    lastSyncError = null,
+    initialRoute = "/",
+    isError = false,
+  }: {
+    lastCheckedAt?: string | null;
+    lastSyncAttemptedAt?: string | null;
+    lastSyncError?: string | null;
+    initialRoute?: string;
+    isError?: boolean;
+  } = {},
+) {
+  jest.spyOn(advisoriesHook, "useSecurityAdvisories").mockReturnValue({
+    data: advisories,
+    lastCheckedAt,
+    lastSyncAttemptedAt,
+    lastSyncError,
+    isLoading: false,
+    isError,
+    acknowledgeAdvisory: mockAcknowledge,
+    acknowledgeAdvisories: mockAcknowledgeAll,
+  });
+
+  renderPage(initialRoute);
+}
+
+function renderPage(initialRoute = "/") {
+  setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+  setupNotificationChannelsEndpoints({
+    email: { configured: true },
+    slack: { configured: false },
+  });
+
+  jest.spyOn(notificationHook, "useNotificationConfigState").mockReturnValue({
+    config: {
+      email: {
+        sendToAllAdmins: true,
+        handler: { channel_type: "channel/email", recipients: [] },
+      },
+      slack: {
+        enabled: false,
+        handler: { channel_type: "channel/slack", recipients: [] },
+      },
+    },
+    users: [],
+    channels: undefined,
+    updateEmailHandler: jest.fn(),
+    toggleSendToAllAdmins: jest.fn(),
+    updateSlackHandler: jest.fn(),
+    toggleSlack: jest.fn(),
+    save: jest.fn(),
+    resetConfig: jest.fn(),
+  });
+
+  renderWithProviders(<Route path="*" element={<AdvisoriesPage />} />, {
+    withRouter: true,
+    withUndos: true,
+    initialRoute,
+    storeInitialState: {
+      settings: createMockSettingsState({
+        version: createMockVersion({ tag: "v0.59.3" }),
+      }),
+    },
+  });
+}
+
+type SyncResult = Pick<
+  ReturnType<typeof advisoriesHook.useSecurityAdvisories>,
+  "lastCheckedAt" | "lastSyncAttemptedAt" | "lastSyncError"
+>;
+
+const mockSyncFinished = (syncResult: SyncResult) => {
+  jest.spyOn(advisoriesHook, "useSecurityAdvisories").mockReturnValue({
+    data: [],
+    ...syncResult,
+    isLoading: false,
+    isError: false,
+    acknowledgeAdvisory: mockAcknowledge,
+    acknowledgeAdvisories: mockAcknowledgeAll,
+  });
+};
+
+describe("AdvisoriesPage", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+    mockAcknowledge.mockClear();
+    mockAcknowledgeAll.mockClear();
+  });
+
+  it("renders the title and current version", async () => {
+    setup();
+
+    expect(screen.getByText("Security advisories")).toBeInTheDocument();
+    expect(screen.getByTestId("current-version")).toHaveTextContent("v0.59.3");
+  });
+
+  it("renders the error state", async () => {
+    setup([], { isError: true });
+
+    expect(
+      screen.getByText("Something went wrong loading security advisories."),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the empty state when there are no advisories", async () => {
+    setup([]);
+
+    expect(
+      screen.getByText(
+        /No known security issues that impact your Metabase version/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders advisory cards in the correct order (affected first, then by severity)", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "1",
+        title: "Low not affected",
+        severity: "low",
+        match_status: "not_affected",
+      }),
+      createAdvisory({
+        advisory_id: "2",
+        title: "Critical affected",
+        severity: "critical",
+        match_status: "active",
+      }),
+      createAdvisory({
+        advisory_id: "3",
+        title: "High affected",
+        severity: "high",
+        match_status: "active",
+      }),
+    ];
+
+    setup(advisories);
+
+    const cards = screen.getAllByTestId("advisory-card");
+    expect(cards).toHaveLength(3);
+
+    expect(within(cards[0]).getByText("Critical affected")).toBeInTheDocument();
+    expect(within(cards[1]).getByText("High affected")).toBeInTheDocument();
+    expect(within(cards[2]).getByText("Low not affected")).toBeInTheDocument();
+  });
+
+  it("shows 'not affected' badge on non-affecting cards", async () => {
+    const advisories = [
+      createAdvisory({ advisory_id: "1", match_status: "active" }),
+      createAdvisory({ advisory_id: "2", match_status: "not_affected" }),
+    ];
+
+    setup(advisories);
+
+    expect(
+      screen.getByText("Your instance is not affected"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders external links with correct targets", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "1",
+        advisory_url: "https://example.com/advisory/1",
+      }),
+    ];
+
+    setup(advisories);
+
+    const advisoryLink = screen.getByText("View advisory");
+    expect(advisoryLink).toHaveAttribute(
+      "href",
+      "https://example.com/advisory/1",
+    );
+    expect(advisoryLink).toHaveAttribute("target", "_blank");
+  });
+
+  it("renders a single download button for the fix matching the instance's major version", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "1",
+        match_status: "active",
+        affected_versions: [
+          { min: "0.58.0", fixed: "0.58.11" },
+          { min: "0.59.0", fixed: "0.59.11" },
+        ],
+        download_jar_urls: [
+          { version: "0.58.11", url: "https://downloads.example.com/58.jar" },
+          { version: "0.59.11", url: "https://downloads.example.com/59.jar" },
+        ],
+      }),
+    ];
+
+    setup(advisories);
+
+    expect(screen.queryByText("Download v0.58.11")).not.toBeInTheDocument();
+    const downloadButton = screen.getByRole("link", {
+      name: /Download v0.59.11/,
+    });
+    expect(downloadButton).toHaveAttribute(
+      "href",
+      "https://downloads.example.com/59.jar",
+    );
+    expect(downloadButton).toHaveAttribute("target", "_blank");
+  });
+
+  it("does not render a download button when there is no matching download url", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "1",
+        match_status: "active",
+        affected_versions: [{ min: "0.59.0", fixed: "0.59.11" }],
+        download_jar_urls: [],
+      }),
+    ];
+
+    setup(advisories);
+
+    expect(screen.queryByText("Download v0.59.11")).not.toBeInTheDocument();
+  });
+
+  it("does not render a download button when the instance is not affected", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "1",
+        match_status: "not_affected",
+        affected_versions: [{ min: "0.59.0", fixed: "0.59.11" }],
+        download_jar_urls: [
+          { version: "0.59.11", url: "https://downloads.example.com/59.jar" },
+        ],
+      }),
+    ];
+
+    setup(advisories);
+
+    expect(screen.queryByText("Download v0.59.11")).not.toBeInTheDocument();
+  });
+
+  it("calls acknowledgeAdvisory when dismiss button is clicked", async () => {
+    const advisories = [
+      createAdvisory({ advisory_id: "SA-001", acknowledged_at: null }),
+    ];
+
+    setup(advisories);
+
+    await userEvent.click(screen.getByTestId("acknowledge-button"));
+    expect(mockAcknowledge).toHaveBeenCalledWith("SA-001");
+  });
+
+  it("calls acknowledgeAdvisories with only undismissed non-affecting advisory ids when 'Dismiss all' is clicked", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "SA-001",
+        match_status: "active",
+        severity: "critical",
+      }),
+      createAdvisory({
+        advisory_id: "SA-002",
+        match_status: "not_affected",
+        severity: "medium",
+      }),
+      createAdvisory({
+        advisory_id: "SA-003",
+        match_status: "not_affected",
+        severity: "low",
+        acknowledged_at: "2026-03-01T00:00:00Z",
+      }),
+    ];
+
+    setup(advisories);
+
+    await userEvent.click(screen.getByText("Dismiss all"));
+    expect(mockAcknowledgeAll).toHaveBeenCalledWith(["SA-002"]);
+  });
+
+  it("does not show 'Dismiss all' when there are no non-affecting advisories", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "SA-001",
+        match_status: "active",
+        severity: "critical",
+      }),
+    ];
+
+    setup(advisories);
+
+    expect(screen.queryByText("Dismiss all")).not.toBeInTheDocument();
+  });
+
+  it("does not show 'Dismiss all' when all non-affecting advisories are already dismissed", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "SA-001",
+        match_status: "not_affected",
+        acknowledged_at: "2026-03-01T00:00:00Z",
+      }),
+      createAdvisory({
+        advisory_id: "SA-002",
+        match_status: "not_affected",
+        acknowledged_at: "2026-03-01T00:00:00Z",
+      }),
+    ];
+
+    setup(advisories);
+
+    // Enable showing dismissed advisories so they appear in the list
+    await userEvent.click(screen.getByTestId("show-acknowledged-filter"));
+
+    expect(screen.queryByText("Dismiss all")).not.toBeInTheDocument();
+  });
+
+  it("does not show dismiss button for already dismissed advisories", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "SA-001",
+        acknowledged_at: "2026-03-01T00:00:00Z",
+      }),
+    ];
+
+    setup(advisories);
+
+    // Dismissed advisories are hidden by default — enable the checkbox first
+    await userEvent.click(screen.getByTestId("show-acknowledged-filter"));
+
+    const button = screen.getByTestId("acknowledge-button");
+    expect(button).toBeDisabled();
+    expect(button).toHaveTextContent("Dismissed");
+  });
+
+  it("hides dismissed advisories by default", async () => {
+    const advisories = [
+      createAdvisory({
+        advisory_id: "1",
+        title: "Visible",
+        acknowledged_at: null,
+      }),
+      createAdvisory({
+        advisory_id: "2",
+        title: "Hidden",
+        acknowledged_at: "2026-03-01T00:00:00Z",
+      }),
+    ];
+
+    setup(advisories);
+
+    expect(screen.getByText("Visible")).toBeInTheDocument();
+    expect(screen.queryByText("Hidden")).not.toBeInTheDocument();
+  });
+
+  it("renders the filter bar", async () => {
+    setup([]);
+
+    expect(screen.getByTestId("advisory-filter-bar")).toBeInTheDocument();
+  });
+
+  it("filters advisory cards by severity", async () => {
+    setup([
+      createAdvisory({
+        advisory_id: "1",
+        title: "Critical RCE vulnerability",
+        severity: "critical",
+        match_status: "active",
+      }),
+      createAdvisory({
+        advisory_id: "2",
+        title: "SQL injection in query builder",
+        severity: "high",
+        match_status: "resolved",
+      }),
+      createAdvisory({
+        advisory_id: "3",
+        title: "SSRF in GeoJSON endpoint",
+        severity: "medium",
+        match_status: "not_affected",
+      }),
+    ]);
+
+    expect(screen.getAllByTestId("advisory-card")).toHaveLength(3);
+
+    await userEvent.click(screen.getByTestId("severity-filter"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Critical" }),
+    );
+
+    expect(screen.getAllByTestId("advisory-card")).toHaveLength(1);
+    expect(screen.getByText("Critical RCE vulnerability")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId("severity-filter"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "All severities" }),
+    );
+
+    expect(screen.getAllByTestId("advisory-card")).toHaveLength(3);
+  });
+
+  describe("upgrade banner", () => {
+    it("shows the upgrade banner when there are active advisories", async () => {
+      const advisories = [
+        createAdvisory({
+          advisory_id: "1",
+          match_status: "active",
+          affected_versions: [{ min: "0.58.0", fixed: "0.59.4" }],
+        }),
+      ];
+
+      setup(advisories);
+
+      const banner = screen.getByTestId("upgrade-banner");
+      expect(banner).toBeInTheDocument();
+      expect(banner).toHaveTextContent("0.59.4");
+      expect(banner).toHaveTextContent("A security update is available");
+    });
+
+    it("does not show the upgrade banner when there are no active advisories", async () => {
+      const advisories = [
+        createAdvisory({
+          advisory_id: "1",
+          match_status: "not_affected",
+        }),
+      ];
+
+      setup(advisories);
+
+      expect(screen.queryByTestId("upgrade-banner")).not.toBeInTheDocument();
+    });
+
+    it("shows the highest fixed version across multiple active advisories", async () => {
+      const advisories = [
+        createAdvisory({
+          advisory_id: "1",
+          match_status: "active",
+          affected_versions: [{ min: "0.58.0", fixed: "0.59.2" }],
+        }),
+        createAdvisory({
+          advisory_id: "2",
+          match_status: "active",
+          affected_versions: [{ min: "0.58.0", fixed: "0.59.5" }],
+        }),
+      ];
+
+      setup(advisories);
+
+      const banner = screen.getByTestId("upgrade-banner");
+      expect(banner).toHaveTextContent("0.59.5");
+    });
+
+    it("includes a link to upgrade instructions", async () => {
+      const advisories = [
+        createAdvisory({
+          advisory_id: "1",
+          match_status: "active",
+          affected_versions: [{ min: "0.58.0", fixed: "0.59.4" }],
+        }),
+      ];
+
+      setup(advisories);
+
+      const link = screen.getByText("View upgrade instructions");
+      expect(link).toHaveAttribute(
+        "href",
+        "https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase",
+      );
+      expect(link).toHaveAttribute("target", "_blank");
+    });
+
+    it("does not show the upgrade banner when there are no advisories", async () => {
+      setup([]);
+
+      expect(screen.queryByTestId("upgrade-banner")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("notification settings modal", () => {
+    it("opens the modal when the 'open=notifications' query param is set", async () => {
+      setup([], { initialRoute: "/?open=notifications" });
+
+      expect(
+        await screen.findByRole("dialog", { name: "Notification settings" }),
+      ).toBeInTheDocument();
+    });
+
+    it("opens the modal when the notification settings button is clicked", async () => {
+      setup();
+
+      await userEvent.click(screen.getByTestId("notification-config-toggle"));
+
+      expect(
+        await screen.findByRole("dialog", { name: "Notification settings" }),
+      ).toBeInTheDocument();
+    });
+
+    it("does not open the modal when the query param is not set", async () => {
+      setup();
+
+      expect(
+        screen.queryByRole("dialog", { name: "Notification settings" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("last sync status", () => {
+    it("shows 'Never' when advisories have never been fetched", () => {
+      setup();
+
+      expect(screen.getByTestId("last-checked-at")).toHaveTextContent(
+        "Last successful check: Never",
+      );
+    });
+
+    it("shows the time of the last successful check", () => {
+      setup([], { lastCheckedAt: "2026-11-10T12:00:00Z" });
+
+      expect(screen.getByTestId("last-checked-at")).toHaveTextContent(
+        /Last successful check: .*2026/,
+      );
+    });
+
+    it("warns when the last check failed", () => {
+      setup([], {
+        lastCheckedAt: "2026-11-10T12:00:00Z",
+        lastSyncError: "Advisory fetch failed with status 502",
+      });
+
+      expect(screen.getByTestId("last-sync-error")).toHaveTextContent(
+        "The last check for security advisories failed. Advisories may be out of date.",
+      );
+    });
+
+    it("does not warn when the last check succeeded", () => {
+      setup([], { lastCheckedAt: "2026-11-10T12:00:00Z" });
+
+      expect(screen.queryByTestId("last-sync-error")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("sync polling", () => {
+    it("disables the sync button while syncing", async () => {
+      fetchMock.post("path:/api/ee/security-center/advisories/sync", 200);
+      setup();
+
+      await userEvent.click(screen.getByTestId("sync-advisories"));
+
+      expect(screen.getByTestId("sync-advisories")).toBeDisabled();
+    });
+
+    it("passes isPolling to useSecurityAdvisories after sync is triggered", async () => {
+      fetchMock.post("path:/api/ee/security-center/advisories/sync", 200);
+      const spy = jest.spyOn(advisoriesHook, "useSecurityAdvisories");
+      setup();
+
+      // Before sync, the hook should be called without polling
+      expect(spy).toHaveBeenCalledWith(false);
+
+      await userEvent.click(screen.getByTestId("sync-advisories"));
+
+      // After sync, the hook should be called with polling enabled
+      expect(spy).toHaveBeenCalledWith(true);
+    });
+
+    it("reports a failed check instead of 'up to date' when the sync fails", async () => {
+      fetchMock.post("path:/api/ee/security-center/advisories/sync", 200);
+      setup([], {
+        lastCheckedAt: "2026-11-10T12:00:00Z",
+        lastSyncAttemptedAt: "2026-11-10T12:00:00Z",
+      });
+      mockSyncFinished({
+        lastCheckedAt: "2026-11-10T12:00:00Z",
+        lastSyncAttemptedAt: "2026-11-11T12:00:00Z",
+        lastSyncError: "Advisory fetch failed with status 502",
+      });
+
+      await userEvent.click(screen.getByTestId("sync-advisories"));
+
+      expect(
+        await screen.findByText(
+          "Couldn't check for security advisories. Advisories may be out of date.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Security advisories are up to date"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Checking for security advisories…"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("reports 'up to date' and clears the error when a sync succeeds after a failed one", async () => {
+      fetchMock.post("path:/api/ee/security-center/advisories/sync", 200);
+      setup([], {
+        lastCheckedAt: "2026-11-10T12:00:00Z",
+        lastSyncAttemptedAt: "2026-11-10T12:00:00Z",
+        lastSyncError: "Advisory fetch failed with status 502",
+      });
+      expect(screen.getByTestId("last-sync-error")).toBeInTheDocument();
+
+      mockSyncFinished({
+        lastCheckedAt: "2026-11-11T12:00:00Z",
+        lastSyncAttemptedAt: "2026-11-11T12:00:00Z",
+        lastSyncError: null,
+      });
+
+      await userEvent.click(screen.getByTestId("sync-advisories"));
+
+      expect(
+        await screen.findByText("Security advisories are up to date"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Checking for security advisories…"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId("last-sync-error")).not.toBeInTheDocument();
+    });
+
+    it("stops polling and warns when the sync takes too long", async () => {
+      jest.useFakeTimers({ advanceTimers: true });
+      fetchMock.post("path:/api/ee/security-center/advisories/sync", 200);
+      const spy = jest.spyOn(advisoriesHook, "useSecurityAdvisories");
+      setup();
+
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .click(screen.getByTestId("sync-advisories"));
+      await waitFor(() => expect(spy).toHaveBeenLastCalledWith(true));
+
+      expect(
+        await screen.findByText(
+          "Security advisory check is taking longer than expected. Results will appear when ready.",
+          {},
+          { timeout: 61_000, interval: 1000 },
+        ),
+      ).toBeInTheDocument();
+      expect(spy).toHaveBeenLastCalledWith(false);
+    });
+  });
+
+  describe("with the advisories API", () => {
+    function setupWithApi(advisories: Advisory[]) {
+      const acknowledgedIds = new Set<AdvisoryId>();
+
+      fetchMock.get(
+        "path:/api/ee/security-center/advisories",
+        (): ListAdvisoriesResponse => ({
+          last_checked_at: null,
+          last_sync_attempted_at: null,
+          last_sync_error: null,
+          advisories: advisories.map((advisory) =>
+            acknowledgedIds.has(advisory.advisory_id)
+              ? { ...advisory, acknowledged_at: "2026-03-02T00:00:00Z" }
+              : advisory,
+          ),
+        }),
+      );
+      fetchMock.post(
+        "path:/api/ee/security-center/advisories/acknowledge",
+        ({ options }) => {
+          const body: unknown = JSON.parse(String(options.body));
+          const ids =
+            body != null && typeof body === "object" && "advisory_ids" in body
+              ? body.advisory_ids
+              : [];
+          if (Array.isArray(ids)) {
+            ids.forEach((id) => acknowledgedIds.add(String(id)));
+          }
+          return [];
+        },
+      );
+
+      renderPage();
+    }
+
+    it("dismisses every undismissed advisory that does not affect the instance", async () => {
+      setupWithApi([
+        createAdvisory({
+          advisory_id: "TEST-001",
+          title: "Critical RCE vulnerability",
+          match_status: "active",
+          severity: "critical",
+        }),
+        createAdvisory({
+          advisory_id: "TEST-002",
+          title: "SQL injection in query builder",
+          match_status: "resolved",
+          severity: "high",
+        }),
+        createAdvisory({
+          advisory_id: "TEST-003",
+          title: "SSRF in GeoJSON endpoint",
+          match_status: "not_affected",
+          severity: "medium",
+        }),
+        createAdvisory({
+          advisory_id: "TEST-004",
+          title: "Already dismissed advisory",
+          match_status: "not_affected",
+          severity: "low",
+          acknowledged_at: "2026-03-01T00:00:00Z",
+        }),
+      ]);
+
+      await userEvent.click(await screen.findByText("Dismiss all"));
+
+      await waitFor(() => {
+        expect(screen.queryByText("Dismiss all")).not.toBeInTheDocument();
+      });
+      const posts = await findRequests("POST");
+      expect(posts).toHaveLength(1);
+      expect(posts[0].body).toEqual({
+        advisory_ids: ["TEST-002", "TEST-003"],
+      });
+      expect(screen.getAllByTestId("advisory-card")).toHaveLength(1);
+      expect(
+        screen.getByText("Critical RCE vulnerability"),
+      ).toBeInTheDocument();
+    });
+  });
+});

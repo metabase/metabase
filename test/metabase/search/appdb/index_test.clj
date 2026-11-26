@@ -1,21 +1,26 @@
 (ns metabase.search.appdb.index-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.search.appdb.index-test]}}}}}}
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.global-system.mutable-component :as mc]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.queries.models.card :as card]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.specialization.api :as specialization]
+   [metabase.search.appdb.specialization.mysql :as search.mysql]
    [metabase.search.core :as search]
+   [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
+   [metabase.search.task.search-index :as search.task]
    [metabase.search.test-util :as search.tu]
    [metabase.search.util :as u.search]
    [metabase.test :as mt]
@@ -23,6 +28,7 @@
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
    [metabase.util.json :as json]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -43,6 +49,11 @@
 (defn- index-hits [term]
   (count (search.index/search term)))
 
+(defn- index-names
+  "The names of the entities the index matches for `term`."
+  [term]
+  (into #{} (map second) (search.index/search term)))
+
 (defn- now []
   ;; Truncate to milliseconds as precision may be lost when roundtripping to the database.
   (t/truncate-to (t/offset-date-time) :millis))
@@ -53,7 +64,9 @@
      (do ~@body)
      :h2
      ;; Fulltext features not supported
-     nil))
+     nil
+     ;; MySQL has separate coverage for its linguistic differences.
+     :mysql nil))
 
 ;; These helpers only mutate the temp local AppDb.
 ;; TODO make this a :once fixture so that we avoid so much setup and tear down
@@ -93,7 +106,7 @@
         ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
         (is (= (if fulltext? 2 1) (count (search.index/search "Projected Revenue"))))
         (is (= 0 (count (search.index/search "Protected Avenue"))))
-        (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
+        (card/update-cards! [{:id (t2/select-one-pk :model/Card :name "Projected Revenue") :name "Protected Avenue"}])
         (is (= (if fulltext? 1 0) (count (search.index/search "Projected Revenue"))))
         (is (= 1 (count (search.index/search "Protected Avenue"))))
         ;; Delete hooks are remove for now, over performance concerns.
@@ -113,7 +126,7 @@
             db-name-fn     (comp :database_name legacy-input)
             alternate-name (str (random-uuid))]
         (is (= "Indexed Database" (db-name-fn)))
-        (t2/update! :model/Database :id db-id {:name alternate-name})
+        (database/update-databases! [{:id db-id :name alternate-name}])
         (is (= alternate-name (db-name-fn)))))))
 
 (deftest partial-word-test
@@ -160,6 +173,11 @@
         (is (= 1 (index-hits "satisfaction and customer")))
         (is (= 2 (index-hits "satisfaction -customer")))))))
 
+(defn- postgres-major-version
+  "The major version of the Postgres app DB."
+  []
+  (-> (t2/query-one ["SHOW server_version_num"]) :server_version_num parse-long (quot 10000)))
+
 (deftest phrase-test
   (mt/with-dynamic-fn-redefs [u.search/tsv-language (constantly "english")]
     (with-index
@@ -168,13 +186,14 @@
         (is (= #_2 3 (index-hits "projected")))
         (is (= 2 (index-hits "revenue")))
         (is (= #_1 2 (index-hits "projected revenue")))
-        (testing "Simple dictionary allows searching for unstemmed words #60649"
-          ;; those two results are "Organization Reference" and "Nobody Expects Organi"
-          (is (= 2 (index-hits "organ")))
-          (is (= 2 (index-hits "organi"))))
-        (testing "We get false-positive for 'Organi' here"
-          ;; those two results are "Organization Reference" and "Nobody Expects Organi"
-          (is (= 2 (index-hits "organization"))))
+        (let [organ-cards #{"Nobody Expects Organi" "Organization Reference"}]
+          (testing "Simple dictionary allows searching for unstemmed words #60649"
+            (is (= organ-cards (index-names "organ")))
+            (is (= organ-cards (index-names "organi"))))
+          (testing "Before PostgreSQL 19 we get a false positive for 'Organi' here"
+            ;; Older stemmers reduce "organization" to "organ", a prefix of "Organi". PostgreSQL 19's gives "organiz".
+            (is (= (if (< (postgres-major-version) 19) organ-cards #{"Organization Reference"})
+                   (index-names "organization")))))
         (testing "only sometimes do these occur sequentially in a phrase"
           (is (= 1 (index-hits "\"projected revenue\""))))))))
 
@@ -376,9 +395,10 @@
                      :model/Card       {model-id :id}  {:type "model"
                                                         ;; :collection_id = coll-id
                                                         :collection_id coll-id}
-                     :model/Action     {action-id :id} {:name       action-name
-                                                        :type       "query"
-                                                        :model_id   model-id
+                     :model/Action     {action-id :id} {:name          action-name
+                                                        :type          "query"
+                                                        :collection_id coll-id
+                                                        :model_id      model-id
                                                         ;; :model_created_at = yesterday
                                                         :created_at yesterday
                                                         ;; :model_updated_at = yesterday
@@ -552,10 +572,17 @@
    "document"           #{"action" "model_index_value" "report_card"}
    "exploration"        #{"action" "document" "model_index_value" "report_card"}
    "report_card"        #{"action" "model_index_value"}
-   "report_dashboard"   #{"action" "model_index_value" "report_card"}})
+   "report_dashboard"   #{"action" "model_index_value" "report_card"}
+   "remote_sync_worktree" #{"action" "collection" "document" "exploration" "measure" "model_index_value" "report_card"
+                            "report_dashboard" "segment" "transform"}})
+
+(def ^:private ee-model->deleted-descendants
+  "The cascades of [[model->deleted-descendants]] that only the models of EE add."
+  {"remote_sync_worktree" #{"data_app"}})
 
 (deftest search-model-cascade-test
-  (is (= model->deleted-descendants
+  (is (= (cond->> model->deleted-descendants
+           config/ee-available? (merge-with into ee-model->deleted-descendants))
          (mt/with-empty-h2-app-db!
            (let [table->children    (u.conn/app-db-cascading-deletes (mdb/app-db) (map t2/table-name (descendants :metabase/model)))
                  table->sub-tables  (into {} (for [[t cs] table->children] [t (map :child-table cs)]))
@@ -660,11 +687,8 @@
       (search.index/reset-index!)
       (let [orphan (search.index/gen-table-name)]
         (search.index/create-table! orphan)
-        ;; Deferring the drops inside a transaction is only safe because this lock opens none on h2.
-        ;; Pin that here, so making it transactional fails a test instead of silently stopping the sweep.
         (testing "the lock leaves the sweep able to drop an orphan"
-          (cluster-lock/with-cluster-lock ::sweep-test-lock
-            (search.index/delete-obsolete-tables!))
+          (#'search.task/do-with-index-lock search.index/delete-obsolete-tables!)
           (is (not (search.index/exists? orphan))))))))
 
 (deftest strip-junk-chars-test
@@ -696,9 +720,7 @@
       (is (= "a   b" (strip "a b"))))))
 
 (deftest document->entry-junk-chars-test
-  ;; document->entry calls (specialization/extra-entry-fields entity), which dispatches on (mdb/db-type)
-  ;; and is only implemented for :postgres and :h2 — running this on MySQL/MariaDB hits the missing-impl error.
-  (when (#{:postgres :h2} (mdb/db-type))
+  (when (#{:postgres :h2 :mysql} (mdb/db-type))
     (let [->entry    @#'search.index/document->entry
           FF         (str (char 0x000C))
           NUL        (str (char 0x0000))
@@ -716,8 +738,12 @@
       (testing "top-level :name column has control chars replaced with spaces"
         (is (= "Title Sub title " (:name entry))))
       (testing "search_vector / extra fields built from the stripped entity contain no raw control chars"
-        (let [printed (pr-str (vals (select-keys entry [:search_vector :with_native_query_vector
-                                                        :search_terms :native_search_terms])))]
+        (let [printed (pr-str (vals (select-keys entry [:search_vector
+                                                        :with_native_query_vector
+                                                        :name_terms
+                                                        :search_terms
+                                                        :native_search_terms
+                                                        :prefix_terms])))]
           (is (false? (.contains printed NUL)) "no NUL byte")
           (is (false? (.contains printed BEL)) "no BEL")
           (is (false? (.contains printed FF))  "no form feed")
@@ -852,3 +878,111 @@
                                                                        [{:model "card" :model_id "1" :name "x"}])))
               (testing "\nthe enclosing transaction remains usable"
                 (is (true? (t2/exists? :model/User)))))))))))
+
+(deftest nullable-timestamps-stay-null-test
+  (testing "A document without timestamps stores NULL, whether or not its batch has documents with them"
+    (search.tu/with-temp-index-table
+      (let [upsert! (fn [documents]
+                      (#'specialization/batch-upsert! (search.index/active-table)
+                                                      (map (comp #'search.index/document->entry
+                                                                 #'search.ingestion/->document)
+                                                           documents)))
+            now     (t/offset-date-time)]
+        (upsert! [{:model "card", :id 1, :name "viewed", :last_viewed_at now, :last_edited_at now}
+                  {:model "card", :id 2, :name "unviewed beside viewed"}])
+        (upsert! [{:model "card", :id 3, :name "unviewed alone"}])
+        ;; JDBC reads MariaDB's zero date back as nil, so ask the database which values are NULL.
+        (is (= {:last_viewed_at #{"2" "3"}
+                :last_edited_at #{"2" "3"}}
+               (into {}
+                     (for [column [:last_viewed_at :last_edited_at]]
+                       [column (t2/select-fn-set :model_id (search.index/active-table) column nil)]))))))))
+
+(deftest mysql-upsert-splits-large-batches-test
+  (when (= :mysql (mdb/db-type))
+    (testing "A batch larger than the server's packet budget is sent as several statements, and every entry lands"
+      (search.tu/with-temp-index-table
+        (let [statements (atom 0)
+              upsert!    (mt/original-fn #'search.db/mysql-batch-upsert!)]
+          (mt/with-dynamic-fn-redefs [search.db/mysql-max-allowed-packet (constantly 8000)
+                                      search.db/mysql-batch-upsert!      (fn [table entries]
+                                                                           (swap! statements inc)
+                                                                           (upsert! table entries))]
+            (memoize/memo-clear! @#'search.mysql/max-allowed-packet)
+            (try
+              (#'specialization/batch-upsert! (search.index/active-table)
+                                              (map (comp #'search.index/document->entry #'search.ingestion/->document)
+                                                   (for [id (range 1 6)]
+                                                     {:model "card", :id id, :name (apply str "card" (repeat 1000 "x"))})))
+              (finally
+                (memoize/memo-clear! @#'search.mysql/max-allowed-packet))))
+          (is (< 1 @statements))
+          (is (= 5 (t2/count (search.index/active-table)))))))))
+
+(deftest mysql-upsert-skips-only-a-row-larger-than-the-packet-test
+  (when (= :mysql (mdb/db-type))
+    (testing "A document whose row alone exceeds max_allowed_packet is skipped, and the documents after it still land"
+      (search.tu/with-temp-index-table
+        (let [upsert! (mt/original-fn #'search.db/mysql-batch-upsert!)]
+          (mt/with-dynamic-fn-redefs [search.db/mysql-max-allowed-packet (constantly 8000)
+                                      search.db/mysql-batch-upsert!      (fn [table entries]
+                                                                           (when (some #(= "2" (str (:model_id %))) entries)
+                                                                             (throw (ex-info "Packet for query is too large. Change the 'max_allowed_packet' variable." {})))
+                                                                           (upsert! table entries))]
+            (memoize/memo-clear! @#'search.mysql/max-allowed-packet)
+            (try
+              (#'specialization/batch-upsert! (search.index/active-table)
+                                              (map (comp #'search.index/document->entry #'search.ingestion/->document)
+                                                   (for [id (range 1 4)]
+                                                     {:model "card", :id id, :name (apply str "card" (repeat 1000 "x"))})))
+              (finally
+                (memoize/memo-clear! @#'search.mysql/max-allowed-packet))))
+          (is (= #{"1" "3"} (t2/select-fn-set :model_id (search.index/active-table)))))))))
+
+(deftest ^:synchronized abandoned-pending-index-is-recreated-test
+  (when (= :mysql (mdb/db-type))
+    (testing "A pending index left without some indexes is reused while young, and recreated once abandoned"
+      (let [discard! (fn [table-name]
+                       (search.db/drop-search-index-table-if-exists! table-name)
+                       (t2/with-connection [conn (mdb/app-db)]
+                         (search-index-metadata/delete-search-index-metadata-for-index! conn (name table-name))))]
+        (mc/binding (search.index/indexes-handle) {:active nil, :pending nil}
+                    (fn []
+                      (let [interrupted (search.index/maybe-create-pending!)]
+                        (try
+                          ;; As if the process creating it had not yet created its full-text indexes.
+                          (t2/query [(format "DROP INDEX %1$s_text_idx ON %1$s" (name interrupted))])
+                          (search.engine/reset-tracking! :search.engine/appdb)
+                          (is (= interrupted (search.index/maybe-create-pending!))
+                              "a young table may still be in creation on another node")
+                          (search.engine/reset-tracking! :search.engine/appdb)
+                          (let [recreated (mt/with-dynamic-fn-redefs [search.db/mysql-table-older-than? (constantly true)]
+                                            (search.index/maybe-create-pending!))]
+                            (try
+                              (is (= {:recreated?           true
+                                      :interrupted-exists?  false
+                                      :recreated-abandoned? false}
+                                     {:recreated?           (not= interrupted recreated)
+                                      :interrupted-exists?  (search.index/exists? interrupted)
+                                      :recreated-abandoned? (specialization/table-abandoned? recreated)}))
+                              (finally
+                                (discard! recreated))))
+                          (finally
+                            (discard! interrupted))))))))))
+
+(deftest ^:synchronized incomplete-pending-index-is-not-activated-test
+  (when (= :mysql (mdb/db-type))
+    (testing "A pending index without some of its indexes is not activated"
+      (mc/binding (search.index/indexes-handle) {:active nil, :pending nil}
+                  (fn []
+                    (let [pending (search.index/maybe-create-pending!)]
+                      (try
+                        (t2/query [(format "DROP INDEX %1$s_text_idx ON %1$s" (name pending))])
+                        (search.engine/reset-tracking! :search.engine/appdb)
+                        (is (= {:activated? false, :pending pending}
+                               {:activated? (search.index/activate-table!)
+                                :pending    (#'search.index/pending-table)}))
+                        (finally
+                          (search.db/drop-search-index-table-if-exists! pending)
+                          (t2/with-connection [conn (mdb/app-db)]
+                            (search-index-metadata/delete-search-index-metadata-for-index! conn (name pending)))))))))))

@@ -10,7 +10,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
-   [metabase.transforms-base.db :as transforms-base.db]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.date-2 :as u.date]
    [metabase.workspaces.core :as workspaces]))
@@ -249,7 +248,7 @@
                   (assoc (transform-with-target {:type "table-incremental"}) :last_checkpoint_value "42")))))
     (testing "and saves no watermark"
       (let [updates (atom [])]
-        (mt/with-dynamic-fn-redefs [transforms-base.db/update-transform! (fn [& args] (swap! updates conj args) 1)]
+        (mt/with-dynamic-fn-redefs [transforms-base.u/update-transform! (fn [& args] (swap! updates conj args) nil)]
           (transforms-base.u/save-watermark! 1 {:column                     {:lib/type  :metadata/column
                                                                              :name      "id"
                                                                              :base-type :type/Integer}

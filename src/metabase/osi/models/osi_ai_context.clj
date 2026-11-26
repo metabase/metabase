@@ -12,14 +12,17 @@
   ([[mirror/request-entity-sync!]]); they never touch the embedding service or the pgvector store
   themselves."
   (:require
-   [clojure.string :as str]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
+   [metabase.osi.db :as osi.db]
    [metabase.osi.schema :as osi.schema]
+   [metabase.osi.serialization :as osi.serialization]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -57,74 +60,43 @@
 ;;; lingering until the periodic full reconcile. Outside a transaction the write has already committed, so
 ;;; [[app-db/do-after-commit]] runs the nudge immediately.
 (defn- nudge-entity-sync!
-  "After the surrounding transaction commits, nudge a targeted reconcile of `row`'s entity slice. Returns `row`."
-  [{:keys [entity_type entity_local_id] :as row}]
-  (u/prog1 row
-    (app-db/do-after-commit #(mirror/request-entity-sync! entity_type entity_local_id))))
+  "After the surrounding transaction commits, nudge a targeted reconcile of the slice of the entity with `entity-type`
+  and `entity-local-id`."
+  [entity-type entity-local-id]
+  (app-db/do-after-commit #(mirror/request-entity-sync! (entity-retrieval/normalize-entity-type entity-type)
+                                                        entity-local-id)))
 
-(t2/define-after-insert :model/OsiAiContext [row] (nudge-entity-sync! row))
-(t2/define-after-update :model/OsiAiContext [row] (nudge-entity-sync! row))
-(t2/define-before-delete :model/OsiAiContext [row] (nudge-entity-sync! row))
+;;; ----------------------------------------------------- Writes ----------------------------------------------------
 
-;;; ------------------------------------------------- Serialization -------------------------------------------------
-;;;
-;;; A row's identity is its entity ref: `entity_type` plus the entity it describes. Rather than its `entity_id`
-;;; NanoID, serdes nests the row under its entity's storage path (mirroring
-;;; [[metabase.warehouse-schema.models.field-user-settings]], which hangs off its Field): the path is the
-;;; entity's path plus a constant `OsiAiContext` segment. So both key columns are carried by the path —
-;;; `entity_local_id` is resolved from it on import, and `entity_type` is read back from the parent segment.
+(mu/defn upsert-osi-ai-context! :- :nil
+  "Set `ai-context` as the `:ai_context` of the OsiAiContext of the entity with `entity-type` and `entity-local-id`,
+  creating the row when the entity has none."
+  [entity-type     :- :string
+   entity-local-id :- ms/PositiveInt
+   ai-context      :- ::osi.schema/osi-ai-context.ai-context]
+  (osi.db/upsert-ai-context! entity-type entity-local-id ai-context)
+  (nudge-entity-sync! entity-type entity-local-id)
+  nil)
 
-(def ^:private entity-type->toucan
-  "Toucan model each `entity_type` resolves to. Tables get the table-fk treatment instead.
-  The card flavors (the type mirrors the agent's `read_resource` resource type) all map to Card."
-  {"card"     :model/Card
-   "model"    :model/Card
-   "metric"   :model/Card
-   "question" :model/Card
-   "measure"  :model/Measure
-   "segment"  :model/Segment})
+(mu/defn delete-osi-ai-context! :- :nil
+  "Delete the OsiAiContext of the entity with `entity-type` and `entity-local-id`."
+  [entity-type     :- :string
+   entity-local-id :- ms/PositiveInt]
+  (osi.db/delete-ai-context! entity-type entity-local-id)
+  (nudge-entity-sync! entity-type entity-local-id)
+  nil)
 
-(defmethod serialization/storage-paths :model/OsiAiContext [_ entities _ctx]
-  (mapv (fn [{:keys [entity_type entity_local_id]}]
-          (let [ids (if (sequential? entity_local_id) entity_local_id [entity_local_id])]
-            [{:label "osi_ai_context"}
-             {:label (u/slugify (str/join "-" ids) {:unicode? true})
-              :key   (pr-str [entity_type entity_local_id])}]))
-        entities))
+;;; ----------------------------------------------------- Specs -----------------------------------------------------
 
-;; `ai_context` is a plain text blob (no FKs — instructions/synonyms/examples are free text), so it copies
-;; verbatim. The key columns are exported so the path can be rebuilt on import, and imported from that path.
-
-(defn- walk-export-local-id
-  "The ref of the entity a row describes, which `visit` resolves: a Table's reference, or the entity id of a card,
-  measure or segment; an unmapped type keeps its raw id."
-  [visit {:keys [entity_type entity_local_id]}]
-  (cond
-    (= entity_type "table")           (visit :model/Table entity_local_id)
-    (entity-type->toucan entity_type) (visit (entity-type->toucan entity_type) entity_local_id)
-    :else                             entity_local_id))
-
-(defn- walk-import-local-id
-  "The local id of the entity a row describes, which `visit` resolves from its ref: a Table's reference, or the entity
-  id of a card, measure or segment; an unmapped type keeps its raw id."
-  [visit {:keys [entity_type entity_local_id]}]
-  (cond
-    (= entity_type "table")           (visit :model/Table entity_local_id)
-    (entity-type->toucan entity_type) (visit (entity-type->toucan entity_type) entity_local_id)
-    :else                             entity_local_id))
+(defmethod app-db-copy/spec :model/OsiAiContext [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/OsiAiContext [_]
-  {:schema    ::osi.schema/external-osi-ai-context
-   :identity  [:entity_type :entity_local_id]
-   :copy      [:ai_context :entity_id :entity_type]
-   :transform {:entity_local_id {:export (fn [store rows _ _]
-                                           (serialization/export-in-bulk store rows walk-export-local-id))
-                                 :import (fn [store entities _ opts]
-                                           (serialization/import-in-bulk store entities opts walk-import-local-id))}}})
-
-(defmethod serialization/import-dependencies :model/OsiAiContext [_ entities]
-  (mapv (fn [{:keys [entity_type entity_local_id]}]
-          (cond
-            (= entity_type "table")           #{[:model/Table entity_local_id]}
-            (entity-type->toucan entity_type) #{[(entity-type->toucan entity_type) entity_local_id]}))
-        entities))
+  {:schema              ::osi.schema/external-osi-ai-context
+   :identity            [:entity_type :entity_local_id]
+   :copy                [:ai_context :entity_id :entity_type]
+   :transform           {:entity_local_id {:export osi.serialization/export-local-ids
+                                           :import osi.serialization/import-local-ids}}
+   :storage-paths       osi.serialization/storage-paths
+   :import-dependencies osi.serialization/import-dependencies
+   :rows-by-refs        serialization/osi-ai-context-rows-by-refs})

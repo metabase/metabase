@@ -5,7 +5,6 @@
   be plaintext under a key, or ciphertext under a key not yet in effect, which that model's strict read rejects."
   (:require
    [metabase.app-db.db :as mdb.db]
-   [metabase.app-db.query :as mdb.query]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.app-db.workspace :as mdb.workspace]
    [metabase.config.core :as config]
@@ -407,7 +406,7 @@
       ;; predating that column reads it, so a rollback must not land on ciphertext under the old key.
       (doseq [{:keys [key value value_with_aad]} (mdb.db/settings)]
         (case key
-          "settings-last-updated" (let [now (mdb.query/current-timestamp-string db-type)]
+          "settings-last-updated" (let [now (mdb.db/current-timestamp-string db-type)]
                                     (mdb.db/update-setting-values! key {:value now, :value_with_aad (encrypt-setting-fn now key)}))
           "encryption-check" nil
           (let [aad-opts {:aad (mdb.setting/setting-aad key)}

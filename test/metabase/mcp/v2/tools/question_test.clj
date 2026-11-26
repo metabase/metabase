@@ -949,27 +949,21 @@
           (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id (:id card)))))))))
 
 (deftest update-move-into-dashboard-requires-destination-write-test
-  (mt/with-model-cleanup [:model/Card]
-    (mt/with-temp [:model/Collection coll-a {}
-                   :model/Collection coll-b {}
-                   :model/Dashboard dash-b {:collection_id (:id coll-b)}
-                   :model/Card card {:dataset_query (orders-query) :collection_id (:id coll-a)}]
-      ;; Read but not write on the destination: the caller can see the dashboard, so the read check
-      ;; in `resolve-dashboard!` passes and the *write* requirement on the dashboard's collection is
-      ;; what refuses — which is what this test exists to prove. Revoking read too would collapse the
-      ;; refusal into the not-found that
-      ;; `create-dashboard-question-existence-does-not-leak-test` covers, and this assertion would
-      ;; pass for the wrong reason.
-      (perms/revoke-collection-permissions! (perms-group/all-users) coll-b)
-      (perms/grant-collection-read-permissions! (perms-group/all-users) coll-b)
-      (mt/with-current-user (mt/user->id :rasta)
-        (let [result (call-tool v2.tu/all-scopes (str (random-uuid)) "question_write"
-                                {:method "update" :id (:id card) :dashboard_id (:id dash-b)})]
-          (is (:isError result))
-          (is (re-find #"You don't have permissions to do that"
-                       (-> result :content first :text)))
-          (testing "the card is untouched"
-            (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id (:id card))))))))))
+  (mt/with-model-cleanup [:model/Card :model/Collection]
+    (let [[coll-a] (collection/create-collections! [{:name (mt/random-name)}])
+          [coll-b] (collection/create-collections! [{:name (mt/random-name)}])]
+      (mt/with-temp [:model/Dashboard dash-b {:collection_id (:id coll-b)}
+                     :model/Card card {:dataset_query (orders-query) :collection_id (:id coll-a)}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) coll-b)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coll-b)
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [result (call-tool v2.tu/all-scopes (str (random-uuid)) "question_write"
+                                  {:method "update" :id (:id card) :dashboard_id (:id dash-b)})]
+            (is (:isError result))
+            (is (re-find #"You don't have permissions to do that"
+                         (-> result :content first :text)))
+            (testing "the card is untouched"
+              (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id (:id card)))))))))))
 
 ;;; ---------------------------------------------- Card-type guard -------------------------------------------------
 

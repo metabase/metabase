@@ -31,7 +31,8 @@
   reset-data-sensitivity!
   scan-data-sensitivity!]
  [metabase.sync.fetch-metadata
-  table-fields-metadata]
+  table-fields-metadata
+  table-remapper]
  [metabase.sync.field-values
   update-field-values!
   update-field-values-for-table!]

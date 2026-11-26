@@ -20,6 +20,7 @@
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -105,7 +106,7 @@
                                   (sync-metadata/sync-table-metadata! database table)
                                   (analyze/analyze-table! table)
                                   (sync.field-values/update-field-values-for-table! database table)
-                                  (sync-util/set-initial-table-sync-complete! table)
+                                  (sync.updates/set-initial-table-sync-complete! table)
                                   table))))
 
 (mu/defn start-initial-sync!

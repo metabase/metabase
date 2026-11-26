@@ -5,7 +5,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.internal-stats.util :as u]
    [metabase.models.interface :as mi]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -59,8 +58,8 @@
   [date :- ms/TemporalInstant]
   ;; New rows stamp `metabot_message.user_id`; legacy rows fall back to the conversation's user.
   (t2/query-one {:select [[[:count [:distinct [:coalesce :m.user_id :c.user_id]]] :cnt]]
-                 :from   [[:metabot_message :m]]
-                 :join   [[:metabot_conversation :c] [:= :c.id :m.conversation_id]]
+                 :from   [[(t2/table-name :model/MetabotMessage) :m]]
+                 :join   [[(t2/table-name :model/MetabotConversation) :c] [:= :c.id :m.conversation_id]]
                  :where  [:and
                           :ai_proxied
                           [:= :m.forked_from_message_id nil]
@@ -145,7 +144,7 @@
                [:cast :dataset_query :jsonb]
                ;; the path is a `jsonpath`, not a value: as a `?` parameter Postgres binds it as `varchar` and can't
                ;; find a matching `jsonb_path_exists` overload, so it has to be a real SQL literal
-               (h2x/literal "$.native.\"template-tags\" ? (exists(@.*))")]))
+               [:literal "$.native.\"template-tags\" ? (exists(@.*))"]]))
 
 (defn- contains-embedding-param
   [param]
@@ -157,7 +156,7 @@
             nil]
     :postgres [:jsonb_path_exists
                [:cast :embedding_params :jsonb]
-               (h2x/literal "$.* ? (@ == $val)")
+               [:literal "$.* ? (@ == $val)"]
                [:jsonb_build_object "val" param]]))
 
 (def ^:private embedding-on [:= :enable_embedding [:inline true]])
@@ -200,7 +199,7 @@
                               [(u/count-case [:and (contains-embedding-param "disabled")
                                               embedding-on])
                                :with_disabled_params])))
-     {:where (mi/exclude-internal-content-hsql :model/Card)})))
+     {:where (mi/non-internal-filter-clause :model/Card (t2/table-name :model/Card))})))
 
 (mu/defn active-personal-user-email-domain-count
   "The `:count` of distinct email domains of active personal Users."
@@ -211,7 +210,7 @@
     (t2/query-one {:select [[:%count.* :count]]
                    :from [[^:allow-subquery
                            {:select-distinct [[domain-expr]]
-                            :from [:core_user]
+                            :from [(t2/table-name :model/User)]
                             :where [:and
                                     [:= :is_active true]
                                     [:= :type "personal"]]} :distinct_emails]]})))

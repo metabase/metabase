@@ -64,7 +64,7 @@
 (defn record!
   "Record, in the workspace, a copy of the Table with `table-id` whose columns are `columns`."
   [workspace-id db-id table-id columns]
-  (mt/with-dynamic-fn-redefs [sync/table-fields-metadata (constantly (set columns))]
+  (mt/with-dynamic-fn-redefs [sync/table-fields-metadata (fn [_database _table _remap-table] (set columns))]
     (ws.copy/record-copy! workspace-id (lib.metadata/database (lib-be/application-database-metadata-provider db-id))
                           (t2/select-one :model/Table :id table-id))))
 

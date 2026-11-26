@@ -16,10 +16,10 @@
   ([]
    (entry! nil))
   ([position]
-   (t2/insert-returning-pk! :change_log {:table_name "test_table", :row_id 1, :action "update", :position position})))
+   (t2/insert-returning-pk! :model/ChangeLog {:table_name "test_table", :row_id 1, :action "update", :position position})))
 
 (defn- position [id]
-  (t2/select-one-fn :position :change_log :id id))
+  (t2/select-one-fn :position :model/ChangeLog :id id))
 
 (defn- number-entries! []
   (#'change-log.numbering/number-entries!))
@@ -61,7 +61,7 @@
             rolled-back (t2/with-transaction [_conn nil {:rollback-only true}]
                           (entry!))
             fast        (entry!)
-            visible     #(t2/select-fn-set :id :change_log :id [:in [slow rolled-back fast]])]
+            visible     #(t2/select-fn-set :id :model/ChangeLog :id [:in [slow rolled-back fast]])]
         (testing "ids are taken in the order the entries are written"
           (is (< slow rolled-back fast)))
         (testing "a higher id shows up while the transaction with a lower id is still open"
@@ -76,7 +76,7 @@
           (is (< (position fast) (position slow)))))
       (finally
         (deliver commit-slow true)
-        (t2/delete! :change_log :table_name "test_table")))))
+        (t2/delete! :model/ChangeLog :table_name "test_table")))))
 
 (deftest number-while-awake-test
   (t2/with-transaction [_conn nil {:rollback-only true}]
@@ -101,4 +101,4 @@
           (is (nil? (change-log.numbering/stay-awake!)))))
       (finally
         (system/stop! @#'change-log.numbering/numbering-component)
-        (t2/delete! :change_log :table_name "test_table")))))
+        (t2/delete! :model/ChangeLog :table_name "test_table")))))

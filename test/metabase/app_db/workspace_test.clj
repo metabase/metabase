@@ -11,7 +11,7 @@
 (defn- setting
   "The `metabase.workspace_id` setting of an app DB connection that this thread gets."
   []
-  (:v (t2/query-one ["SELECT current_setting('metabase.workspace_id', true) AS v"])))
+  (:v (t2/query-one {:select [[[:current_setting "metabase.workspace_id" true] :v]]})))
 
 (deftest connection-setting-test
   (when (= :postgres (mdb/db-type))

@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as provider]
+   [metabase.auth-identity.validation :as validation]
    [metabase.test :as mt]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -26,8 +27,8 @@
 (deftest ^:parallel validate-multimethod-test
   (testing "validate multimethod has default implementation"
     (testing "Default validate returns nil (no-op)"
-      (is (nil? (provider/validate :provider/test-password {:credentials {:password_hash "hash"}})))
-      (is (nil? (provider/validate :provider/test-ldap {:metadata {:email "test@example.com"}}))))))
+      (is (nil? (validation/validate :provider/test-password {:credentials {:password_hash "hash"}})))
+      (is (nil? (validation/validate :provider/test-ldap {:metadata {:email "test@example.com"}}))))))
 
 (deftest ^:parallel authenticate-multimethod-test
   (testing "authenticate multimethod"
@@ -198,7 +199,7 @@
 (deftest ^:parallel ^:parallel multimethod-dispatch-test
   (testing "Multimethod dispatch works with provider hierarchy"
     (testing "Custom provider inherits default validate implementation"
-      (is (nil? (provider/validate :provider/test-custom {:credentials {:foo "bar"}}))))
+      (is (nil? (validation/validate :provider/test-custom {:credentials {:foo "bar"}}))))
     (testing "Custom provider inherits default authenticate implementation"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo

@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [honey.sql :as sql]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    ;; Register the driver before testing its methods.
    [metabase.driver.motherduck]
@@ -27,6 +28,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
@@ -37,7 +39,7 @@
   (:import
    (com.mchange.v2.c3p0 ConnectionTester)
    (java.sql Connection PreparedStatement ResultSet ResultSetMetaData SQLException Statement Types)
-   (java.time LocalDateTime OffsetTime)
+   (java.time LocalDateTime OffsetDateTime OffsetTime ZoneId ZonedDateTime)
    (metabase.driver.motherduck ResetDatabaseConnectionTester)
    (org.postgresql.util PSQLException PSQLState)))
 
@@ -249,6 +251,103 @@
         (is (identical? rs (sql-jdbc.execute/execute-statement! :motherduck stmt "SELECT 1")))
         (is (= 2 @attempts))))))
 
+(deftest ^:parallel compile-transform-test
+  (is (= ["CREATE OR REPLACE TABLE \"main\".\"out\" AS SELECT x FROM src WHERE y = ?" [5]]
+         (driver/compile-transform :motherduck {:query        {:query "SELECT x FROM src WHERE y = ?", :params [5]}
+                                                :output-table :main/out}))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "the Postgres names that mean something else on the endpoint, or don't exist there"
+    (are [base-type database-type] (= database-type (driver/type->database-type :motherduck base-type))
+      :type/Float          [:double-precision]
+      :type/JSON           [:json]
+      :type/SerializedJSON [:json]
+      :type/IPAddress      [:text]))
+  (testing "the rest is inherited from Postgres"
+    (are [base-type database-type] (= database-type (driver/type->database-type :motherduck base-type))
+      :type/Decimal        [:decimal]
+      :type/Integer        [:int]
+      :type/BigInteger     [:bigint]
+      :type/Number         [:bigint]
+      :type/Text           [:text]
+      :type/Boolean        [:boolean]
+      :type/Date           [:date]
+      :type/DateTime       [:timestamp]
+      :type/DateTimeWithTZ [:timestamp-with-time-zone]
+      :type/Instant        [:timestamp-with-time-zone]
+      :type/UUID           [:uuid])))
+
+(deftest ^:parallel compile-create-temp-table-test
+  (testing "transform tests use an ordinary table, since the endpoint refuses temp tables"
+    (is (= ["CREATE TABLE \"mb_test_abc\" AS SELECT 1 AS x" []]
+           (driver/compile-create-temp-table :motherduck {:table "mb_test_abc", :query {:query "SELECT 1 AS x", :params []}})))
+    (is (= ["DROP TABLE IF EXISTS \"mb_test_abc\"" []]
+           (driver/compile-drop-temp-table :motherduck "mb_test_abc")))))
+
+(deftest ^:parallel upload-type->database-type-test
+  (testing "floats are doubles: through the endpoint, Postgres's `float` is DuckDB's 4-byte FLOAT"
+    (is (= [:double-precision]
+           (driver/upload-type->database-type :motherduck :metabase.upload/float))))
+  (testing "varchar-255 is text: DuckDB doesn't enforce a VARCHAR length"
+    (is (= [:text]
+           (driver/upload-type->database-type :motherduck :metabase.upload/varchar-255))))
+  (testing "the rest is inherited from Postgres; `create-table!` handles the auto-incrementing key"
+    (are [upload-type database-type] (= database-type (driver/upload-type->database-type :motherduck upload-type))
+      :metabase.upload/text            [:text]
+      :metabase.upload/int             [:bigint]
+      :metabase.upload/boolean         [:boolean]
+      :metabase.upload/date            [:date]
+      :metabase.upload/datetime        [:timestamp]
+      :metabase.upload/offset-datetime [:timestamp-with-time-zone])))
+
+(deftest ^:parallel with-pk-sequences-test
+  (let [auto-pk (driver/upload-type->database-type :motherduck :metabase.upload/auto-incrementing-int-pk)]
+    (testing "the auto-incrementing key becomes a BIGINT fed by a sequence named for the table and column"
+      (is (= [["\"main\".\"t__mb_row_id_seq\""]
+              [[:_mb_row_id "BIGINT DEFAULT nextval('\"main\".\"t__mb_row_id_seq\"')"]
+               [:n [:bigint]]]]
+             (#'metabase.driver.motherduck/with-pk-sequences :motherduck "main.t"
+                                                             {:_mb_row_id auto-pk
+                                                              :n          [:bigint]}))))
+    (testing "an unqualified table gets an unqualified sequence"
+      (is (= [["\"t_id_seq\""]
+              [[:id "BIGINT DEFAULT nextval('\"t_id_seq\"')"]]]
+             (#'metabase.driver.motherduck/with-pk-sequences :motherduck "t" {:id auto-pk}))))
+    (testing "other columns, including other primary keys, are left alone"
+      (is (= [[]
+              [[:id [:bigint]]
+               [:n  [:text]]]]
+             (#'metabase.driver.motherduck/with-pk-sequences :motherduck "main.t"
+                                                             {:id [:bigint]
+                                                              :n  [:text]}))))))
+
+(defn- ddl-statements!
+  "The SQL statements `f` would run, in order, instead of running them."
+  [f]
+  (let [statements (atom [])]
+    (mt/with-dynamic-fn-redefs [metabase.driver.motherduck/execute-ddl! (fn [_db-id sqls]
+                                                                          (swap! statements into sqls))]
+      (f))
+    @statements))
+
+;; Not ^:parallel: `with-redefs`.
+(deftest add-columns!-test
+  (testing "one ALTER statement per column, since the endpoint takes one ALTER command per statement"
+    (is (= ["ALTER TABLE \"main\".\"t\" ADD COLUMN \"a\" BIGINT"
+            "ALTER TABLE \"main\".\"t\" ADD COLUMN \"b\" TEXT"]
+           (ddl-statements! #(driver/add-columns! :motherduck 1 "main.t" {:a [:bigint]
+                                                                          :b "TEXT"}))))))
+
+(deftest alter-table-columns!-test
+  (testing "one ALTER statement per column, keeping Postgres's USING expressions"
+    (is (= ["ALTER TABLE \"main\".\"t\" ALTER COLUMN \"n\" TYPE DOUBLE PRECISION"
+            "ALTER TABLE \"main\".\"t\" ALTER COLUMN \"b\" TYPE BIGINT USING CASE WHEN \"b\" THEN 1 ELSE 0 END"]
+           (ddl-statements! #(driver/alter-table-columns! :motherduck 1 "main.t"
+                                                          {:n [:double-precision]
+                                                           :b [:bigint]}
+                                                          :old-types {:n [:bigint]
+                                                                      :b [:boolean]}))))))
+
 (defn- read-unparseable
   "Read `s` with the driver's reader for a column of `jdbc-type` and `type-name`, through stand-in JDBC objects.
 
@@ -306,6 +405,20 @@
                             (read-unparseable jdbc-type type-name s))
           s))))
 
+(deftest ^:parallel inline-timestamptz-test
+  (testing "the offset follows the time with no space, because DuckDB reads text after a space as a zone name"
+    (are [t] (= "timestamp with time zone '2020-06-07 12:00:00.000+05:30'"
+                (sql.qp/inline-value :motherduck t))
+      (OffsetDateTime/parse "2020-06-07T12:00:00+05:30")
+      (ZonedDateTime/of 2020 6 7 12 0 0 0 (ZoneId/of "Asia/Kolkata"))))
+  (testing "a pinned clock writes the pinned moment as such a literal"
+    (driver/with-driver :motherduck
+      (mt/with-results-timezone-id "Asia/Kolkata"
+        (qp.timezone/with-pinned-now (t/instant "2020-06-17T12:00:00Z")
+          (is (str/includes? (first (sql.qp/format-honeysql :motherduck
+                                                            (sql.qp/current-datetime-honeysql-form :motherduck)))
+                             "timestamp with time zone '2020-06-17 17:30:00.000+05:30'")))))))
+
 (deftest ^:parallel duckdb-only-base-types-test
   (are [database-type base-type] (= base-type (sql-jdbc.sync/database-type->base-type :motherduck database-type))
     :duckdb_enum         :type/Text
@@ -340,6 +453,27 @@
       (is (=? {:sslmode    "verify-ca"
                :sslfactory "org.postgresql.ssl.DefaultJavaSSLFactory"}
               (sql-jdbc.conn/connection-details->spec :motherduck (assoc details :tunnel-enabled true)))))))
+
+(deftest command-tags-test
+  (mt/test-driver :motherduck
+    (testing "every write statement returns a Postgres command tag, which `executeUpdate` needs, not a result set"
+      (let [table (str "command_tags_" (mt/random-name))
+            sql   (fn [fmt] (format fmt (str \" table \")))]
+        (sql-jdbc.execute/do-with-connection-with-options
+         :motherduck (mt/id) {:write? true}
+         (fn [^Connection conn]
+           (with-open [stmt (.createStatement conn)]
+             (try
+               (is (= [0 3 2 1 0 0]
+                      (mapv #(.executeUpdate stmt ^String (sql %))
+                            ["CREATE TABLE %s (id INTEGER, x INTEGER)"
+                             "INSERT INTO %s VALUES (1, 1), (2, 2), (3, 3)"
+                             "UPDATE %s SET x = 0 WHERE id < 3"
+                             "DELETE FROM %s WHERE id = 3"
+                             "ALTER TABLE %s ADD COLUMN y INTEGER"
+                             "COMMENT ON TABLE %s IS 'command tags'"])))
+               (finally
+                 (is (= 0 (.executeUpdate stmt ^String (sql "DROP TABLE IF EXISTS %s")))))))))))))
 
 (deftest ^:parallel connection-form-test
   (let [field-names (into #{}
@@ -455,8 +589,8 @@
         (finally
           (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))
 
-;; The checkout tester must accept a `USE` whether or not the endpoint returns a result set for it, which it does today
-;; but may stop doing (QUE-1012). A mock connection stands in for both behaviors.
+;; The checkout tester must accept a `USE` whether or not the endpoint returns a result set for it. It returns none with
+;; `return_pg_command_tags`, and an empty one without. A mock connection stands in for both behaviors.
 (defn- mock-connection
   "A Connection opened on `catalog` whose statements record their SQL in `executed`, then return `result-set?` or
   throw `error`."
@@ -518,11 +652,17 @@
       (finally
         (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))))))
 
-(mt/defdataset pk-leak-a
-  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+(def ^:private pk-leak-a
+  (mt/dataset-definition
+   "pk-leak-a"
+   [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]]
+   {:static false}))
 
-(mt/defdataset pk-leak-b
-  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+(def ^:private pk-leak-b
+  (mt/dataset-definition
+   "pk-leak-b"
+   [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]]
+   {:static false}))
 
 (defn- exec!
   "Execute `statements` against the database whose spec is passed as the first param."
@@ -531,7 +671,6 @@
    :motherduck spec {:write? true}
    (fn [^Connection conn]
      (with-open [stmt (.createStatement conn)]
-       ;; The endpoint returns result sets for DDL, which executeUpdate rejects.
        (doseq [^String statement statements]
          (.execute stmt statement))))))
 
@@ -589,7 +728,6 @@
     (fn [^Connection conn]
       (doseq [^String sql statements]
         (with-open [stmt (.createStatement conn)]
-          ;; The endpoint returns result sets for DDL, which executeUpdate rejects.
           (.execute stmt sql))))))
 
 ;; The endpoint's information_schema.table_constraints and key_column_usage list every database in the account. A
@@ -619,8 +757,11 @@
                                              (lib.metadata/database (mt/metadata-provider))
                                              :table-names ["both_pk" "diff_pk" "only_b_pk"]))))))))
 
-(mt/defdataset estimated-row-counts
-  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+(def ^:private estimated-row-counts
+  (mt/dataset-definition
+   "estimated-row-counts"
+   [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]]
+   {:static false}))
 
 (deftest describe-database-estimated-row-count-test
   (mt/test-driver :motherduck
@@ -640,8 +781,11 @@
                           (driver/describe-database :motherduck)
                           :tables))))))))
 
-(mt/defdataset schema-filters
-  [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]])
+(def ^:private schema-filters
+  (mt/dataset-definition
+   "schema-filters"
+   [["placeholder" [{:field-name "x", :base-type :type/Integer}] [[1]]]]
+   {:static false}))
 
 (deftest schema-filters-test
   (mt/test-driver :motherduck
@@ -708,6 +852,121 @@
     ;; option with "FATAL: option is not allowed: search_path".
     (is (= "main"
            (driver.sql/default-schema :motherduck (lib.metadata/database (mt/metadata-provider)))))))
+
+(deftest schema-exists?-test
+  (mt/test-driver :motherduck
+    (testing "a schema of the connected database"
+      (is (true? (driver/schema-exists? :motherduck (mt/id) "main"))))
+    ;; JDBC's getSchemas() lists these, and would answer yes for a schema of any attached database.
+    (testing "a schema the endpoint only emulates for Postgres clients"
+      (is (false? (driver/schema-exists? :motherduck (mt/id) "pg_catalog"))))
+    (testing "a schema that doesn't exist"
+      (is (false? (driver/schema-exists? :motherduck (mt/id) (str "no_such_schema_" (mt/random-name))))))))
+
+(deftest create-table!-drops-its-sequences-on-failure-test
+  (testing "when the table can't be made, create-table! drops the sequences it made for it"
+    (mt/test-driver :motherduck
+      (let [db-id     (mt/id)
+            table     (str "upload_ddl_" (mt/random-name))
+            sequence  (str table "__mb_row_id_seq")
+            sequences (fn []
+                        (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))
+                                    [(str "SELECT sequence_name FROM duckdb_sequences()"
+                                          " WHERE database_name = current_database() AND schema_name = 'main'"
+                                          " AND sequence_name = ?")
+                                     sequence]))]
+        (is (thrown? Exception
+                     (driver/create-table! :motherduck db-id (str "main." table)
+                                           {:_mb_row_id (driver/upload-type->database-type
+                                                         :motherduck
+                                                         :metabase.upload/auto-incrementing-int-pk)
+                                            :n          "NOT_A_TYPE"}
+                                           :primary-key [:_mb_row_id])))
+        (is (= []
+               (sequences)))))))
+
+(deftest upload-ddl-test
+  (testing "the table lifecycle an upload goes through, on the endpoint"
+    (mt/test-driver :motherduck
+      (let [db-id       (mt/id)
+            table       (str "upload_ddl_" (mt/random-name))
+            table-name  (str "main." table)
+            sequence    (str table "__mb_row_id_seq")
+            upload-type (partial driver/upload-type->database-type :motherduck)
+            query       (fn [sql & params]
+                          (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))
+                                      (into [sql] params)))
+            columns     (fn []
+                          (map (juxt :column_name :data_type)
+                               (query (str "SELECT column_name, data_type FROM duckdb_columns()"
+                                           " WHERE database_name = current_database() AND schema_name = 'main'"
+                                           " AND table_name = ? ORDER BY column_index")
+                                      table)))
+            sequences   (fn []
+                          (map :sequence_name
+                               (query (str "SELECT sequence_name FROM duckdb_sequences()"
+                                           " WHERE database_name = current_database() AND schema_name = 'main'"
+                                           " AND sequence_name = ?")
+                                      sequence)))
+            rows        (fn []
+                          (map (juxt :_mb_row_id :n :b :c)
+                               (query (format "SELECT * FROM \"main\".\"%s\" ORDER BY 1" table))))]
+        (try
+          (testing "create-table! gives the auto-incrementing key a sequence of its own, and inserts fill it"
+            (driver/create-table! :motherduck db-id table-name
+                                  {:_mb_row_id (upload-type :metabase.upload/auto-incrementing-int-pk)
+                                   :n          (upload-type :metabase.upload/int)
+                                   :b          (upload-type :metabase.upload/boolean)
+                                   :c          (upload-type :metabase.upload/boolean)}
+                                  :primary-key [:_mb_row_id])
+            (is (= [["_mb_row_id" "BIGINT"]
+                    ["n"          "BIGINT"]
+                    ["b"          "BOOLEAN"]
+                    ["c"          "BOOLEAN"]]
+                   (columns)))
+            (is (= [sequence]
+                   (sequences)))
+            (driver/insert-into! :motherduck db-id table-name
+                                 [:n :b :c]
+                                 [[1 true false]
+                                  [2 false true]])
+            (is (= [[1 1 true false]
+                    [2 2 false true]]
+                   (rows))))
+          (testing "truncate! empties the table, and the key keeps counting as a Postgres serial does"
+            (driver/truncate! :motherduck db-id table-name)
+            (is (= [] (rows)))
+            (driver/insert-into! :motherduck db-id table-name
+                                 [:n :b :c]
+                                 [[3 true false]])
+            (is (= [[3 3 true false]]
+                   (rows))))
+          (testing "add-columns! and alter-table-columns! take several columns at once"
+            (driver/add-columns! :motherduck db-id table-name
+                                 {:x (upload-type :metabase.upload/text)
+                                  :y (upload-type :metabase.upload/float)})
+            (driver/alter-table-columns! :motherduck db-id table-name
+                                         {:n (upload-type :metabase.upload/float)
+                                          :b (upload-type :metabase.upload/int)
+                                          :c (upload-type :metabase.upload/float)}
+                                         :old-types {:n (upload-type :metabase.upload/int)
+                                                     :b (upload-type :metabase.upload/boolean)
+                                                     :c (upload-type :metabase.upload/boolean)})
+            (is (= [["_mb_row_id" "BIGINT"]
+                    ["n" "DOUBLE"]
+                    ["b" "BIGINT"]
+                    ["c" "DOUBLE"]
+                    ["x" "VARCHAR"]
+                    ["y" "DOUBLE"]]
+                   (columns)))
+            (is (= [[3 3.0 1 0.0]]
+                   (rows))))
+          (testing "drop-table! takes the sequence with the table"
+            (driver/drop-table! :motherduck db-id table-name)
+            (is (= [] (columns)))
+            (is (= [] (sequences))))
+          (finally
+            (driver/drop-table! :motherduck db-id table-name)))))))
 
 (deftest recreated-views-test
   (mt/test-driver :motherduck

@@ -39,7 +39,7 @@ You may be prompted to log in to Heroku through your browser. Once logged in, yo
 
 ### Set your MB_DB_CONNECTION_URI
 
-Before running the migration script, you'll need to set the `MB_DB_CONNECTION_URI`.
+Before running the migration script, you'll need to set the [`MB_DB_CONNECTION_URI`](../../configuring-metabase/environment-variables.md#mb_db_connection_uri).
 
 To get the Config Vars, log in to Heroku and go to the **Settings** tab for your Metabase app. In the **Config vars** section, you'll see your `DATABASE_URL`. Copy the corresponding connection URL string, which you'll use to set your `MB_DB_CONNECTION_URI`. Setting this environment variable will let your new Metabase Cloud instance access data in your existing application database.
 

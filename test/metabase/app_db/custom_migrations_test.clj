@@ -1057,80 +1057,75 @@
 (deftest ^:mb/old-migrations-test migrate-database-options-to-database-settings-test
   (let [do-test
         (fn [encrypted?]
-          ;; set-new-database-permissions! relies on the data_permissions table, which was added after the migrations
-          ;; we're testing here, so let's override it to be a no-op. Other tests add DBs using the table name instead of
-          ;; model name, so they don't hit the post-insert hook, but here we're relying on the transformations being
-          ;; applied so we can't do that.
-          (mt/with-dynamic-fn-redefs [database/set-new-database-permissions! (constantly nil)]
-            (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
-              (let [default-db                {:name       "DB"
-                                               :engine     "postgres"
-                                               :created_at :%now
-                                               :updated_at :%now}
-                    success-id                (first (t2/insert-returning-pks!
-                                                      :model/Database
-                                                      (merge default-db
-                                                             {:options  (json/encode {:persist-models-enabled true})
-                                                              :settings {:database-enable-actions true}})))
-                    options-nil-settings-id   (first (t2/insert-returning-pks!
-                                                      :model/Database
-                                                      (merge default-db
-                                                             {:options  (json/encode {:persist-models-enabled true})
-                                                              :settings nil})))
-                    options-empty-settings-id (first (t2/insert-returning-pks!
-                                                      :model/Database
-                                                      (merge default-db
-                                                             {:options  (json/encode {:persist-models-enabled true})
-                                                              :settings {}})))
-                    nil-options-id            (first (t2/insert-returning-pks!
-                                                      :model/Database
-                                                      (merge default-db
-                                                             {:options  nil
-                                                              :settings {:database-enable-actions true}})))
-                    empty-options-id          (first (t2/insert-returning-pks!
-                                                      :model/Database
-                                                      (merge default-db
-                                                             {:options  "{}"
-                                                              :settings {:database-enable-actions true}})))]
-                (testing "fowward migration\n"
-                  (when encrypted?
-                    (testing "make sure the settings is encrypted before the migration"
-                      (is (true? (encryption/possibly-encrypted-string?
-                                  (:settings (t2/query-one {:select [:settings]
-                                                            :from [:metabase_database]
-                                                            :where [[:= :id success-id]]})))))))
-                  (migrate!)
-                  (when encrypted?
-                    (testing "make sure the settings is encrypted after the migration"
-                      (is (true? (encryption/possibly-encrypted-string?
-                                  (:settings (t2/query-one {:select [:settings]
-                                                            :from [:metabase_database]
-                                                            :where [[:= :id success-id]]})))))))
-                  (testing "the options is merged into settings correctly"
-                    (is (= {:persist-models-enabled true
-                            :database-enable-actions true}
-                           (t2/select-one-fn :settings :model/Database :id success-id)))
-                    (testing "even when settings is nil"
-                      (is (= {:persist-models-enabled true}
-                             (t2/select-one-fn :settings :model/Database :id options-nil-settings-id))))
-                    (testing "even when settings is empty"
-                      (is (= {:persist-models-enabled true}
-                             (t2/select-one-fn :settings :model/Database :id options-empty-settings-id)))))
-                  (testing "nil or empty options doesn't break migration"
-                    (is (= {:database-enable-actions true}
-                           (t2/select-one-fn :settings :model/Database :id nil-options-id)))
-                    (is (= {:database-enable-actions true}
-                           (t2/select-one-fn :settings :model/Database :id empty-options-id)))))
-                (testing "rollback migration"
-                  (migrate! :down 46)
-                  (testing "the persist-models-enabled is assoced back to options"
-                    (is (= {:options  "{\"persist-models-enabled\":true}"
-                            :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] :id success-id))))
-                  (testing "if settings doesn't have :persist-models-enabled, then options is empty map"
-                    (is (= {:options  nil
-                            :settings {:database-enable-actions true}}
-                           (t2/select-one [:model/Database :settings :options] :id empty-options-id)))))))))]
+          (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
+            (let [default-db                {:name       "DB"
+                                             :engine     "postgres"
+                                             :created_at :%now
+                                             :updated_at :%now}
+                  success-id                (first (t2/insert-returning-pks!
+                                                    :model/Database
+                                                    (merge default-db
+                                                           {:options  (json/encode {:persist-models-enabled true})
+                                                            :settings {:database-enable-actions true}})))
+                  options-nil-settings-id   (first (t2/insert-returning-pks!
+                                                    :model/Database
+                                                    (merge default-db
+                                                           {:options  (json/encode {:persist-models-enabled true})
+                                                            :settings nil})))
+                  options-empty-settings-id (first (t2/insert-returning-pks!
+                                                    :model/Database
+                                                    (merge default-db
+                                                           {:options  (json/encode {:persist-models-enabled true})
+                                                            :settings {}})))
+                  nil-options-id            (first (t2/insert-returning-pks!
+                                                    :model/Database
+                                                    (merge default-db
+                                                           {:options  nil
+                                                            :settings {:database-enable-actions true}})))
+                  empty-options-id          (first (t2/insert-returning-pks!
+                                                    :model/Database
+                                                    (merge default-db
+                                                           {:options  "{}"
+                                                            :settings {:database-enable-actions true}})))]
+              (testing "fowward migration\n"
+                (when encrypted?
+                  (testing "make sure the settings is encrypted before the migration"
+                    (is (true? (encryption/possibly-encrypted-string?
+                                (:settings (t2/query-one {:select [:settings]
+                                                          :from [:metabase_database]
+                                                          :where [[:= :id success-id]]})))))))
+                (migrate!)
+                (when encrypted?
+                  (testing "make sure the settings is encrypted after the migration"
+                    (is (true? (encryption/possibly-encrypted-string?
+                                (:settings (t2/query-one {:select [:settings]
+                                                          :from [:metabase_database]
+                                                          :where [[:= :id success-id]]})))))))
+                (testing "the options is merged into settings correctly"
+                  (is (= {:persist-models-enabled true
+                          :database-enable-actions true}
+                         (t2/select-one-fn :settings :model/Database :id success-id)))
+                  (testing "even when settings is nil"
+                    (is (= {:persist-models-enabled true}
+                           (t2/select-one-fn :settings :model/Database :id options-nil-settings-id))))
+                  (testing "even when settings is empty"
+                    (is (= {:persist-models-enabled true}
+                           (t2/select-one-fn :settings :model/Database :id options-empty-settings-id)))))
+                (testing "nil or empty options doesn't break migration"
+                  (is (= {:database-enable-actions true}
+                         (t2/select-one-fn :settings :model/Database :id nil-options-id)))
+                  (is (= {:database-enable-actions true}
+                         (t2/select-one-fn :settings :model/Database :id empty-options-id)))))
+              (testing "rollback migration"
+                (migrate! :down 46)
+                (testing "the persist-models-enabled is assoced back to options"
+                  (is (= {:options  "{\"persist-models-enabled\":true}"
+                          :settings {:database-enable-actions true}}
+                         (t2/select-one [:model/Database :settings :options] :id success-id))))
+                (testing "if settings doesn't have :persist-models-enabled, then options is empty map"
+                  (is (= {:options  nil
+                          :settings {:database-enable-actions true}}
+                         (t2/select-one [:model/Database :settings :options] :id empty-options-id))))))))]
     (do-test false)
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))
@@ -1581,16 +1576,12 @@
 (defn- table-and-column-of-type
   [ttype]
   (->> (t2/query
-        [(case (mdb/db-type)
-           :postgres
-           (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s' AND table_schema = 'public';"
-                   ttype)
-           :mysql
-           (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s' AND table_schema = '%s';"
-                   ttype (-> (mdb/data-source) .getConnection .getCatalog))
-           :h2
-           (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s';"
-                   ttype))])
+        {:select [:table_name :column_name :is_nullable]
+         :from   [:information_schema.columns]
+         :where  (case (mdb/db-type)
+                   :postgres [:and [:= :data_type ttype] [:= :table_schema "public"]]
+                   :mysql    [:and [:= :data_type ttype] [:= :table_schema (-> (mdb/data-source) .getConnection .getCatalog)]]
+                   :h2       [:= :data_type ttype])})
        (map (fn [{:keys [table_name column_name is_nullable]}]
               [(keyword (u/lower-case-en table_name)) (keyword (u/lower-case-en column_name)) (= is_nullable "YES")]))
        set))
@@ -2012,7 +2003,7 @@
                   (m/index-by :id (t2/select :metabase_database)))))))))
 
 (defn- sample-content-created? []
-  (boolean (not-empty (t2/query "SELECT * FROM report_dashboard where name = 'E-commerce Insights'"))))
+  (boolean (not-empty (t2/query {:select [:*] :from [:report_dashboard] :where [:= :name "E-commerce Insights"]}))))
 
 (deftest ^:mb/old-migrations-test decrypt-cache-settings-test
   (impl/test-migrations "v50.2024-06-12T12:33:07" [migrate!]
@@ -2202,7 +2193,7 @@
       (t2/query {:delete-from :metabase_database})
       (migrate!)
       (is (false? (sample-content-created?)))
-      (is (empty? (t2/query "SELECT * FROM metabase_database"))
+      (is (empty? (t2/query {:select [:*] :from [:metabase_database]}))
           "No database should have been created"))))
 
 (deftest ^:mb/old-migrations-test create-sample-content-test-3
@@ -2224,7 +2215,7 @@
   (testing "Every sample-database field has a non-null effective_type after migration (GHY-3367)"
     (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
       (migrate!)
-      (let [fields (t2/query "SELECT name, base_type, effective_type FROM metabase_field")]
+      (let [fields (t2/query {:select [:name :base_type :effective_type] :from [:metabase_field]})]
         (is (seq fields))
         (is (empty? (filter #(nil? (:effective_type %)) fields)))))))
 

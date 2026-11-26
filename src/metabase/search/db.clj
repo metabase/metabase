@@ -3,7 +3,9 @@
   additional logic, so no other namespace in the module runs a query itself (connection and transaction handling still use `toucan2.core`)."
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.search.appdb.index-schema :as index-schema]
@@ -15,7 +17,7 @@
    [metabase.search.ingestion.query :as ingestion.query]
    [metabase.search.schema :as search.schema]
    [metabase.search.spec :as search.spec]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -25,15 +27,46 @@
   way `metabase.search.appdb.index/document->entry` renames them), the base columns, and the extra columns the
   active engine specialization adds, each value a Honey SQL 2 expression."
   (into [:map {:closed true}]
-        (for [column (into #{:model :display_data :legacy_input :model_id :model_created_at :model_updated_at
-                             :updated_at :search_vector :with_native_query_vector :search_terms
-                             :native_search_terms}
+        (for [column (into #{:display_data
+                             :legacy_input
+                             :model
+                             :model_created_at
+                             :model_id
+                             :model_updated_at
+                             :name_terms
+                             :native_search_terms
+                             :prefix_terms
+                             :search_terms
+                             :search_vector
+                             :updated_at
+                             :with_native_query_vector}
                            (remove #{:id :created_at :updated_at} search.spec/attr-columns))]
-          [column {:optional true} ::h2x/expr])))
+          [column {:optional true} ::funnysql.schema/expr])))
+
+(def ^:private boolean-columns
+  "The ingestion query columns of the attributes typed `:boolean`."
+  (into []
+        (keep (fn [[attr attr-type]]
+                (when (= :boolean attr-type)
+                  (keyword (u/->snake_case_en (name attr))))))
+        search.spec/attr-types))
+
+;; MySQL and MariaDB return a boolean expression as a number, such as `0` for a comparison or `1M` for a `COALESCE`
+;; over a `BIT` column, and MariaDB sometimes as the byte `"0"` or `"1"`. Clojure treats each of them as true.
+;; PostgreSQL and H2 return booleans.
+(defn- coerce-booleans
+  "The row, with [[api/bit->boolean]] applied to each boolean attribute it has."
+  [row]
+  (reduce (fn [row column]
+            (cond-> row
+              (contains? row column) (update column api/bit->boolean)))
+          row
+          boolean-columns))
 
 (mu/defn spec-index-reducible-rows
   "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)
   matching `where-clause`, or every row when it is nil.
+  Boolean attributes come back as booleans on every app DB.
 
   `where-clause` is the one Honey SQL argument left in this namespace. It is the search-spec generated `:where`
   fragment of `metabase.search.spec/search-models-to-update`, which is the payload of the ingestion queue itself:
@@ -42,7 +75,9 @@
   Turning it into plain data means redesigning that queue, not restructuring a caller."
   [search-model :- :string
    where-clause :- [:maybe vector?]]
-  (mdb/streaming-reducible-query (ingestion.query/spec-index-query-where search-model where-clause)))
+  (let [query (ingestion.query/spec-index-query-where search-model where-clause)]
+    (cond->> (mdb/streaming-reducible-query query)
+      (= :mysql (mdb/db-type)) (eduction (map coerce-booleans)))))
 
 (mu/defn spec-index-doc-ids-reducible
   "A reducible of at most `limit` distinct document ids `search-model` produces under `where-clause`, each row as
@@ -83,14 +118,13 @@
   (mdb/streaming-reducible-query (legacy/full-search-query search-ctx)))
 
 (mu/defn scored-search-rows
-  "The scored, filtered rows of the search index `index-table` for `search-ctx` and `search-string`, best first.
-  `view-count-percentiles` maps each model to its view-count percentile (see [[view-count-percentile-rows]])."
-  [index-table            :- [:or :keyword :string]
-   search-ctx             :- search.config/SearchContext
-   search-string          :- [:maybe :string]
-   view-count-percentiles :- [:map-of (into [:enum] search.spec/search-models) [:maybe [:or number? :string]]]]
-  (t2/query (search.scoring/with-scores search-ctx
-              (search.scoring/scorers search-ctx view-count-percentiles)
+  "The scored, filtered rows of the search index for the query, best first.
+  The prepared `scorers` map supplies each score's SQL expression."
+  [index-table   :- [:or :keyword :string]
+   search-ctx    :- search.config/SearchContext
+   search-string :- [:maybe :string]
+   scorers       :- [:map-of (into [:enum] search.config/known-rankers) vector?]]
+  (t2/query (search.scoring/with-scores search-ctx scorers
               (appdb.query/base-filtered-query index-table search-ctx search-string [:legacy_input]))))
 
 (mu/defn distinct-model-rows
@@ -150,8 +184,9 @@
   as shaped by the active search engine specialization, then that specialization's post-creation statements (index
   creation and the like)."
   [table-name :- [:or :keyword :string]]
-  (t2/query (-> (sql.helpers/create-table table-name)
-                (sql.helpers/with-columns (specialization/table-schema index-schema/base-schema))))
+  (t2/query (merge (-> (sql.helpers/create-table table-name)
+                       (sql.helpers/with-columns (specialization/table-schema index-schema/base-schema)))
+                   (specialization/table-options)))
   (let [table-name (name table-name)]
     (doseq [statement (specialization/post-create-statements table-name table-name)]
       (t2/query statement))))
@@ -161,19 +196,61 @@
   [table-name :- [:or :keyword :string]]
   (t2/query (str "ANALYZE " (name table-name))))
 
+(mu/defn analyze-mysql-search-index-table!
+  "Refresh InnoDB statistics for the search index table."
+  [table-name :- [:or :keyword :string]]
+  (t2/query {:analyze-table (keyword (name table-name))}))
+
+(mu/defn mysql-table-statistics
+  "The engine, default collation, and estimated row count for a table in the current MySQL database, or nil."
+  [table-name :- :string]
+  (t2/query-one {:select [:engine :table_collation :table_rows]
+                 :from   [:information_schema.tables]
+                 :where  [:and
+                          [:= :table_schema :%database]
+                          [:= :table_name table-name]]}))
+
 (mu/defn postgres-batch-upsert!
   "Upsert `entries` into the search index `table`, on conflict of `(model, model_id)` overwriting every other column
   with the new value."
   [table   :- [:or :keyword :string]
    entries :- [:sequential SearchIndexRow]]
   (when (seq entries)
-    (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
-          excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
+    (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))]
       (t2/query {:insert-into   table
                  :values        entries
                  :on-conflict   [:model :model_id]
-                 :do-update-set (with-meta (zipmap update-keys (map excluded-kw update-keys))
+                 :do-update-set (with-meta (zipmap update-keys (map #(u/qualified-key :excluded %) update-keys))
                                            {:allow-subquery true})}))))
+
+(mu/defn mysql-batch-upsert!
+  "Upsert search index entries by `(model, model_id)`, replacing every other supplied column."
+  [table   :- [:or :keyword :string]
+   entries :- [:sequential SearchIndexRow]]
+  (when (seq entries)
+    (let [update-keys (disj (set (mapcat keys entries)) :id :model :model_id)]
+      (t2/query {:insert-into             table
+                 :values                  entries
+                 :on-duplicate-key-update (with-meta (into {} (map (fn [column] [column [:values column]])) update-keys)
+                                                     {:allow-subquery true})}))))
+
+(mu/defn mysql-fulltext-options
+  "The session stopword flag and server token-size limits for InnoDB full-text indexes."
+  []
+  (t2/query-one {:select [[[:system-variable :innodb_ft_enable_stopword] :stopwords]
+                          [[:system-variable :innodb_ft_min_token_size] :min_size]
+                          [[:system-variable :innodb_ft_max_token_size] :max_size]]}))
+
+(mu/defn mysql-max-allowed-packet :- pos-int?
+  "The largest statement, in bytes, the MySQL server accepts."
+  []
+  ;; MariaDB returns the variable as an unsigned BIGINT, which reads as a BigInteger.
+  (long (:max_allowed_packet (t2/query-one {:select [[[:system-variable :max_allowed_packet] :max_allowed_packet]]}))))
+
+(mu/defn set-mysql-fulltext-stopwords!
+  "Enable or disable stopwords for full-text indexes created on the current connection."
+  [enabled? :- :boolean]
+  (t2/query [(if enabled? "SET SESSION innodb_ft_enable_stopword = ON" "SET SESSION innodb_ft_enable_stopword = OFF")]))
 
 (mu/defn commit!
   "Commit the current transaction."
@@ -213,7 +290,7 @@
   [table      :- [:or :keyword :string]
    model      :- [:or :keyword :string]
    model-ids  :- [:or [:set [:or :string ms/PositiveInt]] [:sequential [:or :string ms/PositiveInt]]]]
-  (t2/delete! table :model model :model_id [:in model-ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! table :model model :model_id [:in %]) model-ids))
 
 (mu/defn insert-rows!
   "Insert `entries` into the search index `table`."
@@ -226,10 +303,42 @@
   [index-table :- [:or :keyword :string]]
   (t2/count index-table))
 
+(defn- current-schema
+  "The SQL expression for the schema, or the MySQL database, that holds the app DB's tables."
+  []
+  (if (= :mysql (mdb/db-type)) :%database :%current_schema))
+
 (mu/defn table-exists?
   "Whether a table named `table-name` exists in the app DB."
   [table-name :- :string]
-  (t2/exists? :information_schema.tables :table_name table-name))
+  ;; MySQL's `information_schema` lists the tables of every database the user can see.
+  (t2/exists? :information_schema.tables :table_schema (current-schema) :table_name table-name))
+
+(mu/defn mysql-index-names :- [:set :string]
+  "The names of the indexes on the table `table-name` in the current MySQL database."
+  [table-name :- :string]
+  ;; MySQL labels an `information_schema` column in upper case unless it is aliased.
+  (into #{}
+        (map :index_name)
+        (t2/query {:select-distinct [[:index_name :index_name]]
+                   :from            [:information_schema.statistics]
+                   :where           [:and
+                                     [:= :table_schema :%database]
+                                     [:= :table_name table-name]]})))
+
+(mu/defn mysql-table-older-than? :- :boolean
+  "Whether the table `table-name` in the current MySQL database was created more than `minutes` ago, by the server's
+  clock."
+  [table-name :- :string
+   minutes    :- pos-int?]
+  (boolean
+   (some-> (t2/query-one {:select [[[:< :create_time [:date-add :%now (- minutes) :minute]] :old]]
+                          :from   [:information_schema.tables]
+                          :where  [:and
+                                   [:= :table_schema :%database]
+                                   [:= :table_name table-name]]})
+           :old
+           pos?)))
 
 (mu/defn orphan-index-table-names
   "The `:table_name`s of search index tables in the current schema with no SearchIndexMetadata."
@@ -237,7 +346,7 @@
   (t2/query {:select [:ist.table_name]
              :from   [[:information_schema.tables :ist]]
              :where  [:and
-                      [:= :ist.table_schema :%current_schema]
+                      [:= :ist.table_schema (current-schema)]
                       [:or
                        [:like [:lower :ist.table_name] "search\\_index\\_\\_%"]
                        ;; legacy table names
@@ -278,7 +387,7 @@
 
 (mu/defn insert-index-metadata!
   "Insert the SearchIndexMetadata `row`."
-  [row :- ::search.schema/search-index-metadata.update]
+  [row :- ::search.schema/search-index-metadata.create]
   (t2/insert! :model/SearchIndexMetadata row))
 
 (mu/defn delete-index-metadata-by-version!
@@ -402,7 +511,8 @@
 (mu/defn user-common-names
   "A map of User id to common name for the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
+  (mdb/select-batched-map #(t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in %])
+                          user-ids))
 
 (mu/defn card-result-metadata
   "A map of Card id to result metadata for the Cards with `card-ids`.
@@ -417,11 +527,17 @@
   (let [result-metadata-out (:out mi/transform-result-metadata)]
     (into {}
           (map (juxt :id (comp result-metadata-out :result_metadata)))
-          (when (seq card-ids)
-            (t2/select [(t2/table-name :model/Card) :id :result_metadata] :id [:in card-ids])))))
+          (mdb/select-batched #(t2/select [(t2/table-name :model/Card) :id :result_metadata] :id [:in %]) card-ids))))
 
 (mu/defn collection-permission-rows
   "The Collections with `collection-ids`, with the columns their `:can_write` hydration reads, which search results
   don't carry."
   [collection-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Collection :id :type :namespace :location :is_remote_synced] :id [:in collection-ids]))
+  (mdb/select-batched #(t2/select [:model/Collection :id :type :namespace :location :is_remote_synced] :id [:in %])
+                      collection-ids))
+
+(mu/defn document-exploration-ids
+  "A map of the id of each Document in `document-ids` to its `:exploration_id`, nil for a Document in no Exploration."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (mdb/select-batched-map #(t2/select-pk->fn :exploration_id [:model/Document :id :exploration_id] :id [:in %])
+                          document-ids))

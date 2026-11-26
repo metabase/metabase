@@ -8,7 +8,7 @@ import { Select as MantineSelect, defaultOptionsFilter } from "@mantine/core";
 import { mergeRefs } from "@mantine/hooks";
 import { type Ref, forwardRef, useCallback, useMemo, useRef } from "react";
 
-import type { IconName } from "metabase-types/api";
+import type { IconName } from "metabase-types/api/icon";
 
 export type { DataAttributes, InputDescriptionProps } from "@mantine/core";
 export * from "./SelectItem";
@@ -29,11 +29,12 @@ export type SelectData<Value extends string | null> =
  */
 export interface SelectProps<Value extends string | null = string> extends Omit<
   MantineSelectProps,
-  "data" | "onChange" | "value" | "ref"
+  "data" | "onChange" | "value" | "ref" | "size"
 > {
   data: SelectData<Value>;
   value?: Value;
   onChange?: (newValue: Value) => void;
+  size?: "sm" | "md" | "lg";
 }
 
 function dropEmptyGroups(filter: OptionsFilter): OptionsFilter {

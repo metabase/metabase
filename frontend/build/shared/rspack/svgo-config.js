@@ -11,7 +11,7 @@
 const SVGO_CONFIG = {
   plugins: [
     {
-      name: "removeUnknownsAndDefaults",
+      name: /** @type {const} */ ("removeUnknownsAndDefaults"),
       params: {
         defaultMarkupDeclarations: false,
       },

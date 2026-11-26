@@ -29,7 +29,8 @@ export type SdkComponentName =
   | "InteractiveQuestion"
   | "CollectionBrowser"
   | "MetabotQuestion"
-  | "CreateDashboardModal";
+  | "CreateDashboardModal"
+  | "DataApp";
 
 // StaticDashboard omits enableEntityNavigation from its public props —
 // entity navigation requires drill-through, which static mode doesn't support.
@@ -50,7 +51,7 @@ type QuestionBaseProperties = {
   with_alerts: boolean;
 };
 
-// CollectionBrowser and CreateDashboardModal have no configurable dimensions —
+// CollectionBrowser, CreateDashboardModal and DataApp have no configurable dimensions —
 // the event itself signals presence. Sending { used: true } was always trivially
 // true and added no analytical signal, so we send empty properties instead.
 type EmptyProperties = Record<never, never>;
@@ -71,6 +72,7 @@ export type SdkComponentProperties = {
   CollectionBrowser: EmptyProperties;
   MetabotQuestion: { layout: "auto" | "sidebar" | "stacked" };
   CreateDashboardModal: EmptyProperties;
+  DataApp: EmptyProperties;
 };
 
 // Centralized defaults. Components pass raw prop values (undefined when the
@@ -114,6 +116,7 @@ const SDK_COMPONENT_DEFAULT_PROPERTIES: {
   CollectionBrowser: {},
   MetabotQuestion: { layout: "auto" },
   CreateDashboardModal: {},
+  DataApp: {},
 };
 
 // In-memory dedup registry. Module-scoped so it survives re-renders and

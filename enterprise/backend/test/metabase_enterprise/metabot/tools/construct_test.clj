@@ -86,33 +86,36 @@
   (sandbox.tu/with-gtaps! {:gtaps {:checkins {:query (lib/native-query (mt/metadata-provider) "SELECT * FROM CHECKINS")}}}
     (perms/set-table-permission! &group (mt/id :venues) :perms/create-queries :query-builder)
     (mt/with-temp-vals-in-db :model/Database (mt/id) {:name "Native sandbox"}
-      (let [card-id (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :checkins) :group_id (u/the-id &group))
-            card-before (t2/select-one :model/Card :id card-id)
-            snapshot #(hash-map :executions (t2/count :model/QueryExecution) :cache (t2/count :model/QueryCache))
-            before (snapshot)
-            build! #(construct/execute-representations-query (source-field-query "CHECKINS" "VENUE_ID" "VENUES"))
-            original-execute qp.pipeline/*execute*
-            warehouse (atom [])
-            observe-execute (fn [& args]
-                              (swap! warehouse conj {:user api/*current-user-id* :admin api/*is-superuser?*})
-                              (apply original-execute args))
-            control (binding [qp.pipeline/*execute* observe-execute]
-                      (mt/with-dynamic-fn-redefs [construct/assert-source-fields-reach-their-tables! identity]
-                        (build!)))
-            card-after-control (t2/select-one :model/Card :id card-id)
-            actual (binding [qp.pipeline/*execute* observe-execute] (build!))]
-        (is (nil? (:result_metadata card-before)))
-        (is (= card-before card-after-control))
-        (is (map? (get-in actual [:structured-output :query])))
-        (is (empty? @warehouse) "Construction must not execute warehouse SQL")
-        (is (not-any? :admin @warehouse) "Construction must not execute SQL as admin")
-        (is (= card-before (t2/select-one :model/Card :id card-id)) "Construction must not write Card metadata")
-        (is (= before (snapshot)))
-        (let [control-result (qp/process-query (get-in control [:structured-output :query]))
-              actual-result (qp/process-query (get-in actual [:structured-output :query]))]
-          (is (= :completed (:status actual-result)))
-          (is (seq (mt/rows actual-result)))
-          (is (= (set (mt/rows control-result)) (set (mt/rows actual-result)))))))))
+      (mt/with-temp-vals-in-db :model/Card (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :checkins)
+                                                             :group_id (u/the-id &group))
+                               {:result_metadata nil}
+        (let [card-id (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :checkins) :group_id (u/the-id &group))
+              card-before (t2/select-one :model/Card :id card-id)
+              snapshot #(hash-map :executions (t2/count :model/QueryExecution) :cache (t2/count :model/QueryCache))
+              before (snapshot)
+              build! #(construct/execute-representations-query (source-field-query "CHECKINS" "VENUE_ID" "VENUES"))
+              original-execute qp.pipeline/*execute*
+              warehouse (atom [])
+              observe-execute (fn [& args]
+                                (swap! warehouse conj {:user api/*current-user-id* :admin api/*is-superuser?*})
+                                (apply original-execute args))
+              control (binding [qp.pipeline/*execute* observe-execute]
+                        (mt/with-dynamic-fn-redefs [construct/assert-source-fields-reach-their-tables! identity]
+                          (build!)))
+              card-after-control (t2/select-one :model/Card :id card-id)
+              actual (binding [qp.pipeline/*execute* observe-execute] (build!))]
+          (is (nil? (:result_metadata card-before)))
+          (is (= card-before card-after-control))
+          (is (map? (get-in actual [:structured-output :query])))
+          (is (empty? @warehouse) "Construction must not execute warehouse SQL")
+          (is (not-any? :admin @warehouse) "Construction must not execute SQL as admin")
+          (is (= card-before (t2/select-one :model/Card :id card-id)) "Construction must not write Card metadata")
+          (is (= before (snapshot)))
+          (let [control-result (qp/process-query (get-in control [:structured-output :query]))
+                actual-result (qp/process-query (get-in actual [:structured-output :query]))]
+            (is (= :completed (:status actual-result)))
+            (is (seq (mt/rows actual-result)))
+            (is (= (set (mt/rows control-result)) (set (mt/rows actual-result))))))))))
 
 (defn- count-query [table]
   {:lib/type "mbql/query"
@@ -175,17 +178,19 @@
                                                (mt/metadata-provider)
                                                "SELECT ID, NAME, CATEGORY_ID, PRICE FROM VENUES WHERE PRICE = 1")}}}
       (t2/update! :model/Database :id (mt/id) {:name "Metabot sandbox"})
-      (let [card-id    (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues))
-            executions (atom 0)
-            execute    qp.pipeline/*execute*
-            query      (count-query "VENUES")]
-        (is (nil? (t2/select-one-fn :result_metadata :model/Card :id card-id)))
-        (binding [qp.pipeline/*execute* (fn [driver query respond]
-                                          (swap! executions inc)
-                                          (execute driver query respond))]
-          (doseq [expected-executions [1 0]]
-            (reset! executions 0)
-            (is (map? (get-in (test-util/call-tool tool {:query query :reasoning "count venues"})
-                              [:structured-output :query])))
-            (is (= expected-executions @executions))
-            (is (seq (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))
+      (mt/with-temp-vals-in-db :model/Card (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues))
+                               {:result_metadata nil}
+        (let [card-id    (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues))
+              executions (atom 0)
+              execute    qp.pipeline/*execute*
+              query      (count-query "VENUES")]
+          (is (nil? (t2/select-one-fn :result_metadata :model/Card :id card-id)))
+          (binding [qp.pipeline/*execute* (fn [driver query respond]
+                                            (swap! executions inc)
+                                            (execute driver query respond))]
+            (doseq [expected-executions [1 0]]
+              (reset! executions 0)
+              (is (map? (get-in (test-util/call-tool tool {:query query :reasoning "count venues"})
+                                [:structured-output :query])))
+              (is (= expected-executions @executions))
+              (is (seq (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))))

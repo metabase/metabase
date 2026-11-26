@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.indexed-entities.db :as indexed-entities.db]
    [metabase.indexed-entities.models.model-index :as model-index]
@@ -30,25 +31,27 @@
 
 (defn- refresh-index!
   "Refresh the index on a model. Note, if the index should be removed (no longer a model, archived,
-  etc, (see [[should-deindex?]])) will delete the indexing job."
+  etc, (see [[should-deindex?]])) will delete the indexing job, also when the index is gone, as with the remote sync
+  worktree it was created in."
   [model-index-id]
   (let [model-index (indexed-entities.db/model-index model-index-id)
         model       (when model-index
                       (indexed-entities.db/card (:model_id model-index)))]
-    (if (should-deindex? model model-index)
-      (u/ignore-exceptions
-        (let [trigger-key (model-index/trigger-key model-index-id)]
-          (task/delete-trigger! trigger-key)
-          (indexed-entities.db/delete-model-index! model-index-id)))
-      (model-index/add-values! model-index))))
+    (cond
+      (nil? model-index)                (u/ignore-exceptions
+                                          (model-index/remove-indexing-job {:id model-index-id}))
+      (should-deindex? model model-index) (u/ignore-exceptions
+                                            (model-index/delete-model-indexes! [model-index-id]))
+      :else                             (model-index/add-values! model-index))))
 
 (task/defjob ModelIndexRefresh
   "Refresh model indexed columns"
   {:saved-class "metabase.indexed_entities.task.index_values.ModelIndexRefresh"
    :concurrent? false}
   [job-context]
-  (let [{:strs [model-index-id]} (qc/from-job-data job-context)]
-    (refresh-index! model-index-id)))
+  (let [{:strs [model-index-id worktree-id]} (qc/from-job-data job-context)]
+    (mdb/with-worktree-scope (if worktree-id {:type :worktree :worktree-id worktree-id} {:type :main})
+      (refresh-index! model-index-id))))
 
 (def ^:private refresh-model-index-key
   "Job key string for refresh job. Call `(jobs/key refresh-model-index-key)` if you need the org.quartz.JobKey
@@ -66,7 +69,8 @@
   (triggers/build
    (triggers/with-description (format "Refresh index on model %d" (:model_id model-index)))
    (triggers/with-identity (model-index/trigger-key (:id model-index)))
-   (triggers/using-job-data {"model-index-id" (u/the-id model-index)})
+   (triggers/using-job-data (cond-> {"model-index-id" (u/the-id model-index)}
+                              (:worktree-id (mdb/worktree-scope)) (assoc "worktree-id" (:worktree-id (mdb/worktree-scope)))))
    (triggers/for-job (jobs/key refresh-model-index-key))
    (triggers/start-now)
    (triggers/with-schedule
@@ -78,7 +82,7 @@
      (cron/with-misfire-handling-instruction-do-nothing)))))
 
 (defn add-indexing-job
-  "Public API to start indexing a model."
+  "Public API to start indexing a model, in the remote sync worktree this thread works in."
   [model-index]
   (let [trigger (refresh-trigger model-index)]
     (log/info (u/format-color :green "Scheduling indexing for model: %s" (:model_id model-index)))

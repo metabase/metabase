@@ -64,6 +64,16 @@
           (> (System/currentTimeMillis) deadline)     (throw (ex-info "Transform run timed out" {}))
           :else                                       (do (Thread/sleep 200) (recur)))))))
 
+(defn- wait-for
+  "Wait up to a minute for `ready?` to return true. A run is `:succeeded` before it syncs its target, which records the
+  copy or makes the Table that only its workspace sees, so a test of those waits for them."
+  [ready?]
+  (let [deadline (+ (System/currentTimeMillis) 60000)]
+    (loop []
+      (when-not (or (ready?) (> (System/currentTimeMillis) deadline))
+        (Thread/sleep 200)
+        (recur)))))
+
 (defn- do-with-two-workspaces!
   "Calls `f` with a map of the setup, in `mt/with-db` of a Database on the Postgres test warehouse that the instance
   synced: a canonical schema with a source table `src-name` holding `(1, a) (2, b)`, an output table `out-name`
@@ -155,6 +165,8 @@
        (testing "the same transform, run in each workspace, writes to that workspace's isolation schema"
          (run-transform! (:workspace-id ws-a) (:id transform))
          (run-transform! (:workspace-id ws-b) (:id transform))
+         (doseq [{:keys [workspace-id]} workspaces]
+           (wait-for #(contains? (active-field-names workspace-id (:id out-table)) "who")))
          (is (= [{:id 99 :v "pre-existing"}]
                 (jdbc/query admin-spec [(format "SELECT id, v FROM \"%s\".\"%s\"" main-schema out-name)])))
          (doseq [{:keys [output_namespace]} workspaces]
@@ -184,6 +196,10 @@
                                                            :target {:type :table :schema main-schema :name new-name}})]
          (testing "a transform whose target production does not have makes a Table that only its workspace sees"
            (run-transform! (:workspace-id ws-a) (:id new-transform))
+           (wait-for #(some-> (workspaces/with-workspace-id (:workspace-id ws-a) (table new-name))
+                              :id
+                              (->> (active-field-names (:workspace-id ws-a)))
+                              (contains? "who")))
            (is (contains? (schema-table-names (:workspace-id ws-a) (:id ws-db) main-schema) new-name))
            (is (not (contains? (schema-table-names (:workspace-id ws-b) (:id ws-db) main-schema) new-name)))
            (is (not (contains? (schema-table-names nil (:id ws-db) main-schema) new-name))))
@@ -200,6 +216,7 @@
          (is (= #{(:workspace-id ws-b)} (t2/select-fn-set :workspace_id :model/TableRemapping :database_id (:id ws-db))))
          (is (= #{(:workspace-id ws-b)}
                 (workspaces/with-workspace-id :all
-                  (t2/select-fn-set :workspace_id :model/Field :table_id (:id out-table) :workspace_id [:not= nil]))))
+                  ;; the table, not the model: a selected Field has no owner key
+                  (t2/select-fn-set :workspace_id :metabase_field :table_id (:id out-table) :workspace_id [:not= nil]))))
          (is (= [[1 "a" (get-in ws-b [:database_details :user])] [2 "b" (get-in ws-b [:database_details :user])]]
                 (run-query (:workspace-id ws-b) out-query))))))))

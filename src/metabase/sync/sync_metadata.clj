@@ -132,6 +132,8 @@
     table    :- i/TableInstance]
    (database-routing/with-anonymous-router-access
      (workspaces/in-workspace-of :metabase_table table
-                                 (sync-fields/sync-fields-for-table! database table)
-                                 (sync-fks/sync-fks-for-table! database table)
-                                 (sync-indexes/maybe-sync-indexes-for-table! database table)))))
+                                 ;; in the Table's workspace, whose remappings the remapper reads
+                                 (let [remap-table (fetch-metadata/table-remapper database)]
+                                   (sync-fields/sync-fields-for-table! database table remap-table)
+                                   (sync-fks/sync-fks-for-table! database table)
+                                   (sync-indexes/maybe-sync-indexes-for-table! database table remap-table))))))

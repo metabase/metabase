@@ -13,14 +13,24 @@ import {
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
+import type { GeneratedEntity } from "metabase/api/ai-streaming/schemas";
 import { idTag, listTag } from "metabase/api/tags";
 import { getUser } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
+import {
+  setIsNativeEditorOpen,
+  setPendingMetabotCard,
+} from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { getRouterLocation, matchPath, navigate } from "metabase/router";
+import {
+  getIsNavigationPending,
+  getRouterLocation,
+  hasUnsavedChanges,
+  matchPath,
+  navigate,
+} from "metabase/router";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { getBasename } from "metabase/utils/basename";
@@ -495,15 +505,88 @@ const findCodeEditBuffer = (
   return buffers.find((buffer) => buffer.id === bufferId);
 };
 
-const isViewingDashboard = (dashboardId: DashboardId) => {
+/** The URL the user is on, with its search and hash. */
+const getRouterUrl = (): string | undefined => {
+  const location = getRouterLocation();
+  return location && `${location.pathname}${location.search}${location.hash}`;
+};
+
+const getViewedDashboardId = (): DashboardId | undefined => {
   const pathname = getRouterLocation()?.pathname ?? "";
   // the router's pathname keeps the basename of a subpath deployment
   const match = matchPath(
     { path: `${getBasename()}/dashboard/:slug`, end: false },
     pathname,
   );
-  return Urls.extractEntityId(match?.params.slug) === dashboardId;
+  return Urls.extractEntityId(match?.params.slug);
 };
+
+/**
+ * Opens a chart or dashboard that Metabot generated, and marks a card as Metabot's for the query builder.
+ */
+const openGeneratedEntity =
+  (entity: GeneratedEntity) => (dispatch: Dispatch) => {
+    const path = Urls.generatedEntity(entity);
+    if (entity.type === "card") {
+      // so the query builder does not count a native one as unsaved work until the user changes it
+      dispatch(setPendingMetabotCard({ url: path }));
+    }
+    navigate(path);
+  };
+
+/** Where a sidebar turn proposed to take the user. */
+type TurnDestination =
+  | { type: "generated-entity"; entity: GeneratedEntity }
+  | SavedDashboardDestination;
+
+type SavedDashboardDestination = {
+  type: "saved-dashboard";
+  dashboardId: DashboardId;
+  url: string;
+};
+
+/**
+ * Navigates to the last place a sidebar turn proposed, once the turn has ended.
+ * When that is a chart and the user is on a dashboard, the chart stays in the conversation as a link,
+ * and the dashboard the turn saved, if any, opens instead.
+ * It leaves the user where they are when:
+ * - they moved while the turn ran, or are moving now;
+ * - they already see the saved dashboard;
+ * - leaving would discard unsaved work.
+ */
+const openTurnDestination =
+  (
+    proposal: TurnDestination,
+    savedDashboard: SavedDashboardDestination | undefined,
+    startUrl: string | undefined,
+  ) =>
+  (dispatch: Dispatch) => {
+    const viewedDashboardId = getViewedDashboardId();
+    const isChartWhileOnDashboard =
+      proposal.type === "generated-entity" &&
+      proposal.entity.type === "card" &&
+      viewedDashboardId != null;
+    const destination = isChartWhileOnDashboard ? savedDashboard : proposal;
+    if (!destination) {
+      return;
+    }
+    // ad-hoc questions share a pathname and differ in the hash
+    const hasUserMoved =
+      getRouterUrl() !== startUrl || getIsNavigationPending();
+    const isViewingDestination =
+      destination.type === "saved-dashboard" &&
+      destination.dashboardId === viewedDashboardId;
+    const shouldStay =
+      hasUserMoved || isViewingDestination || hasUnsavedChanges();
+    if (shouldStay) {
+      return;
+    }
+    if (destination.type === "generated-entity") {
+      dispatch(openGeneratedEntity(destination.entity));
+    } else {
+      navigate(destination.url);
+    }
+  };
 
 export const sendAgentRequest = createAsyncThunk<
   SendAgentRequestResult,
@@ -517,6 +600,13 @@ export const sendAgentRequest = createAsyncThunk<
   ) => {
     const { isFullPageMetabot, ...request } = payload;
     const conversationId = request.conversation_id;
+    // full-page Metabot and the embedding SDK don't open saved dashboards
+    const canOpenDashboards = !isFullPageMetabot && !isEmbeddingSdk();
+    const startUrl = getRouterUrl();
+    // the last chart or dashboard the turn proposed, opened when it ends
+    let destination: TurnDestination | undefined;
+    // the last dashboard the turn saved, opened when a later chart can't be
+    let savedDashboard: SavedDashboardDestination | undefined;
 
     let state: MetabotStateContext | undefined;
     let response: ProcessedChatResponse | undefined;
@@ -584,16 +674,16 @@ export const sendAgentRequest = createAsyncThunk<
                   return;
                 }
 
-                const path = Urls.generatedEntity(part.data);
-
                 if (isEmbeddingSdk()) {
                   if (part.data.type === "card") {
-                    dispatch(setNavigateToPath(path));
+                    dispatch(
+                      setNavigateToPath(Urls.generatedEntity(part.data)),
+                    );
                   }
                   return;
                 }
 
-                navigate(path);
+                destination = { type: "generated-entity", entity: part.data };
               })
               .with({ type: "data-entity_saved" }, (part) => {
                 dispatch(
@@ -615,8 +705,14 @@ export const sendAgentRequest = createAsyncThunk<
                 pushDataPart({ type: "data_part", part });
               })
               .with({ type: "data-dashboard_saved" }, (part) => {
-                const { dashboard_id, collection_id, open, saved_charts, url } =
-                  part.data;
+                const {
+                  dashboard_id,
+                  action,
+                  collection_id,
+                  open,
+                  saved_charts,
+                  url,
+                } = part.data;
                 // lists elsewhere, such as the dashboard's collection, refetch it
                 dispatch(
                   Api.util.invalidateTags([
@@ -639,13 +735,21 @@ export const sendAgentRequest = createAsyncThunk<
                 );
                 pushDataPart({ type: "data_part", part });
 
-                const shouldOpen =
-                  open &&
-                  !isFullPageMetabot &&
-                  !isEmbeddingSdk() &&
-                  !isViewingDashboard(dashboard_id);
-                if (shouldOpen) {
-                  navigate(url);
+                if (open && canOpenDashboards) {
+                  savedDashboard = {
+                    type: "saved-dashboard",
+                    dashboardId: dashboard_id,
+                    url,
+                  };
+                  destination = savedDashboard;
+                } else if (
+                  action === "trashed" &&
+                  savedDashboard?.dashboardId === dashboard_id
+                ) {
+                  if (destination === savedDashboard) {
+                    destination = undefined;
+                  }
+                  savedDashboard = undefined;
                 }
               })
               .with({ type: "data-tool_title" }, (part) => {
@@ -680,11 +784,12 @@ export const sendAgentRequest = createAsyncThunk<
           onStart: function handleStart() {
             serverStarted = true;
           },
-          onTextPart: function handleTextPart(delta) {
+          onTextPart: function handleTextPart(delta, blockId) {
             dispatch(
               addAgentTextDelta({
                 conversationId,
                 text: delta,
+                blockId,
                 nowMs: Date.now(),
               }),
             );
@@ -773,6 +878,10 @@ export const sendAgentRequest = createAsyncThunk<
           error: streamedError,
           display: getServerErrorDisplay(streamedError),
         });
+      }
+
+      if (destination) {
+        dispatch(openTurnDestination(destination, savedDashboard, startUrl));
       }
 
       const shouldPollForTitle =

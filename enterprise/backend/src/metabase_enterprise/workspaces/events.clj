@@ -12,10 +12,9 @@
 (events/derive! :event/database-update ::database-update)
 
 (methodical/defmethod events/publish-event! ::database-update
-  "Delete the remap rows that point at the old `database-workspace-schema` when an update
-  changes it. Drop the cache of the workspaces that requests name: the Database's details decide whether a workspace
-  can use its login there ([[metabase-enterprise.workspaces.login/login-problem]])."
-  [_topic {:keys [object previous-object] :as event}]
+  "Delete the remap rows that point at the old `database-workspace-schema` of the databases whose update changes it.
+  Drop the cache of the workspaces that requests name: the Database's details decide whether a workspace can use its
+  login there ([[metabase-enterprise.workspaces.login/login-problem]])."
+  [_topic {:keys [changes]}]
   (ws.request-workspace/invalidate!)
-  (when (u.events/changed? event :settings)
-    (ws/delete-stale-table-remappings! previous-object object)))
+  (ws/delete-stale-table-remappings! (filter #(u.events/changed? % :settings) changes)))

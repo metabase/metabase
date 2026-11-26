@@ -1,6 +1,7 @@
 import type { MouseEvent } from "react";
 import { t } from "ttag";
 
+import visuallyHidden from "metabase/css/core/visually-hidden.module.css";
 import { ActionIcon, CopyButton, Icon, Tooltip } from "metabase/ui";
 
 type CopyableElement = HTMLInputElement | HTMLTextAreaElement;
@@ -32,6 +33,7 @@ export function getCopyTextFieldProps<E extends CopyableElement>({
 
   return {
     readOnly: isReadOnly,
+    variant: isReadOnly ? ("read-only" as const) : undefined,
     onClick: (event: MouseEvent<E>) => {
       if (isReadOnly) {
         event.currentTarget.setSelectionRange(
@@ -41,24 +43,42 @@ export function getCopyTextFieldProps<E extends CopyableElement>({
       }
       onClick?.(event);
     },
+    ...getCopyButtonSectionProps({ value, onCopied }),
+  };
+}
+
+export function getCopyButtonSectionProps({
+  value,
+  onCopied,
+}: {
+  value: string;
+  onCopied?: () => void;
+}) {
+  return {
     rightSectionPointerEvents: "all" as const,
     rightSection: value ? (
       <CopyButton value={value} timeout={2000}>
         {({ copied, copy }) => (
-          <Tooltip label={t`Copied!`} opened={copied}>
-            <ActionIcon
-              variant="subtle"
-              size="sm"
-              aria-label={t`Copy`}
-              data-testid="copy-button"
-              onClick={() => {
-                copy();
-                onCopied?.();
-              }}
-            >
-              <Icon name="copy" />
-            </ActionIcon>
-          </Tooltip>
+          <>
+            <Tooltip label={t`Copied!`} opened={copied}>
+              <ActionIcon
+                variant="subtle"
+                size="sm"
+                aria-label={t`Copy`}
+                data-testid="copy-button"
+                onClick={() => {
+                  copy();
+                  onCopied?.();
+                }}
+              >
+                <Icon name="copy" />
+              </ActionIcon>
+            </Tooltip>
+            {/* the tooltip isn't announced, so screen readers get the confirmation here */}
+            <span role="status" className={visuallyHidden.visuallyHidden}>
+              {copied ? t`Copied!` : ""}
+            </span>
+          </>
         )}
       </CopyButton>
     ) : undefined,

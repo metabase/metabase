@@ -156,12 +156,20 @@ export function generalSettings() {
   return `/admin/settings/${SETTINGS_INDEX_SLUG}`;
 }
 
+export const authenticationSettings = () => "/admin/settings/authentication";
+
+export const updatesSettings = () => "/admin/settings/updates";
+
 export function domainsSettings() {
   return "/admin/settings/domains";
 }
 
 export function uploadsSettings() {
   return "/admin/settings/uploads";
+}
+
+export function publicSharingSettings() {
+  return "/admin/settings/public-sharing";
 }
 
 export function adminLicense() {

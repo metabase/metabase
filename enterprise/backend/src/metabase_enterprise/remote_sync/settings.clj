@@ -2,10 +2,12 @@
   "The repository remote sync syncs with, saving its settings, and which collections it syncs."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.dependencies :as remote-sync.dependencies]
    [metabase-enterprise.remote-sync.protocol :as protocol]
    [metabase-enterprise.remote-sync.protocol.git :as git]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.core :as collections]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -109,12 +111,35 @@
   :encryption :no
   :default 60)
 
+(defn writable?
+  "Whether the current request can change synced content and push it: in a worktree always, in the main app only on a
+  read-write instance."
+  []
+  (or (some? (:worktree-id (mdb/worktree-scope)))
+      (= :read-write (remote-sync-type))))
+
 (defenterprise read-only?
-  "Whether remote sync is on and keeps the rows it syncs read-only. Without the `:remote-sync` feature it is false:
-  synced content can be edited, and the next force pull once the feature returns overwrites those edits."
+  "Whether remote sync is on and keeps the rows it syncs read-only for the current request, which it never does in a
+  worktree. Without the `:remote-sync` feature it is false: synced content can be edited, and the next force pull once
+  the feature returns overwrites those edits."
   :feature :remote-sync
   []
-  (boolean (and (remote-sync-enabled) (= :read-only (remote-sync-type)))))
+  (boolean (and (remote-sync-enabled) (not (writable?)))))
+
+(defn branch
+  "The branch the current request syncs: its worktree's, or the `remote-sync-branch` setting in the main app."
+  []
+  (if-let [worktree-id (:worktree-id (mdb/worktree-scope))]
+    (remote-sync.db/worktree-branch worktree-id)
+    (setting/get :remote-sync-branch)))
+
+(defn set-branch!
+  "Make `new-branch` the branch the current request syncs: its worktree's, or the `remote-sync-branch` setting in the
+  main app."
+  [new-branch]
+  (if-let [worktree-id (:worktree-id (mdb/worktree-scope))]
+    (remote-sync.db/update-worktree! worktree-id {:branch new-branch})
+    (setting/set! :remote-sync-branch new-branch)))
 
 (defn repository
   "The repository of the remote sync settings."
@@ -174,17 +199,20 @@
   that isn't synced."
   [collections]
   (when (seq collections)
-    (when (= :read-only (setting/get :remote-sync-type))
+    (when-not (writable?)
       (throw (ex-info (tru "You can''t change which collections sync on a read-only instance.") {:status-code 400})))
     (t2/with-transaction [_conn]
-      (doseq [[id synced?] collections
-              :let [collection (remote-sync.db/collection id)]]
-        (when-not (and collection (= "/" (:location collection)) (nil? (:personal_owner_id collection)))
-          (throw (ex-info (tru "Only top-level collections that are not personal can be synced.")
-                          {:status-code 400 :collection-id id})))
-        (when (and (not synced?) (= collections/library-collection-type (:type collection)))
-          (throw (ex-info (tru "The Library always syncs.") {:status-code 400 :collection-id id})))
-        (collections/set-remote-synced! collection synced?))
+      (let [id->collection (m/index-by :id (remote-sync.db/collections (vec (keys collections))))]
+        (doseq [[id synced?] collections
+                :let [collection (id->collection id)]]
+          (when-not (and collection (= "/" (:location collection)) (nil? (:personal_owner_id collection)))
+            (throw (ex-info (tru "Only top-level collections that are not personal can be synced.")
+                            {:status-code 400 :collection-id id})))
+          (when (and (not synced?) (= collections/library-collection-type (:type collection)))
+            (throw (ex-info (tru "The Library always syncs.") {:status-code 400 :collection-id id}))))
+        (doseq [synced? [true false]]
+          (collections/set-remote-synced! (keep (fn [[id v]] (when (= synced? v) (id->collection id))) collections)
+                                          synced?)))
       (when-let [dependencies (seq (remote-sync.dependencies/unsynced-dependencies))]
         (throw (ex-info (tru "Synced content uses content that isn''t synced.")
                         {:status-code 400 :unsynced-dependencies dependencies}))))))

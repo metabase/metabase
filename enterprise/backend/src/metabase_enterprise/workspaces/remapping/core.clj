@@ -94,11 +94,11 @@
       (when-let [row (ws.db/table-remapping db-id (ws/current-workspace-id) {:db db :schema schema :table table})]
         {:db (:to_db row) :schema (:to_schema row) :table (:to_table_name row)})))
   (insert-mapping!* [_ db-id from-spec to-spec]
-    (ws.db/upsert-table-remapping! db-id (ws/current-workspace-id) from-spec to-spec))
+    (table-remapping/upsert-table-remapping! db-id (ws/current-workspace-id) from-spec to-spec))
   (remove-mapping!* [_ db-id {:keys [db schema table]}]
-    (long (ws.db/delete-table-remapping! db-id (ws/current-workspace-id) {:db db :schema schema :table table})))
+    (long (table-remapping/delete-table-remapping! db-id (ws/current-workspace-id) {:db db :schema schema :table table})))
   (clear-for-db!* [_ db-id]
-    (long (ws.db/delete-table-remappings-of-database! db-id (ws/current-workspace-id)))))
+    (long (table-remapping/delete-table-remappings-of-database! db-id (ws/current-workspace-id)))))
 
 (def app-db-store
   "Default remapping store backed by the `table_remapping` app-DB table."

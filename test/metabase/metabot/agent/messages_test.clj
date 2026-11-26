@@ -10,6 +10,7 @@
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.test :as mt]))
 
@@ -74,7 +75,17 @@
   (testing "tool result with string role"
     (is (=? [{:type :tool-output :id "t1" :result {:output "results"}}]
             (messages/input-message->parts
-             {:role "tool" :tool_call_id "t1" :content "results"})))))
+             {:role "tool" :tool_call_id "t1" :content "results"}))))
+  (testing "a failed tool result keeps its failure mark, and a result without one has no :error"
+    (is (= [{:type   :tool-output
+             :id     "t1"
+             :result {:output "boom"
+                      :error  {:class :recoverable :code ::messages/replayed-failure}}}]
+           (messages/input-message->parts
+            {:role :tool :tool_call_id "t1" :content "boom" :is_error true})))
+    (is (= [{:type :tool-output :id "t1" :result {:output "Found 42"}}]
+           (messages/input-message->parts
+            {:role :tool :tool_call_id "t1" :content "Found 42"})))))
 
 (deftest ^:parallel input-message-user-with-tool-results-test
   (testing "user message with tool_result content blocks"
@@ -99,6 +110,35 @@
       (is (=? {:messages [{:role "assistant" :tool_calls [{:id "call-1" :function {:arguments string?}}]}
                           {:role "tool" :tool_call_id "call-1"}]}
               (chat-completions/request-body {:model "some/model" :input parts}))))))
+
+(deftest ^:parallel stored-failure-with-blank-text-replays-into-claude-test
+  (testing (str "an old stored failure with blank `errorText` replays to Claude as a failure with text, "
+                "because Anthropic rejects an `is_error` result with empty content")
+    (doseq [error-text ["" "  "]]
+      (testing (pr-str error-text)
+        (let [rows    [{:id 1 :role :user :data [{:type "text" :text "look it up"}]}
+                       {:id       2
+                        :role     :assistant
+                        :finished true
+                        :data     [{:type       "tool-search"
+                                    :toolCallId "c1"
+                                    :state      "output-error"
+                                    :input      {:q "x"}
+                                    :errorText  error-text}]}]
+              history (metabot.persistence/history rows)
+              parts   (messages/build-message-history
+                       {}
+                       (memory/initialize (conj history {:role :user :content "and now?"}) {}))]
+          (is (= [{:type        "tool_result"
+                   :tool_use_id "c1"
+                   :content     "Tool execution failed"
+                   :is_error    true}]
+                 (into []
+                       (comp (filter #(= "user" (:role %)))
+                             (filter (comp sequential? :content))
+                             (mapcat :content)
+                             (filter #(= "tool_result" (:type %))))
+                       (claude/parts->claude-messages parts)))))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; build-message-history
@@ -239,19 +279,21 @@
                      (memory/add-step [{:type :text :text "Response"}])))]
       (is (= "Response" (:text (second parts)))))))
 
-(deftest ^:parallel context-injection-first-day-of-week-test
-  (testing "includes first_day_of_week from context"
-    (let [content (last-user-content
-                   (messages/build-message-history
-                    {:first_day_of_week "Monday"}
-                    (memory/initialize [{:role :user :content "Hi"}] {})))]
-      (is (str/includes? content "Monday"))))
-  (testing "default first_day_of_week is Sunday"
+(deftest context-injection-first-day-of-week-test
+  (testing "the first day of the week comes from the start-of-week setting, not from the context"
+    (mt/with-temporary-setting-values [start-of-week :monday]
+      (let [content (last-user-content
+                     (messages/build-message-history
+                      {:first_day_of_week "Friday"}
+                      (memory/initialize [{:role :user :content "Hi"}] {})))]
+        (is (str/includes? content "the first day of the week (index 1) is: Monday"))
+        (is (not (str/includes? content "Friday"))))))
+  (testing "at the default setting the first day of the week is Sunday"
     (let [content (last-user-content
                    (messages/build-message-history
                     {}
                     (memory/initialize [{:role :user :content "Hi"}] {})))]
-      (is (str/includes? content "Sunday")))))
+      (is (str/includes? content "the first day of the week (index 1) is: Sunday")))))
 
 (deftest ^:parallel context-injection-viewing-dashboard-test
   (testing "includes viewing context when user is viewing a dashboard"
@@ -416,3 +458,109 @@
                   claims?    (str/includes? system "have already been loaded into this conversation")
                   preloaded? (boolean (some #(= "load_skill" (:function %)) parts))]
               (is (= claims? preloaded?) (pr-str {:claims? claims? :preloaded? preloaded?})))))))))
+
+(deftest build-message-history-uses-the-kept-context-block-test
+  (let [calls   (atom 0)
+        context {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales"}]}
+        orig    (mt/original-fn #'user-context/enrich-context-for-template)
+        history (fn [block]
+                  (messages/build-message-history
+                   context
+                   (-> (memory/initialize [{:role :user :content "Hello"}] {})
+                       (memory/set-context-block {:block block}))))]
+    (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template
+                                (fn [ctx] (swap! calls inc) (orig ctx))]
+      (testing "the block memory keeps goes before the message, and no other block is rendered"
+        (is (= [{:role :user :content "<context>kept</context>\nHello"}]
+               (history "<context>kept</context>\n")))
+        (is (zero? @calls)))
+      (testing "a kept nil block means the message gets none"
+        (is (= [{:role :user :content "Hello"}]
+               (history nil)))
+        (is (zero? @calls))))))
+
+(deftest render-context-block-of-a-later-turn-test
+  (let [calls   (atom 0)
+        context {:current_user_time "2026-10-20T10:05:00Z"
+                 :user_is_viewing   [{:type "code_editor" :buffers []}]}
+        memory  (memory/initialize [{:role :user :content "Hello"}] {})
+        orig    (mt/original-fn #'user-context/enrich-context-for-template)]
+    (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template
+                                (fn [ctx] (swap! calls inc) (orig ctx))]
+      (testing "a later turn's block holds the date lines and what the user views, and does not render the full block"
+        (is (= {:block (str "<context>\n\n"
+                            "Current date: 2026-10-20T10:05:00Z\n"
+                            "In the system, the first day of the week (index 1) is: Sunday\n\n"
+                            "The user is in the code editor but no active buffers are available.\n\n"
+                            "</context>\n")
+                :full? false}
+               (messages/render-context-block context memory false)))
+        (is (zero? @calls)))
+      (testing "a later turn where the user views nothing says so, so that no earlier turn's viewing block applies"
+        (mt/with-temporary-setting-values [start-of-week :monday]
+          (doseq [viewing [nil []]]
+            (is (= (str "<context>\n\n"
+                        "Current date: 2026-10-20T10:05:00Z\n"
+                        "In the system, the first day of the week (index 1) is: Monday\n\n"
+                        "The user is not looking at any item now.\n\n"
+                        "</context>\n")
+                   (:block (messages/render-context-block (assoc context :user_is_viewing viewing)
+                                                          memory
+                                                          false)))))))
+      (testing "the first turn's block holds all of the context"
+        (is (re-find #"(?s)^<context>\n\nCurrent date: 2026-10-20T10:05:00Z\n.*code editor"
+                     (:block (messages/render-context-block context memory true))))
+        (is (= 1 @calls))))))
+
+(deftest render-context-block-of-a-later-turn-with-items-that-fail-to-format-test
+  (let [context {:current_user_time "2026-10-20T10:05:00Z"}
+        memory  (memory/initialize [{:role :user :content "Hello"}] {})
+        block   (fn [viewing]
+                  (:block (messages/render-context-block (assoc context :user_is_viewing viewing) memory false)))]
+    (testing "when every viewed item fails to format, the block says so, so that no earlier turn's viewing block applies"
+      (doseq [viewing [[{:type "no-such-type"}]
+                       [{:type "no-such-type"} {:type "no-such-type"}]]]
+        (is (= (str "<context>\n\n"
+                    "Current date: 2026-10-20T10:05:00Z\n"
+                    "In the system, the first day of the week (index 1) is: Sunday\n\n"
+                    "The user is looking at an item that cannot be described now.\n\n"
+                    "</context>\n")
+               (block viewing))
+            (pr-str viewing))))
+    (testing "when only some viewed items fail to format, the block describes the others"
+      (let [text (block [{:type "code_editor" :buffers []} {:type "no-such-type"}])]
+        (is (str/includes? text "The user is in the code editor but no active buffers are available."))
+        (is (not (str/includes? text "cannot be described")))))))
+
+(deftest render-context-block-is-full-only-with-the-user-info-test
+  (let [context {:current_user_time "2026-10-20T10:05:00Z"}
+        memory  (memory/initialize [{:role :user :content "Hello"}] {})]
+    (mt/with-current-user (mt/user->id :rasta)
+      (testing "a first turn's block that holds the user information is full"
+        (is (=? {:block #"(?s).*information about the user.*"
+                 :full? true}
+                (messages/render-context-block context memory true))))
+      (testing "a first turn's block without the user information is not full, so the next turn sends it again"
+        (mt/with-dynamic-fn-redefs [user-context/format-current-user-info (constantly nil)]
+          (is (=? {:block #"(?s)<context>\n\nCurrent date: 2026-10-20T10:05:00Z\n.*"
+                   :full? false}
+                  (messages/render-context-block context memory true))))))))
+
+(deftest ^:parallel requests-send-no-text-that-is-only-whitespace-test
+  (testing "the history of earlier turns and the steps of this turn both leave out text that is only whitespace"
+    (is (=? [{:role :user :content "Hi"}
+             {:type :text :text "Hello"}
+             {:role :user :content "Again"}
+             {:type :tool-input :id "c1"}
+             {:type :text :text "Done"}]
+            (messages/build-message-history
+             {}
+             (-> (memory/initialize [{:role :user :content "Hi"}
+                                     {:role :assistant :content "\n\n"}
+                                     {:role :assistant :content "Hello"}
+                                     {:role :user :content "Again"}]
+                                    {})
+                 (memory/set-context-block nil)
+                 (memory/add-step [{:type :text :text " "}
+                                   {:type :tool-input :id "c1" :function "search" :arguments {}}])
+                 (memory/add-step [{:type :text :text "Done"}])))))))

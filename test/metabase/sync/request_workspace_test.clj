@@ -24,9 +24,9 @@
   (let [seen      (atom #{})
         fields-of (mt/original-fn #'fetch-metadata/table-fields-metadata)
         table     (t2/select-one :model/Table :id (mt/id :venues))]
-    (mt/with-dynamic-fn-redefs [fetch-metadata/table-fields-metadata (fn [database table]
+    (mt/with-dynamic-fn-redefs [fetch-metadata/table-fields-metadata (fn [database table & more]
                                                                        (swap! seen conj (workspaces/current-workspace-id))
-                                                                       (fields-of database table))]
+                                                                       (apply fields-of database table more))]
       (workspaces/with-workspace-id 12
         (testing "a sync of a table that a request in a workspace starts reads the warehouse in no workspace"
           (sync/sync-table! table)
@@ -51,9 +51,9 @@
   (let [seen      (atom #{})
         fields-of (mt/original-fn #'fetch-metadata/table-fields-metadata)
         table     (t2/select-one :model/Table :id (mt/id :venues))]
-    (mt/with-dynamic-fn-redefs [fetch-metadata/table-fields-metadata (fn [database table]
+    (mt/with-dynamic-fn-redefs [fetch-metadata/table-fields-metadata (fn [database table & more]
                                                                        (swap! seen conj (workspaces/current-workspace-id))
-                                                                       (fields-of database table))
+                                                                       (apply fields-of database table more))
                                 ;; as the app DB has a Table that only workspace 12 owns
                                 workspaces/owner-workspace-id        (fn [app-db-table row]
                                                                        (when (and (= :metabase_table app-db-table)

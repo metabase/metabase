@@ -5,12 +5,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.test-util :as sandbox.tu]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [toucan2.core :as t2]))
@@ -27,7 +29,7 @@
   state. (Wrapping this in a `:rollback-only` transaction made the assertions vacuous: the request
   thread never sees the uncommitted rows, so queries succeeded on the committed *default* full
   access instead of the published-table mechanism under test.) `mt/with-restored-data-perms-for-group!`
-  restores the All Users data perms, the temp user/collection are cleaned up by `mt/with-temp`, and
+  restores the All Users data perms, the user/collection are cleaned up by `mt/with-model-cleanup`, and
   the venues table's published state is restored in a `finally` before the collection is torn down.
 
   Options:
@@ -38,10 +40,9 @@
   [{:keys [db-view-data grant?] :or {db-view-data :unrestricted grant? true}} f]
   (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
     (mt/with-premium-features #{:library}
-      (mt/with-temp [:model/User       {user-id :id}       {}
-                     :model/Collection {collection-id :id} {:type "library-data"}]
-        (mt/with-temp-vals-in-db :model/Table (mt/id :venues) (select-keys (t2/select-one :model/Table :id (mt/id :venues))
-                                                                           [:is_published :collection_id])
+      (mt/with-model-cleanup [:model/User :model/Collection]
+        (let [[{user-id :id}]         (user/create-users! [{:email "published-venues@example.com"}])
+              [{collection-id :id}] (collection/create-collections! [{:name "Library Data" :type "library-data"}])]
           (try
             (schema.table-user-settings/upsert-table-user-settings! (t2/select-one :model/Table :id (mt/id :venues))
                                                                     {:is_published  true
@@ -71,32 +72,34 @@
           (let [mbql-query (mt/mbql-query venues)]
             (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
               (t2/with-transaction [_conn nil {:rollback-only true}]
-                (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
-                               :model/User {user-id :id} {}
-                               :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}
-                               :model/Collection {collection-id :id} {:type "library-data"}]
-                  ;; Ensure All Users group has no create-queries permission and matching view-data
-                  ;; (user is automatically in this group)
-                  (perms/set-database-permission! (perms/all-users-group) (mt/id)         :perms/view-data      view-data)
-                  (perms/set-database-permission! (perms/all-users-group) (mt/id)         :perms/create-queries :no)
-                  (perms/set-table-permission!    (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
-                  ;; Set up permissions on custom group: user cannot create queries, view-data varies
-                  (perms/set-database-permission! group-id (mt/id) :perms/view-data      view-data)
-                  (perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
-                  (when table-is-published?
-                    (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id collection-id}))
-                  (if collection-readable?
-                    (perms/grant-collection-read-permissions! group-id collection-id)
-                    (do
-                      ;; Revoke from both groups since user is in All Users automatically
-                      (perms/revoke-collection-permissions! group-id collection-id)
-                      (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)))
-                  (mt/with-current-user user-id
-                    (is (= (and (contains? features :library)
-                                collection-readable?
-                                table-is-published?
-                                (not= view-data :blocked))
-                           (query-perms/can-run-query? mbql-query)))))))))))))
+                (let [[{user-id :id}]         (user/create-users! [{:email "published-table-user@example.com"}])
+                      [{collection-id :id}] (collection/create-collections! [{:name "Library Data" :type "library-data"}])]
+                  (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                                 :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
+                    ;; Ensure All Users group has no create-queries permission and matching view-data
+                    ;; (user is automatically in this group)
+                    (perms/set-database-permission! (perms/all-users-group) (mt/id)         :perms/view-data      view-data)
+                    (perms/set-database-permission! (perms/all-users-group) (mt/id)         :perms/create-queries :no)
+                    (perms/set-table-permission!    (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
+                    ;; Set up permissions on custom group: user cannot create queries, view-data varies
+                    (perms/set-database-permission! group-id (mt/id) :perms/view-data      view-data)
+                    (perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
+                    (when table-is-published?
+                      (schema.table-user-settings/upsert-table-user-settings!
+                       (t2/select-one :model/Table :id (mt/id :venues))
+                       {:is_published true :collection_id collection-id}))
+                    (if collection-readable?
+                      (perms/grant-collection-read-permissions! group-id collection-id)
+                      (do
+                        ;; Revoke from both groups since user is in All Users automatically
+                        (perms/revoke-collection-permissions! group-id collection-id)
+                        (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)))
+                    (mt/with-current-user user-id
+                      (is (= (and (contains? features :library)
+                                  collection-readable?
+                                  table-is-published?
+                                  (not= view-data :blocked))
+                             (first (query-perms/query-run-answers [mbql-query])))))))))))))))
 
 (deftest published-table-does-not-grant-view-data-test
   (mt/with-premium-features #{:library}
@@ -104,10 +107,12 @@
       (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
         (t2/with-transaction [_conn nil {:rollback-only true}]
           ;; Create a test user that only belongs to all-users group (no extra permissions)
-          (mt/with-temp [:model/User       {user-id :id} {:email "view-data-test@example.com"}
-                         :model/Collection collection    {:type "library-data"}]
+          (let [[{user-id :id}] (user/create-users! [{:email "view-data-test@example.com"}])
+                [collection]  (collection/create-collections! [{:name "Library Data" :type "library-data"}])]
             ;; Publish the venues table into this collection
-            (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+            (schema.table-user-settings/upsert-table-user-settings!
+             (t2/select-one :model/Table :id (mt/id :venues))
+             {:is_published true :collection_id (u/the-id collection)})
             (let [all-users (perms/all-users-group)]
               ;; Set database-level permissions first to establish baseline
               (perms/set-database-permission! all-users (mt/id) :perms/view-data :blocked)
@@ -198,17 +203,21 @@
                                                                     (format "field/%d/search/%d?limit=3" (mt/id :venues :name) (mt/id :venues :name))))))))))
 
 (deftest published-table-remap-to-unpublished-target-permission-error-test
-  ;; venues is published; categories (the FK-remap target) is deliberately left unpublished/blocked
-  (do-with-published-venues! {:db-view-data :blocked}
-                             (fn [user-id _collection-id]
-                               (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :venues :category_id)
-                                                                  :human_readable_field_id (mt/id :categories :name)
-                                                                  :type                    :external}]
-                                 (testing "querying venues (whose FK-remap target is unpublished) surfaces a permission error"
-                                   (is (=? {:status "failed"}
-                                           (mt/with-current-user user-id
-                                             (mt/user-http-request user-id :post 403 "dataset"
-                                                                   (mt/mbql-query venues {:limit 1}))))))))))
+  ;; venues is published; categories (the FK-remap target) is deliberately left unpublished.
+  ;; With db view-data `:unrestricted`, categories is denied only by `create-queries :no`.
+  (doseq [db-view-data [:blocked :unrestricted]]
+    (testing (format "with db view-data %s" db-view-data)
+      (do-with-published-venues! {:db-view-data db-view-data}
+                                 (fn [user-id _collection-id]
+                                   (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :venues :category_id)
+                                                                      :human_readable_field_id (mt/id :categories :name)
+                                                                      :type                    :external}]
+                                     (testing "querying venues (whose FK-remap target is unpublished) surfaces a permission error"
+                                       (is (=? {:status     "failed"
+                                                :error_type "missing-required-permissions"}
+                                               (mt/with-current-user user-id
+                                                 (mt/user-http-request user-id :post 403 "dataset"
+                                                                       (mt/mbql-query venues {:limit 1}))))))))))))
 
 (deftest published-sandboxed-table-query-reflects-sandbox-not-full-access-test
   (mt/with-additional-premium-features #{:library}
@@ -218,7 +227,9 @@
         {:gtaps {:venues {:query (mt/mbql-query venues {:filter [:= $venues.price 4]})}}}
         (mt/with-temp [:model/Collection {collection-id :id} {:type "library-data"}]
           (try
-            (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id collection-id})
+            (schema.table-user-settings/upsert-table-user-settings!
+             (t2/select-one :model/Table :id (mt/id :venues))
+             {:is_published true :collection_id collection-id})
             (perms/grant-collection-read-permissions! &group collection-id)
             (testing "POST /api/dataset row count reflects the sandbox filter, not the full table"
               (let [full-count  (mt/with-test-user :crowberto
@@ -234,4 +245,6 @@
                 (is (every? #(= 4 (nth % price-index)) (mt/rows result))
                     "every returned row has price = 4, per the sandbox filter")))
             (finally
-              (t2/update! :model/Table :id (mt/id :venues) {:is_published false :collection_id nil}))))))))
+              (schema.table-user-settings/unset-table-user-settings!
+               (t2/select-one :model/Table :id (mt/id :venues))
+               [:is_published :collection_id]))))))))

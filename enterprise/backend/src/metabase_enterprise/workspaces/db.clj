@@ -2,6 +2,7 @@
   "Application database queries for the workspaces module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -14,22 +15,29 @@
 (mr/def ::status
   [:enum :unprovisioned :provisioning :provisioned :deprovisioning :teardown_failed :never_started])
 
-(mr/def ::workspace-database.insert
+(mr/def ::workspace-database.update
+  "What an update of a WorkspaceDatabase takes: its `:id` and the columns to change, each optional."
   [:map {:closed true}
-   [:workspace_id     ms/PositiveInt]
-   [:database_id      ::lib.schema.id/database]
-   [:input_schemas    [:sequential :string]]
-   [:database_details ::warehouses.schema/database.connection-details]
-   [:output_namespace :string]
+   [:id               ms/PositiveInt]
+   [:workspace_id     {:optional true} ms/PositiveInt]
+   [:database_id      {:optional true} ::lib.schema.id/database]
+   [:input_schemas    {:optional true} [:sequential :string]]
+   [:database_details {:optional true} ::warehouses.schema/database.connection-details]
+   [:output_namespace {:optional true} :string]
    [:status           {:optional true} ::status]
    [:updated_at       {:optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]])
 
-(mr/def ::workspace-database.update
-  [:map {:closed true}
-   [:output_namespace {:optional true} :string]
-   [:database_details {:optional true} ::warehouses.schema/database.connection-details]
-   [:status           {:optional true} ::status]
-   [:updated_at       {:optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]])
+(mr/def ::workspace-database.create
+  "What creating a WorkspaceDatabase takes: the columns of an update without the `:id`, and its Workspace, Database,
+  input schemas, connection details and output namespace."
+  [:merge
+   (mut/dissoc ::workspace-database.update :id)
+   [:map
+    [:workspace_id     ms/PositiveInt]
+    [:database_id      ::lib.schema.id/database]
+    [:input_schemas    [:sequential :string]]
+    [:database_details ::warehouses.schema/database.connection-details]
+    [:output_namespace :string]]])
 
 (mr/def ::table-spec
   [:map {:closed true}
@@ -49,11 +57,6 @@
   []
   (t2/select :model/Database))
 
-(defn update-database-settings!
-  "Replace the `:settings` of the Database with `database-id`."
-  [database-id settings]
-  (t2/update! :model/Database :id database-id {:settings settings}))
-
 (mu/defn database-engine
   "The `:engine` of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
@@ -62,12 +65,12 @@
 (mu/defn databases
   "The Databases with ids in `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
+  (app-db/select-batched #(t2/select :model/Database :id [:in %]) database-ids))
 
 (mu/defn database-id->database
   "Map of id to Database for the ids in `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-pk->fn identity :model/Database :id [:in database-ids]))
+  (app-db/select-batched-map #(t2/select-pk->fn identity :model/Database :id [:in %]) database-ids))
 
 (mu/defn active-table-schemas
   "The set of schemas of the active Tables of the Database with `database-id`."
@@ -148,7 +151,8 @@
 (mu/defn creators
   "The Users with ids in `user-ids`, with the columns a Workspace's `:creator` exposes."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select [:model/User :id :first_name :last_name :email :common_name] :id [:in user-ids]))
+  (app-db/select-batched #(t2/select [:model/User :id :first_name :last_name :email :common_name] :id [:in %])
+                         user-ids))
 
 ;;; --------------------------------------------- WorkspaceDatabase --------------------------------------------
 
@@ -165,7 +169,9 @@
 (mu/defn workspace-databases-of-workspaces
   "The WorkspaceDatabases of the Workspaces with ids in `workspace-ids`, ordered by id."
   [workspace-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/WorkspaceDatabase :workspace_id [:in workspace-ids] {:order-by [[:id :asc]]}))
+  (vec (sort-by :id (app-db/select-batched #(t2/select :model/WorkspaceDatabase :workspace_id [:in %]
+                                                       {:order-by [[:id :asc]]})
+                                           workspace-ids))))
 
 (mu/defn workspace-database-ids-with-status
   "The ids of the WorkspaceDatabases of the Workspace with `workspace-id` whose status is `status`."
@@ -175,13 +181,14 @@
 
 (mu/defn insert-workspace-databases!
   "Insert `rows`."
-  [rows :- [:sequential ::workspace-database.insert]]
+  [rows :- [:sequential ::workspace-database.create]]
   (t2/insert! :model/WorkspaceDatabase rows))
 
 (mu/defn update-workspace-database!
   "Apply `changes` to the WorkspaceDatabase with `workspace-database-id`."
   [workspace-database-id :- ms/PositiveInt
-   changes               :- ::workspace-database.update]
+   changes               :- (mut/select-keys ::workspace-database.update
+                                             [:output_namespace :database_details :status :updated_at])]
   (t2/update! :model/WorkspaceDatabase {:id workspace-database-id} changes))
 
 (mu/defn transition-workspace-database!
@@ -222,7 +229,7 @@
 (mu/defn delete-workspace-databases!
   "Delete the WorkspaceDatabases with ids in `workspace-database-ids`."
   [workspace-database-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/WorkspaceDatabase :id [:in workspace-database-ids]))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/WorkspaceDatabase :id [:in %]) workspace-database-ids))
 
 (mu/defn workspace-has-active-databases?
   "Whether the Workspace with `workspace-id` has a WorkspaceDatabase that is not `:unprovisioned`."
@@ -238,7 +245,7 @@
               :workspace_id workspace-id
               :status       [:in [:provisioning :deprovisioning]]
               {:where [:exists ^:allow-subquery {:select [1]
-                                                 :from   [[:workspace_database :any_wsd]]
+                                                 :from   [[(t2/table-name :model/WorkspaceDatabase) :any_wsd]]
                                                  :where  [:and
                                                           [:= :any_wsd.workspace_id workspace-id]
                                                           [:> :any_wsd.updated_at since]]}]}))
@@ -252,7 +259,7 @@
               :workspace_id workspace-id
               :status       [:in [:unprovisioned :provisioning :deprovisioning]]
               {:where [:exists ^:allow-subquery {:select [1]
-                                                 :from   [[:workspace_database :any_wsd]]
+                                                 :from   [[(t2/table-name :model/WorkspaceDatabase) :any_wsd]]
                                                  :where  [:and
                                                           [:= :any_wsd.workspace_id workspace-id]
                                                           [:> :any_wsd.updated_at since]]}]}))
@@ -262,15 +269,21 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/WorkspaceDatabase :database_id database-id))
 
-(mu/defn database-has-active-workspace-databases?
-  "Whether the Database with `database-id` has a WorkspaceDatabase that is not `:unprovisioned`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/WorkspaceDatabase :database_id database-id :status [:not= :unprovisioned]))
+(mu/defn database-id-with-active-workspace-databases :- [:maybe ::lib.schema.id/database]
+  "The id of one of the Databases with `database-ids` that has a WorkspaceDatabase that is not `:unprovisioned`, or
+  nil."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (first (sort (app-db/select-batched #(some-> (t2/select-one-fn :database_id :model/WorkspaceDatabase
+                                                                 :database_id [:in %]
+                                                                 :status [:not= :unprovisioned]
+                                                                 {:order-by [[:database_id :asc]]})
+                                               vector)
+                                      database-ids))))
 
-(mu/defn delete-unprovisioned-workspace-databases-of-database!
-  "Delete the `:unprovisioned` WorkspaceDatabases of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/WorkspaceDatabase :database_id database-id :status :unprovisioned))
+(mu/defn delete-unprovisioned-workspace-databases-of-databases!
+  "Delete the `:unprovisioned` WorkspaceDatabases of the Databases with `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/WorkspaceDatabase :database_id [:in %] :status :unprovisioned) database-ids))
 
 ;;; ---------------------------------------------- TableRemapping ----------------------------------------------
 ;;;
@@ -290,7 +303,7 @@
   "The TableRemappings of `workspace-id`, ordered by id."
   [workspace-id :- ::workspace-id]
   (t2/select :model/TableRemapping
-             :workspace_id [:auto/param (remapping-workspace-id workspace-id)]
+             :workspace_id (remapping-workspace-id workspace-id)
              {:order-by [[:id :asc]]}))
 
 (mu/defn table-remapping-database-ids :- [:set ::lib.schema.id/database]
@@ -299,13 +312,18 @@
   ;; `select-fn-set` returns nil, not #{}, when there are no rows
   (set (t2/select-fn-set :database_id :model/TableRemapping :workspace_id 0)))
 
+(mu/defn workspace-table-remapping-database-ids :- [:set ::lib.schema.id/database]
+  "The ids of the Databases that have a TableRemapping of the workspace with `workspace-id`."
+  [workspace-id :- ms/PositiveInt]
+  (set (t2/select-fn-set :database_id :model/TableRemapping :workspace_id workspace-id)))
+
 (mu/defn table-remappings-exist?
   "Whether the Database with `database-id` has a TableRemapping of `workspace-id`."
   [database-id  :- ::lib.schema.id/database
    workspace-id :- ::workspace-id]
   (t2/exists? :model/TableRemapping
               :database_id  database-id
-              :workspace_id [:auto/param (remapping-workspace-id workspace-id)]))
+              :workspace_id (remapping-workspace-id workspace-id)))
 
 (mu/defn table-remappings-of-database
   "The TableRemappings of `workspace-id` of the Database with `database-id`."
@@ -313,7 +331,7 @@
    workspace-id :- ::workspace-id]
   (t2/select :model/TableRemapping
              :database_id  database-id
-             :workspace_id [:auto/param (remapping-workspace-id workspace-id)]))
+             :workspace_id (remapping-workspace-id workspace-id)))
 
 (mu/defn table-remapping
   "The TableRemapping of `workspace-id` of the Database with `database-id` whose source is `from-spec`, or nil."
@@ -322,7 +340,7 @@
    from-spec    :- ::table-spec]
   (t2/select-one :model/TableRemapping
                  :database_id     database-id
-                 :workspace_id    [:auto/param (remapping-workspace-id workspace-id)]
+                 :workspace_id    (remapping-workspace-id workspace-id)
                  :from_db         (:db from-spec)
                  :from_schema     (:schema from-spec)
                  :from_table_name (:table from-spec)))
@@ -358,7 +376,7 @@
    from-spec    :- ::table-spec]
   (t2/delete! :model/TableRemapping
               :database_id     database-id
-              :workspace_id    [:auto/param (remapping-workspace-id workspace-id)]
+              :workspace_id    (remapping-workspace-id workspace-id)
               :from_db         (:db from-spec)
               :from_schema     (:schema from-spec)
               :from_table_name (:table from-spec)))
@@ -370,12 +388,23 @@
    workspace-id :- ::workspace-id]
   (t2/delete! :model/TableRemapping
               :database_id  database-id
-              :workspace_id [:auto/param (remapping-workspace-id workspace-id)]))
+              :workspace_id (remapping-workspace-id workspace-id)))
 
 (mu/defn delete-workspace-table-remappings!
   "Delete the TableRemappings of the workspace with `workspace-id`. Returns the number of rows deleted."
   [workspace-id :- ms/PositiveInt]
-  (t2/delete! :model/TableRemapping :workspace_id [:auto/param workspace-id]))
+  (t2/delete! :model/TableRemapping :workspace_id workspace-id))
+
+(mu/defn delete-table-remappings-of-databases!
+  "Delete the TableRemappings of `workspace-id` of the Databases with `database-ids`, returning the number of rows
+  deleted."
+  [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]
+   workspace-id :- ::workspace-id]
+  (app-db/sum-batched app-db/delete-partition-size
+                      #(t2/delete! :model/TableRemapping
+                                   :database_id  [:in %]
+                                   :workspace_id (remapping-workspace-id workspace-id))
+                      database-ids))
 
 (mu/defn delete-table-remappings-into!
   "Delete the TableRemappings of the Database with `database-id` whose target is in the `(to-db, to-schema)`
@@ -425,8 +454,8 @@
     (t2/select [:model/Field :id :name :parent_id :active :base_type :database_type :database_position
                 [:workspace_id :owner_workspace_id]]
                {:where [:and
-                        [:= :table_id [:auto/param table-id]]
-                        [:or [:= :workspace_id nil] [:= :workspace_id [:auto/param workspace-id]]]]})))
+                        [:= :table_id table-id]
+                        [:or [:= :workspace_id nil] [:= :workspace_id workspace-id]]]})))
 
 (mu/defn insert-owned-field! :- ::lib.schema.id/field
   "Insert a top-level Field of the Table with `table-id` for the copy column `column`, owned by the workspace the
@@ -460,7 +489,7 @@
    field-ids    :- [:sequential ::lib.schema.id/field]]
   (when (seq field-ids)
     (app-db/with-workspace-id :all
-      (t2/delete! :model/Field :id [:in field-ids] :workspace_id [:auto/param workspace-id]))))
+      (t2/delete! :model/Field :id [:in field-ids] :workspace_id workspace-id))))
 
 (mu/defn field-copies-of-fields :- [:sequential :map]
   "The workspace_field_copy rows of `workspace-id` of the Fields with `field-ids`."
@@ -468,7 +497,7 @@
    field-ids    :- [:sequential ::lib.schema.id/field]]
   (if (empty? field-ids)
     []
-    (t2/select :model/WorkspaceFieldCopy :workspace_id [:auto/param workspace-id] :field_id [:in field-ids])))
+    (t2/select :model/WorkspaceFieldCopy :workspace_id workspace-id :field_id [:in field-ids])))
 
 (mu/defn insert-field-copies!
   "Insert workspace_field_copy rows of `workspace-id`, from `field-id->columns`, a map of Field id to
@@ -498,26 +527,35 @@
   PostgreSQL only, where workspaces own rows."
   [workspace-id :- ms/PositiveInt]
   (app-db/with-workspace-id :all
-    (t2/query ["INSERT INTO workspace_table_copy (workspace_id, table_id, active, created_at, updated_at)
-                SELECT ?, shared.id, false, now(), now()
-                FROM metabase_table shared
-                JOIN metabase_table owned
-                  ON owned.db_id = shared.db_id AND owned.name = shared.name
-                 AND COALESCE(owned.schema, '') = COALESCE(shared.schema, '') AND owned.workspace_id = ?
-                WHERE shared.workspace_id IS NULL
-                ON CONFLICT (workspace_id, table_id) DO UPDATE SET active = false, updated_at = now()"
-               workspace-id workspace-id])
-    (t2/query ["INSERT INTO workspace_field_copy (workspace_id, field_id, active, created_at, updated_at)
-                SELECT ?, shared.id, false, now(), now()
-                FROM metabase_field shared
-                JOIN metabase_field owned
-                  ON owned.table_id = shared.table_id AND owned.name = shared.name
-                 AND COALESCE(owned.parent_id, 0) = COALESCE(shared.parent_id, 0) AND owned.workspace_id = ?
-                WHERE shared.workspace_id IS NULL
-                ON CONFLICT (workspace_id, field_id)
-                DO UPDATE SET active = false, base_type = NULL, effective_type = NULL, database_type = NULL,
-                              database_position = NULL, updated_at = now()"
-               workspace-id workspace-id]))
+    (let [table-copy (t2/table-name :model/WorkspaceTableCopy)
+          field-copy (t2/table-name :model/WorkspaceFieldCopy)
+          table      (t2/table-name :model/Table)
+          field      (t2/table-name :model/Field)]
+      (t2/query {:insert-into   [[table-copy [:workspace_id :table_id :active :created_at :updated_at]]
+                                 ^:allow-subquery {:select [[workspace-id] :shared.id [false] [[:now]] [[:now]]]
+                                                   :from   [[table :shared]]
+                                                   :join   [[table :owned]
+                                                            [:and
+                                                             [:= :owned.db_id :shared.db_id]
+                                                             [:= :owned.name :shared.name]
+                                                             [:= [:coalesce :owned.schema ""] [:coalesce :shared.schema ""]]
+                                                             [:= :owned.workspace_id workspace-id]]]
+                                                   :where  [:= :shared.workspace_id nil]}]
+                 :on-conflict   [:workspace_id :table_id]
+                 :do-update-set {:active false :updated_at [:now]}})
+      (t2/query {:insert-into   [[field-copy [:workspace_id :field_id :active :created_at :updated_at]]
+                                 ^:allow-subquery {:select [[workspace-id] :shared.id [false] [[:now]] [[:now]]]
+                                                   :from   [[field :shared]]
+                                                   :join   [[field :owned]
+                                                            [:and
+                                                             [:= :owned.table_id :shared.table_id]
+                                                             [:= :owned.name :shared.name]
+                                                             [:= [:coalesce :owned.parent_id 0] [:coalesce :shared.parent_id 0]]
+                                                             [:= :owned.workspace_id workspace-id]]]
+                                                   :where  [:= :shared.workspace_id nil]}]
+                 :on-conflict   [:workspace_id :field_id]
+                 :do-update-set {:active false :base_type nil :effective_type nil :database_type nil
+                                 :database_position nil :updated_at [:now]}})))
   nil)
 
 (mu/defn field-type-copies-of-database :- [:sequential :map]
@@ -531,9 +569,9 @@
               :join   [:metabase_field [:= :metabase_field.id :workspace_field_copy.field_id]
                        :metabase_table [:= :metabase_table.id :metabase_field.table_id]]
               :where  [:and
-                       [:= :workspace_field_copy.workspace_id [:auto/param workspace-id]]
+                       [:= :workspace_field_copy.workspace_id workspace-id]
                        [:= :workspace_field_copy.active true]
-                       [:= :metabase_table.db_id [:auto/param database-id]]]}))
+                       [:= :metabase_table.db_id database-id]]}))
 
 (mu/defn field-type-copies-of-tables :- [:sequential :map]
   "The workspace_field_copy rows of `workspace-id` that give a Field of the Tables with `table-ids` the copy's types."
@@ -544,7 +582,7 @@
               :from   [:workspace_field_copy]
               :join   [:metabase_field [:= :metabase_field.id :workspace_field_copy.field_id]]
               :where  [:and
-                       [:= :workspace_field_copy.workspace_id [:auto/param workspace-id]]
+                       [:= :workspace_field_copy.workspace_id workspace-id]
                        [:= :workspace_field_copy.active true]
                        [:in :metabase_field.table_id table-ids]]}))
 
@@ -554,17 +592,17 @@
   [workspace-id :- ms/PositiveInt
    database-id  :- ::lib.schema.id/database]
   (app-db/with-workspace-id :all
-    (let [table-ids ^:allow-subquery {:select [:id] :from [:metabase_table] :where [:= :db_id [:auto/param database-id]]}]
+    (let [table-ids ^:allow-subquery {:select [:id] :from [:metabase_table] :where [:= :db_id database-id]}]
       (t2/delete! :model/WorkspaceFieldCopy
-                  :workspace_id [:auto/param workspace-id]
+                  :workspace_id workspace-id
                   :field_id     [:in ^:allow-subquery {:select [:id]
                                                        :from   [:metabase_field]
                                                        :where  [:in :table_id table-ids]}])
       (t2/delete! :model/WorkspaceTableCopy
-                  :workspace_id [:auto/param workspace-id]
+                  :workspace_id workspace-id
                   :table_id     [:in table-ids])
-      (t2/delete! :model/Field :workspace_id [:auto/param workspace-id] :table_id [:in table-ids])
-      (t2/delete! :model/Table :workspace_id [:auto/param workspace-id] :db_id [:auto/param database-id]))))
+      (t2/delete! :model/Field :workspace_id workspace-id :table_id [:in table-ids])
+      (t2/delete! :model/Table :workspace_id workspace-id :db_id database-id))))
 
 ;;; ------------------------------------------ Row-level security -------------------------------------------------
 ;;;
@@ -576,16 +614,19 @@
   ["metabase_table" "metabase_field"])
 
 (mu/defn row-security-bypassed? :- :boolean
-  "Whether the app DB role skips row-level security, as a superuser or a role with BYPASSRLS does."
+  "Whether the app DB role skips row-level security, as a superuser or a role with BYPASSRLS does. The role is the
+  session's login role (`session_authorization`): Metabase sets no other."
   []
-  (boolean (:bypassed (t2/query-one ["SELECT rolsuper OR rolbypassrls AS bypassed FROM pg_roles WHERE rolname = current_user"]))))
+  (boolean (:bypassed (t2/query-one {:select [[[:or :rolsuper :rolbypassrls] :bypassed]]
+                                     :from   [:pg_roles]
+                                     :where  [:= :rolname [:current_setting "session_authorization"]]}))))
 
 (mu/defn row-security-forced? :- :boolean
   "Whether row-level security is on, and forced for the table owner, on every table that holds rows a workspace owns."
   []
-  (let [rows (t2/query (into ["SELECT relrowsecurity AND relforcerowsecurity AS forced FROM pg_class
-                               WHERE relkind = 'r' AND relname IN (?, ?)"]
-                             row-security-tables))]
+  (let [rows (t2/query {:select [[[:and :relrowsecurity :relforcerowsecurity] :forced]]
+                        :from   [:pg_class]
+                        :where  [:and [:= :relkind "r"] [:in :relname row-security-tables]]})]
     (and (= (count row-security-tables) (count rows))
          (every? :forced rows))))
 

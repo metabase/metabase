@@ -11,6 +11,7 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.test-util :as mut]
    [metabase.premium-features.core :as premium-features]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.events :as slackbot.events]
@@ -540,6 +541,54 @@
                   (is (= {:queries {"q1" {:database 1}}}
                          (:state (last @ai-request-calls)))))))))))))
 
+(deftest ^:synchronized slackbot-later-turn-sends-the-full-context-block-test
+  (testing "a later turn in a Slack thread still sends the user information: Slack does not replay the full block"
+    (let [run-agent-loop (mt/original-fn #'agent/run-agent-loop)
+          first-event    (assoc-in tu/base-dm-event [:event :text] "How many orders do we have?")
+          second-event   (update tu/base-dm-event :event assoc
+                                 :text      "And last month?"
+                                 :ts        "1234567890.000003"
+                                 :event_ts  "1234567890.000003"
+                                 :thread_ts "1234567890.000001")
+          ;; What Slack holds once the first turn is answered: the first message and the bot's reply.
+          earlier-thread {:ok       true
+                          :messages [(:event first-event)
+                                     {:ts "1234567890.000002" :bot_id "B123" :text "There are 18,760 orders."}]}
+          thread         (atom {:ok true :messages []})
+          requests       (atom [])]
+      (tu/with-slackbot-setup
+        (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+          (tu/with-slackbot-mocks
+            {}
+            (fn [{:keys [stop-stream-calls]}]
+              (mt/with-dynamic-fn-redefs [agent/run-agent-loop         run-agent-loop
+                                          slackbot.client/fetch-thread (fn [_ _] @thread)
+                                          metabot.self/call-llm        (fn [_model _system parts _tools _tracking _opts]
+                                                                         (swap! requests conj parts)
+                                                                         (mut/mock-llm-response
+                                                                          [{:type :text :text "There are 18,760 orders."}]))]
+                (letfn [(send! [event n]
+                          (mt/client :post 200 "metabot/slack/events" (tu/slack-request-options event) event)
+                          (u/poll {:thunk      #(>= (count @stop-stream-calls) n)
+                                   :done?      true?
+                                   :timeout-ms 5000}))
+                        (last-user-message [parts]
+                          (:content (last (filter #(= :user (:role %)) parts))))]
+                  (send! first-event 1)
+                  (reset! thread earlier-thread)
+                  (send! second-event 2)
+                  (is (= 2 (count @requests)))
+                  (let [[first-parts second-parts] @requests]
+                    (testing "the first turn sends the full block"
+                      (is (re-find #"(?s)^<context>\n.*information about the user.*</context>\nHow many orders do we have\?$"
+                                   (last-user-message first-parts))))
+                    (testing "the second turn replays the first message and sends the full block again"
+                      (is (= ["How many orders do we have?" "And last month?"]
+                             (map #(str/replace (:content %) #"(?s)^<context>.*</context>\n" "")
+                                  (filter #(= :user (:role %)) second-parts))))
+                      (is (re-find #"(?s)^<context>\n.*information about the user.*</context>\nAnd last month\?$"
+                                   (last-user-message second-parts))))))))))))))
+
 (deftest ^:synchronized slackbot-streaming-records-streamed-error-test
   (testing "an :error part the agent loop emits instead of throwing is still recorded on the row,
             so conversation-state does not later replay a failed turn's partial state (BOT-522)"
@@ -648,10 +697,10 @@
 (defn- dm-turn-with-parts!
   "Run a DM turn whose agent loop emits `parts`, with the turn's own persistence stubbed out.
 
-  Returns what the Slack client saw: `:appended` (every chunk of streamed text, joined),
-  `:task-updates` (every non-text chunk appended to the stream), `:blocks` (the finalized
-  `stop-stream` blocks), `:deleted` (the ts of every deleted message) and `:posts` (the text of
-  every posted message)."
+  Returns what the Slack client saw: `:appended` (every chunk of streamed text, joined with newlines),
+  `:chunks` (every chunk of streamed text, as sent), `:task-updates` (every non-text chunk appended to
+  the stream), `:blocks` (the finalized `stop-stream` blocks), `:deleted` (the ts of every deleted
+  message) and `:posts` (the text of every posted message)."
   [parts]
   (tu/with-slackbot-setup
     (let [event-body   tu/base-dm-event
@@ -681,10 +730,239 @@
                      :done?      true?
                      :timeout-ms 5000})
             {:appended     (str/join "\n" @append-text-calls)
+             :chunks       @append-text-calls
              :task-updates @task-updates
              :blocks       (:blocks (first @stop-stream-calls))
              :deleted      (mapv :ts @delete-calls)
              :posts        (mapv :text @post-calls)}))))))
+
+(deftest ^:synchronized slackbot-dm-separates-text-blocks-test
+  (testing "two text blocks of one response show as two paragraphs, and the deltas of one block join with nothing"
+    (let [{:keys [appended]} (dm-turn-with-parts! [{:type :text :id "t1" :text "First "}
+                                                   {:type :text :id "t1" :text "point."}
+                                                   {:type :text :id "t2" :text "Second point."}])]
+      (is (= "First point.\n\nSecond point." appended))))
+  (testing "an adapter that gives text no ids gets no separator"
+    (let [{:keys [appended]} (dm-turn-with-parts! [{:type :text :text "First "}
+                                                   {:type :text :text "point."}])]
+      (is (= "First point." appended)))))
+
+(deftest ^:synchronized slackbot-channel-separates-text-blocks-test
+  (testing "the channel reply shows two text blocks of one response as two paragraphs"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-mention-event]
+        (tu/with-slackbot-mocks
+          {}
+          (fn [{:keys [post-calls]}]
+            (mt/with-dynamic-fn-redefs [agent/run-agent-loop
+                                        (fn [_opts]
+                                          (reify clojure.lang.IReduceInit
+                                            (reduce [_ rf init]
+                                              (reduce rf init [{:type :text :id "t1" :text "First point."}
+                                                               {:type :reasoning :id "r1" :text "Next."}
+                                                               {:type :text :id "t2" :text "Second point."}]))))
+                                        metabot.persistence/start-turn!
+                                        (fn [& _] {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                        metabot.persistence/finalize-assistant-turn!
+                                        (fn [& _] nil)]
+              (mt/client :post 200 "metabot/slack/events"
+                         (tu/slack-request-options event-body)
+                         event-body)
+              (u/poll {:thunk      #(pos? (count @post-calls))
+                       :done?      true?
+                       :timeout-ms 5000})
+              (is (some #{"First point.\n\nSecond point."} (keep :text @post-calls))))))))))
+
+(deftest ^:synchronized slackbot-channel-separates-text-blocks-across-tool-test
+  (testing "the channel reply shows text before and after a tool call as two paragraphs"
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-mention-event]
+        (tu/with-slackbot-mocks
+          {}
+          (fn [{:keys [post-calls]}]
+            (mt/with-dynamic-fn-redefs [agent/run-agent-loop
+                                        (fn [_opts]
+                                          (reify clojure.lang.IReduceInit
+                                            (reduce [_ rf init]
+                                              (reduce rf init [{:type :text :id "t1" :text "Let me check."}
+                                                               {:type :tool-input :id "call-1" :function "search"
+                                                                :arguments {:term_queries ["orders"]}}
+                                                               {:type :tool-output :id "call-1"
+                                                                :result {:output "No results."}}
+                                                               {:type :text :id "t2" :text "Done."}]))))
+                                        metabot.persistence/start-turn!
+                                        (fn [& _] {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                        metabot.persistence/finalize-assistant-turn!
+                                        (fn [& _] nil)]
+              (mt/client :post 200 "metabot/slack/events"
+                         (tu/slack-request-options event-body)
+                         event-body)
+              (u/poll {:thunk      #(pos? (count @post-calls))
+                       :done?      true?
+                       :timeout-ms 5000})
+              (is (= ["Let me check.\n\nDone."] (keep :text @post-calls))
+                  "one message, with a paragraph break where the tool ran"))))))))
+
+(defn- tool-call
+  "The input and output parts of one successful `search` call with the id `id`."
+  [id]
+  [{:type :tool-input :id id :function "search" :arguments {:term_queries ["orders"]}}
+   {:type :tool-output :id id :result {:output "No results."}}])
+
+(defn- channel-reply-texts!
+  "The text of each message that a channel reply posts when the agent loop yields `parts`."
+  [parts]
+  (let [texts (atom nil)]
+    (tu/with-slackbot-setup
+      (let [event-body tu/base-mention-event]
+        (tu/with-slackbot-mocks
+          {}
+          (fn [{:keys [post-calls]}]
+            (mt/with-dynamic-fn-redefs [agent/run-agent-loop
+                                        (fn [_opts]
+                                          (reify clojure.lang.IReduceInit
+                                            (reduce [_ rf init]
+                                              (reduce rf init parts))))
+                                        metabot.persistence/start-turn!
+                                        (fn [& _] {:assistant-msg-id 1 :assistant-external-id "ext"})
+                                        metabot.persistence/finalize-assistant-turn!
+                                        (fn [& _] nil)]
+              (mt/client :post 200 "metabot/slack/events"
+                         (tu/slack-request-options event-body)
+                         event-body)
+              (u/poll {:thunk      #(pos? (count @post-calls))
+                       :done?      true?
+                       :timeout-ms 5000})
+              (reset! texts (vec (keep :text @post-calls))))))))
+    @texts))
+
+(deftest ^:synchronized slackbot-channel-break-around-tool-calls-test
+  (testing "a tool call before any text adds no break"
+    (is (= ["Done."]
+           (channel-reply-texts! (concat (tool-call "c1")
+                                         [{:type :text :id "t1" :text "Done."}])))))
+  (testing "text that already ends with a break gets no second one"
+    (is (= ["Let me check.\n\nDone."]
+           (channel-reply-texts! (concat [{:type :text :id "t1" :text "Let me check.\n\n"}]
+                                         (tool-call "c1")
+                                         [{:type :text :id "t2" :text "Done."}])))))
+  (testing "two tool calls in a row add one break"
+    (is (= ["A.\n\nB."]
+           (channel-reply-texts! (concat [{:type :text :id "t1" :text "A."}]
+                                         (tool-call "c1")
+                                         (tool-call "c2")
+                                         [{:type :text :id "t2" :text "B."}]))))
+    (testing "also when both calls are in one step"
+      (is (= ["A.\n\nB."]
+             (channel-reply-texts! [{:type :text :id "t1" :text "A."}
+                                    (first (tool-call "c1"))
+                                    (first (tool-call "c2"))
+                                    (second (tool-call "c1"))
+                                    (second (tool-call "c2"))
+                                    {:type :text :id "t2" :text "B."}])))))
+  (testing "text that ends with whitespace gets one clean break"
+    (is (= ["A.\n\nB."]
+           (channel-reply-texts! (concat [{:type :text :id "t1" :text "A.\n"}]
+                                         (tool-call "c1")
+                                         [{:type :text :id "t2" :text "B."}]))))
+    (is (= ["A.\n\nB."]
+           (channel-reply-texts! (concat [{:type :text :id "t1" :text "A.  "}]
+                                         (tool-call "c1")
+                                         [{:type :text :id "t2" :text "B."}])))))
+  (testing "a tool call with no text after it leaves no trailing break"
+    (is (= ["A."]
+           (channel-reply-texts! (concat [{:type :text :id "t1" :text "A."}]
+                                         (tool-call "c1")))))))
+
+(defn- separated-texts
+  "The text of each text part that [[slackbot.streaming/separate-text-blocks-xf]] gives for `parts`, joined."
+  [parts]
+  (->> (into [] (#'slackbot.streaming/separate-text-blocks-xf) parts)
+       (filter #(= :text (:type %)))
+       (map :text)
+       str/join))
+
+(deftest ^:parallel separate-text-blocks-xf-drops-blank-lines-at-block-start-test
+  (testing "a block that starts with blank lines gets one separator, not two"
+    (is (= "Answer.\n\nMore."
+           (separated-texts [{:type :text :id "t1" :text "Answer."}
+                             {:type :text :id "t2" :text "\n\nMore."}])))
+    (testing "also when the blank lines are a part of their own"
+      (is (= "Answer.\n\nMore."
+             (separated-texts [{:type :text :id "t1" :text "Answer."}
+                               {:type :text :id "t2" :text "\n\n"}
+                               {:type :text :id "t2" :text "More."}])))))
+  (testing "text after a tool call keeps its blank lines, because the DM break there can come after it"
+    (is (= "A.\n\nB."
+           (separated-texts (concat [{:type :text :id "t1" :text "A."}]
+                                    (tool-call "c1")
+                                    [{:type :text :id "t2" :text "\n\nB."}])))))
+  (testing "an indent on the first line of a block stays"
+    (is (= "A.\n\n    code"
+           (separated-texts [{:type :text :id "t1" :text "A."}
+                             {:type :text :id "t2" :text "\n    code"}]))))
+  (testing "an indent that comes as a part of its own stays"
+    (is (= "A.\n\n    code"
+           (separated-texts [{:type :text :id "t1" :text "A."}
+                             {:type :text :id "t2" :text "    "}
+                             {:type :text :id "t2" :text "code"}]))))
+  (testing "a part of only spaces, then a newline, leaves no blank line"
+    (is (= "A.\n\nMore."
+           (separated-texts [{:type :text :id "t1" :text "A."}
+                             {:type :text :id "t2" :text "  "}
+                             {:type :text :id "t2" :text "\nMore."}]))))
+  (testing "a break inside one block stays"
+    (is (= "A.\n\nB."
+           (separated-texts [{:type :text :id "t1" :text "A."}
+                             {:type :text :id "t1" :text "\n\nB."}])))
+    (testing "also when it comes as a part of its own"
+      (is (= "A.\n\nB."
+             (separated-texts [{:type :text :id "t1" :text "A."}
+                               {:type :text :id "t1" :text "\n\n"}
+                               {:type :text :id "t1" :text "B."}]))))))
+
+(deftest ^:parallel separate-text-blocks-xf-drops-blank-lines-at-block-end-test
+  (testing "a block that ends with blank lines gets one separator, not two"
+    (is (= "Answer.\n\nMore."
+           (separated-texts [{:type :text :id "t1" :text "Answer.\n\n"}
+                             {:type :text :id "t2" :text "More."}])))
+    (testing "also when the blank lines are a part of their own"
+      (is (= "Answer.\n\nMore."
+             (separated-texts [{:type :text :id "t1" :text "Answer."}
+                               {:type :text :id "t1" :text "\n"}
+                               {:type :text :id "t1" :text "\n"}
+                               {:type :text :id "t2" :text "More."}]))))
+    (testing "also when the new block starts with blank lines too"
+      (is (= "Answer.\n\nMore."
+             (separated-texts [{:type :text :id "t1" :text "Answer.\n\n"}
+                               {:type :text :id "t2" :text "\n\nMore."}]))))
+    (testing "also with reasoning between the blocks"
+      (is (= "Answer.\n\nMore."
+             (separated-texts [{:type :text :id "t1" :text "Answer.\n\n"}
+                               {:type :reasoning :id "r1" :text "Next."}
+                               {:type :text :id "t2" :text "More."}])))))
+  (testing "blank lines that no new block follows are sent unchanged"
+    (testing "at the end of the stream"
+      (is (= "Answer.\n\n"
+             (separated-texts [{:type :text :id "t1" :text "Answer.\n\n"}]))))
+    (testing "before a tool call, in front of it"
+      (is (= [{:type :text :id "t1" :text "A."}
+              {:type :text :id "t1" :text "\n\n"}
+              {:type :tool-input :id "c1"}]
+             (into [] (#'slackbot.streaming/separate-text-blocks-xf)
+                   [{:type :text :id "t1" :text "A.\n\n"}
+                    {:type :tool-input :id "c1"}])))))
+  (testing "an early stop sends nothing after it"
+    (is (= [{:type :text :id "t1" :text "A."}]
+           (into [] (comp (#'slackbot.streaming/separate-text-blocks-xf) (take 1))
+                 [{:type :text :id "t1" :text "A.\n\n"}
+                  {:type :text :id "t2" :text "B."}])))))
+
+(deftest ^:synchronized slackbot-channel-drops-blank-lines-at-block-end-test
+  (testing "the channel reply shows a block that ends with blank lines, and the next block, with one break"
+    (is (= ["Answer.\n\nMore."]
+           (channel-reply-texts! [{:type :text :id "t1" :text "Answer.\n\n"}
+                                  {:type :text :id "t2" :text "More."}])))))
 
 (defn- context-texts
   "The mrkdwn text of every `context` block in `blocks`."
@@ -810,6 +1088,13 @@
                 {:type "task_update" :id "call-1" :title "Running query" :status status}]
                task-updates))
         (is (= "\n\n" appended))))))
+
+(deftest ^:synchronized slackbot-dm-drops-blank-lines-at-block-end-test
+  (testing "the DM stream shows a block that ends with blank lines, and the next block, with one break"
+    (let [{:keys [chunks]} (dm-turn-with-parts! [{:type :text :id "t1" :text "Answer.\n\n"}
+                                                 {:type :text :id "t2" :text "More."}])]
+      (is (= "Answer.\n\nMore." (str/join chunks))
+          (pr-str chunks)))))
 
 (deftest ^:synchronized slackbot-dm-textless-reply-with-tool-progress-has-no-fallback-test
   (testing "a reply that showed tool progress is not an empty reply -- no fallback copy"

@@ -1,8 +1,10 @@
 (ns metabase.pulse.models.pulse-channel
   (:require
-   [clojure.set :as set]
    [medley.core :as m]
-   [metabase.events.core :as events]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.change-log.core :as change-log]
+   [metabase.eid-translation.spec :as eid-translation]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.notification.models :as notification.models]
    [metabase.pulse.db :as pulse.db]
@@ -10,6 +12,8 @@
    [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -64,17 +68,11 @@
 
 (doto :model/PulseChannel
   (derive :metabase/model)
+  (derive :hook/worktree-id)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive ::mi/read-policy.always-allow)
-  (derive ::mi/write-policy.superuser)
-  (derive :hook/events))
-
-(defmethod events/spec :model/PulseChannel
-  [_model]
-  {:create :event/pulse-channel-create
-   :update :event/pulse-channel-update
-   :delete :event/pulse-channel-delete})
+  (derive ::mi/write-policy.superuser))
 
 (t2/deftransforms :model/PulseChannel
   {:details (mi/transform-encrypted-json "pulse_channel.details")
@@ -83,24 +81,6 @@
    :schedule_frame mi/transform-keyword})
 
 ;;; ------------------------------------------------------- Hooks --------------------------------------------------------
-
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *archive-parent-pulse-when-last-channel-is-deleted*
-  "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
-  in [[update-notification-channels!]] which creates/deletes/updates several channels sequentially."
-  true)
-
-(t2/define-before-delete :model/PulseChannel
-  [{pulse-id :pulse_id, pulse-channel-id :id :as pulse-channel}]
-  ;; This function is called by [[metabase.pulse.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to
-  ;; be deleted. Archives `Pulse` if the channel being deleted is its last channel."
-  (when *archive-parent-pulse-when-last-channel-is-deleted*
-    (let [other-channels-count (pulse.db/other-pulse-channel-count pulse-id pulse-channel-id)]
-      (when (zero? other-channels-count)
-        (pulse.db/update-pulse! pulse-id {:archived true}))))
-  ;; it's best if this is done in after-delete, but toucan2 doesn't support that yet See toucan2#70S
-  ;; remove this pulse from its existing trigger
-  (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse-id pulse-channel :remove-pc-ids #{(:id pulse-channel)}))
 
 (defn validate-email-domains
   "For channels that are being sent to raw email addresses: check that the domains in the emails are allowed by
@@ -142,52 +122,26 @@
   "The columns that decide when a PulseChannel is sent."
   #{:schedule_type :schedule_hour :schedule_day :schedule_frame})
 
+(defn- check-details-emails
+  "Throws unless the raw email addresses in the `:details` of `pulse-channel` are allowed by the
+  [[metabase-enterprise.advanced-config.settings/subscription-allowed-domains]] Setting."
+  [{{:keys [emails]} :details :as pulse-channel}]
+  (u/prog1 pulse-channel
+    (notification.models/validate-email-domains! (or emails []))))
+
 (t2/define-before-insert :model/PulseChannel
   [pulse-channel]
   (pulse.schema/check-schedule (merge (zipmap schedule-columns (repeat nil)) pulse-channel))
-  (validate-email-domains pulse-channel))
+  (check-details-emails pulse-channel))
 
-(t2/define-after-insert :model/PulseChannel
-  [{:keys [pulse_id id] :as pulse-channel}]
-  (u/prog1 pulse-channel
-    (when (:enabled pulse-channel)
-      (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse_id pulse-channel :add-pc-ids #{id}))))
-
-(defn- check-channel-update
-  "Throws unless `pulse-channel`, a row an UPDATE writes, has valid columns after its changes."
+(t2/define-before-update :model/PulseChannel
   [pulse-channel]
   (let [changes (t2/changes pulse-channel)]
     (when (some #(contains? changes %) schedule-columns)
       (pulse.schema/check-schedule pulse-channel))
     (when (contains? changes :details)
-      (validate-email-domains pulse-channel))))
-
-(defn- update-send-pulse-triggers
-  "Move the Quartz trigger of `pulse-channel`, a row an UPDATE writes, to its new schedule and enabled state."
-  [{:keys [pulse_id id] :as pulse-channel}]
-  ;; IT's really best if this is done in after-update
-  (let [changes (t2/changes pulse-channel)]
-    ;; if there are changes in schedule
-    ;; better be done in after-update, but t2/changes isn't available in after-update yet See toucan2#129
-    (when (some #(contains? changes %) schedule-columns)
-      ;; need to remove this PC from the existing trigger
-      (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse_id (t2/original pulse-channel)
-                                                                     :remove-pc-ids #{(:id pulse-channel)})
-      ;; create a new PC with the updated schedule
-      (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse_id pulse-channel
-                                                                     :add-pc-ids #{id}))
-    (when (contains? changes :enabled)
-      (if (:enabled changes)
-        (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse_id pulse-channel
-                                                                       :add-pc-ids #{(:id pulse-channel)})
-        (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse_id (t2/original pulse-channel)
-                                                                       :remove-pc-ids #{(:id pulse-channel)}))))
+      (check-details-emails pulse-channel)))
   pulse-channel)
-
-(t2/define-before-update :model/PulseChannel
-  [pulse-channel]
-  (check-channel-update pulse-channel)
-  (update-send-pulse-triggers pulse-channel))
 
 ;;; ----------------------------------------------------- Hydration -----------------------------------------------------
 
@@ -203,84 +157,210 @@
                                  {:email email})
                                (get pcid->recipients (:id pc))))))))
 
-;;; ------------------------------------------------ Persistence Functions ------------------------------------------------
+;;; ------------------------------------------------------ Writes --------------------------------------------------------
 
-(defn update-recipients!
-  "Update the `PulseChannelRecipients` for `pulse-CHANNEL`.
-  `user-ids` should be a definitive collection of *all* IDs of users who should receive the pulse.
+(defn- trigger-group-key
+  "The pulse id and schedule that decide which SendPulse trigger a PulseChannel belongs to."
+  [{:keys [pulse_id] :as pulse-channel}]
+  [pulse_id (update-vals (select-keys pulse-channel schedule-columns) #(if (keyword? %) (name %) %))])
 
-  *  If an ID in `user-ids` has no corresponding existing `PulseChannelRecipients` object, one will be created.
-  *  If an existing `PulseChannelRecipients` has no corresponding ID in USER-IDs, it will be deleted."
-  [id user-ids]
-  {:pre [(integer? id)
-         (coll? user-ids)
-         (every? integer? user-ids)]}
-  (let [recipients-old (set (pulse.db/pulse-channel-recipient-user-ids id))
-        recipients-new (set user-ids)
-        recipients+    (set/difference recipients-new recipients-old)
-        recipients-    (set/difference recipients-old recipients-new)]
-    (when (seq recipients+)
-      (let [vs (map #(assoc {:pulse_channel_id id} :user_id %) recipients+)]
-        (pulse.db/insert-pulse-channel-recipients! vs)))
-    (when (seq recipients-)
-      (pulse.db/delete-pulse-channel-recipients-raw! id recipients-))))
+(defn- update-triggers!
+  "Add the `channels` to their SendPulse triggers when `op` is `:add-pc-ids`, or remove them when it is
+  `:remove-pc-ids`, one update per pulse and schedule."
+  [op channels]
+  (doseq [[[pulse-id schedule] group] (group-by trigger-group-key channels)]
+    (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse-id schedule op (into #{} (map :id) group))))
 
-(defn update-pulse-channel!
-  "Updates an existing `PulseChannel` along with all related data associated with the channel such as
-  `PulseChannelRecipients`."
+(defn- move-triggers!
+  "Move the SendPulse triggers of a PulseChannel from its `original` row to its `updated` row, given the `changes`
+  between them."
+  [original updated changes]
+  (when (some #(contains? changes %) schedule-columns)
+    (update-triggers! :remove-pc-ids [original])
+    (update-triggers! :add-pc-ids [updated]))
+  (when (contains? changes :enabled)
+    (if (:enabled changes)
+      (update-triggers! :add-pc-ids [updated])
+      (update-triggers! :remove-pc-ids [original]))))
+
+(def ^:private PulseChannelWithRecipients
+  "A PulseChannel and its `:id` and `:recipients`, as [[update-pulse-channels!]] takes it."
+  [:merge
+   ::pulse.schema/pulse-channel.update
+   [:map {:closed true}
+    [:recipients {:optional true} [:maybe [:sequential ::pulse.schema/pulse-channel.recipient]]]]])
+
+(defn- user-ids-and-emails
+  "The ids of the Users and the raw email addresses among `recipients`, as `[user-ids emails]`."
+  [recipients]
+  (let [{user-ids true emails false} (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))]
+    [user-ids emails]))
+
+(defn- channel-update
+  "What `row`, a row of [[update-pulse-channels!]], gives its PulseChannel: its `:id`, the `:new-values` of its columns,
+  whether its channel type has recipients, and their `:user-ids`."
   [{:keys [id channel_type enabled details recipients schedule_type schedule_day schedule_hour schedule_frame]
-    :or   {details          {}
-           recipients       []}}]
+    :or   {details    {}
+           recipients []}}]
   {:pre [(integer? id)
          (m/boolean? enabled)
          (coll? recipients)
          (every? map? recipients)]}
-  (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))]
-    (pulse.db/update-pulse-channel! id
-                                    {:details        (cond-> details
-                                                       (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
-                                     :enabled        enabled
-                                     :schedule_type  schedule_type
-                                     :schedule_hour  (when (not= schedule_type :hourly)
-                                                       schedule_hour)
-                                     :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
-                                                       schedule_day)
-                                     :schedule_frame (when (= schedule_type :monthly)
-                                                       schedule_frame)})
-    (when (supports-recipients? channel_type)
-      (update-recipients! id (or (get recipients-by-type true) [])))))
+  (let [[user-ids emails] (user-ids-and-emails recipients)]
+    {:id          id
+     :new-values  {:details        (cond-> details
+                                     (supports-recipients? channel_type) (assoc :emails emails))
+                   :enabled        enabled
+                   :schedule_type  schedule_type
+                   :schedule_hour  (when (not= schedule_type :hourly)
+                                     schedule_hour)
+                   :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
+                                     schedule_day)
+                   :schedule_frame (when (= schedule_type :monthly)
+                                     schedule_frame)}
+     :recipients? (boolean (supports-recipients? channel_type))
+     :user-ids    (set user-ids)}))
 
-(defn create-pulse-channel!
-  "Create a new `PulseChannel` along with all related data associated with the channel such as
-  `PulseChannelRecipients`."
+(defn- recipient-writes
+  "The PulseChannelRecipients to insert and to delete, as `{:insert rows :delete ids}`, to make the recipients of each of
+  the `updates` that have any the Users of its `:user-ids`, given the `stored` recipients."
+  [updates stored]
+  (let [stored-by-channel (group-by :pulse_channel_id stored)]
+    (reduce (fn [writes {:keys [id user-ids]}]
+              (let [old (get stored-by-channel id)]
+                (-> writes
+                    (update :insert into (map (fn [user-id] {:pulse_channel_id id :user_id user-id}))
+                            (remove (set (map :user_id old)) user-ids))
+                    (update :delete into (comp (remove #(contains? user-ids (:user_id %))) (map :id)) old))))
+            {:insert [] :delete []}
+            updates)))
+
+(mu/defn update-pulse-channels! :- [:sequential PulseChannelWithRecipients]
+  "Update the PulseChannels of `rows`, each an `:id` with its columns and `:recipients`, along with their
+  PulseChannelRecipients, moving their SendPulse triggers when their schedule or enabled state changes, and return the
+  rows that changed anything."
+  [rows :- [:sequential PulseChannelWithRecipients]]
+  (if (empty? rows)
+    []
+    (let [updates   (mapv channel-update rows)
+          stored    (u/index-by :id (pulse.db/pulse-channels-with-ids (mapv :id rows)))
+          existing  (filterv #(contains? stored (:id %)) updates)
+          recipient-channel-ids (into [] (comp (filter :recipients?) (map :id)) updates)
+          recipients (when (seq recipient-channel-ids)
+                       (pulse.db/pulse-channel-recipients-for-channels recipient-channel-ids))
+          changes-of (into {} (map (fn [{:keys [id new-values]}] [id (mi/effective-changes (stored id) new-values)])) existing)
+          writes     (recipient-writes (filterv :recipients? updates) recipients)]
+      (doseq [[changes group] (group-by val (into {} (filter (comp seq val)) changes-of))]
+        (pulse.db/update-pulse-channels! (mapv key group) changes))
+      (doseq [[id changes] changes-of
+              :when (seq changes)
+              :let  [original (stored id)]]
+        (move-triggers! original (merge original changes) changes))
+      (when (seq (:insert writes))
+        (pulse.db/insert-pulse-channel-recipients! (:insert writes)))
+      (when (seq (:delete writes))
+        (pulse.db/delete-pulse-channel-recipients-raw! (:delete writes)))
+      (let [recipient-changed (into #{}
+                                    (concat (map :pulse_channel_id (:insert writes))
+                                            (map (comp :pulse_channel_id (u/index-by :id recipients)) (:delete writes))))]
+        (filterv (fn [{:keys [id]}]
+                   (or (seq (get changes-of id)) (contains? recipient-changed id)))
+                 rows)))))
+
+(mu/defn update-pulse-channel-details! :- :nil
+  "Set the `:details` of the PulseChannel `pulse-channel`, a row as selected from the app DB."
+  [pulse-channel :- [:map [:id ms/PositiveInt]]
+   details       :- ::pulse.schema/pulse-channel.details]
+  (pulse.db/update-pulse-channels! [(:id pulse-channel)] {:details details})
+  nil)
+
+(mu/defn set-pulse-channels-enabled! :- :nil
+  "Enable or disable the PulseChannels of the Pulses with `pulse-ids`, adding or removing the SendPulse triggers of the
+  ones whose state changes."
+  [pulse-ids :- [:sequential ::lib.schema.id/pulse]
+   enabled?  :- :boolean]
+  (when (seq pulse-ids)
+    (let [flipped (vec (remove #(= enabled? (boolean (:enabled %))) (pulse.db/pulse-channels-for-pulses pulse-ids)))]
+      (pulse.db/set-pulse-channels-enabled! pulse-ids enabled?)
+      (update-triggers! (if enabled? :add-pc-ids :remove-pc-ids) flipped)))
+  nil)
+
+(defn- channel-row
+  "The PulseChannel row of `channel`, a row of [[create-pulse-channels!]], with every column it sets."
   [{:keys [channel_type channel_id details enabled pulse_id recipients schedule_type schedule_day schedule_hour schedule_frame]
-    :or   {details          {}
-           recipients       []}}]
+    :or   {details    {}
+           recipients []}}]
   {:pre [(integer? pulse_id)
          (boolean? enabled)
          (coll? recipients)
          (every? map? recipients)]}
-  (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))
-        id                 (pulse.db/insert-pulse-channel!
-                            {:pulse_id       pulse_id
-                             :channel_type   channel_type
-                             :channel_id     channel_id
-                             :details        (cond-> details
-                                               (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
-                             :enabled        enabled
-                             :schedule_type  schedule_type
-                             :schedule_hour  (when (not= schedule_type :hourly)
-                                               schedule_hour)
-                             :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
-                                               schedule_day)
-                             :schedule_frame (when (= schedule_type :monthly)
-                                               schedule_frame)})]
-    (when (and (supports-recipients? channel_type) (seq (get recipients-by-type true)))
-      (update-recipients! id (get recipients-by-type true)))
-    ;; return the id of our newly created channel
-    id))
+  (let [[_user-ids emails] (user-ids-and-emails recipients)]
+    {:pulse_id       pulse_id
+     :channel_type   channel_type
+     :channel_id     channel_id
+     :details        (cond-> details
+                       (supports-recipients? channel_type) (assoc :emails emails))
+     :enabled        enabled
+     :schedule_type  schedule_type
+     :schedule_hour  (when (not= schedule_type :hourly)
+                       schedule_hour)
+     :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
+                       schedule_day)
+     :schedule_frame (when (= schedule_type :monthly)
+                       schedule_frame)}))
+
+(defn check-new-pulse-channels
+  "Throws what inserting the PulseChannels of `rows`, rows of [[create-pulse-channels!]] whose Pulse need not exist yet,
+  would throw, for the first that is invalid."
+  [rows]
+  (doseq [row rows
+          :let [channel (channel-row (update row :pulse_id #(or % 0)))]]
+    (pulse.schema/check-schedule (merge (zipmap schedule-columns (repeat nil)) channel))
+    (check-details-emails channel)))
+
+(mu/defn create-pulse-channels! :- [:sequential ::pulse.schema/pulse-channel]
+  "Insert the PulseChannels of `rows` with their PulseChannelRecipients, adding the enabled ones to their SendPulse
+  triggers, and return the new channels in order."
+  [rows :- [:sequential ::pulse.schema/pulse-channel.create]]
+  (if (empty? rows)
+    []
+    (let [channels   (pulse.db/insert-pulse-channels! (mapv channel-row rows))
+          recipients (vec (mapcat (fn [{:keys [channel_type recipients]} channel]
+                                    (when (supports-recipients? channel_type)
+                                      (map (fn [user-id] {:pulse_channel_id (:id channel) :user_id user-id})
+                                           (distinct (first (user-ids-and-emails recipients))))))
+                                  rows channels))]
+      (update-triggers! :add-pc-ids (filter :enabled channels))
+      (when (seq recipients)
+        (pulse.db/insert-pulse-channel-recipients! recipients))
+      channels)))
+
+(mu/defn delete-pulse-channels! :- :boolean
+  "Delete the PulseChannels with `channel-ids` and remove them from their SendPulse triggers, returning whether there
+  were any, without archiving the Pulses left without a channel, which
+  [[metabase.pulse.models.pulse/remove-pulse-channels!]] does."
+  [channel-ids :- [:sequential ms/PositiveInt]]
+  (boolean
+   (when (seq channel-ids)
+     (let [channels (pulse.db/pulse-channels-with-ids channel-ids)]
+       (update-triggers! :remove-pc-ids channels)
+       (pulse.db/delete-pulse-channels! channel-ids)
+       (seq channels)))))
 
 (methodical/defmethod mi/to-json :model/PulseChannel
   "Don't include `:emails`, we use that purely internally"
   [pulse-channel json-generator]
   (next-method (m/dissoc-in pulse-channel [:details :emails]) json-generator))
+
+;;; ------------------------------------------------------- Specs --------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/PulseChannel [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/PulseChannel [_model]
+  {:track [:pulse_id :channel_type :details :schedule_type :schedule_hour :schedule_day :schedule_frame :enabled
+           :entity_id :channel_id]
+   :skip  []})
+
+(defmethod eid-translation/spec :model/PulseChannel [_model]
+  {:names [:pulse-channel]})

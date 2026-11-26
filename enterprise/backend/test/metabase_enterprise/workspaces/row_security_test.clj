@@ -14,8 +14,9 @@
 (defn- row-security []
   (into {}
         (map (juxt :relname (juxt :relrowsecurity :relforcerowsecurity)))
-        (t2/query ["SELECT relname, relrowsecurity, relforcerowsecurity FROM pg_class
-                    WHERE relname IN ('metabase_table', 'metabase_field') AND relkind = 'r'"])))
+        (t2/query {:select [:relname :relrowsecurity :relforcerowsecurity]
+                   :from   [:pg_class]
+                   :where  [:and [:in :relname ["metabase_table" "metabase_field"]] [:= :relkind "r"]]})))
 
 (defn row-security-applies?
   "Whether the app DB can keep the rows of workspaces apart: Postgres, with a role that row-level security applies to."

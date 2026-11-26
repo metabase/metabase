@@ -13,11 +13,11 @@
 (deftest truncate-change-log-test
   (testing "the task deletes the entries older than 30 days, in as many batches as it takes"
     (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [row  (fn [days] (t2/insert-returning-pk! :change_log {:table_name "test_table", :row_id days
-                                                                  :action     "update"
-                                                                  :created_at (t/minus (t/offset-date-time)
-                                                                                       (t/days days))}))
+      (let [row  (fn [days] (t2/insert-returning-pk! :model/ChangeLog {:table_name "test_table", :row_id days
+                                                                       :action     "update"
+                                                                       :created_at (t/minus (t/offset-date-time)
+                                                                                            (t/days days))}))
             old  [(row 31) (row 31) (row 31)]
             kept (row 29)]
         (#'task.truncate-change-log/truncate-change-log! 2)
-        (is (= [kept] (t2/select-fn-vec :id :change_log :id [:in (conj old kept)])))))))
+        (is (= [kept] (t2/select-fn-vec :id :model/ChangeLog :id [:in (conj old kept)])))))))

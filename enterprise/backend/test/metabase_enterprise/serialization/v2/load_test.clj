@@ -27,21 +27,24 @@
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.users.models.user]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.json :as json]
    [metabase.util.match :as match]
    [metabase.util.yaml :as yaml]
-   [metabase.warehouses.models.database :as models.database]
    [metabase.warehouses.schema :as warehouses.schema]
+   [metabase.warehouses.serialization :as warehouses.serialization]
    [toucan2.core :as t2]))
+
+(comment metabase.users.models.user/keep-me)
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
 ;; Many tests here use the H2 test-data database (Card defaults), so we keep the H2 guard off
 ;; and extract with `:include-h2?` (production keeps it filtered).
 (use-fixtures :each (fn [thunk]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)
-                                                  models.database/assert-not-h2! (constantly nil)]
+                                                  warehouses.serialization/assert-not-h2! (constantly nil)]
                         (thunk))))
 
 (defn- by-model [entities model-name]
@@ -1651,18 +1654,18 @@
           (ts/with-db source-db
             (reset! db1s    (ts/create! :model/Database :name "my-db"))
             (reset! coll1s  (ts/create! :model/Collection :name "Publishing Collection"))
-            (reset! table1s (ts/create! :model/Table :name "published_table" :db_id (:id @db1s)
-                                        :is_published true :collection_id (:id @coll1s)))
-            (reset! table2s (ts/create! :model/Table :name "unpublished_table" :db_id (:id @db1s)
-                                        :is_published false))
+            (reset! table1s (ts/create! :model/Table :name "published_table" :db_id (:id @db1s)))
+            (ts/create! :model/TableUserSettings :table_id (:id @table1s)
+                        :is_published true :collection_id (:id @coll1s))
+            (reset! table2s (ts/create! :model/Table :name "unpublished_table" :db_id (:id @db1s)))
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
         (testing "serialized form has collection entity_id, not DB id"
-          (let [pub-table (->> @serialized
-                               (filter #(and (-> % :serdes/meta last :model (= "Table"))
-                                             (= (:name %) "published_table")))
-                               first)]
-            (is (true? (:is_published pub-table)))
-            (is (= (:entity_id @coll1s) (:collection_id pub-table)))))
+          (let [pub-settings (->> @serialized
+                                  (filter #(and (-> % :serdes/meta last :model (= "TableUserSettings"))
+                                                (= (last (:table_id %)) "published_table")))
+                                  first)]
+            (is (true? (:is_published pub-settings)))
+            (is (= (:entity_id @coll1s) (:collection_id pub-settings)))))
         (testing "deserializing restores collection_id correctly"
           (ts/with-db dest-db
             ;; Load the serialized content
@@ -1673,11 +1676,10 @@
             (reset! table1d (t2/select-one :model/Table :name "published_table" :db_id (:id @db1d)))
             (reset! table2d (t2/select-one :model/Table :name "unpublished_table" :db_id (:id @db1d)))
             (testing "published table has correct is_published and collection_id"
-              (is (true? (:is_published @table1d)))
-              (is (= (:id @coll1d) (:collection_id @table1d))))
-            (testing "unpublished table has is_published=false and no collection"
-              (is (false? (:is_published @table2d)))
-              (is (nil? (:collection_id @table2d))))))))))
+              (is (=? {:is_published true :collection_id (:id @coll1d)}
+                      (t2/select-one :model/TableUserSettings :table_id (:id @table1d)))))
+            (testing "unpublished table has no published settings and no collection"
+              (is (nil? (t2/select-one :model/TableUserSettings :table_id (:id @table2d)))))))))))
 
 (deftest included-timeline-with-missing-collection-fails-import-test
   (testing "a question cannot import before its included timeline's dependencies, even if the timeline exists locally"
@@ -2078,13 +2080,13 @@
                                      :dataset_query {:database (:id db)
                                                      :type   :native
                                                      :native {:query "select 1"}})
-                _action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
-                                                          {:entity_id     eid
-                                                           :name          "the action"
-                                                           :model_id      (:id card)
-                                                           :type          :query
-                                                           :dataset_query (mt/native-query {:query "SELECT * FROM users LIMIT 1"})
-                                                           :database_id   (:id db)}))]
+                _action-id (:id (first (action/create-actions! [(lib/normalize ::actions.schema/action.for-insert
+                                                                               {:entity_id     eid
+                                                                                :name          "the action"
+                                                                                :model_id      (:id card)
+                                                                                :type          :query
+                                                                                :dataset_query (mt/native-query {:query "SELECT * FROM users LIMIT 1"})
+                                                                                :database_id   (:id db)})])))]
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true :no-settings true})))
             (let [action-serialized (first (filter (fn [entity] (= [:model/Action eid] (serialization/key-of entity)))
                                                    @serialized))]
@@ -2228,14 +2230,14 @@
                 _child     (ts/create! :model/Collection
                                        :name "Child Collection"
                                        :location (format "/%d/" (:id parent)))
-                _action-id (action/insert! {:entity_id     eid
-                                            :name          "the action"
-                                            :model_id      (:id card)
-                                            :type          :query
-                                            :dataset_query (lib/native-query
-                                                            (lib-be/application-database-metadata-provider (:id db))
-                                                            "SELECT 1")
-                                            :database_id   (:id db)})]
+                _action-id (:id (first (action/create-actions! [{:entity_id     eid
+                                                                 :name          "the action"
+                                                                 :model_id      (:id card)
+                                                                 :type          :query
+                                                                 :dataset_query (lib/native-query
+                                                                                 (lib-be/application-database-metadata-provider (:id db))
+                                                                                 "SELECT 1")
+                                                                 :database_id   (:id db)}])))]
             (reset! serialized
                     (->> (serdes.extract/extract {:include-h2? true})
                          ;; add an extra key to *every serialized model*
@@ -2547,12 +2549,14 @@
           (ts/with-db source-db
             (let [db   (ts/create! :model/Database :name "shared-db")
                   coll (ts/create! :model/Collection :name "My Collection")
-                  _    (ts/create! :model/Table
-                                   :name "published_table"
-                                   :db_id (:id db)
+                  table (ts/create! :model/Table
+                                    :name "published_table"
+                                    :db_id (:id db)
+                                    :description "A published table")
+                  _    (ts/create! :model/TableUserSettings
+                                   :table_id (:id table)
                                    :is_published true
-                                   :collection_id (:id coll)
-                                   :description "A published table")]
+                                   :collection_id (:id coll))]
               (reset! coll-eid (:entity_id coll))
               (reset! serialized
                       (into [] (serdes.extract/extract
@@ -2574,12 +2578,12 @@
                     imported-coll  (t2/select-one :model/Collection :entity_id @coll-eid)]
                 (testing "table exists with correct properties"
                   (is (some? imported-table))
-                  (is (= "A published table" (:description imported-table)))
-                  (is (true? (:is_published imported-table))))
+                  (is (= "A published table" (:description imported-table))))
                 (testing "table is linked to correct database"
                   (is (= (:id target-db) (:db_id imported-table))))
-                (testing "table is linked to imported collection"
-                  (is (= (:id imported-coll) (:collection_id imported-table))))))))))))
+                (testing "table is published in imported collection"
+                  (is (=? {:is_published true :collection_id (:id imported-coll)}
+                          (t2/select-one :model/TableUserSettings :table_id (:id imported-table)))))))))))))
 
 (deftest import-published-table-without-database-creates-stub-database-test
   (testing "Importing a published table creates a stub database when the database doesn't exist on target"
@@ -2589,9 +2593,11 @@
           (ts/with-db source-db
             (let [db   (ts/create! :model/Database :name "source-only-db")
                   coll (ts/create! :model/Collection :name "My Collection")
-                  _    (ts/create! :model/Table
-                                   :name "published_table"
-                                   :db_id (:id db)
+                  table (ts/create! :model/Table
+                                    :name "published_table"
+                                    :db_id (:id db))
+                  _    (ts/create! :model/TableUserSettings
+                                   :table_id (:id table)
                                    :is_published true
                                    :collection_id (:id coll))]
               (reset! serialized
@@ -2608,9 +2614,10 @@
                        :is_stub true}
                       stub))
               (testing "the published table is imported into the stub database"
-                (is (=? {:db_id        (:id stub)
-                         :is_published true}
-                        (t2/select-one :model/Table :name "published_table")))))))))))
+                (let [table (t2/select-one :model/Table :name "published_table")]
+                  (is (=? {:db_id (:id stub)}
+                          table))
+                  (is (true? (t2/select-one-fn :is_published :model/TableUserSettings :table_id (:id table)))))))))))))
 
 (deftest database-is-stub-is-not-serialized-test
   (testing "`is_stub` is neither exported nor imported, so an import never turns a real database into a stub"
@@ -2999,7 +3006,7 @@
           (ts/with-db source-db
             (t2/delete! :model/TransformTag)
             (let [db        (ts/create! :model/Database :name "my-db")
-                  transform (ts/create! :model/Transform
+                  _         (ts/create! :model/Transform
                                         :name "Hello Transform"
                                         :source {:type :query
                                                  :query (lib/native-query (lib-be/application-database-metadata-provider (:id db))
@@ -3011,8 +3018,7 @@
               (ts/create! :model/Table
                           :name "hello_transforms_world"
                           :db_id (:id db)
-                          :schema "public"
-                          :transform_id (:id transform))
+                          :schema "public")
               (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
           (ts/with-db dest-db
             (t2/delete! :model/TransformTag)
@@ -3020,8 +3026,7 @@
             (let [transform (t2/select-one :model/Transform :name "Hello Transform")
                   table     (t2/select-one :model/Table :name "hello_transforms_world")]
               (is (some? transform))
-              (is (some? table))
-              (is (= (:id transform) (:transform_id table))))))))))
+              (is (some? table)))))))))
 
 (deftest dashboard-minimal-required-properties-test
   (testing "Dashboard deserialized with only: serdes/meta, entity_id, name, creator_id"
@@ -3332,7 +3337,7 @@
                                :display       :table)]
           ;; Corrupt dataset_query to a non-empty but structurally broken value, bypassing the
           ;; model hooks. This simulates a card whose query became malformed after migrations.
-          (t2/query {:update :report_card
+          (t2/query {:update (t2/table-name :model/Card)
                      :set    {:dataset_query (json/encode {:broken true})}
                      :where  [:= :id (:id card)]})
           (let [serialized (into [] (serdes.extract/extract {:include-h2? true}))
@@ -3410,7 +3415,7 @@
               (mt/with-user-locale import-locale
                 (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized)))
               (is (= "Library"
-                     (t2/select-one-fn :name :collection :entity_id collection/library-entity-id))))))))))
+                     (t2/select-one-fn :name (t2/table-name :model/Collection) :entity_id collection/library-entity-id))))))))))
 
 (deftest library-import-preserves-existing-permissions-test
   (testing "Importing library subcollections does not overwrite existing permissions on destination"
@@ -3499,11 +3504,11 @@
                       (t2/select-one [:model/TransformJob :active :built_in_type] :id job-id))]
         (testing "an import keeps active on an existing built-in job"
           (is (=? {:active false :built_in_type "hourly"} (import! built-in-id true)))
-          (t2/update! :transform_job :id built-in-id {:active true})
+          (t2/update! (t2/table-name :model/TransformJob) :id built-in-id {:active true})
           (is (=? {:active true :built_in_type "hourly"} (import! built-in-id false))))
         (testing "an import keeps active on an existing custom job"
           (is (=? {:active false :built_in_type nil} (import! custom-id true)))
-          (t2/update! :transform_job :id custom-id {:active true})
+          (t2/update! (t2/table-name :model/TransformJob) :id custom-id {:active true})
           (is (=? {:active true :built_in_type nil} (import! custom-id false))))
         (testing "an import inserts a job with the column default for active"
           (let [extracted (assoc (ts/extract-one "TransformJob" custom-id) :active false)]
@@ -3589,7 +3594,7 @@
   (testing "settings the model cannot decrypt are their ciphertext string, which an export and an import pass through"
     (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
       ;; what the column holds when it was encrypted with a key this instance does not have
-      (t2/update! :metabase_database :id db-id {:settings "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="})
+      (t2/update! (t2/table-name :model/Database) :id db-id {:settings "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="})
       (let [ciphertext (t2/select-one-fn :settings :model/Database :id db-id)
             extracted  (ts/extract-one "Database" db-id)]
         (is (string? ciphertext))
@@ -3597,7 +3602,7 @@
         (serdes.load/load-metabase! (ts/ingestion-in-memory [extracted]))
         (is (= ciphertext (t2/select-one-fn :settings :model/Database :id db-id)))
         (testing "an import of map settings over a Database whose settings cannot be decrypted"
-          (t2/update! :metabase_database :id db-id {:settings ciphertext})
+          (t2/update! (t2/table-name :model/Database) :id db-id {:settings ciphertext})
           (serdes.load/load-metabase!
            (ts/ingestion-in-memory [(assoc extracted :settings {:database-enable-actions false})]))
           (is (= {:database-enable-actions false} (t2/select-one-fn :settings :model/Database :id db-id))))))))

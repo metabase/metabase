@@ -10,11 +10,13 @@ a bug here.
 ## Run it
 
 ```sh
-bun run test-unit-harness                 # build cljs, then run every spec
-bun run test-unit-harness-keep-cljs       # the same, with the cljs build that is there
-bun run test-unit-harness-keep-cljs ForgotPassword dayjs/parse-zone
-bun run test-unit-harness-keep-cljs Navbar -t "collapses"
+bun run test-unit                         # build cljs, then run every spec
+bun run test-unit-keep-cljs               # the same, with the cljs build that is there
+bun run test-unit-keep-cljs ForgotPassword dayjs/parse-zone
+bun run test-unit-keep-cljs Navbar -t "collapses"
 bun run test-unit-agent-keep-cljs Navbar  # the short output for agents
+bun run test-unit-jest                    # every spec on jest's own runner
+bun run test-unit-jest-keep-cljs --runTestsByPath path/to/the.unit.spec.tsx
 ```
 
 The scripts run `jest --runner ./frontend/test/harness/jest-runner.ts`, so
@@ -32,14 +34,15 @@ last time first, then the slowest.
 `it.only`, `describe.only`, `it.skip`, `it.todo`, `it.failing` and `it.each`
 work as they do in jest.
 
-Coverage is not available. The runner stops with an error when it is on. In
-watch mode each run starts new workers, so a run after a change loads the
+Coverage is not available. The runner stops with an error when it is on. Use
+`bun run test-unit-jest --coverage`. In watch mode each run starts new workers, so a run after a change loads the
 packages again.
 
 ## Read the output
 
-`test-unit-harness` prints jest's own output. `test-unit-agent` prints plain
-text with fixed prefixes, through `jest-agent-reporter.ts`:
+`test-unit` prints jest's own output, with the console output of each file
+unless you add `--silent`. `test-unit-agent` prints plain text with fixed
+prefixes, through `jest-agent-reporter.ts`:
 
 ```
 FAIL frontend/src/metabase/foo/foo.unit.spec.ts:41 > describe name > test name
@@ -98,7 +101,7 @@ does not have this check.
 
 ```sh
 NT_NODE_EXTRA=--inspect-brk NT_TIMEOUT=2147483647 NT_HOOK_TIMEOUT=2147483647 \
-  bun run test-unit-harness-keep-cljs path/to/the.unit.spec.tsx -w 1
+  bun run test-unit-keep-cljs path/to/the.unit.spec.tsx -w 1
 ```
 
 The worker prints an address and waits. Open `chrome://inspect`, or attach an

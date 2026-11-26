@@ -37,12 +37,11 @@
             (let [captured-messages (atom [])]
               (with-redefs [channel/send! (fn [& args]
                                             (swap! captured-messages conj args))]
-                (let [noti (models.notification/create-notification!
-                            {:payload_type :notification/testing}
-                            [{:type :notification-subscription/cron
-                              :cron_schedule every-second}]
-                            [{:channel_id chn-id
-                              :channel_type notification.tu/test-channel-type}])]
+                (let [[noti] (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                                          :subscriptions [{:type :notification-subscription/cron
+                                                                                           :cron_schedule every-second}]
+                                                                          :handlers [{:channel_id chn-id
+                                                                                      :channel_type notification.tu/test-channel-type}]}])]
                   (is (not-empty (u/poll {:thunk       (fn [] @captured-messages)
                                           :done?       seq
                                           :timeout-ms  2000
@@ -88,19 +87,17 @@
                                                                            :dataset_query          (mt/native-query {:query "SELECT 1"})
                                                                            :visualization_settings {}
                                                                            :creator_id             (mt/user->id :crowberto)})
-                  notification (models.notification/create-notification!
-                                {:payload_type :notification/card
-                                 :payload      {:card_id (:id card)}
-                                 :creator_id   (mt/user->id :crowberto)}
-                                ;; a schedule that never fires, so the scheduler does not start a second run
-                                [{:type          :notification-subscription/cron
-                                  :cron_schedule "0 0 0 1 1 ? 2099"}]
-                                [{:channel_type :channel/email
-                                  :recipients   [{:type    :notification-recipient/user
-                                                  :user_id (mt/user->id :crowberto)}]}
-                                 {:channel_type :channel/slack
-                                  :recipients   [{:type    :notification-recipient/raw-value
-                                                  :details {:value "#general"}}]}])
+                  [notification] (models.notification/create-notifications! [{:payload_type :notification/card
+                                                                              :payload      {:card_id (:id card)}
+                                                                              :creator_id   (mt/user->id :crowberto)
+                                                                              :subscriptions [{:type          :notification-subscription/cron
+                                                                                               :cron_schedule "0 0 0 1 1 ? 2099"}]
+                                                                              :handlers [{:channel_type :channel/email
+                                                                                          :recipients   [{:type    :notification-recipient/user
+                                                                                                          :user_id (mt/user->id :crowberto)}]}
+                                                                                         {:channel_type :channel/slack
+                                                                                          :recipients   [{:type    :notification-recipient/raw-value
+                                                                                                          :details {:value "#general"}}]}]}])
                   release      (promise)]
               ;; `with-redefs`, not `mt/with-dynamic-fn-redefs`: the worker thread does not get the test's bindings
               (with-redefs [;; no card query: the query processor saves its `query` row later, on another thread, and
@@ -134,11 +131,10 @@
   (mt/with-model-cleanup [:model/Notification]
     (mt/with-temp-scheduler!
       (task/init! ::task.notification/SendNotifications)
-      (let [notification          (models.notification/create-notification!
-                                   {:payload_type :notification/testing}
-                                   [{:type :notification-subscription/cron
-                                     :cron_schedule "0 0 * 1/1 * ? *"}]
-                                   [])
+      (let [[notification]          (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                                                 :subscriptions [{:type :notification-subscription/cron
+                                                                                                  :cron_schedule "0 0 * 1/1 * ? *"}]
+                                                                                 :handlers []}])
             subscription-id       (-> notification models.notification/hydrate-notification :subscriptions first :id)
             notification-triggers (notification.tu/send-notification-triggers subscription-id)]
         (testing "sanity check that it has triggers to begin with"
@@ -155,7 +151,7 @@
         (testing "deletes triggers for subscriptions that no longer exist"
           (let [subscription-id (first (t2/select-pks-vec :model/NotificationSubscription
                                                           :notification_id (:id notification)))]
-            (t2/delete! :notification_subscription :id subscription-id)
+            (t2/delete! (t2/table-name :model/NotificationSubscription) :id subscription-id)
             (testing "sanity check that it has trigger before"
               (is (not-empty (notification.tu/send-notification-triggers subscription-id))))
             (notification.task.send-trigger/init-send-notification-triggers!)
@@ -165,12 +161,11 @@
   (mt/with-model-cleanup [:model/Notification]
     (mt/with-temp-scheduler!
       (task/init! ::task.notification/SendNotifications)
-      (let [notification          (models.notification/create-notification!
-                                   {:payload_type :notification/testing
-                                    :active       true}
-                                   [{:type :notification-subscription/cron
-                                     :cron_schedule "0 0 * 1/1 * ? *"}]
-                                   [])
+      (let [[notification]          (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                                                 :active       true
+                                                                                 :subscriptions [{:type :notification-subscription/cron
+                                                                                                  :cron_schedule "0 0 * 1/1 * ? *"}]
+                                                                                 :handlers []}])
             subscription-id       (-> notification models.notification/hydrate-notification :subscriptions first :id)
             notification-triggers (notification.tu/send-notification-triggers subscription-id)]
         (testing "sanity check that it has triggers to begin with"
@@ -191,11 +186,10 @@
     (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
       (mt/with-temp-scheduler!
         (task/init! ::task.notification/SendNotifications)
-        (let [notification    (models.notification/create-notification!
-                               {:payload_type :notification/testing}
-                               [{:type :notification-subscription/cron
-                                 :cron_schedule "0 0 * 1/1 * ? *"}]
-                               [])
+        (let [[notification]    (models.notification/create-notifications! [{:payload_type :notification/testing
+                                                                             :subscriptions [{:type :notification-subscription/cron
+                                                                                              :cron_schedule "0 0 * 1/1 * ? *"}]
+                                                                             :handlers []}])
               subscription-id (-> notification models.notification/hydrate-notification :subscriptions first :id)]
           (testing "sanity check that trigger exists with initial timezone"
             (let [triggers (notification.tu/send-notification-triggers subscription-id)]

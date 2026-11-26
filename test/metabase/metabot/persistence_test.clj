@@ -94,6 +94,14 @@
              (select-keys part [:role :type :message])))
       (is (string? (:id part))))))
 
+(deftest ^:parallel messages->client-messages-context-part-test
+  (testing "the stored <context> block is what the model read, so the chat does not show it"
+    (is (= ["hi there"]
+           (part-messages (client-message {:role :assistant
+                                           :data [{:type "data-context"
+                                                   :data {:block "<context>\nCurrent date: x\n</context>\n" :full true}}
+                                                  {:type "text" :text "hi there"}]}))))))
+
 (deftest ^:parallel messages->client-messages-resolved-tool-part-test
   (testing "resolved tool part carries args and result"
     (let [[part] (:parts (client-message
@@ -293,25 +301,6 @@
         (is (= team-id (:slack_team_id conversation)))
         (is (= channel-id (:slack_channel_id conversation)))
         (is (= thread-ts (:slack_thread_ts conversation)))))))
-
-(deftest ^:parallel combine-text-parts-xf-merges-consecutive-text-test
-  (testing "consecutive :text parts coalesce; non-text parts split runs"
-    (let [parts [{:type :text :text "Hello, "}
-                 {:type :text :text "world"}
-                 {:type :text :text "!"}
-                 {:type :tool-input :id "c1" :function "search"}
-                 {:type :text :text "After "}
-                 {:type :text :text "tool."}]
-          out   (into [] (metabot-persistence/combine-text-parts-xf) parts)]
-      (is (= [{:type :text :text "Hello, world!"}
-              {:type :tool-input :id "c1" :function "search"}
-              {:type :text :text "After tool."}]
-             out))))
-  (testing "single text part flushes on completion"
-    (is (= [{:type :text :text "lone"}]
-           (into [] (metabot-persistence/combine-text-parts-xf) [{:type :text :text "lone"}]))))
-  (testing "empty input"
-    (is (= [] (into [] (metabot-persistence/combine-text-parts-xf) [])))))
 
 (deftest ^:parallel parts->storable-content-preserves-non-map-tool-result-test
   ;; Regression: a non-map tool result used to throw in `select-keys`, failing the turn's persist.
@@ -1440,6 +1429,46 @@
                 {:role :assistant :content "reply two"}]
                (metabot-persistence/history (metabot-persistence/live-messages conversation-id))))))))
 
+(deftest history-replays-the-context-block-test
+  (testing "a user message replays with the <context> block the agent sent before it, so the bytes do not change"
+    (with-rasta-tx
+      (let [conversation-id (str (random-uuid))
+            block           "<context>\n\nCurrent date: 2026-10-20T12:00:00Z\n</context>\n\n"
+            assistant-id    (seed-turn! conversation-id "first" [{:type :text :text "reply one"}]
+                                        :context-block block :full-context? true)]
+        (seed-turn! conversation-id "second" [{:type :text :text "reply two"}])
+        (is (= [{:type "data-context" :data {:block block :full true}}
+                {:type "text" :text "reply one" :state "done"}]
+               (:data (t2/select-one :model/MetabotMessage :id assistant-id)))
+            "the block is stored first in the assistant row")
+        (is (= [{:role :user :content (str block "first")}
+                {:role :assistant :content "reply one"}
+                {:role :user :content "second"}
+                {:role :assistant :content "reply two"}]
+               (metabot-persistence/history (metabot-persistence/live-messages conversation-id)))
+            "a turn stored without a block replays its text alone")))))
+
+(deftest replays-full-context-test
+  (with-rasta-tx
+    (let [replays? (fn [& turns]
+                     (let [conversation-id (str (random-uuid))]
+                       (doseq [finalize-opts turns]
+                         (apply seed-turn! conversation-id "hi" [{:type :text :text "hello"}] finalize-opts))
+                       (metabot-persistence/replays-full-context?
+                        (metabot-persistence/live-messages conversation-id))))
+          full     [:context-block "<context>\n\nCurrent date: x\n</context>\n" :full-context? true]
+          viewing  [:context-block "<context>\n\nThe user is in the SQL editor.\n</context>\n" :full-context? false]]
+      (testing "a new conversation, and one whose turns were stored with no block, replay no full block"
+        (is (false? (replays?)))
+        (is (false? (replays? []))))
+      (testing "a turn that sent the full block replays it, whatever later turns sent"
+        (is (true? (replays? full)))
+        (is (true? (replays? full viewing))))
+      (testing "blocks of only what the user viewed are not the full block"
+        (is (false? (replays? [] viewing))))
+      (testing "a failed turn is not replayed, so its full block is not either"
+        (is (false? (replays? (into full [:error {:message "boom"}]))))))))
+
 (deftest history-tool-call-conversion-test
   (testing "text and tool parts interleave; tool calls become an assistant call + tool result pair"
     (with-rasta-tx
@@ -1456,6 +1485,104 @@
                   {:role :assistant :tool_calls [{:id "c1" :name "search" :arguments (json/encode {:q "x"})}]}
                   {:role :tool :tool_call_id "c1" :content "rows"}]
                  history)))))))
+
+(deftest history-replays-the-calls-of-a-step-before-their-results-test
+  (with-rasta-tx
+    (let [replay (fn [parts]
+                   (let [conversation-id (str (random-uuid))]
+                     (seed-turn! conversation-id "look it up" parts)
+                     (rest (metabot-persistence/history (metabot-persistence/live-messages conversation-id)))))
+          call   (fn [id] {:role :assistant :tool_calls [{:id id :name "search" :arguments (json/encode {:q id})}]})
+          result (fn [id] {:role :tool :tool_call_id id :content (str "found " id)})
+          parts  (fn [id] [{:type :tool-input :id id :function "search" :arguments {:q id}}
+                           {:type :tool-output :id id :result {:output (str "found " id)}}])]
+      (testing "the calls of one step replay before their results, as the agent loop sends them"
+        (is (= [{:role :assistant :content "on it"}
+                (call "c1") (call "c2") (result "c1") (result "c2")
+                (call "c3") (result "c3")
+                {:role :assistant :content "done"}]
+               (replay (concat [{:type :start} {:type :text :text "on it"}]
+                               (map first [(parts "c1") (parts "c2")])
+                               (map second [(parts "c1") (parts "c2")])
+                               [{:type :start}]
+                               (parts "c3")
+                               [{:type :start} {:type :text :text "done"}])))))
+      (testing "text that the model writes after a call in the same step replays before the result of that call"
+        (is (= [{:role :assistant :content "Let me look that up."}
+                (call "c1")
+                {:role :assistant :content "This may take a moment."}
+                (result "c1")]
+               (replay [{:type :start}
+                        {:type :text :text "Let me look that up."}
+                        (first (parts "c1"))
+                        {:type :text :text "This may take a moment."}
+                        (second (parts "c1"))]))))
+      (testing "a row with no step-start parts, as a row migrated from v1 is, replays each result after its call"
+        (is (= [(call "c1") (result "c1") (call "c2") (result "c2")]
+               (replay (concat (parts "c1") (parts "c2"))))))
+      (testing "a v1 row, which the read path migrates, replays each result after its call"
+        (let [conversation-id (str (random-uuid))
+              v1-input        (fn [id] {:type "tool-input" :id id :function "search" :arguments {:q id}})
+              v1-output       (fn [id] {:type "tool-output" :id id :function "search" :result {:output (str "found " id)}})]
+          (t2/update! :model/MetabotMessage :id (seed-turn! conversation-id "look it up" [])
+                      {:data         [(v1-input "c1") (v1-input "c2") (v1-output "c1") (v1-output "c2")]
+                       :data_version 1})
+          (is (= [(call "c1") (result "c1") (call "c2") (result "c2")]
+                 (rest (metabot-persistence/history (metabot-persistence/live-messages conversation-id)))))))
+      (testing (str "the message of a terminal error, which the agent adds after the results of the turn's last step, "
+                    "replays after those results")
+        (is (= [{:role :assistant :content "on it"}
+                (call "c1") (result "c1")
+                {:role :assistant :tool_calls [{:id "c2" :name "search" :arguments (json/encode {:q "c2"})}]}
+                {:role :tool :tool_call_id "c2" :content "You don't have access to that table." :is_error true}
+                {:role :assistant :content "You don't have permission to see that table."}]
+               (replay (concat [{:type :start} {:type :text :text "on it"}]
+                               (parts "c1")
+                               [{:type :start}
+                                {:type :tool-input :id "c2" :function "search" :arguments {:q "c2"}}
+                                {:type   :tool-output :id "c2"
+                                 :result {:output "You don't have access to that table."
+                                          :error  {:class        :unrecoverable
+                                                   :code         :permission-denied
+                                                   :user-message "You don't have permission to see that table."}}}
+                                {:type :text :text "You don't have permission to see that table."}])))))
+      (testing (str "the notice that the agent adds after the results of the last step of a turn at its step limit "
+                    "replays after those results, and the calls of that step replay before their results")
+        (is (= [(call "c1") (call "c2") (result "c1") (result "c2")
+                {:role :assistant :content "I stopped at the step limit."}]
+               (replay (concat [{:type :start}]
+                               (map first [(parts "c1") (parts "c2")])
+                               (map second [(parts "c1") (parts "c2")])
+                               [{:type :text :text "I stopped at the step limit."}
+                                {:type :finish :finish-reason :max-iterations}]))))))))
+
+(deftest history-replays-a-step-limit-turn-as-its-reply-call-sent-it-test
+  (with-rasta-tx
+    (let [replay (fn [parts]
+                   (let [conversation-id (str (random-uuid))]
+                     (seed-turn! conversation-id "look it up" parts)
+                     (rest (metabot-persistence/history (metabot-persistence/live-messages conversation-id)))))
+          call   {:role :assistant :tool_calls [{:id "c1" :name "search" :arguments (json/encode {:q "c1"})}]}
+          result {:role :tool :tool_call_id "c1" :content "found c1"}
+          text   {:role :assistant :content "This may take a moment."}
+          notice {:role :assistant :content "I stopped at the step limit."}
+          ;; the model writes text after its call, and the agent adds the notice after the result
+          step   [{:type :start}
+                  {:type :tool-input :id "c1" :function "search" :arguments {:q "c1"}}
+                  {:type :text :text "This may take a moment."}
+                  {:type :tool-output :id "c1" :result {:output "found c1"}}
+                  {:type :text :text "I stopped at the step limit."}]]
+      (testing (str "text that the model writes after a call in the last step of a turn at its step limit replays "
+                    "before the result, as the reply call sent it, and only the notice moves after the result")
+        (is (= [call text result notice]
+               (replay (conj step {:type :finish :finish-reason :max-iterations})))))
+      (testing (str "known gap: when the reply call is cut short at its output limit, the row stores the finish reason "
+                    "`length`, so the turn replays in step order and the notice stays before the result")
+        (let [cut-short (conj step (usage-part "length") {:type :finish :finish-reason :max-iterations})]
+          (is (=? {:finish_reason "length"}
+                  (t2/select-one :model/MetabotMessage :id (seed-turn! (str (random-uuid)) "look it up" cut-short))))
+          (is (= [call text notice result]
+                 (replay cut-short))))))))
 
 (deftest history-tool-output-shapes-test
   (testing "bare-scalar, nil, and errored tool outputs each coerce to a string tool result"
@@ -1492,7 +1619,69 @@
                                 {:type   :tool-output :id "c1"
                                  :result {:output (str "This call failed with an unexpected error. Don't retry the "
                                                        "same call. Try another approach, or tell the user it failed.")
-                                          :error  {:class :unrecoverable :code :internal}}}]))))))))
+                                          :error  {:class :unrecoverable :code :internal}}}]))))
+        (testing (str "a failed call with no output replays the fallback text that the adapters send, "
+                      "not an empty string")
+          (is (= "Tool execution failed"
+                 (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                {:type :tool-output :id "c1" :result {:error {:class :recoverable :code :x}}}]))))
+        (testing (str "known gap: a keyword result changes in the JSON round trip, so the adapters send `\":ok\"` "
+                      "but history replays `\"ok\"`")
+          (is (= ":ok" (self.core/tool-result-text :ok)))
+          (is (= "ok"
+                 (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                {:type :tool-output :id "c1" :result :ok}]))))
+        (testing (str "each result shape that this test lists replays as the text that the adapters send for it, "
+                      "so the next turn's prefix holds for these shapes")
+          (doseq [result ["just a string"
+                          42
+                          nil
+                          {:output "rows"}
+                          {:rows [1 2]}
+                          {:output "Table 7 was not found." :error {:class :recoverable :code :x}}
+                          {:error {:class :recoverable :code :x}}
+                          {:output "" :error {:class :unrecoverable :code :x}}]]
+            (testing (pr-str result)
+              (is (= (self.core/tool-result-text result)
+                     (tool-content [{:type :tool-input :id "c1" :function "search" :arguments {}}
+                                    {:type :tool-output :id "c1" :result result}]))))))))))
+
+(deftest ^:parallel history-replays-blank-error-text-as-fallback-test
+  (testing (str "a stored failure with a blank `errorText` replays the fallback text that the adapters "
+                "send, so history and the request hold one text")
+    (doseq [error-text ["" "  "]]
+      (testing (pr-str error-text)
+        (let [rows [{:id 1 :role :user :data [{:type "text" :text "look it up"}]}
+                    {:id       2
+                     :role     :assistant
+                     :finished true
+                     :data     [{:type       "tool-search"
+                                 :toolCallId "c1"
+                                 :state      "output-error"
+                                 :input      {:q "x"}
+                                 :errorText  error-text}]}]]
+          (is (= [{:role         :tool
+                   :tool_call_id "c1"
+                   :content      self.core/failed-tool-result-text
+                   :is_error     true}]
+                 (filter #(= :tool (:role %)) (metabot-persistence/history rows)))))))))
+
+(deftest ^:parallel history-replays-whitespace-only-text-test
+  (let [replay (fn [assistant-row]
+                 (rest (metabot-persistence/history
+                        [{:id 1 :role :user :data [{:type "text" :text "look it up"}]}
+                         (merge {:id 2 :role :assistant :finished true} assistant-row)])))
+        part   {:type "tool-search" :toolCallId "c1" :state "output-available" :input {:q "x"} :output "rows"}
+        call   {:role :assistant :tool_calls [{:id "c1" :name "search" :arguments (json/encode {:q "x"})}]}
+        result {:role :tool :tool_call_id "c1" :content "rows"}]
+    (testing (str "text that is only whitespace replays in its place, because the request, not history, leaves it "
+                  "out (see `metabase.metabot.agent.messages/build-message-history`)")
+      (is (= [{:role :assistant :content "\n\n"} call result]
+             (replay {:data [{:type "text" :text "\n\n"} part]}))))
+    (testing "text that is only whitespace after the last call of a `tool-calls` row replays after the results"
+      (is (= [call result {:role :assistant :content "\n\n"}]
+             (replay {:finish_reason "tool-calls"
+                      :data          [{:type "step-start"} part {:type "text" :text "\n\n"}]}))))))
 
 (deftest history-hides-query-results-while-query-execution-is-off-test
   (testing "a stored run_query result is replayed only while query execution is on, and nothing stored changes"

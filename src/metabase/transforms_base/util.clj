@@ -40,6 +40,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouses.schema :as warehouses.schema]
    [metabase.workspaces.core :as workspaces]
    [metabase.workspaces.table-remapping :as ws.table-remapping]
@@ -319,15 +320,33 @@
       (some? lo-value)           (assoc :transform/checkpoint-lo (encode-checkpoint-value lo-value))
       (some? hi-value)           (assoc :transform/checkpoint-hi (encode-checkpoint-value hi-value)))))
 
-(mu/defn save-watermark! :- :int
+(defmulti record-run-changes!
+  "Apply `changes` that running a Transform records to the row of `model` with `id`: the watermark or target Table of
+  a Transform, the checkpoint range a TransformRun reads. The model, whose namespace requires this one, implements it
+  with its own write function."
+  {:arglists '([model id changes])}
+  (fn [model _id _changes] model))
+
+(defn- record-run-changes-of!
+  "Call [[record-run-changes!]] for `model`, after loading it."
+  [model id changes]
+  (t2/resolve-model model)
+  (record-run-changes! model id changes))
+
+(defn- update-transform!
+  "Apply `changes` to the Transform with `transform-id` through the write function of its model."
+  [transform-id changes]
+  (record-run-changes-of! :model/Transform transform-id changes))
+
+(mu/defn save-watermark! :- :nil
   "Commits the incremental transforms :hi watermark value to the appdb. Not in a workspace that the request names: the
   Transform is shared, and its watermark is production's ([[full-incremental-run?]])."
   [transform-id        :- ::lib.schema.id/transform
    source-range-params :- [:maybe ::transforms-base.schema/source-range-params]]
-  (if (workspaces/workspace-bound?)
-    0
+  (when-not (workspaces/workspace-bound?)
     (let [hi-value (:value (:hi source-range-params))]
-      (transforms-base.db/update-transform! transform-id {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)}))))
+      (update-transform! transform-id {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
+  nil)
 
 (mu/defn save-run-checkpoint-range! :- [:maybe :int]
   "Persist the checkpoint range (lo/hi) on a transform run record.
@@ -336,10 +355,10 @@
    source-range-params :- [:maybe ::transforms-base.schema/source-range-params]]
   (when (and run-id source-range-params)
     (let [{:keys [checkpoint-filter-field-id lo hi]} source-range-params]
-      (transforms-base.db/update-transform-run! run-id
-                                                (cond-> {:checkpoint_filter_field_id checkpoint-filter-field-id}
-                                                  lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
-                                                  hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
+      (record-run-changes-of! :model/TransformRun run-id
+                              (cond-> {:checkpoint_filter_field_id checkpoint-filter-field-id}
+                                lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
+                                hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
 
 (mu/defn- coerce-to-local-datetime :- ::transforms-base.schema/temporal
   "Coerce a temporal value to LocalDateTime, stripping any timezone information."
@@ -558,8 +577,9 @@
       (catch Exception e
         (qp.catch-exceptions/exception-response e)))))
 
-(mu/defn compile-source :- ::qp.compile/compiled
-  "Compile the source query of a transform to SQL, applying incremental filtering if required."
+(mu/defn preprocess-source :- :metabase.lib.schema/query
+  "The source query of `transform`, filtered to `source-range-params` when they are given, with remaps and the
+  default row limit turned off, preprocessed."
   [{:keys [source] :as transform} :- ::transforms-base.schema/transform
    source-range-params            :- [:maybe ::transforms-base.schema/source-range-params]]
   (let [{:keys [query]} source]
@@ -567,7 +587,13 @@
     (-> query
         (preprocess-incremental-query source-range-params)
         massage-sql-query
-        qp.compile/compile)))
+        qp.preprocess/preprocess)))
+
+(mu/defn compile-source :- ::qp.compile/compiled
+  "Compile the source query of a transform to SQL, applying incremental filtering if required."
+  [transform           :- ::transforms-base.schema/transform
+   source-range-params :- [:maybe ::transforms-base.schema/source-range-params]]
+  (qp.compile/compile-preprocessed (preprocess-source transform source-range-params)))
 
 ;;; ------------------------------------------------- Target Table Management -------------------------------------------------
 
@@ -665,7 +691,7 @@
        ;; names: the Table is shared, and the copy is not the physical table.
        (let [table (if (and (nil? (:schema table)) (not (workspaces/workspace-bound?)))
                      (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
-                       (do (transforms-base.db/update-table! (:id table) {:schema actual-schema})
+                       (do (table/update-tables! [{:id (:id table) :schema actual-schema}])
                            (-> (transforms-base.db/table (:id table))
                                (t2/hydrate :db)))
                        table)
@@ -687,7 +713,7 @@
                                 {:create? true})]
     ;; A shared Table stays as production has it in a workspace that the request names.
     (when-not (or (:active table) (shared-table-in-workspace? table))
-      (transforms-base.db/update-table! (:id table) {:active true}))
+      (table/update-tables! [{:id (:id table) :active true}]))
     table))
 
 (mu/defn sync-target!
@@ -698,13 +724,13 @@
   (log/info "Syncing target" (pr-str target) "for transform")
   (activate-table-and-mark-computed! database target))
 
-(mu/defn deactivate-table!
+(mu/defn deactivate-table! :- :nil
   "Deactivate table for `target` in `database` in the app db."
   [database :- ::lib.schema.metadata/database
    target   :- ::transforms-base.schema/transform-target]
   (when-let [table (sync-table! database target)]
-    ;; TODO this should probably be a function in the sync module
-    (transforms-base.db/update-table! (:id table) {:active false})))
+    (table/update-tables! [{:id (:id table) :active false}])
+    nil))
 
 (defn- isolated-drop-target
   "Resolve `target` to the physical warehouse table to drop.
@@ -732,7 +758,7 @@
       target
       (assoc target :schema (or (:schema copy) (:db copy)) :name (:name copy)))))
 
-(mu/defn delete-target-table! :- [:maybe :int]
+(mu/defn delete-target-table! :- :nil
   "Drop a transform's output table and deactivate its app-db Table row.
 
   [[isolated-drop-target]] resolves the canonical `:target` to the table to drop. A
@@ -767,7 +793,7 @@
           (log/warnf "Skipping drop of transform target %s for transform %d: database %d not found"
                      (pr-str target) id database-id))))))
 
-(mu/defn delete-target-table-by-id! :- [:maybe :int]
+(mu/defn delete-target-table-by-id! :- :nil
   "Delete the target table of the transform specified by `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
   (delete-target-table! (transforms-base.db/transform transform-id)))
@@ -837,7 +863,7 @@
    index        :- ::indexes.schema/index-structured
    t            :- (ms/InstanceOfClass Throwable)]
   (when transform-id
-    (transforms-base.db/mark-table-index-failed! transform-id (reconcile/index-name index) (ex-message t))))
+    (table-index/mark-table-index-failed! transform-id (reconcile/index-name index) (ex-message t))))
 
 (mu/defn- apply-standalone-indexes!
   "Create the target's `:standalone` indexes as separate DDL, now that the table exists. `:inline` kinds render at
@@ -881,8 +907,8 @@
   [by-outcome :- [:map-of [:enum :succeeded :failed :delete-pending :delete-row] [:sequential ::indexes.schema/table-index]]]
   (doseq [[status rows] by-outcome]
     (if (= :delete-row status)
-      (transforms-base.db/delete-table-indexes! (map :id rows))
-      (transforms-base.db/update-table-indexes! (map :id rows)
+      (table-index/delete-table-indexes! (map :id rows))
+      (table-index/mark-table-indexes-executed! (map :id rows)
                                                 (cond-> {:status status}
                                                   (= status :succeeded)
                                                   (assoc :error_message nil)
@@ -943,7 +969,7 @@
 
    Performs:
    - Sync target table to AppDB
-   - Set `transform_id` on the target table
+   - Set `target_table_id` on the transform
    - Publish Metabase events (unless `:publish-events?` is false)
 
    This is called after the core execution completes. Callers that use
@@ -960,15 +986,12 @@
         ;; Sync the canonical target the run recorded at its start, not the workspace copy mapped back through the
         ;; remap row: a schema change may have deleted that row since the run recorded it.
         table (sync-target! (canonical-sync-target db-id transform) database)]
-    ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
+    ;; Sync target table and set target_table_id on transform
     (when table
       ;; In a workspace that the request names, the Transform is shared: production must not point at a Table that only
       ;; the workspace sees.
       (when-not (workspaces/workspace-bound?)
-        (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)}))
-      ;; A shared Table stays as production has it; the run wrote the workspace's copy of it.
-      (when-not (shared-table-in-workspace? table)
-        (transforms-base.db/update-table! (:id table) {:transform_id (:id transform)})))
+        (update-transform! (:id transform) {:target_table_id (:id table)})))
     ;; ANALYZE the target before the run is observable, so dependents don't plan on stale stats.
     ;; Best-effort: a stats failure shouldn't fail an otherwise-successful run.
     (try
@@ -988,7 +1011,7 @@
     nil))
 
 (mu/defn output-table :- [:maybe :metabase.warehouse-schema.schema/table]
-  "Return the output table created by a transform, looked up via `transform_id`."
+  "Return the output table created by a transform, looked up via its stored `target_table_id`."
   [transform :- ::transforms-base.schema/transform]
   (transforms-base.db/table-for-transform (:id transform)))
 

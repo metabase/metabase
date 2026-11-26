@@ -2,11 +2,11 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.execution-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase.actions.db :as actions.db]
    [metabase.actions.execution :as actions.execution]
    [metabase.actions.models :as action]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
+   [metabase.queries.models.query-execution :as query-execution]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -50,8 +50,8 @@
         (mt/with-actions [_                   {:type :model :dataset_query (mt/mbql-query venues {:fields [$id $name]})}
                           {:keys [action-id]} {:type :implicit :kind "row/update"}]
           (let [action                        (action/select-action :id action-id)
-                build-implicit-query          #'actions.execution/build-implicit-query
-                {:keys [prefetch-parameters]} (build-implicit-query action :model.row/update {"id" 1})]
+                build-implicit-action-args    #'actions.execution/build-implicit-action-args
+                {:keys [prefetch-parameters]} (build-implicit-action-args action :model.row/update {"id" 1})]
             (testing "numeric PK → :number/="
               (is (= :number/=
                      (:type (first prefetch-parameters)))))))))))
@@ -79,11 +79,11 @@
         (doseq [[description table-id] {"a name that clashes only with a sensitive column" clash-id
                                         "a second, sensitive primary key"                  two-pk-id}]
           (testing description
-            (let [action-id            (action/insert! {:type :implicit :name description :kind :row/update
-                                                        :table_id table-id})
-                  build-implicit-query #'actions.execution/build-implicit-query]
+            (let [action-id                  (:id (first (action/create-actions! [{:type :implicit :name description :kind :row/update
+                                                                                   :table_id table-id}])))
+                  build-implicit-action-args #'actions.execution/build-implicit-action-args]
               (is (=? {:row-parameters {}}
-                      (build-implicit-query (action/select-action :id action-id) :model.row/update {"id" 1}))))))))))
+                      (build-implicit-action-args (action/select-action :id action-id) :model.row/update {"id" 1}))))))))))
 
 (deftest native-action-audit-trail-test
   (testing "a native query action records one QueryExecution row for the write"
@@ -262,8 +262,8 @@
             (let [action (action/select-action :id action-id)
                   since  (mt/latest-query-execution-id)]
               (let [attempts (atom 0)]
-                (mt/with-dynamic-fn-redefs [actions.db/insert-query-execution!
-                                            (fn [_row]
+                (mt/with-dynamic-fn-redefs [query-execution/create-query-executions!
+                                            (fn [_rows]
                                               (swap! attempts inc)
                                               (throw (ex-info "app db is down" {})))]
                   (is (= {:rows-affected 1}

@@ -1,6 +1,8 @@
 (ns metabase.models.resolution
   (:require
+   [clojure.string :as str]
    [metabase.classloader.core :as classloader]
+   [metabase.config.core :as config]
    [methodical.core :as methodical]
    [toucan2.model :as t2.model]))
 
@@ -27,6 +29,9 @@
     :model/Card                              metabase.queries.models.card
     :model/CardTest                          metabase-enterprise.data-testing.models.card-test
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
+    :model/CardFavorite                      metabase.queries.models.report-cardfavorite
+    :model/CardLabel                         metabase.queries.models.card-label
+    :model/ChangeLog                         metabase.change-log.models.change-log
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
     :model/CloudMigration                    metabase.cloud-migration.models.cloud-migration
@@ -44,6 +49,7 @@
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.dashboards.models.dashboard-card
     :model/DashboardCardSeries               metabase.dashboards.models.dashboard-card-series
+    :model/DashboardFavorite                 metabase.dashboards.models.dashboard-favorite
     :model/DashboardTab                      metabase.dashboards.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/DataTestRun                       metabase-enterprise.data-testing.models.data-test-run
@@ -127,6 +133,8 @@
     :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
+    :model/RemoteSyncWorktree                metabase-enterprise.remote-sync.models.remote-sync-worktree
+    :model/RemoteSyncWorktreeUser            metabase-enterprise.remote-sync.models.remote-sync-worktree-user
     :model/ReplacementRun                    metabase-enterprise.replacement.models.replacement-run
     :model/ResultMetadataStatus              metabase-enterprise.dependencies.models.result-metadata-status
     :model/Revision                          metabase.revisions.models.revision
@@ -148,6 +156,9 @@
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/TaskRun                           metabase.task-history.models.task-run
     :model/Tenant                            metabase-enterprise.tenants.models
+    :model/TestSuite                         metabase-enterprise.data-testing.models.test-suite
+    :model/TestSuiteMember                   metabase-enterprise.data-testing.models.test-suite
+    :model/TestSuiteRun                      metabase-enterprise.data-testing.models.test-suite-run
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
     :model/Transform                         metabase.transforms.models.transform
@@ -182,6 +193,13 @@
 ;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+(defn- require-model-namespace
+  "Require the namespace `nspace` of a model. The registry selects the namespace dynamically, so this uses
+  [[classloader/require]] for thread safety."
+  [nspace]
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  (classloader/require nspace))
+
 (methodical/defmethod t2.model/resolve-model :before :default
   "Ensure the namespace for given model is loaded. This is a safety mechanism as we are moving to toucan2 and we don't
   need to require the model namespaces in order to use it."
@@ -190,9 +208,7 @@
     ;; Always require the model's namespace when we know it. It is fast, and there can be race conditions between
     ;; before side effects like `deftransforms` and `define-before-insert` have run
     (when-let [nspace (get model->namespace x)]
-      ;; The registry selects the namespace dynamically; use [[classloader/require]] for thread safety.
-      #_{:clj-kondo/ignore [:metabase/modules]}
-      (classloader/require nspace)))
+      (require-model-namespace nspace)))
   x)
 
 (methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
@@ -218,3 +234,29 @@
       ;; loading the model namespace by calling `resolve-model` can add a new implementation to `table-name`, and
       ;; apparently we need to refer back to the var to pick up the updated multimethod.
       (#'t2.model/table-name (t2.model/resolve-model model)))))
+
+(defn load-all-models!
+  "Require the namespace of every known model, skipping the enterprise ones unless the build has them."
+  []
+  (doseq [nspace (distinct (vals model->namespace))
+          :when  (or config/ee-available? (not (str/starts-with? (str nspace) "metabase-enterprise")))]
+    (require-model-namespace nspace)))
+
+(defn spec-entries-by-name
+  "The entries that the methods of the multimethod `spec-multifn`, which dispatches on a model, define as `{name [model
+  entry]}` after loading every model namespace, where `spec->entries` (by default `identity`) turns a model's spec into
+  a map from name to entry; throws when two models define the same name."
+  ([spec-multifn]
+   (spec-entries-by-name spec-multifn identity))
+  ([spec-multifn spec->entries]
+   (load-all-models!)
+   (reduce (fn [acc [model method]]
+             (reduce-kv (fn [acc entry-name entry]
+                          (when-let [[other] (get acc entry-name)]
+                            (throw (ex-info (str "Two models define " (pr-str entry-name))
+                                            {:name entry-name :models [other model]})))
+                          (assoc acc entry-name [model entry]))
+                        acc
+                        (spec->entries (method model))))
+           {}
+           (dissoc (methods spec-multifn) :default))))

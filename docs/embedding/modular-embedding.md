@@ -22,11 +22,13 @@ If you're using React, check out the [Modular embedding SDK](./sdk/introduction.
 
 The first time you turn this on in Pro or Enterprise, Metabase asks you to accept the usage terms.
 
+On self-hosted Metabases, you can also turn on modular embedding with the [`MB_ENABLE_EMBEDDING_MODULAR`](../configuring-metabase/environment-variables.md#mb_enable_embedding_modular) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 **For guest embeds**: You're done! Skip to [Create a new embed](#create-a-new-embed) or see the [Guest embedding guide](./guest-embedding.md) for detailed setup instructions.
 
 **For authenticated embeds** (Pro/Enterprise only), some more steps:
 
-3. Under **Cross-Origin Resource Sharing (CORS)**, add the URLs of the websites where you want to embed Metabase (such as `https://*.example.com`). For testing embeds, you can use `localhost` which is always included in CORS policy.
+3. Under **Cross-Origin Resource Sharing (CORS)**, add the URLs of the websites where you want to embed Metabase (such as `https://*.example.com`). For testing embeds, you can use `localhost`, which Metabase allows by default. On self-hosted Metabases, you can block `localhost` with the [`MB_DISABLE_CORS_ON_LOCALHOST`](../configuring-metabase/environment-variables.md#mb_disable_cors_on_localhost) environment variable.
 4. If embedding on a different domain, see [Embedding Metabase in a different domain](./authentication.md#embedding-metabase-in-a-different-domain).
 
 ## Create a new embed

@@ -3,8 +3,8 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.glossary.core :as glossary.core]
    [metabase.glossary.db :as glossary.db]
+   [metabase.glossary.models.glossary :as glossary]
    [metabase.glossary.schema :as glossary.schema]
    [metabase.models.interface :as mi]
    [metabase.util.malli.schema :as ms]
@@ -33,7 +33,7 @@
             [:term ::glossary.schema/glossary.term]
             [:definition ::glossary.schema/glossary.definition]]]
   (api/create-check :model/Glossary body)
-  (t2/hydrate (glossary.core/create-entry! api/*current-user-id* body) :creator))
+  (t2/hydrate (first (glossary/create-glossaries! [(assoc body :creator_id api/*current-user-id*)])) :creator))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -47,11 +47,12 @@
             [:term ::glossary.schema/glossary.term]
             [:definition ::glossary.schema/glossary.definition]]]
   (api/update-check (api/check-404 (glossary.db/glossary-entry id)) body)
-  (t2/hydrate (api/check-404 (glossary.core/update-entry! id body)) :creator))
+  (glossary/update-glossaries! [(assoc body :id id)])
+  (t2/hydrate (glossary.db/glossary-entry id) :creator))
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a glossary entry."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check (glossary.db/glossary-entry id))
-  (api/check-404 (glossary.core/delete-entry! id))
+  (glossary/delete-glossaries! [id])
   api/generic-204-no-content)

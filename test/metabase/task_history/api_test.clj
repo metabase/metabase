@@ -3,9 +3,17 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]))
+
+(use-fixtures :once
+  (fixtures/initialize :db :test-users)
+  ;; Loading test-data syncs it, which records a task run, so load it before any test clears the task runs.
+  (fn [thunk]
+    (mt/db)
+    (thunk)))
 
 (def ^:private default-task-history
   {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil
@@ -567,8 +575,8 @@
         (testing "sort by db_engine (aaa-engine < zzz-engine)"
           ;; Relabel engines via raw SQL (no Toucan hooks, so no driver init) purely to exercise ordering on the
           ;; `engine` column; reset to h2 before with-temp teardown so deletion doesn't init a bogus driver.
-          (t2/query {:update :metabase_database :set {:engine "aaa-engine"} :where [:= :id (:id db-a)]})
-          (t2/query {:update :metabase_database :set {:engine "zzz-engine"} :where [:= :id (:id db-b)]})
+          (t2/query {:update (t2/table-name :model/Database) :set {:engine "aaa-engine"} :where [:= :id (:id db-a)]})
+          (t2/query {:update (t2/table-name :model/Database) :set {:engine "zzz-engine"} :where [:= :id (:id db-b)]})
           (try
             (let [asc  (tracked :sort_column :db_engine :sort_direction :asc)
                   desc (tracked :sort_column :db_engine :sort_direction :desc)]
@@ -576,7 +584,7 @@
               (is (< (u/index-of #{"t-a"} asc) (u/index-of #{"t-b"} asc)))
               (is (< (u/index-of #{"t-b"} desc) (u/index-of #{"t-a"} desc))))
             (finally
-              (t2/query {:update :metabase_database :set {:engine "h2"}
+              (t2/query {:update (t2/table-name :model/Database) :set {:engine "h2"}
                          :where  [:in :id [(:id db-a) (:id db-b)]]}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -641,7 +649,10 @@
       (is (= 2 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :entity-type "database"))))
       (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :entity-type "dashboard")))))
     (testing "filter by entity-id"
-      (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :entity-id (:id db1))))))
+      ;; Ids of different entity types can coincide, so the dashboard run could share `db1`'s id.
+      (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs"
+                                             :entity-type "database"
+                                             :entity-id   (:id db1))))))
     (testing "filter by status"
       (is (= 2 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :status "success"))))
       (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :status "failed")))))

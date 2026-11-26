@@ -10,7 +10,8 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.json-schema :as mjs]
-   [metabase.metabot.self.features :as features]))
+   [metabase.metabot.self.features :as features]
+   [metabase.util.malli.json-schema :as mu.json-schema]))
 
 (defn- filter-map-entries
   "Filter map schema entries, keeping only those whose :feature is available.
@@ -46,9 +47,10 @@
   "Converts a ToolEntry map (`:tool-name`, `:doc`, `:schema`) into the provider-neutral parts of a tool declaration:
   `{:name ... :description ... :parameters <JSON Schema>}`. Adapters wrap this in their provider's envelope.
 
-  Filters feature-gated properties from the parameter schema (see [[filter-schema-by-features]]) and strips the
-  `Inputs: ...` block that `mu/defn` appends to the docstring. An entry carrying a `:declaration` delay, which the
-  agent creates once per turn, returns its value instead."
+  Filters feature-gated properties from the parameter schema (see [[filter-schema-by-features]]), publishes it without
+  `oneOf` (see [[mu.json-schema/without-one-of]]), and strips the `Inputs: ...` block that `mu/defn` appends to the
+  docstring.
+  An entry carrying a `:declaration` delay, which the agent creates once per turn, returns its value instead."
   [{:keys [tool-name doc schema declaration]}]
   (if declaration
     @declaration
@@ -60,4 +62,4 @@
                                        doc)]
       {:name        tool-name
        :description doc
-       :parameters  (mjs/transform params {:additionalProperties false})})))
+       :parameters  (mu.json-schema/without-one-of (mjs/transform params {:additionalProperties false}))})))

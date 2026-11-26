@@ -13,8 +13,7 @@
   savepoint, undoes a `SET` made after it, so the record of a connection goes when one of its transactions ends."
   (:require
    [methodical.core :as methodical]
-   [toucan2.connection :as t2.conn]
-   [toucan2.core :as t2]))
+   [toucan2.connection :as t2.conn]))
 
 (set! *warn-on-reflection* true)
 
@@ -75,7 +74,7 @@
 
 ;; Whether a thread of this process ever worked in a workspace. Until one does, every connection is in none, and a
 ;; connection whose setting this process has no record of needs no statement.
-(defonce ^:private ever-in-a-workspace? (atom false))
+(defonce ^:private ever-in-a-workspace (atom false))
 
 (defn- physical-connection
   "The physical Postgres connection under `connection`, which a pool may wrap."
@@ -99,7 +98,7 @@
     (let [wanted  (setting-sql *workspace-id*)
           applied (.get applied-settings (physical-connection connection))]
       (when (and (not= wanted applied)
-                 (or (some? applied) @ever-in-a-workspace? (not= wanted no-workspace-sql)))
+                 (or (some? applied) @ever-in-a-workspace (not= wanted no-workspace-sql)))
         (execute! connection wanted)
         (record-setting! connection wanted)))))
 
@@ -118,11 +117,17 @@
       (when (postgres-connection? connection)
         (forget-setting! connection)))))
 
+(defn ever-in-a-workspace?
+  "Whether a thread of this process ever worked in a workspace. Until one does, every connection is in none, and this
+  process holds no row that a workspace owns."
+  []
+  @ever-in-a-workspace)
+
 (defn do-with-workspace-id
   "Impl for [[with-workspace-id]]."
   [workspace-id thunk]
   (when (some? workspace-id)
-    (reset! ever-in-a-workspace? true))
+    (reset! ever-in-a-workspace true))
   (binding [*workspace-id* workspace-id]
     (thunk)))
 
@@ -132,15 +137,3 @@
   {:style/indent 1}
   [workspace-id & body]
   `(do-with-workspace-id ~workspace-id (^:once fn* [] ~@body)))
-
-(defn owner-workspace-id
-  "The id of the workspace that owns the row with `id` of the app DB table `table` (`:metabase_table` or
-  `:metabase_field`), or nil for a row every workspace shares. The owner is not a key of a selected Table or Field, so
-  that no API response or export has it. Reads across every workspace, so a thread in another workspace, or in none,
-  gets it too. Nil, with no query, in a process where no thread ever worked in a workspace: such a process holds no
-  row that a workspace owns."
-  [table id]
-  (when (and id @ever-in-a-workspace?)
-    (do-with-workspace-id :all
-      (fn []
-        (:workspace_id (t2/query-one {:select [:workspace_id] :from [table] :where [:= :id id]}))))))

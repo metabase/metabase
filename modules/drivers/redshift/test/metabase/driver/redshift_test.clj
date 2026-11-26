@@ -17,6 +17,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
@@ -424,6 +425,18 @@
              (mt/first-row
               (qp/process-query
                (mt/native-query {:query "select interval '5 days'"}))))))))
+
+(deftest ^:parallel single-row-aggregation-stays-at-top-level-test
+  (testing "Redshift keeps a single-row aggregation at the top level, not in its own stage CTE, because Redshift fails
+            with an internal assert when it projects a numeric aggregate again from a CTE"
+    (let [mp    (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :redshift}})
+          query (lib/append-stage (lib/query mp (lib.metadata/table mp (meta/id :venues))))
+          query (lib/aggregate query (lib/count))]
+      (qp.store/with-metadata-provider mp
+        (driver/with-driver :redshift
+          (is (=? [{:source-table (meta/id :venues)}
+                   {:aggregation [[:count {}]]}]
+                  (sql.qp/preprocess :redshift query))))))))
 
 ;; Cal 2024-04-10: Commented this out instead of deleting it. We used to use this for `driver/describe-database` (see metabase#37439)
 ;; We might use it again in the future for getting privileges for actions.
@@ -1122,15 +1135,48 @@
         (finally
           (try-execute! admin-spec (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema)))))))
 
+(defn- drop-database! [admin-spec db-name]
+  ;; Redshift's DROP DATABASE has no IF EXISTS, and it cannot run in a transaction block
+  (jdbc/execute! admin-spec [(format "DROP DATABASE \"%s\"" db-name)] {:transaction? false}))
+
+(defn- public-create-test-db-name
+  "A name for the database that [[workspace-public-create-other-database-live-test]] creates. It carries the creation
+  time in epoch seconds, so a later run can tell a leaked database from one a concurrent CI job is still using.
+  Redshift database names are at most 64 characters."
+  []
+  (format "ws_pcdb_%d_%s" (.getEpochSecond (java.time.Instant/now)) (u/lower-case-en (mt/random-name))))
+
+(defn- leaked-public-create-database?
+  "Is `db-name` a database that an earlier run of [[workspace-public-create-other-database-live-test]] left behind?
+  A `ws_pc_db_` name comes from a run whose cleanup always failed; a `ws_pcdb_` name counts once it is 3 hours old."
+  [db-name]
+  (or (str/starts-with? db-name "ws_pc_db_")
+      (when-let [[_ created] (re-matches #"ws_pcdb_(\d+)_[a-z]+" db-name)]
+        (< (parse-long created)
+           (- (.getEpochSecond (java.time.Instant/now)) (* 3 60 60))))))
+
+(defn- drop-leaked-public-create-databases!
+  "Drop every database on the cluster that [[leaked-public-create-database?]] matches. The cluster allows 64
+  databases, and leaked ones fill it until CREATE DATABASE fails."
+  [admin-spec]
+  (doseq [{db-name :datname} (jdbc/query admin-spec ["SELECT datname FROM pg_database"])
+          :when (leaked-public-create-database? db-name)]
+    (log/infof "Dropping leaked test database %s" db-name)
+    ;; a concurrent CI job may still be using it
+    (try (drop-database! admin-spec db-name)
+         (catch Throwable t
+           (log/warnf t "Could not drop leaked test database %s" db-name)))))
+
 (deftest ^:synchronized workspace-public-create-other-database-live-test
   ;; a new database's `public` grants CREATE to PUBLIC by default, and every user may connect to it: init must find
   ;; it from a connection to another database
   (mt/test-driver :redshift
     (let [admin-spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))
-          db2        (str "ws_pc_db_" (u/lower-case-en (mt/random-name)))]
+          db2-name   (public-create-test-db-name)]
+      (drop-leaked-public-create-databases! admin-spec)
       (try
-        ;; CREATE DATABASE and DROP DATABASE cannot run in a transaction block
-        (jdbc/execute! admin-spec [(format "CREATE DATABASE \"%s\"" db2)] {:transaction? false})
+        ;; CREATE DATABASE cannot run in a transaction block
+        (jdbc/execute! admin-spec [(format "CREATE DATABASE \"%s\"" db2-name)] {:transaction? false})
         (let [error (try
                       (jdbc/with-db-transaction [conn admin-spec]
                         (#'redshift/start-workspace-transaction! conn)
@@ -1140,15 +1186,21 @@
                         e))]
           (testing "init's check refuses with a 412 naming the other database's `public`"
             (is (=? {:status-code 412} (ex-data error)))
-            (is (some #{(str db2 ".public")} (:schemas (ex-data error))))
-            (is (not (some #{db2} (:unverifiable (ex-data error)))))
+            (is (some #{(str db2-name ".public")} (:schemas (ex-data error))))
+            (is (not (some #{db2-name} (:unverifiable (ex-data error)))))
             (is (empty? (:unverifiable (ex-data error))))
             (is (str/includes? (ex-message error)
-                               (format "`REVOKE CREATE ON SCHEMA \"public\" FROM PUBLIC;` in database \"%s\"" db2)))))
+                               (format "`REVOKE CREATE ON SCHEMA \"public\" FROM PUBLIC;` in database \"%s\"" db2-name)))))
         (finally
-          (try (jdbc/execute! admin-spec [(format "DROP DATABASE IF EXISTS \"%s\"" db2)] {:transaction? false})
-               (catch Throwable t
-                 (log/warnf t "Test cleanup failed: DROP DATABASE %s" db2))))))))
+          (let [drop-error (try (drop-database! admin-spec db2-name)
+                                nil
+                                (catch Throwable t
+                                  t))]
+            (is (nil? drop-error)
+                (format (str "Could not drop test database %s: %s. It stays on the shared Redshift cluster, which "
+                             "allows 64 databases; leaked databases fill it until every run's CREATE DATABASE fails.")
+                        db2-name
+                        (some-> drop-error ex-message)))))))))
 
 (deftest ^:synchronized workspace-grant-refuses-public-writes-live-test
   (mt/test-driver :redshift

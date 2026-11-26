@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupCollectionByIdEndpoint,
   setupCollectionPermissionsGraphEndpoint,
   setupCollectionsEndpoints,
   setupGroupsEndpoint,
@@ -18,8 +20,11 @@ import {
 } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
-import { dataStudioArchivedSnippets } from "metabase/urls";
-import type { EnterpriseSettings, User } from "metabase-types/api";
+import {
+  dataStudioArchivedSnippets,
+  newDataStudioSnippet,
+} from "metabase/urls";
+import type { Collection, EnterpriseSettings, User } from "metabase-types/api";
 import {
   createMockCollection,
   createMockNativeQuerySnippet,
@@ -33,6 +38,8 @@ type SetupOpts = {
   isEnterprise?: boolean;
   user?: Partial<User>;
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
+  extraCollections?: Collection[];
+  isEmpty?: boolean;
 };
 
 const NATIVE_WRITE_USER: Partial<User> = {
@@ -43,32 +50,44 @@ function setup({
   isEnterprise = false,
   user = NATIVE_WRITE_USER,
   remoteSyncType,
+  extraCollections = [],
+  isEmpty = false,
 }: SetupOpts) {
-  setupCollectionsEndpoints({
-    collections: [
-      createMockCollection({ id: "root", name: "Root", namespace: "snippets" }),
-      createMockCollection({
-        id: 10,
-        name: "Revenue folder",
-        namespace: "snippets",
-        location: "/",
-        parent_id: null,
-      }),
-    ],
+  const rootCollection = createMockCollection({
+    id: "root",
+    name: "Root",
+    namespace: "snippets",
   });
+  const collections = isEmpty
+    ? [rootCollection]
+    : [
+        rootCollection,
+        createMockCollection({
+          id: 10,
+          name: "Revenue folder",
+          namespace: "snippets",
+          location: "/",
+          parent_id: null,
+        }),
+        ...extraCollections,
+      ];
+  setupCollectionsEndpoints({ collections });
+  setupCollectionByIdEndpoint({ collections });
   setupNativeQuerySnippetEndpoints({
-    snippets: [
-      createMockNativeQuerySnippet({
-        id: 1,
-        name: "Orders filter",
-        collection_id: null,
-      }),
-      createMockNativeQuerySnippet({
-        id: 2,
-        name: "Revenue sum",
-        collection_id: 10,
-      }),
-    ],
+    snippets: isEmpty
+      ? []
+      : [
+          createMockNativeQuerySnippet({
+            id: 1,
+            name: "Orders filter",
+            collection_id: null,
+          }),
+          createMockNativeQuerySnippet({
+            id: 2,
+            name: "Revenue sum",
+            collection_id: 10,
+          }),
+        ],
   });
   const state = createMockState({
     settings: mockSettings({
@@ -90,8 +109,38 @@ function setup({
 
   renderWithProviders(<Route path="/" element={<SnippetListPage />} />, {
     withRouter: true,
+    withUndos: true,
     storeInitialState: state,
   });
+
+  return { collections };
+}
+
+/** Applies a PUT body to the stored collection, as the backend does. */
+function setupUpdatableCollectionEndpoint(
+  collections: Collection[],
+  collectionId: number,
+) {
+  fetchMock.put(
+    `path:/api/collection/${collectionId}`,
+    ({ options }) => {
+      const body: unknown = JSON.parse(String(options.body));
+      const index = collections.findIndex(({ id }) => id === collectionId);
+      if (typeof body === "object" && body !== null) {
+        collections[index] = { ...collections[index], ...body };
+      }
+      return collections[index];
+    },
+    { name: `update-collection-${collectionId}` },
+  );
+}
+
+async function getUpdateCollectionBodies(
+  collectionId: number,
+): Promise<unknown[]> {
+  return fetchMock.callHistory
+    .calls(`update-collection-${collectionId}`)
+    .map((call) => JSON.parse(String(call.options.body)));
 }
 
 describe("SnippetListPage", () => {
@@ -107,6 +156,31 @@ describe("SnippetListPage", () => {
     expect(await within(page).findByText("Orders filter")).toBeInTheDocument();
     expect(within(page).getByText("Revenue folder")).toBeInTheDocument();
     expect(within(page).queryByText("SQL snippets")).not.toBeInTheDocument();
+  });
+
+  it("shows an empty state with a link to a new snippet when there are no snippets", async () => {
+    setup({ isEmpty: true });
+
+    const emptyState = await screen.findByTestId("empty-state-row");
+    expect(
+      within(emptyState).getByText("Reusable bits of code that save your time"),
+    ).toBeInTheDocument();
+    expect(
+      within(emptyState).getByRole("link", { name: "New snippet" }),
+    ).toHaveAttribute("href", newDataStudioSnippet());
+    expect(screen.queryByTestId("collection-name")).not.toBeInTheDocument();
+  });
+
+  it("does not link to a new snippet from the empty state in remote sync read-only mode", async () => {
+    setup({ isEnterprise: true, isEmpty: true, remoteSyncType: "read-only" });
+
+    const emptyState = await screen.findByTestId("empty-state-row");
+    expect(
+      within(emptyState).getByText("Reusable bits of code that save your time"),
+    ).toBeInTheDocument();
+    expect(
+      within(emptyState).queryByRole("link", { name: "New snippet" }),
+    ).not.toBeInTheDocument();
   });
 
   it("filters snippets by name, including ones in folders", async () => {
@@ -230,6 +304,72 @@ describe("SnippetListPage", () => {
     expect(
       screen.getByRole("menuitem", { name: /View archived snippets/ }),
     ).toHaveAttribute("href", dataStudioArchivedSnippets());
+  });
+
+  it("edits and archives a snippet folder from its row menu", async () => {
+    const { collections } = setup({
+      isEnterprise: true,
+      extraCollections: [
+        createMockCollection({
+          id: 20,
+          name: "Costs folder",
+          namespace: "snippets",
+          location: "/",
+          parent_id: null,
+        }),
+      ],
+    });
+    setupUpdatableCollectionEndpoint(collections, 20);
+
+    const page = await screen.findByTestId("library-page");
+    const row = await within(page).findByRole("row", { name: /Costs folder/ });
+    await userEvent.click(
+      within(row).getByRole("button", { name: "Snippet folder options" }),
+    );
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: /Edit folder details/ }),
+    );
+    const editModal = await screen.findByRole("dialog");
+    const nameInput = within(editModal).getByLabelText("Name");
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, "Updated Folder");
+    await userEvent.click(
+      within(editModal).getByRole("button", { name: "Save" }),
+    );
+
+    expect(await within(page).findByText("Updated Folder")).toBeInTheDocument();
+    expect(within(page).queryByText("Costs folder")).not.toBeInTheDocument();
+    expect(within(page).getByText("Revenue folder")).toBeInTheDocument();
+    expect(await getUpdateCollectionBodies(20)).toEqual([
+      expect.objectContaining({ name: "Updated Folder", parent_id: null }),
+    ]);
+
+    const updatedRow = within(page).getByRole("row", {
+      name: /Updated Folder/,
+    });
+    await userEvent.click(
+      within(updatedRow).getByRole("button", {
+        name: "Snippet folder options",
+      }),
+    );
+    await userEvent.click(screen.getByRole("menuitem", { name: /Archive/ }));
+    const archiveModal = await screen.findByRole("dialog");
+    expect(
+      within(archiveModal).getByText('Archive "Updated Folder"?'),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      within(archiveModal).getByRole("button", { name: "Archive" }),
+    );
+
+    await waitFor(() => {
+      expect(within(page).getByText("Revenue folder")).toBeInTheDocument();
+      expect(
+        within(page).queryByText("Updated Folder"),
+      ).not.toBeInTheDocument();
+    });
+    expect((await getUpdateCollectionBodies(20)).at(-1)).toEqual({
+      archived: true,
+    });
   });
 
   it("does not offer to change permissions to non-admins", async () => {

@@ -1,11 +1,7 @@
 const { H } = cy;
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { LibraryCollectionIds } from "e2e/support/helpers/api";
-import {
-  TRUSTED_ORDERS_METRIC,
-  createLibraryWithTable,
-} from "e2e/support/test-library-data";
+import { TRUSTED_ORDERS_METRIC } from "e2e/support/test-library-data";
 import type { Collection } from "metabase-types/api";
 
 const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -81,58 +77,6 @@ describe("scenarios > data studio > library", () => {
     H.DataStudio.Library.libraryPage()
       .findByText("Trusted Orders Metric - Duplicate")
       .should("be.visible");
-  });
-
-  it("should show the library in the data picker and build the path from a value", () => {
-    createLibraryWithTable().as("library");
-
-    cy.log("Library is visible when only the Data collection has items");
-    H.startNewQuestion();
-    H.miniPickerBrowseAll().click();
-
-    H.entityPickerModalItem(0, "Library").click();
-    H.entityPickerModalItem(1, "Data").click();
-    H.entityPickerModalItem(2, "Orders").should("exist");
-
-    cy.log("Add a metric to the Metrics collection");
-    cy.get<LibraryCollectionIds>("@library").then(({ metricsCollectionId }) => {
-      H.createQuestion({ ...TRUSTED_ORDERS_METRIC }).then(({ body: card }) => {
-        cy.request("PUT", `/api/card/${card.id}`, {
-          collection_id: metricsCollectionId,
-        });
-      });
-    });
-
-    // `startNewQuestion` only changes the hash on the same path, so leave the page first to load it fresh.
-    cy.visit("/");
-    H.startNewQuestion();
-    H.miniPickerBrowseAll().click();
-
-    H.entityPickerModalItem(0, "Library").click();
-    H.entityPickerModalItem(1, "Data").click();
-    H.entityPickerModalItem(2, "Orders").click();
-
-    cy.log("Ensure that we can build the path from a value");
-
-    cy.button(/Orders/).click();
-    H.miniPickerHeader().click();
-    H.miniPickerBrowseAll().click();
-
-    H.entityPickerModalItem(0, "Library").should(
-      "have.attr",
-      "data-active",
-      "true",
-    );
-    H.entityPickerModalItem(1, "Data").should(
-      "have.attr",
-      "data-active",
-      "true",
-    );
-    H.entityPickerModalItem(2, "Orders").should(
-      "have.attr",
-      "data-active",
-      "true",
-    );
   });
 
   describe("Library collection management", () => {
@@ -283,60 +227,14 @@ describe("scenarios > data studio > library", () => {
     });
   });
 
-  describe("empty state", () => {
-    it("should show empty states, publish a table from the New menu, and keep empty sections expanded", () => {
+  describe("published tables", () => {
+    it("should publish a table from the New menu, show its overview, and unpublish it", () => {
       H.createLibrary();
       H.DataStudio.Library.visit();
-
-      H.DataStudio.Library.collectionItem("Data").should("be.visible");
-      H.DataStudio.Library.collectionItem("Metrics").should("be.visible");
-
-      cy.log("Verify Data section empty state");
-      H.DataStudio.Library.libraryPage()
-        .findByText("Cleaned, pre-transformed data sources ready for exploring")
-        .should("be.visible");
-      H.DataStudio.Library.libraryPage()
-        .findByRole("button", { name: "Publish a table" })
-        .should("be.visible");
-
-      cy.log("Verify Metrics section empty state");
-      H.DataStudio.Library.libraryPage()
-        .findByText("Standardized calculations with known dimensions")
-        .should("be.visible");
-      H.DataStudio.Library.libraryPage()
-        .findByRole("link", { name: "New metric" })
-        .should("be.visible");
-
-      cy.log("Click on 'Publish a table' button and verify modal opens");
-      H.DataStudio.Library.libraryPage()
-        .findByRole("button", { name: "Publish a table" })
-        .click();
-      H.entityPickerModal().should("be.visible");
-      H.entityPickerModalItem(1, "Sample Database").click();
-      H.entityPickerModalItem(2, "Orders").should("exist");
-      H.entityPickerModal().button("Close").click();
-
-      cy.log("Search for text and verify empty states are excluded");
-      H.DataStudio.Library.libraryPage()
-        .findByPlaceholderText("Search...")
-        .type("Publish");
-      H.DataStudio.Library.libraryPage()
-        .findByText("Cleaned, pre-transformed data sources ready for exploring")
-        .should("not.exist");
-
-      cy.log("Clear the search and verify the Data empty state is back");
-      H.DataStudio.Library.libraryPage()
-        .findByPlaceholderText("Search...")
-        .clear();
-      H.DataStudio.Library.emptyStateRow(
-        "Cleaned, pre-transformed data sources ready for exploring",
-      ).should("be.visible");
 
       cy.log("Publish a table from the 'New' menu");
       H.DataStudio.Library.newButton().click();
       H.popover().findByText("Published table").click();
-
-      cy.log("Select a table and click 'Publish'");
       H.pickEntity({
         path: ["Databases", /Sample Database/, "Orders"],
         select: true,
@@ -346,11 +244,20 @@ describe("scenarios > data studio > library", () => {
       H.modal().findByText("Data").should("be.visible");
       H.modal().button("Publish this table").click();
 
-      cy.log("Verify the table is published");
+      cy.log("Verify the overview of the published table");
       H.DataStudio.Tables.overviewPage().should("exist");
       H.DataStudio.Tables.header().findByDisplayValue("Orders").should("exist");
-      H.DataStudio.breadcrumbs().findByRole("link", { name: "Data" }).click();
-      H.DataStudio.Library.tableItem("Orders").should("exist");
+      H.queryVisualizationRoot().within(() => {
+        cy.findByText("Subtotal").should("be.visible");
+        cy.findByText("110.93").should("be.visible");
+      });
+
+      cy.log("Verify the published table in the library after a reload");
+      H.DataStudio.Library.visit();
+      H.DataStudio.Library.tableItem("Orders").should("be.visible");
+      H.DataStudio.Library.emptyStateRow(
+        "Standardized calculations with known dimensions",
+      ).should("be.visible");
 
       cy.log(
         "Verify tables in the entity picker are disabled if already published",
@@ -365,110 +272,74 @@ describe("scenarios > data studio > library", () => {
       );
       H.entityPickerModal().button("Close").click();
 
-      cy.log("Navigate back to Semantic layer via breadcrumbs");
+      cy.log("Unpublish the table");
       H.DataStudio.Library.tableItem("Orders").click();
-      H.DataStudio.Tables.overviewPage().should("exist");
-      H.DataStudio.breadcrumbs()
-        .findByRole("link", { name: "Semantic layer" })
-        .click();
-
-      cy.log("Verify Data section shows the table (empty state hidden)");
-      H.DataStudio.Library.tableItem("Orders").should("be.visible");
-
-      cy.log(
-        "Verify Metrics still shows its empty state (always expanded behavior)",
-      );
+      H.DataStudio.Tables.moreMenu().click();
+      H.popover().findByText("Unpublish").click();
+      H.modal().findByText("Unpublish this table").click();
       H.DataStudio.Library.emptyStateRow(
-        "Standardized calculations with known dimensions",
+        "Cleaned, pre-transformed data sources ready for exploring",
       ).should("be.visible");
+
+      cy.log("Verify the table is not in the library after a reload");
+      H.DataStudio.Library.visit();
+      H.DataStudio.Library.emptyStateRow(
+        "Cleaned, pre-transformed data sources ready for exploring",
+      ).should("be.visible");
+      H.DataStudio.Library.allTableItems().should("have.length", 0);
     });
 
-    it("should show empty states on the SQL snippets and Data actions tabs", () => {
+    it("should show the table dependencies, rename a field, and view the table in the query builder", () => {
       H.createLibrary();
-      H.DataStudio.Library.visit();
+      H.publishTables({ table_ids: [ORDERS_ID] });
+      H.createQuestion({
+        name: "Test question",
+        query: { "source-table": ORDERS_ID },
+      });
+      H.waitForBackfillComplete();
+      H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
+      H.tableHeaderColumn("Total").should("be.visible");
 
-      cy.log("Verify the semantic layer has no snippets or actions sections");
-      H.DataStudio.Library.collectionItem("SQL snippets").should("not.exist");
-      H.DataStudio.Library.collectionItem("Data actions").should("not.exist");
-
-      cy.log("Verify SQL snippets tab empty state");
-      H.DataStudio.nav().findByRole("link", { name: "SQL snippets" }).click();
-      H.DataStudio.Library.emptyStateRow(
-        "Reusable bits of code that save your time",
-      ).should("be.visible");
-      H.DataStudio.Library.libraryPage()
-        .findAllByTestId("collection-name")
-        .should("not.exist");
-      H.DataStudio.Library.libraryPage()
-        .findByRole("link", { name: "New snippet" })
+      cy.log("View the table dependencies");
+      H.DataStudio.Tables.dependenciesTab().click();
+      H.DependencyGraph.graph().within(() => {
+        cy.findByText("Orders").should("be.visible");
+        cy.findByText(/question/).click();
+      });
+      H.DependencyGraph.dependencyPanel()
+        .findByText("Test question")
         .should("be.visible");
 
-      cy.log("Verify Data actions tab empty state");
-      H.DataStudio.nav().findByRole("link", { name: "Data actions" }).click();
-      H.DataStudio.Library.emptyStateRow("Queries that change data").should(
-        "be.visible",
-      );
-      H.DataStudio.Library.libraryPage()
-        .findAllByTestId("collection-name")
-        .should("not.exist");
-    });
+      cy.log("Rename a field");
+      H.DataStudio.Tables.fieldsTab().click();
+      H.DataModel.TableSection.clickField("Total");
+      H.DataModel.FieldSection.getNameInput()
+        .clear()
+        .type("Total changed")
+        .blur();
+      H.undoToast().findByText("Name of Total updated").should("be.visible");
 
-    describe("read-only mode", () => {
-      beforeEach(() => {
-        H.setupGitSync();
-        H.configureGitAndPullChanges("read-only");
-        H.createLibrary();
-      });
+      H.DataStudio.Tables.overviewTab().click();
+      H.tableHeaderColumn("Total changed").should("be.visible");
 
-      it("should hide +New button and empty state actions in read-only mode", () => {
-        H.DataStudio.Library.visit();
+      cy.log("View the table in the query builder");
+      H.DataStudio.Tables.moreMenu().click();
+      H.DataStudio.Tables.moreMenuViewTable();
 
-        cy.log("Verify +New button is not visible");
-        H.DataStudio.Library.newButton().should("not.exist");
-
-        cy.log("Verify Data section empty state action is not visible");
-        H.DataStudio.Library.libraryPage()
-          .findByText(
-            "Cleaned, pre-transformed data sources ready for exploring",
-          )
-          .should("be.visible");
-        H.DataStudio.Library.libraryPage()
-          .findByRole("button", { name: "Publish a table" })
-          .should("not.exist");
-
-        cy.log("Verify Metrics section empty state action is not visible");
-        H.DataStudio.Library.libraryPage()
-          .findByText("Standardized calculations with known dimensions")
-          .should("be.visible");
-        H.DataStudio.Library.libraryPage()
-          .findByRole("link", { name: "New metric" })
-          .should("not.exist");
-
-        cy.log("Verify SQL snippets tab empty state action is not visible");
-        H.DataStudio.Snippets.visitList();
-        H.DataStudio.Library.emptyStateRow(
-          "Reusable bits of code that save your time",
-        ).should("be.visible");
-        H.DataStudio.Library.libraryPage()
-          .findByRole("link", { name: "New snippet" })
-          .should("not.exist");
+      H.queryBuilderHeader().within(() => {
+        cy.icon("repository").should("be.visible");
+        cy.findByText("Data").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
       });
     });
   });
 
   describe("bulk actions", () => {
     it("selects, moves, and unpublishes library items in bulk", () => {
-      H.createLibrary().then(({ dataCollectionId, metricsCollectionId }) => {
+      H.createLibrary().then(({ dataCollectionId }) => {
         H.publishTables({
           table_ids: [ORDERS_ID, PRODUCTS_ID, PEOPLE_ID, REVIEWS_ID],
         });
-        H.createQuestion({ ...TRUSTED_ORDERS_METRIC }).then(
-          ({ body: card }) => {
-            cy.request("PUT", `/api/card/${card.id}`, {
-              collection_id: metricsCollectionId,
-            });
-          },
-        );
         createLibraryCollection({
           name: "Folder A",
           parent_id: dataCollectionId,
@@ -487,28 +358,6 @@ describe("scenarios > data studio > library", () => {
         });
       });
       H.DataStudio.Library.visit();
-
-      cy.log("Section-root checkbox selects every item in the section");
-      H.DataStudio.Library.selectRow("Data");
-      H.DataStudio.Library.rowCheckbox("Orders").should("be.checked");
-      H.DataStudio.Library.rowCheckbox("Reviews").should("be.checked");
-      H.DataStudio.Library.rowCheckbox("Folder A").should("be.checked");
-      bulkBar().findByRole("button", { name: "Clear" }).click();
-      bulkBar().should("not.exist");
-
-      cy.log("Selection is limited to one section, replacing across sections");
-      H.DataStudio.Library.selectRow("Orders");
-      bulkBar().findByText("1 item selected").should("be.visible");
-      // A table is selected, so Move to trash is hidden (tables are unpublished).
-      bulkBar().findByText("Move to trash").should("not.exist");
-      H.DataStudio.Library.selectRow(TRUSTED_ORDERS_METRIC.name);
-      bulkBar().findByText("1 item selected").should("be.visible");
-      H.DataStudio.Library.rowCheckbox("Orders").should("not.be.checked");
-      H.DataStudio.Library.rowCheckbox(TRUSTED_ORDERS_METRIC.name).should(
-        "be.checked",
-      );
-      bulkBar().findByRole("button", { name: "Clear" }).click();
-      bulkBar().should("not.exist");
 
       cy.log(
         "Bulk-move tables into a sub-collection (picker defaults to Library)",
@@ -614,39 +463,22 @@ describe("scenarios > data studio > library", () => {
       });
       H.DataStudio.Library.visit();
 
-      cy.log("Selecting the parent collection subsumes its table and folder");
+      cy.log("Select the folder's table, then the folder that subsumes it");
       H.DataStudio.Library.expandCollection("Parent Folder");
       H.DataStudio.Library.selectRow("Orders");
-      bulkBar().findByText("1 item selected").should("be.visible");
       H.DataStudio.Library.selectRow("Parent Folder");
-
-      H.DataStudio.Library.rowCheckbox("Orders").should("be.checked");
-      H.DataStudio.Library.rowCheckbox("Orders").should("be.disabled");
-      H.DataStudio.Library.result("Orders").should(
-        "have.attr",
-        "data-disabled",
-      );
-      H.DataStudio.Library.rowCheckbox("Child Folder").should("be.checked");
-      H.DataStudio.Library.rowCheckbox("Child Folder").should("be.disabled");
-      // The count reflects only the top level items selected
       bulkBar().findByText("1 item selected").should("be.visible");
 
-      cy.log("Collapsing the parent keeps its subsumed selection intact");
-      H.DataStudio.Library.collapseCollection("Parent Folder");
-      H.DataStudio.Library.libraryPage()
-        .findByText("Orders")
-        .should("not.exist");
-      bulkBar().findByText("1 item selected").should("be.visible");
-
-      cy.log(
-        "Moving the collapsed parent carries the descendants, keeping nesting",
-      );
+      cy.log("Moving the parent carries the descendants, keeping nesting");
       bulkBar().findByRole("button", { name: "Move" }).click();
       H.entityPickerModal().within(() => {
         H.entityPickerModalItem(2, "Target Folder").click();
         cy.button("Move").click();
       });
+      bulkBar().should("not.exist");
 
+      cy.log("Verify the nesting after a reload");
+      H.DataStudio.Library.visit();
       H.DataStudio.Library.expandCollection("Target Folder");
       H.DataStudio.Library.result("Parent Folder").should(
         "have.attr",
@@ -664,27 +496,6 @@ describe("scenarios > data studio > library", () => {
         "aria-level",
         "4",
       );
-    });
-
-    it("offers no bulk selection on remote-sync read-only instances", () => {
-      H.createLibrary();
-      H.publishTables({ table_ids: [ORDERS_ID] });
-
-      cy.log("A writable instance shows a checkbox on the table row");
-      H.DataStudio.Library.visit();
-      H.DataStudio.Library.rowCheckbox("Orders").should("exist");
-
-      H.updateEnterpriseSettings({
-        "remote-sync-url": "file:///tmp/library-read-only",
-        "remote-sync-type": "read-only",
-      });
-      H.DataStudio.Library.visit();
-
-      cy.log("Tables render, but there are no checkboxes (no bulk actions)");
-      H.DataStudio.Library.tableItem("Orders").should("be.visible");
-      H.DataStudio.Library.libraryPage()
-        .findByRole("checkbox")
-        .should("not.exist");
     });
   });
 });

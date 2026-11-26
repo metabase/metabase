@@ -129,7 +129,7 @@
   redirects a describe of `table` to the copy."
   [workspace-id database table]
   (workspaces/with-workspace-id workspace-id
-    (let [columns       (sync/table-fields-metadata database table)
+    (let [columns       (sync/table-fields-metadata database table (sync/table-remapper database))
           fields        (ws.db/table-fields-of-workspace workspace-id (:id table))
           shared-fields (filterv (comp nil? :owner_workspace_id) fields)
           owned-by-name (by-name (filter :owner_workspace_id fields))]
@@ -139,8 +139,8 @@
       (ws.db/hide-shared-twins! workspace-id)
       ;; Values that a workspace reads are advanced FieldValues keyed by the workspace. A new copy has new values, so
       ;; the old ones go; production's cached values of the same Fields are rebuilt when next read.
-      (doseq [{field-id :id} fields]
-        (field-values/clear-advanced-field-values-for-field! field-id))
+      (when-let [ids (seq (field-values/advanced-ids-of-fields (mapv :id fields)))]
+        (field-values/delete-field-values! (vec ids)))
       (log/infof "Recorded the copy of table %d in workspace %d: %d columns" (:id table) workspace-id (count columns))
       nil)))
 

@@ -36,6 +36,7 @@ const createTableItem = (table: Table): OmniPickerTableItem => ({
   ...table,
   name: table.display_name ?? table.name,
   database_id: table.db_id, // make the API consistent
+  is_published: table.collection != null,
   model: "table",
 });
 

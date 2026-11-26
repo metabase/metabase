@@ -4,11 +4,14 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.liquibase.versions :as versions]
+   [metabase.app-db.query :as mdb.query]
    [metabase.driver.test-util :as driver.tu]
    [metabase.global-system.test-util :as global-system.tu]
    [metabase.test.util.timezone :as test.tz]
+   [metabase.util :as u]
    [metabase.util.random :as u.random]
    [metabase.util.yaml :as u.yaml]
    [potemkin :as p]
@@ -16,6 +19,11 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn format-sql
+  "The `[sql & params]` of the Honey SQL `honeysql`, with unquoted identifiers like Liquibase's own statements."
+  [honeysql]
+  (sql/format honeysql {:quoted false}))
 
 (defn do-with-application-db-as-root
   "Install `app-db` as the root application DB for the extent of `thunk`. See [[global-system.tu/do-with-root]]."
@@ -68,9 +76,9 @@
    (if (= (mdb/db-type) :h2)
      (test.tz/do-with-system-timezone-id! tz thunk)
      ;; otherwise if db-type is postgres or mysql
-     (let [initial-tz (val (first (t2/query-one (case (mdb/db-type)
-                                                  :postgres "SELECT current_setting('TIMEZONE')"
-                                                  :mysql "SELECT @@global.time_zone"))))
+     (let [initial-tz (case (mdb/db-type)
+                        :postgres (:tz (t2/query-one {:select [[[:current_setting "TIMEZONE"] :tz]]}))
+                        :mysql    (:value (t2/query-one ["SHOW GLOBAL VARIABLES LIKE 'time_zone'"])))
            set-tz! (fn [x]
                      (t2/query (case (mdb/db-type)
                                  :postgres (format "SET TIME ZONE '%s';" x)
@@ -84,6 +92,16 @@
   "Execute `body` with the system time zone of the app db temporarily changed to the time zone named by `timezone-id`."
   [timezone-id & body]
   `(do-with-app-db-timezone-id! ~timezone-id (fn [] ~@body)))
+
+(defmacro with-partition-size
+  "Run `body` with every read, create, update and delete partition size of the app DB set to `n`."
+  [n & body]
+  `(let [n# ~n]
+     (with-redefs [mdb.query/select-partition-size n#
+                   mdb.query/create-partition-size n#
+                   mdb.query/update-partition-size n#
+                   mdb.query/delete-partition-size n#]
+       ~@body)))
 
 (defn liquibase-file->included-ids
   "Read a liquibase migration file and returns all the migration id that is applied to `db-type`.
@@ -155,17 +173,21 @@
                        (with-open [conn (.getConnection ^javax.sql.DataSource (:datasource spec))]
                          (versions/table-exists? (versions/first-runs-table-name) conn)))]
      (doseq [table (cond-> [changelog-table] first-runs? (conj (versions/first-runs-table-name)))]
-       (jdbc/execute! spec [(format "UPDATE %s SET dateexecuted = CURRENT_TIMESTAMP - INTERVAL '%d' MINUTE"
-                                    table (long minutes))])))))
+       (jdbc/execute! spec (format-sql
+                            {:update (keyword table)
+                             :set    {:dateexecuted [:- [:raw "CURRENT_TIMESTAMP"] [:raw (format "INTERVAL '%d' MINUTE" (long minutes))]]}}))))))
 
 (defn- insert-changelog-row!
   [conn changelog-table {:keys [id author filename exectype] :or {author "test", filename "synthetic.yaml", exectype "EXECUTED"}}
    deployment-id minutes-ago]
   (jdbc/execute! {:connection conn}
-                 [(format (str "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, deployment_id) "
-                               "SELECT ?, ?, ?, CURRENT_TIMESTAMP - INTERVAL '%d' MINUTE, COALESCE(MAX(orderexecuted), 0) + 1, ?, ? FROM %s")
-                          changelog-table (long minutes-ago) changelog-table)
-                  id author filename exectype deployment-id]))
+                 (format-sql
+                  {:insert-into [[(keyword changelog-table) [:id :author :filename :dateexecuted :orderexecuted :exectype :deployment_id]]
+                                 {:select [id author filename
+                                           [[:- [:raw "CURRENT_TIMESTAMP"] [:raw (format "INTERVAL '%d' MINUTE" (long minutes-ago))]]]
+                                           [[:+ [:coalesce [:max :orderexecuted] 0] 1]]
+                                           exectype deployment-id]
+                                  :from   [(keyword changelog-table)]}]})))
 
 (defn fabricate-history!
   "Insert a fabricated deployment history into the application database on `conn`, oldest entry first, as the newest
@@ -199,18 +221,18 @@
   deployment and one version, while the deployment-based rollback needs a boundary at every major. Version-less ids
   keep their deployment. Version rows of deployments left without any changelog row are removed. Idempotent."
   [conn changelog-table]
-  (let [ids      (map :id (jdbc/query {:connection conn} [(format "SELECT id FROM %s" changelog-table)]))
+  (let [ids      (map :id (jdbc/query {:connection conn} (format-sql {:select [:id] :from [(keyword changelog-table)]})))
         major-of (fn [id] (some-> (re-find #"^v(\d+)\." id) second parse-long))]
     (doseq [[major block-ids] (sort-by key (group-by major-of (filter major-of ids)))]
       (let [deployment-id (format "mjr%03d" major)]
         (jdbc/execute! {:connection conn}
-                       (into [(format "UPDATE %s SET deployment_id = ? WHERE id IN (%s)"
-                                      changelog-table
-                                      (str/join ", " (repeat (count block-ids) "?")))
-                              deployment-id]
-                             block-ids))
+                       (format-sql {:update (keyword changelog-table)
+                                    :set    {:deployment_id deployment-id}
+                                    :where  [:in :id block-ids]}))
         (versions/record-deployment-version! conn deployment-id (versions/major->version major) true)))
     (jdbc/execute! {:connection conn}
-                   [(format "DELETE FROM %s WHERE deployment_id NOT IN (SELECT DISTINCT deployment_id FROM %s WHERE deployment_id IS NOT NULL)"
-                            (versions/versions-table-name)
-                            changelog-table)])))
+                   (format-sql
+                    {:delete-from (keyword (versions/versions-table-name))
+                     :where       [:not-exists {:select [1]
+                                                :from   [[(keyword changelog-table) :c]]
+                                                :where  [:= :c.deployment_id (u/qualified-key (versions/versions-table-name) :deployment_id)]}]}))))

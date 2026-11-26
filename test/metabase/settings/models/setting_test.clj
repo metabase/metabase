@@ -582,7 +582,16 @@
            (fetch-csv-setting-value! "A,B,C"))))
   (testing "should also work if there are quoted values that include commas in them"
     (is  (= ["A" "B" "C1,C2" "ddd"]
-            (fetch-csv-setting-value! "A,B,\"C1,C2\",ddd")))))
+            (fetch-csv-setting-value! "A,B,\"C1,C2\",ddd"))))
+  (testing "ignores spaces around entries, and blank entries, as an env var or a stored string can have them"
+    (is (= ["A" "B" "C"]
+           (fetch-csv-setting-value! " A , B,, C ,"))))
+  (testing "reads only the first line"
+    (is (= ["A" "B"]
+           (fetch-csv-setting-value! "A,B\nC"))))
+  (testing "reads an empty string as nil, and only blank entries as an empty list"
+    (is (nil? (fetch-csv-setting-value! "")))
+    (is (= [] (fetch-csv-setting-value! ",")))))
 
 (defn- set-and-fetch-csv-setting-value! [v]
   (test-csv-setting! v)
@@ -596,12 +605,15 @@
   (testing "should be a able to set a CSV setting with a value that includes commas"
     (is (= {:db-value "A,B,C,\"D1,D2\"", :parsed-value ["A" "B" "C" "D1,D2"]}
            (set-and-fetch-csv-setting-value! ["A" "B" "C" "D1,D2"]))))
-  (testing "should be able to set a CSV setting with a value that includes spaces"
-    (is (= {:db-value "A,B,C, D ", :parsed-value ["A" "B" "C" " D "]}
-           (set-and-fetch-csv-setting-value! ["A" "B" "C" " D "]))))
-  (testing "should be a able to set a CSV setting when the string is already CSV-encoded"
-    (is (= {:db-value "A,B,C", :parsed-value ["A" "B" "C"]}
-           (set-and-fetch-csv-setting-value! "A,B,C"))))
+  (testing "stores entries without surrounding spaces, and drops blank ones"
+    (is (= {:db-value "A,B,C,D", :parsed-value ["A" "B" "C" "D"]}
+           (set-and-fetch-csv-setting-value! ["A" "B" "" "C" " D "]))))
+  (testing "stores numbers and booleans in a list as text"
+    (is (= {:db-value "1,true,A", :parsed-value ["1" "true" "A"]}
+           (set-and-fetch-csv-setting-value! [1 true "A"]))))
+  (testing "keeps spaces and newlines inside an entry"
+    (is (= {:db-value "A,\"B\nC\",D E", :parsed-value ["A" "B\nC" "D E"]}
+           (set-and-fetch-csv-setting-value! ["A" "B\nC" "D E"]))))
   (testing "should be able to set nil CSV setting"
     (is (= {:db-value nil, :parsed-value nil}
            (set-and-fetch-csv-setting-value! nil))))
@@ -609,6 +621,46 @@
     (test-csv-setting-with-default! nil)
     (is (= ["A" "B" "C"]
            (test-csv-setting-with-default)))))
+
+(deftest csv-setting-string-value-test
+  (testing "stores a CSV string in the same form as a list"
+    (is (= {:db-value "A,B,\"C1,C2\"", :parsed-value ["A" "B" "C1,C2"]}
+           (set-and-fetch-csv-setting-value! " A , B,,\"C1,C2\""))))
+  (testing "drops spaces inside quotes too, as the stored form has no quotes to keep them"
+    (is (= {:db-value "A,E", :parsed-value ["A" "E"]}
+           (set-and-fetch-csv-setting-value! "A,\" E \""))))
+  (testing "accepts a string that ends in blank lines"
+    (doseq [trailing ["A,B\n\n" "A,B\r\n \r\n"]]
+      (testing (pr-str trailing)
+        (is (= {:db-value "A,B", :parsed-value ["A" "B"]}
+               (set-and-fetch-csv-setting-value! trailing)))))))
+
+(deftest csv-setting-invalid-string-test
+  (testing "rejects a CSV string that does not parse, or spans several lines, and keeps the stored value"
+    (test-csv-setting! "C,D")
+    (doseq [[bad message] [["A,\"B"  "Invalid comma-separated value."]
+                           ["A\nB"   "Put comma-separated values on one line."]]]
+      (testing (pr-str bad)
+        (is (= [message {:status-code 400}]
+               (try
+                 (test-csv-setting! bad)
+                 nil
+                 (catch clojure.lang.ExceptionInfo e
+                   [(ex-message e) (ex-data e)]))))
+        (is (= ["C" "D"] (test-csv-setting)))))))
+
+(deftest csv-setting-empty-value-test
+  (testing "stores nothing for a value with no entries, so the default applies"
+    (try
+      (doseq [empty-value ["" " " " , " [] [" "]]]
+        (testing (pr-str empty-value)
+          (is (= {:db-value nil, :parsed-value nil}
+                 (set-and-fetch-csv-setting-value! empty-value)))
+          (test-csv-setting-with-default! ["X"])
+          (test-csv-setting-with-default! empty-value)
+          (is (= ["A" "B" "C"] (test-csv-setting-with-default)))))
+      (finally
+        (test-csv-setting-with-default! nil)))))
 
 (deftest csv-setting-user-facing-value-test
   (testing "`user-facing-value` should be `nil` for CSV Settings with default values"
@@ -622,7 +674,7 @@
   "The setting's `value_with_aad` exactly as it sits in the DB, bypassing the model's decrypting read."
   [setting-key]
   (-> (mdb/query {:select [:value_with_aad]
-                  :from   [:setting]
+                  :from   [(t2/table-name :model/Setting)]
                   :where  [:= :key (name setting-key)]})
       first :value_with_aad))
 
@@ -965,7 +1017,7 @@
                                            ;; site-wide row for a Database-local-only Setting
                                            (t2/delete! :model/Setting :key (name setting-name))
                                            (when site-wide-value
-                                             (t2/insert! :setting
+                                             (t2/insert! (t2/table-name :model/Setting)
                                                          :key            (name setting-name)
                                                          :value          (str site-wide-value)
                                                          :value_with_aad (encryption/maybe-encrypt
@@ -1724,6 +1776,38 @@
   (testing "Validation is a no-op if the CSV is valid"
     (is (nil? (get-parse-exception :csv "1, 2")))))
 
+(defsetting test-csv-custom-getter-setting
+  "Test setting - this only shows up in dev (CSV with a custom getter)"
+  :visibility :internal
+  :type       :csv
+  :encryption :no
+  :getter     (constantly []))
+
+(deftest csv-setting-ignored-lines-warning-test
+  (letfn [(warnings-about [env-var]
+            (mt/with-log-messages-for-level [messages [metabase.settings.models.setting :warn]]
+              (try
+                (setting/validate-settings-formatting!)
+                ;; A first line that fails validation throws after the warnings are logged, and only they matter here.
+                (catch Exception _))
+              (into [] (comp (map :message) (filter #(str/includes? % env-var))) (messages))))
+          (warnings [raw-value]
+            (mt/with-temp-env-var-value! [mb-test-csv-validation-setting raw-value]
+              (warnings-about "MB_TEST_CSV_VALIDATION_SETTING")))]
+    (testing "warns that only the first line of a multi-line env var is read"
+      (doseq [raw-value ["1,2\n3" "1,2\n\"3" "1,2\n\n3"]]
+        (testing (pr-str raw-value)
+          (is (= [(str "Only the first line of MB_TEST_CSV_VALIDATION_SETTING is used. "
+                       "Put comma-separated values on one line.")]
+                 (warnings raw-value))))))
+    (testing "says nothing about a setting with a custom getter, which may read every line"
+      (mt/with-temp-env-var-value! [mb-test-csv-custom-getter-setting "1\n2"]
+        (is (= [] (warnings-about "MB_TEST_CSV_CUSTOM_GETTER_SETTING")))))
+    (testing "says nothing about one line, blank lines after it, or a first line that fails validation instead"
+      (doseq [raw-value ["1,2" "1,2\n\n" "1,\"2"]]
+        (testing (pr-str raw-value)
+          (is (= [] (warnings raw-value))))))))
+
 (deftest invalid-csv-setting-eof-test
   (testing "Validation will throw an exception if a setting has invalid CSV via an environment variable"
     (let [ex (get-parse-exception :csv "1,2,2,\",,")]
@@ -1847,11 +1931,11 @@
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
       (encryption-test/with-secret-key "ABCDEFGH12345678"
-        (t2/delete! :setting :key "toucan-name")
-        (t2/delete! :setting :key "test-never-encrypted-setting")
+        (t2/delete! (t2/table-name :model/Setting) :key "toucan-name")
+        (t2/delete! (t2/table-name :model/Setting) :key "test-never-encrypted-setting")
         ;; `value` only, as that version writes it: encrypted for a setting that encrypts, plaintext for one that does not
-        (t2/insert! :setting [{:key "toucan-name", :value (encryption/encrypt "Lenny")}
-                              {:key "test-never-encrypted-setting", :value "foobar"}])
+        (t2/insert! (t2/table-name :model/Setting) [{:key "toucan-name", :value (encryption/encrypt "Lenny")}
+                                                    {:key "test-never-encrypted-setting", :value "foobar"}])
         (mdb.setting/migrate-settings!)
         (testing "an encrypted row's value is stored under its AAD"
           (is (= "Lenny" (decrypt-setting-value :toucan-name (raw-setting-value-with-aad :toucan-name)))))
@@ -1864,7 +1948,7 @@
         (testing "a row that already has a stored value is left byte-identical, whatever `value` says beside it"
           (toucan-name! "Sad Can")
           (let [before (raw-setting-value-with-aad :toucan-name)]
-            (t2/update! :setting :key "toucan-name" {:value (encryption/encrypt "Bird Can")})
+            (t2/update! (t2/table-name :model/Setting) :key "toucan-name" {:value (encryption/encrypt "Bird Can")})
             (mdb.setting/migrate-settings!)
             (is (= before (raw-setting-value-with-aad :toucan-name)))
             (is (= "Sad Can" (decrypt-setting-value :toucan-name (raw-setting-value-with-aad :toucan-name))))))))))
@@ -1878,8 +1962,8 @@
     (mdb/setup-db! :create-sample-content? false)
     (encryption-test/with-secret-key "ABCDEFGH12345678"
       (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
-      (t2/insert! :setting [{:key "read-only-mode", :value "false", :value_with_aad "false"}
-                            {:key "toucan-name", :value (encryption/encrypt "Lenny")}])
+      (t2/insert! (t2/table-name :model/Setting) [{:key "read-only-mode", :value "false", :value_with_aad "false"}
+                                                  {:key "toucan-name", :value (encryption/encrypt "Lenny")}])
       (mdb.setting/migrate-settings!)
       (is (= "Lenny" (decrypt-setting-value :toucan-name (raw-setting-value-with-aad :toucan-name)))))))
 

@@ -74,8 +74,8 @@
                    {:op "updated", :table-id table-id :row {:id 2, :name "Speacolumn", :song "Hold music"}}}
                  (set
                   (:outputs
-                   (action-v2.tu/update-rows! table-id [{:id 1 :song "Join us now and share the software"}
-                                                        {:id 2 :name "Speacolumn"}])))))
+                   (action-v2.tu/update-grouped! table-id [{:id 1 :song "Join us now and share the software"}
+                                                           {:id 2 :name "Speacolumn"}])))))
           (is (= #{[1 "Pidgey" "Join us now and share the software"]
                    [2 "Speacolumn" "Hold music"]
                    [3 "Farfetch'd" "The land of lisp"]}
@@ -85,7 +85,7 @@
                    {:op "updated", :table-id table-id, :row {:id 2, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                  (set
                   (:outputs
-                   (action-v2.tu/update-rows! table-id [{:id 1} {:id 2}] {:song "The Star-Spangled Banner"})))))
+                   (action-v2.tu/update-grouped! table-id [{:id 1} {:id 2}] {:song "The Star-Spangled Banner"})))))
           (is (= #{[1 "Pidgey" "The Star-Spangled Banner"]
                    [2 "Speacolumn" "The Star-Spangled Banner"]
                    [3 "Farfetch'd" "The land of lisp"]}
@@ -130,8 +130,8 @@
                      {:op "updated", :table-id table-id :row {:id (str id-2), :name "Speacolumn", :song "Hold music"}}}
                    (set
                     (:outputs
-                     (action-v2.tu/update-rows! table-id [{:id id-1, :song "Join us now and share the software"}
-                                                          {:id id-2, :name "Speacolumn"}])))))
+                     (action-v2.tu/update-grouped! table-id [{:id id-1, :song "Join us now and share the software"}
+                                                             {:id id-2, :name "Speacolumn"}])))))
             (is (= #{[id-1 "Pidgey" "Join us now and share the software"]
                      [id-2 "Speacolumn" "Hold music"]
                      [id-3 "Farfetch'd" "The land of lisp"]}
@@ -141,10 +141,10 @@
                      {:op "updated", :table-id table-id, :row {:id (str id-2), :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                    (set
                     (:outputs
-                     (action-v2.tu/update-rows! table-id
-                                                [{:id id-1}
-                                                 {:id id-2}]
-                                                {:song "The Star-Spangled Banner"})))))
+                     (action-v2.tu/update-grouped! table-id
+                                                   [{:id id-1}
+                                                    {:id id-2}]
+                                                   {:song "The Star-Spangled Banner"})))))
             (is (= #{[id-1 "Pidgey" "The Star-Spangled Banner"]
                      [id-2 "Speacolumn" "The Star-Spangled Banner"]
                      [id-3 "Farfetch'd" "The land of lisp"]}
@@ -188,8 +188,8 @@
                    {:op "updated", :table-id table-id :row {:id_1 2, :id_2 0, :name "Speacolumn", :song "Hold music"}}}
                  (set
                   (:outputs
-                   (action-v2.tu/update-rows! table-id [{:id_1 1, :id_2 0, :song "Join us now and share the software"}
-                                                        {:id_1 2, :id_2 0, :name "Speacolumn"}])))))
+                   (action-v2.tu/update-grouped! table-id [{:id_1 1, :id_2 0, :song "Join us now and share the software"}
+                                                           {:id_1 2, :id_2 0, :name "Speacolumn"}])))))
           (is (= #{[1 0 "Pidgey" "Join us now and share the software"]
                    [2 0 "Speacolumn" "Hold music"]
                    [3 0 "Farfetch'd" "The land of lisp"]}
@@ -199,10 +199,10 @@
                    {:op "updated", :table-id table-id, :row {:id_1 2, :id_2 0, :name "Speacolumn", :song "The Star-Spangled Banner"}}}
                  (set
                   (:outputs
-                   (action-v2.tu/update-rows! table-id
-                                              [{:id_1 1, :id_2 0}
-                                               {:id_1 2, :id_2 0}]
-                                              {:song "The Star-Spangled Banner"})))))
+                   (action-v2.tu/update-grouped! table-id
+                                                 [{:id_1 1, :id_2 0}
+                                                  {:id_1 2, :id_2 0}]
+                                                 {:song "The Star-Spangled Banner"})))))
           (is (= #{[1 0 "Pidgey" "The Star-Spangled Banner"]
                    [2 0 "Speacolumn" "The Star-Spangled Banner"]
                    [3 0 "Farfetch'd" "The land of lisp"]}
@@ -389,7 +389,7 @@
                                      {:settings settings
                                       :user     user
                                       :responses {:create (action-v2.tu/create-rows! table-id user status-code [{:name "Pidgey" :song "Car alarms"}])
-                                                  :update (action-v2.tu/update-rows! table-id user status-code [{:id 1 :song "Join us now and share the software"}])
+                                                  :update (action-v2.tu/update-grouped! table-id user status-code [{:id 1 :song "Join us now and share the software"}])
                                                   :delete (action-v2.tu/delete-rows! table-id user status-code [{:id 1}])}}))))
               error-or-ok (fn [res]
                             (cond
@@ -437,8 +437,8 @@
                         (mt/user-http-request :crowberto :post status execute-url
                                               {:action "data-editing/redo" :scope {:table-id table-id} :input {}}))]
             (action-v2.tu/create-rows! table-id [{:name "Pidgey" :song "Car alarms"}])
-            (action-v2.tu/update-rows! table-id [{:id 1 :song "Hold music"}])
-            (action-v2.tu/update-rows! table-id [{:id 1 :song "Dial tone"}])
+            (action-v2.tu/update-grouped! table-id [{:id 1 :song "Hold music"}])
+            (action-v2.tu/update-grouped! table-id [{:id 1 :song "Dial tone"}])
             (undo! 200)
             (is (= [[1 "Pidgey" "Hold music"]] (table-rows table-id)))
             (mt/with-dynamic-fn-redefs [workspaces/workspace-mode? (constantly true)]
@@ -500,7 +500,7 @@
                             (testing "update"
                               (let [[{id :id}]         (map :row (:outputs (action-v2.tu/create-rows! table-id [{:o nil}])))
                                     _ (is (some? id))
-                                    {outputs :outputs} (action-v2.tu/update-rows! table-id [{:id id, :o input}])
+                                    {outputs :outputs} (action-v2.tu/update-grouped! table-id [{:id id, :o input}])
                                     [qp-row] (filter (comp #{id} :id) (get-qp-state))]
                                 (is (= 1 (count outputs)))
                                 (is (some? qp-row))
@@ -551,7 +551,7 @@
             (testing "update returns the same coerced output that the QP would return"
               (let [[{id :id}]        (map :row (:outputs (action-v2.tu/create-rows! table-id [{:d nil :dt nil}])))
                     _                 (is (some? id))
-                    {:keys [outputs]} (action-v2.tu/update-rows! table-id [{:id id :d "2021-06-20" :dt "2021-06-20T08:15:00"}])
+                    {:keys [outputs]} (action-v2.tu/update-grouped! table-id [{:id id :d "2021-06-20" :dt "2021-06-20T08:15:00"}])
                     updated-qp-row    (first (filter (comp #{id} :id) (qp-state)))]
                 (is (= [updated-qp-row] (map :row outputs)))
                 (is (=? {:d  #(re-find #"2021-06-20" (str %))
@@ -567,7 +567,7 @@
               field-values     #(vec (:values (field-values/get-latest-full-field-values field-id)))
               test-queue       (ArrayBlockingQueue. 100)
               create!          #(action-v2.tu/create-rows! table-id %)
-              update!          #(action-v2.tu/update-rows! table-id %)
+              update!          #(action-v2.tu/update-grouped! table-id %)
               process-queue!   (fn []
                                  (when-let [field-ids (.poll test-queue)]
                                    (#'data-editing/batch-invalidate-field-values! [field-ids])

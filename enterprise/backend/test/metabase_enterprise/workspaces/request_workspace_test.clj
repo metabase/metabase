@@ -274,5 +274,5 @@
        (testing "an update of a Database drops the cache: its details decide whether the workspace's login can be used"
          (is (contains? (cached-ids) workspace-id))
          (let [db (t2/select-one :model/Database :id db-id)]
-           (events/publish-event! :event/database-update {:object db :previous-object db :user-id (mt/user->id :crowberto)}))
+           (events/publish-event! :event/database-update (events/update-event {db-id db} [{:id db-id :description "changed"}])))
          (is (empty? (cached-ids))))))))

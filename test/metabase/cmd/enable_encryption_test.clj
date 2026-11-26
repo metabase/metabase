@@ -28,7 +28,7 @@
   :encryption :no)
 
 (defn- raw-value [k]
-  (t2/select-one-fn :value :setting :key k))
+  (t2/select-one-fn :value (t2/table-name :model/Setting) :key k))
 
 (defn- restart! []
   (reset! (:status (mdb.connection/current-application-db)) ::not-set-up)
@@ -62,7 +62,7 @@
             (is (encryption/decryptable-string? (raw-value "encryption-check")))
             (is (encryption/decryptable-string? (raw-value "enable-encryption-test-setting")))
             (is (= "plain value" (t2/select-one-fn :value :model/Setting :key "enable-encryption-test-setting")))
-            (is (encryption/decryptable-string? (t2/select-one-fn :details :metabase_database)))
+            (is (encryption/decryptable-string? (t2/select-one-fn :details (t2/table-name :model/Database))))
             (is (map? (t2/select-one-fn :details :model/Database))))
           (testing "startup now succeeds"
             (is (= :done (restart!))))
@@ -80,7 +80,7 @@
     (encryption-test/with-secret-key nil
       (mt/with-temp-empty-app-db [_conn :h2]
         (mdb/setup-db! :create-sample-content? false)
-        (t2/query {:insert-into :core_user
+        (t2/query {:insert-into (t2/table-name :model/User)
                    :values      [{:entity_id     "legacy-user-entity-id"
                                   :email         "legacy@example.com"
                                   :first_name    "Legacy"
@@ -104,7 +104,7 @@
           (enable-encryption!)
           (is (encryption/decryptable-string? (raw-value "encryption-check")))
           (let [raw-settings (fn [email]
-                               (t2/select-one-fn :settings :core_user :email email))]
+                               (t2/select-one-fn :settings (t2/table-name :model/User) :email email))]
             (testing "the value no key can read is reset to an empty object"
               (is (= "{}" (encryption/maybe-decrypt (raw-settings "legacy@example.com")))))
             (testing "plaintext values are encrypted, not cleared"

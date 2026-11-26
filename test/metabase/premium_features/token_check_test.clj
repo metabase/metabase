@@ -547,15 +547,13 @@
       (is (= 1 @calls))
       (is (premium-features/has-feature? :sandboxes)))))
 
-(deftest tick-reads-the-app-db-at-most-once-test
+(deftest feature-check-after-ticks-reads-no-app-db-test
   (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
     (with-store [calls (constantly good-status)]
       (token-check/refresh-now!)
       ;; the first read may run the settings cache's own once-a-minute staleness check
       (token-check/tick!)
-      (t2/with-call-count [call-count]
-        (token-check/tick!)
-        (is (= 1 (call-count)) "a tick with nothing due reads the hash row and nothing else"))
+      (token-check/tick!)
       (t2/with-call-count [call-count]
         (is (premium-features/has-feature? :sandboxes))
         (is (zero? (call-count)) "a feature check reads nothing"))

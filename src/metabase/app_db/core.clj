@@ -13,18 +13,18 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
    [metabase.app-db.data-source :as mdb.data-source]
+   [metabase.app-db.db :as mdb.db]
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.env :as mdb.env]
    [metabase.app-db.format]
-   [metabase.app-db.honeysql-guard]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.query]
    [metabase.app-db.query-cancelation]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
-   [metabase.app-db.value-guard]
    [metabase.app-db.workspace :as mdb.workspace]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.global-system.mutable-component :as mc]
    [potemkin :as p]))
@@ -32,10 +32,8 @@
 (set! *warn-on-reflection* true)
 
 (comment metabase.app-db.format/keep-me
-         metabase.app-db.honeysql-guard/keep-me
          metabase.app-db.query/keep-me
-         metabase.app-db.query-cancelation/keep-me
-         metabase.app-db.value-guard/keep-me)
+         metabase.app-db.query-cancelation/keep-me)
 
 (p/import-vars
  [mdb.connection
@@ -47,6 +45,7 @@
   with-application-db
   do-before-commit
   do-after-commit
+  do-after-rollback
   in-transaction?
   mariadb?
   quartz-data-source
@@ -60,6 +59,11 @@
   broken-out-details->DataSource]
  [mdb.env
   db-file]
+ [mdb.worktree
+  default-worktree-id
+  do-with-worktree-scope
+  with-worktree-scope
+  worktree-scope]
  [mdb.jdbc-protocols
   clob->str]
  [mdb.encryption
@@ -78,24 +82,43 @@
   spec]
  [metabase.app-db.query
   compile
-  current-timestamp-string
+  create-partition-size
+  delete-partition-size
   isa
   join
   qualify
+  select-partition-size
+  type-keyword->descendants
+  upsert-query
+  update-partition-size
+  with-conflict-retry]
+ [mdb.db
+  create-batched!
+  current-timestamp-string
+  delete-batched!
+  delete-oldest-rows!
+  increment-counts!
+  insert-returning-instances!
   query
+  select-batched
+  select-batched-by-keys
+  select-batched-map
+  select-batched-reducible
+  select-batched-set
   select-or-insert!
+  select-partitions
   streaming-reducible
   streaming-reducible-query
-  type-keyword->descendants
-  update-or-insert!
-  with-conflict-retry]
+  sum-batched
+  update-batched!
+  update-grouped!
+  update-or-insert!]
  [metabase.app-db.query-cancelation
   query-canceled-exception?]
  [liquibase
   changelog-by-id]
  [mdb.workspace
   do-with-workspace-id
-  owner-workspace-id
   with-workspace-id
   workspace-id])
 
@@ -169,6 +192,7 @@
             (mdb.setup/setup-db! db-type data-source {:auto-migrate?            auto-migrate?
                                                       :create-sample-content?   create-sample-content?
                                                       :manage-encryption-state? manage-encryption-state?}))
+          (mdb.worktree/init-worktree-tables!)
           (finish-db-setup!)))))
   :done)
 
@@ -200,3 +224,13 @@
               (config/config-bool :mb-enable-test-endpoints)))
   (mc/swap! (mdb.connection/application-db-handle)
             assoc :id (swap! mdb.connection/application-db-counter inc)))
+
+(defn owner-workspace-id
+  "The id of the workspace that owns the row with `id` of the app DB table `table` (`:metabase_table` or
+  `:metabase_field`), or nil for a row every workspace shares. The owner is not a key of a selected Table or Field, so
+  that no API response or export has it. Reads across every workspace, so a thread in another workspace, or in none,
+  gets it too. Nil, with no query, in a process where no thread ever worked in a workspace: such a process holds no
+  row that a workspace owns."
+  [table id]
+  (when (and id (mdb.workspace/ever-in-a-workspace?))
+    (mdb.workspace/do-with-workspace-id :all #(mdb.db/row-workspace-id table id))))

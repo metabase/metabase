@@ -45,9 +45,12 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   Bookmark,
   Card,
+  CardQueryMetadata,
+  Collection,
   Database,
   Dataset,
   Timeline,
+  TokenFeatures,
   UnsavedCard,
   User,
 } from "metabase-types/api";
@@ -60,6 +63,7 @@ import {
   createMockFieldValues,
   createMockModelIndex,
   createMockSettings,
+  createMockTokenFeatures,
   createMockUnsavedCard,
   createMockUser,
   createMockUserPermissions,
@@ -159,7 +163,7 @@ export const TEST_NATIVE_CARD = createMockCard({
 });
 
 export const TEST_NATIVE_CARD_DATASET = createMockDataset({
-  json_query: Lib.toLegacyQuery(TEST_NATIVE_QUERY),
+  json_query: Lib.toJsQuery(TEST_NATIVE_QUERY),
   database_id: SAMPLE_DB_ID,
   status: "completed",
   row_count: 1,
@@ -235,10 +239,26 @@ interface SetupOpts {
   database?: Database;
   echoQueryParameters?: boolean;
   initialRoute?: string;
+  metadata?: CardQueryMetadata;
   timelines?: Timeline[];
   timelinesResponse?: () => Promise<Timeline[]>;
   withUndos?: boolean;
   currentUser?: User;
+  /**
+   * Set to false to look at the page while the question is still loading.
+   */
+  waitForLoad?: boolean;
+  hasAcknowledgedModelModal?: boolean;
+  collections?: Collection[];
+  tokenFeatures?: Partial<TokenFeatures>;
+  /**
+   * The query builder reads `window.location` to decide whether a URL update
+   * adds a history entry, as it does in a browser. The memory test router
+   * leaves `window.location` alone, so back and forward land on duplicate
+   * entries. This keeps `window.location` in step with the router. Reset it in
+   * `afterEach` with `window.history.replaceState(null, "", "/")`.
+   */
+  syncWindowLocation?: boolean;
 }
 
 export const setup = async ({
@@ -254,6 +274,7 @@ export const setup = async ({
         ? `/${card.id}`
         : `#${serializeCardForUrl(card)}`
   }`,
+  metadata = createMockCardQueryMetadata({ databases: [database] }),
   timelines = [],
   timelinesResponse,
   withUndos = false,
@@ -263,6 +284,11 @@ export const setup = async ({
       can_create_native_queries: true,
     }),
   }),
+  waitForLoad = true,
+  hasAcknowledgedModelModal = false,
+  collections = [TEST_COLLECTION],
+  tokenFeatures,
+  syncWindowLocation = false,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([database]);
@@ -272,7 +298,7 @@ export const setup = async ({
   setupCollectionsEndpoints({ collections: [] });
   setupBookmarksEndpoints(bookmarks);
   setupTimelinesEndpoints(timelinesResponse ?? timelines);
-  setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
+  setupCollectionByIdEndpoint({ collections });
   setupFieldValuesEndpoint(
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
   );
@@ -281,10 +307,9 @@ export const setup = async ({
   setupGetUserKeyValueEndpoint({
     namespace: "user_acknowledgement",
     key: "turn_into_model_modal",
-    value: false,
+    value: hasAcknowledgedModelModal,
   });
 
-  const metadata = createMockCardQueryMetadata({ databases: [database] });
   setupAdhocQueryMetadataEndpoint(metadata);
 
   if (isSavedCard(card)) {
@@ -303,6 +328,10 @@ export const setup = async ({
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
+  if (syncWindowLocation) {
+    window.history.replaceState(null, "", initialRoute);
+  }
+
   const { container, router, store } = renderWithProviders(
     <>
       <Route>
@@ -317,6 +346,7 @@ export const setup = async ({
           <Route path=":slug/columns" element={<TestQueryBuilder />} />
           <Route path=":slug/metadata" element={<TestQueryBuilder />} />
           <Route path=":slug/notebook" element={<TestQueryBuilder />} />
+          <Route path=":slug/:objectId" element={<TestQueryBuilder />} />
         </Route>
         <Route path="/question">
           <Route index element={<TestQueryBuilder />} />
@@ -333,10 +363,32 @@ export const setup = async ({
       initialRoute,
       storeInitialState: createMockState({
         currentUser,
-        settings: mockSettings({ "site-url": "http://localhost:3000" }),
+        settings: mockSettings({
+          "site-url": "http://localhost:3000",
+          ...(tokenFeatures && {
+            "token-features": createMockTokenFeatures(tokenFeatures),
+          }),
+        }),
       }),
     },
   );
+
+  if (syncWindowLocation) {
+    checkNotNull(router).onLocationChange(({ pathname, search, hash }) => {
+      window.history.replaceState(null, "", `${pathname}${search}${hash}`);
+    });
+  }
+
+  const result = {
+    container,
+    router: checkNotNull(router),
+    mockEventListener,
+    store,
+  };
+
+  if (!waitForLoad) {
+    return result;
+  }
 
   await waitForLoaderToBeRemoved();
   const opensSavedQuestion =
@@ -349,12 +401,7 @@ export const setup = async ({
     await waitForQueryToStart();
   }
 
-  return {
-    container,
-    router: checkNotNull(router),
-    mockEventListener,
-    store,
-  };
+  return result;
 };
 
 /**
@@ -373,7 +420,9 @@ const QUERY_RUN_PATH = /^\/api\/(card\/\d+\/query|dataset)$/;
  * the question is even loaded, so this waits for the run's request and then for
  * the run to end, and the result cannot update the page after the test.
  */
-const waitForQueryToFinish = async (store: { getState: () => State }) => {
+export const waitForQueryToFinish = async (store: {
+  getState: () => State;
+}) => {
   await waitFor(() =>
     expect(
       fetchMock.callHistory

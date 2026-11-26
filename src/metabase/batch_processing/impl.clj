@@ -134,8 +134,9 @@
                      (ms/InstanceOfClass java.util.concurrent.ExecutorService)]]]
   ;; this wrapper is so we can use Vars which Grouper normally doesn't allow.
   (let [f*      (fn [items]
-                  (when-let [items (not-empty (remove #{flush-sentinel} items))]
-                    (f items)))
+                  (doseq [[scope scoped-items] (group-by ::scope (remove #{flush-sentinel} items))]
+                    (mdb/with-worktree-scope scope
+                      (f (mapv ::object scoped-items)))))
         grouper (apply grouper/start! f* options)]
     {:f f, :grouper grouper}))
 
@@ -170,5 +171,18 @@
     (if synchronous?
       (let [f (:f grouper-wrapper)]
         (f [object]))
-      (apply grouper/submit! (:grouper grouper-wrapper) object options))
+      (apply grouper/submit! (:grouper grouper-wrapper)
+             {::scope (mdb/worktree-scope), ::object object}
+             options))
     nil))
+
+(mu/defn submit-all! :- :nil
+  "Submit each of `objects` as [[submit!]] does, processing them in one batch when it would process them on this
+  thread."
+  [grouper-wrapper :- ::grouper-wrapper
+   objects         :- [:sequential submit-object]]
+  (if (or (batch-processing.settings/synchronous-batch-updates) (mdb/in-transaction?))
+    (when (seq objects)
+      ((:f grouper-wrapper) (vec objects)))
+    (run! #(submit! grouper-wrapper %) objects))
+  nil)

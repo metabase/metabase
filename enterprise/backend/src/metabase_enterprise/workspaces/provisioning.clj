@@ -1,7 +1,7 @@
 (ns metabase-enterprise.workspaces.provisioning
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
-   [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.remapping-cleanup :as ws.remapping-cleanup]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.driver :as driver]
@@ -11,8 +11,6 @@
    [metabase.util.log :as log]
    [potemkin.types :as p]
    [toucan2.connection :as t2.connection]))
-
-(comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
 ;;; ------------------------------------------------- Protocol -------------------------------------------------------
 
@@ -135,7 +133,7 @@
       (if refusal
         ;; the row is the record that warehouse objects may exist; there are none, and a later teardown of the row
         ;; would drop the user init refused
-        (do (ws.db/delete-workspace-database! workspace-database-id)
+        (do (workspace-database/delete-workspace-database! workspace-database-id)
             refusal)
         (do (try
               (grant! provisioner driver db ws-details schemas)
@@ -144,11 +142,11 @@
                 (throw t)))
             ;; this instance's clock, not SQL `now()`: on Postgres `now()` is the start of the lock's
             ;; transaction, before init ran
-            (ws.db/update-workspace-database! workspace-database-id
-                                              {:output_namespace (:schema ws-details)
-                                               :database_details (:database_details ws-details)
-                                               :status           :provisioned
-                                               :updated_at       (mi/current-timestamp)})
+            (workspace-database/update-workspace-database! workspace-database-id
+                                                           {:output_namespace (:schema ws-details)
+                                                            :database_details (:database_details ws-details)
+                                                            :status           :provisioned
+                                                            :updated_at       (mi/current-timestamp)})
             nil)))))
 
 (defn provision-workspace-database!
@@ -163,8 +161,8 @@
                        (with-workspace-database-lock workspace-database-id
                          (provision-locked! workspace-database-id provisioner))
                        (catch Throwable t
-                         (ws.db/update-workspace-database! workspace-database-id {:status     :unprovisioned
-                                                                                  :updated_at (mi/current-timestamp)})
+                         (workspace-database/update-workspace-database! workspace-database-id {:status     :unprovisioned
+                                                                                               :updated_at (mi/current-timestamp)})
                          (throw t)))]
     (throw refusal))
   (ws.db/workspace-database workspace-database-id))
@@ -209,14 +207,14 @@
                                                               (:output_namespace wsd))
                 ;; The copies were in the iso namespace too.
                 (ws.db/delete-copies-of-database! (:workspace_id wsd) (:database_id wsd)))))
-          (ws.db/update-workspace-database! workspace-database-id
-                                            {:output_namespace ""
-                                             :database_details {}
-                                             :status           :unprovisioned
-                                             :updated_at       (mi/current-timestamp)}))))
+          (workspace-database/update-workspace-database! workspace-database-id
+                                                         {:output_namespace ""
+                                                          :database_details {}
+                                                          :status           :unprovisioned
+                                                          :updated_at       (mi/current-timestamp)}))))
     (catch Throwable t
-      (ws.db/update-workspace-database! workspace-database-id {:status     :provisioned
-                                                               :updated_at (mi/current-timestamp)})
+      (workspace-database/update-workspace-database! workspace-database-id {:status     :provisioned
+                                                                            :updated_at (mi/current-timestamp)})
       (throw t)))
   (ws.db/workspace-database workspace-database-id))
 
@@ -228,7 +226,7 @@
   ([wsd-id]
    (provision-single! wsd-id dispatching-provisioner))
   ([wsd-id provisioner]
-   (ws.db/transition-workspace-database! wsd-id :unprovisioned :provisioning)
+   (workspace-database/transition-workspace-database! wsd-id :unprovisioned :provisioning)
    (provision-workspace-database! wsd-id provisioner)))
 
 (defn deprovision-single!
@@ -237,7 +235,7 @@
   ([wsd-id]
    (deprovision-single! wsd-id dispatching-provisioner))
   ([wsd-id provisioner]
-   (ws.db/transition-workspace-database! wsd-id :provisioned :deprovisioning)
+   (workspace-database/transition-workspace-database! wsd-id :provisioned :deprovisioning)
    (deprovision-workspace-database! wsd-id provisioner)))
 
 (defn provision-workspace!
@@ -247,7 +245,7 @@
   ([workspace-id]
    (provision-workspace! workspace-id dispatching-provisioner))
   ([workspace-id provisioner]
-   (let [triggered (ws.db/transition-workspace-databases! workspace-id :unprovisioned :provisioning)]
+   (let [triggered (workspace-database/transition-workspace-databases! workspace-id :unprovisioned :provisioning)]
      (when (pos? triggered)
        (doseq [id (ws.db/workspace-database-ids-with-status workspace-id :provisioning)]
          (try
@@ -290,7 +288,7 @@
   (with-workspace-database-lock (:id wsd)
     (when-let [wsd (ws.db/workspace-database (:id wsd))]
       (if (= :never_started (:status wsd))
-        (do (ws.db/delete-workspace-database! (:id wsd))
+        (do (workspace-database/delete-workspace-database! (:id wsd))
             nil)
         (let [db         (ws.db/database (:database_id wsd))
               driver     (driver.u/database->driver db)
@@ -311,10 +309,10 @@
               ;; Store the identifiers this teardown used: a row reset by a failed provision,
               ;; or never provisioned, still holds "" and {} here.
               (binding [t2.connection/*current-connectable* nil]
-                (ws.db/update-workspace-database! (:id wsd) {:status           :teardown_failed
-                                                             :output_namespace schema
-                                                             :database_details db-details
-                                                             :updated_at       (mi/current-timestamp)}))
+                (workspace-database/update-workspace-database! (:id wsd) {:status           :teardown_failed
+                                                                          :output_namespace schema
+                                                                          :database_details db-details
+                                                                          :updated_at       (mi/current-timestamp)}))
               (throw t))
             (finally
               ;; App-DB cleanup needs no warehouse connection, so it ALWAYS runs — stale
@@ -324,7 +322,7 @@
               (binding [t2.connection/*current-connectable* nil]
                 (ws.remapping-cleanup/clear-mappings-for-iso! db (:database_id wsd) schema)
                 (ws.db/delete-copies-of-database! (:workspace_id wsd) (:database_id wsd)))))
-          (ws.db/delete-workspace-database! (:id wsd))
+          (workspace-database/delete-workspace-database! (:id wsd))
           nil)))))
 
 (defn mark-workspace-database-teardown-failed!
@@ -332,8 +330,8 @@
   fresh autocommit connection, so the write survives the rollback of a surrounding transaction."
   [workspace-database-id]
   (binding [t2.connection/*current-connectable* nil]
-    (ws.db/update-workspace-database! workspace-database-id {:status     :teardown_failed
-                                                             :updated_at (mi/current-timestamp)})))
+    (workspace-database/update-workspace-database! workspace-database-id {:status     :teardown_failed
+                                                                          :updated_at (mi/current-timestamp)})))
 
 (defn mark-workspace-database-never-started!
   "Set the WorkspaceDatabase with `workspace-database-id` to `:never_started`, which makes its teardown skip the
@@ -342,8 +340,8 @@
   autocommit connection, so the write survives the rollback of a surrounding transaction."
   [workspace-database-id]
   (binding [t2.connection/*current-connectable* nil]
-    (ws.db/update-workspace-database! workspace-database-id {:status     :never_started
-                                                             :updated_at (mi/current-timestamp)})))
+    (workspace-database/update-workspace-database! workspace-database-id {:status     :never_started
+                                                                          :updated_at (mi/current-timestamp)})))
 
 (defn abandon-teardown-failed-workspace-database!
   "Delete the WorkspaceDatabase `wsd` without a warehouse teardown, when it is
@@ -360,7 +358,7 @@
                    (:id wsd) (:database_id wsd) (pr-str (:output_namespace wsd))
                    (pr-str (get-in wsd [:database_details :user]))
                    (pr-str (get-in wsd [:database_details :role])))
-        (ws.db/delete-workspace-database! (:id wsd))))
+        (workspace-database/delete-workspace-database! (:id wsd))))
     nil))
 
 (defn deprovision-workspace!
@@ -370,7 +368,7 @@
   ([workspace-id]
    (deprovision-workspace! workspace-id dispatching-provisioner))
   ([workspace-id provisioner]
-   (let [triggered (ws.db/transition-workspace-databases! workspace-id :provisioned :deprovisioning)]
+   (let [triggered (workspace-database/transition-workspace-databases! workspace-id :provisioned :deprovisioning)]
      (when (pos? triggered)
        (doseq [id (ws.db/workspace-database-ids-with-status workspace-id :deprovisioning)]
          (try

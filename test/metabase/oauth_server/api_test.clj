@@ -2242,7 +2242,8 @@
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [{:keys [client_id client_secret]} (create-test-client!)]
-          (doseq [resource malformed-resources]
+          ;; an empty `resource` list counts as none, but an empty string is a malformed indicator
+          (doseq [resource (conj malformed-resources "")]
             (testing (pr-str resource)
               (is (= {:error             "invalid_target"
                       :error_description invalid-target-description}
@@ -2407,8 +2408,8 @@
 
 (deftest dynamic-client-ceiling-still-bounds-requests-test
   (testing (str "GHY-4543: a narrow registration is widened to the default ceiling, not beyond it. GHY-4969: a client "
-                "that omits the resource indicator asks for a REST token, so only the MCP scopes are dropped, and the "
-                "ceiling is what refuses these.")
+                "that omits the resource indicator and asks for a non-MCP scope asks for a REST token, so only the "
+                "MCP scopes are dropped, and the ceiling is what refuses these.")
     (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
@@ -2417,15 +2418,13 @@
                           {:scope "agent:content:read agent:query:run"}
                           (first-non-mcp-default-scope))]
             (is (= 200 (:status response)) (pr-str (:body response)))))
-        (testing "GHY-4969: an MCP scope inside the ceiling is dropped without the MCP resource, which leaves nothing"
+        (testing "an MCP scope inside the ceiling, asked for alone without a resource, defaults to the MCP resource"
           (let [response (register-then-authorize-without-resource!
                           {:scope "agent:content:read agent:query:run"}
                           "agent:content:write")]
-            (is (= {:error             "invalid_scope"
-                    :error_description (str "No resource was requested, so no MCP scopes can be granted. "
-                                            "Send the MCP server's resource URL, which is http://localhost:3000"
-                                            (mcp/mcp-canonical-path) ".")}
-                   (:body response)))))
+            (when (is (= 200 (:status response)) (pr-str (:body response)))
+              (is (= ["agent:content:write"] (offered-scopes response)))
+              (is (= (mcp-resource-uri) (extract-hidden-field "resource" (:body response)))))))
         (doseq [scope [oauth-server/full-access-scope "*" "agent:*" "bogus:nonsense"]]
           (testing scope
             (let [response (register-then-authorize-without-resource!
@@ -2652,20 +2651,22 @@
 
 (defn- consent-page-at!
   "GET `/oauth/authorize` as `user` for `client-id` redirecting to `redirect-uri`, requesting `scope` (every v2 scope by
-  default) against the canonical MCP resource. Returns the full 200 response."
+  default) against `resource` (the canonical MCP resource by default, none when nil).
+  Returns the full 200 response."
   ([user client-id redirect-uri]
    (consent-page-at! user client-id redirect-uri all-v2-scopes))
-  ([user client-id redirect-uri scope]
+  ([user client-id redirect-uri scope & {:keys [resource] :or {resource (mcp-resource-uri)}}]
    ;; see [[get-mcp-consent-page!]] for why the session is revalidated first
    (mt/user-http-request user :get 200 "api/user/current")
-   (mt/user-http-request-full-response
-    user :get 200 "oauth/authorize"
-    :client_id     client-id
-    :redirect_uri  redirect-uri
-    :response_type "code"
-    :scope         scope
-    :resource      (mcp-resource-uri)
-    :state         "test-state")))
+   ;; the test client sends a nil query parameter as an empty one, so a missing resource leaves the key out
+   (apply mt/user-http-request-full-response
+          user :get 200 "oauth/authorize"
+          (mapcat identity (cond-> {:client_id     client-id
+                                    :redirect_uri  redirect-uri
+                                    :response_type "code"
+                                    :scope         scope
+                                    :state         "test-state"}
+                             resource (assoc :resource resource))))))
 
 (defn- insert-token!
   "Insert a `model` (`:model/OAuthAccessToken` or `:model/OAuthRefreshToken`) row for `user` on `client-id` holding
@@ -2721,10 +2722,11 @@
                  (checkbox-states (consent-page-at! :crowberto client_id redirect)))))))))
 
 (defn- authorize-at!
-  "Run the consent flow as crowberto for the registered `client` at `redirect-uri`, requesting `scope` and ticking
-  exactly `granted`, then exchange the code. Returns the token response."
-  [client redirect-uri scope granted]
-  (let [consent  (consent-page-at! :crowberto (:client_id client) redirect-uri scope)
+  "Run the consent flow as crowberto for the registered `client` at `redirect-uri`, requesting `scope` against
+  `resource` (as [[consent-page-at!]] takes it) and ticking exactly `granted`, then exchange the code.
+  Returns the token response."
+  [client redirect-uri scope granted & {:keys [resource] :or {resource (mcp-resource-uri)}}]
+  (let [consent  (consent-page-at! :crowberto (:client_id client) redirect-uri scope :resource resource)
         body     (:body consent)
         decision (form-post-decision!
                   :crowberto
@@ -2735,15 +2737,16 @@
                            :redirect_uri  redirect-uri
                            :response_type "code"
                            :scope         (extract-hidden-field "scope" body)
-                           :resource      (mcp-resource-uri)
                            :state         "test-state"}
-                    (seq granted) (assoc :granted_scope (vec granted)))
+                    ;; posted back from the page, as a browser would, so a resource the server added round-trips too
+                    (extract-hidden-field "resource" body) (assoc :resource (extract-hidden-field "resource" body))
+                    (seq granted)                          (assoc :granted_scope (vec granted)))
                   302
                   :csrf-cookie (extract-csrf-cookie consent))]
-    (token-request! {:grant_type   "authorization_code"
-                     :code         (extract-query-param (get-in decision [:headers "Location"]) "code")
-                     :redirect_uri redirect-uri
-                     :resource     (mcp-resource-uri)}
+    (token-request! (cond-> {:grant_type   "authorization_code"
+                             :code         (extract-query-param (get-in decision [:headers "Location"]) "code")
+                             :redirect_uri redirect-uri}
+                      resource (assoc :resource resource))
                     :authorization (basic-auth-header (:client_id client) (:client_secret client)))))
 
 (defn- access-token-scopes
@@ -3162,3 +3165,154 @@
                 (is (= error (:error response)))
                 (is (= (refresh client tokens nil) response)
                     "the same answer as the refresh without `scope`")))))))))
+
+;;; ------------------------------------ Clients that omit the resource indicator ------------------------------------
+
+;; Some MCP clients, Microsoft Copilot Studio among them, never send `resource`. Without the default such a request
+;; reads as one for a REST token, every scope is dropped, and the user sees `invalid_scope` instead of the consent page.
+(deftest authorize-without-resource-defaults-to-mcp-for-mcp-only-scopes-test
+  (testing "BOT-2689: a request with no resource that asks only for MCP scopes is a request for the MCP server"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [redirect "https://example.com/callback"
+              client   (register-app-client! "Copilot Studio" redirect)
+              consent  (consent-page-at! :crowberto (:client_id client) redirect all-v2-scopes :resource nil)]
+          ;; the client has already failed the test on any other status, and the page's fields are not there to read
+          (when (= 200 (:status consent))
+            (testing "the consent page offers the MCP scopes, signed with the MCP resource"
+              (is (= v2-scope-set (set (offered-scopes consent))))
+              (is (= (mcp-resource-uri) (extract-hidden-field "resource" (:body consent)))))
+            (let [tokens (authorize-at! client redirect all-v2-scopes (vec v2-scope-set) :resource nil)]
+              (testing "the code exchange, which names no resource either, yields a token bound to the MCP resource"
+                (is (=? {:resource [(mcp-resource-uri)]} tokens))
+                (is (= v2-scope-set (token-scope-set tokens) (access-token-scopes tokens))))
+              (testing "a refresh that names the MCP scopes but no resource narrows to the token's resource"
+                (let [refreshed (refresh-with-scope! client tokens all-v2-scopes)]
+                  (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed))))))))))))
+
+;; The default needs every scope to be an MCP scope, so MCP and REST tokens stay separate.
+(deftest authorize-without-resource-stays-rest-for-mixed-scopes-test
+  (testing "BOT-2689: a request with no resource that also asks for a non-MCP scope stays a REST request"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [not-mcp  (first-non-mcp-default-scope)
+              response (register-then-authorize-without-resource! {} (str all-v2-scopes " " not-mcp))]
+          (when (is (= 200 (:status response)) (pr-str (:body response)))
+            (is (= [not-mcp] (offered-scopes response)))
+            (is (nil? (extract-hidden-field "resource" (:body response))))))))))
+
+;; A token issued before MCP and REST tokens were separated holds MCP scopes but no resource. A refresh naming those
+;; scopes and no resource would read as a REST request and narrow every scope away.
+(deftest refresh-of-a-token-without-resource-defaults-to-mcp-test
+  (testing "BOT-2689: refreshing a resource-less MCP token keeps its scopes and binds it to the MCP resource"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client        (register-app-client! "Copilot Studio" "https://example.com/callback")
+              refresh-token (str (random-uuid))
+              _             (insert-token! :model/OAuthRefreshToken :crowberto (:client_id client) v2-scope-set
+                                           :token (oidc-util/hash-token refresh-token))
+              refreshed     (refresh-with-scope! client {:refresh_token refresh-token} all-v2-scopes)]
+          (is (=? {:resource [(mcp-resource-uri)]} refreshed))
+          (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed)))
+          ;; A later refresh would bind an unbound MCP token again, so only the stored token shows what rotation kept.
+          (testing "the rotated refresh token keeps the MCP resource"
+            (is (= [(mcp-resource-uri)]
+                   (t2/select-one-fn :resource :model/OAuthRefreshToken
+                                     :token (oidc-util/hash-token (:refresh_token refreshed)))))))))))
+
+(def ^:private mcp-alias-uri
+  "A legacy alias of the MCP endpoint, which a token issued before the canonical path existed may be bound to."
+  "http://localhost:3000/api/mcp")
+
+(defn- stored-token!
+  "Insert a refresh token for `client` holding `scopes`, with `overrides` such as `:resource`.
+  Returns a token response naming it."
+  [client scopes & {:as overrides}]
+  (let [refresh-token (str (random-uuid))]
+    (insert-token! :model/OAuthRefreshToken :crowberto (:client_id client) scopes
+                   (assoc overrides :token (oidc-util/hash-token refresh-token)))
+    {:refresh_token refresh-token}))
+
+(defn- refresh-json!
+  "Refresh as `client` with the JSON `body`, which can carry an empty `resource` that a form cannot.
+  Returns the response body."
+  [client body]
+  (client/client :post 200 "oauth/token"
+                 {:request-options {:headers {"authorization" (basic-auth-header (:client_id client)
+                                                                                 (:client_secret client))}}}
+                 (assoc body :grant_type "refresh_token")))
+
+(defn- resources
+  "The `resource` of `token-response` and the one stored on its rotated refresh token."
+  [token-response]
+  {:response (:resource token-response)
+   :stored   (t2/select-one-fn :resource :model/OAuthRefreshToken
+                               :token (oidc-util/hash-token (:refresh_token token-response)))})
+
+;; RFC 6749 section 6 lets a refresh leave out `scope`, and oidc-provider then keeps the token's scopes. The token must
+;; still be bound to the MCP resource, or a client that never sends `scope` keeps an unbound token for good.
+(deftest scope-less-refresh-of-a-token-without-resource-defaults-to-mcp-test
+  (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                     oauth-server-dynamic-registration-enabled true]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [client       (register-app-client! "Copilot Studio" "https://example.com/callback")
+            mcp-resource [(mcp-resource-uri)]]
+        (testing "a token holding only MCP scopes keeps them and is bound to the MCP resource"
+          (let [refreshed (refresh! client (stored-token! client v2-scope-set))]
+            (is (= {:response mcp-resource, :stored mcp-resource} (resources refreshed)))
+            (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed)))
+            (testing "and the next refresh without scope keeps the binding"
+              (let [again (refresh! client refreshed)]
+                (is (= mcp-resource (:stored (resources again))))
+                (is (= v2-scope-set (token-scope-set again)))))))
+        (testing "a token already bound to a resource keeps it"
+          (is (= {:response [mcp-alias-uri], :stored [mcp-alias-uri]}
+                 (resources (refresh! client (stored-token! client v2-scope-set :resource [mcp-alias-uri]))))))
+        (testing "a refresh that names a resource gets that one"
+          (is (= {:response [mcp-alias-uri], :stored [mcp-alias-uri]}
+                 (resources (refresh-json! client (assoc (stored-token! client v2-scope-set)
+                                                         :resource mcp-alias-uri))))))
+        (testing "a token holding a non-MCP scope stays unbound, so MCP and REST tokens stay separate"
+          (let [not-mcp   (first-non-mcp-default-scope)
+                refreshed (refresh! client (stored-token! client #{not-mcp}))]
+            (is (= {:response nil, :stored nil} (resources refreshed)))
+            (is (= #{not-mcp} (token-scope-set refreshed)))))
+        (testing "a token holding an MCP scope and an unregistered one stays unbound"
+          (is (= {:response nil, :stored nil}
+                 (resources (refresh! client (stored-token! client #{"agent:content:read" "*"}))))))))))
+
+;; oidc-provider treats a stored `[]` as a binding that contains nothing, and a requested `[]` as the new tokens'
+;; resource, so either would break or drop the binding.
+(deftest empty-resource-counts-as-none-test
+  (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                     oauth-server-dynamic-registration-enabled true]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [client       (register-app-client! "Copilot Studio" "https://example.com/callback")
+            mcp-resource [(mcp-resource-uri)]]
+        (testing "a token stored with an empty resource is bound to the MCP resource on a refresh without scope"
+          (is (= {:response mcp-resource, :stored mcp-resource}
+                 (resources (refresh! client (stored-token! client v2-scope-set :resource []))))))
+        (testing "a token stored with an empty resource is bound to the MCP resource on a refresh with scope"
+          (is (= {:response mcp-resource, :stored mcp-resource}
+                 (resources (refresh-with-scope! client (stored-token! client v2-scope-set :resource [])
+                                                 all-v2-scopes)))))
+        (testing "a refresh that names an empty resource keeps the token's own"
+          (is (= {:response [mcp-alias-uri], :stored [mcp-alias-uri]}
+                 (resources (refresh-json! client (assoc (stored-token! client v2-scope-set :resource [mcp-alias-uri])
+                                                         :resource []))))))))))
+
+;; Unregistered scopes are dropped before the default checks the rest, as [[scope-to-grant]] drops them before
+;; narrowing, so an unregistered scope next to MCP scopes doesn't turn the request into a REST one.
+(deftest unregistered-scope-does-not-stop-the-mcp-default-test
+  (testing "BOT-2689: a refresh with no resource asking for MCP scopes and an unregistered one is defaulted to MCP"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client    (register-app-client! "Copilot Studio" "https://example.com/callback")
+              refreshed (refresh-with-scope! client (stored-token! client v2-scope-set)
+                                             (str all-v2-scopes " bogus:scope"))]
+          (is (=? {:resource [(mcp-resource-uri)]} refreshed))
+          (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed))))))))

@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses-rest.api-test :as api.database-test]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import (org.sqlite SQLiteException)))
 
@@ -300,9 +301,12 @@
       (api.database-test/with-db-scheduler-setup!
         (sample-data/extract-and-sync-sample-database!)
         (testing "Sense check: a newly created database should have sync jobs scheduled"
-          (mt/with-temp [:model/Database db {}]
-            (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
-                   (task.sync-databases-test/query-all-db-sync-triggers-name db)))))
+          (let [db (first (database/create-databases! [{:name "Sense Check" :engine :h2 :details {}}]))]
+            (try
+              (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                     (task.sync-databases-test/query-all-db-sync-triggers-name db)))
+              (finally
+                (database/delete-databases! [(:id db)])))))
         (testing "The sample database should also have sync jobs scheduled"
           (let [sample-db (t2/select-one :model/Database :is_sample true)]
             (is (= (task.sync-databases-test/all-db-sync-triggers-name sample-db)

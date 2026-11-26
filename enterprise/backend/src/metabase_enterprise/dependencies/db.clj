@@ -2,20 +2,17 @@
   "Application database queries for the dependencies module, so the rest of the module only touches `toucan2.core` for
   model definitions, hydration methods, and transactions."
   (:require
-   [clojure.set :as set]
    [malli.util :as mut]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.models.collection :as collection]
-   [metabase.collections.models.collection.root :as collection.root]
-   [metabase.data-apps.core :as data-apps]
+   [metabase.dependencies.core :as dependencies]
+   [metabase.funnysql.schema :as funnysql.schema]
+   [metabase.funnysql.util :as funnysql.util]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.util :as u]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -25,148 +22,52 @@
   "A Honey SQL column keyword, or a string literal standing in for one."
   [:or :keyword :string])
 
-(def ^:private Join
-  "A LEFT JOIN [[build-left-joins]] adds."
-  [:enum :collection :dashboard :database :document :table])
-
-(def ^:private HoneySQLForm
-  "A Honey SQL expression or query map."
-  [:or ::h2x/honeysql-expr ::h2x/honeysql-clause-opts])
-
 ;;; ------------------------------------------------ Graph edge restrictions ------------------------------------------------
 ;;; The dependency graph is traversed generically over every entity type the module knows about; these private
 ;;; helpers build the permission and type-allowlist fragments the graph and item-list queries below restrict edges
 ;;; and items by.
 
-(mu/defn- visible-entities-expr :- ::h2x/honeysql-expr
+(mu/defn- visible-items-opts :- :metabase.dependencies.items/items-opts
+  "The options of the `:items` functions that select the entities readable by the user described by `user-id`,
+  `is-superuser?` and `is-data-analyst?`, the archived ones as `include-archived-items` says, default `:exclude`, and
+  nothing that only the lists leave out."
+  [{:keys [user-id is-superuser? is-data-analyst? include-archived-items]
+    :or   {include-archived-items :exclude}} :- ::dependencies.schema/visible-opts]
+  {:user-id                       user-id
+   :is-superuser?                 is-superuser?
+   :is-data-analyst?              is-data-analyst?
+   :include-archived              include-archived-items
+   :include-personal-collections? true
+   :include-internal?             true
+   :include-sample-databases?     true})
+
+(mu/defn- items-query :- [:maybe ::funnysql.schema/expr.subquery]
+  "The `:items` query of the spec of `model` for `opts`, marked as a subquery, or nil when the model is not listed or
+  the user reads none of its entities."
+  [model :- :keyword
+   opts  :- :metabase.dependencies.items/items-opts]
+  (when-let [items (:items (dependencies/spec model))]
+    (some-> (items opts) (vary-meta assoc :allow-subquery true))))
+
+(mu/defn- visible-entities-expr :- ::funnysql.schema/expr
   "Matches entities at `entity-type-field`/`entity-id-field` that are readable by the user described by `user-id`,
   `is-superuser?`, and `is-data-analyst?`, honoring `include-archived-items` (`:exclude`, `:all`, or `:only`,
-  default `:exclude`; applies to both archived collections and archived entities).
-
-  Handles different entity types:
-  - Superuser-only (`:model/Sandbox`): only if `is-superuser?` is true
-  - Collection-based (`:model/Card`, `:model/Dashboard`, `:model/Document`, `:model/NativeQuerySnippet`,
-    `:model/Action`): filters
-    by collection visibility and archived status. Native query snippets have additional restrictions for
-    sandboxed users.
-  - Table: filters by table visibility permissions. Tables are NOT filtered by active/visibility_type regardless
-    of `include-archived-items`, so dependencies broken by dropped or hidden tables stay visible.
-  - Transform: analysts can view any transform they have source view permission to.
-  - Data app: the apps the user can read, none without the data apps feature."
+  default `:exclude`): those that the `:items` query of the spec of their model selects for them, none of a model
+  without one."
   [entity-type-field :- Column
    entity-id-field   :- Column
-   {:keys [user-id is-superuser? is-data-analyst? include-archived-items]
-    :or   {include-archived-items :exclude}} :- ::dependencies.schema/visible-opts]
-  (into [:or]
-        (keep (fn [[entity-type model]]
-                (let [table-name (t2/table-name model)
-                      id-column  (u/qualified-key table-name :id)]
-                  (case model
-                    :model/Sandbox
-                    (when is-superuser?
-                      [:and
-                       [:= entity-type-field (name entity-type)]
-                       [:in entity-id-field ^:allow-subquery {:select [:id] :from [table-name]}]])
-
-                    :model/Transform
-                    (cond
-                      is-superuser?
-                      [:and
-                       [:= entity-type-field (name entity-type)]
-                       [:in entity-id-field ^:allow-subquery {:select [:id] :from [table-name]}]]
-
-                      is-data-analyst?
-                      [:and
-                       [:= entity-type-field (name entity-type)]
-                       [:in entity-id-field
-                        ^:allow-subquery
-                        {:select [:id]
-                         :from   [table-name]
-                         :where  (perms/visible-databases-filter-clause
-                                  :source_database_id
-                                  {:user-id          user-id
-                                   :is-superuser?    is-superuser?
-                                   :is-data-analyst? is-data-analyst?}
-                                  {:perms/create-queries :query-builder})}]])
-
-                    (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet :model/Action)
-                    (let [archived-column (u/qualified-key table-name :archived)
-                          visible-in-root (fn [root-namespace]
-                                            (perms/visible-collections-filter-clause (u/qualified-key table-name :collection_id) {:user-id          user-id
-                                                                                                                                  :is-superuser?    (boolean is-superuser?)
-                                                                                                                                  :is-data-analyst? (boolean is-data-analyst?)} {:include-archived-items include-archived-items
-                                                                                                                                                                                 :root-namespace         root-namespace}))]
-                      (when-not (and (= model :model/NativeQuerySnippet)
-                                     (or (perms/sandboxed-user?)
-                                         (not (perms/user-has-highest-permission-anywhere? (perms/user-info user-id) :perms/create-queries))))
-                        [:and
-                         [:= entity-type-field (name entity-type)]
-                         [:in entity-id-field
-                          ^:allow-subquery
-                          {:select [:id]
-                           :from   [table-name]
-                           :where  [:and
-                                    (case model
-                                      :model/NativeQuerySnippet (visible-in-root collection/snippets-ns)
-                                      :model/Action             [:or
-                                                                 [:and
-                                                                  [:not= :action.model_id nil]
-                                                                  (visible-in-root nil)]
-                                                                 [:and
-                                                                  [:= :action.model_id nil]
-                                                                  (visible-in-root collection/data-actions-ns)]]
-                                      (visible-in-root nil))
-                                    (case include-archived-items
-                                      :exclude [:= archived-column false]
-                                      :only    [:= archived-column true]
-                                      :all     nil)]}]]))
-
-                    :model/Table
+   visible           :- ::dependencies.schema/visible-opts]
+  (let [opts (visible-items-opts visible)]
+    (into [:or]
+          (keep (fn [[entity-type model]]
+                  (when-let [items (items-query model opts)]
                     [:and
                      [:= entity-type-field (name entity-type)]
-                     [:in entity-id-field
-                      ^:allow-subquery
-                      {:select [:id]
-                       :from   [table-name]
-                       :where  (perms/visible-tables-filter-clause
-                                id-column
-                                (assoc (perms/user-info user-id) :is-superuser? is-superuser?)
-                                {:perms/view-data :unrestricted :perms/create-queries :query-builder}
-                                {:active-only? false, :include-published-via-collection? false})}]]
+                     [:in entity-id-field ^:allow-subquery {:select [:items.entity_id]
+                                                            :from   [[items :items]]}]])))
+          (dependencies/type->model))))
 
-                    (:model/Segment :model/Measure)
-                    (let [archived-column (u/qualified-key table-name :archived)
-                          table-id-column (u/qualified-key table-name :table_id)]
-                      [:and
-                       [:= entity-type-field (name entity-type)]
-                       [:in entity-id-field
-                        ^:allow-subquery
-                        {:select [:id]
-                         :from   [table-name]
-                         :where  [:and
-                                  [:in table-id-column
-                                   ^:allow-subquery
-                                   {:select [:metabase_table.id]
-                                    :from   [:metabase_table]
-                                    :where  (perms/visible-tables-filter-clause
-                                             :metabase_table.id
-                                             (assoc (perms/user-info user-id) :is-superuser? is-superuser?)
-                                             {:perms/view-data :unrestricted :perms/create-queries :query-builder}
-                                             {:active-only? false, :include-published-via-collection? false})}]
-                                  (case include-archived-items
-                                    :exclude [:= archived-column false]
-                                    :only    [:= archived-column true]
-                                    :all     nil)]}]])
-
-                    :model/DataApp
-                    (when-let [visible-ids (data-apps/visible-data-app-filter-select {:user-id       user-id
-                                                                                      :is-superuser? is-superuser?})]
-                      [:and
-                       [:= entity-type-field (name entity-type)]
-                       [:in entity-id-field visible-ids]])))))
-        deps.dependency-types/dependency-type->model))
-
-(mu/defn- broken-entities-expr :- ::h2x/honeysql-expr
+(mu/defn- broken-entities-expr :- ::funnysql.schema/expr
   "Matches entities at `entity-type-field`/`entity-id-field` that have failed analysis (an AnalysisFinding with
   `:result` false)."
   [entity-type-field :- Column
@@ -178,19 +79,19 @@
                  [:in entity-id-field
                   ^:allow-subquery
                   {:select [:entity_id]
-                   :from   [:analysis_finding]
+                   :from   [(t2/table-name :model/AnalysisFinding)]
                    :where  [:and
-                            [:= :analysis_finding.entity_type (name entity-type)]
-                            [:= :analysis_finding.result false]]}]]))
-        deps.dependency-types/dependency-type->model))
+                            [:= (u/qualified-key (t2/table-name :model/AnalysisFinding) :entity_type) (name entity-type)]
+                            [:= (u/qualified-key (t2/table-name :model/AnalysisFinding) :result) false]]}]]))
+        (dependencies/type->model)))
 
-(mu/defn- allowed-entity-types-expr :- ::h2x/honeysql-expr
+(mu/defn- allowed-entity-types-expr :- ::funnysql.schema/expr
   "Matches entities at `entity-type-field` whose type is one of `entity-types`."
   [entity-type-field :- Column
    entity-types      :- [:set ::dependencies.schema/entity-type]]
   (into [:or] (map (fn [entity-type] [:= entity-type-field (name entity-type)])) entity-types))
 
-(mu/defn- entity-ids-expr :- ::h2x/honeysql-expr
+(mu/defn- entity-ids-expr :- ::funnysql.schema/expr
   "Matches entities at `entity-type-field`/`entity-id-field` that are of type `entity-type` and whose id is in
   `ids`."
   [entity-type-field          :- Column
@@ -200,7 +101,7 @@
                                   [:ids         [:sequential ::deps.dependency-types/entity-id]]]]
   [:and [:= entity-type-field (name entity-type)] [:in entity-id-field ids]])
 
-(mu/defn- edge-restriction-expr :- [:maybe ::h2x/honeysql-expr]
+(mu/defn- edge-restriction-expr :- [:maybe ::funnysql.schema/expr]
   "The combined `:where` fragment for `restriction-spec` (nil for no filter), which may include `:visible` (opts for
   [[visible-entities-expr]]), `:broken?` (restrict to [[broken-entities-expr]]), `:types` (restrict to
   [[allowed-entity-types-expr]]), or `:entity-type` + `:ids` (restrict to [[entity-ids-expr]]). Combinable
@@ -252,13 +153,14 @@
   [source-entity-type  :- ::dependencies.schema/entity-type
    source-entity-ids   :- [:sequential ::deps.dependency-types/entity-id]
    {:keys [user-id is-superuser? is-data-analyst?]} :- ::dependencies.schema/visible-opts]
-  (t2/select :model/AnalysisFindingError
-             {:where [:and
-                      [:= :source_entity_type (name source-entity-type)]
-                      [:in :source_entity_id source-entity-ids]
-                      (visible-entities-expr :analyzed_entity_type :analyzed_entity_id
-                                             {:user-id user-id :is-superuser? is-superuser?
-                                              :is-data-analyst? is-data-analyst?})]}))
+  (mdb/select-batched #(t2/select :model/AnalysisFindingError
+                                  {:where [:and
+                                           [:= :source_entity_type (name source-entity-type)]
+                                           [:in :source_entity_id %]
+                                           (visible-entities-expr :analyzed_entity_type :analyzed_entity_id
+                                                                  {:user-id user-id :is-superuser? is-superuser?
+                                                                   :is-data-analyst? is-data-analyst?})]})
+                      source-entity-ids))
 
 (mu/defn finding-errors-for-entities-with-visible-sources
   "The AnalysisFindingErrors analyzing any of the entities `entity-type` `entity-ids`, excluding those whose source
@@ -266,15 +168,16 @@
   [entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:sequential ::deps.dependency-types/entity-id]
    {:keys [user-id is-superuser? is-data-analyst?]} :- ::dependencies.schema/visible-opts]
-  (t2/select :model/AnalysisFindingError
-             {:where [:and
-                      [:= :analyzed_entity_type (name entity-type)]
-                      [:in :analyzed_entity_id entity-ids]
-                      [:or
-                       [:= :source_entity_type nil]
-                       (visible-entities-expr :source_entity_type :source_entity_id
-                                              {:user-id user-id :is-superuser? is-superuser?
-                                               :is-data-analyst? is-data-analyst?})]]}))
+  (mdb/select-batched #(t2/select :model/AnalysisFindingError
+                                  {:where [:and
+                                           [:= :analyzed_entity_type (name entity-type)]
+                                           [:in :analyzed_entity_id %]
+                                           [:or
+                                            [:= :source_entity_type nil]
+                                            (visible-entities-expr :source_entity_type :source_entity_id
+                                                                   {:user-id user-id :is-superuser? is-superuser?
+                                                                    :is-data-analyst? is-data-analyst?})]]})
+                      entity-ids))
 
 ;;; ------------------------------------------ Dependency item list queries -------------------------------------------
 ;;; The /graph/unreferenced and /graph/breaking endpoints union together one SELECT per entity type, each producing
@@ -310,11 +213,6 @@
    [:map {:closed true}
     [:entity-type ::deps.dependency-types/dependency-types]]])
 
-(mu/defn- personal-root-collection-ids :- [:sequential ::lib.schema.id/collection]
-  "The IDs of the personal Collections."
-  []
-  (or (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/") []))
-
 (mu/defn action-root-namespace :- [:maybe [:= :data-actions]]
   "The namespace of the root collection an action without a collection sits in: the data actions root for a
   `model-less?` action, and the default root for an action of a model."
@@ -322,58 +220,9 @@
   (when model-less?
     :data-actions))
 
-(def ^:private EntityTypeConfig
-  "What [[entity-type-config]] returns for an entity type."
-  [:map {:closed true}
-   [:table-name      [:or :keyword ::h2x/honeysql-clause-opts]]
-   [:name-column     ::h2x/honeysql-expr]
-   [:location-column ::h2x/honeysql-expr]])
-
-(mu/defn- entity-type-config :- EntityTypeConfig
-  "The table name and name/location column expressions to select an item list row for `entity-type`."
-  [entity-type :- ::deps.dependency-types/dependency-types]
-  (let [root-collection (collection.root/root-collection-with-ui-details
-                         (case entity-type
-                           :transform :transforms
-                           :snippet :snippets
-                           nil))]
-    {:table-name (case entity-type
-                   :card :report_card
-                   :table (t2/table-name :model/Table)
-                   :transform :transform
-                   :snippet :native_query_snippet
-                   :dashboard :report_dashboard
-                   :document :document
-                   :sandbox :sandboxes
-                   :segment :segment
-                   :measure :measure
-                   :action :action
-                   :data-app :data_app)
-     :name-column (case entity-type
-                    :table :entity.display_name
-                    :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
-                    :entity.name)
-     :location-column (case entity-type
-                        :card [:case
-                               [:not= :entity.dashboard_id nil] :dashboard.name
-                               [:not= :entity.document_id nil] :document.name
-                               :else [:coalesce :collection.name (:name root-collection)]]
-                        :table :database.name
-                        (:transform :snippet :dashboard :document) [:coalesce :collection.name (:name root-collection)]
-                        :action [:coalesce
-                                 :collection.name
-                                 [:case
-                                  [:= :entity.model_id nil]
-                                  (:name (collection.root/root-collection-with-ui-details (action-root-namespace true)))
-                                  :else
-                                  (:name (collection.root/root-collection-with-ui-details (action-root-namespace false)))]]
-                        :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
-                        (:segment :measure) :table.display_name
-                        :data-app nil)}))
-
 (mu/defn- item-query-join :- [:map {:closed true}
-                              [:join        [:sequential HoneySQLForm]]
-                              [:join-filter ::h2x/honeysql-expr]]
+                              [:join        ::funnysql.schema/clause.left-join]
+                              [:join-filter ::funnysql.schema/expr]]
   "The join and join-filter for `query-type`, restricting the joined-in dependency/finding-error rows to those
   whose other-side entity passes `default-visible-restriction` (see [[edge-restriction-expr]]; this is independent of any
   archived-items override applied to the item's own visibility)."
@@ -381,174 +230,98 @@
    entity-type                 :- ::deps.dependency-types/dependency-types
    default-visible-restriction :- ::dependencies.schema/edge-restriction]
   (case query-type
-    :unreferenced {:join [:dependency [:and
-                                       [:= :dependency.to_entity_id :entity.id]
-                                       [:= :dependency.to_entity_type (name entity-type)]
-                                       (edge-restriction-expr :dependency.from_entity_type :dependency.from_entity_id
-                                                              default-visible-restriction)]]
-                   :join-filter [:= :dependency.id nil]}
-    :broken {:join [:analysis_finding [:and
-                                       [:= :analysis_finding.entity_id :entity.id]
-                                       [:= :analysis_finding.entity_type (name entity-type)]]]
-             :join-filter [:= :analysis_finding.result false]}
-    :breaking {:join [:analysis_finding_error [:and
-                                               [:= :analysis_finding_error.source_entity_id :entity.id]
-                                               [:= :analysis_finding_error.source_entity_type (name entity-type)]
-                                               (edge-restriction-expr :analysis_finding_error.analyzed_entity_type
-                                                                      :analysis_finding_error.analyzed_entity_id
-                                                                      default-visible-restriction)]]
-               :join-filter [:!= :analysis_finding_error.id nil]}))
+    :unreferenced {:join [[(t2/table-name :model/Dependency) :dep]
+                          [:and
+                           [:= :dep.to_entity_id :items.entity_id]
+                           [:= :dep.to_entity_type (name entity-type)]
+                           (edge-restriction-expr :dep.from_entity_type :dep.from_entity_id default-visible-restriction)]]
+                   :join-filter [:= :dep.id nil]}
+    :broken {:join [[(t2/table-name :model/AnalysisFinding) :af]
+                    [:and
+                     [:= :af.entity_id :items.entity_id]
+                     [:= :af.entity_type (name entity-type)]]]
+             :join-filter [:= :af.result false]}
+    :breaking {:join [[(t2/table-name :model/AnalysisFindingError) :afe]
+                      [:and
+                       [:= :afe.source_entity_id :items.entity_id]
+                       [:= :afe.source_entity_type (name entity-type)]
+                       (edge-restriction-expr :afe.analyzed_entity_type :afe.analyzed_entity_id default-visible-restriction)]]
+               :join-filter [:!= :afe.id nil]}))
 
-(mu/defn- location-joins-for-entity :- [:set Join]
-  "The set of join keywords needed for location-based operations on `entity-type`."
-  [entity-type :- ::deps.dependency-types/dependency-types]
-  (case entity-type
-    :card #{:collection :dashboard :document}
-    (:transform :snippet :dashboard :document :action) #{:collection}
-    (:segment :measure) #{:table}
-    :table #{:database}
-    #{}))
-
-(mu/defn- optional-item-expr-and-joins :- [:map {:closed true}
-                                           [:exprs [:sequential ::h2x/honeysql-expr]]
-                                           [:joins [:set Join]]]
-  "The extra `:where` fragments and joins for `params`' card-type, search-text, database, internal-content,
-  archived, and personal-collection restrictions."
-  [{:keys [query-type entity-type card-types search-text include-personal-collections?]} :- DependencyItemSelectParams
-   {:keys [name-column location-column]}                                                  :- EntityTypeConfig]
-  (let [card-type-expr (when (and (= entity-type :card) (seq card-types))
-                         {:expr [:in :entity.type (mapv name card-types)]
-                          :joins #{}})
-        search-expr (when (and search-text (not= entity-type :sandbox))
-                      (let [pattern (h2x/like-substring search-text)]
-                        {:expr [:or
-                                [:like [:lower name-column] pattern]
-                                [:like [:lower location-column] pattern]]
-                         :joins (location-joins-for-entity entity-type)}))
-        database-expr (when (= entity-type :table)
-                        {:expr [:and [:not :database.is_sample] [:not :database.is_audit]]
-                         :joins #{:database}})
-        ;; Hide system-managed (internal-user) content like Usage Analytics from the unreferenced
-        ;; list — analytics dashboards have nothing pointing at them by design and would just be
-        ;; noise. The breaking-items list intentionally still surfaces them, since broken analytics
-        ;; deps are real signals worth showing.
-        internal-content-expr (when-let [model (and (= query-type :unreferenced)
-                                                    (case entity-type
-                                                      :card      :model/Card
-                                                      :dashboard :model/Dashboard
-                                                      nil))]
-                                {:expr (mi/exclude-internal-content-hsql model :table-alias :entity)
-                                 :joins #{}})
-        ;; note that tables are not filtered by active/visibility_type, so that dependencies
-        ;; broken by dropped tables stay visible
-        archived-expr (when-not (= query-type :breaking)
-                        {:expr (case entity-type
-                                 (:card :dashboard :document :snippet :segment :measure :action)
-                                 [:= :entity.archived false]
-                                 nil)
-                         :joins #{}})
-        personal-expr (when-not include-personal-collections?
-                        (case entity-type
-                          (:card :dashboard :document :snippet :action)
-                          (let [personal-ids (personal-root-collection-ids)]
-                            (when (seq personal-ids)
-                              {:expr [:or
-                                      [:= :entity.collection_id nil]
-                                      [:and
-                                       [:= :collection.personal_owner_id nil]
-                                       (into [:and]
-                                             (for [pid personal-ids]
-                                               [:not-like :collection.location (str "/" pid "/%")]))]]
-                               :joins #{:collection}}))
-                          nil))
-        results (keep identity [card-type-expr search-expr database-expr
-                                internal-content-expr archived-expr personal-expr])]
-    {:exprs (keep :expr results)
-     :joins (reduce set/union #{} (map :joins results))}))
-
-(mu/defn- sort-key-expr-and-joins :- [:map {:closed true}
-                                      [:sort-expr HoneySQLForm]
-                                      [:joins     [:set Join]]]
-  "The sort expression and extra joins for `sort-column`, restricting the `dependents-errors`/`dependents-with-errors`
-  counts to finding errors whose analyzed entity passes `default-visible-restriction` (see [[edge-restriction-expr]])."
+(mu/defn- sort-key-expr :- ::funnysql.schema/expr
+  "The sort expression for `sort-column` over the `items` of `entity-type`, restricting the
+  `dependents-errors`/`dependents-with-errors` counts to finding errors whose analyzed entity passes
+  `default-visible-restriction` (see [[edge-restriction-expr]])."
   [sort-column                 :- [:maybe [:enum :name :location :dependents-errors :dependents-with-errors]]
    entity-type                 :- ::deps.dependency-types/dependency-types
-   name-column                 :- ::h2x/honeysql-expr
-   location-column             :- ::h2x/honeysql-expr
    default-visible-restriction :- ::dependencies.schema/edge-restriction]
   (case sort-column
-    :location {:sort-expr location-column
-               :joins (location-joins-for-entity entity-type)}
-    :dependents-errors {:sort-expr ^:allow-subquery
-                        {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
-                                                        [:concat :error_type "-" [:coalesce :error_detail ""]]
-                                                        [:composite :error_type :error_detail])]]]]
-                         :from [:analysis_finding_error]
-                         :where [:and
-                                 [:= :source_entity_id :entity.id]
-                                 [:= :source_entity_type (name entity-type)]
-                                 (edge-restriction-expr :analyzed_entity_type :analyzed_entity_id default-visible-restriction)]}
-                        :joins #{}}
-    :dependents-with-errors {:sort-expr ^:allow-subquery
-                             {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
-                                                             [:concat :analyzed_entity_id "-" :analyzed_entity_type]
-                                                             [:composite :analyzed_entity_id :analyzed_entity_type])]]]]
-                              :from [:analysis_finding_error]
-                              :where [:and
-                                      [:= :source_entity_id :entity.id]
-                                      [:= :source_entity_type (name entity-type)]
-                                      (edge-restriction-expr :analyzed_entity_type :analyzed_entity_id default-visible-restriction)]}
-                             :joins #{}}
-    {:sort-expr name-column
-     :joins #{}}))
+    :location :items.location
+    :dependents-errors ^:allow-subquery
+    {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
+                                    [:concat :error_type "-" [:coalesce :error_detail ""]]
+                                    [:composite :error_type :error_detail])]]]]
+     :from [(t2/table-name :model/AnalysisFindingError)]
+     :where [:and
+             [:= :source_entity_id :items.entity_id]
+             [:= :source_entity_type (name entity-type)]
+             (edge-restriction-expr :analyzed_entity_type :analyzed_entity_id default-visible-restriction)]}
+    :dependents-with-errors ^:allow-subquery
+    {:select [[[:count [:distinct (if (= :mysql (mdb/db-type))
+                                    [:concat :analyzed_entity_id "-" :analyzed_entity_type]
+                                    [:composite :analyzed_entity_id :analyzed_entity_type])]]]]
+     :from [(t2/table-name :model/AnalysisFindingError)]
+     :where [:and
+             [:= :source_entity_id :items.entity_id]
+             [:= :source_entity_type (name entity-type)]
+             (edge-restriction-expr :analyzed_entity_type :analyzed_entity_id default-visible-restriction)]}
+    :items.name))
 
-(mu/defn- build-left-joins :- [:sequential HoneySQLForm]
-  "`base-join` with the LEFT JOINs needed for `joins` (a set of `:database`, `:collection`, `:dashboard`,
-  `:document`, and/or `:table`) appended."
-  [base-join :- [:sequential HoneySQLForm]
-   joins     :- [:set Join]]
-  (cond-> base-join
-    (:database joins) (conj [:metabase_database :database] [:= :entity.db_id :database.id])
-    (:collection joins) (conj :collection [:= :entity.collection_id :collection.id])
-    (:dashboard joins) (conj [:report_dashboard :dashboard] [:= :entity.dashboard_id :dashboard.id])
-    (:document joins) (conj :document [:= :entity.document_id :document.id])
-    (:table joins) (conj [(t2/table-name :model/Table) :table] [:= :entity.table_id :table.id])))
-
-(mu/defn- dependency-item-select :- ::h2x/honeysql-clause-opts
-  "The per-entity-type SELECT that [[dependency-item-ids]] and [[dependency-item-count]] union together, matching
-  `query-type` (`:unreferenced` or `:breaking`) items of `entity-type`, restricted to `card-types`, `search-text`,
-  and `include-personal-collections?`, visible to the user described by `user-id`, `is-superuser?`, and
-  `is-data-analyst?`, with `sort-column`'s expression selected as `:sort_key`. Throws when `user-id` is missing,
-  since the visibility restriction must always be applied."
-  [{:keys [query-type entity-type sort-column user-id is-superuser? is-data-analyst?] :as params}
+(mu/defn- dependency-item-select :- [:maybe ::funnysql.schema/expr.subquery]
+  "The per-entity-type SELECT that [[dependency-item-ids]] and [[dependency-item-count]] union together: the
+  `:items` of the spec of `entity-type` for the user described by `user-id`, `is-superuser?`, and
+  `is-data-analyst?`, restricted to `card-types` and `include-personal-collections?`, whose `name` or `location`
+  contains `search-text`, matching `query-type` (`:unreferenced` or `:breaking`), with `sort-column`'s expression
+  selected as `:sort_key`, or nil when the user reads no entity of the type. Throws when `user-id` is missing, since the visibility restriction must always
+  be applied."
+  [{:keys [query-type entity-type sort-column user-id is-superuser? is-data-analyst? card-types search-text
+           include-personal-collections?]}
    :- DependencyItemSelectParams]
   (when-not user-id
     (throw (ex-info "dependency-item-select requires a user-id so the visibility restriction is always applied"
                     {:query-type query-type :entity-type entity-type})))
-  (let [{:keys [table-name name-column location-column] :as config} (entity-type-config entity-type)
-        visible {:user-id user-id :is-superuser? is-superuser? :is-data-analyst? is-data-analyst?}
-        default-visible-restriction {:visible visible}
-        ;; The item's own visibility check includes archived items when listing what's breaking other entities,
-        ;; so dependencies broken by an archived source still surface; nothing else is affected by this.
-        item-visible-restriction (cond-> default-visible-restriction
-                                   (= query-type :breaking) (assoc-in [:visible :include-archived-items] :all))
-        {:keys [join join-filter]} (item-query-join query-type entity-type default-visible-restriction)
-        {:keys [exprs joins]} (optional-item-expr-and-joins params config)
-        {sort-expr :sort-expr sort-joins :joins} (sort-key-expr-and-joins sort-column entity-type name-column
-                                                                          location-column default-visible-restriction)
-        all-joins (set/union joins sort-joins)
-        item-visible-expr (edge-restriction-expr (name entity-type) :entity.id item-visible-restriction)
-        ;; a plain string here compiles to a `?` parameter, and H2 can't work out the type of a parameter in the
-        ;; select list of a derived table -- `h2x/literal` emits a real quoted SQL literal instead. The value comes
-        ;; from the closed `dependency-types` enum, never from user input.
-        select-clause [[(h2x/literal (name entity-type)) :entity_type]
-                       [:entity.id :entity_id]
-                       [sort-expr :sort_key]]]
-    ^:allow-subquery
-    {(if (= query-type :breaking) :select-distinct :select) select-clause
-     :from [[table-name :entity]]
-     :left-join (build-left-joins join all-joins)
-     :where (into [:and join-filter item-visible-expr] (keep identity) exprs)}))
+  (when-let [items (items-query (dependencies/entity-model entity-type)
+                                {:user-id                       user-id
+                                 :is-superuser?                 is-superuser?
+                                 :is-data-analyst?              is-data-analyst?
+                                 :include-archived              (if (= query-type :breaking) :all :exclude)
+                                 :include-personal-collections? include-personal-collections?
+                                 :include-internal?             (not= query-type :unreferenced)
+                                 :include-sample-databases?     false
+                                 :card-types                    card-types})]
+    (let [default-visible-restriction {:visible {:user-id          user-id
+                                                 :is-superuser?    is-superuser?
+                                                 :is-data-analyst? is-data-analyst?}}
+          {:keys [join join-filter]}  (item-query-join query-type entity-type default-visible-restriction)]
+      ^:allow-subquery
+      {(if (= query-type :breaking) :select-distinct :select)
+       [[[:literal (name entity-type)] :entity_type]
+        [:items.entity_id :entity_id]
+        [(sort-key-expr sort-column entity-type default-visible-restriction) :sort_key]]
+       :from      [[items :items]]
+       :left-join join
+       :where     (cond-> [:and join-filter]
+                    search-text (conj (let [pattern (funnysql.util/like-substring search-text)]
+                                        [:or
+                                         [:like [:lower :items.name] pattern]
+                                         [:like [:lower :items.location] pattern]])))})))
+
+(mu/defn- dependency-item-union :- [:maybe ::funnysql.schema/expr.subquery]
+  "The union of the [[dependency-item-select]]s of the `entity-types` for `params`, or nil when there is none."
+  [entity-types :- [:sequential ::deps.dependency-types/dependency-types]
+   params       :- ::dependency-item-filter-params]
+  (when-let [selects (seq (keep #(dependency-item-select (assoc params :entity-type %)) entity-types))]
+    ^:allow-subquery {:union-all (vec selects)}))
 
 (mu/defn dependency-item-ids
   "A page of `[entity-type entity-id]` pairs for `query-type` (`:unreferenced` or `:breaking`), restricted to
@@ -558,24 +331,23 @@
   restricted to those visible to the user described by `user-id`, `is-superuser?`, and `is-data-analyst?`; throws
   when `user-id` is missing."
   [{:keys [entity-types sort-direction offset limit] :as params} :- ::dependency-item-page-params]
-  (let [filter-params (dissoc params :sort-direction :offset :limit)
-        union-query ^:allow-subquery {:union-all (mapv #(dependency-item-select (assoc filter-params :entity-type %))
-                                                       entity-types)}]
+  (if-let [union-query (dependency-item-union entity-types (dissoc params :sort-direction :offset :limit))]
     (->> (t2/query (assoc union-query
                           :order-by [[:sort_key sort-direction] [:entity_id sort-direction] [:entity_type sort-direction]]
                           :offset offset
                           :limit limit))
-         (map (fn [{:keys [entity_id entity_type]}] [(keyword entity_type) entity_id])))))
+         (map (fn [{:keys [entity_id entity_type]}] [(keyword entity_type) entity_id])))
+    []))
 
 (mu/defn dependency-item-count
   "The total count of items matching the same criteria as [[dependency-item-ids]] (ignoring sort direction, offset,
   and limit); throws when `user-id` is missing."
   [{:keys [entity-types] :as params} :- ::dependency-item-filter-params]
-  (let [union-query ^:allow-subquery {:union-all (mapv #(dependency-item-select (assoc params :entity-type %))
-                                                       entity-types)}]
+  (if-let [union-query (dependency-item-union entity-types params)]
     (-> (t2/query {:select [[:%count.* :total]] :from [[union-query :subquery]]})
         first
-        :total)))
+        :total)
+    0))
 
 (mu/defn broken-entity-pairs
   "The `[:analyzed_entity_type :analyzed_entity_id]` pairs whose analysis failed and were caused by the entity
@@ -593,8 +365,8 @@
        [:is-data-analyst? {:optional true} [:maybe :boolean]]]]
   (t2/query
    (cond-> {:select-distinct [[:afe.analyzed_entity_type :entity_type] [:afe.analyzed_entity_id :entity_id]]
-            :from [[:analysis_finding_error :afe]]
-            :join [[:analysis_finding :af]
+            :from [[(t2/table-name :model/AnalysisFindingError) :afe]]
+            :join [[(t2/table-name :model/AnalysisFinding) :af]
                    [:and
                     [:= :af.entity_type :afe.analyzed_entity_type]
                     [:= :af.entity_id :afe.analyzed_entity_id]]]
@@ -610,7 +382,7 @@
                      dependent-card-types (conj [:or
                                                  [:!= :afe.analyzed_entity_type "card"]
                                                  [:in :rc.type dependent-card-types]]))}
-     dependent-card-types (assoc :left-join [[:report_card :rc]
+     dependent-card-types (assoc :left-join [[(t2/table-name :model/Card) :rc]
                                              [:and
                                               [:= :afe.analyzed_entity_type "card"]
                                               [:= :rc.id :afe.analyzed_entity_id]]]))))
@@ -627,8 +399,46 @@
   whose rows hold only those columns."
   [entity-type :- ::deps.dependency-types/dependency-types
    ids         :- [:set ::deps.dependency-types/entity-id]]
-  (let [model (deps.dependency-types/dependency-type->model entity-type)]
-    (t2/select (if-let [columns (narrow-columns entity-type)] (into [model] columns) model) :id [:in ids])))
+  (let [model     (dependencies/entity-model entity-type)
+        modelable (if-let [columns (narrow-columns entity-type)] (into [model] columns) model)]
+    (mdb/select-batched #(t2/select modelable :id [:in %]) ids)))
+
+(mu/defn app-db-reachable? :- :boolean
+  "Whether the app DB answers a query on a connection of its own, outside any transaction of this thread."
+  []
+  (try
+    (boolean (mdb/can-connect-to-data-source? (mdb/data-source)))
+    (catch Exception _
+      false)))
+
+(mu/defn throw-unless-app-db-reachable! :- :nil
+  "Rethrows `e` while the app DB is unreachable. A failure then says nothing about the entity it happened on, so it
+  mustn't count against it."
+  [e :- (ms/InstanceOfClass Throwable)]
+  (when-not (app-db-reachable?)
+    (throw e)))
+
+(mu/defn readable-entities :- [:sequential :any]
+  "The entities `read-entities` returns for `ids`. When that fails, reads each id alone, calling `on-unreadable` with
+  the id and exception of each that fails, so one unreadable row doesn't block the rest. Rethrows instead while the
+  app DB is unreachable: that failure isn't about any row."
+  [read-entities :- [:fn {:error/message "a function"} ifn?]
+   ids           :- [:set ::deps.dependency-types/entity-id]
+   on-unreadable :- [:fn {:error/message "a function"} ifn?]]
+  (try
+    (vec (read-entities ids))
+    (catch Exception e
+      (throw-unless-app-db-reachable! e)
+      (log/warnf "Reading %s entities together failed, reading each on its own: %s" (count ids) (ex-message e))
+      (into []
+            (mapcat (fn [id]
+                      (try
+                        (vec (read-entities #{id}))
+                        (catch Exception e
+                          (throw-unless-app-db-reachable! e)
+                          (on-unreadable id e)
+                          nil))))
+            ids))))
 
 (mu/defn entity
   "The entity of the entity type `entity-type` with `id`, or nil, with the columns of [[entities]]."
@@ -641,77 +451,59 @@
   [entity-type :- ::deps.dependency-types/dependency-types
    columns     :- [:sequential :keyword]
    ids         :- [:sequential ::deps.dependency-types/entity-id]]
-  (t2/select (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
-             :id [:in ids]))
+  (let [model (into [(dependencies/entity-model entity-type)] columns)]
+    (into [] (mapcat #(t2/select model :id [:in %])) (partition-all 1000 ids))))
 
-(mu/defn entity-with-columns
-  "The `columns` of the entity of the entity type `entity-type` with `id`, or nil."
-  [entity-type :- ::deps.dependency-types/dependency-types
-   columns     :- [:sequential :keyword]
-   id          :- ::deps.dependency-types/entity-id]
-  (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
-                 :id id))
-
-(mu/defn implicit-action-table-ids
-  "The `:table_id` of the ImplicitActions of the Actions with `action-ids`, keyed by Action id."
-  [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select-fn->fn :action_id :table_id :model/ImplicitAction :action_id [:in action-ids]))
-
-(mu/defn query-action-queries
-  "The `:dataset_query` of the QueryActions of the Actions with `action-ids`, keyed by Action id."
-  [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select-fn->fn :action_id :dataset_query :model/QueryAction :action_id [:in action-ids]))
-
-(mu/defn ids-in-collections
-  "The `:id` and `:collection_id` of the `model` rows in the Collections with `collection-ids`."
-  [model          :- [:enum :model/Card :model/Action]
-   collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select [model :id :collection_id] :collection_id [:in collection-ids]))
-
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+(mu/defn cards :- [:map-of ::lib.schema.id/card (ms/InstanceOf :model/Card)]
+  "The Cards with `card-ids`, by Card id."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Card :id [:in %]) card-ids))
 
 (mu/defn card-types-by-id
   "A map of Card ID to type for `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-fn->fn :id :type [:model/Card :id :type] :id [:in card-ids]))
+  (mdb/select-batched-map #(t2/select-fn->fn :id :type [:model/Card :id :type] :id [:in %]) card-ids))
 
-(mu/defn tables
-  "The Tables with `table-ids`."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+(mu/defn column-value :- [:maybe ms/PositiveInt]
+  "The `column` of the row of `model` with `id`, or nil."
+  [model  :- :keyword
+   column :- :keyword
+   id     :- ms/PositiveInt]
+  (t2/select-one-fn column [model column] :id id))
 
-(mu/defn dashcard-dashboard-id :- [:maybe ::lib.schema.id/dashboard]
-  "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :dashboard_id :model/DashboardCard :id dashcard-id))
+(mu/defn column-values :- [:map-of ms/PositiveInt [:maybe ms/PositiveInt]]
+  "The `column` of each of the rows of `model` with `ids`, by id."
+  [model  :- :keyword
+   column :- :keyword
+   ids    :- [:sequential {:min 1} ms/PositiveInt]]
+  (mdb/select-batched-map #(t2/select-fn->fn :id column [model :id column] :id [:in %]) ids))
 
-(mu/defn field-table-id :- [:maybe ::lib.schema.id/table]
-  "The `:table_id` of the Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id))
+(mu/defn field-table-ids :- [:map-of ::lib.schema.id/field [:maybe ::lib.schema.id/table]]
+  "The `:table_id` of each of the Fields with `field-ids`, by Field id."
+  [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
+  (mdb/select-batched-map #(t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in %]) field-ids))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
-(mu/defn dependencies-from
-  "The `:id`, `:to_entity_type`, and `:to_entity_id` of the Dependencies of the entity `entity-type` `entity-id`."
+(mu/defn dependencies-from-entities
+  "The `:id`, `:from_entity_id`, `:to_entity_type`, and `:to_entity_id` of the Dependencies of the entities
+  `entity-type` `entity-ids`."
   [entity-type :- ::dependencies.schema/entity-type
-   entity-id   :- ms/PositiveInt]
-  (t2/select [:model/Dependency :id :to_entity_type :to_entity_id]
-             :from_entity_type entity-type
-             :from_entity_id entity-id))
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (mdb/select-batched #(t2/select [:model/Dependency :id :from_entity_id :to_entity_type :to_entity_id]
+                                  :from_entity_type entity-type
+                                  :from_entity_id [:in %])
+                      entity-ids))
 
-(mu/defn dependency-exists?
-  "Whether the entity `from-type` `from-id` depends on the entity `to-type` `to-id`."
-  [from-type :- ::dependencies.schema/entity-type
-   from-id   :- ms/PositiveInt
-   to-type   :- ::dependencies.schema/entity-type
-   to-id     :- ms/PositiveInt]
-  (t2/exists? :model/Dependency
-              :from_entity_type from-type :from_entity_id from-id
-              :to_entity_type to-type :to_entity_id to-id))
+(mu/defn dependencies-on-entities
+  "The `:id`, `:from_entity_type`, `:from_entity_id`, and `:to_entity_id` of the Dependencies on the entities
+  `entity-type` `entity-ids`."
+  [entity-type :- ::dependencies.schema/entity-type
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (mdb/select-batched #(t2/select [:model/Dependency :id :from_entity_type :from_entity_id :to_entity_id]
+                                  :to_entity_type entity-type
+                                  :to_entity_id [:in %])
+                      entity-ids))
 
 (mu/defn insert-dependencies!
   "Insert the Dependency `rows`, returning the number inserted."
@@ -721,62 +513,18 @@
                          [:from_entity_id   {:optional true} [:maybe ms/PositiveInt]]
                          [:to_entity_type   {:optional true} [:maybe [:or :keyword :string]]]
                          [:to_entity_id     {:optional true} [:maybe ms/PositiveInt]]]]]
-  (t2/insert! :model/Dependency rows))
-
-(mu/defn retarget-dependency!
-  "Point the Dependency of the entity `from-type` `from-id` on the entity `old-to-type` `old-to-id` at the entity
-  `new-to-type` `new-to-id`, returning the number updated."
-  [from-type   :- ::dependencies.schema/entity-type
-   from-id     :- ms/PositiveInt
-   old-to-type :- ::dependencies.schema/entity-type
-   old-to-id   :- ms/PositiveInt
-   new-to-type :- ::dependencies.schema/entity-type
-   new-to-id   :- ms/PositiveInt]
-  (t2/update! :model/Dependency
-              {:from_entity_type from-type :from_entity_id from-id
-               :to_entity_type old-to-type :to_entity_id old-to-id}
-              {:to_entity_type new-to-type :to_entity_id new-to-id}))
+  (transduce (map #(t2/insert! :model/Dependency (vec %))) + 0 (partition-all mdb/create-partition-size rows)))
 
 (mu/defn delete-dependencies!
   "Delete the Dependencies with `dependency-ids`, returning the number deleted."
   [dependency-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Dependency :id [:in dependency-ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/Dependency :id [:in %]) dependency-ids))
 
-(mu/defn delete-dependency!
-  "Delete the Dependency of the entity `from-type` `from-id` on the entity `to-type` `to-id`, returning the number
-  deleted."
-  [from-type :- ::dependencies.schema/entity-type
-   from-id   :- ms/PositiveInt
-   to-type   :- ::dependencies.schema/entity-type
-   to-id     :- ms/PositiveInt]
-  (t2/delete! :model/Dependency
-              :from_entity_type from-type :from_entity_id from-id
-              :to_entity_type to-type :to_entity_id to-id))
-
-(mu/defn delete-dependencies-from!
+(mu/defn delete-dependencies-for-entities!
   "Delete the Dependencies of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Dependency :from_entity_type entity-type :from_entity_id [:in entity-ids]))
-
-(mu/defn downstream-table-ids-of-transform
-  "The IDs of the Tables that depend on the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-fn-set :from_entity_id :model/Dependency
-                    :from_entity_type :table
-                    :to_entity_type   :transform
-                    :to_entity_id     transform-id))
-
-(mu/defn delete-table-dependencies-on-transform!
-  "Delete the Dependencies of the Tables with `table-ids` on the Transform with `transform-id`, returning the
-  number deleted."
-  [table-ids    :- [:sequential ::lib.schema.id/table]
-   transform-id :- ::lib.schema.id/transform]
-  (t2/delete! :model/Dependency
-              :from_entity_type :table
-              :from_entity_id   [:in table-ids]
-              :to_entity_type   :transform
-              :to_entity_id     transform-id))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/Dependency :from_entity_type entity-type :from_entity_id [:in %]) entity-ids))
 
 ;;; -------------------------------------------- Statuses, shared by the jobs --------------------------------------------
 
@@ -821,18 +569,6 @@
                                     [:= :d.from_entity_type (u/qualified-key table :entity_type)]
                                     [:= :d.from_entity_id (u/qualified-key table :entity_id)]]}]}))))
 
-(mu/defn- clear-stale! :- :boolean
-  "Record that a job processed the entity `entity-type` `entity-id` with its logic of `current-version`, clearing the
-  `stale` count of its status in the status `model` when it is still the `stale` the job picked it with, so a write
-  while it was processed has the job process it again, returning whether it cleared it."
-  [model           :- StatusModel
-   entity-type     :- ::dependencies.schema/entity-type
-   entity-id       :- ms/PositiveInt
-   stale           :- ms/IntGreaterThanOrEqualToZero
-   current-version :- ms/PositiveInt]
-  (pos? (t2/update! model :entity_type entity-type :entity_id entity-id :stale stale
-                    {:stale 0 :fail_count 0 :analysis_version current-version})))
-
 (mu/defn- record-failure! :- :boolean
   "Record that a job failed to process the entity `entity-type` `entity-id`, giving up on it until a write changes it
   once it failed `max-failures` times in a row, returning whether it gave up."
@@ -852,15 +588,16 @@
 
 (mu/defn mark-data-app-dependency-statuses-stale!
   "Mark the DependencyStatuses of the DataApps whose resource collection is one of the Collections with
-  `collection-ids` stale, in one UPDATE."
+  `collection-ids` stale, in one UPDATE for each `mdb/update-partition-size` of them."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/query {:update (t2/table-name :model/DependencyStatus)
-             :set    (assoc fresh-attempts :stale one-more-write)
-             :where  [:and
-                      [:= :entity_type (name :data-app)]
-                      [:in :entity_id ^:allow-subquery {:select [:id]
-                                                        :from   [(t2/table-name :model/DataApp)]
-                                                        :where  [:in :resource_collection_id collection-ids]}]]}))
+  (doseq [batch (partition-all mdb/update-partition-size (distinct collection-ids))]
+    (t2/query {:update (t2/table-name :model/DependencyStatus)
+               :set    (assoc fresh-attempts :stale one-more-write)
+               :where  [:and
+                        [:= :entity_type (name :data-app)]
+                        [:in :entity_id ^:allow-subquery {:select [:id]
+                                                          :from   [(t2/table-name :model/DataApp)]
+                                                          :where  [:in :resource_collection_id (vec batch)]}]]})))
 
 (mu/defn mark-result-metadata-statuses-stale!
   "Mark the ResultMetadataStatuses of the entities `type->ids` stale, so the result metadata job re-derives them."
@@ -892,7 +629,7 @@
    id-field           :- :keyword
    dependency-version :- ms/PositiveInt]
   [:exists ^:allow-subquery {:select [1]
-                             :from   [[:dependency_status :ds]]
+                             :from   [[(t2/table-name :model/DependencyStatus) :ds]]
                              :where  [:and
                                       [:= :ds.entity_type (name entity-type)]
                                       [:= :ds.entity_id id-field]
@@ -911,7 +648,7 @@
    {:keys [user-mbql-only? dependency-version]} :- [:map {:closed true}
                                                     [:user-mbql-only?    {:optional true} :boolean]
                                                     [:dependency-version {:optional true} ms/PositiveInt]]]
-  (let [table-name (t2/table-name (deps.dependency-types/dependency-type->model entity-type))
+  (let [table-name (t2/table-name (dependencies/entity-model entity-type))
         id-field   (u/qualified-key table-name :id)
         outdated   [:< :status.analysis_version current-version]]
     (mapv #(select-keys % [:entity_id :stale])
@@ -923,10 +660,9 @@
                                                                 [:= :status.entity_id id-field]]]
             :where     (cond-> [:and [:or [:= :status.id nil]
                                       [:and [:= :status.terminal false] [:or [:> :status.stale 0] outdated]]]]
-                         user-mbql-only?    (conj [:or [:= :report_card.query_type nil]
-                                                   [:not= :report_card.query_type "native"]]
-                                                  (mi/exclude-internal-content-hsql :model/Card
-                                                                                    :table-alias :report_card))
+                         user-mbql-only?    (conj [:or [:= (u/qualified-key (t2/table-name :model/Card) :query_type) nil]
+                                                   [:not= (u/qualified-key (t2/table-name :model/Card) :query_type) "native"]]
+                                                  (mi/non-internal-filter-clause :model/Card (t2/table-name :model/Card)))
                          dependency-version (conj (current-dependencies-clause
                                                    entity-type id-field dependency-version)))
             :order-by  [[[:case outdated [:inline 1] :else [:inline 0]]]]
@@ -957,7 +693,7 @@
   [status-model :- StatusModel
    entity-type  :- ::deps.dependency-types/dependency-types
    batch-size   :- ms/PositiveInt]
-  (let [table-name (t2/table-name (deps.dependency-types/dependency-type->model entity-type))]
+  (let [table-name (t2/table-name (dependencies/entity-model entity-type))]
     (mapv :entity_id (t2/query {:select [:status.entity_id]
                                 :from   [[(t2/table-name status-model) :status]]
                                 :where  [:and
@@ -979,7 +715,7 @@
   "Delete the DependencyStatuses of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/DependencyStatus :entity_type entity-type :entity_id [:in entity-ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/DependencyStatus :entity_type entity-type :entity_id [:in %]) entity-ids))
 
 (mu/defn record-dependency-failure! :- :boolean
   "Record that the dependency job failed to compute the dependencies of the entity `entity-type` `entity-id`, giving up on it until a write changes it once it failed
@@ -996,14 +732,17 @@
   []
   (t2/select [:model/DependencyStatus :entity_type :entity_id] :terminal true))
 
-(mu/defn clear-dependency-status! :- :boolean
-  "Record that the dependency job computed the dependencies of the entity `entity-type` `entity-id` with the analysis
-  of `current-version`, clearing its count of `stale` writes unless a write raised it, returning whether it cleared it."
+(mu/defn clear-dependency-statuses!
+  "Record that the dependency job computed the dependencies of the entities `entity-type` whose ids are the keys of
+  `id->stale` with the analysis of `current-version`, clearing each count of `stale` writes unless a write raised it,
+  with one update for each distinct count and partition of ids."
   [entity-type     :- ::dependencies.schema/entity-type
-   entity-id       :- ms/PositiveInt
-   stale           :- ms/IntGreaterThanOrEqualToZero
+   id->stale       :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
    current-version :- ms/PositiveInt]
-  (clear-stale! :model/DependencyStatus entity-type entity-id stale current-version))
+  (doseq [[stale ids] (u/group-by val key conj [] id->stale)
+          batch       (partition-all mdb/update-partition-size ids)]
+    (t2/update! :model/DependencyStatus :entity_type entity-type :entity_id [:in (vec batch)] :stale stale
+                {:stale 0 :fail_count 0 :analysis_version current-version})))
 
 (mu/defn dependency-pending? :- :boolean
   "Whether an entity of the type `entity-type` has no DependencyStatus, or one that counts a write or records a version
@@ -1041,13 +780,16 @@
    max-failures :- ms/PositiveInt]
   (record-failure! :model/ResultMetadataStatus :card card-id max-failures))
 
-(mu/defn clear-result-metadata-status! :- :boolean
-  "Record that the result metadata job re-derived the Card with `card-id` with the logic of `current-version`, clearing
-  its count of `stale` writes unless a write raised it, returning whether it cleared it."
-  [card-id         :- ::lib.schema.id/card
-   stale           :- ms/IntGreaterThanOrEqualToZero
+(mu/defn clear-result-metadata-statuses!
+  "Record that the result metadata job re-derived the Cards whose ids are the keys of `id->stale` with the logic of
+  `current-version`, clearing each count of `stale` writes unless a write raised it, with one update for each distinct
+  count and partition of ids."
+  [id->stale       :- [:map-of ::lib.schema.id/card ms/IntGreaterThanOrEqualToZero]
    current-version :- ms/PositiveInt]
-  (clear-stale! :model/ResultMetadataStatus :card card-id stale current-version))
+  (doseq [[stale ids] (u/group-by val key conj [] id->stale)
+          batch       (partition-all mdb/update-partition-size ids)]
+    (t2/update! :model/ResultMetadataStatus :entity_type :card :entity_id [:in (vec batch)] :stale stale
+                {:stale 0 :fail_count 0 :analysis_version current-version})))
 
 (mu/defn result-metadata-deleted-card-ids :- [:sequential ::lib.schema.id/card]
   "Up to `batch-size` IDs of deleted Cards that still have a ResultMetadataStatus."
@@ -1057,49 +799,92 @@
 (mu/defn delete-result-metadata-statuses!
   "Delete the ResultMetadataStatuses of the Cards with `card-ids`, returning the number deleted."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/delete! :model/ResultMetadataStatus :entity_type :card :entity_id [:in card-ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/ResultMetadataStatus :entity_type :card :entity_id [:in %]) card-ids))
 
 (mu/defn remapped-table-ids :- [:set ::lib.schema.id/table]
   "The IDs of the Tables of the Fields remapped to one of the Fields with `field-ids` as their human-readable field."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (or (t2/select-fn-set :table_id [:model/Field :metabase_field.table_id]
-                        {:from  [(t2/table-name :model/Field)]
-                         :join  [:dimension [:= :dimension.field_id :metabase_field.id]]
-                         :where [:in :dimension.human_readable_field_id field-ids]})
-      #{}))
+  (into #{} (mdb/select-batched #(t2/select-fn-set :table_id [:model/Field (u/qualified-key (t2/table-name :model/Field) :table_id)]
+                                                   {:from  [(t2/table-name :model/Field)]
+                                                    :join  [(t2/table-name :model/Dimension) [:= (u/qualified-key (t2/table-name :model/Dimension) :field_id) (u/qualified-key (t2/table-name :model/Field) :id)]]
+                                                    :where [:in (u/qualified-key (t2/table-name :model/Dimension) :human_readable_field_id) %]})
+                                field-ids)))
 
-(mu/defn internal-remap? :- :boolean
-  "Whether the Field with `field-id` has an internal remap, which shows its FieldValues' human-readable values."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/Dimension :field_id field-id :type "internal"))
+(mu/defn internal-remap-field-ids :- [:set ::lib.schema.id/field]
+  "The ids of the Fields among `field-ids` that have an internal remap, which shows their FieldValues' human-readable
+  values."
+  [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
+  (into #{} (mdb/select-batched #(t2/select-fn-set :field_id :model/Dimension :field_id [:in %] :type "internal")
+                                field-ids)))
 
-(mu/defn card-state :- [:maybe ::dependencies.schema/card-state]
-  "The `updated_at` and `result_metadata` of the Card with `card-id`, locking its row until the transaction ends when
-  `lock?`, or nil."
-  [card-id :- ::lib.schema.id/card
-   lock?   :- :boolean]
-  (some-> (t2/select-one [:model/Card :updated_at :result_metadata]
-                         (cond-> {:where [:= :id card-id]} lock? (assoc :for :update)))
-          (select-keys [:updated_at :result_metadata])))
-
-(mu/defn set-card-result-metadata!
-  "Set the result metadata of the Card with `card-id` to `result-metadata` through the Card model, without touching
-  `updated_at`."
-  [card-id         :- ::lib.schema.id/card
-   result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
-  (t2/update! :model/Card :id card-id {:result_metadata result-metadata
-                                       :updated_at      :updated_at}))
+(mu/defn card-states :- [:map-of ::lib.schema.id/card ::dependencies.schema/card-state]
+  "The `updated_at` and `result_metadata` of each of the Cards with `card-ids`, by Card id, read in the order of their
+  ids and, when `lock?`, locking their rows in that order until the transaction ends, the id read as `:card_id` since a
+  Card read with its `:id` and some of the columns its schema governs must have all of them."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]
+   lock?    :- :boolean]
+  (into {}
+        (map (fn [card] [(:card_id card) (select-keys card [:updated_at :result_metadata])]))
+        (mdb/select-batched #(t2/select [:model/Card [:id :card_id] :updated_at :result_metadata]
+                                        (cond-> {:where [:in :id %] :order-by [[:id :asc]]} lock? (assoc :for :update)))
+                            (sort card-ids))))
 
 ;;; ------------------------------------------- Analysis finding job -------------------------------------------
 
-(mu/defn upsert-finding!
-  "Insert or update the AnalysisFinding of the entity `entity-type` `entity-id` with `result`, updating the row a
-  concurrent analysis inserted meanwhile."
+(defn- upsert-findings-query
+  "The statement that inserts the AnalysisFinding of each of the `[entity-id result]` pairs `rows` of `entity-type` or
+  sets its `result` when its unique key exists, stamping `analyzed_at` with the database clock only when the `result`
+  differs, on the app DB `db-type`."
+  [db-type entity-type rows]
+  (let [table      (t2/table-name :model/AnalysisFinding)
+        row-values (fn [now] (mapv (fn [[entity-id result]]
+                                     {:entity_type (name entity-type) :entity_id entity-id :result result :analyzed_at now
+                                      :worktree_id (:worktree-id (mdb/worktree-scope) mdb/default-worktree-id)})
+                                   rows))]
+    (case db-type
+      :postgres
+      {:insert-into   table
+       :values        (row-values [:now])
+       :on-conflict   [:entity_type :entity_id :worktree_id]
+       :do-update-set (array-map :analyzed_at [:case [:<> (u/qualified-key table :result) :excluded.result] [:now]
+                                               :else (u/qualified-key table :analyzed_at)]
+                                 :result      :excluded.result)}
+
+      :mysql
+      {:insert-into             table
+       :values                  (row-values [:now 6])
+       :on-duplicate-key-update (array-map :analyzed_at [:case [:<> :result [:values :result]] [:now 6] :else :analyzed_at]
+                                           :result      [:values :result])}
+
+      :h2
+      {:merge-into              [table :t]
+       :using                   [(with-meta
+                                  {:union-all (mapv (fn [[entity-id result]]
+                                                      ^:allow-subquery
+                                                      {:select [[[:cast (name entity-type) [:varchar 254]] :entity_type]
+                                                                [[:cast entity-id :integer] :entity_id]
+                                                                [[:cast result :boolean] :result]
+                                                                [[:cast (:worktree-id (mdb/worktree-scope) mdb/default-worktree-id) :integer] :worktree_id]]})
+                                                    rows)}
+                                  {:allow-subquery true})
+                                 :s]
+       :on                      [:and [:= :t.entity_type :s.entity_type] [:= :t.entity_id :s.entity_id]
+                                 [:= :t.worktree_id :s.worktree_id]]
+       :when-matched-update-set (array-map :analyzed_at [:case [:<> :t.result :s.result] [:now] :else :t.analyzed_at]
+                                           :result      :s.result)
+       :when-not-matched-insert [[:entity_type :entity_id :result :analyzed_at :worktree_id]
+                                 [:s.entity_type :s.entity_id :s.result [:now]
+                                  (:worktree-id (mdb/worktree-scope) mdb/default-worktree-id)]]})))
+
+(mu/defn upsert-findings!
+  "Insert or update the AnalysisFinding of each entity of `entity-type` that `id->result` maps to its `result`, with
+  one statement for each `mdb/create-partition-size` of them, stamping `analyzed_at` when it inserts or the `result`
+  changes."
   [entity-type :- ::dependencies.schema/entity-type
-   entity-id   :- ms/PositiveInt
-   result      :- :boolean]
-  (mdb/update-or-insert! :model/AnalysisFinding {:entity_type entity-type :entity_id entity-id}
-                         (constantly {:result result})))
+   id->result  :- [:map-of ms/PositiveInt :boolean]]
+  (doseq [rows (partition-all mdb/create-partition-size id->result)]
+    (t2/query (upsert-findings-query (mdb/db-type) entity-type rows)))
+  nil)
 
 (mu/defn take-pending-analysis-finding-statuses! :- [:sequential ::dependencies.schema/pending-status]
   "Up to `batch-size` entities of the type `entity-type` without an AnalysisFindingStatus, or whose status counts a
@@ -1120,14 +905,17 @@
    max-failures :- ms/PositiveInt]
   (record-failure! :model/AnalysisFindingStatus entity-type entity-id max-failures))
 
-(mu/defn clear-analysis-finding-status! :- :boolean
-  "Record that the analysis job analyzed the entity `entity-type` `entity-id` with the analysis of `current-version`,
-  clearing its count of `stale` writes unless a write raised it, returning whether it cleared it."
+(mu/defn clear-analysis-finding-statuses!
+  "Record that the analysis job analyzed the entities `entity-type` whose ids are the keys of `id->stale` with the
+  analysis of `current-version`, clearing each count of `stale` writes unless a write raised it, with one update for
+  each distinct count and partition of ids."
   [entity-type     :- ::dependencies.schema/entity-type
-   entity-id       :- ms/PositiveInt
-   stale           :- ms/IntGreaterThanOrEqualToZero
+   id->stale       :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
    current-version :- ms/PositiveInt]
-  (clear-stale! :model/AnalysisFindingStatus entity-type entity-id stale current-version))
+  (doseq [[stale ids] (u/group-by val key conj [] id->stale)
+          batch       (partition-all mdb/update-partition-size ids)]
+    (t2/update! :model/AnalysisFindingStatus :entity_type entity-type :entity_id [:in (vec batch)] :stale stale
+                {:stale 0 :fail_count 0 :analysis_version current-version})))
 
 (mu/defn analysis-finding-deleted-entity-ids :- [:sequential ms/PositiveInt]
   "Up to `batch-size` IDs of deleted entities of `entity-type` that still have an AnalysisFindingStatus."
@@ -1139,9 +927,56 @@
   "Delete the AnalysisFindingStatuses of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- ::dependencies.schema/entity-type
    entity-ids  :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/AnalysisFindingStatus :entity_type entity-type :entity_id [:in entity-ids]))
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/AnalysisFindingStatus :entity_type entity-type :entity_id [:in %]) entity-ids))
+
+;; A transform has no `archived` column, and a segment lives under its table rather than in a collection.
+(def ^:private failed-entity-columns
+  {:card      {:archived? true,  :collection? true}
+   :transform {:archived? false, :collection? true}
+   :segment   {:archived? true,  :collection? false}})
+
+(mu/defn failed-analysis-entities :- [:sequential [:map
+                                                   [:id            ms/PositiveInt]
+                                                   [:entity_id     :string]
+                                                   [:name          :string]
+                                                   [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+                                                   [:given_up      [:maybe :boolean]]]]
+  "The entities of `entity-type` whose analysis failed or whose dependencies the dependency job gave up computing, with
+  `given_up` true for the latter, excluding archived and Metabase-managed content."
+  [entity-type :- (into [:enum] (keys failed-entity-columns))]
+  (let [model                           (dependencies/entity-model entity-type)
+        {:keys [archived? collection?]} (failed-entity-columns entity-type)]
+    (t2/query {:select    (cond-> [:entity.id :entity.entity_id :entity.name [:ds.terminal :given_up]]
+                            collection? (conj :entity.collection_id))
+               :from      [[(t2/table-name model) :entity]]
+               :left-join [[(t2/table-name :model/AnalysisFinding) :af]
+                           [:and
+                            [:= :af.entity_id :entity.id]
+                            [:= :af.entity_type (name entity-type)]]
+                           [(t2/table-name :model/DependencyStatus) :ds]
+                           [:and
+                            [:= :ds.entity_id :entity.id]
+                            [:= :ds.entity_type (name entity-type)]]]
+               :where     (cond-> [:and
+                                   [:or
+                                    [:= :af.result false]
+                                    [:= :ds.terminal true]]
+                                   (mi/non-internal-filter-clause model :entity)]
+                            archived? (conj [:= :entity.archived false]))
+               :order-by  [[:entity.id :asc]]})))
 
 ;;; --------------------------------------------- Analysis finding errors ---------------------------------------------
+
+(mu/defn finding-errors-for-entities
+  "The AnalysisFindingErrors of the entities `entity-type` `entity-ids`, each entity's oldest first."
+  [entity-type :- ::dependencies.schema/entity-type
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (into []
+        (mapcat #(t2/select :model/AnalysisFindingError
+                            :analyzed_entity_type entity-type
+                            :analyzed_entity_id   [:in %]
+                            {:order-by [[:id :asc]]}))
+        (partition-all 1000 entity-ids)))
 
 (mu/defn finding-errors-for-entity
   "The AnalysisFindingErrors of the entity `entity-type` `entity-id`."
@@ -1158,10 +993,10 @@
 (mu/defn insert-finding-errors!
   "Insert the AnalysisFindingError `rows`, returning the number inserted."
   [rows :- [:sequential (mut/select-keys ::dependencies.schema/analysis-finding-error.update [:analyzed_entity_type :analyzed_entity_id :error_type :error_detail :source_entity_type :source_entity_id])]]
-  (t2/insert! :model/AnalysisFindingError rows))
+  (transduce (map #(t2/insert! :model/AnalysisFindingError (vec %))) + 0 (partition-all mdb/create-partition-size rows)))
 
-(mu/defn delete-finding-errors-for-entity!
-  "Delete the AnalysisFindingErrors of the entity `entity-type` `entity-id`, returning the number deleted."
+(mu/defn delete-finding-errors-for-entities!
+  "Delete the AnalysisFindingErrors of the entities `entity-type` `entity-ids`, returning the number deleted."
   [entity-type :- ::dependencies.schema/entity-type
-   entity-id   :- ms/PositiveInt]
-  (t2/delete! :model/AnalysisFindingError :analyzed_entity_type entity-type :analyzed_entity_id entity-id))
+   entity-ids  :- [:sequential ms/PositiveInt]]
+  (mdb/sum-batched mdb/delete-partition-size #(t2/delete! :model/AnalysisFindingError :analyzed_entity_type entity-type :analyzed_entity_id [:in %]) entity-ids))

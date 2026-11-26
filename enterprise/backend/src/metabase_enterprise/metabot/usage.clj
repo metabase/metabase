@@ -7,6 +7,7 @@
    [metabase-enterprise.metabot.models.metabot-instance-limit :as instance-limit]
    [metabase-enterprise.metabot.settings :as metabot.settings]
    [metabase.api.common :as api]
+   [metabase.metabot.models.ai-usage-log :as ai-usage-log]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log])
   (:import
@@ -75,22 +76,22 @@
       (let [cache-creation (or cache-creation-tokens 0)
             cache-read     (or cache-read-tokens 0)
             total-tokens   (+ prompt-tokens completion-tokens)]
-        (metabot.db/insert-usage-log!
-         {:source                 source
-          :model                  model
-          :provider               provider
-          :model_name             model-name
-          :prompt_tokens          prompt-tokens
-          :completion_tokens      completion-tokens
-          :total_tokens           total-tokens
-          :cache_creation_tokens  cache-creation
-          :cache_read_tokens      cache-read
-          :user_id                (or user-id api/*current-user-id*)
-          :tenant_id              (or tenant-id (some-> api/*current-user* deref :tenant_id))
-          :conversation_id        conversation-id
-          :profile_id             (some-> profile-id name)
-          :request_id             request-id
-          :ai_proxied             ai-proxied}))
+        (ai-usage-log/create-ai-usage-logs!
+         [{:source                 source
+           :model                  model
+           :provider               provider
+           :model_name             model-name
+           :prompt_tokens          prompt-tokens
+           :completion_tokens      completion-tokens
+           :total_tokens           total-tokens
+           :cache_creation_tokens  cache-creation
+           :cache_read_tokens      cache-read
+           :user_id                (or user-id api/*current-user-id*)
+           :tenant_id              (or tenant-id (some-> api/*current-user* deref :tenant_id))
+           :conversation_id        conversation-id
+           :profile_id             (some-> profile-id name)
+           :request_id             request-id
+           :ai_proxied             ai-proxied}]))
       (catch Exception e
         (log/warnf "Failed to log LLM usage to ai_usage_log: %s" (ex-message e))))))
 
@@ -109,7 +110,8 @@
 
 (defn- usage-query
   "Query ai_usage_log for current-period usage, narrowed by the optional `user-id` and `tenant-id`.
-  Returns a token sum or a message count depending on `metabot-limit-unit`. A message count leaves out the agent
+  Returns a token sum or a message count depending on `metabot-limit-unit`. A token sum leaves out the tokens read
+  from the provider prompt cache, see [[metabot.db/usage-token-sum]]. A message count leaves out the agent
   loop that asks, `request-id`, see [[metabot.db/usage-message-count]]."
   [& {:keys [user-id tenant-id request-id]}]
   (let [limit-type (metabot.settings/metabot-limit-unit)

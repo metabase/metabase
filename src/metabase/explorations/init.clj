@@ -18,7 +18,7 @@
 ;; Install the content-visibility gate into the documents module's read/write path, so the
 ;; Summary doc's content is hidden from collaborators whose lens differs from the creator's.
 (documents/register-doc-content-visibility-fn!
- derived-perms/doc-content-visible-to-current-user?)
+ derived-perms/doc-content-visibility-fn)
 
 ;; Withhold the warehouse values a comment's context carries from viewers the exploration's
 ;; data-access gate excludes. Registered here for the same reason as the gate above: `comments`

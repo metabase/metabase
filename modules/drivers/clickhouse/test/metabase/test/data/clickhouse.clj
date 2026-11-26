@@ -33,8 +33,24 @@
 (defmethod driver/database-supports? [:clickhouse :metabase.driver.sql-jdbc.sync.describe-table-test/describe-materialized-view-fields]
   [_driver _feature _db] false)
 
+(defmethod driver/database-supports? [:clickhouse :metabase.driver.sql-jdbc.sync.describe-table-test/describe-pks]
+  [_driver _feature _db] true)
+
+;; A ClickHouse JSON value must be an object
+(defmethod driver/database-supports? [:clickhouse :metabase.driver.sql-jdbc.sync.describe-table-test/json-arrays-and-scalars]
+  [_driver _feature _db] false)
+
+;; ClickHouse JSON values come back as maps, not JSON text, so JSON columns do not get `:type/SerializedJSON`
+(defmethod driver/database-supports? [:clickhouse :metabase.driver.sql-jdbc.sync.describe-table-test/serialized-json-semantic-type]
+  [_driver _feature _db] false)
+
 (defmethod driver/database-supports? [:clickhouse :metabase.query-processor.parameters-test/get-parameter-count]
   [_driver _feature _db] false)
+
+;; Python transforms swap in a new table with a drop and then a rename, since this driver doesn't support
+;; `:atomic-renames`.
+(defmethod driver/database-supports? [:clickhouse :test/python-transforms-without-atomic-renames]
+  [_driver _feature _database] true)
 
 (defmethod qp.alternative-date-test/iso-8601-text-fields-expected-rows :clickhouse
   [_driver]
@@ -69,6 +85,7 @@
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Float]           [_ _] "Float64")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Integer]         [_ _] "Int32")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/IPAddress]       [_ _] "IPv4")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/JSON]            [_ _] "JSON")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Text]            [_ _] "String")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/UUID]            [_ _] "UUID")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Time]            [_ _] "Time")

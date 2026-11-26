@@ -6,6 +6,7 @@ import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type {
   AutocompleteSuggestion,
   Database,
+  DatabaseAnonymousReach,
   DatabaseId,
   DatabaseUsageInfo,
   Engine,
@@ -111,6 +112,13 @@ export function setupDatabaseUsageInfoEndpoint(
   fetchMock.get(`path:/api/database/${db.id}/usage_info`, usageInfo);
 }
 
+export function setupDatabaseAnonymousReachEndpoint(
+  db: Database,
+  anonymousReach: DatabaseAnonymousReach | Promise<DatabaseAnonymousReach>,
+) {
+  fetchMock.get(`path:/api/database/${db.id}/anonymous-reach`, anonymousReach);
+}
+
 export function setupEnginesEndpoint(engines: Record<string, Engine>) {
   fetchMock.get("path:/api/setting/engines", engines);
 }
@@ -186,8 +194,11 @@ export const setupListDatabaseSchemasEndpoint = (
 
 export function setupDatabaseIdFieldsEndpoints({
   database: { id, tables = [] },
+  delay,
 }: {
   database: Database;
+  /** Holds the response for this many milliseconds */
+  delay?: number;
 }) {
   const fields = tables.flatMap((table) =>
     (table.fields ?? [])
@@ -200,6 +211,7 @@ export function setupDatabaseIdFieldsEndpoints({
 
   fetchMock.get(`path:/api/database/${id}/idfields`, fields, {
     name,
+    delay,
   });
 }
 

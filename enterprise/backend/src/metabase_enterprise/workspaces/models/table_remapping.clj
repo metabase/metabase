@@ -15,8 +15,12 @@
    They also drop this process's [[database-ids-with-remappings]] cache."
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
-   [metabase.cache.core :as cache]
+   [metabase.cache.models.cache-config :as cache-config]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -89,11 +93,83 @@
                                      (= generation (:generation %)) (assoc :database-ids ids, :read-at now)))
         ids))))
 
-(defn- invalidate! [row]
-  (cache/invalidate-config! {:databases [(:database_id row)]})
-  ;; After commit, not now: another thread that reads before the commit sees the rows as they were before this write,
-  ;; and would cache that after an early drop. The writing transaction's own reads bypass the cache.
-  (app-db/do-after-commit invalidate-database-ids!))
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(t2/define-after-insert  :model/TableRemapping [row] (invalidate! row) row)
-(t2/define-before-delete :model/TableRemapping [row] (invalidate! row))
+(defn- invalidate!
+  "Invalidate the QP cache of the Databases with `database-ids`, once for all of them, and drop this process's
+  [[database-ids-with-remappings]] cache after the commit, since another thread that read before the commit would
+  otherwise cache the rows as they were before this write."
+  [database-ids]
+  (when (seq database-ids)
+    (cache-config/invalidate! {:databases (vec database-ids)})
+    (app-db/do-after-commit invalidate-database-ids!)))
+
+(mu/defn upsert-table-remapping!
+  "Make the TableRemapping of `workspace-id` (nil for the instance's own) of the Database with `database-id` from
+  `from-spec` point at `to-spec`."
+  [database-id  :- ms/PositiveInt
+   workspace-id :- ::ws.db/workspace-id
+   from-spec    :- ::ws.db/table-spec
+   to-spec      :- ::ws.db/table-spec]
+  (t2/with-transaction [_conn]
+    (u/prog1 (ws.db/upsert-table-remapping! database-id workspace-id from-spec to-spec)
+      (invalidate! [database-id]))))
+
+(mu/defn delete-table-remapping!
+  "Delete the TableRemapping of `workspace-id` (nil for the instance's own) of the Database with `database-id` whose
+  source is `from-spec`, returning the number of rows deleted."
+  [database-id  :- ms/PositiveInt
+   workspace-id :- ::ws.db/workspace-id
+   from-spec    :- ::ws.db/table-spec]
+  (t2/with-transaction [_conn]
+    (u/prog1 (ws.db/delete-table-remapping! database-id workspace-id from-spec)
+      (when (pos? <>) (invalidate! [database-id])))))
+
+(mu/defn delete-table-remappings-of-database!
+  "Delete the TableRemappings of `workspace-id` (nil for the instance's own) of the Database with `database-id`,
+  returning the number of rows deleted."
+  [database-id  :- ms/PositiveInt
+   workspace-id :- ::ws.db/workspace-id]
+  (t2/with-transaction [_conn]
+    (u/prog1 (ws.db/delete-table-remappings-of-database! database-id workspace-id)
+      (when (pos? <>) (invalidate! [database-id])))))
+
+(mu/defn delete-table-remappings-of-databases!
+  "Delete the TableRemappings of `workspace-id` (nil for the instance's own) of the Databases with `database-ids` in
+  one statement, returning the number of rows deleted."
+  [database-ids :- [:sequential {:min 1} ms/PositiveInt]
+   workspace-id :- ::ws.db/workspace-id]
+  (t2/with-transaction [_conn]
+    (u/prog1 (ws.db/delete-table-remappings-of-databases! database-ids workspace-id)
+      (when (pos? <>) (invalidate! database-ids)))))
+
+(mu/defn delete-table-remappings-into!
+  "Delete the TableRemappings of the Database with `database-id` whose target is in the `(to-db, to-schema)`
+  namespace, in every workspace, returning the number of rows deleted."
+  [database-id :- ms/PositiveInt
+   to-db       :- :string
+   to-schema   :- :string]
+  (t2/with-transaction [_conn]
+    (u/prog1 (ws.db/delete-table-remappings-into! database-id to-db to-schema)
+      (when (pos? <>) (invalidate! [database-id])))))
+
+(mu/defn delete-workspace-table-remappings!
+  "Delete the TableRemappings of the workspace with `workspace-id`, returning the number of rows deleted."
+  [workspace-id :- ms/PositiveInt]
+  (t2/with-transaction [_conn]
+    (let [database-ids (ws.db/workspace-table-remapping-database-ids workspace-id)]
+      (u/prog1 (ws.db/delete-workspace-table-remappings! workspace-id)
+        (invalidate! database-ids)))))
+
+(mu/defn delete-instance-table-remappings!
+  "Delete the instance's own TableRemappings, and none of the workspaces that requests name."
+  []
+  (t2/with-transaction [_conn]
+    (let [database-ids (ws.db/table-remapping-database-ids)]
+      (u/prog1 (ws.db/delete-instance-table-remappings!)
+        (invalidate! database-ids)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TableRemapping [_model]
+  {:skip? false})

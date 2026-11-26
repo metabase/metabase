@@ -178,12 +178,23 @@
   [this]
   this)
 
+(defn- has-byte-cells? [{:keys [rows]}]
+  (boolean (some (partial some bytes?) rows)))
+
+(defn- hashable-table-definition [table-definition]
+  (cond-> table-definition
+    (has-byte-cells? table-definition)
+    (update :rows (partial mapv (partial mapv #(if (bytes? %) [:bytes (codecs/bytes->hex %)] %))))))
+
 (defn- hash-dataset*
   [^DatabaseDefinition db-def]
   (let [db-def' (get-dataset-definition db-def)
         ;; for routing tests (where hashes need to match despite content being different)
         ;; it is important to be able to override the hash key
-        hash-key (:hash-key db-def' db-def')]
+        hash-key (:hash-key db-def' db-def')
+        hash-key (cond-> hash-key
+                   (some has-byte-cells? (:table-definitions hash-key))
+                   (update :table-definitions (partial map hashable-table-definition)))]
     (codecs/bytes->hex (buddy-hash/sha1 (str (into (sorted-map) hash-key))))))
 
 (def hash-dataset

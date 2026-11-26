@@ -4,6 +4,7 @@
    Field as the workspace's copy of its Table has it. A request that names the workspace reads them over the shared
    metadata."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -21,3 +22,11 @@
 (t2/deftransforms :model/WorkspaceFieldCopy
   {:base_type      mi/transform-keyword
    :effective_type mi/transform-keyword})
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/WorkspaceTableCopy [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/WorkspaceFieldCopy [_model]
+  {:skip? false})

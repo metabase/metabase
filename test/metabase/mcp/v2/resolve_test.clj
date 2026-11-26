@@ -75,22 +75,23 @@
             `resolve-and-read` call in the main branch the id would travel straight into the write
             unchecked, and a distinguishable error would turn the argument into a collection-id
             enumeration oracle."
-    (mt/with-temp [:model/Collection {readable-id :id}   {:name "Readable"}
-                   :model/Collection {unreadable-id :id} {:name     "Crowberto's personal subfolder"
-                                                          :location (str "/" (:id (collection/user->personal-collection
-                                                                                   (mt/user->id :crowberto)))
-                                                                         "/")}]
-      (mt/with-test-user :rasta
-        (testing "a readable collection resolves to its own id"
-          (is (= readable-id (v2.resolve/resolve-collection-id readable-id))))
-        (let [missing    (try (v2.resolve/resolve-collection-id 13371337)
-                              (catch Exception e (ex-message e)))
-              unreadable (try (v2.resolve/resolve-collection-id unreadable-id)
-                              (catch Exception e (ex-message e)))]
-          (is (str/includes? missing "not found"))
-          ;; Compare the messages, not merely that both threw: differing wording is the leak.
-          (is (= (str/replace missing "13371337" (str unreadable-id))
-                 unreadable)))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[{readable-id :id}] (collection/create-collections! [{:name "Readable"}])
+            [{unreadable-id :id}] (collection/create-collections! [{:name     "Crowberto's personal subfolder"
+                                                                    :location (str "/" (:id (collection/user->personal-collection
+                                                                                             (mt/user->id :crowberto)))
+                                                                                   "/")}])]
+        (mt/with-test-user :rasta
+          (testing "a readable collection resolves to its own id"
+            (is (= readable-id (v2.resolve/resolve-collection-id readable-id))))
+          (let [missing    (try (v2.resolve/resolve-collection-id 13371337)
+                                (catch Exception e (ex-message e)))
+                unreadable (try (v2.resolve/resolve-collection-id unreadable-id)
+                                (catch Exception e (ex-message e)))]
+            (is (str/includes? missing "not found"))
+            (is (= (str/replace missing "13371337" (str unreadable-id))
+                   unreadable)
+                "the messages of the two refusals are the same")))))))
 
 (deftest resolve-collection-id-or-personal-test
   (testing "GHY-4218: an absent collection argument defaults to the caller's personal collection"
@@ -102,8 +103,9 @@
       (is (nil? (v2.resolve/resolve-collection-id-or-personal "root")))))
   (testing "GHY-4218: an explicit id is resolved as usual"
     (mt/with-test-user :rasta
-      (mt/with-temp [:model/Collection {coll-id :id} {}]
-        (is (= coll-id (v2.resolve/resolve-collection-id-or-personal coll-id))))))
+      (mt/with-model-cleanup [:model/Collection]
+        (let [[{coll-id :id}] (collection/create-collections! [{:name (mt/random-name)}])]
+          (is (= coll-id (v2.resolve/resolve-collection-id-or-personal coll-id)))))))
   (testing "GHY-4218: a caller with no personal collection (API-key users) gets a teaching error
             rather than silently falling back to the root collection"
     (mt/with-temp [:model/User {user-id :id} {:type :api-key}]
@@ -161,37 +163,38 @@
       (update :data #(walk/postwalk-replace {from to} %))))
 
 (deftest resolve-and-read-hides-transform-folders-test
-  (mt/with-temp [:model/Collection folder   {:name "Transform folder" :namespace "transforms"}
-                 :model/Collection child    {:name      "Transform subfolder"
-                                             :namespace "transforms"
-                                             :location  (str "/" (:id folder) "/")}
-                 :model/Collection trashed  {:name              "Trashed transform folder"
-                                             :namespace         "transforms"
-                                             :archived          true
-                                             :archived_directly true}
-                 :model/Collection normal   {:name "Normal collection"}
-                 :model/Collection snippets {:name "Snippet folder" :namespace "snippets"}]
-    (let [missing-id  13371337
-          missing-eid (u/generate-nano-id)
-          resolvers   {"resolve-and-read"      #(v2.resolve/resolve-and-read :model/Collection %)
-                       "resolve-collection-id" v2.resolve/resolve-collection-id}]
-      (doseq [user                     [:crowberto :rasta]
-              [resolver-name resolve!] resolvers]
-        (mt/with-test-user user
-          (testing (str user " " resolver-name)
-            (testing "GHY-4746: a transform folder gives the same not-found error as a missing id"
-              (doseq [[label coll] {"folder" folder "child folder" child "trashed folder" trashed}]
-                (testing label
-                  (testing "by numeric id"
-                    (is (= (with-id (thrown-error resolve! missing-id) missing-id (:id coll))
-                           (thrown-error resolve! (:id coll)))))
-                  (testing "by entity_id"
-                    (is (= (with-id (thrown-error resolve! missing-eid) missing-eid (:entity_id coll))
-                           (thrown-error resolve! (:entity_id coll))))))))
-            (testing "GHY-4746: the missing-id error is the collapsed not-found"
-              (is (str/includes? (:message (thrown-error resolve! missing-id)) "not found")))
-            (testing "GHY-4746: a normal collection and a snippet folder still resolve"
-              (doseq [coll [normal snippets]
-                      id   [(:id coll) (:entity_id coll)]]
-                (is (= (:id coll)
-                       (u/the-id (resolve! id))))))))))))
+  (mt/with-model-cleanup [:model/Collection]
+    (let [[normal] (collection/create-collections! [{:name "Normal collection"}])
+          [snippets] (collection/create-collections! [{:name "Snippet folder" :namespace "snippets"}])]
+      (mt/with-temp [:model/Collection folder {:name "Transform folder" :namespace "transforms"}
+                     :model/Collection child {:name      "Transform subfolder"
+                                              :namespace "transforms"
+                                              :location  (str "/" (:id folder) "/")}
+                     :model/Collection trashed {:name              "Trashed transform folder"
+                                                :namespace         "transforms"
+                                                :archived          true
+                                                :archived_directly true}]
+        (let [missing-id  13371337
+              missing-eid (u/generate-nano-id)
+              resolvers   {"resolve-and-read"      #(v2.resolve/resolve-and-read :model/Collection %)
+                           "resolve-collection-id" v2.resolve/resolve-collection-id}]
+          (doseq [user                     [:crowberto :rasta]
+                  [resolver-name resolve!] resolvers]
+            (mt/with-test-user user
+              (testing (str user " " resolver-name)
+                (testing "GHY-4746: a transform folder gives the same not-found error as a missing id"
+                  (doseq [[label coll] {"folder" folder "child folder" child "trashed folder" trashed}]
+                    (testing label
+                      (testing "by numeric id"
+                        (is (= (with-id (thrown-error resolve! missing-id) missing-id (:id coll))
+                               (thrown-error resolve! (:id coll)))))
+                      (testing "by entity_id"
+                        (is (= (with-id (thrown-error resolve! missing-eid) missing-eid (:entity_id coll))
+                               (thrown-error resolve! (:entity_id coll))))))))
+                (testing "GHY-4746: the missing-id error is the collapsed not-found"
+                  (is (str/includes? (:message (thrown-error resolve! missing-id)) "not found")))
+                (testing "GHY-4746: a normal collection and a snippet folder still resolve"
+                  (doseq [coll [normal snippets]
+                          id   [(:id coll) (:entity_id coll)]]
+                    (is (= (:id coll)
+                           (u/the-id (resolve! id))))))))))))))

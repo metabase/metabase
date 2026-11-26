@@ -2,11 +2,8 @@
   "Application database queries for the scim module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for transactions."
   (:require
-   [malli.util :as mut]
-   [metabase.api-keys.schema :as api-keys.schema]
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.permissions.schema :as permissions.schema]
-   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -24,16 +21,6 @@
   "The SCIM ApiKey, or nil."
   []
   (t2/select-one :model/ApiKey :scope :scim))
-
-(mu/defn delete-scim-api-keys!
-  "Delete every SCIM ApiKey, returning the number deleted."
-  []
-  (t2/delete! :model/ApiKey :scope :scim))
-
-(mu/defn insert-api-key!
-  "Insert `api-key` and return the new instance."
-  [api-key :- ::api-keys.schema/api-key.create]
-  (t2/insert-returning-instance! :model/ApiKey api-key))
 
 (defn- personal-user-expr
   [email]
@@ -75,30 +62,20 @@
 (mu/defn user-ids-by-entity-ids
   "The IDs of the Users with `entity-ids`."
   [entity-ids :- [:sequential :string]]
-  (t2/select-fn-set :id :model/User {:where [:in :entity_id entity-ids]}))
-
-(mu/defn insert-user!
-  "Insert the User `row`, returning the number inserted."
-  [row :- ::users.schema/user.update]
-  (t2/insert! :model/User row))
-
-(mu/defn update-user!
-  "Apply `changes` to the User with `user-id`, returning the number updated."
-  [user-id :- ::lib.schema.id/user
-   changes :- ::users.schema/user.update]
-  (t2/update! :model/User :id user-id changes))
+  (mdb/select-batched-set #(t2/select-fn-set :id :model/User {:where [:in :entity_id %]}) entity-ids))
 
 (mu/defn user-group-memberships
   "Rows of User ID, group name, and group entity ID for the memberships of the Users with `user-ids`, excluding the
   groups with `excluded-group-ids`."
   [user-ids           :- [:sequential ::lib.schema.id/user]
    excluded-group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/PermissionsGroupMembership :pgm.user_id :pg.name :pg.entity_id]
-             {:from  [[:permissions_group_membership :pgm]]
-              :join  [[:permissions_group :pg] [:= :pg.id :group_id]]
-              :where (into [:and [:in :user_id user-ids]]
-                           (map (fn [group-id] [:not= :pg.id group-id]))
-                           excluded-group-ids)}))
+  (mdb/select-batched #(t2/select [:model/PermissionsGroupMembership :pgm.user_id :pg.name :pg.entity_id]
+                                  {:from  [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                                   :join  [[(t2/table-name :model/PermissionsGroup) :pg] [:= :pg.id :group_id]]
+                                   :where (into [:and [:in :user_id %]]
+                                                (map (fn [group-id] [:not= :pg.id group-id]))
+                                                excluded-group-ids)})
+                      user-ids))
 
 (defn- manageable-group-expr
   [excluded-group-ids group-name]
@@ -136,22 +113,6 @@
   [group-name :- :string]
   (t2/exists? :model/PermissionsGroup :%lower.name (u/lower-case-en group-name)))
 
-(mu/defn insert-group!
-  "Insert `group` and return the new instance."
-  [group :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :entity_id :magic_group_type :is_tenant_group])]
-  (first (t2/insert-returning-instances! :model/PermissionsGroup group)))
-
-(mu/defn update-group!
-  "Apply `changes` to the PermissionsGroup with `group-id`, returning the number updated."
-  [group-id :- ms/PositiveInt
-   changes  :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :entity_id :magic_group_type :is_tenant_group])]
-  (t2/update! :model/PermissionsGroup :id group-id changes))
-
-(mu/defn delete-group!
-  "Delete the PermissionsGroup with `group-id`, returning the number deleted."
-  [group-id :- ms/PositiveInt]
-  (t2/delete! :model/PermissionsGroup :id group-id))
-
 (mu/defn group-member-user-ids
   "The user IDs of the members of the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt]
@@ -161,7 +122,8 @@
   "Rows of group ID, member email, and member entity ID for the memberships of the PermissionsGroups with
   `group-ids`."
   [group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/PermissionsGroupMembership :pgm.group_id :u.email :u.entity_id]
-             {:from  [[:permissions_group_membership :pgm]]
-              :join  [[:core_user :u] [:= :u.id :pgm.user_id]]
-              :where [:in :pgm.group_id group-ids]}))
+  (mdb/select-batched #(t2/select [:model/PermissionsGroupMembership :pgm.group_id :u.email :u.entity_id]
+                                  {:from  [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                                   :join  [[(t2/table-name :model/User) :u] [:= :u.id :pgm.user_id]]
+                                   :where [:in :pgm.group_id %]})
+                      group-ids))
