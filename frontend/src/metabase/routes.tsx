@@ -158,6 +158,12 @@ const onboardingPage = () =>
     /* webpackChunkName: "onboarding" */ "metabase/home/components/Onboarding"
   ).then(({ Onboarding }) => ({ Component: Onboarding }));
 
+// PROTOTYPE: the data apps guide page that the discoverability variants link to.
+const dataAppsGuidePage = () =>
+  import(
+    /* webpackChunkName: "prototypes" */ "metabase/prototypes/data-apps-discoverability/DataAppsGuidePage"
+  ).then(({ DataAppsGuidePage }) => ({ Component: DataAppsGuidePage }));
+
 const searchApp = () =>
   import(
     /* webpackChunkName: "search" */ "metabase/search/containers/SearchApp"
@@ -293,6 +299,8 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               // The global all hands routes, things in here are for all the folks
               { path: "/", lazy: landingPage },
+
+              { path: "data-apps", lazy: dataAppsGuidePage },
 
               {
                 path: "getting-started",

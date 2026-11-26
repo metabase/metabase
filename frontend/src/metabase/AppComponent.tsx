@@ -45,6 +45,7 @@ import { trackPageView } from "./analytics";
 import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
+import { DiscoveryVariantPicker } from "./prototypes/data-apps-discoverability/DiscoveryVariantPicker";
 
 const getErrorComponent = ({
   status,
@@ -163,6 +164,7 @@ export function App() {
             </Flex>
           </Flex>
           <Palette />
+          <DiscoveryVariantPicker />
         </AppKBarProvider>
       </ScrollToTop>
     </ErrorBoundary>

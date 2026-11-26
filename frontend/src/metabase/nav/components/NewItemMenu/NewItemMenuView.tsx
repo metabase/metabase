@@ -11,6 +11,11 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/settings";
 import { Box, Icon, Menu } from "metabase/ui";
+import {
+  DATA_APPS_GUIDE_URL,
+  useDiscoveryVariant,
+  useSimulatedIsAdmin,
+} from "metabase/prototypes/data-apps-discoverability/use-discovery-variant";
 import * as Urls from "metabase/urls";
 import type { CollectionId } from "metabase-types/api";
 
@@ -46,6 +51,10 @@ export const NewItemMenuView = ({
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
   const { hasNlqAccess } = useUserMetabotPermissions();
+  const { variant } = useDiscoveryVariant();
+  const isAdmin = useSimulatedIsAdmin();
+  const showsDataAppItem =
+    isAdmin && (variant === "new-menu" || variant === "both");
 
   const menuItems = useMemo(() => {
     const items = [];
@@ -108,6 +117,19 @@ export const NewItemMenuView = ({
       );
     }
 
+    if (showsDataAppItem) {
+      items.push(
+        <Menu.Item
+          key="data-app"
+          component={ForwardRefLink}
+          to={DATA_APPS_GUIDE_URL}
+          leftSection={<Icon name="app" />}
+        >
+          {t`Data app`}
+        </Menu.Item>,
+      );
+    }
+
     items.push(
       <Menu.Item
         key="document"
@@ -132,6 +154,7 @@ export const NewItemMenuView = ({
     hasNlqAccess,
     onCloseNavbar,
     buildQuestion,
+    showsDataAppItem,
   ]);
 
   if (menuItems.length === 0) {

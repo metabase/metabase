@@ -1,0 +1,59 @@
+/* Mirrors the installation setup steps: a bordered box per step, with its number sitting on the left border. */
+.activeStep,
+.inactiveStep {
+  position: relative;
+  display: block;
+  width: 100%;
+  margin-bottom: 1rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-sm);
+  background-color: var(--mb-color-background_page-primary);
+}
+
+.activeStep {
+  --step-padding: 2.5rem;
+
+  padding: var(--step-padding);
+}
+
+.inactiveStep {
+  padding: 1.25rem 2.5rem;
+  transition: border-color 150ms ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .inactiveStep:hover {
+    border-color: var(--mb-color-core-brand);
+  }
+}
+
+.inactiveStep:focus-visible {
+  outline: 2px solid var(--mb-color-core-brand);
+  outline-offset: 2px;
+}
+
+.number {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+  width: 2.625rem;
+  height: 2.625rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 50%;
+  background-color: var(--mb-color-background_page-primary);
+  color: var(--mb-color-core-brand);
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Keeps the number centered on the title line of an open step. */
+.activeStep .number {
+  top: calc(var(--step-padding) - 0.5rem);
+  transform: translate(-50%, 0);
+}
+
+.numberCompleted {
+  border-color: var(--mb-color-feedback-positive);
+  background-color: var(--mb-color-feedback-positive);
+}
