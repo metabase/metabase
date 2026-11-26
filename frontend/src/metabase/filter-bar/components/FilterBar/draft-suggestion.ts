@@ -1,8 +1,6 @@
 import { type Editor, Extension, type Range } from "@tiptap/core";
-import Suggestion from "@tiptap/suggestion";
+import Suggestion, { type SuggestionProps } from "@tiptap/suggestion";
 import { match } from "ts-pattern";
-
-import { createBareSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 
 import {
   DRAFT_SUGGESTION_KEY,
@@ -11,17 +9,33 @@ import {
   getStageAt,
   insertConnector,
 } from "../../editor";
-import type { FilterBarAdapter } from "../../types";
-import { type DraftPick, createDraftPopup } from "../DraftPopup/DraftPopup";
+import type { ConnectorToken } from "../../model";
+import type { ColumnItem, FilterOperator } from "../../types";
+import type { GetAnchorRect } from "../AnchorTarget/AnchorTarget";
 
-type DraftSuggestionOptions<F> = {
-  getAdapter: () => FilterBarAdapter<F>;
-  actions: DraftActions<F>;
+export type DraftPick<F> =
+  | ColumnItem<F>
+  | { type: "operator"; operator: FilterOperator }
+  | { type: "connector"; connector: ConnectorToken["type"] };
+
+export type DraftSuggestion<F> = {
+  editor: Editor;
+  range: Range;
+  query: string;
+  getCaretRect: GetAnchorRect;
+  pick: (item: DraftPick<F>) => void;
 };
 
-export const createDraftSuggestion = <F,>({
-  getAdapter,
+export type DraftSuggestionOptions<F> = {
+  actions: DraftActions<F>;
+  onChange: (suggestion: DraftSuggestion<F> | null) => void;
+  onKeyDown: (event: KeyboardEvent) => boolean;
+};
+
+export const createDraftSuggestion = <F>({
   actions,
+  onChange,
+  onKeyDown,
 }: DraftSuggestionOptions<F>) => {
   const pick = (editor: Editor, range: Range, item: DraftPick<F>) => {
     const stage = getStageAt(editor.state.doc, range.from);
@@ -44,6 +58,15 @@ export const createDraftSuggestion = <F,>({
       .exhaustive();
   };
 
+  const report = ({
+    editor,
+    range,
+    query,
+    clientRect,
+    command,
+  }: SuggestionProps<DraftPick<F>, DraftPick<F>>) =>
+    onChange({ editor, range, query, getCaretRect: clientRect, pick: command });
+
   return Extension.create({
     name: "draftSuggestion",
     priority: 1150,
@@ -57,7 +80,12 @@ export const createDraftSuggestion = <F,>({
             editor.isFocused && !transaction.getMeta("focus"),
           shouldResetDismissed: ({ transaction }) => transaction.docChanged,
           command: ({ editor, range, props }) => pick(editor, range, props),
-          render: createBareSuggestionRenderer(createDraftPopup(getAdapter)),
+          render: () => ({
+            onStart: report,
+            onUpdate: report,
+            onKeyDown: ({ event }) => onKeyDown(event),
+            onExit: () => onChange(null),
+          }),
         }),
       ];
     },

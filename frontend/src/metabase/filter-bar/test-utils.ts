@@ -1,5 +1,3 @@
-import { Fragment, createElement } from "react";
-
 import {
   type PillToken,
   closeToken,
@@ -12,8 +10,7 @@ import type {
   FilterBarAdapter,
   FilterBarStageAdapter,
   FilterColumn,
-  FilterEditorProps,
-  FilterOperator,
+  FilterOperatorGroup,
   FilterParts,
   FilterStages,
   FilterTree,
@@ -63,27 +60,33 @@ export type MockFilter =
   | { type: "segment"; name: string }
   | { type: "expression"; expression: string };
 
-const NUMBER_OPERATORS: FilterOperator[] = [
-  { key: "=", label: "is", valueKind: "multi" },
-  { key: "!=", label: "is not", valueKind: "multi" },
-  { key: ">", label: "greater than", valueKind: "single" },
-  { key: "<", label: "less than", valueKind: "single" },
-  { key: ">=", label: "at least", valueKind: "single" },
-  { key: "<=", label: "at most", valueKind: "single" },
-  { key: "between", label: "is between", valueKind: "range" },
-  { key: "is-empty", label: "is empty", valueKind: "none" },
+const NUMBER_OPERATORS: FilterOperatorGroup[] = [
+  [{ key: "between", label: "is between", valueKind: "range" }],
+  [
+    { key: "=", label: "is", valueKind: "multi" },
+    { key: "!=", label: "is not", valueKind: "multi" },
+  ],
+  [
+    { key: ">", label: "greater than", valueKind: "single" },
+    { key: ">=", label: "at least", valueKind: "single" },
+    { key: "<", label: "less than", valueKind: "single" },
+    { key: "<=", label: "at most", valueKind: "single" },
+  ],
+  [{ key: "is-empty", label: "is empty", valueKind: "none" }],
 ];
 
-const TEXT_OPERATORS: FilterOperator[] = [
-  { key: "=", label: "is", valueKind: "multi" },
-  { key: "!=", label: "is not", valueKind: "multi" },
-  { key: "contains", label: "contains", valueKind: "single" },
-  { key: "is-empty", label: "is empty", valueKind: "none" },
+const TEXT_OPERATORS: FilterOperatorGroup[] = [
+  [
+    { key: "=", label: "is", valueKind: "multi" },
+    { key: "!=", label: "is not", valueKind: "multi" },
+  ],
+  [{ key: "contains", label: "contains", valueKind: "single" }],
+  [{ key: "is-empty", label: "is empty", valueKind: "none" }],
 ];
 
 type MockColumn = {
   column: FilterColumn;
-  operators: FilterOperator[] | null;
+  operators: FilterOperatorGroup[] | null;
   stage: number;
 };
 
@@ -133,9 +136,9 @@ const toMockPill = (filter: MockFilter): PillContent => {
     return { type: "expression", expression: filter.expression };
   }
   const mockColumn = findColumn(filter.column);
-  const operator = mockColumn?.operators?.find(
-    ({ key }) => key === filter.operator,
-  );
+  const operator = mockColumn?.operators
+    ?.flat()
+    .find(({ key }) => key === filter.operator);
   if (!mockColumn || !operator) {
     return { type: "opaque", displayName: filter.column, icon: "filter" };
   }
@@ -184,24 +187,6 @@ const getMockColumnGroups = (stage: number): ColumnGroup<MockFilter>[] => [
   },
 ];
 
-const renderMockFilterEditor = ({
-  onChange,
-  onClose,
-}: FilterEditorProps<MockFilter>) =>
-  createElement(
-    Fragment,
-    null,
-    createElement(
-      "button",
-      {
-        type: "button",
-        onClick: () => onChange({ type: "segment", name: "Big orders" }),
-      },
-      "Apply",
-    ),
-    createElement("button", { type: "button", onClick: onClose }, "Close"),
-  );
-
 export const MOCK_ADAPTER: FilterBarAdapter<MockFilter> = {
   stage: (stage) => ({
     columnGroups: () => getMockColumnGroups(stage),
@@ -214,7 +199,6 @@ export const MOCK_ADAPTER: FilterBarAdapter<MockFilter> = {
     }),
     toPill: toMockPill,
     formatValues: formatMockValues,
-    renderFilterEditor: renderMockFilterEditor,
   }),
 };
 

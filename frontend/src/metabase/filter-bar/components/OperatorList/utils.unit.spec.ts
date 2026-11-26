@@ -1,6 +1,6 @@
 import type { FilterOperator } from "../../types";
 
-import { findExactOperator, findOperators } from "./utils";
+import { findExactOperator, findOperatorGroups, findOperators } from "./utils";
 
 const IS: FilterOperator = { key: "=", label: "is", valueKind: "multi" };
 const IS_NOT: FilterOperator = {
@@ -24,6 +24,16 @@ const IS_EMPTY: FilterOperator = {
   valueKind: "none",
 };
 const OPERATORS = [IS, IS_NOT, GREATER, AT_LEAST, IS_EMPTY];
+
+describe("findOperatorGroups", () => {
+  it("keeps the matches in their groups and drops the empty groups", () => {
+    const groups = [[IS, IS_NOT], [GREATER, AT_LEAST], [IS_EMPTY]];
+    expect(findOperatorGroups(groups, "is")).toEqual([
+      [IS, IS_NOT],
+      [IS_EMPTY],
+    ]);
+  });
+});
 
 describe("findOperators", () => {
   it("finds operators by label", () => {

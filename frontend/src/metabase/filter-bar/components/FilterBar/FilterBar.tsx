@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { ActionIcon, Flex, Icon, Text } from "metabase/ui";
 
 import type { FilterBarProps } from "../../types";
-import { FilterEditorPopover } from "../FilterEditorPopover/FilterEditorPopover";
+import { FilterPopover } from "../FilterPopover/FilterPopover";
 
 import S from "./FilterBar.module.css";
 import { useFilterBarEditor } from "./use-filter-bar-editor";
@@ -16,10 +16,13 @@ export const FilterBar = <F,>(props: FilterBarProps<F>) => {
     error,
     hasFilters,
     clear,
+    suggestion,
+    listKeysRef,
     filterEditorRequest,
     getFilterEditorRect,
     applyFilter,
     closeFilterEditor,
+    dismissPopover,
   } = useFilterBarEditor(props);
   const filterEditorContent =
     filterEditorRequest &&
@@ -48,14 +51,14 @@ export const FilterBar = <F,>(props: FilterBarProps<F>) => {
             .exhaustive()}
         </Text>
       )}
-      {filterEditorContent && (
-        <FilterEditorPopover
-          getAnchorRect={getFilterEditorRect}
-          onClose={closeFilterEditor}
-        >
-          {filterEditorContent}
-        </FilterEditorPopover>
-      )}
+      <FilterPopover
+        adapter={props.adapter}
+        suggestion={suggestion}
+        filterEditor={filterEditorContent}
+        getFilterEditorRect={getFilterEditorRect}
+        listKeys={listKeysRef}
+        onDismiss={dismissPopover}
+      />
       {hasFilters && (
         <ActionIcon
           my="-xxs"

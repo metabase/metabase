@@ -1,47 +1,46 @@
 import { type Ref, useMemo, useState } from "react";
 
-import type { BareSuggestionRendererRef } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
-import { Menu } from "metabase/ui";
+import { Combobox, useCombobox } from "metabase/ui";
 
 import type { ConnectorToken } from "../../model";
 import type { ColumnGroup, ColumnItem } from "../../types";
-import type { GetAnchorRect } from "../AnchorTarget/AnchorTarget";
 import { LogicOperatorsHint } from "../LogicOperatorsHint/LogicOperatorsHint";
 import {
-  SuggestionMenu,
+  type ListKeys,
+  SuggestionList,
   SuggestionSection,
-} from "../SuggestionMenu/SuggestionMenu";
-import { useSuggestionKeys } from "../SuggestionMenu/use-suggestion-keys";
+  useListKeys,
+} from "../SuggestionList/SuggestionList";
 
 import { ColumnRow } from "./ColumnRow/ColumnRow";
 import {
-  type ListRow,
   buildList,
   findExactItem,
-  getFirstItemIndex,
-  getNextIndex,
+  getFirstItemOptionIndex,
+  getOptionRows,
   splitByGroup,
 } from "./utils";
 
-type ColumnPopupProps<F> = {
+const CONNECTOR_VALUE = "connector";
+
+type ColumnListProps<F> = {
   groups: readonly ColumnGroup<F>[];
   query: string;
-  getAnchorRect: GetAnchorRect;
-  handle: Ref<BareSuggestionRendererRef>;
+  keys: Ref<ListKeys>;
   connector: ConnectorToken["type"] | null;
   onPick: (item: ColumnItem<F>) => void;
   onPickConnector: (connector: ConnectorToken["type"]) => void;
 };
 
-export const ColumnPopup = <F,>({
+export const ColumnList = <F,>({
   groups,
   query,
-  getAnchorRect,
-  handle,
+  keys,
   connector,
   onPick,
   onPickConnector,
-}: ColumnPopupProps<F>) => {
+}: ColumnListProps<F>) => {
+  const store = useCombobox();
   const [collapsedKeys, setCollapsedKeys] = useState<ReadonlySet<string>>(
     new Set(),
   );
@@ -49,6 +48,9 @@ export const ColumnPopup = <F,>({
     () => buildList(groups, query, collapsedKeys),
     [groups, query, collapsedKeys],
   );
+  const optionRows = getOptionRows(rows);
+  const optionOffset = connector ? 1 : 0;
+
   const toggle = (key: string) => {
     const next = new Set(collapsedKeys);
     if (!next.delete(key)) {
@@ -57,7 +59,11 @@ export const ColumnPopup = <F,>({
     setCollapsedKeys(next);
   };
 
-  const pick = (row: ListRow<F> | undefined) => {
+  const submit = (value: string) => {
+    const row = rows.find(({ key }) => key === value);
+    if (connector && value === CONNECTOR_VALUE) {
+      onPickConnector(connector);
+    }
     if (row?.type === "group") {
       toggle(row.key);
     }
@@ -66,20 +72,11 @@ export const ColumnPopup = <F,>({
     }
   };
 
-  const { activeIndex, setActiveIndex } = useSuggestionKeys({
-    handle,
+  useListKeys({
+    keys,
+    store,
     query,
-    isEmpty: rows.length === 0 && connector === null,
-    firstIndex: connector ? -1 : getFirstItemIndex(rows),
-    getNextIndex: (index, step) => getNextIndex(rows, index, step),
-    pickActive: (index) => {
-      if (connector && index < 0) {
-        onPickConnector(connector);
-        return true;
-      }
-      pick(rows[index]);
-      return index >= 0;
-    },
+    firstIndex: connector ? 0 : getFirstItemOptionIndex(rows),
     pickExact: () => {
       const item = connector ? null : findExactItem(rows, query);
       if (item) {
@@ -89,42 +86,41 @@ export const ColumnPopup = <F,>({
     },
   });
 
-  if (rows.length === 0 && !connector) {
-    return null;
-  }
-
   return (
-    <SuggestionMenu
-      getAnchorRect={getAnchorRect}
+    <SuggestionList
+      store={store}
       footer={<LogicOperatorsHint />}
+      onSubmit={submit}
     >
       {connector && (
         <SuggestionSection>
-          <Menu.Item
-            aria-selected={activeIndex < 0}
-            onMouseEnter={() => setActiveIndex(-1)}
-            onClick={() => onPickConnector(connector)}
+          <Combobox.Option
+            value={CONNECTOR_VALUE}
+            onMouseEnter={() => store.selectOption(0)}
           >
             {connector.toUpperCase()}
-          </Menu.Item>
+          </Combobox.Option>
         </SuggestionSection>
       )}
       {splitByGroup(rows).map((section) => (
         <SuggestionSection
           key={section.rows[0].key}
-          isCollapsed={section.isCollapsed}
+          isExpandedGroup={!section.isCollapsed}
         >
-          {section.rows.map((row, offset) => (
+          {section.rows.map((row) => (
             <ColumnRow
               key={row.key}
               row={row}
-              isActive={section.start + offset === activeIndex}
-              onHover={() => setActiveIndex(section.start + offset)}
-              onClick={() => pick(row)}
+              onHover={() =>
+                store.selectOption(
+                  optionRows.findIndex(({ key }) => key === row.key) +
+                    optionOffset,
+                )
+              }
             />
           ))}
         </SuggestionSection>
       ))}
-    </SuggestionMenu>
+    </SuggestionList>
   );
 };

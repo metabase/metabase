@@ -23,7 +23,9 @@ import {
   stagesToTokens,
 } from "../../model";
 import type { FilterBarProps } from "../../types";
+import type { ListKeys } from "../SuggestionList/SuggestionList";
 
+import type { DraftSuggestion } from "./draft-suggestion";
 import { createExtensions } from "./extensions";
 
 export const useFilterBarEditor = <F>({
@@ -34,15 +36,23 @@ export const useFilterBarEditor = <F>({
 }: FilterBarProps<F>) => {
   const [filterEditorRequest, setFilterEditorRequest] =
     useState<FilterEditorRequest<F> | null>(null);
+  const [suggestion, setSuggestion] = useState<DraftSuggestion<F> | null>(null);
+  const listKeysRef = useRef<ListKeys | null>(null);
   const adapterRef = useLatest(adapter);
   const getAdapter = useCallback(() => adapterRef.current, [adapterRef]);
+  const handleSuggestionKeyDown = useCallback(
+    (event: KeyboardEvent) => listKeysRef.current?.(event) ?? false,
+    [],
+  );
   const extensions = useMemo(
     () =>
       createExtensions({
         getAdapter,
         openFilterEditor: setFilterEditorRequest,
+        onSuggestionChange: setSuggestion,
+        onSuggestionKeyDown: handleSuggestionKeyDown,
       }),
-    [getAdapter],
+    [getAdapter, handleSuggestionKeyDown],
   );
   const [error, setError] = useState<ParseError | null>(null);
   const isValidatingRef = useRef(false);
@@ -118,6 +128,12 @@ export const useFilterBarEditor = <F>({
     editor?.commands.focus();
   };
 
+  const dismissPopover = () => {
+    if (filterEditorRequest) {
+      closeFilterEditor();
+    }
+  };
+
   const applyFilter = (filter: F) => {
     if (editor && filterEditorRequest) {
       const { pos, stage } = filterEditorRequest;
@@ -132,9 +148,12 @@ export const useFilterBarEditor = <F>({
     error,
     hasFilters,
     clear,
+    suggestion,
+    listKeysRef,
     filterEditorRequest,
     getFilterEditorRect,
     applyFilter,
     closeFilterEditor,
+    dismissPopover,
   };
 };

@@ -205,7 +205,9 @@ export const createDraftActions = <F>({
       return;
     }
     const previous = getOperatorPart(draft)?.operator;
-    const keepsOperator = operators.some(({ key }) => key === previous?.key);
+    const keepsOperator = operators
+      .flat()
+      .some(({ key }) => key === previous?.key);
     placeDraftInput(
       editor,
       draft,

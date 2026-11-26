@@ -1,5 +1,5 @@
 import type { ColumnGroup, ColumnItem } from "../../types";
-import { findExact, isMatch } from "../SuggestionMenu/search";
+import { findExact, isMatch } from "../SuggestionList/search";
 
 export type ListRow<F> =
   | { type: "group"; key: string; group: ColumnGroup<F>; isCollapsed: boolean }
@@ -18,7 +18,7 @@ export const buildList = <F>(
 ): ListRow<F>[] => {
   const isSearching = query.trim() !== "";
   return groups.flatMap((group) => {
-    const key = group.label;
+    const key = `group:${group.label}`;
     const sections = group.sections.flatMap((section, sectionIndex) => {
       const sectionKey = `${key}:${sectionIndex}`;
       const items = section.items.flatMap((item, itemIndex): ItemRow<F>[] =>
@@ -54,22 +54,11 @@ export const splitByGroup = <F>(rows: readonly ListRow<F>[]) => {
   });
 };
 
-const isNavigableRow = <F>(row: ListRow<F>) => row.type !== "section";
+export const getOptionRows = <F>(rows: readonly ListRow<F>[]) =>
+  rows.filter((row) => row.type !== "section");
 
-export const getFirstItemIndex = <F>(rows: readonly ListRow<F>[]) =>
-  rows.findIndex((row) => row.type === "item");
-
-export const getNextIndex = <F>(
-  rows: readonly ListRow<F>[],
-  index: number,
-  step: 1 | -1,
-) => {
-  const count = rows.length;
-  const candidates = rows.map(
-    (_, offset) => (((index + step * (offset + 1)) % count) + count) % count,
-  );
-  return candidates.find((next) => isNavigableRow(rows[next])) ?? index;
-};
+export const getFirstItemOptionIndex = <F>(rows: readonly ListRow<F>[]) =>
+  getOptionRows(rows).findIndex((row) => row.type === "item");
 
 export const findExactItem = <F>(rows: readonly ListRow<F>[], query: string) =>
   findExact(

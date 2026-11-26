@@ -1,0 +1,29 @@
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.items {
+  overflow-y: auto;
+}
+
+.section + .section {
+  border-top: 0.5px solid var(--mb-color-border-neutral);
+}
+
+.footer {
+  border-top: 0.5px solid var(--mb-color-border-neutral);
+}
+
+.list .option {
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-font-size-md);
+  line-height: var(--mantine-line-height-lg);
+  padding: var(--mantine-spacing-sm);
+
+  &:hover,
+  &[data-combobox-selected="true"] {
+    color: var(--mb-color-text-primary);
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}

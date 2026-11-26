@@ -38,9 +38,21 @@ import { RangeAndNodeView } from "../RangeAndNodeView/RangeAndNodeView";
 import { ThenNodeView } from "../ThenNodeView/ThenNodeView";
 
 import S from "./FilterBar.module.css";
-import { createDraftSuggestion } from "./draft-suggestion";
+import {
+  type DraftSuggestionOptions,
+  createDraftSuggestion,
+} from "./draft-suggestion";
 
-export const createExtensions = <F,>(options: DraftActionsOptions<F>) => {
+type ExtensionsOptions<F> = DraftActionsOptions<F> & {
+  onSuggestionChange: DraftSuggestionOptions<F>["onChange"];
+  onSuggestionKeyDown: DraftSuggestionOptions<F>["onKeyDown"];
+};
+
+export const createExtensions = <F,>({
+  onSuggestionChange,
+  onSuggestionKeyDown,
+  ...options
+}: ExtensionsOptions<F>) => {
   const { getAdapter } = options;
   const actions = createDraftActions(options);
   const withDecorations = {
@@ -115,6 +127,10 @@ export const createExtensions = <F,>(options: DraftActionsOptions<F>) => {
     createDraftLifecycle(),
     createDraftPlaceholders(),
     createDraftActionKeys(actions),
-    createDraftSuggestion({ getAdapter, actions }),
+    createDraftSuggestion({
+      actions,
+      onChange: onSuggestionChange,
+      onKeyDown: onSuggestionKeyDown,
+    }),
   ];
 };

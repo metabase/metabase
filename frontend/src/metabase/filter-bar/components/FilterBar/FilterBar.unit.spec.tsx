@@ -21,9 +21,37 @@ import {
   mockSegment,
   or,
 } from "../../test-utils";
-import type { FilterStages } from "../../types";
+import type {
+  FilterBarAdapter,
+  FilterEditorProps,
+  FilterStages,
+} from "../../types";
 
 import { FilterBar } from "./FilterBar";
+
+const renderMockFilterEditor = ({
+  onChange,
+  onClose,
+}: FilterEditorProps<MockFilter>) => (
+  <>
+    <button
+      type="button"
+      onClick={() => onChange({ type: "segment", name: "Big orders" })}
+    >
+      Apply
+    </button>
+    <button type="button" onClick={onClose}>
+      Close
+    </button>
+  </>
+);
+
+const ADAPTER: FilterBarAdapter<MockFilter> = {
+  stage: (stage) => ({
+    ...MOCK_ADAPTER.stage(stage),
+    renderFilterEditor: renderMockFilterEditor,
+  }),
+};
 
 type Stages = FilterStages<MockFilter>;
 
@@ -48,7 +76,7 @@ const Host = ({
   return (
     <FilterBar
       value={value}
-      adapter={MOCK_ADAPTER}
+      adapter={ADAPTER}
       autoFocus={autoFocus}
       onChange={(next) => {
         onChange(next);
@@ -354,12 +382,13 @@ describe("FilterBar", () => {
       await click(screen.getByText("Created At"));
     };
 
-    it("opens for a column without operators", async () => {
+    it("opens in place of the column list for a column without operators", async () => {
       await setup();
 
       await openFilterEditor();
 
       expect(screen.getByRole("button", { name: "Apply" })).toBeInTheDocument();
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     });
 
     it("places the applied filter and calls onChange", async () => {
@@ -441,7 +470,7 @@ describe("FilterBar", () => {
       await setup({ value: [leaf(mockSegment("Active users"))] });
       await focusBar();
       await typeText("or");
-      expect(screen.getByRole("menuitem", { name: "OR" })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "OR" })).toBeInTheDocument();
 
       await userEvent.keyboard("{Enter}");
 

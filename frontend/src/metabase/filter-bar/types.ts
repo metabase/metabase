@@ -25,6 +25,8 @@ export type FilterOperator = {
   valueKind: ValueKind;
 };
 
+export type FilterOperatorGroup = readonly FilterOperator[];
+
 export type FilterParts = {
   column: FilterColumn;
   operator: FilterOperator;
@@ -69,7 +71,7 @@ export type FilterEditorProps<F> = (
 
 export type FilterBarStageAdapter<F> = {
   columnGroups: () => readonly ColumnGroup<F>[];
-  operators: (column: FilterColumn) => readonly FilterOperator[] | null;
+  operators: (column: FilterColumn) => readonly FilterOperatorGroup[] | null;
   toFilter: (parts: FilterParts) => F | null;
   toPill: (filter: F) => PillContent;
   formatValues: (parts: FilterParts) => string;

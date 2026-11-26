@@ -1,5 +1,5 @@
-import type { FilterOperator } from "../../types";
-import { findExact, isMatch } from "../SuggestionMenu/search";
+import type { FilterOperator, FilterOperatorGroup } from "../../types";
+import { findExact, isMatch } from "../SuggestionList/search";
 
 const canTypeSymbol = (operator: FilterOperator) =>
   /^[^a-z]+$/i.test(operator.key);
@@ -14,6 +14,14 @@ export const findOperators = (
   operators.filter((operator) =>
     getSearchTerms(operator).some((term) => isMatch(term, query)),
   );
+
+export const findOperatorGroups = (
+  groups: readonly FilterOperatorGroup[],
+  query: string,
+) =>
+  groups
+    .map((group) => findOperators(group, query))
+    .filter((group) => group.length > 0);
 
 export const findExactOperator = (
   operators: readonly FilterOperator[],
