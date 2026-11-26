@@ -184,10 +184,12 @@ describe("ConversationDetailPage", () => {
 
   it("shows the tokens without cache and the cached tokens, and no total", async () => {
     setup({
-      ...createConversation([userMessage("u1", null, "hello")]),
-      total_tokens: 12345,
-      uncached_tokens: 5556,
-      cache_read_tokens: 6789,
+      conversation: {
+        ...createConversation([userMessage("u1", null, "hello")]),
+        total_tokens: 12345,
+        uncached_tokens: 5556,
+        cache_read_tokens: 6789,
+      },
     });
 
     expect(await screen.findByText("Tokens")).toBeInTheDocument();
