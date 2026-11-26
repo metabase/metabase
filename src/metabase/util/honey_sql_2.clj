@@ -72,6 +72,7 @@
           args)))
 
 (sql/register-fn! ::extract #'format-extract)
+(sql/register-fn! :extract #'format-extract)
 
 (defn extract
   "Create a Honey SQL form that will compile to SQL like
@@ -217,6 +218,7 @@
   [(escape-and-quote-literal s)])
 
 (sql/register-fn! ::literal #'format-literal)
+(sql/register-fn! :literal #'format-literal)
 
 (def Literal "A `literal` tagged string or keyword" [:tuple [:= ::literal] :string])
 
