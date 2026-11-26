@@ -1,6 +1,6 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:refer-clojure :exclude [some mapv empty? get-in])
+  (:refer-clojure :exclude [some mapv empty? get-in select-keys])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -25,7 +25,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some mapv empty? get-in]]
+   [metabase.util.performance :refer [some mapv empty? get-in select-keys]]
    [taoensso.nippy :as nippy])
   (:import
    (com.mongodb ConnectionString MongoCommandException MongoSecurityException)
@@ -624,6 +624,42 @@
           mongo-opts {:limit    table-rows-sample/nested-field-sample-limit
                       :order-by [(driver-api/order-by-clause id-column :desc)]}]
       (table-rows-sample/table-rows-sample table fields rff (merge mongo-opts opts)))))
+
+;; Only for `:mongo` itself, so that a child driver keeps its own `table-rows-sample`.
+(defmethod driver/database-supports? [:mongo :table-random-sample]
+  [driver _feature _db]
+  (= driver :mongo))
+
+;; `$sample` reads random documents with a random cursor only when it is the first stage of the pipeline, it asks for
+;; less than 5% of the collection, and the collection has more than 100 documents. Otherwise it reads the whole
+;; collection and sorts it at random. A sample of 500 documents under 5% means more than 10,000 documents.
+(def ^:private random-sample-max-fraction 0.05)
+
+(defn- random-sample-fraction
+  "The fraction of `table` that a `$sample` of `rows` documents reads with a random cursor, or nil when it would read
+  the whole collection: `table` is not a plain collection, for example it is a view, or the sample is 5% of it or more."
+  [^MongoDatabase db table rows]
+  (when (= "collection" (mongo.util/collection-type db (:name table)))
+    (let [documents (mongo.util/estimated-document-count (mongo.util/collection db (:name table)))]
+      (when (pos? documents)
+        (let [fraction (/ rows (double documents))]
+          (when (< fraction random-sample-max-fraction)
+            fraction))))))
+
+;; Reads as many documents as `table-rows-sample` does, at random instead of the newest ones. It declines when `$sample`
+;; would read the whole collection, so that the sample reads about as many documents as the first-rows sample.
+(defmethod driver/table-random-sample :mongo
+  [_driver table fields rff opts]
+  (let [rows table-rows-sample/nested-field-sample-limit]
+    (mongo.connection/with-mongo-database [db (:db_id table)]
+      (if-let [fraction (random-sample-fraction db table rows)]
+        {:method   :row
+         :fraction fraction
+         :result   (table-rows-sample/table-rows-sample table fields rff
+                                                        (-> (select-keys opts [:truncation-size])
+                                                            (assoc :limit        rows
+                                                                   :table-sample {:rows rows})))}
+        {:method :first-rows}))))
 
 (defn- encode-mongo
   "Converts a Clojure representation of a Mongo aggregation pipeline to a formatted JSON-like string"

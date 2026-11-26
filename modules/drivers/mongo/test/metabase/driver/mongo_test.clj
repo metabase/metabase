@@ -21,6 +21,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.sync.analyze.sample :as sample]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -33,6 +34,7 @@
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2])
   (:import
+   (com.mongodb.client MongoDatabase)
    (org.bson.types Binary ObjectId)))
 
 (set! *warn-on-reflection* true)
@@ -604,6 +606,85 @@
                   ["Barney's Beanery" 46]
                   ["Busby's West" 48]]
                  (driver/table-rows-sample :mongo table fields rff {}))))))))
+
+(deftest ^:parallel table-sample-compiles-to-a-first-sample-stage-test
+  (mt/test-driver :mongo
+    (let [mp    (mt/metadata-provider)
+          table (lib.metadata/table mp (mt/id :venues))]
+      (testing "a stage with :table-sample {:rows n} starts the pipeline with $sample"
+        (is (=? {:query [{"$sample" {"size" 3}} {"$project" map?} {"$limit" 3}]}
+                (qp.compile/compile (-> (lib/query mp table)
+                                        (lib/limit 3)
+                                        (assoc-in [:stages 0 :table-sample] {:rows 3}))))))
+      (testing "the sample query of sync, with its text expressions, keeps $sample first"
+        (is (=? {:query [{"$sample" {"size" 3}} some? some?]}
+                (qp.compile/compile (#'table-rows-sample/table-rows-sample-query
+                                     mp table (lib.metadata/fields mp (mt/id :venues))
+                                     {:truncation-size 50, :limit 3, :table-sample {:rows 3}})))))
+      (testing "a block sample of a percent does not compile, since Mongo has no such sample"
+        (is (thrown-with-msg? Exception #"supports only a table sample of a number of rows"
+                              (qp.compile/compile (-> (lib/query mp table)
+                                                      (assoc-in [:stages 0 :table-sample] {:percent 2.5})))))))))
+
+(defn- checkins-sample-setup
+  "The table and two fields of `checkins`, which has 1,000 documents, so that a `$sample` of a few of them uses the
+  random cursor."
+  []
+  {:table  (t2/select-one :model/Table :id (mt/id :checkins))
+   :fields (map #(t2/select-one :model/Field :id (mt/id :checkins %)) [:user_id :venue_id])})
+
+(defn- checkins-rows
+  "All the rows of the user and venue of `checkins`."
+  []
+  (let [mp (mt/metadata-provider)]
+    (set (mt/rows (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                                        (lib/with-fields [(lib.metadata/field mp (mt/id :checkins :user_id))
+                                                          (lib.metadata/field mp (mt/id :checkins :venue_id))])))))))
+
+(deftest table-random-sample-test
+  (mt/test-driver :mongo
+    (let [{:keys [table fields]} (checkins-sample-setup)
+          all-rows               (checkins-rows)
+          pipelines              (atom [])
+          sample                 (fn [table]
+                                   (let [mbql->native (mt/original-fn #'mongo.qp/mbql->native)]
+                                     (mt/with-dynamic-fn-redefs [mongo.qp/mbql->native
+                                                                 (fn [query]
+                                                                   (doto (mbql->native query)
+                                                                     (as-> $native (swap! pipelines conj (:query $native)))))]
+                                       (driver/table-random-sample :mongo table fields (constantly conj) {}))))]
+      (is (driver.u/supports? :mongo :table-random-sample (mt/db)))
+      (testing "Reads random documents with a first $sample stage when they are under 5% of the collection"
+        (with-redefs [table-rows-sample/nested-field-sample-limit 3]
+          (let [{:keys [method fraction result]} (sample table)]
+            (is (= :row method))
+            (is (= 0.003 fraction))
+            (is (= 3 (count result)))
+            (is (every? all-rows result))
+            (is (= {"$sample" {"size" 3}} (first (last @pipelines)))))))
+      (testing "Declines when the sample would be 5% of the collection or more, since $sample then sorts all of it"
+        (with-redefs [table-rows-sample/nested-field-sample-limit 50]
+          (is (= {:method :first-rows} (sample table)))))
+      (testing "Declines for a view, since $sample is then not the first stage of the pipeline that runs"
+        (with-redefs [table-rows-sample/nested-field-sample-limit 3]
+          (mongo.connection/with-mongo-database [^MongoDatabase db (mt/id)]
+            (.createView db "checkins_sample_view" "checkins" [])
+            (try
+              (is (= {:method :first-rows} (sample (assoc table :name "checkins_sample_view"))))
+              (finally
+                (.drop (mongo.util/collection db "checkins_sample_view"))))))))))
+
+(deftest sync-reads-the-random-sample-test
+  (mt/test-driver :mongo
+    (testing "Sync's sample of a Mongo collection is the random one, read in sync's own way"
+      (let [{:keys [table fields]} (checkins-sample-setup)
+            all-rows               (checkins-rows)]
+        (with-redefs [table-rows-sample/nested-field-sample-limit 3]
+          (let [{:keys [method fraction result]} (sample/sample table fields (constantly conj) {})]
+            (is (= :row method))
+            (is (= 0.003 fraction))
+            (is (= 3 (count result)))
+            (is (every? all-rows result))))))))
 
 ;; ## Big-picture tests for the way data should look post-sync
 (deftest table-sync-test

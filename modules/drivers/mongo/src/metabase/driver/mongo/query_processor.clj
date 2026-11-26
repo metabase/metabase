@@ -19,7 +19,7 @@
                                             $match $max $min $minute $mod
                                             $month $multiply $ne $not $or
                                             $project $regexMatch $replaceRoot
-                                            $second $setWindowFields $size $skip
+                                            $sample $second $setWindowFields $size $skip
                                             $sort $strcasecmp $subtract $sum
                                             $toBool $toLower $unionWith $unwind $year]]
    [metabase.driver.util :as driver.u]
@@ -128,6 +128,13 @@
    [:= "$skip"]
    pos-int?])
 
+(mr/def ::$sample-stage
+  [:map-of
+   [:= "$sample"]
+   [:map
+    {:closed true}
+    ["size" pos-int?]]])
+
 (mr/def ::$set-window-fields-stage
   [:map-of
    [:= "$setWindowFields"]
@@ -205,6 +212,7 @@
       ["$match"           ::$match-stage]
       ["$limit"           ::$limit-stage]
       ["$skip"            ::$skip-stage]
+      ["$sample"          ::$sample-stage]
       ["$setWindowFields" ::$set-window-fields-stage]
       ["$facet"           ::$facet-stage]
       ["$unionWith"       ::$union-with-stage]
@@ -2371,6 +2379,27 @@ function(bin) {
                                            (ordered-map/ordered-map "_id" false)
                                            new-projections)}))))))
 
+;;; -------------------------------------------------- table sample --------------------------------------------------
+
+(mu/defn- handle-table-sample :- ::compiled-pipeline
+  "Start the pipeline with `$sample` for a stage with `:table-sample` `{:rows n}`, which sync sets on its sample query.
+  `$sample` reads random documents without a scan of the collection only as the first stage."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   pipeline-ctx :- ::compiled-pipeline]
+  (let [{:keys [rows] :as table-sample} (:table-sample (lib/query-stage query stage-number))]
+    (cond
+      (nil? table-sample)
+      pipeline-ctx
+
+      (and rows (zero? stage-number) (empty? (:query pipeline-ctx)))
+      (update pipeline-ctx :query conj {$sample {"size" rows}})
+
+      :else
+      (throw (ex-info (tru "MongoDB supports only a table sample of a number of rows, in the first stage of a query.")
+                      {:type         driver-api/qp.error-type.unsupported-feature
+                       :table-sample table-sample})))))
+
 ;;; ----------------------------------------------------- limit ------------------------------------------------------
 
 (mu/defn- handle-limit :- ::compiled-pipeline
@@ -2413,7 +2442,8 @@ function(bin) {
               f            :- ifn?]
              (f query stage-number pipeline-ctx))
            pipeline-ctx
-           [#'handle-joins
+           [#'handle-table-sample
+            #'handle-joins
             #'handle-filters
             #'handle-breakout+aggregation
             #'handle-order-by

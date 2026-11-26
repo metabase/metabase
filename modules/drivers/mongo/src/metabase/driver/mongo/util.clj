@@ -6,7 +6,8 @@
    [metabase.driver.mongo.conversion :as mongo.conversion])
   (:import
    (com.mongodb MongoClientSettings)
-   (com.mongodb.client ClientSession FindIterable MongoClient MongoClients MongoCollection MongoDatabase)))
+   (com.mongodb.client ClientSession FindIterable MongoClient MongoClients MongoCollection MongoDatabase)
+   (org.bson Document)))
 
 (set! *warn-on-reflection* true)
 
@@ -51,6 +52,18 @@
   "Return `MongoCollection` for `db` by its name."
   ^MongoCollection [^MongoDatabase db coll-name]
   (.getCollection db coll-name))
+
+(defn collection-type
+  "The type of the collection named `coll-name` in `db`, such as \"collection\", \"view\" or \"timeseries\", or nil when
+  there is no such collection."
+  [^MongoDatabase db ^String coll-name]
+  (when-let [^Document info (.first (.filter (.listCollections db) (Document. "name" coll-name)))]
+    (.getString info "type")))
+
+(defn estimated-document-count
+  "The number of documents in `coll` from the collection's metadata, without a scan."
+  ^long [^MongoCollection coll]
+  (.estimatedDocumentCount coll))
 
 ;; https://mongodb.github.io/mongo-java-driver/4.11/apidocs/mongodb-driver-sync/com/mongodb/client/MongoCollection.html#listIndexes()
 (defn list-indexes

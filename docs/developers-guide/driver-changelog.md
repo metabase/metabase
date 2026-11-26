@@ -24,6 +24,11 @@ summary: Changes to the Metabase driver interface, listed by release.
   `metabase.driver/table-random-sample`. A driver with its own `apply-top-level-clause` for `:source-table` must call
   the new method itself. The Postgres and SQL Server drivers use it.
 
+- A query stage's `:table-sample` can also be `{:rows n}`, about `n` random rows, for an engine with a sample of a
+  number of rows. `table-sample->honeysql` gets it too, and must throw for a kind of sample the driver does not
+  support. The Mongo driver compiles `{:rows n}` to a first `$sample` stage, and uses it for its
+  `metabase.driver/table-random-sample` when the sample is under 5% of a plain collection.
+
 - `metabase.driver.sql-jdbc.sync/sample-json-row-honeysql` `[driver table-identifier json-field-identifiers
   pk-identifiers]` -- new multimethod that returns the query sync uses to sample rows of JSON columns, to find their
   nested field columns. Each JSON value must come back as JSON text. Override it if the driver reads JSON values as
