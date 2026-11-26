@@ -24,6 +24,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { Link } from "metabase/common/components/Link";
 import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -311,6 +312,10 @@ describe("DataModel", () => {
   beforeEach(() => {
     // so the virtual list renders correctly in the tests
     mockGetBoundingClientRect();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("should show empty state by default", async () => {
@@ -1119,6 +1124,7 @@ describe("DataModel", () => {
     });
 
     it("should navigate to new segment page when clicking New segment", async () => {
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
       const { router } = await setup();
 
       await userEvent.click(
@@ -1132,6 +1138,57 @@ describe("DataModel", () => {
       expect(router?.location.pathname).toBe(
         `/data-studio/data/database/${ORDERS_TABLE.db_id}/schema/${ORDERS_TABLE.db_id}:${ORDERS_TABLE.schema}/table/${ORDERS_TABLE.id}/segments/new`,
       );
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "segment_create_started",
+        triggered_from: "data_studio_segments",
+        target_id: ORDERS_TABLE.id,
+      });
+    });
+
+    it("should switch between the Fields and Segments tabs through the URL", async () => {
+      const { router } = await setup();
+      const tableUrl = `/data-studio/data/database/${ORDERS_TABLE.db_id}/schema/${ORDERS_TABLE.db_id}:${ORDERS_TABLE.schema}/table/${ORDERS_TABLE.id}`;
+
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
+      await waitForLoaderToBeRemoved();
+
+      await userEvent.click(screen.getByRole("tab", { name: /Segments/i }));
+      expect(router?.location.pathname).toBe(`${tableUrl}/segments`);
+      expect(screen.getByRole("tab", { name: /Segments/i })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(screen.getByText("No segments yet")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("tab", { name: /Fields/i }));
+      expect(router?.location.pathname).toBe(`${tableUrl}/field`);
+      expect(screen.getByRole("tab", { name: /Fields/i })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(screen.queryByText("No segments yet")).not.toBeInTheDocument();
+    });
+
+    it("should open the Segments tab when the page loads on its URL", async () => {
+      await setup({
+        initialRoute: Urls.dataStudioData({
+          databaseId: ORDERS_TABLE.db_id,
+          schemaName: ORDERS_TABLE.schema,
+          tableId: ORDERS_TABLE.id,
+          tab: "segments",
+        }),
+      });
+
+      expect(
+        await screen.findByRole("tab", { name: /Segments/i }),
+      ).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("tab", { name: /Fields/i })).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+      expect(screen.getByText("No segments yet")).toBeInTheDocument();
     });
   });
 });
