@@ -181,7 +181,7 @@ describe("ExpressionWidget > entry points > aggregation picker search", () => {
     expect(
       screen.getByRole("option", { name: "Number of distinct values of ..." }),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByText("DistinctIf"));
+    await userEvent.click(await screen.findByText("DistinctIf"));
 
     await findFocusedEditor();
     expect(getEditorValue()).toBe("DistinctIf(column, condition)");
