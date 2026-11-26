@@ -785,11 +785,10 @@
        "\" type=\"" (escape-xml (u/qualified-name type)) "\""
        (when (some? default)
          (str " default=\"" (escape-xml (dashboard-filter-value default)) "\""))
-       (when (contains? parameter :current_value)
-         (let [value (:current_value parameter)]
-           (if (dashboard-filter-cleared? value)
-             " cleared=\"true\""
-             (str " current_value=\"" (escape-xml (dashboard-filter-value value)) "\""))))
+       (when-let [[_ value] (find parameter :current_value)]
+         (if (dashboard-filter-cleared? value)
+           " cleared=\"true\""
+           (str " current_value=\"" (escape-xml (dashboard-filter-value value)) "\"")))
        (when (seq connected_dashcards)
          (str " connected_dashcards=\"" (str/join ", " connected_dashcards) "\""))
        "/>"))

@@ -222,8 +222,8 @@
   A run that isn't the user setting a filter, such as one an agent makes, passes false.
 
   See [[metabase.query-processor.card/process-query-for-card]] for more information about the various parameters."
-  {:arglists '([& {:keys [dashboard dashcard card export-format parameters ignore-cache constraints parameters
-                          middleware save-last-used-parameters?]}])}
+  {:arglists '([& {:keys [dashboard dashcard card export-format parameters ignore-cache constraints middleware
+                          save-last-used-parameters?]}])}
   [& {:keys [dashboard card dashcard parameters export-format save-last-used-parameters?]
       :or   {export-format              :api
              save-last-used-parameters? true}

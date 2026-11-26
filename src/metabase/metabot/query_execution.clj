@@ -126,6 +126,12 @@
                        :permissions-error? (= :missing-required-permissions (:error_type result))})))
     result))
 
+(defn- row-constraints
+  "The QP `:constraints` that cap a run at `row-limit` rows, aggregated or not."
+  [row-limit]
+  {:max-results           row-limit
+   :max-results-bare-rows row-limit})
+
 (defn- execute!
   "Run a serialized MBQL query through the QP with the standard agent userland preparation.
    Caps this call's rows at `row-limit` (within the backend's 2000/10000 userland ceilings) and records the run
@@ -134,8 +140,7 @@
   (let [query (-> (select-keys serialized-query query-passthrough-keys)
                   (assoc :middleware {:js-int-to-string? true})
                   qp/userland-query-with-default-constraints
-                  (assoc :constraints {:max-results           row-limit
-                                       :max-results-bare-rows row-limit}
+                  (assoc :constraints (row-constraints row-limit)
                          :info        {:executed-by api/*current-user-id*
                                        :context     context}))]
     (run-bounded! #(qp/process-query query) options)))
@@ -179,26 +184,24 @@
    The run is recorded under the QP `context`, and the values are not stored as the user's last-used ones.
    Returns and throws as [[execute-page!]], which also describes `options`."
   [{:keys [dashboard dashcard card parameters]} row-limit context options]
-  (let [limit (inc row-limit)
-        run   #(qp.dashboard/process-query-for-dashcard
-                :dashboard                  dashboard
-                :dashcard                   dashcard
-                :card                       card
-                :parameters                 parameters
-                :context                    context
-                :export-format              :api
-                :save-last-used-parameters? false
-                :constraints                {:max-results           limit
-                                             :max-results-bare-rows limit}
-                :middleware                 {:js-int-to-string? true}
-                ;; The card runner's default QP even for a pivot card, whose runner would replace the row limit with the
-                ;; pivot cap.
-                ;; The card's `:info` stays on the query, so the QP checks the run as a run of the card.
-                :make-run                   (fn [_qp _export-format]
-                                              (fn [query info]
-                                                (-> (update query :info merge info)
-                                                    qp/userland-query
-                                                    (qp/process-query nil)))))]
+  (let [run #(qp.dashboard/process-query-for-dashcard
+              :dashboard                  dashboard
+              :dashcard                   dashcard
+              :card                       card
+              :parameters                 parameters
+              :context                    context
+              :export-format              :api
+              :save-last-used-parameters? false
+              :constraints                (row-constraints (inc row-limit))
+              :middleware                 {:js-int-to-string? true}
+              ;; Runs with the card runner's default QP, even for a pivot card, whose runner would swap the row limit
+              ;; for the pivot cap.
+              ;; The card's `:info` stays on the query, so the QP checks the run as a run of the card.
+              :make-run                   (fn [_qp _export-format]
+                                            (fn [query info]
+                                              (-> (update query :info merge info)
+                                                  qp/userland-query
+                                                  (qp/process-query nil)))))]
     (page (run-bounded! run options) row-limit)))
 
 (defn response-cols
