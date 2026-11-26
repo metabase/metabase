@@ -33,7 +33,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
-   (org.quartz CronTrigger JobDetail JobExecutionContext JobExecutionException JobKey JobListener
+   (org.quartz CronTrigger JobDataMap JobDetail JobExecutionContext JobExecutionException JobKey JobListener
                JobPersistenceException ObjectAlreadyExistsException Scheduler SchedulerException Trigger TriggerKey
                TriggerListener)))
 
@@ -246,13 +246,18 @@
          (reschedule-task! scheduler job trigger))))))
 
 (mu/defn trigger-now!
-  "Immediately trigger execution of task"
-  [job-key :- (ms/InstanceOfClass JobKey)]
-  (try
-    (when-let [scheduler (scheduler)]
-      (.triggerJob scheduler job-key))
-    (catch Throwable e
-      (log/errorf "Failed to trigger immediate execution of task %s: %s" job-key (ex-message e)))))
+  "Immediately trigger execution of task, with `job-data` merged into its job data when given."
+  ([job-key :- (ms/InstanceOfClass JobKey)]
+   (trigger-now! job-key nil))
+  ([job-key  :- (ms/InstanceOfClass JobKey)
+    job-data :- [:maybe [:map-of :string [:or :int :string :boolean]]]]
+   (try
+     (when-let [scheduler (scheduler)]
+       (if (seq job-data)
+         (.triggerJob scheduler job-key (JobDataMap. ^java.util.Map job-data))
+         (.triggerJob scheduler job-key)))
+     (catch Throwable e
+       (log/errorf "Failed to trigger immediate execution of task %s: %s" job-key (ex-message e))))))
 
 (def metrics-job-name-key
   "The key of a job data entry that names the job in metrics in place of its job key, for jobs with a key per target."

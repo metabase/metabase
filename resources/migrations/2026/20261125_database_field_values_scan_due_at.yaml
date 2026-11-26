@@ -1,0 +1,18 @@
+## When the value-list scan of a Database became due, so that the next metadata sync runs it in the same work window
+## instead of the scan waking the warehouse on its own.
+
+databaseChangeLog:
+  - changeSet:
+      id: mnkkav
+      author: nvoxland
+      comment: Add metabase_database.field_values_scan_due_at
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: field_values_scan_due_at
+                  type: ${timestamp_type}
+                  remarks: When the scheduled value-list scan of the database became due; null when none is due
+                  constraints:
+                    nullable: true

@@ -53,6 +53,7 @@
    [metabase.util.json :as json]
    [metabase.util.match :as match]
    [metabase.util.random :as u.random]
+   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -1016,13 +1017,23 @@
     [model (first (t2/primary-keys model))]))
 
 (defn- delete-new-rows!
-  "Delete the rows of `model` whose `pk` exceeds `old-max-id`, skipping Toucan hooks. Returns the row count."
+  "Delete the rows of `model` whose `pk` exceeds `old-max-id`, skipping Toucan hooks. Returns the row count.
+
+  Databases go through [[database/delete-databases!]], which deletes what belongs to them before their rows. A raw
+  delete leaves all of it to the foreign key cascades, and MySQL 9.6 and later refuse a cascade that reaches more
+  than 30 tables."
   [model pk old-max-id]
-  (t2/query-one {:delete-from (t2/table-name model)
-                 :where       [:and
-                               ;; The first use in a test run may have no previous maximum ID.
-                               (if old-max-id [:> pk old-max-id] true)
-                               (with-model-cleanup-additional-conditions model)]}))
+  (let [where [:and
+               ;; The first use in a test run may have no previous maximum ID.
+               (if old-max-id [:> pk old-max-id] true)
+               (with-model-cleanup-additional-conditions model)]]
+    (if (isa? (t2/resolve-model model) :model/Database)
+      (let [ids (t2/select-pks-vec :model/Database {:where where})]
+        (when (seq ids)
+          (database/delete-databases! ids))
+        (count ids))
+      (t2/query-one {:delete-from (t2/table-name model)
+                     :where       where}))))
 
 (defn- search-relevant-models
   "Models whose rows, deleted with raw SQL, can leave stale rows in the search index."

@@ -970,6 +970,21 @@
                                 (dissoc opts :databases)))
    nil))
 
+(mu/defn mark-field-values-scans-due! :- :nil
+  "Record that the scheduled value-list scan of each Database with `database-ids` is due, keeping the time of a scan
+  already due. The next metadata sync of the Database starts it. Sync's own record, so it publishes no update event."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (when (seq database-ids)
+    (warehouses.db/mark-field-values-scans-due! database-ids))
+  nil)
+
+(mu/defn clear-field-values-scans-due! :- :nil
+  "Record that the value-list scan of each Database with `database-ids` is no longer due, because it ran or failed."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (when (seq database-ids)
+    (warehouses.db/clear-field-values-scans-due! database-ids))
+  nil)
+
 (mu/defn disable-uploads! :- :int
   "Disable uploads on every Database that has them enabled, returning the number updated."
   []
@@ -1055,7 +1070,7 @@
            :refingerprint :cache_ttl :initial_sync_status :creator_id :settings :dbms_version :is_audit
            :uploads_enabled :uploads_schema_name :uploads_table_prefix :is_attached_dwh :router_database_id
            :provider_name :write_data_details :is_stub :default_schema :initial_sync_error :admin_details]
-   :skip  []})
+   :skip  [:field_values_scan_due_at]})
 
 (defmethod serialization/spec :model/Database [_]
   {:schema        ::warehouses.schema/external-database
@@ -1064,7 +1079,7 @@
                    :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
                    :default_schema :name :points_of_interest :refingerprint :timezone :uploads_enabled
                    :uploads_schema_name :uploads_table_prefix]
-   :skip          [:cache_ttl :initial_sync_error :dbms_version :provider_name]
+   :skip          [:cache_ttl :initial_sync_error :dbms_version :provider_name :field_values_scan_due_at]
    :transform     {:details                     serialization/import-only-transform
                    :write_data_details          serialization/import-only-transform
                    :admin_details               serialization/import-only-transform
@@ -1096,7 +1111,7 @@
                       :is_full_sync :is_on_demand :is_sample :is_stub :metadata_sync_schedule :points_of_interest
                       :provider_name :refingerprint :router_database_id :settings :uploads_enabled
                       :uploads_schema_name :uploads_table_prefix :write_data_details]
-   :skip             [:dbms_version :initial_sync_status :timezone]
+   :skip             [:dbms_version :initial_sync_status :timezone :field_values_scan_due_at]
    :context-details? true})
 
 (defmethod search/spec :model/Database
