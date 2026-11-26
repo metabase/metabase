@@ -48,7 +48,14 @@ function setup({ table, isAdmin = false }: SetupOpts) {
 
 describe("TableActionsMenu", () => {
   it("renders a menu with sync items for a regular table", async () => {
-    setup({ table: createMockTable({ db: createMockDatabase() }) });
+    setup({
+      table: createMockTable({
+        id: 42,
+        db_id: 7,
+        schema: "analytics",
+        db: createMockDatabase({ id: 7 }),
+      }),
+    });
 
     // it's a menu, not a standalone link
     expect(
@@ -59,7 +66,10 @@ describe("TableActionsMenu", () => {
 
     expect(
       await screen.findByRole("menuitem", { name: /View schema/ }),
-    ).toBeInTheDocument();
+    ).toHaveAttribute(
+      "href",
+      "/data-studio/schema-viewer?database-id=7&schema=analytics&table-ids=42",
+    );
     expect(
       screen.getByRole("menuitem", { name: /Re-sync schema/ }),
     ).toBeInTheDocument();
