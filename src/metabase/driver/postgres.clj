@@ -132,7 +132,9 @@
                  ;; Index sync is turned off across the application as it is not used ATM.
                  #_:index-info
                  :database-replication
-                 :stage-ctes/nest-single-row-aggregation]]
+                 :stage-ctes/nest-single-row-aggregation
+                 ;; engines that only look like Postgres may not keep the statistics the tokens read
+                 :table-change-tokens]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
@@ -343,6 +345,52 @@
 (defmethod driver/describe-database* :postgres
   [_driver database]
   {:tables (describe-syncable-tables database)})
+
+(defn- change-tokens-sql
+  "The statistics of the tables and materialized views in `schemas` that their change tokens are made of. A
+  partitioned parent table, a view or a foreign table has no rows of its own, so it has no token."
+  [schemas]
+  (sql/format {:select    [[:n.nspname :schema]
+                           [:c.relname :name]
+                           [:c.relfilenode :filenode]
+                           [:c.reltuples :reltuples]
+                           [:stat.n_tup_ins :inserted]
+                           [:stat.n_tup_upd :updated]
+                           [:stat.n_tup_del :deleted]
+                           [[:raw "pg_is_in_recovery()"] :replica]
+                           [[:raw "(SELECT d.stats_reset::text FROM pg_stat_database d WHERE d.datname = current_database())"]
+                            :stats_reset]]
+               :from      [[:pg_catalog.pg_class :c]]
+               :join      [[:pg_catalog.pg_namespace :n] [:= :c.relnamespace :n.oid]]
+               :left-join [[:pg_stat_user_tables :stat] [:= :stat.relid :c.oid]]
+               :where     [:and
+                           [:raw "c.relkind in ('r', 'm')"]
+                           [:in :n.nspname schemas]]}
+              {:dialect :ansi}))
+
+(defn- change-token
+  "The change token of a table from its `row` of [[change-tokens-sql]]: its file node, which a `TRUNCATE` or a rewrite
+  changes, its insert, update and delete counters, and the time the statistics of the database were last reset. nil
+  when the counters cannot be trusted: on a replica, where they do not move; with no statistics row; or with all
+  counters zero while the row estimate shows rows, as after a reset of the statistics."
+  [{:keys [filenode reltuples inserted updated deleted replica stats_reset]}]
+  (when-not (or replica
+                (nil? inserted)
+                (and (zero? (+ inserted updated deleted))
+                     (pos? reltuples)))
+    (str/join ":" [filenode inserted updated deleted stats_reset])))
+
+(defmethod driver/table-change-tokens :postgres
+  [_driver database tables]
+  (let [schemas (into [] (comp (keep :schema) (distinct)) tables)]
+    (if (seq schemas)
+      (let [schema+name->token (into {}
+                                     (map (juxt (juxt :schema :name) change-token))
+                                     (sql-jdbc.execute/reducible-query database (change-tokens-sql schemas)))]
+        (into {}
+              (map (juxt :id #(schema+name->token [(:schema %) (:name %)])))
+              tables))
+      {})))
 
 (defn- nullable-in
   "Build a HoneySQL clause that handles nil values in `xs` correctly.

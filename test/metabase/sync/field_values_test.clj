@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.analyze.core :as analyze]
+   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
    [metabase.sync.analyze.test-util :as analyze.tu]
@@ -739,3 +740,87 @@
               (scanned 2)
               (rescan table)
               (is (read?)))))))))
+
+(defn- do-with-change-tokens!
+  "Run `thunk` with a driver that supports table change tokens, giving `(tokens)` for each table."
+  [tokens thunk]
+  (let [supports? driver.u/supports?]
+    (with-redefs [driver.u/supports?          (fn [driver feature database]
+                                                (or (= feature :table-change-tokens)
+                                                    (supports? driver feature database)))
+                  driver/table-change-tokens (fn [_driver _database tables]
+                                               (into {} (map (juxt :id (fn [_] (tokens)))) tables))]
+      (thunk))))
+
+(deftest ^:synchronized unchanged-table-is-not-scanned-test
+  (testing "the scheduled scan does not read the lists of a table whose change token is the same as at its last scan"
+    (mt/dataset test-data
+      (let [table-id (mt/id :venues)
+            fv-id    (t2/select-one-pk :model/FieldValues :field_id (mt/id :venues :price) :type :full)
+            token    (atom "t1")
+            table    #(t2/select-one :model/Table :id table-id)
+            scan     #(select-keys (sync.field-values/update-field-values-for-table! (table))
+                                   [:probed :tables-changed :tables-unchanged])
+            stored   #(:value_scan_token (table))]
+        (mt/with-temp-vals-in-db :model/Table table-id {:value_scan_token nil}
+          (mt/with-temp-vals-in-db :model/FieldValues fv-id {:last_used_at (t/offset-date-time)}
+            (do-with-change-tokens!
+             #(deref token)
+             (fn []
+               (testing "first scan with a token: reads the lists and stores the token"
+                 (is (=? {:probed pos-int? :tables-changed 1 :tables-unchanged 0} (scan)))
+                 (is (= "t1" (stored))))
+               (testing "same token: reads nothing"
+                 (is (= {:probed 0 :tables-changed 0 :tables-unchanged 1} (scan))))
+               (testing "a manual rescan reads the lists also with the same token"
+                 (is (pos-int? (:probed (sync.field-values/rescan-field-values-for-table! (table))))))
+               (testing "same token, but a list was last read longer ago than the full-scan period: reads the lists"
+                 (t2/update! (t2/table-name :model/FieldValues) {:id fv-id}
+                             {:last_scanned_at (t/minus (t/offset-date-time) (t/days 8))})
+                 (is (pos-int? (:probed (scan)))))
+               (testing "the period is a database setting"
+                 (t2/update! (t2/table-name :model/FieldValues) {:id fv-id}
+                             {:last_scanned_at (t/minus (t/offset-date-time) (t/days 2))})
+                 (is (zero? (:probed (scan))))
+                 (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:change-token-full-pass-days 1}}
+                   (is (pos-int? (:probed (scan))))))
+               (testing "new token: reads the lists and stores the new token"
+                 (reset! token "t2")
+                 (is (=? {:probed pos-int? :tables-changed 1 :tables-unchanged 0} (scan)))
+                 (is (= "t2" (stored))))
+               (testing "unknown token: reads the lists and stores nil"
+                 (reset! token nil)
+                 (is (=? {:probed pos-int? :tables-unchanged 0} (scan)))
+                 (is (nil? (stored))))))))))))
+
+(deftest ^:synchronized no-tokens-without-the-feature-test
+  (testing "a driver without :table-change-tokens is not asked for tokens"
+    (mt/dataset test-data
+      (with-redefs [driver/table-change-tokens (fn [& _] (throw (ex-info "not supported" {})))]
+        (is (=? {:errors 0 :tables-unchanged 0}
+                (sync.field-values/update-field-values-for-table! (t2/select-one :model/Table :id (mt/id :venues)))))))))
+
+(deftest ^:synchronized tokens-only-for-tables-with-lists-test
+  (testing "the scan asks the driver for the tokens of the tables that have lists to read, and no others"
+    (mt/with-temp [:model/Table table {:db_id (mt/id) :name "no_lists" :active true}]
+      (let [asked (atom [])]
+        (do-with-change-tokens! (constantly "t")
+                                (fn []
+                                  (with-redefs [driver/table-change-tokens (fn [_driver _database tables]
+                                                                             (swap! asked into (map :id) tables)
+                                                                             {})]
+                                    (sync.field-values/update-field-values-for-table! table))))
+        (is (= [] @asked))))))
+
+(deftest ^:synchronized tokens-get-the-lib-metadata-of-the-database-test
+  (testing "the driver gets the Lib metadata of the Database, which its connection code takes"
+    (mt/dataset test-data
+      (let [databases (atom [])]
+        (do-with-change-tokens! (constantly "t")
+                                (fn []
+                                  (with-redefs [driver/table-change-tokens (fn [_driver database _tables]
+                                                                             (swap! databases conj database)
+                                                                             {})]
+                                    (sync.field-values/update-field-values-for-table!
+                                     (t2/select-one :model/Table :id (mt/id :venues))))))
+        (is (=? [{:lib/type :metadata/database :id (mt/id)}] @databases))))))

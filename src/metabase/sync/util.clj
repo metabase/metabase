@@ -574,6 +574,8 @@
    [:no-data-fingerprints   {:optional true} :int]
    [:probed                 {:optional true} :int]
    [:queries                {:optional true} :int]
+   [:tables-changed         {:optional true} :int]
+   [:tables-unchanged       {:optional true} :int]
    [:removed-indexes        {:optional true} :int]
    [:semantic-version       {:optional true} [:or
                                               [:sequential :int]

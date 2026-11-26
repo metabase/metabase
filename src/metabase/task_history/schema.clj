@@ -109,6 +109,8 @@
    [:errors                 {:optional true} :int]
    [:probed                 {:optional true} :int]
    [:queries                {:optional true} :int]
+   [:tables-changed         {:optional true} :int]
+   [:tables-unchanged       {:optional true} :int]
    [:flavor                 {:optional true} [:maybe :string]]
    [:semantic-version       {:optional true} [:or
                                               [:sequential :int]

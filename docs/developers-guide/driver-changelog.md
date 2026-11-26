@@ -7,6 +7,13 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- New multimethod `metabase.driver/table-change-tokens` and feature flag `:table-change-tokens`, false by default.
+  A driver that supports the flag returns a change token for each table of a database, by table id, from one call. A
+  token is an opaque string. When a table's token is the same as at its last value-list scan, the scheduled scan does
+  not read the table's value lists again. A token must change whenever the table's rows can have changed. Give `nil`
+  for a table whose token is not known, and sync reads it as before. Sync still reads each table at least once in the
+  period of the `change-token-full-pass-days` setting (7 days by default, settable for each database).
+
 - `metabase.driver.sql-jdbc.sync/sample-json-row-honeysql` `[driver table-identifier json-field-identifiers
   pk-identifiers]` -- new multimethod that returns the query sync uses to sample rows of JSON columns, to find their
   nested field columns. Each JSON value must come back as JSON text. Override it if the driver reads JSON values as

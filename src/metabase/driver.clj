@@ -523,6 +523,24 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti table-change-tokens
+  "Return a change token for each of `tables` of `database`, by Table id, from one call for all of them. A token is an
+  opaque string that sync stores and compares for equality: when a Table's token is the same as at its last value-list
+  scan, sync does not read the Table's value lists again.
+
+  So a token must change whenever the Table's rows can have changed. A token that changes when the Table did not
+  change only costs one more scan, while one that stays the same when the Table changed leaves old values in the
+  lists. Give `nil`, or no entry, for a Table whose token is not known; sync then reads it as before.
+
+  `database` is the Lib metadata of the Database. Sync calls this only for a driver that supports
+  `:table-change-tokens`. Sync still reads each Table at least once in the `change-token-full-pass-days` period,
+  whatever its token."
+  {:added "0.66.0" :arglists '([driver database tables])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod table-change-tokens ::driver [_driver _database _tables] {})
+
 (defmulti escape-entity-name-for-metadata
   "escaping for when calling `.getColumns` or `.getTables` on table names or schema names. Useful for when a database
   driver has difference escaping rules for table or schema names when used from metadata.
@@ -1163,6 +1181,10 @@
     ;; like Postgres that do not use an index for MIN/MAX when the aggregation is in a SELECT that has a WITH clause.
     ;; Only applies to queries compiled with `:stage-ctes`.
     :stage-ctes/nest-single-row-aggregation
+    ;;
+    ;; Does this driver give change tokens for its tables with [[table-change-tokens]], so that sync can skip the
+    ;; value-list scan of a table that did not change?
+    :table-change-tokens
     ;;
     ;; Added in 66; this can be removed in 69 when we make this the default and only supported option.
     ;;

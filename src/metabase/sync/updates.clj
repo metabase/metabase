@@ -57,6 +57,11 @@
   (database/call-locking-databases #(when (seq field-ids) (sync.db/database-ids-of-fields (vec field-ids)))
                                    #(field-values/save-field-values-changes! changes)))
 
+(defn record-value-scan-tokens!
+  "Record the change token of each Table in `table-id->token` through [[table/record-value-scan-tokens!]]."
+  [table-id->token]
+  (table/record-value-scan-tokens! table-id->token))
+
 (defn- update-fields-counted!
   "Apply the Field update `rows` with `opts` and return their number."
   [rows opts]
