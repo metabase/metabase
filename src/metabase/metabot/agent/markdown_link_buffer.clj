@@ -118,7 +118,8 @@
    1. Accumulates queries/charts from tool-output parts (via :structured-output)
    2. Buffers markdown links to handle links split across text chunks
    3. Resolves metabase:// URLs to proper Metabase paths
-   4. Flushes buffered content where the text ends: before a tool call, a tool result or an error, and at stream end
+   4. Flushes buffered content where the text ends: before a text part with a new `:id` that directly follows a text
+      part, before a tool call, a tool result or an error, and at stream end
 
    Parameters:
    - initial-queries: Initial map of query-id to query data
@@ -133,6 +134,7 @@
           queries (volatile! (or initial-queries {}))
           charts  (volatile! (or initial-charts {}))
           text-id (volatile! nil)
+          prev-type (volatile! nil)
           flush!  (fn [result]
                     (let [flushed (flush-state @state)]
                       (if (seq flushed)
@@ -156,17 +158,25 @@
            ;; Update state with new context
            (vswap! state with-context @queries @charts))
          ;; Process text parts through link buffer
-         (case (:type part)
-           :text
-           (let [[new-state processed-text] (step @state (:text part))]
-             (vreset! state new-state)
-             (vreset! text-id (:id part))
-             (if (seq processed-text)
-               (rf result (assoc part :text processed-text))
-               result))
-           (:tool-input :tool-output :error)
-           (let [result (flush! result)]
-             (if (reduced? result)
-               result
-               (rf result part)))
-           (rf result part)))))))
+         (let [after-text? (= :text @prev-type)]
+           (vreset! prev-type (:type part))
+           (case (:type part)
+             :text
+             ;; A new text block right after another one ends the held text. Across a reasoning part the
+             ;; held text carries on, so that a link split by reasoning stays whole.
+             (let [result (cond-> result
+                            (and after-text? (not= @text-id (:id part))) flush!)]
+               (if (reduced? result)
+                 result
+                 (let [[new-state processed-text] (step @state (:text part))]
+                   (vreset! state new-state)
+                   (vreset! text-id (:id part))
+                   (if (seq processed-text)
+                     (rf result (assoc part :text processed-text))
+                     result))))
+             (:tool-input :tool-output :error)
+             (let [result (flush! result)]
+               (if (reduced? result)
+                 result
+                 (rf result part)))
+             (rf result part))))))))

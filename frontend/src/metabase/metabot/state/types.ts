@@ -46,6 +46,8 @@ export type MetabotAgentTextChatMessage = {
   role: "agent";
   type: "text";
   message: string;
+  // the id of the streamed text block, so the next block starts a new part
+  blockId?: string;
 };
 
 export type MetabotAgentDataPartMessage = {

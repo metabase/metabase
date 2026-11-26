@@ -93,6 +93,25 @@
                                   {:type :text :text "\n"}
                                   {:type :text :text "\n"}]))))))
 
+(deftest collect-text-from-parts-test
+  (testing "the deltas of one text block join with nothing, and two text blocks join as two paragraphs"
+    (is (= "First point.\n\nSecond point."
+           (#'agent/collect-text-from-parts [{:type :text :id "t1" :text "First "}
+                                             {:type :text :id "t1" :text "point."}
+                                             {:type :reasoning :id "r1" :text "Next."}
+                                             {:type :text :id "t2" :text "Second point."}
+                                             {:type :tool-input :id "c1" :function "search" :arguments {}}]))))
+  (testing "a text block that is only whitespace adds no blank line"
+    (is (= "a\n\nb"
+           (#'agent/collect-text-from-parts [{:type :text :id "t1" :text "a"}
+                                             {:type :text :id "t2" :text "\n"}
+                                             {:type :text :id "t3" :text "b"}])))
+    (is (= "Let me check.\n\nDone."
+           (#'agent/collect-text-from-parts [{:type :text :id "t1" :text "Let me check."}
+                                             {:type :text :id "t2" :text "\n\n"}
+                                             {:type :tool-input :id "c1" :function "search" :arguments {}}
+                                             {:type :text :id "t3" :text "Done."}])))))
+
 (deftest should-continue-test
   (let [max-iter 3
         no-term  #{}]
