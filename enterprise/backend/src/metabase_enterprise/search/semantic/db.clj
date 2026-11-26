@@ -9,7 +9,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as search.scoring]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -79,7 +78,7 @@
   ;; these have to be real SQL literals rather than plain strings: a string compiles to a `?` parameter, and H2 cannot
   ;; work out the type of a parameter in the select list of a CTE (`Unknown data type: "?, ?"`)
   ^:allow-subquery
-  {:select [[(h2x/literal (str id))] [(h2x/literal model)]]})
+  {:select [[[:literal (str id)]] [[:literal model]]]})
 
 (defn- search-index-select
   "A `search_index` CTE selecting the `:id` and `:model` of each of `search-results` (each `{:id :model}`)."
