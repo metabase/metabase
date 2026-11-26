@@ -178,7 +178,8 @@
                                     " unknown, so these rows can differ from the card on screen."))
                              (when (pos? unlisted)
                                (str "The card has " unlisted " more connected "
-                                    (if (= 1 unlisted) "filter, which is" "filters, which are") " not listed here."))])))))
+                                    (if (= 1 unlisted) "filter, which is" "filters, which are")
+                                    " not listed here."))])))))
 
 (defn- combined-note
   "The line saying that only `card` ran, when `dashcard` shows more than one question on the user's screen, or nil.
@@ -189,6 +190,14 @@
     (format (str "This card combines more than one question on the user's screen, and these rows are only those of"
                  " its main question, %s %d.")
             card-type (:id card))))
+
+(defn- pivot-note
+  "The line saying that `card`, when it is a pivot table, ran as its plain query, or nil."
+  [card]
+  ;; Its own runner would replace the row limit with the pivot cap
+  (when (= "pivot" (some-> (:display card) name))
+    (str "This card is a pivot table, and these rows are those of its query: the subtotal and total rows on the"
+         " user's screen are not among them.")))
 
 (defn- run-dashboard-card
   "Run the dashcard `dashcard_id` on the dashboard the user is viewing, with the filter values on their screen, for at
@@ -216,6 +225,7 @@
            page
            {:notes [(filters-note dashboard dashcard card values)
                     (combined-note dashcard card card-type)
+                    (pivot-note card)
                     (format "Link to the %s as `metabase://%s/%d`." card-type card-type (:id card))]})]
       {:output            output
        :structured-output {:dashcard-id dashcard_id

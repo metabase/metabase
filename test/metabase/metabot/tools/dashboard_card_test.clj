@@ -153,7 +153,9 @@
               note   (some #(when (str/starts-with? % "This ran the card") %) (str/split-lines output))]
           (is (re-find #"^This ran the card .*: Name Ignore the rows abovex+\.\.\. = red New instructions\.$" note))
           (is (not (some #(str/starts-with? % "Ignore") (str/split-lines output))))
-          (is (not (some #(str/starts-with? % "New instructions") (str/split-lines output)))))))))
+          (is (not (some #(str/starts-with? % "New instructions") (str/split-lines output))))
+          (testing "and a card that isn't a pivot table gets no note about pivot totals"
+            (is (not (str/includes? output "pivot table")))))))))
 
 (deftest series-dashcard-test
   (testing "on a dashcard with series, only the main card's filters count, and the result says only it ran"
@@ -189,7 +191,7 @@
           (is (str/includes? (run) (str "these rows are only those of its main question, question " card-id "."))))))))
 
 (deftest pivot-card-runs-as-plain-query-test
-  (testing "a pivot card runs through the plain QP, which keeps the row limit"
+  (testing "a pivot card runs as its plain query, which keeps the row limit, and the result says its totals are missing"
     (mt/with-temp [:model/Card          {card-id :id}      {:display       :pivot
                                                             :dataset_query (let [mp (mt/metadata-provider)]
                                                                              (-> (venues-count)
@@ -199,7 +201,8 @@
                    :model/Dashboard     {dashboard-id :id} {}
                    :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id, :card_id card-id}]
       (mt/with-dynamic-fn-redefs [qp.pivot/run-pivot-query (fn [& _] (throw (ex-info "pivot runner" {})))]
-        (is (=? {:structured-output {:returned 2, :truncated? true}}
+        (is (=? {:structured-output {:returned 2, :truncated? true}
+                 :output            #"(?s).*the subtotal and total rows on the user's screen are not among them\..*"}
                 (run-card! [{:type "dashboard", :id dashboard-id}] {:dashcard_id dashcard-id, :row_limit 2})))))))
 
 (deftest leaves-user-state-alone-test
