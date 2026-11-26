@@ -100,6 +100,8 @@
                               :left-join                        true
                               :metadata/key-constraints         false
                               :native-pivot-tables              true
+                              ;; named `Tuple` columns sync as nested fields
+                              :nested-fields                    true
                               :now                              true
                               :regex/lookaheads-and-lookbehinds false
                               :rename                           true

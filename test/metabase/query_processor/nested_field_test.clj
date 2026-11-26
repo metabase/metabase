@@ -5,10 +5,22 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]))
+
+(defn- nested-value
+  "`value`, a nested object, with keyword keys and without its NULL or empty elements. A document leaves out a missing
+  key, while a struct or a tuple has every element, with NULL or an empty array for a missing one."
+  [value]
+  (into {}
+        (keep (fn [[k v]]
+                (when-not (or (nil? v) (and (sequential? v) (empty? v)))
+                  [(keyword k) v])))
+        value))
 
 (deftest ^:parallel filter-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
@@ -65,7 +77,8 @@
                   :medium "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/med.jpg",
                   :small  "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/small.jpg"}
                  {:phone "415-901-6541", :name "Pacific Heights Free-Range Eatery", :categories ["Free-Range" "Eatery"], :id "88b361c8-ce69-4b2e-b0f2-9deedd574af6"}]]
-               (mt/rows
+               (mt/formatted-rows
+                [int nested-value str nested-value nested-value]
                 (mt/run-mbql-query tips
                   {:fields   [$tips.id $tips.source $tips.text $tips.url $tips.venue]
                    :filter   [:and
@@ -110,10 +123,15 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
     (testing "Nested Field in BREAKOUT"
       (mt/dataset geographical-tips
-        (is (= [[nil 297]
-                ["amy" 20]
-                ["biggie" 11]
-                ["bob" 20]]
+        (is (= (if (tx/sorts-nil-first? driver/*driver* :type/Text)
+                 [[nil 297]
+                  ["amy" 20]
+                  ["biggie" 11]
+                  ["bob" 20]]
+                 [["amy" 20]
+                  ["biggie" 11]
+                  ["bob" 20]
+                  ["cam_saul" 17]])
                (mt/formatted-rows
                 [str int]
                 (mt/run-mbql-query tips
@@ -197,7 +215,8 @@
                   :categories ["Pizza" "Liquor Store"],
                   :phone "415-969-7474",
                   :id "7b9c7dc3-d8f1-498d-843a-e62360449892"}]]
-               (mt/rows
+               (mt/formatted-rows
+                [str nested-value]
                 (mt/run-mbql-query tips
                   {:fields   [$tips.venue.name $tips.venue]
                    :order-by [[:asc $id]]

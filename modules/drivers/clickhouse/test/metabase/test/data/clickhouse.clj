@@ -160,12 +160,48 @@
   [ch-type]
   (boolean (some #(str/starts-with? ch-type %) non-nullable-types)))
 
+(defn- nested-field-type
+  "The ClickHouse type of the test data field `field` with `:nested-fields`: a named `Tuple`, as in
+  `Tuple(name Nullable(String), categories Array(String))`."
+  [{:keys [base-type nested-fields collection-type]}]
+  (cond
+    (seq nested-fields)
+    (format "Tuple(%s)" (->> nested-fields
+                             (map #(str (quote-name (:field-name %)) " " (nested-field-type %)))
+                             (str/join ", ")))
+
+    collection-type
+    (format "Array(%s)" (sql.tx/field-base-type->sql-type :clickhouse collection-type))
+
+    :else
+    (format "Nullable(%s)" (sql.tx/field-base-type->sql-type :clickhouse base-type))))
+
+(defn- nested-field-value-sql
+  "The SQL of `value` for the test data field `field` with `:nested-fields`, or one of its nested fields. A map is a
+  tuple of the values of the nested fields, in their order, and a missing key is NULL."
+  [{:keys [nested-fields collection-type]} value]
+  (cond
+    (seq nested-fields)
+    (format "tuple(%s)" (->> nested-fields
+                             (map #(nested-field-value-sql % (get value (:field-name %))))
+                             (str/join ", ")))
+
+    collection-type
+    (format "[%s]" (str/join ", " (map #(sql.qp/inline-value :clickhouse %) value)))
+
+    (nil? value)
+    "NULL"
+
+    :else
+    (sql.qp/inline-value :clickhouse value)))
+
 (defn- field->clickhouse-column
   [field]
-  (let [{:keys [field-name base-type pk? not-null? default-expr generated-expr]} field
-        ch-type   (if (map? base-type)
-                    (:native base-type)
-                    (sql.tx/field-base-type->sql-type :clickhouse base-type))
+  (let [{:keys [field-name base-type nested-fields pk? not-null? default-expr generated-expr]} field
+        ch-type   (cond
+                    (seq nested-fields) (nested-field-type field)
+                    (map? base-type)    (:native base-type)
+                    :else               (sql.tx/field-base-type->sql-type :clickhouse base-type))
         col-name  (quote-name field-name)
         ch-col    (cond
                     (or pk? (disallowed-as-nullable? ch-type) (map? base-type) not-null?)
@@ -204,7 +240,15 @@
   (apply execute/sequentially-execute-sql! args))
 
 (defmethod load-data/row-xform :clickhouse [_driver _dbdef tabledef]
-  (load-data/maybe-add-ids-xform tabledef))
+  (let [nested-fields (filter (comp seq :nested-fields) (:field-definitions tabledef))]
+    (cond-> (load-data/maybe-add-ids-xform tabledef)
+      ;; a field with `:nested-fields` is a named `Tuple`
+      (seq nested-fields)
+      (comp (map (fn [row]
+                   (reduce (fn [row {:keys [field-name] :as field}]
+                             (update row field-name #(vector :raw (nested-field-value-sql field %))))
+                           row
+                           nested-fields)))))))
 
 (defmethod sql.tx/pk-sql-type :clickhouse [_] "Int32")
 
