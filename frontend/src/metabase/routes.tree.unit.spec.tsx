@@ -15,6 +15,12 @@ import { createMockTokenFeatures } from "metabase-types/api/mocks";
  * preload manifest, the router and the tests can then all treat one tree as
  * the truth.
  *
+ * The guarantee is one tree per edition, not one tree overall. An OSS bundle
+ * has no enterprise plugins, so its slots keep their fallbacks and a URL can
+ * match a different route than it does on an enterprise bundle. Both specs
+ * here build the enterprise tree, and anything that derives from the tree,
+ * such as the preload manifest, describes the bundle it was built from.
+ *
  * To make a route's page depend on a feature, gate it at render time instead of
  * mounting it conditionally: `featureGatedRoute` for a lazy route,
  * `featureGatedComponent` for an eager element, or a guard component that
