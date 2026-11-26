@@ -22,7 +22,7 @@ export function useStableValue<T>(
 const areQueriesEqual = (a: Lib.Query | undefined, b: Lib.Query | undefined) =>
   a === undefined || b === undefined
     ? a === b
-    : Lib.areLegacyQueriesEqual(Lib.toJsQuery(a), Lib.toJsQuery(b));
+    : Lib.areQueriesEqual(Lib.toJsQuery(a), Lib.toJsQuery(b));
 
 /**
  * Returns the same query for as long as it's unchanged. Building a query again

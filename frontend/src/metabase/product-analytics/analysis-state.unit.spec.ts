@@ -158,19 +158,16 @@ describe("getAnalysisState", () => {
       );
 
     expect(
-      Lib.areLegacyQueriesEqual(
+      Lib.areQueriesEqual(
         buildQuery(getStoredEvent(100)),
         buildQuery(getStoredEvent(100)),
       ),
     ).toBe(true);
     expect(
-      Lib.areLegacyQueriesEqual(
-        buildQuery(getStoredEvent(100)),
-        buildQuery(null),
-      ),
+      Lib.areQueriesEqual(buildQuery(getStoredEvent(100)), buildQuery(null)),
     ).toBe(false);
     expect(
-      Lib.areLegacyQueriesEqual(
+      Lib.areQueriesEqual(
         buildQuery(getStoredEvent(100)),
         buildQuery(getStoredEvent(200)),
       ),
@@ -186,10 +183,10 @@ describe("getAnalysisState", () => {
       );
 
     expect(
-      Lib.areLegacyQueriesEqual(buildQuery("percent"), buildQuery("percent")),
+      Lib.areQueriesEqual(buildQuery("percent"), buildQuery("percent")),
     ).toBe(true);
     expect(
-      Lib.areLegacyQueriesEqual(buildQuery("count"), buildQuery("percent")),
+      Lib.areQueriesEqual(buildQuery("count"), buildQuery("percent")),
     ).toBe(false);
   });
 
