@@ -22,7 +22,7 @@
 
 (defn- insert-message!
   [{:keys [conversation-id created-at role profile-id total-tokens data data-version
-           deleted-at external-id finished finish-reason context-window-full]
+           deleted-at external-id finished finish-reason context-window-full finished-at]
     :as   options
     :or   {data-version 2}}]
   (first (t2/insert-returning-pks!
@@ -36,6 +36,7 @@
                    :external_id     (or external-id (str (random-uuid)))}
             created-at          (assoc :created_at created-at)
             deleted-at          (assoc :deleted_at deleted-at)
+            finished-at         (assoc :finished_at finished-at)
             finish-reason       (assoc :finish_reason finish-reason)
             context-window-full (assoc :context_window_full context-window-full)
             (contains? options :finished) (assoc :finished finished)))))
@@ -626,6 +627,66 @@
           (is (= {:type "in_progress"} (:status (second messages))))
           (is (= [] (:parts (second messages))))
           (is (= 2 message_count)))))))
+
+(deftest get-conversation-detail-timings-test
+  (testing "a reply with a recorded end and call records has a timing"
+    (with-detail-conversation!
+      (fn [{:keys [insert! fetch]}]
+        (let [at       #(offset-date-time (format "2026-01-02T00:00:%sZ" %))
+              _        (insert! {:created-at (at "00") :role "user" :profile-id "p" :total-tokens 1
+                                 :data [{:type "text" :text "q"}]})
+              reply-id (insert! {:created-at (at "01") :finished-at (at "11.500") :role "assistant"
+                                 :profile-id "internal" :total-tokens 1 :external-id "reply-1"
+                                 :data [{:type "text" :text "a"}]})
+              [failed ok] (t2/insert-returning-pks!
+                           :model/MetabotLlmCall
+                           [{:message_id reply-id :iteration 1 :attempt 1 :provider "anthropic" :model "m"
+                             :status "error" :error_class "ExceptionInfo" :retry_delay_ms 500
+                             :started_at (at "01") :finished_at (at "02")}
+                            {:message_id reply-id :iteration 1 :attempt 2 :provider "anthropic" :model "m"
+                             :status "ok" :started_at (at "03") :finished_at (at "07.250")}])]
+          (is (some? failed))
+          (t2/insert! :model/MetabotToolCall
+                      [{:message_id reply-id :llm_call_id ok :tool_call_id "call-1" :tool_name "search"
+                        :status "ok" :created_at (at "07") :started_at (at "07.100") :finished_at (at "09.100")}
+                       {:message_id reply-id :llm_call_id ok :tool_call_id "call-2" :tool_name "run_query"
+                        :status "skipped" :created_at (at "07") :finished_at (at "07")}])
+          (let [{:keys [timings duration_ms]} (fetch)]
+            (is (= 10500 duration_ms))
+            (is (=? [{:message_id  "reply-1"
+                      :duration_ms 10500
+                      :llm_calls   [{:attempt 1 :status "error" :duration_ms 1000 :error_class "ExceptionInfo"
+                                     :retry_delay_ms 500}
+                                    {:attempt 2 :status "ok" :duration_ms 4250 :model "m" :provider "anthropic"}]
+                      :tool_calls  [{:call_id "call-1" :tool_name "search" :status "ok" :wait_ms 100
+                                     :duration_ms 2000}
+                                    {:call_id "call-2" :tool_name "run_query" :status "skipped" :wait_ms nil
+                                     :duration_ms nil}]}]
+                    timings)))))))
+  (testing "a reply with no recorded end and no call records has no timing"
+    (with-detail-conversation!
+      (fn [{:keys [insert! fetch]}]
+        (insert! {:role "user" :profile-id "p" :total-tokens 1 :data [{:type "text" :text "q"}]})
+        (insert! {:role "assistant" :profile-id "internal" :total-tokens 1 :data [{:type "text" :text "a"}]})
+        (let [{:keys [timings duration_ms]} (fetch)]
+          (is (= [] timings))
+          (is (nil? duration_ms))))))
+  (testing "a reply whose turn still runs has a timing with no duration"
+    (with-detail-conversation!
+      (fn [{:keys [insert! fetch]}]
+        (let [reply-id (insert! {:role "assistant" :profile-id "internal" :total-tokens 0 :data []
+                                 :finished nil :external-id "reply-2"})]
+          (t2/insert! :model/MetabotLlmCall
+                      {:message_id reply-id :attempt 1 :status "running"
+                       :started_at (offset-date-time "2026-01-02T00:00:00Z")})
+          (let [{:keys [timings duration_ms]} (fetch)]
+            (is (=? [{:message_id  "reply-2"
+                      :finished_at nil
+                      :duration_ms nil
+                      :llm_calls   [{:attempt 1 :status "running" :duration_ms nil}]
+                      :tool_calls  []}]
+                    timings))
+            (is (nil? duration_ms))))))))
 
 (deftest get-conversation-detail-incomplete-status-test
   (testing "a reply the provider cut off surfaces as an incomplete message"

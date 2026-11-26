@@ -26,7 +26,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: int
+                  type: bigint
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -209,7 +209,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: int
+                  type: bigint
                   autoIncrement: true
                   constraints:
                     primaryKey: true
@@ -217,7 +217,7 @@ databaseChangeLog:
                   remarks: Unique ID
               - column:
                   name: llm_call_id
-                  type: int
+                  type: bigint
                   remarks: The metabot_llm_call attempt whose response made the call
               - column:
                   name: message_id

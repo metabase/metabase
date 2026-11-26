@@ -182,6 +182,19 @@
   [conversation-id :- :string]
   (t2/select :model/MetabotMessage :conversation_id conversation-id {:order-by [[:created_at :asc] [:id :asc]]}))
 
+(mu/defn llm-calls-for-messages
+  "The MetabotLlmCalls of the MetabotMessages with `message-ids`."
+  [message-ids :- [:sequential ms/PositiveInt]]
+  (mdb/select-batched #(t2/select :model/MetabotLlmCall :message_id [:in %]) message-ids))
+
+(mu/defn tool-calls-for-messages
+  "The MetabotToolCalls of the MetabotMessages with `message-ids`, without their input and output."
+  [message-ids :- [:sequential ms/PositiveInt]]
+  (mdb/select-batched #(t2/select [:model/MetabotToolCall :id :message_id :tool_call_id :tool_name :created_at
+                                   :started_at :finished_at :status :error_class]
+                                  :message_id [:in %])
+                      message-ids))
+
 (mu/defn message-data-for-conversations
   "The conversation, data, and data version of the MetabotMessages of the MetabotConversations with
   `conversation-ids`."

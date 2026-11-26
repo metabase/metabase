@@ -65,6 +65,12 @@
         structured (assoc :structured_output structured)))
     result))
 
+(defn tool-result->error-text
+  "The stored `:errorText` of a v2 tool part, for the `result` of a failed tool call: the text the model reads for
+  the failure on a replay (see [[tools.runtime/replay-text]])."
+  [result]
+  (tools.runtime/replay-text (assoc result :output (self.core/tool-result-text result))))
+
 (defn- internal-parts->storable
   "Convert internal agent-loop parts to v2 at-rest parts
   (`:metabase.metabot.schema.v2/message-data`). `:tool-input`/`:tool-output`
@@ -111,9 +117,7 @@
                              ;; exception. It is stored as the neutral sentence of
                              ;; `tools.runtime/replay-text`. Its live text tells the model what to do,
                              ;; but that turn will have ended.
-                             (assoc :errorText (tools.runtime/replay-text
-                                                (assoc (:result output)
-                                                       :output (self.core/tool-result-text (:result output)))))))
+                             (assoc :errorText (tool-result->error-text (:result output)))))
                          :data {:type (str "data-" (or (:data-type part) "data"))
                                 :data (:data part)}
                          (do (log/warn "Dropping internal part with no v2 storage representation"
@@ -453,6 +457,9 @@
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
                         (u/string-byte-count (json/encode content)))
+    ;; Before the message UPDATE, so a reader that sees `finished_at` set on the message sees no open record that this
+    ;; turn will still close here. A tool that is still running writes its own end later, over `aborted`.
+    (call-records/abort-open-calls! assistant-msg-id finished-at)
     (metabot-message/update-metabot-messages! [(cond-> {:id             assistant-msg-id
                                                         :data           content
                                                         :data_version   schema.v2/current-data-version
@@ -476,9 +483,6 @@
                                                  ;; Set only on a full turn, so every other row keeps NULL.
                                                  (filled-context-window? finish-reason context-tokens context-window-tokens)
                                                  (assoc :context_window_full true))])
-    ;; After the message UPDATE, so a reader that sees `finished_at` set on the message sees no open record that this
-    ;; turn will still close here. A tool that is still running writes its own end later, over `aborted`.
-    (call-records/abort-open-calls! assistant-msg-id finished-at)
     ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
     ;; UPDATE commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
     ;; `message_id` FK is valid even before the UPDATE completes.
