@@ -1811,48 +1811,69 @@
   :hierarchy #'hierarchy)
 
 (mr/def ::table-statistics.options
-  "The options of [[table-statistics]]. `:max-cost` is the cost the caller accepts: `:metadata`, catalog reads only, with
-  no read of the data, which sync can ask on each run; or `:scan`, which also allows one aggregate query of the table.
-  `:want` names the parts the caller wants; with none named, it wants all."
+  "The options of [[table-statistics]], an open map: a driver ignores a key it does not know.
+  `:max-cost` is the cost the caller accepts: `:metadata`, catalog reads only, with no read of the table's data, which
+  sync can ask on each run; or `:scan`, which also allows reads of the table's data. A driver treats a cost it does not
+  know as `:metadata`.
+  `:want` names the parts the caller wants; with none named, it wants all. A driver spends no cost on a part not
+  wanted, and may still return it; it ignores a part it does not know.
+  `:values-limit` is the most values a field's `:values` may have, 1,000 by default, the most a stored value list
+  keeps; a driver gives no `:values` for a field with more."
   [:map
    [:max-cost [:enum :metadata :scan]]
-   [:want {:optional true} [:set [:enum :row-count :fingerprint :values]]]])
+   [:want {:optional true} [:set :keyword]]
+   [:values-limit {:optional true} pos-int?]])
+
+(mr/def ::table-statistics.kind
+  "How exact a part of an answer of [[table-statistics]] is: `:exact`; `:sampled`, which the database computed from a
+  sample of the rows, as Postgres `ANALYZE` does (not a sample that sync read); or `:estimate`."
+  [:enum :exact :sampled :estimate])
 
 (mr/def ::table-statistics.origin
-  "Where a part of an answer of [[table-statistics]] came from. `:source` is `:catalog` or `:query`. `:kind` is how
-  exact it is: `:exact`, `:sampled` (the database computed it from a sample, as `ANALYZE` does), or `:estimate`.
-  `:collected-at` is when the database collected it, when it says, as an ISO-8601 instant in UTC."
+  "Where a part of an answer of [[table-statistics]] came from: `:source` `:catalog` or `:query`, its `:kind`, and
+  `:collected-at`, when the database collected it, when it says, as an ISO-8601 instant in UTC."
   [:map
    [:source [:enum :catalog :query]]
-   [:kind [:enum :exact :sampled :estimate]]
+   [:kind [:ref ::table-statistics.kind]]
    [:collected-at {:optional true} [:maybe [:re #"^\d{4}-\d{2}-\d{2}T.*Z$"]]]])
 
 (mr/def ::table-statistics.result
-  "An answer of [[table-statistics]]: only what the driver knows, so `{}` when it knows nothing.
-  `:row-count` is the table's row count and how exact it is. `:fields` is by Field id: a partial `:fingerprint` in the
-  shape of a fingerprint, `:values`, the field's distinct values, with `:complete? true` only when the database is sure
-  that they are all of them, and the `:origin` of the field's parts."
+  "An answer of [[table-statistics]], an open map with only what the driver knows, so `{}` when it knows nothing.
+  `:row-count` is the table's row count and its origin; it is the same kind of number as the `:estimated_row_count` of
+  `describe-database`, which sync stores. `:fields` is by Field id:
+  - `:fingerprint`, a partial fingerprint: the keys the database has, in the shape of a fingerprint.
+  - `:values`, the field's values in the form that a query of the column gives (an integer for an integer column, not
+    a string), at most `:values-limit`. `:complete? true` only when no value of the column is missing; a value can
+    have no rows, as a label of an enum type. `:declared? true` when they are the values the column can have, from its
+    type, not the values the database saw.
+  - `:origin`, where the field's parts came from, and `:parts`, by part, for a part with another origin."
   [:map
    [:row-count {:optional true} [:map
-                                 [:value :int]
-                                 [:kind [:enum :exact :sampled :estimate]]]]
+                                 [:value [:int {:min 0}]]
+                                 [:origin [:ref ::table-statistics.origin]]]]
    [:fields {:optional true} [:map-of :int [:map
-                                            [:fingerprint {:optional true} :map]
+                                            [:fingerprint {:optional true}
+                                             [:ref :metabase.lib.schema.metadata.fingerprint/fingerprint]]
                                             [:values {:optional true} [:map
                                                                        [:complete? :boolean]
+                                                                       [:declared? {:optional true} :boolean]
                                                                        [:values [:sequential :any]]]]
-                                            [:origin [:ref ::table-statistics.origin]]]]]])
+                                            [:origin [:ref ::table-statistics.origin]]
+                                            [:parts {:optional true}
+                                             [:map-of :keyword [:ref ::table-statistics.origin]]]]]]])
 
 (defmulti table-statistics
   "What the database of `driver` knows about `table` and its `fields`, at a cost no higher than `(:max-cost opts)`; see
-  `::table-statistics.options` and `::table-statistics.result`. The driver returns the parts it has and omits the
-  rest, and sync fills the gaps from a sample. Each answer states its origin.
+  `::table-statistics.options` and `::table-statistics.result`. `database` is Lib metadata; `table` and `fields` are
+  Toucan instances, as for [[table-rows-sample]]. The options and the answer are open maps.
 
-  A driver fills each part from the source that is cheapest for its engine, for example `pg_stats` on Postgres. Declared
-  value lists, such as the labels of an enum type, come as `:values` with `:complete? true`, which must be the truth.
+  The driver returns the parts it has and omits the rest, and sync fills the gaps from a sample. Each part states its
+  origin. A driver fills each part from the source that is cheapest for its engine, for example `pg_stats` on Postgres.
+  Declared value lists, such as the labels of an enum type, come as `:values` with `:complete? true`, which must be the
+  truth, and `:declared? true`. When the driver cannot answer, it returns `{}`; sync treats a throw the same way.
 
   The default knows nothing and returns `{}`. Sync calls this only for a driver that supports `:table-statistics` for
-  itself. No sync code uses an answer yet."
+  itself."
   {:arglists '([driver database table fields opts]), :added "0.66.0"}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

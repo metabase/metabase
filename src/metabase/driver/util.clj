@@ -494,7 +494,9 @@
 
 (def ^:private skip-internal-features
   #{;; used intenrally during the sync process, does not really need to be hydrated
-    :metadata/table-writable-check})
+    :metadata/table-writable-check
+    ;; sync asks it for the driver itself; it says nothing a client needs
+    :table-statistics})
 
 (defn- feature-set
   "The set of features for which `supported?` returns truthy, minus the ones we never hydrate."

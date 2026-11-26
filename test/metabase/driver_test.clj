@@ -543,23 +543,31 @@
     (is (false? (driver/database-supports? :h2 :table-statistics nil)))))
 
 (deftest ^:parallel table-statistics-schemas-test
-  (testing "the options: the cost the caller accepts and the parts it wants"
+  (testing "the options: the cost the caller accepts, the parts it wants, and the most values of a list"
     (is (mr/validate ::driver/table-statistics.options {:max-cost :metadata}))
-    (is (mr/validate ::driver/table-statistics.options {:max-cost :scan :want #{:values :fingerprint}}))
+    (is (mr/validate ::driver/table-statistics.options {:max-cost :scan :want #{:values :fingerprint} :values-limit 1000}))
     (is (not (mr/validate ::driver/table-statistics.options {:max-cost :all})))
     (is (not (mr/validate ::driver/table-statistics.options {}))))
   (testing "the answer: what the driver knows, each part with its origin"
     (is (mr/validate ::driver/table-statistics.result {}))
     (is (mr/validate ::driver/table-statistics.result
-                     {:row-count {:value 48211094 :kind :estimate}
+                     {:row-count {:value 48211094 :origin {:source :catalog :kind :estimate}}
                       :fields    {12 {:fingerprint {:global {:distinct-count 51 :nil% 0.0}}
-                                      :values      {:complete? true :values ["AK" "AL"]}
+                                      :values      {:complete? true :declared? true :values ["AK" "AL"]}
                                       :origin      {:source       :catalog
                                                     :kind         :sampled
-                                                    :collected-at "2026-11-23T02:10:00Z"}}}}))
+                                                    :collected-at "2026-11-23T02:10:00Z"}
+                                      :parts       {:values {:source :catalog :kind :exact}}}}}))
+    (testing "a fingerprint in the shape of a fingerprint"
+      (is (not (mr/validate ::driver/table-statistics.result
+                            {:fields {12 {:fingerprint {:global {:distinct-count "51"}}
+                                          :origin      {:source :catalog :kind :exact}}}}))))
     (testing "values only when the driver says whether they are complete"
       (is (not (mr/validate ::driver/table-statistics.result {:fields {12 {:values {:values ["AK"]}
                                                                            :origin {:source :catalog :kind :exact}}}}))))
-    (testing "each field answer has an origin"
+    (testing "each field answer has an origin, and a row count has one too and is not negative"
       (is (not (mr/validate ::driver/table-statistics.result
-                            {:fields {12 {:fingerprint {:global {:distinct-count 51}}}}}))))))
+                            {:fields {12 {:fingerprint {:global {:distinct-count 51}}}}})))
+      (is (not (mr/validate ::driver/table-statistics.result {:row-count {:value 5 :kind :estimate}})))
+      (is (not (mr/validate ::driver/table-statistics.result
+                            {:row-count {:value -1 :origin {:source :catalog :kind :estimate}}}))))))
