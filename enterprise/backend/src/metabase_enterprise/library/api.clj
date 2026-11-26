@@ -9,6 +9,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
    [metabase.permissions.core :as perms]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -30,7 +31,7 @@
 (defn- add-here-and-below [collection]
   (let [descendent-ids (map :id (collection/descendants-flat collection
                                                              nil
-                                                             (perms/visible-collections-filter-clause :collection.id (api/current-user-info) {:include-archived-items :exclude :root-namespace nil})))
+                                                             (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/Collection) :id) (api/current-user-info) {:include-archived-items :exclude :root-namespace nil})))
         below-card-types (library.db/card-types-in-collections descendent-ids)
         below-tables? (library.db/published-table-in-collections? descendent-ids)
         below-dashboards? (library.db/dashboard-in-collections? descendent-ids)]

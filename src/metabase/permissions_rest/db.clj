@@ -13,7 +13,7 @@
   [group-id-column manager-user-id]
   (when manager-user-id
     [:in group-id-column ^:allow-subquery {:select [:group_id]
-                                           :from   [:permissions_group_membership]
+                                           :from   [(t2/table-name :model/PermissionsGroupMembership)]
                                            :where  [:and
                                                     [:= :user_id manager-user-id]
                                                     [:= :is_group_manager true]]}]))
@@ -25,10 +25,10 @@
    [:= nil :magic_group_type]
    [:not= "data-analyst" :magic_group_type]
    [:exists ^:allow-subquery {:select [1]
-                              :from   [[:permissions_group_membership :pgm]]
-                              :join   [[:core_user :member] [:= :member.id :pgm.user_id]]
+                              :from   [[(t2/table-name :model/PermissionsGroupMembership) :pgm]]
+                              :join   [[(t2/table-name :model/User) :member] [:= :member.id :pgm.user_id]]
                               :where  [:and
-                                       [:= :pgm.group_id :permissions_group.id]
+                                       [:= :pgm.group_id (u/qualified-key (t2/table-name :model/PermissionsGroup) :id)]
                                        [:= :member.is_active true]]}]])
 
 (mu/defn permissions-groups
@@ -80,7 +80,7 @@
                            [(managed-groups-clause :group_id manager-user-id)
                             (when exclude-tenant-groups?
                               [:not-in :group_id ^:allow-subquery {:select [:id]
-                                                                   :from   [:permissions_group]
+                                                                   :from   [(t2/table-name :model/PermissionsGroup)]
                                                                    :where  [:= :is_tenant_group true]}])])}))
 
 (mu/defn group-membership
@@ -91,7 +91,7 @@
 (mu/defn group-member-ids :- [:sequential ms/PositiveInt]
   "The ids of the Users with a membership in the PermissionsGroup with `group-id`, active or not."
   [group-id :- ms/PositiveInt]
-  (t2/select-fn-vec :user_id :model/PermissionsGroupMembership :group_id [:auto/param group-id]))
+  (t2/select-fn-vec :user_id :model/PermissionsGroupMembership :group_id group-id))
 
 (mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, excluding `excluded-database-id` (nil for no

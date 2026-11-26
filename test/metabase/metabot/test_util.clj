@@ -240,7 +240,7 @@
   "Throw an app DB lookup error without leaving the surrounding transaction aborted."
   [& _]
   (t2/with-transaction [_conn]
-    (t2/query ["SELECT no_such_column FROM metabase_field"])))
+    (t2/query {:select [:no_such_column] :from [(t2/table-name :model/Field)]})))
 
 (def internal-failure
   "What the model reads when a call fails inside Metabase in a way no tool declared."

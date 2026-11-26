@@ -4,6 +4,7 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
+   [metabase.funnysql.schema :as funnysql.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.search.appdb.index-schema :as index-schema]
@@ -15,7 +16,7 @@
    [metabase.search.ingestion.query :as ingestion.query]
    [metabase.search.schema :as search.schema]
    [metabase.search.spec :as search.spec]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -29,7 +30,7 @@
                              :updated_at :search_vector :with_native_query_vector :search_terms
                              :native_search_terms}
                            (remove #{:id :created_at :updated_at} search.spec/attr-columns))]
-          [column {:optional true} ::h2x/expr])))
+          [column {:optional true} ::funnysql.schema/expr])))
 
 (mu/defn spec-index-reducible-rows
   "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)
@@ -167,12 +168,11 @@
   [table   :- [:or :keyword :string]
    entries :- [:sequential SearchIndexRow]]
   (when (seq entries)
-    (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
-          excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
+    (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))]
       (t2/query {:insert-into   table
                  :values        entries
                  :on-conflict   [:model :model_id]
-                 :do-update-set (with-meta (zipmap update-keys (map excluded-kw update-keys))
+                 :do-update-set (with-meta (zipmap update-keys (map #(u/qualified-key :excluded %) update-keys))
                                            {:allow-subquery true})}))))
 
 (mu/defn commit!

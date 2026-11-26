@@ -12,35 +12,35 @@
 (deftest guest-embeds-backfilled-by-the-upgrade-keep-working-test
   ;; open-ended, so the models below read the current schema
   (impl/test-migrations ["3i2jpz"] [migrate!]
-    (let [user-id (t2/insert-returning-pk! :core_user {:first_name  "Router"
-                                                       :last_name   "Owner"
-                                                       :email       "router-owner@metabase.com"
-                                                       :password    "superstrong"
-                                                       :entity_id   (u/generate-nano-id)
-                                                       :date_joined :%now})
+    (let [user-id (t2/insert-returning-pk! (t2/table-name :model/User) {:first_name  "Router"
+                                                                        :last_name   "Owner"
+                                                                        :email       "router-owner@metabase.com"
+                                                                        :password    "superstrong"
+                                                                        :entity_id   (u/generate-nano-id)
+                                                                        :date_joined :%now})
           db!     (fn [db-name]
-                    (t2/insert-returning-pk! :metabase_database {:details    "{}"
-                                                                 :created_at :%now
-                                                                 :updated_at :%now
-                                                                 :engine     "h2"
-                                                                 :is_sample  false
-                                                                 :name       db-name}))
+                    (t2/insert-returning-pk! (t2/table-name :model/Database) {:details    "{}"
+                                                                              :created_at :%now
+                                                                              :updated_at :%now
+                                                                              :engine     "h2"
+                                                                              :is_sample  false
+                                                                              :name       db-name}))
           router! (fn [db-id]
-                    (t2/insert-returning-pk! :db_router {:database_id    db-id
-                                                         :user_attribute "db_name"}))
+                    (t2/insert-returning-pk! (t2/table-name :model/DatabaseRouter) {:database_id    db-id
+                                                                                    :user_attribute "db_name"}))
           card!   (fn [db-id enable-embedding]
-                    (t2/insert-returning-pk! :report_card {:name                   "Card"
-                                                           :entity_id              (u/generate-nano-id)
-                                                           :type                   "question"
-                                                           :display                "table"
-                                                           :dataset_query          "{}"
-                                                           :visualization_settings "{}"
-                                                           :creator_id             user-id
-                                                           :database_id            db-id
-                                                           :enable_embedding       enable-embedding
-                                                           :archived               false
-                                                           :created_at             :%now
-                                                           :updated_at             :%now}))
+                    (t2/insert-returning-pk! (t2/table-name :model/Card) {:name                   "Card"
+                                                                          :entity_id              (u/generate-nano-id)
+                                                                          :type                   "question"
+                                                                          :display                "table"
+                                                                          :dataset_query          "{}"
+                                                                          :visualization_settings "{}"
+                                                                          :creator_id             user-id
+                                                                          :database_id            db-id
+                                                                          :enable_embedding       enable-embedding
+                                                                          :archived               false
+                                                                          :created_at             :%now
+                                                                          :updated_at             :%now}))
           embedded-db (db! "router-with-guest-embeds")
           _           (router! embedded-db)
           _           (card! embedded-db true)

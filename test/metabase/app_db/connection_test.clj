@@ -842,14 +842,14 @@
                                "ambient resolution must be suppressed mid-reduction")
                            (conj acc (into {} row)))
                          []
-                         (t2/reducible-query conn ["select 1 as x"]))]
+                         (t2/reducible-query conn {:select [[[:inline 1] :x]]}))]
         (is (= 1 (count rows)))))
     (testing "a transaction opened while the unshared connection is in use gets its own connection"
       (reduce (fn [_ _row]
                 (t2/with-transaction [tx-conn]
                   (is (not (identical? tx-conn conn)))))
               nil
-              (t2/reducible-query conn ["select 1 as x"])))))
+              (t2/reducible-query conn {:select [[[:inline 1] :x]]})))))
 
 (deftest unshared-connection-borrower-work-commits-independently-test
   (let [email (mt/random-email)]
@@ -862,7 +862,7 @@
           (reduce (fn [_ _row]
                     (t2/insert! :model/User (assoc (mt/with-temp-defaults :model/User) :email email)))
                   nil
-                  (t2/reducible-query conn ["select 1 as x"])))
+                  (t2/reducible-query conn {:select [[[:inline 1] :x]]})))
         (is (t2/exists? :model/User :email email)))
       (finally
         (t2/delete! :model/User :email email)))))
@@ -886,10 +886,17 @@
                                       ;; unrelated toucan work mid-stream, resolved ambiently, that commits
                                       (when (= n 30)
                                         (t2/with-transaction [_]
-                                          (t2/query ["select 1"])))
+                                          (t2/query {:select [[[:inline 1] :one]]})))
                                       (inc n))
                                     0
-                                    (t2/reducible-query conn ["select g from generate_series(1, 1000) g"]))))]
+                                    (t2/reducible-query conn {:with-recursive [[:series
+                                                                                ^:allow-subquery
+                                                                                {:union-all [^:allow-subquery {:select [[[:inline 1] :g]]}
+                                                                                             ^:allow-subquery {:select [[[:+ :g 1] :g]]
+                                                                                                               :from   [:series]
+                                                                                                               :where  [:< :g 1000]}]}]]
+                                                              :select         [:g]
+                                                              :from           [:series]}))))]
       (testing "control: an ordinary connection is ambiently visible mid-reduction; the borrower commit kills the portal"
         (with-open [^Connection raw (.getConnection (mdb.connection/data-source))]
           (let [e (try (stream! raw) nil (catch Throwable e e))]
@@ -912,8 +919,7 @@
                             :columns     [:lock_name]
                             :values      [[lock-name]]})
         (testing "the write is visible on the unshared connection before close"
-          (is (= 1 (count (t2/query conn ["select * from metabase_cluster_lock where lock_name = ?"
-                                          lock-name]))))))
+          (is (= 1 (count (t2/query conn {:select [:*] :from [:metabase_cluster_lock] :where [:= :lock_name lock-name]}))))))
       (testing "the uncommitted write vanished at pool check-in"
         (is (not (t2/exists? :metabase_cluster_lock :lock_name lock-name))))
       (finally

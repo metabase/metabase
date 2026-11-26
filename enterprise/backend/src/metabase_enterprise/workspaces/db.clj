@@ -245,7 +245,7 @@
               :workspace_id workspace-id
               :status       [:in [:provisioning :deprovisioning]]
               {:where [:exists ^:allow-subquery {:select [1]
-                                                 :from   [[:workspace_database :any_wsd]]
+                                                 :from   [[(t2/table-name :model/WorkspaceDatabase) :any_wsd]]
                                                  :where  [:and
                                                           [:= :any_wsd.workspace_id workspace-id]
                                                           [:> :any_wsd.updated_at since]]}]}))
@@ -259,7 +259,7 @@
               :workspace_id workspace-id
               :status       [:in [:unprovisioned :provisioning :deprovisioning]]
               {:where [:exists ^:allow-subquery {:select [1]
-                                                 :from   [[:workspace_database :any_wsd]]
+                                                 :from   [[(t2/table-name :model/WorkspaceDatabase) :any_wsd]]
                                                  :where  [:and
                                                           [:= :any_wsd.workspace_id workspace-id]
                                                           [:> :any_wsd.updated_at since]]}]}))

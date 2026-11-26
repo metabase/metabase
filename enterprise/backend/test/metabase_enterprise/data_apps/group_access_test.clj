@@ -42,7 +42,7 @@
         (group-access/add-groups! (t2/select-one :model/DataApp :id app-id) [group-id])
         (is (= [app-id]
                (map :id (mdb/query {:select [:id]
-                                    :from   [:data_app]
+                                    :from   [(t2/table-name :model/DataApp)]
                                     :where  [:in :id (data-apps/visible-data-app-filter-select
                                                       {:user-id (mt/user->id :rasta) :is-superuser? false :is-data-analyst? false})]}))))))))
 

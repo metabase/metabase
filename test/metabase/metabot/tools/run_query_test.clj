@@ -961,30 +961,49 @@
             false]
            (run-sql-recording! {:database (mt/id), :type :native, :native {:query {:collection "venues"}}})))))
 
+(defn- run-snippet-query-changed-after-check!
+  "Run a SQL query whose snippet turns into a write right after the read-only check, calling `after-change` then, and
+  return its outcome with the SQL checked and the SQL the driver ran."
+  [after-change]
+  (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "body", :content "SELECT 1 AS N"}]
+    (let [query          {:database (mt/id)
+                          :type     :native
+                          :native   {:query         "{{snippet: body}}"
+                                     :template-tags {"snippet: body" {:name         "snippet: body"
+                                                                      :display-name "Body"
+                                                                      :type         :snippet
+                                                                      :snippet-name "body"
+                                                                      :snippet-id   snippet-id}}}}
+          read-only?     (mt/original-fn #'sql-tools/read-only-select?)
+          checked-sql    (atom [])
+          driver-ran-sql (atom [])]
+      (mt/with-dynamic-fn-redefs [sql-tools/read-only-select?
+                                  (fn [driver sql]
+                                    (swap! checked-sql conj sql)
+                                    (u/prog1 (read-only? driver sql)
+                                      (t2/update! :model/NativeQuerySnippet :id snippet-id
+                                                  {:content "SELECT 2 AS N FOR UPDATE"})
+                                      (after-change)))]
+        (binding [qp.pipeline/*execute* (fn [_driver query respond]
+                                          (swap! driver-ran-sql conj (:native (lib/query-stage query -1)))
+                                          (respond {:cols [{:name "N"}]} [[1]]))]
+          {:outcome        (run-sql-tool! {"q1" query} {:query_id "q1"})
+           :checked-sql    @checked-sql
+           :driver-ran-sql @driver-ran-sql})))))
+
 (deftest run-query-runs-checked-sql-test
-  (testing "a snippet that turns into a write after the check is not run"
-    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "body", :content "SELECT 1 AS N"}]
-      (let [query          {:database (mt/id)
-                            :type     :native
-                            :native   {:query         "{{snippet: body}}"
-                                       :template-tags {"snippet: body" {:name         "snippet: body"
-                                                                        :display-name "Body"
-                                                                        :type         :snippet
-                                                                        :snippet-name "body"
-                                                                        :snippet-id   snippet-id}}}}
-            read-only?     (mt/original-fn #'sql-tools/read-only-select?)
-            driver-ran-sql (atom [])]
-        (mt/with-dynamic-fn-redefs [sql-tools/read-only-select?
-                                    (fn [driver sql]
-                                      (u/prog1 (read-only? driver sql)
-                                        (t2/update! :model/NativeQuerySnippet :id snippet-id
-                                                    {:content "SELECT 2 AS N FOR UPDATE"})))]
-          (binding [qp.pipeline/*execute* (fn [_driver query respond]
-                                            (swap! driver-ran-sql conj (:native (lib/query-stage query -1)))
-                                            (respond {:cols [{:name "N"}]} []))]
-            (is (= (not-read-only "It writes, takes a lock, or advances a sequence.")
-                   (run-sql-tool! {"q1" query} {:query_id "q1"})))))
-        (is (= [] @driver-ran-sql))))))
+  (testing "a snippet changed after the check runs as checked"
+    (let [{:keys [outcome checked-sql driver-ran-sql]} (run-snippet-query-changed-after-check! (constantly nil))]
+      (is (= ["| N |" "| --- |" "| 1 |"]
+             (data-lines (:output outcome))))
+      (is (= ["SELECT 1 AS N"] checked-sql))
+      (is (= ["SELECT 1 AS N"] driver-ran-sql))))
+  (testing "a snippet that turns into a write after the check and is read again is not run"
+    (let [{:keys [outcome driver-ran-sql]} (run-snippet-query-changed-after-check!
+                                            #(swap! (lib-be/metadata-provider-cache) empty))]
+      (is (= (not-read-only "It writes, takes a lock, or advances a sequence.")
+             outcome))
+      (is (= [] driver-ran-sql)))))
 
 (deftest run-query-viewed-question-kinds-test
   (mt/with-temp [:model/Card {sql-card :id}      {:dataset_query (venues-sql)}

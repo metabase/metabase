@@ -61,7 +61,7 @@ Three layers, and a rule goes to the lowest one that can hold it:
      - SQL that differs per app DB is a `case` on `(mdb/db-type)` inside the `-clause` function. MySQL assigns SET
        left to right, so an expression never reads a column the same statement assigns before it; MySQL refuses a
        subquery on the table being written, so read it through a derived table. Mark a deliberate subquery
-       `^:allow-subquery` and a value `[:auto/param v]`.
+       `^:allow-subquery`.
      - Events, returned rows and Revisions carry real values: read the rows once after the statement when the
        changes held an expression.
      - What stays in Clojure: values from lib or the query processor, parsing, humanized names, encryption and hashing

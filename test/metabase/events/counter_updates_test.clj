@@ -20,9 +20,9 @@
 (defn- row-counts
   "The number of rows of the tables the consumers record into."
   []
-  {:audit_log  (t2/count :audit_log)
-   :revision   (t2/count :revision)
-   :change_log (if config/ee-available? (t2/count :change_log) 0)})
+  {:audit_log  (t2/count (t2/table-name :model/AuditLog))
+   :revision   (t2/count (t2/table-name :model/Revision))
+   :change_log (if config/ee-available? (t2/count :model/ChangeLog) 0)})
 
 (deftest counter-updates-record-nothing-test
   (mt/with-premium-features #{:audit-app :dependencies :change-log :content-diagnostics}

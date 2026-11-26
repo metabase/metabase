@@ -75,7 +75,7 @@
                   (t2/select-pks-vec :model/ConnectionImpersonation
                                      {:where (into [:or]
                                                    (map (fn [[group-id database-id]]
-                                                          [:and [:= :group_id [:auto/param group-id]] [:= :db_id [:auto/param database-id]]]))
+                                                          [:and [:= :group_id group-id] [:= :db_id database-id]]))
                                                    batch)})))
         (partition-all app-db/update-partition-size (distinct pairs))))
 

@@ -602,13 +602,14 @@
 
 (defn- requested-charts
   "The charts the ops name, in order, each `{:chart-id :name :dataset_query :display}`.
-  Each must be one [[save-entity/savable-chart]] accepts. A chart that several ops name takes the name from the first."
+  Each must be one [[save-entity/savable-charts]] accepts. A chart that several ops name takes the name from the first."
   [ops]
-  (->> ops
-       (filter :chart_id)
-       (m/distinct-by :chart_id)
-       (mapv (fn [{:keys [chart_id] :as op}]
-               (assoc (save-entity/savable-chart chart_id) :chart-id chart_id :name (:name op))))))
+  (let [ops (->> ops (filter :chart_id) (m/distinct-by :chart_id) vec)]
+    (mapv (fn [{:keys [chart_id] :as op} chart]
+            (assoc chart :chart-id chart_id :name (:name op)))
+          ops
+          (when (seq ops)
+            (save-entity/savable-charts (mapv :chart_id ops))))))
 
 (defn- comparable-query
   "A value equal for two forms of the same query, such as a chart's legacy query and the question saved from it."
@@ -617,9 +618,9 @@
   (vec (lib-be/query-hash query)))
 
 (defn- reusable-card
-  "A question of the dashboard with `dashboard-id` that was saved from `chart-id` in the conversation with
-  `conversation-id`, and holds `dataset-query` shown as `display`, or nil."
-  [conversation-id chart-id dashboard-id dataset-query display]
+  "A question among `cards`, the questions of the dashboard saved from the chart in this conversation, oldest first,
+  that holds `dataset-query` shown as `display`, or nil."
+  [cards dataset-query display]
   ;; The viewing context names a chart after the saved question the user is viewing, so the same chart id can hold
   ;; an edited query or display on a later turn. Matching both keeps that edit from being dropped for the old question.
   (let [wanted (comparable-query dataset-query)]
@@ -627,29 +628,44 @@
             (when (and (= (keyword display) (keyword (:display card)))
                        (= wanted (comparable-query dataset_query)))
               card))
-          (metabot.db/conversation-dashboard-questions conversation-id chart-id dashboard-id))))
+          cards)))
 
-(defn- save-chart!
-  "Saves `chart` as a question of the dashboard with `dashboard-id`, and returns `{:chart-id :card-id :card}`.
-  A question already saved from the chart, with the same query and display, to this dashboard in this conversation is
-  reused, without a `:card`.
-  It keeps its name, which is returned as `:kept-name` when the chart asked for another."
-  [dashboard-id {:keys [chart-id name dataset_query display]}]
-  (let [conversation-id (shared/current-conversation-id)]
-    (if-let [reused (some-> conversation-id
-                            (reusable-card chart-id dashboard-id dataset_query display))]
-      (cond-> {:chart-id chart-id, :card-id (:id reused)}
-        (not= name (:name reused)) (assoc :kept-name (:name reused)))
-      (let [[card] (queries.card/create-cards!
-                    [(queries.card/new-card-row {:name                   name
-                                                 :dataset_query          dataset_query
-                                                 :display                display
-                                                 :visualization_settings {}
-                                                 :dashboard_id           dashboard-id}
-                                                api/*current-user-id*)])]
-        (when conversation-id
-          (queries.card/link-to-metabot-conversation! (:id card) conversation-id chart-id))
-        {:chart-id chart-id, :card-id (:id card), :card card}))))
+(defn- reused-chart
+  "The `{:chart-id :card-id}` of `chart` when [[reusable-card]] finds one of `cards`, the questions of the dashboard
+  saved from it in this conversation, with `:kept-name` the question's name when the chart asked for another, or nil."
+  [cards {:keys [chart-id name dataset_query display]}]
+  (when-let [reused (reusable-card cards dataset_query display)]
+    (cond-> {:chart-id chart-id, :card-id (:id reused)}
+      (not= name (:name reused)) (assoc :kept-name (:name reused)))))
+
+(defn- save-charts!
+  "Saves each of `charts` as a question of the dashboard with `dashboard-id` and returns `{:chart-id :card-id :card}`
+  of each in order, reusing without a `:card` a question saved from the same chart with the same query and display in
+  this conversation, whose kept name is `:kept-name` when the chart asked for another."
+  [dashboard-id charts]
+  (let [conversation-id (shared/current-conversation-id)
+        chart-cards     (when (and conversation-id (seq charts))
+                          (group-by :metabot_chart_id
+                                    (metabot.db/conversation-dashboard-chart-questions
+                                     conversation-id (mapv :chart-id charts) dashboard-id)))
+        reused          (mapv #(reused-chart (get chart-cards (:chart-id %)) %) charts)
+        new-charts      (into [] (keep-indexed (fn [i chart] (when-not (nth reused i) chart))) charts)
+        cards           (when (seq new-charts)
+                          (queries.card/create-cards!
+                           (mapv (fn [{:keys [name dataset_query display]}]
+                                   (queries.card/new-card-row {:name                   name
+                                                               :dataset_query          dataset_query
+                                                               :display                display
+                                                               :visualization_settings {}
+                                                               :dashboard_id           dashboard-id}
+                                                              api/*current-user-id*))
+                                 new-charts)))
+        created         (mapv (fn [{:keys [chart-id]} card] {:chart-id chart-id, :card-id (:id card), :card card})
+                              new-charts cards)]
+    (when (and conversation-id (seq created))
+      (queries.card/link-to-metabot-conversation! conversation-id (mapv (juxt :card-id :chart-id) created)))
+    (let [id->created (zipmap (map :chart-id created) created)]
+      (mapv (fn [chart reused] (or reused (id->created (:chart-id chart)))) charts reused))))
 
 (defn- with-card-ids
   "The ops in `ops`, with each `chart_id` replaced by the id of the question saved from it.
@@ -702,7 +718,7 @@
           created      (when (and (nil? current) (seq charts))
                          (:dashboard (dashboard-write/write! {:attrs attrs})))
           target       (or current created)
-          saved-charts (mapv (partial save-chart! (:id target)) charts)
+          saved-charts (save-charts! (:id target) charts)
           ops          (with-card-ids ops (into {} (map (juxt :chart-id :card-id)) saved-charts))
           written      (dashboard-write/write! (cond-> {:ops ops}
                                                  target        (assoc :dashboard target)

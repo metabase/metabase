@@ -191,7 +191,7 @@
    `create-notification!` cannot build one — so a migration is the only way such a row comes to
    exist, and raw SQL is the only way to stand one up here."
   [notification-id]
-  (t2/query-one {:update :notification
+  (t2/query-one {:update (t2/table-name :model/Notification)
                  :set    {:payload_type "notification/dashboard"}
                  :where  [:= :id notification-id]}))
 

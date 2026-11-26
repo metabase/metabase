@@ -9,6 +9,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.card-schema :as queries.card-schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -29,6 +30,8 @@
 (mu/defn data-app-by-slug
   "The DataApp named `slug` without its bundle, or nil."
   [slug :- :string]
+  (when-not (string? slug)
+    (throw (ex-info "slug must be a string" {:slug slug})))
   (t2/select-one non-blob-model :slug slug))
 
 (mu/defn data-app-bundle
@@ -69,13 +72,13 @@
             (update collection-id->ids resource_collection_id (fnil conj #{}) id))
           {}
           (mdb/select-batched #(t2/select [:model/DataApp :id :resource_collection_id]
-                                          :resource_collection_id [:in [:auto/param %]])
+                                          :resource_collection_id [:in %])
                               collection-ids)))
 
 (mu/defn resource-collections-by-ids :- [:map-of ms/PositiveInt :map]
   "The Collections with `collection-ids`, by id."
   [collection-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Collection :id [:in [:auto/param %]])
+  (mdb/select-batched-map #(t2/select-pk->fn identity :model/Collection :id [:in %])
                           collection-ids))
 
 (defn resource-collection-ids
@@ -172,11 +175,6 @@
                 :order-by [[:name :asc] [:id :asc]]})
     []))
 
-(mu/defn table
-  "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table {:where [:= :id table-id]}))
-
 (mu/defn resource-cards
   "The unarchived Cards in the collection with `collection-id`, in name then id order."
   [collection-id :- ::lib.schema.id/collection]
@@ -229,7 +227,7 @@
   "The query-relevant columns (`:dimensions` and `:dimension_mappings` among them) of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (if (seq card-ids)
-    (mdb/select-batched #(t2/select (queries.card-schema/selection) :id [:in [:auto/param %]]) card-ids)
+    (mdb/select-batched #(t2/select (queries.card-schema/selection) :id [:in %]) card-ids)
     []))
 
 (mu/defn table-names
@@ -290,8 +288,8 @@
   none: those the user reads, none without the data apps feature."
   [{:keys [user-id is-superuser?]} :- :metabase.dependencies.items/items-opts]
   (when-let [visible-ids (data-apps/visible-data-app-filter-select {:user-id user-id :is-superuser? is-superuser?})]
-    {:select [[:data_app.id :entity_id] [:data_app.name :name] [nil :location]]
-     :from   [:data_app]
+    {:select [[(u/qualified-key (t2/table-name :model/DataApp) :id) :entity_id] [(u/qualified-key (t2/table-name :model/DataApp) :name) :name] [nil :location]]
+     :from   [(t2/table-name :model/DataApp)]
      :where  (into [:and]
                    (remove nil?)
-                   [[:in :data_app.id visible-ids]])}))
+                   [[:in (u/qualified-key (t2/table-name :model/DataApp) :id) visible-ids]])}))

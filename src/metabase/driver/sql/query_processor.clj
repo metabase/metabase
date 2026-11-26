@@ -522,8 +522,8 @@
 
     (truncate-fn expr) => truncated-expr"
   [driver      :- :keyword
-   truncate-fn :- [:=> [:cat ::h2x/expr] ::h2x/expr]
-   expr        :- ::h2x/expr]
+   truncate-fn :- ifn?
+   expr        :- [:maybe [:or :keyword :string number? :boolean sequential? inst? [:fn #(instance? java.time.temporal.Temporal %)]]]]
   (let [offset (driver.common/start-of-week-offset driver)]
     (if (not= offset 0)
       (add-interval-honeysql-form driver
@@ -543,18 +543,18 @@
   adjusts as needed to match `start-of-week` by the [[driver.common/start-of-week-offset]], which comes
   from [[driver/db-start-of-week]]."
   ([driver                    :- :keyword
-    day-of-week-honeysql-expr :- ::h2x/expr]
+    day-of-week-honeysql-expr :- [:maybe [:or :keyword :string number? :boolean sequential? inst? [:fn #(instance? java.time.temporal.Temporal %)]]]]
    (adjust-day-of-week driver day-of-week-honeysql-expr (driver.common/start-of-week-offset driver)))
 
   ([driver                    :- :keyword
-    day-of-week-honeysql-expr :- ::h2x/expr
+    day-of-week-honeysql-expr :- [:maybe [:or :keyword :string number? :boolean sequential? inst? [:fn #(instance? java.time.temporal.Temporal %)]]]
     offset                    :- :int]
    (adjust-day-of-week driver day-of-week-honeysql-expr offset h2x/mod))
 
   ([driver                    :- :keyword
-    day-of-week-honeysql-expr :- ::h2x/expr
+    day-of-week-honeysql-expr :- [:maybe [:or :keyword :string number? :boolean sequential? inst? [:fn #(instance? java.time.temporal.Temporal %)]]]
     offset :- :int
-    mod-fn :- [:=> [:cat ::h2x/expr ::h2x/expr] ::h2x/expr]]
+    mod-fn :- ifn?]
    (cond
      (inline? offset) (recur driver day-of-week-honeysql-expr (second offset) mod-fn)
      (zero? offset)   day-of-week-honeysql-expr
@@ -1798,7 +1798,7 @@
   [:or
    :metabase.lib.schema.expression/expression
    uuid?
-   [:tuple [:= ::compiled] ::h2x/honeysql-expr]
+   [:tuple [:= ::compiled] [:maybe [:or :keyword :string number? :boolean sequential? inst? [:fn #(instance? java.time.temporal.Temporal %)]]]]
    [:and
     vector?
     [:cat

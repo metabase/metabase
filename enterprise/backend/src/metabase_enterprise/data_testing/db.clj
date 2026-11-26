@@ -11,6 +11,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.run-tracking.core :as rt]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -70,12 +71,12 @@
 (mu/defn test-suites-by-ids :- [:sequential ::data-testing.schema/test-suite]
   "The TestSuites with `ids`."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (app-db/select-batched #(t2/select :model/TestSuite :id [:in [:auto/param %]]) ids))
+  (app-db/select-batched #(t2/select :model/TestSuite :id [:in %]) ids))
 
 (mu/defn test-suites-for-update :- [:sequential ::data-testing.schema/test-suite]
   "The TestSuites with `ids`, their rows locked in the order of their ids until the transaction ends."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (app-db/select-batched #(t2/select :model/TestSuite :id [:in [:auto/param %]]
+  (app-db/select-batched #(t2/select :model/TestSuite :id [:in %]
                                      {:order-by [[:id :asc]] :for :update})
                          (sort (distinct ids))))
 
@@ -87,12 +88,12 @@
 (mu/defn touch-test-suites!
   "Set the update time of the TestSuites with `ids` to the database's current time."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/TestSuite :id [:in [:auto/param %]] {:updated_at :%now}) ids))
+  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/TestSuite :id [:in %] {:updated_at :%now}) ids))
 
 (mu/defn delete-members-of-suites!
   "Delete the members of the TestSuites with `suite-ids`."
   [suite-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/TestSuiteMember :suite_id [:in [:auto/param %]]) suite-ids))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/TestSuiteMember :suite_id [:in %]) suite-ids))
 
 (mu/defn insert-suite-members! :- [:sequential ::data-testing.schema/test-suite.member]
   "Insert the TestSuiteMember `rows` and return the inserted instances."
@@ -103,12 +104,12 @@
   "Apply `changes` to the TestSuiteMembers with `ids`."
   [ids     :- [:sequential {:min 1} ms/PositiveInt]
    changes :- (mut/dissoc ::data-testing.schema/test-suite-member.update :id)]
-  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/TestSuiteMember :id [:in [:auto/param %]] changes) ids))
+  (app-db/sum-batched app-db/update-partition-size #(t2/update! :model/TestSuiteMember :id [:in %] changes) ids))
 
 (mu/defn delete-suite-members!
   "Delete the TestSuiteMembers with `ids`."
   [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/TestSuiteMember :id [:in [:auto/param %]]) ids))
+  (app-db/sum-batched app-db/delete-partition-size #(t2/delete! :model/TestSuiteMember :id [:in %]) ids))
 
 (mu/defn suite-members-of-tests :- [:sequential ::data-testing.schema/test-suite.member]
   "The members of the TestSuites that name the `test-type` tests with `entity-ids`."
@@ -116,7 +117,7 @@
    entity-ids :- [:sequential {:min 1} :string]]
   (app-db/select-batched #(t2/select :model/TestSuiteMember
                                      :test_type (name test-type)
-                                     :test_entity_id [:in [:auto/param %]])
+                                     :test_entity_id [:in %])
                          entity-ids))
 
 (mu/defn suite-members :- [:sequential ::data-testing.schema/test-suite.member]
@@ -187,14 +188,14 @@
   [model          :- saved-test-model
    subject-column :- :keyword
    subject-ids    :- [:sequential ms/PositiveInt]]
-  (app-db/select-batched #(t2/select-pks-vec model subject-column [:in [:auto/param %]]) subject-ids))
+  (app-db/select-batched #(t2/select-pks-vec model subject-column [:in %]) subject-ids))
 
 (mu/defn delete-suite-members-of-tests! :- :nil
   "Remove the `test-type` tests with `entity-ids` from every TestSuite."
   [test-type  :- ::data-testing.schema/test-type
    entity-ids :- [:sequential {:min 1} :string]]
   (doseq [batch (partition-all app-db/delete-partition-size entity-ids)]
-    (t2/delete! :model/TestSuiteMember :test_type (name test-type) :test_entity_id [:in [:auto/param (vec batch)]]))
+    (t2/delete! :model/TestSuiteMember :test_type (name test-type) :test_entity_id [:in (vec batch)]))
   nil)
 
 (mu/defn clear-test-ids-of-runs! :- :nil
@@ -203,7 +204,7 @@
   [test-type :- ::data-testing.schema/test-type
    test-ids  :- [:sequential {:min 1} ms/PositiveInt]]
   (doseq [batch (partition-all app-db/update-partition-size test-ids)]
-    (t2/update! :model/DataTestRun :test_type (name test-type) :test_id [:in [:auto/param (vec batch)]] {:test_id nil}))
+    (t2/update! :model/DataTestRun :test_type (name test-type) :test_id [:in (vec batch)] {:test_id nil}))
   nil)
 
 (mu/defn insert-test-run! :- ::data-testing.schema/data-test-run
@@ -225,15 +226,15 @@
   (if (empty? test-ids)
     [:= [:inline 1] [:inline 0]]
     [:and
-     [:= :data_test_run.test_type (name test-type)]
-     [:in :data_test_run.test_id test-ids]
+     [:= (u/qualified-key (t2/table-name :model/DataTestRun) :test_type) (name test-type)]
+     [:in (u/qualified-key (t2/table-name :model/DataTestRun) :test_id) test-ids]
      ;; test_id has no foreign key, so a run can keep the id of a deleted test, and a later test can get the same id.
      ;; The start time tells the runs of the later test from those of the deleted one.
      [:exists ^:allow-subquery {:select [1]
                                 :from   [[(t2/table-name (:model (data-testing.test-type/spec test-type))) :the_test]]
                                 :where  [:and
-                                         [:= :the_test.id :data_test_run.test_id]
-                                         [:>= :data_test_run.start_time :the_test.created_at]]}]]))
+                                         [:= :the_test.id (u/qualified-key (t2/table-name :model/DataTestRun) :test_id)]
+                                         [:>= (u/qualified-key (t2/table-name :model/DataTestRun) :start_time) :the_test.created_at]]}]]))
 
 (def ^:private RunFilters
   [:map {:closed true}
@@ -293,15 +294,15 @@
                         (runs-of-tests-clause test-type (set %))
                         ;; A newer run starts no earlier than this one, so it passes the start-time guard too.
                         [:not [:exists ^:allow-subquery {:select [1]
-                                                         :from   [[:data_test_run :newer]]
+                                                         :from   [[(t2/table-name :model/DataTestRun) :newer]]
                                                          :where  [:and
-                                                                  [:= :newer.test_type :data_test_run.test_type]
-                                                                  [:= :newer.test_id :data_test_run.test_id]
+                                                                  [:= :newer.test_type (u/qualified-key (t2/table-name :model/DataTestRun) :test_type)]
+                                                                  [:= :newer.test_id (u/qualified-key (t2/table-name :model/DataTestRun) :test_id)]
                                                                   [:or
-                                                                   [:> :newer.start_time :data_test_run.start_time]
+                                                                   [:> :newer.start_time (u/qualified-key (t2/table-name :model/DataTestRun) :start_time)]
                                                                    [:and
-                                                                    [:= :newer.start_time :data_test_run.start_time]
-                                                                    [:> :newer.id :data_test_run.id]]]]}]]]})
+                                                                    [:= :newer.start_time (u/qualified-key (t2/table-name :model/DataTestRun) :start_time)]
+                                                                    [:> :newer.id (u/qualified-key (t2/table-name :model/DataTestRun) :id)]]]]}]]]})
    test-ids))
 
 (mu/defn users-by-id

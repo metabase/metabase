@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: ggsplp
+      author: ranquild
+      comment: >-
+        Give the unique personal collection owner key its intended name unique_collection_personal_owner_id on the
+        PostgreSQL app DBs that ran a 2018 development build, whose Liquibase ignored the name and left the generated
+        collection_personal_owner_id_key
+      dbms: postgresql
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 1
+            sql: >-
+              SELECT COUNT(*) FROM pg_constraint
+              WHERE conrelid = 'collection'::regclass AND conname = 'collection_personal_owner_id_key'
+      changes:
+        - sql:
+            sql: ALTER TABLE collection RENAME CONSTRAINT collection_personal_owner_id_key TO unique_collection_personal_owner_id;
+      rollback:
