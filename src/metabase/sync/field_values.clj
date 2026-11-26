@@ -297,11 +297,14 @@
                                     (mapcat val table-id->fields))
         clear-counts      (clear-field-values! to-clear)
         fvs-map           (field-values/batched-get-latest-full-field-values (map u/the-id to-sync))
-        last-used-at      (field-values/fields-last-used-at (vec (vals fvs-map)))
-        used              (when (and (:only-used? opts)
-                                     (not (:rescan? opts))
-                                     (sync.settings/scan-only-used-lists? database))
-                            (field-values/used-since-last-scan (vec (vals fvs-map))))
+        only-used?        (and (:only-used? opts)
+                               (not (:rescan? opts))
+                               (sync.settings/scan-only-used-lists? database))
+        last-used-at      (if only-used?
+                            (field-values/fields-latest-use (vec (vals fvs-map)))
+                            (field-values/fields-last-used-at (vec (vals fvs-map))))
+        used              (when only-used?
+                            (field-values/used-since-last-scan (vec (vals fvs-map)) last-used-at))
         due?              (fn [field]
                             (let [fv (get fvs-map (u/the-id field))]
                               (and (syncable? last-used-at field fv)

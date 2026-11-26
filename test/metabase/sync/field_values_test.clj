@@ -814,3 +814,39 @@
               (t2/update! (t2/table-name :model/FieldValues) {:id fv-id} {:values "[\"XX\"]"})
               (scan)
               (is (read?)))))))))
+
+(deftest used-lists-scan-statement-count-test
+  (mt/with-dynamic-fn-redefs [qp/process-query distinct-values-a-and-b]
+    (let [prepare! (fn [only-used?]
+                     (fn [database]
+                       (add-field-values! database)
+                       (update-field-values! database)
+                       (t2/update! :model/Database (:id database) {:settings {:scan-only-used-field-values only-used?}})
+                       ;; the lists of C0 and C4 were used since that scan, the others a day before it
+                       (let [field-ids (fn [& conds]
+                                         (apply t2/select-pks-vec :model/Field
+                                                :table_id [:in (t2/select-pks-vec :model/Table :db_id (:id database))]
+                                                conds))]
+                         (t2/update! (t2/table-name :model/FieldValues) {:field_id [:in (field-ids)] :type "full"}
+                                     {:last_used_at (t/minus (t/offset-date-time) (t/days 1))})
+                         (t2/update! (t2/table-name :model/FieldValues)
+                                     {:field_id [:in (field-ids :name [:in ["C0" "C4"]])] :type "full"}
+                                     {:last_used_at (t/plus (t/offset-date-time) (t/hours 1))}))))
+          scan!    (fn [database]
+                     (#'sync.field-values/update-field-values-for-database! (driver.u/lib-database (:id database))
+                                                                            {:rescan? false :only-used? true}))]
+      (testing "the setting takes effect: the scan reads only the used lists"
+        (let [last-probed (atom nil)
+              probed      (fn [only-used?]
+                            (analyze.tu/statement-count 4 5 list-or-plain-field (prepare! only-used?)
+                                                        (fn [database] (reset! last-probed (:probed (scan! database))))))]
+          (probed false)
+          (let [all @last-probed]
+            (probed true)
+            (is (< @last-probed all)))))
+      (testing "with the used-lists setting, the scan issues as many statements for 16 Tables as for 4"
+        (let [[small large] (analyze.tu/statement-counts-by-tables list-or-plain-field (prepare! true) scan!)]
+          (is (= small large))))
+      (testing "the setting adds one statement to the scan of a group of Tables: the read of the latest uses"
+        (is (= (mapv inc (analyze.tu/statement-counts-by-tables list-or-plain-field (prepare! false) scan!))
+               (analyze.tu/statement-counts-by-tables list-or-plain-field (prepare! true) scan!)))))))
