@@ -16,11 +16,13 @@ the same on H2, PostgreSQL and MySQL/MariaDB.
 1. the tables of synced models (`remote-sync/synced-models`) have `worktree_id` and their models derive
    `:hook/worktree-id`;
 2. every other table that reaches one of them through a chain of foreign keys does too, but for its allowlist
-   (`metabot`, `metabot_prompt` and `tenant`, which stay unscoped for now);
+   (`metabot`, `metabot_prompt` and `tenant`, which stay unscoped for now, and `sandboxes`, which stay in the main
+   app like data permissions);
 3. every remaining table has an explicit decision: `:scoped` (column and hook, e.g. logs and polymorphic references
    to content such as `revision` or `view_log`), `:unscoped` (neither, e.g. warehouse metadata, users, groups,
-   settings, Metabot, transform jobs), or `:worktree-reference` (the column without the hook,
-   `remote_sync_worktree_user`, where it is the user's checkout).
+   settings, Metabot, transform jobs, data permissions), or `:worktree-reference` (the column without the hook,
+   `remote_sync_worktree_user`, where it is the user's checkout, and `sandboxes`, `metabot_prompt` and `tenant`,
+   where it is always the main app's so that a composite foreign key admits only a main app card or collection).
 
 A new table fails the test until it lands in one of these, so decide in the same change.
 

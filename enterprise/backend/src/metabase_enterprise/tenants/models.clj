@@ -32,6 +32,10 @@
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser))
 
+(t2/define-after-select :model/Tenant
+  [row]
+  (dissoc row :worktree_id))
+
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (t2/define-before-update :model/Tenant

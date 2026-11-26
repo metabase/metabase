@@ -20,6 +20,10 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
+(t2/define-after-select :model/MetabotPrompt
+  [row]
+  (dissoc row :worktree_id))
+
 (t2/deftransforms :model/MetabotPrompt
   {:model mi/transform-keyword})
 

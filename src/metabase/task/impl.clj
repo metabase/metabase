@@ -555,9 +555,10 @@
     (job-type-form type-name definition more)))
 
 (defn job-worktree-scope
-  "The scope of the remote sync worktree whose thread scheduled the trigger that fired `job-context`."
+  "The scope of the remote sync worktree whose thread scheduled the trigger that fired `job-context`, or of the main app
+  without one."
   [^JobExecutionContext job-context]
-  (mdb/worktree-id->scope (.get (.getMergedJobDataMap job-context) worktree-id-key)))
+  (mdb/worktree-id->scope (some-> job-context .getMergedJobDataMap (.get worktree-id-key))))
 
 (defn- job-body-form
   "The `body` of a [[defjob]] with the `job-context` binding, inside its log context, its tracing span and the
