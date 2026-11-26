@@ -15,6 +15,8 @@ import "metabase/auth/plugins";
 // If EE isn't enabled, it loads an empty file.
 // Set CSP nonce for dynamic style injection (e.g. CodeMirror)
 import "metabase/utils/csp-setup";
+// PROTOTYPE: lets Leva (chart colors playground) inject its styles under the CSP
+import "metabase/chart-colors-playground/leva-csp";
 import { type Middleware, isAction } from "@reduxjs/toolkit";
 import { useLayoutEffect } from "react";
 import { DragDropContextProvider } from "react-dnd";
@@ -24,6 +26,7 @@ import { createRoot } from "react-dom/client";
 import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
 import { createSnowplowTracker } from "metabase/analytics";
+import { ChartColorsPlayground } from "metabase/chart-colors-playground/ChartColorsPlayground";
 import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading/DelayedLoading";
 import { ChunkLoadFailed } from "metabase/common/components/ErrorPages";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
@@ -135,6 +138,8 @@ async function _init(
         <OverlayStackProvider>
           <AppThemeProvider>
             <GlobalStyles />
+            {/* PROTOTYPE: chart colors playground */}
+            <ChartColorsPlayground />
             {createPortal(<PortalContainer />, document.body)}
             <MetabotProvider>
               <RouterProvider
