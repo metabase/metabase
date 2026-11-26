@@ -71,8 +71,9 @@
 
 (defn- catalog-answer
   "The answer of the driver's [[driver/table-statistics]] for `fields` of `table`, at the cost of catalog reads only,
-  within the time limit of a better sample. A failure, a timeout or an answer of a wrong shape is logged, turns the
-  catalog off for the Database for the rest of the run, and gives nil; a transient error is thrown, so that the next
+  within the time limit of a better sample. The answer of a field of a wrong shape is logged and dropped. A failure, a
+  timeout or an answer of a wrong shape as a whole is logged, turns the catalog off for the Database for the rest of
+  the run, and gives nil; a transient error is thrown, so that the next
   sync tries again."
   [driver database table fields]
   (let [limit-ms (* 1000 (sync.settings/fingerprint-sample-timeout-seconds))
@@ -101,13 +102,23 @@
           (log/warn answer "The catalog statistics failed")
           (give-up "The catalog statistics of %s failed" (sync-util/name-for-logging table)))
 
-      (not (mr/validate ::driver/table-statistics.result answer))
-      (give-up "The catalog statistics of %s are not in the shape of table-statistics: %s"
-               (sync-util/name-for-logging table)
-               (pr-str (me/humanize (mr/explain ::driver/table-statistics.result answer))))
+      (mr/validate ::driver/table-statistics.result answer)
+      answer
+
+      (and (map? answer) (map? (:fields answer)))
+      ;; keep the fields whose answer has the right shape, so that one odd column does not cost the others
+      (let [valid? (fn [[id field-answer]] (mr/validate ::driver/table-statistics.result {:fields {id field-answer}}))
+            fields (into {} (filter valid?) (:fields answer))]
+        (log/warnf "Some catalog statistics of %s are not in the shape of table-statistics, and are not used: %s"
+                   (sync-util/name-for-logging table)
+                   (pr-str (me/humanize (mr/explain ::driver/table-statistics.result
+                                                    {:fields (into {} (remove valid?) (:fields answer))}))))
+        {:fields fields})
 
       :else
-      answer)))
+      (give-up "The catalog statistics of %s are not in the shape of table-statistics: %s"
+               (sync-util/name-for-logging table)
+               (pr-str (me/humanize (mr/explain ::driver/table-statistics.result answer)))))))
 
 (defn- catalog-statistics
   "What the database's catalog knows of the fingerprints of `fields` of `table`, by Field id, or `{}` for a driver

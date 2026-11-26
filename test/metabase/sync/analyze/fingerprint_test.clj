@@ -541,7 +541,29 @@
 
 (defmethod driver/table-statistics ::catalog-bad-shape
   [_driver _database _table fields _opts]
-  {:fields {(:id (first fields)) {:fingerprint {:global {:distinct-count 9999}}}}})
+  (into {}
+        (map (fn [{:keys [id name]}]
+               [:fields (if (= "NAME" name)
+                          {id {:fingerprint {:global {:distinct-count 9999}}}}
+                          {id {:fingerprint {:global {:nil% 2.0}} :origin {:source :catalog :kind :exact}}})]))
+        (take 1 (filter #(= "NAME" (:name %)) fields))))
+
+(driver/register! ::catalog-one-bad-field, :parent :h2)
+
+(defmethod driver/database-supports? [::catalog-one-bad-field :table-statistics]
+  [driver _feature _database]
+  (= driver ::catalog-one-bad-field))
+
+(defmethod driver/table-statistics ::catalog-one-bad-field
+  [_driver _database _table fields _opts]
+  {:fields (into {}
+                 (map (fn [{:keys [id name]}]
+                        [id (if (= "NAME" name)
+                              {:fingerprint {:global {:distinct-count 9999}}
+                               :origin      {:source :catalog :kind :sampled}}
+                              {:fingerprint {:global {:nil% 2.0}}
+                               :origin      {:source :catalog :kind :exact}})]))
+                 fields)})
 
 (defn- fingerprint-venues-with!
   "Fingerprint `venues` of a copy of test-data whose engine is `driver`, and return the fingerprint and origin of its
@@ -572,6 +594,9 @@
       (let [{:keys [fingerprint fingerprint_origin]} (fingerprint-venues-with! :h2)]
         (is (not= 9999 (get-in fingerprint [:global :distinct-count])))
         (is (nil? (:parts fingerprint_origin)))))
+    (testing "a field answer of a wrong shape is dropped, and the others are used"
+      (let [{:keys [fingerprint]} (fingerprint-venues-with! ::catalog-one-bad-field)]
+        (is (= 9999 (get-in fingerprint [:global :distinct-count])))))
     (testing "a catalog that fails or answers in a wrong shape gives the sample's fingerprint"
       (doseq [driver [::catalog-failing ::catalog-bad-shape]]
         (let [{:keys [fingerprint fingerprint_origin]} (fingerprint-venues-with! driver)]
