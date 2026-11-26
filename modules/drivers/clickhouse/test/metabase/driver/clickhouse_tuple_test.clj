@@ -87,4 +87,9 @@
       (let [value (tuple-value "(CAST('x', 'Enum8(''x'' = 1)'), map('a', 1), CAST('{\"a\": 1}', 'JSON'))")]
         (is (= ["x" {"a" 1} {"a" 1}]
                value
-               (nippy/thaw (nippy/freeze value))))))))
+               (nippy/thaw (nippy/freeze value))))))
+    (testing "a tuple with named elements keeps their order in the results cache"
+      (let [value (tuple-value "CAST((1, 2, 3, 4, 5, 6, 7, 8, 9, 10), 'Tuple(j Int8, i Int8, h Int8, g Int8, f Int8, e Int8, d Int8, c Int8, b Int8, a Int8)')")]
+        (is (= ["j" "i" "h" "g" "f" "e" "d" "c" "b" "a"]
+               (keys value)
+               (keys (nippy/thaw (nippy/freeze value)))))))))
