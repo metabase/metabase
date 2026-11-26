@@ -9,7 +9,11 @@ import {
   createMetabaseProtocolLink,
   parseMetabaseProtocolMarkdownLink,
 } from "metabase/urls";
-import { SEARCH_MODELS, type VisualizationDisplay } from "metabase-types/api";
+import {
+  type MetabotUserIsViewingContext,
+  SEARCH_MODELS,
+  type VisualizationDisplay,
+} from "metabase-types/api";
 
 import type { MentionProps } from "../../editor-extensions/MetabotMention/MetabotMentionExtension";
 
@@ -138,4 +142,31 @@ export function mergeTokens(
     ...tokens,
     ...mentionTokens.filter((token) => token.key !== viewingToken?.key),
   ];
+}
+
+/** Whether a `user_is_viewing` entry describes the token's entity. */
+export function isViewingContextFor(
+  token: ContextToken,
+  item: MetabotUserIsViewingContext[number],
+): boolean {
+  const id = "id" in item ? item.id : undefined;
+  return (
+    match(token.model)
+      .with("card", "dataset", "metric", () =>
+        token.id == null
+          ? item.type === "adhoc"
+          : (item.type === "question" ||
+              item.type === "model" ||
+              item.type === "metric") &&
+            id === token.id,
+      )
+      .with(
+        "dashboard",
+        "document",
+        (model) => item.type === model && id === token.id,
+      )
+      // tables reach Metabot as an ad-hoc query over the table
+      .with("table", () => item.type === "adhoc")
+      .otherwise(() => false)
+  );
 }

@@ -26,6 +26,11 @@ export type ChatContextProviderFn = (
 
 export type DeregisterChatContextProviderFn = () => void;
 
+/** Runs after every provider, e.g. to drop context the user opted out of. */
+export type ChatContextFilterFn = (
+  ctx: MetabotChatContext,
+) => MetabotChatContext;
+
 // internal type so we can support tiptap editor and textarea as inputs
 export type MetabotPromptInputRef = {
   focus: () => void;
@@ -45,6 +50,9 @@ export type MetabotCtx = {
   registerChatContextProvider: (
     fn: ChatContextProviderFn,
   ) => DeregisterChatContextProviderFn;
+  registerChatContextFilter: (
+    fn: ChatContextFilterFn,
+  ) => DeregisterChatContextProviderFn;
 };
 
 export const defaultContext: MetabotCtx = {
@@ -59,6 +67,7 @@ export const defaultContext: MetabotCtx = {
       capabilities: [],
     }),
   registerChatContextProvider: () => () => {},
+  registerChatContextFilter: () => () => {},
 };
 
 export const MetabotContext = createContext<MetabotCtx>(defaultContext);
@@ -87,6 +96,21 @@ export const useRegisterMetabotContextProvider = (
   }, [cachedProviderFn, registerChatContextProvider]);
 };
 
+/** Registers `filterFn` while it's non-null; pass a stable (memoized) function. */
+export const useRegisterMetabotContextFilter = (
+  filterFn: ChatContextFilterFn | null,
+) => {
+  const { registerChatContextFilter } = useMetabotContext();
+
+  useEffect(() => {
+    if (!filterFn) {
+      return;
+    }
+    const deregister = registerChatContextFilter(filterFn);
+    return () => deregister();
+  }, [filterFn, registerChatContextFilter]);
+};
+
 const mergeCtx = (
   ctx: MetabotChatContext,
   partialCtx: Partial<MetabotChatContext>,
@@ -111,6 +135,7 @@ export const MetabotProvider = ({
 
   /* Metabot context */
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());
+  const filterFnsRef = useRef<Set<ChatContextFilterFn>>(new Set());
   const store = useStore();
 
   const getChatContext = useCallback(async () => {
@@ -141,6 +166,10 @@ export const MetabotProvider = ({
       }
     }
 
+    for (const filterFn of filterFnsRef.current) {
+      ctx = filterFn(ctx);
+    }
+
     return ctx;
   }, [store]);
 
@@ -148,6 +177,14 @@ export const MetabotProvider = ({
     (providerFn: ChatContextProviderFn) => {
       providerFnsRef.current.add(providerFn);
       return () => providerFnsRef.current.delete(providerFn);
+    },
+    [],
+  );
+
+  const registerChatContextFilter = useCallback(
+    (filterFn: ChatContextFilterFn) => {
+      filterFnsRef.current.add(filterFn);
+      return () => filterFnsRef.current.delete(filterFn);
     },
     [],
   );
@@ -160,6 +197,7 @@ export const MetabotProvider = ({
         promptInputRef,
         getChatContext,
         registerChatContextProvider,
+        registerChatContextFilter,
       }}
     >
       {children}
