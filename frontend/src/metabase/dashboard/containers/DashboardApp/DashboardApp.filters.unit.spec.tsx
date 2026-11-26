@@ -191,12 +191,12 @@ function setupPersistedDashboardEndpoints(dashboard: Dashboard) {
 }
 
 function getSavedParameters(): unknown {
-  const call = checkNotNull(
-    fetchMock.callHistory.lastCall(`path:/api/dashboard/${DASHBOARD_ID}`, {
-      method: "PUT",
-    }),
+  const call = fetchMock.callHistory.lastCall(
+    `path:/api/dashboard/${DASHBOARD_ID}`,
+    { method: "PUT" },
   );
-  const body: unknown = JSON.parse(String(call.options.body));
+  expect(call).toBeDefined();
+  const body: unknown = JSON.parse(String(call?.options.body));
   return isObject(body) ? body.parameters : undefined;
 }
 
