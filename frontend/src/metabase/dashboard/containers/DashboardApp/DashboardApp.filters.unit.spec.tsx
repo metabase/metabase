@@ -180,11 +180,21 @@ function setupPersistedDashboardEndpoints(dashboard: Dashboard) {
     if (!isObject(body) || Array.isArray(body)) {
       throw new Error("Expected a dashboard update object");
     }
+    const savedDashcards: unknown[] = Array.isArray(body.dashcards)
+      ? body.dashcards
+      : [];
     persistedDashboard = {
       ...persistedDashboard,
       ...body,
       // The real API returns each dashcard with its card, which the PUT body omits
-      dashcards: persistedDashboard.dashcards,
+      dashcards: persistedDashboard.dashcards.map((dashcard) => {
+        const saved = savedDashcards.find(
+          (item) => isObject(item) && item.id === dashcard.id,
+        );
+        return isObject(saved) && Array.isArray(saved.parameter_mappings)
+          ? { ...dashcard, parameter_mappings: saved.parameter_mappings }
+          : dashcard;
+      }),
     };
     return persistedDashboard;
   });
@@ -791,6 +801,9 @@ describe("DashboardApp > filters", () => {
         ["Mar", "March"],
       ];
       const ZZ_STRINGS = [
+        "Date picker",
+        "Date",
+        "Select…",
         "Exclude…",
         "Months of the year…",
         "Add filter",
@@ -817,15 +830,28 @@ describe("DashboardApp > filters", () => {
       });
 
       it("should serialize an exclude filter with English month names (metabase#29122)", async () => {
-        const parameter = checkNotNull(
-          DATE_PARAMETERS.find(({ id }) => id === "all-options"),
-        );
-        const { router } = await setup({
-          parameters: [parameter],
-          targets: { [parameter.id]: CREATED_AT_TARGET },
-        });
+        const { router } = await setup({ parameters: [], targets: {} });
 
-        const dropdown = await openFilterWidget("Date Filter");
+        await startEditing();
+        await userEvent.click(
+          screen.getByLabelText("Add a filter or parameter"),
+        );
+        await userEvent.click(
+          await screen.findByRole("menuitem", { name: "[zz] Date picker" }),
+        );
+        await userEvent.click(
+          within(screen.getByTestId("dashcard")).getByText("[zz] Select…"),
+        );
+        // The card's own columns come first, then the implicitly joined
+        // tables'; the request assertion below checks that Orders.Created At
+        // is the mapped column
+        const [ordersCreatedAt] = await screen.findAllByRole("option", {
+          name: "Created At",
+        });
+        await userEvent.click(within(ordersCreatedAt).getByText("Created At"));
+        await saveDashboard();
+
+        const dropdown = await openFilterWidget("[zz] Date");
         await userEvent.click(within(dropdown).getByText("[zz] Exclude…"));
         await userEvent.click(
           within(dropdown).getByText("[zz] Months of the year…"),
@@ -835,13 +861,24 @@ describe("DashboardApp > filters", () => {
           within(dropdown).getByRole("button", { name: "[zz] Add filter" }),
         );
 
+        // The slug comes from the translated default name, "[zz] Date"
         await waitFor(() =>
-          expect(router.location.search).toBe(
-            "?date_filter=exclude-months-Jan",
+          expect(router.location.search).toMatch(
+            /^\?[^=]*date=exclude-months-Jan$/,
           ),
         );
-        expect(getLastSentValues()).toEqual({
-          [parameter.id]: "exclude-months-Jan",
+        expect(Object.values(getLastSentValues())).toEqual([
+          "exclude-months-Jan",
+        ]);
+        expect(
+          getLastSentParameters().find(({ value }) => value != null),
+        ).toMatchObject({
+          type: "date/all-options",
+          target: [
+            "dimension",
+            ["field", ORDERS.CREATED_AT, expect.anything()],
+            { "stage-number": 0 },
+          ],
         });
       });
     });
