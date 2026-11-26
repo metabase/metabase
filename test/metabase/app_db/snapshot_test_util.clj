@@ -221,12 +221,11 @@
   (doseq [sql after]
     (.execute stmt sql)))
 
-(defn load-snapshot!
-  "Load the checked-in snapshot into the empty DB behind `conn`, picking the dialect from [[flavor]], and commit.
+(defn load-version!
+  "Load the specified checked-in snapshot into the empty DB behind `conn`, picking the dialect from [[flavor]], and commit.
   Throws when no snapshot is checked in for that dialect, or when a statement fails, rolling back what it can."
-  [^java.sql.Connection conn db-type]
-  (let [version          snapshot-version
-        flavor           (flavor conn db-type)
+  [^java.sql.Connection conn db-type version]
+  (let [flavor           (flavor conn db-type)
         resource         (or (snapshot-resource version flavor)
                              (throw (ex-info "No app DB snapshot for this dialect"
                                              {:version version, :db-type db-type, :flavor flavor})))
@@ -283,6 +282,11 @@
             (.setAutoCommit conn true)))))
     :done))
 
+(defn load-snapshot!
+  "Load the current snapshot into an empty app DB."
+  [conn db-type]
+  (load-version! conn db-type snapshot-version))
+
 (defn changesets
   "The `[id author filename]` of every changeset in the current changelog, in the order Liquibase will run them."
   [^java.sql.Connection conn]
@@ -307,13 +311,16 @@
   (or @changeset-index-cache
       (reset! changeset-index-cache (zipmap (map first (changesets conn)) (range)))))
 
-(defn usable-for-start?
-  "Whether the snapshot can stand in for replaying changesets up to (but not including) `start-id`.
-  It cannot when `start-id` is at or before the snapshot boundary, since those changesets still need to run, or when
-  [[matches-environment?]] does not hold."
+(defn version-for-start
+  "The newest available snapshot strictly before `start-id`, or nil to replay from scratch.
+  MySQL also has a v56 checkpoint for tests of migrations older than v65. Encrypted fixtures replay from scratch."
   [^java.sql.Connection conn db-type start-id]
-  (and (matches-environment?)
-       (loadable? conn db-type)
-       (let [idx (changeset-index conn)]
-         (when-let [through (idx (through-changeset-id))]
-           (boolean (some-> (idx start-id) (> through)))))))
+  (when (matches-environment?)
+    (let [dialect (flavor conn db-type)
+          idx     (changeset-index conn)]
+      (when-let [start (idx start-id)]
+        (some (fn [version]
+                (when-let [boundary (idx (through-changeset-id version))]
+                  (when (and (< boundary start) (snapshot-resource version dialect))
+                    version)))
+              (cond-> [snapshot-version] (= :mysql dialect) (conj "v56")))))))
