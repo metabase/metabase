@@ -3142,8 +3142,7 @@
            util
            util.config
            warehouses
-           warehouses.schema
-           workspaces}
+           warehouses.schema}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldUserSettings

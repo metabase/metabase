@@ -40,10 +40,10 @@
               (is (= #{published second-published} (table-ids [data-id] nil)))
               (is (= #{elsewhere} (table-ids [other-id] nil)))
               (is (= #{published second-published elsewhere} (table-ids [data-id other-id] nil))))
-            (testing "returns columns of Table itself"
+            (testing "returns columns of Table as its user settings show it"
               (is (=? [{:id           published
                         :name         "library_orders"
-                        :display_name "Library Orders"
+                        :display_name "Settings Orders"
                         :description  "Orders in Library"}]
                       (entity-retrieval.db/library-tables-in-collections [data-id] published))))
             (testing "id narrows to one Table"
