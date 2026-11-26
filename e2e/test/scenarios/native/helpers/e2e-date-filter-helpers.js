@@ -42,6 +42,14 @@ export function setRelativeDate(term) {
   cy.findByText(term).click();
 }
 
+/**
+ * @param {object} [options]
+ * @param {string} [options.condition]
+ * @param {string} [options.quantity]
+ * @param {string} [options.timeBucket]
+ * @param {boolean} [options.includeCurrent]
+ * @param {string} [buttonLabel]
+ */
 export function setAdHocFilter(
   { condition, quantity, timeBucket, includeCurrent = false } = {},
   buttonLabel = "Add filter",

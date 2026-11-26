@@ -68,6 +68,7 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
           ref={ref}
           name={name}
           readOnly
+          variant="read-only"
           value={obfuscateValue(value)}
           classNames={{
             wrapper: S.inputWrapper,

@@ -254,3 +254,38 @@
            (into [] (streaming/combine-text-parts-xf) [{:type :text :text "lone"}]))))
   (testing "empty input"
     (is (= [] (into [] (streaming/combine-text-parts-xf) [])))))
+
+(deftest ^:parallel combine-text-parts-xf-drops-nil-test
+  (testing "a nil part is dropped and does not split a run of text"
+    (is (= [{:type :text :text "ab"}]
+           (into [] (streaming/combine-text-parts-xf)
+                 [{:type :text :text "a"} nil {:type :text :text "b"}]))))
+  (testing "a nil part alone, first or last gives no part"
+    (is (= [] (into [] (streaming/combine-text-parts-xf) [nil])))
+    (is (= [{:type :text :text "a"}]
+           (into [] (streaming/combine-text-parts-xf) [nil {:type :text :text "a"} nil])))))
+
+(deftest ^:parallel combine-text-parts-xf-stops-early-test
+  (testing "when the downstream stops, the result is its value, not a reduced wrapper"
+    (testing "at the text that waits for the completion"
+      (is (= [{:type :text :text "lone"}]
+             (transduce (comp (streaming/combine-text-parts-xf) (take 1)) conj []
+                        [{:type :text :text "lone"}])))
+      (testing "with into, the callers' call form, which calls persistent! on the result"
+        (is (= [{:type :text :text "lone"}]
+               (into [] (comp (streaming/combine-text-parts-xf) (take 1))
+                     [{:type :text :text "lone"}])))))
+    (testing "at a part before the text"
+      (is (= [{:type :tool-input :id "c1" :function "search"}]
+             (transduce (comp (streaming/combine-text-parts-xf) (take 1)) conj []
+                        [{:type :tool-input :id "c1" :function "search"}
+                         {:type :text :text "After tool."}])))))
+  (testing "when the downstream stops at a part before a text, the text does not go downstream"
+    ;; `take-while` keeps any text part it receives, so it shows a text that the completion sends late
+    (let [a    {:type :text :text "a"}
+          stop {:type :stop}
+          b    {:type :text :text "b"}]
+      (is (= [a]
+             (into [] (comp (streaming/combine-text-parts-xf)
+                            (take-while #(not= :stop (:type %))))
+                   [a stop b]))))))

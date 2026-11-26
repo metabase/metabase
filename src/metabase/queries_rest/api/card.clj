@@ -225,24 +225,11 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
-  "Get `Card` with ID.
-
-  As of v57, returns the MBQL query (`dataset_query`) as MBQL 5; to return the query as MBQL 4 (aka legacy MBQL)
-  instead, you can specify `?legacy-mbql=true`."
+  "Get `Card` with ID. Returns the MBQL query (`dataset_query`) as MBQL 5."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {legacy-mbql? :legacy-mbql
-    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)
-        card (get-card resolved-id)]
-    (cond-> card
-      legacy-mbql?
-      (update :dataset_query (fn [query]
-                               ;; ?legacy-mbql=true promises MBQL 4; conversion is the endpoint contract
-                               #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
-                               (cond-> query
-                                 (seq query) lib/->legacy-MBQL))))))
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (get-card (eid-translation/->id-or-404 :card id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -752,9 +739,8 @@
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
 
 (defn- collection-position-updates
-  "The updates that add the Cards that had a position in their previous Collection to the end of the new one, in the
-  order of their old positions, ties between Cards of several old Collections falling in the order the database
-  returned them."
+  "The updates that move `sorted-cards` into the Collection `new-collection-id-or-nil`, or the root when nil.
+  They take the positions after the Collection's highest, in the order given."
   [new-collection-id-or-nil sorted-cards]
   (let [max-position      (:max_position (queries-rest.db/max-collection-position new-collection-id-or-nil))
         ;; collection_position for the next card in the collection
@@ -785,9 +771,10 @@
       ;; get duplicates
       (t2/with-transaction [_conn]
         (t2/with-transaction [_conn]
-          ;; If any of the cards have a `:collection_position`, we'll need to fixup the old collection now that the cards
-          ;; are gone and update the position in the new collection
-          (let [with-position (sort-by :collection_position (filter :collection_position cards))]
+          ;; Cards with a `:collection_position` go to the end of the new Collection, and the positions they leave
+          ;; behind are closed. They arrive in no fixed order and Cards from several old Collections can share a
+          ;; position, so the id breaks ties.
+          (let [with-position (sort-by (juxt :collection_position :id) (filter :collection_position cards))]
             (queries.card/update-cards! (into (collection-position-updates new-collection-id-or-nil with-position)
                                               (comp (remove :collection_position)
                                                     (map (fn [card] {:id (u/the-id card) :collection_id new-collection-id-or-nil})))

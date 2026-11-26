@@ -33,9 +33,33 @@ const CARD = createMockCard({
 
 interface SetupOpts {
   database: Database;
+  windowWidthPx?: number;
 }
 
-const setup = ({ database }: SetupOpts) => {
+const ROOT_FONT_SIZE_PX = 16;
+
+// Evaluates `(max-width: Nem)` media queries against the given window width
+function mockWindowWidth(windowWidthPx: number) {
+  jest.spyOn(window, "matchMedia").mockImplementation((query: string) => {
+    const maxWidthEm = /max-width:\s*([\d.]+)em/.exec(query)?.[1];
+    const matches =
+      maxWidthEm != null &&
+      windowWidthPx <= Number(maxWidthEm) * ROOT_FONT_SIZE_PX;
+    return {
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    };
+  });
+}
+
+const setup = ({ database, windowWidthPx = 1280 }: SetupOpts) => {
+  mockWindowWidth(windowWidthPx);
   setupNativeDatasetEndpoint();
   setupNativeQuerySnippetEndpoints();
   setupCardDashboardsEndpoint(CARD.id, []);
@@ -74,6 +98,10 @@ const setup = ({ database }: SetupOpts) => {
 };
 
 describe("NotebookContainer", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("shows the native query preview sidebar when it is open and the user can write native queries", async () => {
     setup({ database: createSampleDatabase() });
 
@@ -90,5 +118,27 @@ describe("NotebookContainer", () => {
     expect(
       screen.queryByTestId("native-query-preview-sidebar"),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the native query preview at full width on a small screen (metabase#67767)", async () => {
+    setup({ database: createSampleDatabase(), windowWidthPx: 630 });
+
+    expect(
+      await screen.findByTestId("native-query-preview-sidebar"),
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId("notebook-native-preview-resize-handle"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the native query preview in a resizable sidebar on a wider screen (metabase#67767)", async () => {
+    setup({ database: createSampleDatabase(), windowWidthPx: 700 });
+
+    expect(
+      await screen.findByTestId("native-query-preview-sidebar"),
+    ).toBeVisible();
+    expect(
+      screen.getByTestId("notebook-native-preview-resize-handle"),
+    ).toBeInTheDocument();
   });
 });
