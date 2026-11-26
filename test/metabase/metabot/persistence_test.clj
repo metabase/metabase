@@ -501,6 +501,50 @@
       (is (not (contains? (client-message {:role :user :data [{:type "text" :text "hi"}]})
                           :contextTokens))))))
 
+(deftest ^:parallel messages->client-messages-elapsed-ms-test
+  (testing "a reply reports how long the server worked on it, from its created_at to its finished_at"
+    (let [created-at (t/offset-date-time 2026 11 26 10 0 0)]
+      (is (= 42500 (:elapsedMs (client-message {:role        :assistant
+                                                :data        []
+                                                :finished    true
+                                                :created_at  created-at
+                                                :finished_at (t/plus created-at (t/millis 42500))}))))
+      (testing "a finished_at before created_at, from two clocks that disagree, reads as no time"
+        (is (= 0 (:elapsedMs (client-message {:role        :assistant
+                                              :data        []
+                                              :finished    true
+                                              :created_at  created-at
+                                              :finished_at (t/minus created-at (t/millis 30))})))))
+      (testing "a reply with no finished_at omits it"
+        (is (not (contains? (client-message {:role :assistant :data [] :finished true :created_at created-at})
+                            :elapsedMs))))
+      (testing "user rows never carry it"
+        (is (not (contains? (client-message {:role :user :data [{:type "text" :text "hi"}] :created_at created-at})
+                            :elapsedMs)))))))
+
+(deftest finalize-assistant-turn-stores-given-finished-at-test
+  (testing "start-turn! returns the reply's created_at, and finalize-assistant-turn! stores :finished-at as given"
+    (with-rasta-tx
+      (let [conversation-id (str (random-uuid))
+            {:keys [assistant-msg-id assistant-created-at]}
+            (metabot-persistence/start-turn! conversation-id "internal" {:role "user" :content "hi"})
+            finished-at     (t/plus (t/offset-date-time assistant-created-at) (t/millis 7250))]
+        (is (some? assistant-created-at))
+        (metabot-persistence/finalize-assistant-turn!
+         assistant-msg-id [{:type :text :text "Hello"}] :finished-at finished-at)
+        (let [row (t2/select-one :model/MetabotMessage :id assistant-msg-id)]
+          (is (= assistant-created-at (:created_at row)))
+          (is (= 7250 (metabot-persistence/elapsed-ms assistant-created-at finished-at)
+                 (metabot-persistence/elapsed-ms (:created_at row) (:finished_at row)))
+              "the stored row gives the number that the live turn computed")))))
+  (testing "with no :finished-at, finished_at is the time of the call"
+    (with-rasta-tx
+      (let [conversation-id (str (random-uuid))
+            {:keys [assistant-msg-id]}
+            (metabot-persistence/start-turn! conversation-id "internal" {:role "user" :content "hi"})]
+        (metabot-persistence/finalize-assistant-turn! assistant-msg-id [{:type :text :text "Hello"}])
+        (is (some? (:finished_at (t2/select-one :model/MetabotMessage :id assistant-msg-id))))))))
+
 (deftest finalize-assistant-turn-passes-through-aborted-and-errored-test
   (testing "finalize-assistant-turn! preserves :finished? false and JSON-encodes :error"
     (with-rasta-tx

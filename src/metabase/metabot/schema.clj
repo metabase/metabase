@@ -240,7 +240,10 @@
    [:status        ::client-message-status]
    ;; how much of the window the conversation occupied once this message was
    ;; produced; absent on all user rows and legacy agent records
-   [:contextTokens {:optional true} :int]])
+   [:contextTokens {:optional true} :int]
+   ;; how long the server worked on the reply, in milliseconds; absent on user rows, on a reply
+   ;; that has not ended, on the copied replies of a fork, and on replies older than `finished_at`
+   [:elapsedMs     {:optional true} :int]])
 
 (mr/def ::ai-usage-log
   "A AiUsageLog as selected from the app DB: every column of `:ai_usage_log`."

@@ -233,20 +233,20 @@
 
 (defn- insert-assistant-placeholder!
   "Insert a turn's in-flight assistant row (`:finished` nil until
-  [[finalize-assistant-turn!]] resolves it); returns its pk."
+  [[finalize-assistant-turn!]] resolves it); returns the row."
   [conversation-id profile-id external-id ai-proxy? & {:keys [user-id channel-id]}]
-  (:id (first (metabot-message/create-metabot-messages!
-               [(cond-> {:conversation_id conversation-id
-                         :data            []
-                         :data_version    schema.v2/current-data-version
-                         :role            :assistant
-                         :profile_id      profile-id
-                         :external_id     external-id
-                         :total_tokens    0
-                         :ai_proxied      (boolean ai-proxy?)
-                         :finished        nil}
-                  user-id    (assoc :user_id user-id)
-                  channel-id (assoc :channel_id channel-id))]))))
+  (first (metabot-message/create-metabot-messages!
+          [(cond-> {:conversation_id conversation-id
+                    :data            []
+                    :data_version    schema.v2/current-data-version
+                    :role            :assistant
+                    :profile_id      profile-id
+                    :external_id     external-id
+                    :total_tokens    0
+                    :ai_proxied      (boolean ai-proxy?)
+                    :finished        nil}
+             user-id    (assoc :user_id user-id)
+             channel-id (assoc :channel_id channel-id))])))
 
 (defn start-turn!
   "Atomically begin a turn: upsert the conversation row, insert the user-message row,
@@ -280,7 +280,8 @@
      for the turn's rows; minted server-side when omitted. An already-taken id
      surfaces as the unique-constraint violation from the insert.
 
-  Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str> :user-external-id <uuid-str>}`."
+  Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str> :user-external-id <uuid-str>
+  :assistant-created-at <the placeholder's created_at>}`."
   [conversation-id profile-id user-message
    & {:keys [hostname pii-info
              channel-id slack-msg-id slack-team-id slack-thread-ts
@@ -335,12 +336,13 @@
           originator-id (assoc :user_id originator-id)
           channel-id    (assoc :channel_id channel-id)
           slack-msg-id  (assoc :slack_msg_id slack-msg-id))])
-      (let [pk (insert-assistant-placeholder! conversation-id profile-id assistant-external-id ai-proxy?
-                                              :user-id user-id
-                                              :channel-id channel-id)]
-        {:assistant-msg-id      pk
+      (let [row (insert-assistant-placeholder! conversation-id profile-id assistant-external-id ai-proxy?
+                                               :user-id user-id
+                                               :channel-id channel-id)]
+        {:assistant-msg-id      (:id row)
          :assistant-external-id assistant-external-id
-         :user-external-id      user-external-id}))))
+         :user-external-id      user-external-id
+         :assistant-created-at  (:created_at row)}))))
 
 (defn retry-turn!
   "Regenerate the response for `retry-message-external-id`, the conversation's last live
@@ -352,7 +354,8 @@
   `:assistant-external-id` is the client-minted `external_id` for the fresh
   placeholder; minted server-side when omitted.
 
-  Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str> :user-external-id <uuid-str>}`."
+  Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str> :user-external-id <uuid-str>
+  :assistant-created-at <the placeholder's created_at>}`."
   [conversation-id profile-id retry-message-external-id & {:keys [assistant-external-id delete-message-ids]}]
   (let [ai-proxy?             (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
         assistant-external-id (or assistant-external-id (str (random-uuid)))]
@@ -361,10 +364,11 @@
     (t2/with-transaction [_conn]
       (when (seq delete-message-ids)
         (soft-delete-messages! {:id delete-message-ids} api/*current-user-id*))
-      (let [pk (insert-assistant-placeholder! conversation-id profile-id assistant-external-id ai-proxy?)]
-        {:assistant-msg-id      pk
+      (let [row (insert-assistant-placeholder! conversation-id profile-id assistant-external-id ai-proxy?)]
+        {:assistant-msg-id      (:id row)
          :assistant-external-id assistant-external-id
-         :user-external-id      retry-message-external-id}))))
+         :user-external-id      retry-message-external-id
+         :assistant-created-at  (:created_at row)}))))
 
 ;;; ---------------------------------------- Conversation state ----------------------------------------
 
@@ -406,9 +410,9 @@
   is captured into the `error` column via the `:error` kwarg; why the turn
   stopped early, if it did, is derived from those same parts into the
   `finish_reason` column, and whether a `length` stop filled the context window
-  into `context_window_full`. `finished_at` gets the time of this call, which is when the agent
-  loop ended, and the turn's LLM call and tool call records that are still open are set to
-  `aborted` (see [[metabase.metabot.call-records]]).
+  into `context_window_full`. `finished_at` gets `:finished-at`, or else the time of this call, which
+  is when the agent loop ended, and the turn's LLM call and tool call records that are still open are
+  set to `aborted` (see [[metabase.metabot.call-records]]).
 
   Keyword args:
   - `:profile-id` — same value passed to [[start-turn!]]; tags the
@@ -429,16 +433,19 @@
      It is stored as the row's first part, so that [[history]] replays the message
      with the same bytes and the provider can read it from its prompt cache.
   - `:full-context?` — whether `:context-block` holds all of the context, not only what
-     the user is viewing (see [[replays-full-context?]])."
+     the user is viewing (see [[replays-full-context?]]).
+  - `:finished-at` — when the agent loop ended. A caller that told the client how long the turn took
+     passes the time it measured to, so [[elapsed-ms]] of the stored row gives the client the same
+     number again."
   [assistant-msg-id parts
    & {:keys [profile-id finished? error slack-msg-id channel-id turn-state context-window-tokens context-block
-             full-context?]
+             full-context? finished-at]
       :or   {finished? true}}]
   (let [turn-state     (not-empty turn-state)
         usage          (extract-usage parts)
         context-tokens (extract-context-tokens parts)
         finish-reason  (self.core/parts->incomplete-finish-reason parts)
-        finished-at    (OffsetDateTime/now)
+        finished-at    (or finished-at (OffsetDateTime/now))
         ;; used-table extraction needs the raw internal parts before conversion trims
         ;; tool outputs, so it can see keys the stored format discards, e.g. `:transform`
         kept-parts     (->> parts
@@ -840,9 +847,22 @@
     (instance? Instant v)        v
     (instance? OffsetDateTime v) (.toInstant ^OffsetDateTime v)
     (instance? LocalDateTime v)  (.toInstant ^LocalDateTime v ZoneOffset/UTC)
-    :else                        (do (log/warnf "Unhandled created_at type %s; cannot apply placeholder grace window"
+    :else                        (do (log/warnf "Unhandled datetime type %s of a metabot_message; cannot compare it"
                                                 (some-> v class .getName))
                                      nil)))
+
+(defn elapsed-ms
+  "How long the server worked on a reply, in milliseconds: from `created-at`, the `created_at` of its
+  MetabotMessage, which [[start-turn!]] stamps, to `finished-at`, its `finished_at`. Nil when either is
+  missing. Never negative: `created_at` is the app database's time and `finished_at` is this server's.
+
+  The live stream sends this number as `finish.messageMetadata.elapsedMs`, and a reply read back from the
+  app database gets it as `elapsedMs`."
+  [created-at finished-at]
+  (when (and created-at finished-at)
+    (when-let [start (->instant created-at)]
+      (when-let [end (->instant finished-at)]
+        (max 0 (.toMillis (java.time.Duration/between start end)))))))
 
 (defn- placeholder-still-active?
   [{:keys [role finished created_at deleted_at]}]
@@ -910,7 +930,8 @@
   the optional `external_id` and status the row itself carries. Rows with no
   renderable parts are still fully represented."
   [row]
-  (let [status (row->status row)]
+  (let [status  (row->status row)
+        elapsed (elapsed-ms (:created_at row) (:finished_at row))]
     (cond-> {:id     (or (:external_id row) (str (:id row)))
              :role   (if (= :user (:role row)) "user" "agent")
              :parts  (if (= "in_progress" (:type status))
@@ -918,7 +939,8 @@
                        (message->parts row))
              :status status}
       (:external_id row)    (assoc :externalId (:external_id row))
-      (:context_tokens row) (assoc :contextTokens (:context_tokens row)))))
+      (:context_tokens row) (assoc :contextTokens (:context_tokens row))
+      elapsed               (assoc :elapsedMs elapsed))))
 
 (defn messages->client-messages
   "Convert a seq of `MetabotMessage` model instances into their client shape, one

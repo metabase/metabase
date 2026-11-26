@@ -144,6 +144,13 @@
                                                :contextWindowTokens 1000}}
                             (u/seek #(= "finish" (:type %)) events))
                         "finish event carries accumulated and final-call context usage"))
+                  (testing "the finish event carries the server's elapsed time, and the stored reply gives the same number"
+                    (let [elapsed (get-in (u/seek #(= "finish" (:type %)) events) [:messageMetadata :elapsedMs])
+                          reply   (u/seek #(= :assistant (:role %)) messages)]
+                      (is (nat-int? elapsed))
+                      (is (= elapsed (metabot.persistence/elapsed-ms (:created_at reply) (:finished_at reply))))
+                      (is (= elapsed (:elapsedMs (u/seek #(= "agent" (:role %))
+                                                         (metabot.persistence/messages->client-messages messages)))))))
                   (is (=? {:user_id (mt/user->id :rasta)}
                           conv))
                   ;; Native agent stores parts in the v2 at-rest format
@@ -768,6 +775,10 @@
                   (is (re-find #"(?i)agent setup exploded" response))
                   (is (str/includes? response "\"finishReason\":\"error\"")
                       "the errored stream is closed with a finish event")
+                  (is (re-find #"\"messageMetadata\":\{\"elapsedMs\":\d+\}" response)
+                      "that finish event carries the server's elapsed time")
+                  (is (some? (:finished-at @stored-kwargs))
+                      "the time it counts to goes into the row")
                   (is (str/includes? response "data: [DONE]")
                       "the stream terminates with [DONE]"))))))))))
 
