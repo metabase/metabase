@@ -373,7 +373,9 @@
                    :context         context
                    :memory-atom     memory-atom
                    :tracking-opts   {:source     "slackbot"
-                                     :session-id conversation-id}}))
+                                     :session-id conversation-id
+                                     ;; The turn's LLM call and tool call records belong to this reply.
+                                     :message-id assistant-msg-id}}))
       (catch Throwable t
         ;; Capture for the finally's `:error` payload, then re-throw so the
         ;; existing slack error-handling path (DM/channel) still surfaces a
