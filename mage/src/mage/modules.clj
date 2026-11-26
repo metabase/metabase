@@ -394,7 +394,7 @@
   Inside an opted-in module's directory, a nested module of another team is otherwise unowned, with a `nil` handle.
   An opted-in module always gets an entry.
   Another module gets one only where the nearest entry around it would give its code a different owner.
-  Only `:codeowners true` opts in; [[codeowners-config-problems]] reports any other value."
+  Only `:codeowners true` opts in; [[codeowners-config-problems]] reports any value but `true` or `false`."
   [modules-config team->codeowner]
   ;; config.edn's `codeowners` section states this rule for module authors; change the two together.
   (reduce
@@ -424,11 +424,32 @@
    ;; source path does that, and the test tree mirrors the source tree.
    (sort-by #(modules/module-dir modules-config % "src") (keys modules-config))))
 
+(defn- uncovered-nested-problems
+  "An `:uncovered-nested` problem (`:module`, `:team`, `:ancestor`, `:src-dir`) for each module with code that leaves
+  `:codeowners` unset, has an opted-in ancestor of its own team, and is not owned by that team, because its code lies
+  outside every entry of `entries` that would give it to the team."
+  [modules-config team->codeowner source? entries]
+  (for [[module cfg] (sort-by key modules-config)
+        :when        (not (contains? cfg :codeowners))
+        :let         [team     (modules/module-team modules-config module)
+                      src-dir  (modules/module-dir modules-config module "src")
+                      ancestor (->> (rest (modules/lineage modules-config module))
+                                    (filter #(and (opts-in? modules-config %)
+                                                  (= team (modules/module-team modules-config %))))
+                                    first)
+                      ;; Entries come parent first, so the last one around `src-dir` is the nearest.
+                      owner    (:handle (last (filter #(path-within? (:src-dir %) src-dir) entries)))]
+        :when        (and ancestor
+                          (not= owner (get team->codeowner team))
+                          (source? src-dir))]
+    {:type :uncovered-nested, :module module, :team team, :ancestor ancestor, :src-dir src-dir}))
+
 (defn- codeowners-config-problems
-  "Problems with the modules that set `:codeowners`, as maps keyed by `:type`, all of them in one run.
+  "Problems with the modules' `:codeowners` settings, as maps keyed by `:type`, all of them in one run.
   Each module problem has `:module`.
   An `:unknown-value` adds `:value`, a `:no-codeowner` adds `:team`, and a `:no-source` adds `:src-dir`.
   A team whose codeowner is not one GitHub handle gives a single `:bad-codeowner` (`:team`, `:value`, `:modules`).
+  A module left unowned by an opted-in ancestor of its team gives an [[uncovered-nested-problems]] problem.
   The predicate `source?` takes a module's src directory and says whether its code is there."
   [modules-config team->codeowner source?]
   (let [modules (for [[module cfg] (sort-by key modules-config)
@@ -436,22 +457,29 @@
                   module)]
     (concat
      (for [module  modules
-           :let    [team    (modules/module-team modules-config module)
-                    src-dir (modules/module-dir modules-config module "src")]
+           :let    [team      (modules/module-team modules-config module)
+                    src-dir   (modules/module-dir modules-config module "src")
+                    value     (get-in modules-config [module :codeowners])
+                    ;; `false` declines, so it needs no codeowner or code. Any other value may be a mistyped `true`.
+                    declined? (false? value)]
            problem (cond-> []
-                     (not (opts-in? modules-config module))
-                     (conj {:type :unknown-value, :module module, :value (get-in modules-config [module :codeowners])})
+                     (not (boolean? value))
+                     (conj {:type :unknown-value, :module module, :value value})
 
-                     (not (contains? team->codeowner team))
+                     (and (not declined?) (not (contains? team->codeowner team)))
                      (conj {:type :no-codeowner, :module module, :team team})
 
-                     (not (source? src-dir))
+                     (and (not declined?) (not (source? src-dir)))
                      (conj {:type :no-source, :module module, :src-dir src-dir}))]
        problem)
-     (for [[team team-modules] (sort-by key (group-by #(modules/module-team modules-config %) modules))
+     (for [[team team-modules] (sort-by key (group-by #(modules/module-team modules-config %)
+                                                      (remove #(false? (get-in modules-config [% :codeowners]))
+                                                              modules)))
            :let                [handle (get team->codeowner team)]
            :when               (and (contains? team->codeowner team) (not (valid-codeowner? handle)))]
-       {:type :bad-codeowner, :team team, :value handle, :modules (vec team-modules)}))))
+       {:type :bad-codeowner, :team team, :value handle, :modules (vec team-modules)})
+     (uncovered-nested-problems modules-config team->codeowner source?
+                                (codeowners-entries modules-config team->codeowner)))))
 
 (defn- pattern-covers?
   "Whether CODEOWNERS `pattern`, a directory or a `<path>.*` root-file glob from the block, matches `path`."
@@ -503,8 +531,13 @@
   "One problem from [[codeowners-config-problems]] or [[codeowners-file-problems]] as a sentence saying what to fix."
   [{:keys [module] :as problem}]
   (case (:type problem)
-    :unknown-value  (format "Module %s sets :codeowners to %s. Use true, or leave it out."
+    :unknown-value  (format "Module %s sets :codeowners to %s. Use true or false, or leave it out."
                             module (pr-str (:value problem)))
+    :uncovered-nested
+    (format (str "Module %s belongs to %s, like its opted-in ancestor %s, but its code at %s is outside %s's"
+                 " directories, so it has no code owner. Set :codeowners true on %s, or :codeowners false to leave"
+                 " it unowned.")
+            module (pr-str (:team problem)) (:ancestor problem) (:src-dir problem) (:ancestor problem) module)
     :no-codeowner   (format "Module %s sets :codeowners, but its team %s has no \"codeowner\" in %s."
                             module (pr-str (:team problem)) team-config-path)
     :bad-codeowner  (format (str "Team %s has \"codeowner\" %s in %s. Use one GitHub handle, such as"

@@ -775,6 +775,17 @@
            (owners '{lib        {:team "Querying Platform", :codeowners true}
                      lib.schema {:team "UX West", :codeowners true}})))))
 
+(deftest codeowners-entries-outside-prefix-test
+  (testing "a nested module whose :ns-prefix is outside its parent's directory is not covered by the parent"
+    (is (= [['lib "@metabase/querying-platform"]]
+           (owners '{lib       {:team "Querying Platform", :codeowners true}
+                     lib.agent {:ns-prefix "metabase.agent"}}))))
+  (testing "it gets its own entry when it opts in"
+    (is (= [['lib.agent "@metabase/querying-platform"]
+            ['lib "@metabase/querying-platform"]]
+           (owners '{lib       {:team "Querying Platform", :codeowners true}
+                     lib.agent {:ns-prefix "metabase.agent", :codeowners true}})))))
+
 (deftest codeowners-entries-deep-nesting-test
   (testing "a grandchild that inherits the team of an opted-in nested module needs no entry"
     (is (= [['lib "@metabase/querying-platform"]
@@ -846,7 +857,45 @@
                (problems '{lib {:team "Gadget", :codeowners true}} (constantly true) {"Gadget" value})))))
     (testing "modules that do not set :codeowners are not checked"
       (is (= []
-             (problems '{lib {:team "Gadget"}} (constantly false)))))))
+             (problems '{lib {:team "Gadget"}} (constantly false)))))
+    (testing "false declines without being checked as an opt-in"
+      (is (= []
+             (problems '{lib {:team "Gadget", :codeowners false}} (constantly false)))))))
+
+(deftest codeowners-uncovered-nested-problems-test
+  (let [problems (fn [config]
+                   (vec (#'mage.modules/codeowners-config-problems config test-team->codeowner (constantly true))))]
+    (testing "a same-team nested module outside its opted-in parent's directory that sets nothing is a problem"
+      (is (= [{:type     :uncovered-nested
+               :module   'lib.agent
+               :team     "Querying Platform"
+               :ancestor 'lib
+               :src-dir  "src/metabase/agent"}]
+             (problems '{lib       {:team "Querying Platform", :codeowners true}
+                         lib.agent {:ns-prefix "metabase.agent"}}))))
+    (testing "an enterprise companion of an opted-in OSS module counts as nested"
+      (is (= [{:type :uncovered-nested, :module 'enterprise/lib, :ancestor 'lib}]
+             (map #(select-keys % [:type :module :ancestor])
+                  (problems '{lib            {:team "Querying Platform", :codeowners true}
+                              enterprise/lib {}})))))
+    (testing "either value settles it"
+      (doseq [value [true false]]
+        (is (= []
+               (problems {'lib       {:team "Querying Platform", :codeowners true}
+                          'lib.agent {:ns-prefix "metabase.agent", :codeowners value}})))))
+    (testing "a nested module inside its parent's directory, of another team, or without code is not a problem"
+      (is (= []
+             (problems '{lib        {:team "Querying Platform", :codeowners true}
+                         lib.schema {}})))
+      (is (= []
+             (problems '{lib       {:team "Querying Platform", :codeowners true}
+                         lib.agent {:team "UX West", :ns-prefix "metabase.agent"}})))
+      (is (= []
+             (vec (#'mage.modules/codeowners-config-problems
+                   '{lib       {:team "Querying Platform", :codeowners true}
+                     lib.agent {:ns-prefix "metabase.agent"}}
+                   test-team->codeowner
+                   #(not= "src/metabase/agent" %))))))))
 
 (deftest codeowners-has-source-test
   (let [has-source? #'mage.modules/has-source?
@@ -964,7 +1013,16 @@
       {:type :bad-codeowner, :team "Gadget", :value "", :modules ['lib]} "so that lib can opt in"
       {:type :no-source, :module 'lib, :src-dir "src/metabase/lib"}      "has no code at src/metabase/lib."
       {:type :shadowed-lines, :lines ["a/b.clj @x"]}                     "Move them below the END marker:\n  a/b.clj @x"
-      {:type :broken-markers, :begin 0, :end nil}                        "Fix the markers by hand.")))
+      {:type :broken-markers, :begin 0, :end nil}                        "Fix the markers by hand."))
+  (testing "an uncovered nested module names its ancestor and both values"
+    (is (str/includes? (#'mage.modules/codeowners-problem-message
+                        {:type     :uncovered-nested
+                         :module   'lib.agent
+                         :team     "Gadget"
+                         :ancestor 'lib
+                         :src-dir  "src/metabase/agent"})
+                       (str "its code at src/metabase/agent is outside lib's directories, so it has no code owner."
+                            " Set :codeowners true on lib.agent, or :codeowners false")))))
 
 (deftest codeowners-stanza-lines-test
   (testing "a header naming the module and team, then one owner line per pattern"

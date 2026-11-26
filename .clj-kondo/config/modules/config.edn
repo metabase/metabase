@@ -22,8 +22,10 @@
 ;; It is not inherited, but it covers the module's directories. A nested module inside them that does not set it keeps
 ;; its own team if an opted-in module around it has that team, and is left unowned otherwise. A nested module with an
 ;; `:ns-prefix` outside its parent's directories needs its own, and so does an `enterprise/X` module: it is `X`'s child
-;; but lives under `enterprise/backend`, as `enterprise/search` does beside `search`. Plugin code under
-;; `modules/<plugin>/src` is not supported: give it an owner by hand.
+;; but lives under `enterprise/backend`, as `enterprise/search` does beside `search`. `./bin/mage update-codeowners`
+;; refuses to run while such a module of the same team as an opted-in ancestor sets neither value: set it to `true`, or
+;; to `false` to leave the module unowned. Plugin code under `modules/<plugin>/src` is not supported: give it an owner
+;; by hand.
 ;;
 ;;    search
 ;;    {:team       "Metabot"
@@ -4372,6 +4374,7 @@
 
   enterprise/dependencies.replacement
   {:team "Data Apps"
+   :codeowners true
    :ns-prefix "metabase-enterprise.replacement"
    :api #{metabase-enterprise.replacement.api metabase-enterprise.replacement.init}
    :uses #{analytics
